@@ -1,0 +1,131 @@
+/*
+ * Top-line summary
+ */
+
+.topline-stats {
+  margin: 0 10px 10px 10px;
+}
+
+.topline-stats li {
+  color: #53b0c4;
+}
+
+.stat-label {
+  text-transform: uppercase;
+}
+
+.primary-stat {
+  color: gray;
+}
+
+.stat {
+  font-size: 28px;
+  color: #274245;
+  margin-left: 2px;
+}
+
+#process-info {
+  display: inline-block;
+}
+
+/*
+ * Request Volume
+ */
+
+#request-stats {
+  margin-top: 30px;
+  font-size: 24px;
+}
+
+#request-stats a {
+  color: #53b0c4;
+  text-transform: capitalize;
+}
+
+/*
+ * Interfaces
+ */
+
+.header {
+  color: gray;
+  text-transform: uppercase;
+}
+
+.interface {
+  font-family: monospace;
+  padding: 10px 0;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  text-align: left;
+  border: 2px solid lightgray;
+}
+
+.interface:hover {
+  background-color: #f4f4f4;
+  box-shadow: 0 0 10px 0 lightgray;
+  cursor: pointer;
+  cursor: hand;
+}
+
+.interface div.row {
+  display:flex;
+  align-items:flex-end;
+}
+
+.interface .name {
+  margin: 6px 0 0 10px;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 20px;
+}
+
+.interface .name a {
+  color: #53b0c4;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+}
+
+.interface hr {
+  margin: 0 10px 0 10px;
+  padding: 0;
+  border-top: 2px solid lightgray;
+}
+
+.sr-header {
+  color: #999;
+  text-transform: uppercase;
+  padding-top: 10px;
+  text-align: right;
+  margin: 0 0 15px 0;
+  font-weight: bold;
+}
+
+.sr-text {
+  margin: 0;
+  padding-bottom: 10px;
+  font-weight: 400;
+  font-size: 36px;
+  margin-left: 10px;
+}
+
+.sr-good {
+  color: black;
+}
+
+.sr-poor {
+  color: #F28E1D;
+}
+
+.sr-bad {
+  color: #CA3528;
+}
+
+.sr-undefined {
+  color: #777777;
+}
+
+.connections {
+  margin-left: 10px;
+  color: #999;
+}

@@ -1,0 +1,73 @@
+.input-group .form-control {
+  z-index: 0;
+}
+
+.hide {
+  display: none;
+}
+
+.panel, .panel-heading, .list-group-item, .list-group {
+  border: none;
+  box-shadow: none;
+}
+
+.panel {
+  margin-bottom: 0px;
+}
+
+.panel > li, .panel > ul {
+    margin-left: 50px;
+}
+
+.node-info {
+  float: right;
+  opacity: 0.5;
+}
+
+.node-dentry {
+  opacity: 0.5;
+  margin-left: 10px;
+}
+
+.dtab {
+  margin: 5px 0px;
+}
+
+.result {
+  margin-bottom: 50px;
+}
+
+.panel .active {
+  background-color: #555;
+  color: #f4f4f4;
+}
+
+.dentry {
+  font-family: monospace;
+}
+
+.dentry-part {
+  display: inline-block;
+  font-family: monospace;
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  text-align: left;
+  border: 1px solid lightgray;
+}
+
+.dentry-part:hover {
+  background-color: #f4f4f4;
+  box-shadow: 0 0 10px 0 lightgray;
+  cursor: pointer;
+  cursor: hand;
+}
+
+.dentry-part.active {
+  background-color: #555;
+  color: #f4f4f4;
+}
+
+#edit-dtab-btn {
+  margin-left: 20px;
+}

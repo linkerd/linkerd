@@ -1,0 +1,387 @@
+package io.buoyant.k8s
+
+import com.google.common.net.InetAddresses
+import com.twitter.app.GlobalFlag
+import com.twitter.concurrent.AsyncStream
+import com.twitter.finagle._
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.tracing.Trace
+import com.twitter.util._
+import java.net.{InetSocketAddress, SocketAddress}
+import java.util.concurrent.atomic.AtomicReference
+import scala.collection.JavaConverters._
+import scala.collection.mutable
+
+object masterAddr extends GlobalFlag(
+  new InetSocketAddress("kubernetes.default.cluster.local", 443),
+  "Kubernets master address"
+)
+
+object masterTls extends GlobalFlag(true, "Kubernetes master TLS enabled")
+object masterUnsafe extends GlobalFlag(false, "When true, TLS validation is skipped.")
+
+object masterAuth extends GlobalFlag(
+  Path.read("/var/run/secrets/kubernetes.io/serviceaccount/token"),
+  "Local filesystem path to a file containing kubernetes auth credentials."
+) {
+
+  def load(): Try[String] =
+    Try(scala.io.Source.fromFile(apply().show).mkString)
+
+  def filter: Filter[Request, Response, Request, Response] = load() match {
+    case Return(token) => new AuthFilter(token)
+    case Throw(e) =>
+      master.log.warning(s"failed to load k8s credentials: ${apply().show}: ${e.getMessage}")
+      Filter.identity[Request, Response]
+  }
+
+  private[this] class AuthFilter(token: String) extends SimpleFilter[Request, Response] {
+    def apply(req: Request, service: Service[Request, Response]) = {
+      req.headerMap("Authorization") = s"Bearer $token"
+      service(req)
+    }
+  }
+}
+
+object master {
+  val log = v1.log
+
+  def mk(ns: String): v1.NsApi = {
+    val addr = masterAddr()
+    val host = addr.getHostString
+    val setHost = new SetHostFilter(addr)
+    val name = s"/$$/inet/${host}/${addr.getPort}"
+    val label = s"k8s/$ns"
+    log.debug("building %s client to %s", label, name)
+    val client = (masterTls(), masterUnsafe()) match {
+      case (false, _) => Http.client
+      case (true, true) => Http.client.withTlsWithoutValidation()
+      case (true, _) => Http.client.withTls(setHost.host)
+    }
+    val service = client
+      .filtered(new SetHostFilter(addr))
+      .filtered(masterAuth.filter)
+      .withStreaming(true)
+      .newService(name, label)
+    v1.Api(service).namespace(ns)
+  }
+}
+
+class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
+
+  import EndpointsNamer._
+
+  /**
+   * Accepts names in the form:
+   *   /<namespace>/<port-name>/<svc-name>/residual/path
+   *
+   * and attempts to bind an Addr by resolving named endpoint from the
+   * kubernetes master.
+   */
+  def lookup(path: Path): Activity[NameTree[Name]] = path.take(PrefixLen) match {
+    case id@Path.Utf8(nsName, portName, serviceName) =>
+      val residual = path.drop(PrefixLen)
+      log.debug("k8s lookup: %s %s", id.show, path.show)
+      Activity(Ns.get(nsName).services).flatMap { services =>
+        log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
+        services.get(serviceName) match {
+          case None =>
+            log.debug("k8s ns %s service %s missing", nsName, serviceName)
+            Activity.value(NameTree.Neg)
+
+          case Some(services) =>
+            log.debug("k8s ns %s service %s found", nsName, serviceName)
+            Activity(services.ports).map { ports =>
+              ports.get(portName) match {
+                case None =>
+                  log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
+                  NameTree.Neg
+
+                case Some(Port(_, addr)) =>
+                  log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
+                  NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual))
+              }
+            }
+        }
+      }
+
+    case _ =>
+      Activity.value(NameTree.Neg)
+  }
+
+  private[this] object Ns {
+    private[this] val activity: ActUp[Map[String, NsCache]] =
+      Var(Activity.Pending)
+
+    def get(name: String): NsCache = synchronized {
+      activity.sample() match {
+        case Activity.Ok(snap) =>
+          snap.get(name) match {
+            case Some(ns) => ns
+            case None =>
+              val ns = mkNs(name)
+              activity() = Activity.Ok(snap + (name -> ns))
+              ns
+          }
+
+        case _ =>
+          val ns = mkNs(name)
+          activity() = Activity.Ok(Map(name -> ns))
+          ns
+      }
+    }
+
+    private[this] def mkNs(name: String): NsCache = {
+      val nsCache = new NsCache(name, Var(Activity.Pending))
+      _watches = _watches + (name -> watch(name, nsCache))
+      nsCache
+    }
+
+    // XXX once a namespace is watched, it is watched forever.  also
+    // theres probably some poor error behavior.
+    private[this] var _watches = Map.empty[String, Closable]
+    def watches = _watches
+
+    private[this] def watch(namespace: String, services: NsCache): Closable = {
+      val ns = mkApi(namespace)
+      val close = new AtomicReference(Closable.nop)
+
+      Trace.letClear {
+        val init = {
+          log.debug("k8s initializing %s", namespace)
+          val endpoints = ns.endpoints()
+
+          close.set(Closable.make { _ =>
+            endpoints.raise(Closed)
+            Future.Unit
+          })
+
+          endpoints.foreach(services.initialize)
+        }
+
+        init.foreach { init =>
+          val (updates, closable) = ns.endpoints.watch(
+            resourceVersion = init.metadata.flatMap(_.resourceVersion)
+          )
+          close.set(closable)
+          updates.foreach(services.update)
+        }
+      }
+
+      Closable.all(ns, Closable.ref(close))
+    }
+  }
+}
+
+private object EndpointsNamer {
+
+  val log = v1.log
+  val PrefixLen = 3
+
+  type VarUp[T] = Var[T] with Updatable[T]
+  type ActUp[T] = VarUp[Activity.State[T]]
+
+  case class Port(name: String, addr: VarUp[Addr])
+    extends Updatable[Addr] {
+
+    def update(a: Addr) = addr.update(a)
+    def sample() = addr.sample()
+  }
+
+  private[this] def getAddrs(subsets: Seq[v1.EndpointSubset]): Map[String, Set[SocketAddress]] = {
+    val addrsByPort = mutable.Map.empty[String, Set[SocketAddress]]
+
+    for (subset <- subsets) {
+      val ips = subset.addresses match {
+        case None => Set.empty
+        case Some(addrs) => addrs.map { a => InetAddresses.forString(a.ip) }.toSet
+      }
+
+      for {
+        ports <- subset.ports
+        port <- ports
+      } {
+        val proto = port.protocol.map(_.toUpperCase).getOrElse("TCP")
+        (proto, port.name) match {
+          case ("TCP", Some(name)) =>
+            val addrs: Set[SocketAddress] = ips.map(new InetSocketAddress(_, port.port))
+            addrsByPort(name) = addrsByPort.getOrElse(name, Set.empty) ++ addrs
+
+          case _ =>
+        }
+      }
+    }
+
+    addrsByPort.toMap
+  }
+
+  private[this] def mkPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Port] =
+    getAddrs(subsets).map {
+      case (name, addrs) => name -> Port(name, Var(Addr.Bound(addrs)))
+    }.toMap
+
+  case class SvcCache(name: String, ports: ActUp[Map[String, Port]]) {
+
+    def clear(): Unit = synchronized {
+      ports.sample() match {
+        case Activity.Ok(snap) =>
+          for (port <- snap.values) {
+            port() = Addr.Neg
+          }
+          ports() = Activity.Pending
+
+        case _ =>
+      }
+    }
+
+    def delete(name: String): Unit = synchronized {
+      ports.sample() match {
+        case Activity.Ok(snap) =>
+          for (port <- snap.get(name)) {
+            port() = Addr.Neg
+            ports() = Activity.Ok(snap - name)
+          }
+
+        case _ =>
+      }
+    }
+
+    def update(subsets: Seq[v1.EndpointSubset]): Unit =
+      getAddrs(subsets) match {
+        case addrs if addrs.isEmpty =>
+          synchronized {
+            ports.sample() match {
+              case Activity.Ok(ps) =>
+                for (port <- ps.values) {
+                  port() = Addr.Neg
+                }
+
+              case _ =>
+            }
+          }
+
+        case addrs =>
+          synchronized {
+            val base = ports.sample() match {
+              case Activity.Ok(base) => base
+              case _ => Map.empty[String, Port]
+            }
+
+            val updated = addrs.foldLeft(base) {
+              case (base, (name, addrs)) =>
+                val addr = if (addrs.isEmpty) Addr.Neg else Addr.Bound(addrs)
+                base.get(name) match {
+                  case Some(port) =>
+                    port() = addr
+                    base
+
+                  case None =>
+                    val port = Port(name, Var(addr))
+                    base + (name -> port)
+
+                  case state =>
+                    log.warning("did not update port %s in state %s", name, state)
+                    base
+                }
+            }
+
+            if (updated.size > base.size) {
+              ports() = Activity.Ok(updated)
+            }
+          }
+      }
+  }
+
+  class NsCache(name: String, activity: ActUp[Map[String, SvcCache]]) {
+
+    def services: Var[Activity.State[Map[String, SvcCache]]] = activity
+
+    def clear(): Unit = synchronized {
+      activity.sample() match {
+        case Activity.Ok(snap) =>
+          for (svc <- snap.values) {
+            svc.clear()
+          }
+        case _ =>
+      }
+      activity() = Activity.Pending
+    }
+
+    /**
+     * Initialize a namespaces of services.  The activity is updated
+     * once with the entire state of the namespace (i.e. not
+     * incrementally service by service).
+     */
+    def initialize(endpoints: v1.EndpointsList): Unit = {
+      val initSvcs = endpoints.items.flatMap { endpoint =>
+        mkSvc(endpoint).map { svc => svc.name -> svc }
+      }
+
+      synchronized {
+        activity() = Activity.Ok(initSvcs.toMap)
+      }
+    }
+
+    def update(watch: v1.EndpointsWatch): Unit = watch match {
+      case v1.EndpointsWatch.Error(e) => log.error("k8s watch error: %s", e)
+      case v1.EndpointsWatch.Added(endpoints) => add(endpoints)
+      case v1.EndpointsWatch.Modified(endpoints) => modify(endpoints)
+      case v1.EndpointsWatch.Deleted(endpoints) => delete(endpoints)
+    }
+
+    private[this] def getName(endpoints: v1.Endpoints) =
+      endpoints.metadata.flatMap(_.name)
+
+    private[this] def mkSvc(endpoints: v1.Endpoints): Option[SvcCache] =
+      getName(endpoints).map { name =>
+        val ports = mkPorts(endpoints.subsets)
+        SvcCache(name, Var(Activity.Ok(ports)))
+      }
+
+    private[this] def add(endpoints: v1.Endpoints): Unit =
+      for (svc <- mkSvc(endpoints)) synchronized {
+        log.debug("k8s added: %s", svc.name)
+        val svcs = services.sample() match {
+          case Activity.Ok(svcs) => svcs
+          case _ => Map.empty[String, SvcCache]
+        }
+        activity() = Activity.Ok(svcs + (svc.name -> svc))
+      }
+
+    private[this] def modify(endpoints: v1.Endpoints): Unit =
+      for (name <- getName(endpoints)) synchronized {
+        log.debug("k8s modified: %s", name)
+        services.sample() match {
+          case Activity.Ok(snap) =>
+            snap.get(name) match {
+              case None =>
+                log.warning("received modified watch for unknown service %s", name)
+              case Some(svc) =>
+                svc() = endpoints.subsets
+            }
+          case _ =>
+        }
+      }
+
+    private[this] def delete(endpoints: v1.Endpoints): Unit =
+      for (name <- getName(endpoints)) synchronized {
+        log.debug("k8s deleted: %s", name)
+        services.sample() match {
+          case Activity.Ok(snap) =>
+            for (svc <- snap.get(name)) {
+              svc.clear()
+              activity() = Activity.Ok(snap - name)
+            }
+
+          case _ =>
+        }
+      }
+
+  }
+
+}
+
+class endpoints extends EndpointsNamer(
+  Path.read("/$/io.buoyant.k8s.endpoints"),
+  ns => master.mk(ns)
+)

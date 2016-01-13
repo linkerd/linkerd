@@ -1,0 +1,4 @@
+{{#each keys}}
+  <dt><a href="/metrics#srv/{{../server}}/{{@this}}">{{@this}}</a></dt>
+  <dd data-key="srv/{{../server}}/{{@this}}">...</dd>
+{{/each}}

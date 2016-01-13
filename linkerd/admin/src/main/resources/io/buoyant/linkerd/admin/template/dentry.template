@@ -1,0 +1,10 @@
+<div class='dentry'>
+  <div class='dentry-part dentry-prefix' data-dentry-prefix='{{prefix}}'>
+    {{prefix}}
+  </div>
+  =>
+  <div class='dentry-part dentry-dst' data-dentry-dst='{{dst}}'>
+    {{dst}}
+  </div>
+  ;
+</div>

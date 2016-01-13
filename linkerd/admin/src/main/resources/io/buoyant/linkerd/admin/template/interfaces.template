@@ -1,0 +1,25 @@
+<h3 class="header text-center">{{name}}</h3>
+<div class="row">
+{{#each interfaces}}
+  <div class="col-sm-3">
+    <div class="interface">
+      <div class="row">
+        <h3 class="sr-text col-sm-6 {{rateStyle}}">{{prettyRate}}</h3>
+        <h6 class="sr-header col-sm-5">success rate</h6>
+      </div>
+      <hr>
+      <div class="row name">
+        <a href="/metrics#{{requestsKey}}">{{name}}</a>
+      </div>
+      <div class="row connections">
+        {{connections}} active {{pluralize connections 'connection' 'connections'}}
+      </div>
+
+      {{#if client}}
+        <div class="row connections">
+          {{lbAvail}} / {{lbSize}} loadbalancer {{pluralize lbSize 'endpoint' 'endpoints'}} up
+        </div>
+      {{/if}}
+    </div>
+  </div>
+{{/each}}

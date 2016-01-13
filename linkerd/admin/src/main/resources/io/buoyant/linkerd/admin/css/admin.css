@@ -1,0 +1,120 @@
+/*
+ * Navigation and header
+ */
+
+.main-header {
+  z-index: 1;
+  overflow: hidden;
+  border-bottom: 2px solid lightgray;
+  background: white;
+  text-align: center;
+  position: fixed;
+  width: 100%;
+}
+
+.main-header h1 {
+  font-size: 32px;
+  color: #274245;
+  background: url("/files/images/logo.svg");
+  background-repeat: no-repeat;
+  background-position: calc(50% - 65px) 50%;
+  margin: 5px 10px 5px 10px;
+  padding-left: 70px;
+  line-height: 59px;
+}
+
+.main-header button {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: #53b0c4;
+  color: white;
+}
+
+.main-header button:hover {
+  background: #217D91;
+  color: white;
+}
+
+.main-header button:focus {
+  background: #217D91;
+  color: white;
+}
+
+.page-wrap {
+  float: right;
+  width: 100%;
+}
+
+.main-nav {
+  z-index: 2;
+  position: fixed;
+  top: 0;
+  width: 0;
+  height: 100%;
+  background: #53b0c4;
+  opacity: 0.9;
+  overflow-y: auto;
+  transition: width 0.2s ease;
+}
+
+.main-nav a {
+  display: block;
+  color: white;
+  padding: 15px;
+  text-decoration: none;
+  font-size: 24px;
+  white-space: nowrap;
+}
+
+.main-nav a:hover, .main-nav a:focus {
+  background: #217D91;
+}
+
+#main-nav:target {
+  width: 20%;
+}
+
+#main-nav:target + .page-wrap .open-menu {
+  display: none;
+}
+
+#main-nav:target + .page-wrap .close-menu {
+  display: block;
+}
+
+a.open-menu {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: black;
+  font-size: 32px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.close-menu {
+  display: none;
+  margin-bottom: 20px;
+}
+
+.contents {
+  margin-top: 10px;
+  padding: 80px 20px 20px 20px;
+}
+
+.contents hr {
+  margin: 0 10px 0 10px;
+  padding: 0;
+  border-top: 2px solid lightgray;
+}
+
+/*
+ * Support Dialog
+ */
+
+#support-procinfo {
+  overflow-wrap: normal;
+  height: 300px;
+  white-space: pre;
+}

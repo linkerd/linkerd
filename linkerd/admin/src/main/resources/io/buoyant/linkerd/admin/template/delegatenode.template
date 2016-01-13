@@ -1,0 +1,53 @@
+{{#if child}}
+  <div class='panel panel-default'>
+    <div class='panel-heading'{{#with dentry}}
+      data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
+    {{/with}}>
+      <div class='node-info'>
+        {{#if isDelegate}}
+          Possible Resolution Path
+        {{else if isAlt}}
+          Several Possible Resolution Paths
+        {{else if isLeaf}}
+          Namer Match
+        {{/if}}
+      </div>
+      {{path}}
+      {{#with dentry}}
+        <span class='node-dentry'>{{prefix}}=>{{dst}}</span>
+      {{/with}}
+    </div>
+    <ul class='list-group'>{{{child}}}</ul>
+  </div>
+{{else}}
+  <li class='list-group-item
+    {{#if isNeg}}
+      list-group-item-danger
+    {{else if isFail}}
+      list-group-item-danger
+    {{else}}
+      list-group-item-success
+    {{/if}}'
+    {{#with dentry}}
+      data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
+    {{/with}}>
+    <div class='node-info'>
+      {{#if isNeg}}
+        No Further Branch Matches
+      {{else if isFail}}
+        Explicit Failure
+      {{else}}
+        Bound Path
+      {{/if}}
+    </div>
+    {{#with addr}}
+      {{#each addrs}}
+        {{ip}}:{{port}}
+      {{/each}}
+    {{/with}}
+    {{path}}
+    {{#with dentry}}
+      <span class='node-dentry'>{{prefix}}=>{{dst}}</span>
+    {{/with}}
+  </li>
+{{/if}}
