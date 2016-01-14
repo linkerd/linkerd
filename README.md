@@ -9,6 +9,8 @@ linkerd is designed not just to make multi-service applications fast
 and reliable (even under extreme traffic) but to decouple application
 code from the mechanics of how it’s operationalized.
 
+[![Circle CI](https://circleci.com/gh/BuoyantIO/linkerd.svg?style=svg&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f)](https://circleci.com/gh/BuoyantIO/linkerd)
+
 ## Projects ##
 
 ### linkerd ###
