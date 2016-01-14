@@ -1,10 +1,8 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{HttpMuxer, MediaType, Request, Response}
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.server.TwitterServer
-import com.twitter.server.handler.ResourceHandler
-import com.twitter.server.view.NotFoundView
 import com.twitter.util.Future
 
 object AdminHandler {
@@ -110,16 +108,6 @@ object AdminHandler {
       </html>
     """
   }
-
-}
-
-private class FlagsHandler(flags: String) extends Service[Request, Response] {
-  override def apply(req: Request): Future[Response] = {
-    AdminHandler.mkResponse(
-      content = flags,
-      mediaType = MediaType.Txt
-    )
-  }
 }
 
 object StaticFilter extends SimpleFilter[Request, Response] {
@@ -144,26 +132,5 @@ object StaticFilter extends SimpleFilter[Request, Response] {
       res.contentType = contentType + ";charset=UTF-8"
       Future.value(res)
     }
-  }
-}
-
-trait LinkerdAdmin
-  extends DelegatorAdmin
-  with MetricsAdmin { self: TwitterServer =>
-  premain {
-    log.info(s"Serving Linkerd Admin UI on ${adminPort()}")
-
-    HttpMuxer.addHandler("/", new NotFoundView andThen SummaryHandler)
-    HttpMuxer.addHandler("/flags", new FlagsHandler(
-      flag.formattedFlagValuesString()
-    ))
-    HttpMuxer.addHandler(
-      "/files/",
-      StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
-        baseRequestPath = "/files/",
-        baseResourcePath = "io/buoyant/linkerd/admin",
-        localFilePath = "linkerd/admin/src/main/resources/io/buoyant/linkerd/admin"
-      )
-    )
   }
 }

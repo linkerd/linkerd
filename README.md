@@ -33,7 +33,7 @@ destination is identified for each request, and this destination may
 be refined through finagle's `Namer` API in order to dispatch the
 request to a downstream service.
 
-### auxiliary ### 
+### auxiliary ###
 
 #### k8s ####
 

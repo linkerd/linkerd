@@ -1,21 +1,27 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{HttpMuxer, MediaType, Request, Response, Status}
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.{Http => FHttp, Service, http => fhttp, param}
 import com.twitter.io.Buf
 import com.twitter.server.TwitterServer
 import com.twitter.util.Future
-import io.buoyant.linkerd.Build
+import io.buoyant.linkerd.{Build, Linker}
 import scala.util.matching.Regex
 
-private object SummaryHandler extends Service[Request, Response] {
+private[admin] class SummaryHandler(linker: Linker) extends Service[Request, Response] {
+  import SummaryHandler._
+
+  lazy val html = summaryHtml(linker.routers.length)
 
   override def apply(req: Request): Future[Response] = req.path match {
     case "/" =>
-      AdminHandler.mkResponse(summaryHtml)
+      AdminHandler.mkResponse(html)
     case _ =>
       Future.value(Response(Status.NotFound))
   }
+}
+
+private object SummaryHandler {
 
   private[this] case class Stat(
     description: String,
@@ -25,12 +31,12 @@ private object SummaryHandler extends Service[Request, Response] {
     dataKey: String
   )
 
-  lazy val summaryHtml = {
+  def summaryHtml(routerCount: Int) = {
 
     val statsHtml =
       List(
         Stat("linkerd version", "linkerd-version", Build.load().version, "primary-stat", ""),
-        Stat("router count", "router-count", "1", "primary-stat", ""),
+        Stat("router count", "router-count", routerCount.toString, "primary-stat", ""),
         Stat("uptime", "jvm-uptime", "0s", "", "jvm/uptime"),
         Stat("thread count", "jvm-thread-count", "0", "", "jvm/thread/count"),
         Stat("memory used", "jvm-mem-current-used", "0MB", "", "jvm/mem/current/used"),

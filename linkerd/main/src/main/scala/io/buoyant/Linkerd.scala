@@ -18,8 +18,7 @@ import scala.io.Source
  *
  * The config file may be either JSON- or YAML-formatted
  */
-object Linkerd extends TwitterServer
-  with LinkerdAdmin {
+object Linkerd extends TwitterServer {
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
@@ -28,8 +27,10 @@ object Linkerd extends TwitterServer
     args match {
       case Array(path) =>
         val linker = loadLinker(path)
+
+        LinkerdAdmin.init(linker)
+
         // TODO initialize:
-        // - admin
         // - namers
         // - tracers
         val routers = linker.routers.flatMap { router =>

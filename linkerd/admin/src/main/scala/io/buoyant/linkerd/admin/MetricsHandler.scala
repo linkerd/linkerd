@@ -1,8 +1,7 @@
 package io.buoyant.linkerd.admin
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{HttpMuxer, Request, Response}
-import com.twitter.server.TwitterServer
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
 
 private object MetricsHandler extends Service[Request, Response] {
@@ -33,10 +32,4 @@ private object MetricsHandler extends Service[Request, Response] {
       javaScripts = Seq("lib/handlebars-v4.0.5.js", "lib/smoothie.js", "utils.js", "metrics.js"),
       csses = Seq("metrics.css")
     )
-}
-
-trait MetricsAdmin { self: TwitterServer =>
-  premain {
-    HttpMuxer.addHandler("/metrics", MetricsHandler)
-  }
 }

@@ -1,12 +1,21 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle._
-import com.twitter.finagle.http.{HttpMuxer, Request, Response}
-import com.twitter.server.TwitterServer
+import com.twitter.finagle.{Dtab, Service}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
+import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.admin.names.WebDelegator
+import io.buoyant.router.RoutingFactory
 
 private object DelegateHandler {
+
+  def ui(linker: Linker) = {
+    val RoutingFactory.BaseDtab(dtab) = linker.routers.head.params[RoutingFactory.BaseDtab]
+    new DelegateHandler(dtab)
+  }
+
+  def api = new WebDelegator
+
   def render(dtab: () => Dtab) =
     AdminHandler.adminHtml(
       content = s"""
@@ -44,17 +53,11 @@ private object DelegateHandler {
     )
 }
 
-class DelegateHandler(dtab: () => Dtab) extends Service[Request, Response] {
+private class DelegateHandler(dtab: () => Dtab) extends Service[Request, Response] {
   import DelegateHandler._
 
-  override def apply(req: Request): Future[Response] = {
-    AdminHandler.mkResponse(render(dtab))
-  }
-}
+  lazy val dtabString = render(dtab)
 
-trait DelegatorAdmin { self: TwitterServer =>
-  premain {
-    HttpMuxer.addHandler("/delegator", new DelegateHandler(() => Dtab.base))
-    HttpMuxer.addHandler("/delegator.json", new WebDelegator())
-  }
+  override def apply(req: Request): Future[Response] =
+    AdminHandler.mkResponse(dtabString)
 }
