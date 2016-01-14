@@ -149,6 +149,7 @@ lazy val `linkerd-admin` =
         Nil
     ).dependsOn(
       `linkerd-core`,
+      `linkerd-core` % "test->test",
       `test-util` % "test"
     )
 // ----

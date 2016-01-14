@@ -12,7 +12,7 @@ import com.twitter.io.Buf
 import com.twitter.util._
 import java.net.{InetSocketAddress, SocketAddress}
 
-object WebDelegator {
+private[admin] object WebDelegator {
 
   private object PathStr {
     def unapply(p: String) = Try(Path.read(p)).toOption
@@ -156,7 +156,7 @@ object WebDelegator {
 
 }
 
-class WebDelegator(
+private[admin] class WebDelegator(
   delegate: Delegator = Delegator
 ) extends Service[Request, Response] {
 

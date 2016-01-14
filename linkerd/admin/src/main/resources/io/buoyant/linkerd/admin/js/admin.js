@@ -34,7 +34,6 @@ $(function() {
     var $processInfo = $("#support-procinfo");
 
     $.when(
-      $.ajax("/flags"),
       $.ajax("/admin/metrics.json"),
       $.ajax("/admin/server_info"),
       $.ajax({url: "/admin/lint", dataType: "json"}),
@@ -43,7 +42,6 @@ $(function() {
       $.ajax("/admin/dtab"),
       $.ajax({url: "/admin/registry.json", dataType: "json"})
     ).done(function(
-      flags,
       metrics,
       server_info,
       lint,
@@ -54,7 +52,6 @@ $(function() {
     ) {
       $processInfo.html(
         JSON.stringify({
-          "flags": flags[0],
           "metrics": metrics[0],
           "server_info": server_info[0],
           "lint": lint[0],
