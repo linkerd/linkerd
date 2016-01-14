@@ -7,7 +7,7 @@ object Base {
 
   lazy val meta = Seq(
     organization := "io.buoyant",
-    version := "0.0.7",
+    version := "0.0.8-SNAPSHOT",
     scalaVersion := "2.11.7",
     scalacOptions ++= Seq(
       "-Xfatal-warnings",
