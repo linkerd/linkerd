@@ -185,7 +185,10 @@ lazy val `linkerd-namer-k8s` =
   project.in(file("linkerd/namer/k8s")).
     settings(BaseSettings:_*).settings(
       name := "linkerd-namer-k8s",
-      libraryDependencies += Deps.finagle("core")
+      libraryDependencies ++=
+        Deps.finagle("core") ::
+        Deps.scalatest % "test" ::
+        Nil
     ).dependsOn(
       `k8s`,
       `linkerd-core`
