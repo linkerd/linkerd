@@ -101,9 +101,10 @@ object LinkerdBuild extends Base {
 
     object Protocol {
       val http = projectDir("linkerd/protocol/http")
-        .withTests()
-        .withIntegration()
-        .dependsOn(core % "compile->compile;integration->test", Router.http)
+        .withTests().withE2e().withIntegration()
+        .dependsOn(
+          core % "compile->compile;e2e->test;integration->test",
+          Router.http)
 
       val mux = projectDir("linkerd/protocol/mux")
         .dependsOn(core, Router.mux)

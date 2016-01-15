@@ -74,7 +74,7 @@ class ApiTest extends FunSuite with Awaits {
     var requestCount = 0;
     val failureService = Service.mk[Request, Response] { req =>
       requestCount = requestCount + 1
-      if(requestCount > 1) {
+      if (requestCount > 1) {
         val rsp = Response()
         rsp.setContentTypeJson()
         rsp.content = datacentersBuf

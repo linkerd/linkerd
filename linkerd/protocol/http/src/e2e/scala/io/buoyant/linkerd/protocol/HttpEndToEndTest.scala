@@ -1,11 +1,15 @@
-package io.buoyant.router
+package io.buoyant.linkerd
+package protocol
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status=>_, http=>_, _}
+import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
 import com.twitter.util._
+import io.buoyant.router.{Http, RoutingFactory}
+import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -50,7 +54,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       .newClient(name, "upstream").toService
   }
 
-  test("end-to-end routing") {
+  test("end-to-end linking") {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
     def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
@@ -60,27 +64,31 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val cat = Downstream.const("cat", "meow")
     val dog = Downstream.const("dog", "woof")
-    val router = {
-      val dtab = Dtab.read(s"""
-        /p/cat => /$$/inet/127.1/${cat.port} ;
-        /p/dog => /$$/inet/127.1/${dog.port} ;
+    val dtab = Dtab.read(s"""
+      /p/cat => /$$/inet/127.1/${cat.port} ;
+      /p/dog => /$$/inet/127.1/${dog.port} ;
+      /http/1.1/GET/felix => /p/cat ;
+      /http/1.1/GET/clifford => /p/dog ;
+    """)
 
-        /http/1.1/GET/felix => /p/cat ;
-        /http/1.1/GET/clifford => /p/dog ;
-      """)
+    val yaml = s"""
+routers:
+- protocol: http
+  baseDtab: ${dtab.show}
+  httpUriInDst: true
+  servers:
+  - port: 0
+"""
 
-      val factory = Http.router
-        .configured(RoutingFactory.BaseDtab(() => dtab))
-        .configured(RoutingFactory.DstPrefix(Path.Utf8("http")))
-        .configured(Http.param.UriInDst(true))
-        .factory()
+    val protocols = ProtocolInitializers(new HttpInitializer)
+    val linker = Linker.mk(protocols, NamerInitializers.empty)
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+      .read(Yaml(yaml))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
 
-      Http.server
-        .serve(new InetSocketAddress(0), factory)
-    }
-
-
-    val client = upstream(router)
+    val client = upstream(server)
     def get(host: String, path: String = "/")(f: Response => Unit): Unit = {
       val req = Request()
       req.host = host
@@ -93,19 +101,51 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       get("felix") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
+
+        val path = "/http/1.1/GET/felix"
+        val bound = s"/$$/inet/127.1/${cat.port}"
+        assert(rsp.headerMap.get(Headers.Dst.Path) == Some(path))
+        assert(rsp.headerMap.get(Headers.Dst.Bound) == Some(bound))
+        assert(rsp.headerMap.get(Headers.Dst.Residual) == None)
+        withAnnotations { anns =>
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/")))
+        }
       }
 
       get("clifford", "/the/big/red/dog") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "woof")
+
+        val path = "/http/1.1/GET/clifford/the/big/red/dog"
+        val bound = s"/$$/inet/127.1/${dog.port}"
+        val residual = "/the/big/red/dog"
+        assert(rsp.headerMap.get(Headers.Dst.Path) == Some(path))
+        assert(rsp.headerMap.get(Headers.Dst.Bound) == Some(bound))
+        assert(rsp.headerMap.get(Headers.Dst.Residual) == Some(residual))
+        withAnnotations { anns =>
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
+          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", residual)))
+        }
+      }
+
+      get("ralph-machio") { rsp =>
+        assert(rsp.status == Status.BadGateway)
+        assert(rsp.headerMap.contains(Headers.Err))
+      }
+
+      get("") { rsp =>
+        assert(rsp.status == Status.BadRequest)
+        assert(rsp.headerMap.contains(Headers.Err))
       }
 
       // todo check stats
-      // todo check tracer
-      //tracer.clear()
     } finally {
       await(cat.server.close())
       await(dog.server.close())
+      await(server.close())
       await(router.close())
     }
   }

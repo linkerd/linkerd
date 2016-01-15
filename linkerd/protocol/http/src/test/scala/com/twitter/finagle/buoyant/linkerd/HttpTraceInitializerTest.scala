@@ -1,10 +1,9 @@
-package com.twitter.finagle.buoyant
+package com.twitter.finagle.buoyant.linkerd
 
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.{NullTracer, Trace}
 import com.twitter.finagle.{Service, ServiceFactory, param}
 import com.twitter.util.{Await, Future}
-import io.buoyant.router.http.Headers
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
