@@ -1,11 +1,11 @@
 package io.l5d.experimental
 
-import com.fasterxml.jackson.core.JsonParser
-import com.twitter.finagle.{Filter, Http, Path, Service, SimpleFilter, Stack}
+import com.fasterxml.jackson.core.{JsonParser, JsonToken}
+import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.Label
-import io.buoyant.k8s.{EndpointsNamer, SetHostFilter}
-import io.buoyant.k8s.v1.{Api => K8sApi}
+import io.buoyant.k8s.{AuthFilter, EndpointsNamer, SetHostFilter}
+import io.buoyant.k8s.v1.{Api}
 import io.buoyant.linkerd.{NamerInitializer, Parsing}
 import scala.io.Source
 
@@ -53,23 +53,25 @@ object k8s {
 
   /**
    * The path to a file containing the k8s master's authorization token.
-   * default: /var/run/secrets/kubernetes.io/serviceaccount/token
+   * default: none
    */
-  case class AuthTokenFile(path: String) {
-    def load(): String = Source.fromFile(path).mkString
-    def filter(): Filter[Request, Response, Request, Response] = AuthTokenFile.Filter(load())
+  case class AuthToken(token: String) {
+    def filter(): Filter[Request, Response, Request, Response] = token match {
+      case "" => Filter.identity[Request, Response]
+      case path => new AuthFilter(token)
+    }
   }
 
-  implicit object AuthTokenFile extends Stack.Param[AuthTokenFile] {
+  implicit object AuthToken extends Stack.Param[AuthToken] {
     // Kubernetes mounts a secrets volume with master authentication
     // tokens.  That's usually what we want.
-    val default = AuthTokenFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-    val parser = Parsing.Param.Text("authTokenFile")(AuthTokenFile(_))
+    val default = AuthToken("")
 
-    private case class Filter(token: String) extends SimpleFilter[Request, Response] {
-      def apply(req: Request, service: Service[Request, Response]) = {
-        req.headerMap("Authorization") = s"Bearer $token"
-        service(req)
+    val parser = Parsing.Param("authTokenFile") { (parser, params) =>
+      Parsing.ensureTok(parser, JsonToken.VALUE_STRING) { parser =>
+        val path = parser.getText
+        parser.nextToken()
+        params + AuthToken(Source.fromFile(path).mkString)
       }
     }
   }
@@ -79,7 +81,7 @@ object k8s {
     Port.parser,
     Tls.parser,
     Tls.WithoutValidation.parser,
-    AuthTokenFile.parser
+    AuthToken.parser
   )
 
   val defaultParams = Stack.Params.empty +
@@ -92,6 +94,7 @@ object k8s {
 class k8s(val params: Stack.Params) extends NamerInitializer {
   def this() = this(k8s.defaultParams)
   def withParams(ps: Stack.Params) = new k8s(ps)
+  def withAuthToken(tok: String) = withParams(params + k8s.AuthToken(tok))
 
   def paramKeys = k8s.parser.keys
   def readParam(k: String, p: JsonParser) =
@@ -113,14 +116,15 @@ class k8s(val params: Stack.Params) extends NamerInitializer {
 
     // namer path -- should we just support a `label`?
     val path = params[NamerInitializer.Prefix].path.show
+    val auth = params[k8s.AuthToken].filter()
     val service = client
       .configured(Label("namer" + path))
       .filtered(setHost)
-      .filtered(params[k8s.AuthTokenFile].filter())
+      .filtered(auth)
       .withStreaming(true)
       .newService(s"/$$/inet/$host/$port")
 
-    def mkNs(ns: String) = K8sApi(service).namespace(ns)
+    def mkNs(ns: String) = Api(service).namespace(ns)
     new EndpointsNamer(prefix, mkNs)
   }
 }

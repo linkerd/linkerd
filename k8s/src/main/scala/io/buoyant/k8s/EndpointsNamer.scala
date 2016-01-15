@@ -34,13 +34,6 @@ object masterAuth extends GlobalFlag(
       master.log.warning(s"failed to load k8s credentials: ${apply().show}: ${e.getMessage}")
       Filter.identity[Request, Response]
   }
-
-  private[this] class AuthFilter(token: String) extends SimpleFilter[Request, Response] {
-    def apply(req: Request, service: Service[Request, Response]) = {
-      req.headerMap("Authorization") = s"Bearer $token"
-      service(req)
-    }
-  }
 }
 
 object master {
