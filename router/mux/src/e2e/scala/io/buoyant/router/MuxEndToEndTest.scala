@@ -1,9 +1,8 @@
 package io.buoyant.router
 
-import com.twitter.common.metrics.Metrics
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Mux=>FinagleMux, _}
-import com.twitter.finagle.stats.{ImmediateMetricsStatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -58,8 +57,7 @@ class MuxEndToEndTest extends FunSuite with Awaits {
 
     val dtab = Dtab(dentries.toIndexedSeq)
 
-    val metrics = Metrics.createDetached()
-    val stats = new ImmediateMetricsStatsReceiver(metrics)
+    val stats = NullStatsReceiver
     val tracer = new BufferingTracer
     val router = Mux.router
       .configured(param.Stats(stats))
