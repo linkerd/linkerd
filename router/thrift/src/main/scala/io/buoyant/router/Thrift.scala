@@ -7,6 +7,7 @@ import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.util._
+import io.buoyant.router.thrift.Identifier
 import java.net.SocketAddress
 
 object Thrift extends Router[ThriftClientRequest, Array[Byte]]
@@ -20,6 +21,11 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
     case class Framed(enabled: Boolean)
     implicit object Framed extends Stack.Param[Framed] {
       val default = Framed(true)
+    }
+
+    case class MethodInDst(enabled: Boolean)
+    implicit object MethodInDst extends Stack.Param[MethodInDst] {
+      val default = MethodInDst(false)
     }
   }
 
@@ -37,15 +43,6 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
         ProtocolLibrary("thrift")
-
-    /** Statically assigns a destination to all requests. */
-    case class Identifier(
-      name: Path = Path.empty,
-      dtab: () => Dtab = () => Dtab.base
-    ) extends RoutingFactory.Identifier[ThriftClientRequest] {
-      def apply(req: ThriftClientRequest): Future[Dst] =
-        Future.value(Dst.Path(name, dtab(), Dtab.local))
-    }
 
     /**
      * Wraps a byte-array payload as a two-way ThriftClientRequest.
@@ -79,8 +76,9 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
 
     protected def newIdentifier(): RoutingFactory.Identifier[ThriftClientRequest] = {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
+      val param.MethodInDst(methodInDst) = params[param.MethodInDst]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
-      Router.Identifier(pfx, baseDtab)
+      Identifier(pfx, methodInDst, baseDtab)
     }
   }
 
