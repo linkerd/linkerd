@@ -114,7 +114,7 @@ object Delegator extends Delegator {
     val matches: Seq[DelegateTree[Name.Path]] = dtab.dentries0.reverse.collect {
       case d@Dentry(prefix, dst) if path.startsWith(prefix) =>
         val suff = path.drop(prefix.size)
-        fromNameTree((prefix ++ suff), d, dst.map { pfx => Name.Path(pfx ++ suff) })
+        fromNameTree(prefix ++ suff, d, dst.map { pfx => Name.Path(pfx ++ suff) })
     }
 
     val result: DelegateTree[Name.Path] = matches.size match {

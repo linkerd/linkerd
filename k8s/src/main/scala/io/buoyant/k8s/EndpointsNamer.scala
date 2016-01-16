@@ -211,7 +211,7 @@ private object EndpointsNamer {
   private[this] def mkPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Port] =
     getAddrs(subsets).map {
       case (name, addrs) => name -> Port(name, Var(Addr.Bound(addrs)))
-    }.toMap
+    }
 
   case class SvcCache(name: String, ports: ActUp[Map[String, Port]]) {
 

@@ -18,7 +18,7 @@ object Json {
 
   private[this] val mapper = new ObjectMapper with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
   def read[T: Manifest](buf: Buf): Try[T] = {
     val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)

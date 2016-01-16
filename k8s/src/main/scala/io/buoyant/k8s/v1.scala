@@ -89,10 +89,9 @@ package object v1 {
       RetryPolicy.backoff(backoffs) {
         // We will assume 5xx are retryable, everything else is not for now
         case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
-        case (_, Throw(NonFatal(ex))) => {
+        case (_, Throw(NonFatal(ex))) =>
           log.error(s"retrying k8s endpoints request on error $ex")
           true
-        }
       },
       HighResTimer.Default,
       stats,
