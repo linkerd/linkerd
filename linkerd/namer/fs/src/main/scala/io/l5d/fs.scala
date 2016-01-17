@@ -38,6 +38,6 @@ class fs(val params: Stack.Params) extends NamerInitializer {
     case fs.RootDir(None) => throw new IllegalArgumentException("io.l5d.fs requires a 'rootDir'")
     case fs.RootDir(Some(path)) if !path.toFile.isDirectory =>
       throw new IllegalArgumentException(s"io.l5d.fs 'rootDir' is not a directory: $path")
-    case fs.RootDir(Some(path)) => new WatchingNamer(path)
+    case fs.RootDir(Some(path)) => new WatchingNamer(path, params[NamerInitializer.Prefix].path)
   }
 }

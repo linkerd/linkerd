@@ -22,9 +22,9 @@ servers:
 """
     val router = parse(yaml)
     assert(router.protocol == TestProtocol.Plain)
-    assert(router.name == "yoghurt")
+    assert(router.label == "yoghurt")
     assert(router.servers.size == 1)
-    assert(router.servers.head.name == "yoghurt/127.0.0.1/1234")
+    assert(router.servers.head.router == "yoghurt")
     assert(router.servers.head.addr.getAddress == InetAddress.getLoopbackAddress)
     assert(router.servers.head.addr.getPort == 1234)
   }
@@ -76,7 +76,8 @@ servers:
     assert(router.servers.head.addr.getAddress == InetAddress.getLoopbackAddress)
     assert(router.servers.head.addr.getPort == 1234)
 
-    assert(router.servers.head.params[param.Label].label == "fancy/127.0.0.1/1234")
+    assert(router.servers.head.router == "fancy")
+    assert(router.servers.head.params[param.Label].label == "127.0.0.1/1234")
     assert(router.servers.head.params[TestProtocol.Fancy.Pants].fancy)
 
   }

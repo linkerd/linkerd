@@ -22,7 +22,7 @@ object Linkerd extends TwitterServer {
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
-    log.info("Linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
+    log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
 
     args match {
       case Array(path) =>
@@ -37,7 +37,7 @@ object Linkerd extends TwitterServer {
           val running = router.initialize()
           closeOnExit(running)
           running.servers.map { server =>
-            log.info("serving %s", server.params[Label].label)
+            log.info("serving %s on %s:%d", server.router, server.ip, server.port)
             val listening = server.serve()
             closeOnExit(listening)
             listening

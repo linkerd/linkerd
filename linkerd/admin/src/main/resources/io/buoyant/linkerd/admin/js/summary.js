@@ -1,53 +1,58 @@
 /*! modified from twitter-server | (c) 2015 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
 "use strict";
 
-var templates = {};
+/**
+ * Number of millis to wait between data updates.
+ */
+var UPDATE_INTERVAL = 1000;
 
+// configure handlebar to support pluralization
+Handlebars.registerHelper('pluralize', function(number, single, plural) {
+  return (number === 1) ? single : plural;
+});
+
+/*
+ * There are 3 segments of the summary page:
+ * - ProcInfo: a top-line set of info about linkerd's build/runtime
+ * - BigBoard: a big chart and set of stats about the most active server
+ * - Interfaces: client and server widgets
+ */
 $.when(
   $.get("/files/template/interfaces.template"),
   $.get("/files/template/request_stats.template"),
   $.get("/admin/metrics.json")
 ).done(function(interfacesRsp, requestStatsRsp, metricsJson) {
-
-  Handlebars.registerHelper('pluralize', function(number, single, plural) {
-    if (number === 1) {
-      return single;
-    } else {
-      return plural;
-    }
-  });
-
-  templates.interfaces = Handlebars.compile(interfacesRsp[0]);
-  templates.requestStats = Handlebars.compile(requestStatsRsp[0]);
+  var ifacesTemplate = Handlebars.compile(interfacesRsp[0]),
+      summaryTemplate = Handlebars.compile(requestStatsRsp[0]),
+      routers = Routers(metricsJson[0]),
+      server = BigBoard.findMostActiveServer(routers.data);
 
   $(function() {
-    loadProcInfo();
-    loadMetricsInfo(metricsJson[0]);
-    loadInterfacesInfo(metricsJson[0]);
+    var procInfo = ProcInfo(),
+        bigBoard = BigBoard(server, summaryTemplate),
+        interfaces = Interfaces(routers, ifacesTemplate);
+    procInfo.start(UPDATE_INTERVAL);
+    bigBoard.start(UPDATE_INTERVAL);
+    interfaces.start(UPDATE_INTERVAL);
   });
 });
 
-function loadProcInfo() {
-  var url = $("#process-info").data("refresh-uri") + "?";
-
-  $("#process-info ul li").each(function(i) {
-    var key = $(this).data("key");
-    if (key) {
-      url += "&m="+key;
-    }
-  });
+/**
+ * Process info
+ */
+var ProcInfo = (function() {
 
   var msToStr = new MsToStringConverter();
   var bytesToStr = new BytesToStringConverter();
 
   function pretty(name, value) {
-    if (name === "jvm/uptime") return msToStr.convert(value)
-    else if (name === "jvm/mem/current/used") return bytesToStr.convert(value)
-    else if (name === "jvm/gc/msec") return msToStr.convert(value)
+    if (name === "jvm/uptime") return msToStr.convert(value);
+    else if (name === "jvm/mem/current/used") return bytesToStr.convert(value);
+    else if (name === "jvm/gc/msec") return msToStr.convert(value);
     else return value;
   }
 
-  function renderProcInfo(data) {
+  function render(data) {
     var json = $.parseJSON(data);
     for (var i = 0; i < json.length; i++) {
       var id = json[i].name.replace(/\//g, "-");
@@ -56,129 +61,105 @@ function loadProcInfo() {
     }
   }
 
-  // poll for top-line metrics (uptime, mem, etc)
-  function fetchProcInfo() {
-    $.ajax({
-      url: url,
-      dataType: "text",
-      cache: false,
-      success: renderProcInfo,
+  /**
+   * Returns a function that may be called to trigger an update.
+   */
+  return function() {
+    var url = $("#process-info").data("refresh-uri") + "?";
+    $("#process-info ul li").each(function(i) {
+      var key = $(this).data("key");
+      if (key) {
+        url += "&m="+key;
+      }
     });
-  }
-  fetchProcInfo();
-  setInterval(fetchProcInfo, 1000);
-}
 
-// known interfaces we do not want to render in the ui
-var blackList = [
-  "k8s/",
-  "consul/",
-  "<function1>",
-  "tracer/localhost",
-];
+    function update() {
+      $.ajax({
+        url: url,
+        dataType: "text",
+        cache: false,
+        success: render
+      });
+    }
 
-// return an object of client and server names:
-// {
-//   clients: ['client_foo', 'client_bar', ...],
-//   servers: ['server_baz', ...],
-// }
-function jsonToInterfaces(metricsJson) {
-  var keys = $.grep(Object.keys(metricsJson), function(key) {
-    return (
-      key.endsWith("/requests") &&
-      !blackList.some(function(elem, i, arr) {
-        return key.indexOf(elem) != -1;
-      })
-    );
-  });
+    return {
+      start: function(interval) { setInterval(update, interval); }
+    };
+  };
+})();
 
-  var interfaces = {
-    clients: [],
-    servers: [],
+/**
+ * Big summary board of "most active" server (by number of requests)
+ */
+var BigBoard = (function() {
+  var summaryKeys = ['load', 'failures', 'success', 'requests'],
+      chart = new UpdateableChart(
+        {minValue: 0},
+        document.getElementById("request-canvas"),
+        function() {
+          return window.innerWidth * 0.75;
+        }
+      );
+
+  /**
+   * Returns a function that may be called to trigger an update.
+   */
+  var init = function(server, template) {
+    // set up primary server requests chart
+    chart.setMetric(server.prefix + "requests");
+
+    // set up primary server metrics
+    $('#request-stats').html(template({server: server, keys: summaryKeys}));
+
+    // store primary server metric dom elements
+    var metrics = {};
+    $("#request-stats dd").each(function(i) {
+      var key = $(this).data("key");
+      if (key) {
+        metrics[key] = $(this);
+      }
+    });
+
+    var url = "/admin/metrics?m="+Object.keys(metrics).join("&m=");
+    function update() {
+      $.ajax({
+        url: url,
+        dataType: "json",
+        cache: false,
+        success: function(data) {
+          for (var i = 0; i < data.length; i++) {
+            metrics[data[i].name].text(data[i].delta);
+          }
+        }
+      });
+    };
+    update();
+
+    return {
+      start: function(interval) { setInterval(update, interval); }
+    };
   };
 
-  $.each(keys, function(i, key) {
-    if (key.startsWith("clnt/")) {
-      var client = key.substring("clnt/".length, key.lastIndexOf("/"));
-      interfaces.clients.push(client);
-    } else if (key.startsWith("srv/")) {
-      var server = key.substring("srv/".length, key.lastIndexOf("/"));
-      interfaces.servers.push(server);
-    }
-  });
-
-  return interfaces;
-}
-
-function loadMetricsInfo(metricsJson) {
-
-  // init chart
-  var chart = new UpdateableChart(
-    { minValue: 0 },
-    document.getElementById("request-canvas"),
-    function() {
-      return window.innerWidth * 0.75;
-    }
-  );
-
-  // try to guess the most relevant server
-  var primaryServer = "http/127.0.0.1/4140"; // default
-
-  var interfaces = jsonToInterfaces(metricsJson);
-  if (interfaces.servers.length > 0) {
-    var candidates = $.grep(interfaces.servers, function(iface) {
-      return iface.indexOf("4140") != -1;
-    });
-    if (candidates.length > 0) {
-      primaryServer = candidates[0];
-    } else {
-      candidates = $.grep(interfaces.servers, function(iface) {
-        return iface.indexOf("http") != -1;
-      });
-      if (candidates.length > 0) {
-        primaryServer = candidates[0];
-      } else {
-        primaryServer = interfaces.servers[0];
-      }
-    }
-  }
-
-  // set up primary server requests chart
-  chart.setMetric("srv/" + primaryServer + "/requests");
-
-  // set up primary server metrics
-  $('#request-stats').html(templates.requestStats({
-    server: primaryServer,
-    keys: ['load', 'failures', 'success', 'requests'],
-  }));
-
-  // store primary server metric dom elements
-  var metrics = {};
-  $("#request-stats dd").each(function(i) {
-    var key = $(this).data("key");
-    if (key) {
-      metrics[key] = $(this);
-    }
-  });
-
-  // poll for primary server metrics
-  function fetchMetricsInfo() {
-    $.ajax({
-      url: "/admin/metrics?m="+Object.keys(metrics).join("&m="),
-      dataType: "json",
-      cache: false,
-      success: function(data) {
-        for (var i = 0; i < data.length; i++) {
-          metrics[data[i].name].text(data[i].delta);
+  /** Helper */
+  init.findMostActiveServer = function(routers) {
+    var active = {metrics:{requests:-1}, prefix:"rt/http/srv/127.0.0.1/4140/"};
+    Object.keys(routers).forEach(function(name) {
+      routers[name].servers.forEach(function(server) {
+        if (server.metrics.requests > active.metrics.requests) {
+          active = server;
         }
-      }
+      });
     });
-  }
-  fetchMetricsInfo();
-  setInterval(fetchMetricsInfo, 1000);
-}
+    return active;
+  };
 
-function loadInterfacesInfo(metricsJson) {
+  return init;
+})();
+
+/**
+ * Per-client/server views of router stats.
+ */
+var Interfaces = (function() {
 
   // return a list of interfaces for use in Handlebars, sorted by ascending success rate
   // [
@@ -203,44 +184,26 @@ function loadInterfacesInfo(metricsJson) {
   //   },
   //   ...
   // ]
-  function prepInterfacesForHB(interfaces, metricsJson, isClient) {
-    var interfacesHB = [];
+  function prepInterface(iface) {
+    var requests = iface.metrics["requests"] || 0,
+        success  = iface.metrics["success"]  || 0,
+        failures = iface.metrics["failures"] || 0,
+        successRate = new SuccessRate(requests, success, failures);
+    return {
+      name: iface.router +"/"+ iface.label,
+      requestsKey: iface.prefix + "requests",
+      requests: requests,
+      success: success,
+      failures: failures,
+      connections: iface.metrics["connections"] || 0,
+      successRate: successRate.get(),
+      prettyRate: successRate.prettyRate(),
+      rateStyle: successRate.rateStyle()
+    };
+  }
 
-    $.each(interfaces, function(i, iface) {
-      var prefix = "srv/" + iface;
-      if (isClient) {
-        prefix = "clnt/" + iface;
-      }
-
-      var requests = metricsJson[prefix + "/requests"] || 0;
-      var success = metricsJson[prefix + "/success"] || 0;
-      var failures = metricsJson[prefix + "/failures"] || 0;
-
-      var successRate = new SuccessRate(requests, success, failures);
-
-      var interfaceHB = {
-        name: iface,
-        requestsKey: prefix + "/requests",
-        requests: requests,
-        success: success,
-        failures: failures,
-        connections: metricsJson[prefix + "/connections"] || 0,
-        successRate: successRate.get(),
-        prettyRate: successRate.prettyRate(),
-        rateStyle: successRate.rateStyle(),
-      };
-
-      if (isClient) {
-        interfaceHB.client = true;
-        interfaceHB.lbSize = metricsJson[prefix + "/loadbalancer/size"] || 0;
-        interfaceHB.lbAvail = metricsJson[prefix + "/loadbalancer/available"] || 0;
-      }
-
-      interfacesHB.push(interfaceHB);
-    });
-
-    // sort by ascending success rate
-    interfacesHB.sort(function(a, b) {
+  function sortBySuccess(ifaces) {
+    ifaces.sort(function(a, b) {
       if (a.successRate != b.successRate) {
         if (a.successRate == -1) {
           return 1;
@@ -253,40 +216,65 @@ function loadInterfacesInfo(metricsJson) {
         return a.name > b.name ? 1 : -1;
       }
     });
-
-    return interfacesHB;
+    return ifaces;
   }
 
-  function renderInterfaces(metricsJson) {
-    var interfaces = jsonToInterfaces(metricsJson);
-
-    $('#client-info').html(
-      templates.interfaces({
-        name: 'clients',
-        interfaces: prepInterfacesForHB(interfaces.clients, metricsJson, true),
-      })
-    );
-    $('#server-info').html(
-      templates.interfaces({
-        name: 'servers',
-        interfaces: prepInterfacesForHB(interfaces.servers, metricsJson, false),
-      })
-    );
+  function prepClient(client) {
+    var iface = prepInterface(client);
+    iface.lbSize = client.metrics["loadbalancer/size"] || 0;
+    iface.lbAvail = client.metrics["loadbalancer/available"] || 0;
+    return iface;
   }
-  renderInterfaces(metricsJson);
-  $(".interfaces").on("click", ".interface", function() {
-    window.location = $(this).find("a").attr("href");
-    return false;
-  });
 
-  // poll for all interface metrics
-  function fetchInterfacesInfo() {
-    $.ajax({
-      url: "/admin/metrics.json",
-      dataType: "json",
-      cache: false,
-      success: renderInterfaces,
+  function prepClients(clients) {
+    return sortBySuccess(clients.map(prepClient));
+  }
+
+  function prepServers(servers) {
+    return sortBySuccess(servers.map(prepInterface));
+  }
+
+  function renderInterfaces(routers, template) {
+    var clients = [],
+        servers = [];
+
+    Object.keys(routers).forEach(function(name) {
+      var router = routers[name];
+      servers = servers.concat(router.servers);
+      Object.keys(router.dstIds).forEach(function(id) {
+        clients.push(router.dstIds[id]);
+      });
     });
+
+    $('#client-info').html(template({name:'clients', interfaces: prepClients(clients)}));
+    $('#server-info').html(template({name:'servers', interfaces: prepServers(servers)}));
   }
-  setInterval(fetchInterfacesInfo, 1000);
-}
+
+  /**
+   * Renders interfacs, and then returns a function that may be called
+   * to trigger an update.
+   */
+  return function(routers, template) {
+    renderInterfaces(routers.data, template);
+    $(".interfaces").on("click", ".interface", function() {
+      window.location = $(this).find("a").attr("href");
+      return false;
+    });
+
+    function update() {
+      $.ajax({
+        url: "/admin/metrics.json",
+        dataType: "json",
+        cache: false,
+        success: function(metrics) {
+          routers.update(metrics);
+          renderInterfaces(routers.data, template);
+        }
+      });
+    };
+
+    return {
+      start: function(interval) { setInterval(update, interval) }
+    };
+  };
+})();

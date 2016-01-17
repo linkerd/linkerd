@@ -142,8 +142,8 @@ object Linker {
 
           // Ensure that neither the router name nor server sockets conflict.
           for (other <- linker.routers) {
-            if (router.name == other.name)
-              throw Parsing.error(s"conflicting routers named '${router.name}'", json)
+            if (router.label == other.label)
+              throw Parsing.error(s"conflicting routers named '${router.label}'", json)
             for ((s0, s1) <- Server.findConflict(router.servers ++ other.servers))
               throw Parsing.error(s"conflicting servers: ${s0.addr}, ${s1.addr}", json)
           }

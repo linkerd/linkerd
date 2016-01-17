@@ -139,7 +139,7 @@ object ProtocolInitializer {
     factory: ServiceFactory[Req, Rsp]
   ) extends Server.Initializer {
     def params = server.params
-    def name: String = server.params[Label].label
+    def router: String = server.params[Server.RouterLabel].label
     def ip = addr.getAddress
     def port = addr.getPort
     def serve() = server.serve(addr, factory)

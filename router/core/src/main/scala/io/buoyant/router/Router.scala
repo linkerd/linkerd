@@ -6,6 +6,7 @@ import com.twitter.finagle.client._
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.FailFastFactory
 import com.twitter.finagle.stack.Endpoint
+import com.twitter.finagle.stats.DefaultStatsReceiver
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -100,6 +101,7 @@ trait StackRouter[Req, Rsp] extends Router[Req, Rsp]
  * factories.
  *
  * Implementers must provide a `newIdentifier()` implementation that
+ * l
  */
 trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
   extends StackRouter[Req, Rsp] { self =>
@@ -186,34 +188,40 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         params: Stack.Params,
         pathStack: Stack[ServiceFactory[Req, Rsp]]
       ): Stack[ServiceFactory[Req, Rsp]] = {
-        val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
-        val param.Stats(stats) = params[param.Stats]
+        val label = params[param.Label] match {
+          case param.Label("") =>
+            val param.ProtocolLibrary(label) = params[param.ProtocolLibrary]
+            label
+          case param.Label(label) => label
+        }
+        val param.Stats(stats0) = params[param.Stats]
+        val stats = stats0.scope(label)
 
         val param.Label(routerLabel) = params[param.Label]
-        def mkClientLabel(bound: Name.Bound): String = {
-          val id = bound.id match {
-            case null => "null"
-            case path: Path => path.show
-            case id: String if id.startsWith("/") => id
-            case id: String => "/" + id
-            case _ => "unknown"
-          }
-          routerLabel + id
+        def mkClientLabel(bound: Name.Bound): String = bound.id match {
+          case null => "null"
+          case path: Path => path.show.stripPrefix("/")
+          case id: String => id.stripPrefix("/")
+          case _ => "unknown"
         }
 
-        // TODO we should use this stats receiver in underlying stacks
-        // but this currently breaks the admin dashboard.
-        //val stats = stats0.scope("router", label)
+        def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
+          val sr = stats.scope("dst", "path", dst.path.show.stripPrefix("/"))
+          val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
+          stk.make(params + dst + param.Stats(sr))
+        }
 
-        def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) =
-          (pathStack ++ Stack.Leaf(Endpoint, sf)).make(params + dst)
-
-        def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) =
-          (boundStack ++ Stack.Leaf(Endpoint, sf)).make(params + bound)
+        def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
+          val stk = (boundStack ++ Stack.Leaf(Endpoint, sf))
+          stk.make(params + bound)
+        }
 
         def newClient(bound: Name.Bound) =
-          client.withParams(params).newClient(bound, mkClientLabel(bound))
+          client.withParams(params)
+            .configured(param.Stats(stats.scope("dst", "id")))
+            .newClient(bound, mkClientLabel(bound)) // stats will get scoped by label here
 
+        val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
         val cache = new DstBindingFactory.Cached[Req, Rsp](
           newClient _,
           pathMk _,
@@ -227,17 +235,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
       }
     }
 
-  def factory(): ServiceFactory[Req, Rsp] = {
-    val label = params[param.Label] match {
-      case param.Label("") =>
-        val param.ProtocolLibrary(label) = params[param.ProtocolLibrary]
-        label
-      case param.Label(label) => label
-    }
-    val stack = router +: pathStack
-    stack.make(params +
-      param.Label(label))
-  }
+  def factory(): ServiceFactory[Req, Rsp] =
+    (router +: pathStack).make(params)
 }
 
 object StackRouter {
@@ -277,5 +276,6 @@ object StackRouter {
 
   val defaultParams: Stack.Params =
     StackClient.defaultParams +
-      FailFastFactory.FailFast(false)
+      FailFastFactory.FailFast(false) +
+      param.Stats(DefaultStatsReceiver.scope("rt"))
 }

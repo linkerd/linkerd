@@ -5,6 +5,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.{Dtab, ListeningServer, Path, Stack}
 import com.twitter.finagle.param
 import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.Closable
 import io.buoyant.router.RoutingFactory
 import java.net.{InetAddress, InetSocketAddress}
@@ -38,14 +39,14 @@ trait Router {
   def paramParser: Parsing.Params
 
   // helper aliases
-  def name: String = params[param.Label].label
+  def label: String = params[param.Label].label
 
   // servers
   def servers: Seq[Server]
   protected def withServers(servers: Seq[Server]): Router
 
   /** Return a router with an additional server. */
-  def serving(s: Server): Router = withServers(servers :+ Router.setServerLabel(this, s))
+  def serving(s: Server): Router = withServers(servers :+ Router.configureServer(this, s))
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
@@ -61,7 +62,6 @@ trait Router {
 }
 
 object Router {
-
   /**
    * A [[Router]] that has been configured and initialized.
    *
@@ -196,7 +196,7 @@ object Router {
     for (server <- router.servers)
       server.params[Server.Port] match {
         case Server.Port.Unknown =>
-          throw Parsing.error(s"server '${server.name} has no port", origParser)
+          throw Parsing.error(s"server '${server.label}' has no port", origParser)
         case _ =>
       }
 
@@ -204,14 +204,18 @@ object Router {
     router
   }
 
-  private def setServerLabel(router: Router, server: Server): Server = {
-    val param.Label(routerLabel) = router.params[param.Label]
+  private def configureServer(router: Router, server: Server): Server = {
+    val ip = server.ip.getHostAddress
     val port = server.params[Server.Port] match {
       case Server.Port.Unknown => throw new IllegalArgumentException("server must have 'port'")
       case Server.Port.Specified(port) => port
     }
-    val ip = server.ip.getHostAddress
-    server.configured(param.Label(s"$routerLabel/$ip/$port"))
+    val param.Stats(stats) = router.params[param.Stats]
+    val routerLabel = router.label
+    server.configured(param.Label(s"$ip/$port"))
+      .configured(Server.RouterLabel(routerLabel))
+      .configured(param.Stats(stats.scope(routerLabel, "srv")))
+      .configured(router.params[param.Tracer])
   }
 
   private def readServers(json: JsonParser, base: Server): Seq[Server] = {
@@ -231,14 +235,14 @@ object Router {
   }
 
   object Params {
-    val Label = Parsing.Param.Text("label") { param.Label(_) }
+    val Label = Parsing.Param.Text("label")(param.Label(_))
 
     val BaseDtab = Parsing.Param.Text("baseDtab") { t =>
       val dtab = Dtab.read(t)
       RoutingFactory.BaseDtab(() => dtab)
     }
 
-    // TODO This was difficult because it implies ordering constraints. See #307.
+    // TODO This was difficult because it implies ordering constraints.
     //
     // val AddDtab = Parsing.Param("addDtab") { (json, params) =>
     //   Option(json.nextTextValue) match {
