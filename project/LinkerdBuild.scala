@@ -35,9 +35,13 @@ object LinkerdBuild extends Base {
       .withLib(Deps.finagle("mux"))
       .withE2e()
 
+    val thriftIdl = projectDir("router/thrift-idl")
+      .withLib(Deps.finagle("thrift"))
+
     val thrift = projectDir("router/thrift")
       .withLib(Deps.finagle("thrift"))
-      .dependsOn(core)
+      .withE2e()
+      .dependsOn(core, thriftIdl % "e2e")
 
     val all = projectDir("router")
       .aggregate(core, http, mux, thrift)
@@ -108,6 +112,7 @@ object LinkerdBuild extends Base {
   val routerHttp = Router.http
   val routerMux = Router.mux
   val routerThrift = Router.thrift
+  val routerThriftIdl = Router.thriftIdl
 
   // Unified documentation via the sbt-unidoc plugin
   val all = Project("all", file("."))
