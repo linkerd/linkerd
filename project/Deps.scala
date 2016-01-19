@@ -30,10 +30,4 @@ object Deps {
 
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
-
-  // parses a variety of timestamp formats (like RFC3339)
-  val jodaTime: Seq[ModuleID] = Seq(
-    "joda-time" % "joda-time"    % "2.7",
-    "org.joda"  % "joda-convert" % "1.7"
-  )
 }

@@ -1,13 +1,12 @@
 package io.buoyant.router
 
-import com.twitter.common.metrics.Metrics
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{Echo => FinagleEcho, _}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.stats.{ImmediateMetricsStatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
 import com.twitter.util._
 import io.buoyant.test.Awaits
@@ -51,8 +50,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
   }
 
   test("end-to-end echo routing") {
-    val metrics = Metrics.createDetached()
-    val stats = new ImmediateMetricsStatsReceiver(metrics)
+    val stats = NullStatsReceiver
     val tracer = new BufferingTracer
     def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
       f(tracer.iterator.map(_.annotation).toSeq)
