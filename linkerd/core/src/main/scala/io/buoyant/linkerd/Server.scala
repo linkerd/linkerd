@@ -2,6 +2,8 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.core.{io => _, _}
 import com.google.common.net.InetAddresses
+import com.twitter.finagle.ssl.Ssl
+import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ListeningServer, Stack}
 import com.twitter.finagle.param.Label
 import java.net.{InetAddress, InetSocketAddress}
@@ -168,6 +170,36 @@ object Server {
       Server.Port(p)
     }
 
-    val parser = Ip.andThen(Port)
+    def tlsParam(certificatePath: String, keyPath: String) =
+      Transport.TLSServerEngine(
+        Some(() => Ssl.server(certificatePath, keyPath, null, null, null))
+      )
+
+    val Tls = Parsing.Param("tls") { (json, params) =>
+      case class TlsPaths(certPath: Option[String] = None, keyPath: Option[String] = None)
+
+      val tlsPaths = Parsing.foldObject(json, TlsPaths()) {
+        case (paths, "certPath", json) =>
+          Parsing.ensureTok(json, JsonToken.VALUE_STRING) { json =>
+            val path = json.getText
+            json.nextToken()
+            paths.copy(certPath = Some(path))
+          }
+        case (paths, "keyPath", json) =>
+          Parsing.ensureTok(json, JsonToken.VALUE_STRING) { json =>
+            val path = json.getText
+            json.nextToken()
+            paths.copy(keyPath = Some(path))
+          }
+      }
+
+      tlsPaths match {
+        case TlsPaths(Some(certPath), Some(keyPath)) =>
+          params + tlsParam(certPath, keyPath)
+        case _ => throw Parsing.error("tls object must contain certPath and keyPath.", json)
+      }
+    }
+
+    val parser = Ip.andThen(Port).andThen(Tls)
   }
 }

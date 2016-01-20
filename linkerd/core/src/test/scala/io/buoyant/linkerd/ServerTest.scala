@@ -1,5 +1,6 @@
 package io.buoyant.linkerd
 
+import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
@@ -68,5 +69,33 @@ port: 1234
 fancyRouter: true
 """
     assert(parse(TestProtocol.Fancy, yaml).isThrow)
+  }
+
+  test("invalid tls configuration") {
+    val yaml =
+      """
+        |port: 1234
+        |tls:
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).isThrow)
+  }
+
+  test("valid tls configuration") {
+    val yaml =
+      """
+        |port: 1234
+        |tls:
+        |  certPath: /foo/cert
+        |  keyPath: /foo/key
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.TLSServerEngine].e.isDefined)
+  }
+
+  test("tls configuration absent") {
+    val yaml =
+      """
+        |port: 1234
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.TLSServerEngine].e.isEmpty)
   }
 }
