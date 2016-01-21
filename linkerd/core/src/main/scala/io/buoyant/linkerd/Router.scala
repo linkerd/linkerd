@@ -45,7 +45,7 @@ trait Router {
   protected def withServers(servers: Seq[Server]): Router
 
   /** Return a router with an additional server. */
-  def serving(s: Server): Router = withServers(servers :+ Router.setServerLabel(this, s))
+  def serving(s: Server): Router = withServers(servers :+ Router.configureServer(this, s))
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
@@ -204,14 +204,19 @@ object Router {
     router
   }
 
-  private def setServerLabel(router: Router, server: Server): Server = {
+  private def configureServer(router: Router, server: Server): Server = server
+    .configured(serverLabel(router, server))
+    .configured(router.params[param.Stats])
+    .configured(router.params[param.Tracer])
+
+  private def serverLabel(router: Router, server: Server): param.Label = {
     val param.Label(routerLabel) = router.params[param.Label]
     val port = server.params[Server.Port] match {
       case Server.Port.Unknown => throw new IllegalArgumentException("server must have 'port'")
       case Server.Port.Specified(port) => port
     }
     val ip = server.ip.getHostAddress
-    server.configured(param.Label(s"$routerLabel/$ip/$port"))
+    param.Label(s"$routerLabel/$ip/$port")
   }
 
   private def readServers(json: JsonParser, base: Server): Seq[Server] = {
@@ -231,14 +236,14 @@ object Router {
   }
 
   object Params {
-    val Label = Parsing.Param.Text("label") { param.Label(_) }
+    val Label = Parsing.Param.Text("label")(param.Label(_))
 
     val BaseDtab = Parsing.Param.Text("baseDtab") { t =>
       val dtab = Dtab.read(t)
       RoutingFactory.BaseDtab(() => dtab)
     }
 
-    // TODO This was difficult because it implies ordering constraints. See #307.
+    // TODO This was difficult because it implies ordering constraints.
     //
     // val AddDtab = Parsing.Param("addDtab") { (json, params) =>
     //   Option(json.nextTextValue) match {
