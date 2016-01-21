@@ -71,6 +71,11 @@ object LinkerdBuild extends Base {
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
 
+    val config = projectDir("linkerd/config")
+      .dependsOn(core)
+      .withLibs(Deps.jackson :+ Deps.jacksonYaml)
+      .withTests()
+
     val main = projectDir("linkerd/main")
       .dependsOn(admin, core)
       .withLib(Deps.twitterServer)
@@ -194,6 +199,7 @@ object LinkerdBuild extends Base {
 
   val linkerd = Linkerd.all
   val linkerdAdmin = Linkerd.admin
+  val linkerdConfig = Linkerd.config
   val linkerdCore = Linkerd.core
   val linkerdMain = Linkerd.main
   val linkerdNamer = Linkerd.Namer.all
