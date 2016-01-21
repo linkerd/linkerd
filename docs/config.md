@@ -78,7 +78,7 @@ Each router must be an object with the following params:
 * **servers** -- a list of server objects with the following params:
   * [basic server params](#basic-server-params) or [protocol-specific server params](#proto-server-params)
 
-<a name="basic-router-params">
+<a name="basic-router-params"></a>
 ## Basic router parameters ##
 
 * *label* -- The name of the router (in stats and the admin ui). If
@@ -93,7 +93,7 @@ aggressively. Should not be used with small destination pools.
 
 <!-- TODO router capacity  -->
 
-<a name="proto-router-params">
+<a name="proto-router-params"></a>
 ## Protocol-specific router parameters ##
 
 ### http ###
@@ -119,7 +119,7 @@ The default _dstPrefix_ is `/thrift`.
 
 * *thriftMethodInDst* -- if `true`, thrift method names are appended to destinations.
 
-<a name="basic-server-params">
+<a name="basic-server-params"></a>
 ## Basic server parameters ##
 
 * *label* -- The name of the server (in stats and the admin ui)
@@ -132,7 +132,7 @@ local IPv4 interfaces.
 ** *certPath* -- File path to the TLS certificate file
 ** *keyPath* -- File path to the TLS key file
 
-<a name="proto-server-params">
+<a name="proto-server-params"></a>
 ## Protocol-specific server parameters ##
 
 ### http ###
