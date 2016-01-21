@@ -40,8 +40,9 @@ object LinkerdBuild extends Base {
 
     val thrift = projectDir("router/thrift")
       .withLib(Deps.finagle("thrift"))
+      .withTests()
       .withE2e()
-      .dependsOn(core, thriftIdl % "e2e")
+      .dependsOn(core, thriftIdl % "e2e,test")
 
     val all = projectDir("router")
       .aggregate(core, http, mux, thrift)

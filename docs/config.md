@@ -29,6 +29,7 @@ routers:
 
 - protocol: thrift
   thriftFramed: false
+  thriftMethodInDst: true
   baseDtab: |
     /thrift => /$/io.buoyant.fs/thrift;
 ```
@@ -102,6 +103,8 @@ request's destination.
 The default _dstPrefix_ is `/thrift`.
 
 * *thriftFramed* -- if `true`, a framed thrift transport is used; otherwise, a buffered transport is used.
+
+* *thriftMethodInDst* -- if `true`, thrift method names are appended to destinations.
 
 <a name="basic-server-params">
 ## Basic server parameters ##

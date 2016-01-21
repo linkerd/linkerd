@@ -23,6 +23,10 @@ class ThriftInitializer extends ProtocolInitializer {
     Thrift.param.Framed(framed)
   }
 
-  override val routerParamsParser = Framed
+  val MethodInDst = Parsing.Param.Boolean("thriftMethodInDst") { methodInDst =>
+    Thrift.param.MethodInDst(methodInDst)
+  }
+
+  override val routerParamsParser = Parsing.Params(Framed, MethodInDst)
   override val serverParamsParser = Framed
 }
