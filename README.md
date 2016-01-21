@@ -41,6 +41,11 @@ The _k8s_ project implements a client for a subset of the [Kubernetes][k8s]
 master API. This package provides the `io.buoyant.k8s.endpoints` namer that may
 be used with finagle clients or routers, independently of _linkerd_.
 
+#### consul ####
+
+The _consul_ project implements a client for a subset of the
+[Consul][consul] Catalog API.  It provides the `io.buoyant.consul.catalog` namer.
+
 #### test-util ####
 
 The _test-util_ project provides some helpers for writing tests against
@@ -67,3 +72,4 @@ specific language governing permissions and limitations under the License.
 
 [finagle]: https://twitter.github.io/finagle/
 [k8s]: https://k8s.io/
+[consul]: https://consul.io/
