@@ -7,6 +7,7 @@ import scala.language.implicitConversions
  * Project layout.
  *
  * - k8s/ -- finagle kubernetes client
+ * - consul/ -- consul client
  * - router/ -- finagle router libraries
  * - linkerd/ -- configuration, runtime, and modules
  * - test-util/ -- async test helpers; provided by [[Base]]
@@ -14,6 +15,11 @@ import scala.language.implicitConversions
 object LinkerdBuild extends Base {
 
   val k8s = projectDir("k8s")
+    .withLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
+  val consul = projectDir("consul")
     .withLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -74,8 +80,12 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s, core)
         .withTests()
 
+      val consul = projectDir("linkerd/namer/consul")
+        .dependsOn(LinkerdBuild.consul, core)
+        .withTests()
+
       val all = projectDir("linkerd/namer")
-        .aggregate(fs, k8s)
+        .aggregate(fs, k8s, consul)
     }
 
     object Protocol {
@@ -104,6 +114,7 @@ object LinkerdBuild extends Base {
   val linkerdNamer = Linkerd.Namer.all
   val linkerdNamerFs = Linkerd.Namer.fs
   val linkerdNamerK8s = Linkerd.Namer.k8s
+  val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
@@ -117,6 +128,6 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = Project("all", file("."))
-    .aggregate(k8s, Linkerd.all, Router.all, testUtil)
+    .aggregate(k8s, consul, Linkerd.all, Router.all, testUtil)
     .settings(unidocSettings)
 }

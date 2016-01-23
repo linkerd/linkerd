@@ -4,3 +4,6 @@ project/boot/
 project/plugins/project/
 project/plugins/src_managed/
 .sbt-launch.jar
+.idea
+.iml
+.DS_Store
