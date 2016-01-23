@@ -1,4 +1,4 @@
-<h3 class="header text-center">{{name}}</h3>
+<h1 class="text-center">{{name}}</h3>
 <div class="row">
 {{#each interfaces}}
   <div class="col-sm-3">

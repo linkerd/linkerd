@@ -61,7 +61,7 @@ private object SummaryHandler {
         </div>
         <hr/>
 
-        <h3 class="header text-center">Request Volume</h3>
+        <h1 class="text-center">request volume</h1>
         <div class="row text-center requests">
           <div id="request-stats" class="col-sm-2 dl-horizontal"></div>
           <div class="col-sm-10">

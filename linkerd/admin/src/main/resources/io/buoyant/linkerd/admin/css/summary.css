@@ -7,7 +7,7 @@
 }
 
 .topline-stats li {
-  color: #53b0c4;
+  color: #02B2C8;
 }
 
 .stat-label {
@@ -38,7 +38,6 @@
 }
 
 #request-stats a {
-  color: #53b0c4;
   text-transform: capitalize;
 }
 
@@ -80,7 +79,6 @@
 }
 
 .interface .name a {
-  color: #53b0c4;
   overflow: hidden;
   text-decoration: none;
   text-overflow: ellipsis;
