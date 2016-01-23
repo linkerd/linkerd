@@ -1,8 +1,5 @@
-.metrics-header {
-  font-size: 24px;
-  font-weight: 500;
-  text-align: center;
-  margin-bottom: 10px;
+.metrics {
+  padding: 0 20px 0 20px;
 }
 
 .metrics-names {
@@ -20,7 +17,7 @@
 }
 
 .metrics-list li {
-  color: #53b0c4;
+  color: #02B2C8;
   cursor: pointer;
   padding: 1px 12px 0 12px;
   overflow: hidden;
@@ -42,7 +39,7 @@
 }
 
 #metrics-title .name {
-  color: #53b0c4;
+  color: #02B2C8;
   font-weight: 500;
 }
 
@@ -59,6 +56,5 @@
 }
 
 .metrics-json a {
-  color: #53b0c4;
   text-decoration: none;
 }

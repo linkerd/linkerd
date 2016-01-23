@@ -37,69 +37,37 @@ object AdminHandler {
         <head>
           <title>linkerd admin</title>
           <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+          <link type="text/css" href="/files/css/styleguide/styleguide.css" rel="stylesheet"/>
+          <link type="text/css" href="/files/css/styleguide/local.css" rel="stylesheet"/>
           <link type="text/css" href="/files/css/admin.css" rel="stylesheet"/>
           $cssesHtml
         </head>
         <body>
-          <nav class="main-nav" id="main-nav">
-            <a href="#" class="close-menu">&#x2715;</a>
-            <a href="/">Summary</a>
-            <a href="/delegator">Dtab</a>
-            <a href="/admin">/admin</a>
-            <a href="/metrics">Metrics</a>
-            <a href="/admin/logging">Logs</a>
+          <nav class="navbar navbar-inverse navbar-fixed-top">
+          <div class="container">
+            <div class="navbar-header">
+              <a class="navbar-brand-img" href="/">
+                <img alt="Logo" src="/files/images/logo.svg">
+              </a>
+            </div>
+            <div id="navbar" class="collapse navbar-collapse">
+              <ul class="nav navbar-nav">
+                <li><a href="/delegator">dtab</a></li>
+                <li><a href="/metrics">metrics</a></li>
+                <li><a href="/admin">admin</a></li>
+                <li><a href="/admin/logging">logging</a></li>
+                <li><a href="https://linkerd.io/help/">help</a></li>
+              </ul>
+            </div>
+            </div>
           </nav>
 
-          <div class="page-wrap">
-            <header class="main-header">
-              <a href="#main-nav" class="open-menu">&#9776;</a>
-              <h1>linkerd</h1>
-              <button type="button" class="btn btn-default btn-lg" data-toggle="modal" data-target="#support-modal">
-                Help Me
-              </button>
-            </header>
-            <div class="container-fluid contents">
-              $content
-            </div>
-          </div>
-
-          <div class="modal fade" id="support-modal" tabindex="-1" role="dialog" aria-labelledby="support-modal-label">
-            <div class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <h4 class="modal-title" id="support-modal-label">Support Request</h4>
-                </div>
-                <div class="modal-body">
-                  <span id="help-block" class="help-block">
-                    Please enter your email and a brief description of the issue you are seeing. Buoyant Engineering will contact you as soon as possible.
-                  </span>
-
-                  <form id="support-request" action="mailto:hello@buoyant.io" method="post" aria-describedby="help-block">
-                    <div class="form-group">
-                      <label for="email">Email address</label>
-                      <input name="email" type="email" class="form-control" id="email" placeholder="Email">
-                    </div>
-                    <div class="form-group">
-                      <label for="description">Description</label>
-                      <textarea name="description" class="form-control" rows="5" id="description"></textarea>
-                    </div>
-                    <div class="form-group">
-                      <label for="process-info">Process Info</label>
-                      <textarea name="procinfo" class="form-control" id="support-procinfo" rows="3" readonly></textarea>
-                    </div>
-                  </form>
-
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                  <button type="button" class="btn btn-primary" id="submit-support-request">Submit</button>
-                </div>
-              </div>
-            </div>
+          <div class="container-fluid">
+            $content
           </div>
 
           $tailContent
+
           <script src="/files/js/lib/jquery.min.js"></script>
           <script src="/files/js/lib/bootstrap.min.js"></script>
           <script src="/files/js/admin.js"></script>

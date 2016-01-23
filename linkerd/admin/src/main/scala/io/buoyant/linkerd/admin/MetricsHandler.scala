@@ -13,20 +13,21 @@ private object MetricsHandler extends Service[Request, Response] {
   val render =
     AdminHandler.adminHtml(
       content = s"""
-        <div class="header metrics-header">Metrics</div>
-        <div class="row">
-          <div class="metrics-names col-sm-3"></div>
-          <div class="metrics-graph col-sm-9">
-            <div id="metrics-title">
-              <span class="name">&nbsp;</span>
-              <span class="value stat">&nbsp;</span>
+        <div class="metrics">
+          <div class="row">
+            <div class="metrics-names col-sm-3"></div>
+            <div class="metrics-graph col-sm-9">
+              <div id="metrics-title">
+                <span class="name">&nbsp;</span>
+                <span class="value stat">&nbsp;</span>
+              </div>
+              <canvas id="metrics-canvas" height="300"></canvas>
             </div>
-            <canvas id="metrics-canvas" height="300"></canvas>
           </div>
-        </div>
-        <div class="row metrics-json">
-          <span>Raw data: </span>
-          <a href="/admin/metrics.json">/admin/metrics.json</a>
+          <div class="row metrics-json">
+            <span>Raw data: </span>
+            <a href="/admin/metrics.json">/admin/metrics.json</a>
+          </div>
         </div>
       """,
       javaScripts = Seq("lib/handlebars-v4.0.5.js", "lib/smoothie.js", "utils.js", "metrics.js"),
