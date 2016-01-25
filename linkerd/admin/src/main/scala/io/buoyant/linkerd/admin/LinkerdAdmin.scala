@@ -18,6 +18,7 @@ object LinkerdAdmin {
     )
     HttpMuxer.addHandler("/delegator", DelegateHandler.ui(linker))
     HttpMuxer.addHandler("/delegator.json", DelegateHandler.api)
+    HttpMuxer.addHandler("/routers.json", new RouterHandler(linker))
     HttpMuxer.addHandler("/metrics", MetricsHandler)
   }
 }
