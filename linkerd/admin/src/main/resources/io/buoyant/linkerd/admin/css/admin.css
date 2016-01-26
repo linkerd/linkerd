@@ -14,3 +14,15 @@ h1 {
 .container {
   width: 500px;
 }
+
+.open > a.dropdown-toggle, .open > a.dropdown-toggle:focus {
+  background-color: inherit !important;
+}
+
+.dropdown li {
+  margin: 0;
+}
+
+.dropdown li a {
+  padding: 10px 5px;
+}
