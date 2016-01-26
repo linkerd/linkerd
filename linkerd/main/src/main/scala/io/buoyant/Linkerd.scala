@@ -3,11 +3,9 @@ package io.buoyant
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.twitter.finagle.param.Label
-import com.twitter.server.TwitterServer
 import com.twitter.util.Await
+import io.buoyant.linkerd.admin.{AdminInitializer, LinkerdAdmin}
 import io.buoyant.linkerd.{Build, Linker, Parsing}
-import io.buoyant.linkerd.admin.LinkerdAdmin
 import java.io.File
 import scala.io.Source
 
@@ -18,7 +16,7 @@ import scala.io.Source
  *
  * The config file may be either JSON- or YAML-formatted
  */
-object Linkerd extends TwitterServer {
+object Linkerd extends App {
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
@@ -28,7 +26,10 @@ object Linkerd extends TwitterServer {
       case Array(path) =>
         val linker = loadLinker(path)
 
-        LinkerdAdmin.init(linker)
+        val linkerdAdmin = new LinkerdAdmin(this, linker)
+        val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
+        adminInitializer.startServer()
+        closeOnExit(adminInitializer.adminHttpServer)
 
         // TODO initialize:
         // - namers

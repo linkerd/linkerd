@@ -62,7 +62,6 @@ object AdminHandler {
                 <ul class="nav navbar-nav">
                   <li><a href="/delegator">dtab</a></li>
                   <li><a href="/metrics">metrics</a></li>
-                  <li><a href="/admin">admin</a></li>
                   <li><a href="/admin/logging">logging</a></li>
                   <li><a href="https://linkerd.io/help/">help</a></li>
                 </ul>

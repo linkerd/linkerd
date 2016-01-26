@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonToken
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.DefaultInterpreter
+import io.buoyant.linkerd.Admin.AdminPort
 import io.buoyant.router.RoutingFactory
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
@@ -189,5 +190,18 @@ routers:
     val linker = parse(yaml)
     val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
     assert(namer != DefaultInterpreter)
+  }
+
+  test("with admin") {
+    val yaml = """
+admin:
+  port: 9991
+routers:
+- protocol: plain
+  servers:
+  - port: 1
+"""
+    val linker = parse(yaml)
+    assert(linker.admin.params[AdminPort].port == 9991)
   }
 }

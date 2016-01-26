@@ -10,6 +10,9 @@ described below.
 ## Example ##
 
 ```yaml
+admin:
+  port: 9990
+
 baseDtab: |
   /host     => /$/io.buoyant.fs;
   /method   => /$/io.buoyant.http.anyMethodPfx/host;
@@ -50,11 +53,18 @@ routers:
 
 ## Structure ##
 
+A configuration may define an **admin** key which is an object that configures
+the admin http interface.
+
 All configurations must define a **routers** key, the value of which
 must be an array of router configurations.
 
 Additionally, any of the [basic router params](#basic-router-params)
 may be specified in the top-level object as defaults.
+
+### Admin parameters ###
+
+* *port* -- The port on which to serve the admin http interface (default `9990`)
 
 ### Routers ###
 
