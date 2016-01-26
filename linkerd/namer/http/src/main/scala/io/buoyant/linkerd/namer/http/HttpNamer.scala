@@ -10,22 +10,29 @@ class HttpNamer(
   dropMethod: Boolean = false,
   dropHost: Boolean = false
 ) extends Namer {
+
   def lookup(path: Path): Activity[NameTree[Name]] = {
+    val updated = mutable.ArrayBuffer.empty[String]
+    def dropOrAdd(test: Boolean, str: String): Unit = if (!test) {
+      updated += str
+    }
+
     val tree = path match {
-      case Path.Utf8(version@("1.0" | "1.1"), method, host, rest@_*) =>
-        val path = mutable.ArrayBuffer.empty[String]
-        if (!dropVersion) {
-          path += version
-        }
-        if (!dropMethod) {
-          path += method
-        }
-        if (!dropHost) {
-          path += host
-        }
-        NameTree.Leaf(Name.Path(dstPrefix ++ Path.Utf8(path ++ rest: _*)))
+      case Path.Utf8(v@"1.0" , method, rest@_*) =>
+        dropOrAdd(dropVersion, v)
+        dropOrAdd(dropMethod, method)
+        NameTree.Leaf(Name.Path(dstPrefix ++ Path.Utf8(updated ++ rest: _*)))
+
+      case Path.Utf8(v@"1.1", method, host, rest@_*) =>
+        dropOrAdd(dropVersion, v)
+        dropOrAdd(dropMethod, method)
+        dropOrAdd(dropHost, host)
+        NameTree.Leaf(Name.Path(dstPrefix ++ Path.Utf8(updated ++ rest: _*)))
+
       case _ => NameTree.Neg
     }
+
     Activity.value(tree)
   }
+
 }
