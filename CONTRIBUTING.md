@@ -23,6 +23,18 @@ compile` compiles only the _linkerd_ projects)
 
 * `./sbt e2e:test` runs end-to-end tests (see [Testing](#testing))
 
+* `./sbt linkerd/assembly` produces a fat-jar containing all library
+dependencies into *linkerd/linkerd/target/scala-2.11/linkerd-VERSION.jar*.
+
+* The '_minimal_' sbt configuration, supporting only the `http`
+protocol and the `io.l5d.fs` namer, is useful for running linkerd
+during development, e.g. `./sbt "linkerd/minimal:run
+path/to/config.yaml"`.  See the [config](docs/config.md) page for more
+information on configuring linkerd.
+
+* Example configurations are provided in the `examples` directory.  A
+basic example may be started with `./sbt examples/http:run`.
+
 ## Development ##
 
 Here's the workflow that we're using for ongoing feature development:

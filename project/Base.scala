@@ -1,6 +1,7 @@
 import com.typesafe.sbt.SbtScalariform._
 import sbt._
 import sbt.Keys._
+import sbtassembly.AssemblyKeys._
 import scala.language.implicitConversions
 import scalariform.formatter.preferences._
 
@@ -8,6 +9,27 @@ import scalariform.formatter.preferences._
  * Base project configuration.
  */
 class Base extends Build {
+
+  val orgSettings = Seq(
+    organization := "io.buoyant",
+    version := "0.0.8-SNAPSHOT",
+    homepage := Some(url("https://linkerd.io"))
+  )
+
+  val scalaSettings = Seq(
+    scalaVersion in GlobalScope := "2.11.7",
+    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation")
+  )
+
+  val resolverSettings = Seq(
+    // XXX
+    //conflictManager := ConflictManager.strict,
+    resolvers ++= Seq(
+      "twitter-repo" at "https://maven.twttr.com",
+      "local-m2" at s"file:${Path.userHome.absolutePath}/.m2/repository",
+      "typesafe" at "https://repo.typesafe.com/typesafe/releases"
+    )
+  )
 
   val scalariformPrefs =
     ScalariformKeys.preferences := ScalariformKeys.preferences.value.
@@ -21,25 +43,32 @@ class Base extends Build {
   val EndToEndSettings =
     inConfig(EndToEndTest)(Defaults.testSettings)
 
+  val configFile = settingKey[File]("path to config file")
+  val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
+
+  // Examples are named by a .l5d config file
+  def exampleSettings(runtime: Project) = Seq(
+    // The example config file should match the example configuration name.
+    configFile := file(s"examples/${configuration.value}.l5d"),
+    // The runtime configuration may be different from the example configuration.
+    runtimeConfiguration := configuration.value,
+    run := // call linkerd's run command with a config file
+      Def.taskDyn {
+        val path = configFile.value.getPath
+        (run in runtime in runtimeConfiguration.value).toTask(s" $path")
+      }.value
+  )
+
   // Helper method for constructing projects from directory structure
   def projectDir(dir: String): Project = {
     val id = dir.replaceAll("/", "-")
     Project(id, file(dir))
+      .settings(name := id)
+      .settings(orgSettings)
+      .settings(scalaSettings)
+      .settings(resolverSettings)
       .settings(scalariformSettings :+ scalariformPrefs)
-      .settings(
-        name := id,
-        organization := "io.buoyant",
-        version := "0.0.8-SNAPSHOT",
-        scalaVersion in GlobalScope := "2.11.7",
-        scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation"),
-        // XXX
-        //conflictManager := ConflictManager.strict,
-        resolvers ++= Seq(
-          "twitter-repo" at "https://maven.twttr.com",
-          "local-m2" at ("file:" + Path.userHome.absolutePath + "/.m2/repository"),
-          "typesafe" at "https://repo.typesafe.com/typesafe/releases"
-        )
-      )
+      .settings(aggregate in assembly := false)
   }
 
   /**
@@ -54,29 +83,38 @@ class Base extends Build {
    */
   case class ProjectHelpers(project: Project) {
 
-    def withLib(dep: ModuleID): Project = project
-      .settings(libraryDependencies += dep)
-    def withLibs(deps: Seq[ModuleID]): Project = project
-      .settings(libraryDependencies ++= deps)
+    def configDependsOn(cfg: Configuration)(deps: ProjectReference*): Project =
+      project.dependsOn(deps.map(_ % cfg): _*)
+
+    def withLib(dep: ModuleID): Project =
+      project.settings(libraryDependencies += dep)
+
+    def withLibs(deps: Seq[ModuleID]): Project =
+      project.settings(libraryDependencies ++= deps)
+
     def withLibs(dep: ModuleID, deps: ModuleID*): Project =
       withLibs(dep +: deps)
 
-    /** Enable the test config for a project with basic dependencies */
-    def withTests(): Project = project
-      .dependsOn(testUtil % "test")
+    def configWithLibs(cfg: Configuration)(dep: ModuleID, deps: ModuleID*): Project =
+      withLibs((dep +: deps).map(_ % cfg))
 
-    def withTestLib(dep: ModuleID): Project = withLib(dep % "test")
-    def withTestLibs(deps: Seq[ModuleID]): Project = withLibs(deps.map(_ % "test"))
-    def withTestLibs(dep: ModuleID, deps: ModuleID*): Project = withTestLibs(dep +: deps)
+    /** Enable the test config for a project with basic dependencies */
+    def withTests(): Project = project.dependsOn(testUtil % Test)
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
-      .configs(EndToEndTest).settings(EndToEndSettings: _*)
-      .dependsOn(testUtil % "e2e")
+      .configs(EndToEndTest).settings(EndToEndSettings)
+      .dependsOn(testUtil % EndToEndTest)
 
-    def withE2eLib(dep: ModuleID): Project = withLib(dep % "e2e")
-    def withE2eLibs(deps: Seq[ModuleID]): Project = withLibs(deps.map(_ % "e2e"))
-    def withE2eLibs(dep: ModuleID, deps: ModuleID*): Project = withE2eLibs(dep +: deps)
+    def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {
+      val settings = exampleSettings(runtime)
+      configs.foldLeft(project) {
+        case (project, (egConfig, runConfig)) =>
+          project.configs(egConfig)
+            .settings(inConfig(egConfig)(settings :+ (runtimeConfiguration := runConfig)))
+            .dependsOn(runtime % s"${egConfig}->${runConfig}")
+      }
+    }
 
     /** Writes build metadata into the projects resources */
     def withBuildProperties(): Project = project

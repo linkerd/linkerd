@@ -1,13 +1,15 @@
 import sbt._
 import sbt.Keys._
+import Keys._
+import sbtassembly.AssemblyKeys._
+import sbtassembly.AssemblyPlugin.assemblySettings
 import sbtunidoc.Plugin._
-import scala.language.implicitConversions
 
 /**
  * Project layout.
  *
- * - k8s/ -- finagle kubernetes client
  * - consul/ -- consul client
+ * - k8s/ -- finagle kubernetes client
  * - router/ -- finagle router libraries
  * - linkerd/ -- configuration, runtime, and modules
  * - test-util/ -- async test helpers; provided by [[Base]]
@@ -48,7 +50,10 @@ object LinkerdBuild extends Base {
       .withLib(Deps.finagle("thrift"))
       .withTests()
       .withE2e()
-      .dependsOn(core, thriftIdl % "e2e,test")
+      .dependsOn(
+        core,
+        thriftIdl % "test,e2e"
+      )
 
     val all = projectDir("router")
       .aggregate(core, http, mux, thrift)
@@ -58,7 +63,8 @@ object LinkerdBuild extends Base {
     val core = projectDir("linkerd/core")
       .dependsOn(Router.core)
       .withLib(Deps.jacksonCore)
-      .withTests().withTestLibs(Deps.jacksonDatabind, Deps.jacksonYaml)
+      .withTests()
+      .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
     val admin = projectDir("linkerd/admin")
@@ -73,15 +79,15 @@ object LinkerdBuild extends Base {
       .withBuildProperties()
 
     object Namer {
+      val consul = projectDir("linkerd/namer/consul")
+        .dependsOn(LinkerdBuild.consul, core)
+        .withTests()
+
       val fs = projectDir("linkerd/namer/fs")
         .dependsOn(core)
 
       val k8s = projectDir("linkerd/namer/k8s")
         .dependsOn(LinkerdBuild.k8s, core)
-        .withTests()
-
-      val consul = projectDir("linkerd/namer/consul")
-        .dependsOn(LinkerdBuild.consul, core)
         .withTests()
 
       val all = projectDir("linkerd/namer")
@@ -91,7 +97,6 @@ object LinkerdBuild extends Base {
     object Protocol {
       val http = projectDir("linkerd/protocol/http")
         .dependsOn(core, Router.http)
-        .withTests()
 
       val mux = projectDir("linkerd/protocol/mux")
         .dependsOn(core, Router.mux)
@@ -105,16 +110,58 @@ object LinkerdBuild extends Base {
 
     val all = projectDir("linkerd")
       .aggregate(admin, core, main, Namer.all, Protocol.all)
+      .configs(Minimal, Bundle)
+      // Minimal cofiguration includes a runtime, HTTP routing and the
+      // fs service discovery.
+      .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
+      .settings(inConfig(Minimal)(MinimalSettings ++ assemblySettings))
+      .withLib(Deps.finagle("stats") % Minimal)
+      // Bundle is includes all of the supported features:
+      .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Protocol.mux, Protocol.thrift)
+      .settings(inConfig(Bundle)(BundleSettings ++ assemblySettings))
+      // top level settings -- make `assembly` do `bundle:assembly`
+      .settings(assembly := (assembly in Bundle).value)
   }
+
+  /*
+   * linkerd packaging configurations.
+   */
+
+  val Minimal = config("minimal")
+  val MinimalSettings = Defaults.configSettings ++ Seq(
+    mainClass := Some("io.buoyant.Linkerd"),
+    mainClass in assembly := mainClass.value,
+    jarName in assembly := s"${name.value}-${configuration.value}-${version.value}.jar"
+  )
+
+  val Bundle = config("bundle") extend Minimal
+  val BundleSettings = MinimalSettings ++ Seq(
+    jarName in assembly := s"${name.value}-${version.value}.jar"
+  )
+
+  val ConfigFileRE = """^(.*)\.l5d$""".r
+  val exampleConfigs = file("examples").list().toSeq.collect {
+    case ConfigFileRE(name) =>
+      val runtime = name match {
+        case "http" => Minimal
+        case name => Bundle
+      }
+      config(name) -> runtime
+  }
+
+  val examples = projectDir("examples")
+    .withExamples(Linkerd.all, exampleConfigs)
+
+  // All projects must be exposed at the root of the object:
 
   val linkerd = Linkerd.all
   val linkerdAdmin = Linkerd.admin
   val linkerdCore = Linkerd.core
   val linkerdMain = Linkerd.main
   val linkerdNamer = Linkerd.Namer.all
+  val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdNamerFs = Linkerd.Namer.fs
   val linkerdNamerK8s = Linkerd.Namer.k8s
-  val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
@@ -130,4 +177,8 @@ object LinkerdBuild extends Base {
   val all = Project("all", file("."))
     .aggregate(k8s, consul, Linkerd.all, Router.all, testUtil)
     .settings(unidocSettings)
+    .settings(
+      aggregate in assembly := false,
+      assembly := (assembly in (linkerd, Bundle)).value
+    )
 }
