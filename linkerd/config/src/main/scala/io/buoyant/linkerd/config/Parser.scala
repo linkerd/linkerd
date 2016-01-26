@@ -12,8 +12,12 @@ trait ConfigRegistrar {
 }
 
 object Parser {
-  def apply(s: String): LinkerConfig = {
-    objectMapper(s).readValue[LinkerConfig](s)
+  // TODO: should we distinguish types between the without/with defaults configs?
+  def apply(s: String): Either[Seq[ConfigError], (LinkerConfig, LinkerConfig)] = {
+    val baseCfg = objectMapper(s).readValue[LinkerConfig.Impl](s)
+    val defaultedCfg = baseCfg.withDefaults
+    val validationFailures = defaultedCfg.validate
+    if (validationFailures.isEmpty) Right(baseCfg, defaultedCfg) else Left(validationFailures)
   }
 
   private[this] def peekJsonObject(s: String): Boolean =

@@ -80,7 +80,7 @@ object Server {
   }
 
   /**
-   * `Ip` server paramter.
+   * `Ip` server parameter.
    */
   case class Ip(ip: InetAddress)
 
@@ -96,7 +96,7 @@ object Server {
   }
 
   /**
-   * `Port` server paramter.
+   * `Port` server parameter.
    */
   sealed trait Port
   implicit object Port extends Stack.Param[Port] {

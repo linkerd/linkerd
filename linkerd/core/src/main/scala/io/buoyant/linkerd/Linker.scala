@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, TreeNode}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.DstBindingFactory
+import io.buoyant.linkerd.config.LinkerConfig
 
 /**
  * Represents the total configuration of a Linkerd process.
@@ -21,9 +22,6 @@ trait Linker {
   def withRouters(routers: Seq[Router]): Linker
   def routing(r: Router): Linker
 
-  def admin: Admin
-  def withAdmin(a: Admin): Linker
-
   /**
    * Read a [[Linker]] from the given parser, using the provided
    * protocol support.
@@ -35,9 +33,6 @@ trait Linker {
    * Example configuration:
    *
    * <pre>
-   *    admin:
-   *      port: 9991
-   *
    *     baseDtab: |
    *       /bar => /bah;
    *       /http/1.1 => /b;
@@ -69,38 +64,36 @@ trait Linker {
    *
    * Ordering of fields is irrelevant.
    */
-  def read(p: JsonParser): Linker
+  def configure(p: JsonParser): Linker
 }
 
 object Linker {
 
+  def configure(config: LinkerConfig): Linker = {
+    Impl(config)
+  }
+
+  /*
   def mk(protos: ProtocolInitializers, namers: NamerInitializers): Linker =
-    Impl(protos, namers, Stack.Params.empty, Nil, Admin())
+    Impl(protos, namers, Stack.Params.empty, Nil)
 
   def load(): Linker = {
     val protos = ProtocolInitializers.load()
     val namers = NamerInitializers.load()
     mk(protos, namers)
   }
+  */
 
   /**
    * Private concrete implementation, to help protect compatibility if
    * the Linker api is extended.
    */
-  private case class Impl(
-    protocols: ProtocolInitializers,
-    namers: NamerInitializers,
-    params: Stack.Params,
-    routers: Seq[Router],
-    admin: Admin
-  ) extends Linker {
+  private case class Impl(config: LinkerConfig) extends Linker {
     def withParams(ps: Stack.Params): Linker = copy(params = ps)
     def configured[P: Stack.Param](p: P): Linker = withParams(params + p)
 
     def withRouters(rs: Seq[Router]): Linker = copy(routers = rs)
     def routing(r: Router): Linker = withRouters(routers :+ r)
-
-    def withAdmin(a: Admin): Linker = copy(admin = a)
 
     def read(json: JsonParser): Linker = {
       // Make a pass through the linker structure, deferring processing
@@ -128,12 +121,6 @@ object Linker {
             val params = Router.Params.parser.read(name, json, linker.params)
             val l = linker.withParams(params)
             (l, rs)
-
-          case ((linker, rs), "admin", json) =>
-            Parsing.ensureTok(json, JsonToken.START_OBJECT) { json =>
-              val l = withAdmin(admin.read(json))
-              (l, rs)
-            }
 
           case (_, name, json) => throw Parsing.error(s"unknown parameter: $name", json)
         }
