@@ -21,8 +21,6 @@ trait Server {
   def configured[P: Stack.Param](p: P): Server = withParams(params + p)
   def configured(ps: Stack.Params): Server = withParams(params ++ ps)
 
-  def name: String = params[Label].label
-
   /**
    * Read a [[Server]] configuration in the form:
    *
@@ -46,6 +44,8 @@ trait Server {
    */
   def configuredFrom(json: JsonParser): Server
 
+  def router: String = params[Server.RouterLabel].label
+  def label: String = params[Label].label
   def ip: InetAddress = params[Server.Ip].ip
 
   def port: Int = params[Server.Port] match {
@@ -57,6 +57,10 @@ trait Server {
 }
 
 object Server {
+  case class RouterLabel(label: String)
+  implicit object RouterLabel extends Stack.Param[RouterLabel] {
+    val default = RouterLabel("")
+  }
 
   /**
    * A [[Server]] that is fully configured but not yet listening.
@@ -65,7 +69,7 @@ object Server {
     def protocol: ProtocolInitializer
     def params: Stack.Params
 
-    def name: String
+    def router: String
     def ip: InetAddress
     def port: Int
     def addr: InetSocketAddress

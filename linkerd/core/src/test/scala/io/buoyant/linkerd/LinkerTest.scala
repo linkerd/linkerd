@@ -33,13 +33,13 @@ routers:
 
     assert(routers.size == 2)
 
-    assert(routers(0).name == "plain")
+    assert(routers(0).label == "plain")
     assert(routers(0).protocol == TestProtocol.Plain)
     assert(routers(0).servers.size == 1)
     assert(routers(0).servers(0).addr.getAddress == InetAddress.getLoopbackAddress)
     assert(routers(0).servers(0).addr.getPort == 1)
 
-    assert(routers(1).name == "fancy")
+    assert(routers(1).label == "fancy")
     assert(routers(1).protocol == TestProtocol.Fancy)
     assert(routers(1).params[TestProtocol.Fancy.Pants].fancy == false)
     assert(routers(1).servers.size == 1)
@@ -126,7 +126,7 @@ routers:
   servers:
   - port: 2
 """
-    assert(parse(yaml).routers.map(_.name) == Seq("plain", "yohourt"))
+    assert(parse(yaml).routers.map(_.label) == Seq("plain", "yohourt"))
   }
 
   test("servers conflict") {
