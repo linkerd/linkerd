@@ -27,6 +27,9 @@ routers:
   servers:
   - port: 8080
     ip: 0.0.0.0
+    tls:
+      certPath: /foo/cert
+      keyPath: /foo/key
   timeoutMs: 1000
   dstPrefix: /ext/http
 
@@ -125,6 +128,9 @@ values. If no default is provided, the port parameter is required.
 * *ip* -- The local IP address.  By default, the loopback address is
 used.  A value like `0.0.0.0` configures the server to listen on all
 local IPv4 interfaces.
+* *tls* -- The server will serve over TLS if this parameter is provided.  It must be an object containing keys:
+** *certPath* -- File path to the TLS certificate file
+** *keyPath* -- File path to the TLS key file
 
 <a name="proto-server-params">
 ## Protocol-specific server parameters ##
