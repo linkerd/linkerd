@@ -30,7 +30,7 @@ private object MetricsHandler extends Service[Request, Response] {
           </div>
         </div>
       """,
-      javaScripts = Seq("lib/handlebars-v4.0.5.js", "lib/smoothie.js", "utils.js", "metrics.js"),
+      javaScripts = Seq("lib/smoothie.js", "utils.js", "metrics.js"),
       csses = Seq("metrics.css")
     )
 }

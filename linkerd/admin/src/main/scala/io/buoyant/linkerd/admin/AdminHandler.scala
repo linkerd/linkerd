@@ -2,7 +2,6 @@ package io.buoyant.linkerd.admin
 
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Service, SimpleFilter}
-import com.twitter.server.TwitterServer
 import com.twitter.util.Future
 
 object AdminHandler {
@@ -44,21 +43,30 @@ object AdminHandler {
         </head>
         <body>
           <nav class="navbar navbar-inverse navbar-fixed-top">
-          <div class="container">
-            <div class="navbar-header">
-              <a class="navbar-brand-img" href="/">
-                <img alt="Logo" src="/files/images/logo.svg">
-              </a>
-            </div>
-            <div id="navbar" class="collapse navbar-collapse">
-              <ul class="nav navbar-nav">
-                <li><a href="/delegator">dtab</a></li>
-                <li><a href="/metrics">metrics</a></li>
-                <li><a href="/admin">admin</a></li>
-                <li><a href="/admin/logging">logging</a></li>
-                <li><a href="https://linkerd.io/help/">help</a></li>
-              </ul>
-            </div>
+            <ul class="nav navbar-nav navbar-right">
+              <li class="dropdown hide">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                  <span class="router-label">All</span> <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu">
+                </ul>
+              </li>
+            </ul>
+            <div class="container">
+              <div class="navbar-header">
+                <a class="navbar-brand-img" href="/">
+                  <img alt="Logo" src="/files/images/logo.svg">
+                </a>
+              </div>
+              <div id="navbar" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                  <li><a href="/delegator">dtab</a></li>
+                  <li><a href="/metrics">metrics</a></li>
+                  <li><a href="/admin">admin</a></li>
+                  <li><a href="/admin/logging">logging</a></li>
+                  <li><a href="https://linkerd.io/help/">help</a></li>
+                </ul>
+              </div>
             </div>
           </nav>
 
@@ -71,6 +79,7 @@ object AdminHandler {
           <script src="/files/js/lib/jquery.min.js"></script>
           <script src="/files/js/lib/bootstrap.min.js"></script>
           <script src="/files/js/lib/lodash.min.js"></script>
+          <script src="/files/js/lib/handlebars-v4.0.5.js"></script>
           <script src="/files/js/admin.js"></script>
           $javaScriptsHtml
         </body>

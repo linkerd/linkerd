@@ -10,17 +10,21 @@ import io.buoyant.router.RoutingFactory
 private object DelegateHandler {
 
   def ui(linker: Linker) = {
-    val RoutingFactory.BaseDtab(dtab) = linker.routers.head.params[RoutingFactory.BaseDtab]
-    new DelegateHandler(dtab)
+    var dtabs = linker.routers.map { router =>
+      val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
+      router.label -> dtab()
+    }.toMap
+    new DelegateHandler(dtabs)
   }
 
   def api = new WebDelegator
 
-  def render(dtab: () => Dtab) =
+  def render(dtab: Map[String, Dtab]) =
     AdminHandler.adminHtml(
       content = s"""
         <div class="row">
           <div class="col-lg-6">
+            <h2 class="router-label-title">Router</h2>
             <div class="input-group path">
               <span class="input-group-addon" id="basic-addon1">Path</span>
               <input type="text" class="form-control" id="path-input" placeholder="/path/to/resource" aria-describedby="basic-addon1">
@@ -38,7 +42,7 @@ private object DelegateHandler {
           </h4>
           <div id="dtab"></div>
           <div id="dtab-edit" class="hide">
-            <textarea type="text" class="form-control" id="dtab-input" rows="${dtab().size}" placeholder=""></textarea>
+            <textarea type="text" class="form-control" id="dtab-input" rows="${dtab}" placeholder=""></textarea>
           </div>
           </div>
         </div>
@@ -46,14 +50,14 @@ private object DelegateHandler {
         </div>
       """,
       tailContent = s"""
-        <script id="data" type="application/json">${WebDelegator.Codec.writeStr(dtab())}</script>
+        <script id="data" type="application/json">${WebDelegator.Codec.writeStr(dtab)}</script>
       """,
-      javaScripts = Seq("lib/handlebars-v4.0.5.js", "lib/smoothie.js", "dtab_viewer.js", "delegate.js"),
+      javaScripts = Seq("dtab_viewer.js", "delegate.js"),
       csses = Seq("delegator.css")
     )
 }
 
-private class DelegateHandler(dtab: () => Dtab) extends Service[Request, Response] {
+private class DelegateHandler(dtab: Map[String, Dtab]) extends Service[Request, Response] {
   import DelegateHandler._
 
   lazy val dtabString = render(dtab)

@@ -73,7 +73,7 @@ private object SummaryHandler {
         <div id="server-info" class="interfaces"></div>
       """,
       csses = Seq("summary.css"),
-      javaScripts = Seq("lib/handlebars-v4.0.5.js", "lib/smoothie.js", "utils.js", "routers.js", "summary.js")
+      javaScripts = Seq("lib/smoothie.js", "utils.js", "routers.js", "summary.js")
     )
   }
 }
