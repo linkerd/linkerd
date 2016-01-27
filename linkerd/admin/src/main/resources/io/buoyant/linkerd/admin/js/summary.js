@@ -46,19 +46,21 @@ var ProcInfo = (function() {
   var bytesToStr = new BytesToStringConverter();
 
   function pretty(name, value) {
-    if (name === "jvm/uptime") return msToStr.convert(value);
-    else if (name === "jvm/mem/current/used") return bytesToStr.convert(value);
-    else if (name === "jvm/gc/msec") return msToStr.convert(value);
-    else return value;
+    switch (name) {
+      case "jvm/uptime": return msToStr.convert(value);
+      case "jvm/mem/current/used": return bytesToStr.convert(value);
+      case "jvm/gc/msec": return msToStr.convert(value);
+      default: return value;
+    }
   }
 
   function render(data) {
     var json = $.parseJSON(data);
-    for (var i = 0; i < json.length; i++) {
-      var id = json[i].name.replace(/\//g, "-");
-      var value = pretty(json[i].name, json[i].value);
+    _(json).each(function(obj) {
+      var id = obj.name.replace(/\//g, "-");
+      var value = pretty(obj.name, obj.value);
       $("#"+id).text(value);
-    }
+    });
   }
 
   /**
@@ -142,15 +144,12 @@ var BigBoard = (function() {
 
   /** Helper */
   init.findMostActiveServer = function(routers) {
-    var active = {metrics:{requests:-1}, prefix:"rt/http/srv/127.0.0.1/4140/"};
-    Object.keys(routers).forEach(function(name) {
-      routers[name].servers.forEach(function(server) {
-        if (server.metrics.requests > active.metrics.requests) {
-          active = server;
-        }
-      });
-    });
-    return active;
+    var allServers = _(routers)
+      .values()
+      .flatMap('servers')
+      .value();
+
+    return _.maxBy(allServers, 'metrics.requests');
   };
 
   return init;
@@ -203,20 +202,7 @@ var Interfaces = (function() {
   }
 
   function sortBySuccess(ifaces) {
-    ifaces.sort(function(a, b) {
-      if (a.successRate != b.successRate) {
-        if (a.successRate == -1) {
-          return 1;
-        } else if (b.successRate == -1) {
-          return -1;
-        } else {
-          return a.successRate > b.successRate ? 1 : -1;
-        }
-      } else {
-        return a.name > b.name ? 1 : -1;
-      }
-    });
-    return ifaces;
+    return _.sortBy(ifaces, ['successRate', 'name']);
   }
 
   function prepClient(client) {
@@ -235,16 +221,15 @@ var Interfaces = (function() {
   }
 
   function renderInterfaces(routers, template) {
-    var clients = [],
-        servers = [];
+    var servers = _(routers)
+      .map('servers')
+      .flatten()
+      .value();
 
-    Object.keys(routers).forEach(function(name) {
-      var router = routers[name];
-      servers = servers.concat(router.servers);
-      Object.keys(router.dstIds).forEach(function(id) {
-        clients.push(router.dstIds[id]);
-      });
-    });
+    var clients = _(routers)
+      .map(function(router) { return _.values(router.dstIds); })
+      .flatten()
+      .value();
 
     $('#client-info').html(template({name:'clients', interfaces: prepClients(clients)}));
     $('#server-info').html(template({name:'servers', interfaces: prepServers(servers)}));

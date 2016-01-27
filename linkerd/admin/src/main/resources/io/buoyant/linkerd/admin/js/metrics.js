@@ -47,17 +47,20 @@ function init(template, json) {
     chart.setMetric(li.attr("id"));
   }
 
-  // init metrics browser
-  var metrics = { 'metrics': [] };
-  $.each(Object.keys(json).sort(), function(i, name) {
-    if (null ===
-      name.match(/.*\.(avg|count|max|min|p50|p90|p95|p99|p9990|p9999|sum)$/)
-    ) {
-      metrics['metrics'].push({key: name});
-    }
-  });
+  var metricRe = /.*\.(avg|count|max|min|p50|p90|p95|p99|p9990|p9999|sum)$/
 
-  $('.metrics-names').html(template(metrics));
+  // init metrics browser
+  var metrics = _(json)
+    .map(function(value, name){
+      if (!name.match(metricRe)) {
+        return name;
+      }
+    })
+    .compact()
+    .sort()
+    .value();
+
+  $('.metrics-names').html(template({ 'metrics': metrics }));
   $('.metrics-list li').on('click', function(e) {
     var li = $(e.target);
     var selector = "#"+li.attr("id");
