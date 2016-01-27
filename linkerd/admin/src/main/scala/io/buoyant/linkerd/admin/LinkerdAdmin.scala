@@ -40,7 +40,7 @@ class LinkerdAdmin(app: App, linker: Linker) {
     "/admin/registry.json" -> new RegistryHandler,
     "/favicon.ico" -> ResourceHandler.fromJar(
       baseRequestPath = "/",
-      baseResourcePath = "twitter-server/img"
+      baseResourcePath = "io/buoyant/linkerd/admin/images"
     )
   ).map {
       case (path, handler) =>
