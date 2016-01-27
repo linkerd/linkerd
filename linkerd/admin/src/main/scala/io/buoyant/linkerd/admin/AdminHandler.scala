@@ -70,6 +70,7 @@ object AdminHandler {
 
           <script src="/files/js/lib/jquery.min.js"></script>
           <script src="/files/js/lib/bootstrap.min.js"></script>
+          <script src="/files/js/lib/lodash.min.js"></script>
           <script src="/files/js/admin.js"></script>
           $javaScriptsHtml
         </body>

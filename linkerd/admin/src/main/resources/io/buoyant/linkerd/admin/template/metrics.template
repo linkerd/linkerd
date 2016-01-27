@@ -1,7 +1,7 @@
 <ul class="metrics-list list-unstyled">
   {{#each metrics}}
-    <li id={{key}}>
-      {{key}}
+    <li id={{.}}>
+      {{.}}
     </li>
   {{/each}}
 </ul>

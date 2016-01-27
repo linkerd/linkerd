@@ -70,7 +70,7 @@ var Routers = (function() {
   // Updates router clients and metrics from raw-key val metrics.
   function update(routers, metrics) {
     // first, check for new clients and add them
-    Object.keys(metrics).forEach(function(key) {
+    _.each(metrics, function(metric, key) {
       var match = key.match(clientRE);
       if (match) {
         var name = match[1], id = match[2],
@@ -84,17 +84,17 @@ var Routers = (function() {
     // then, attach metrics to each appropriate scope
     var routerNames = Object.keys(routers);
 
-    Object.keys(metrics).forEach(function(key) {
+    _.each(metrics, function(metric, key){
       var scope = findByMetricKey(routers, key);
       if (scope) {
         var descoped = key.slice(scope.prefix.length);
-        scope.metrics[descoped] = metrics[key];
+        scope.metrics[descoped] = metric;
       }
     });
   }
 
   function updateServers(routers, metrics) {
-    Object.keys(metrics).forEach(function(key) {
+    _.each(metrics, function(metric, key) {
       var match = key.match(serverRE);
       if (match) {
         var name = match[1], ip = match[2], port = match[3];
@@ -105,16 +105,13 @@ var Routers = (function() {
   }
 
   function findMatchingRouter(routers, key) {
-    var routerNames = Object.keys(routers);
-    var name = routerNames.find(function(rn) { return key.indexOf(routers[rn].prefix) === 0; });
-    return (name === undefined) ? undefined : routers[name];
+    return _.find(routers, function(router) { return key.indexOf(router.prefix) === 0; });
   }
   function findMatchingServer(servers, key) {
     return servers.find(function(server) { return key.indexOf(server.prefix) === 0; });
   }
   function findMatchingDst(dsts, key) {
-    var id = Object.keys(dsts).find(function(id) { return key.indexOf(dsts[id].prefix) === 0; });
-    return (id === undefined) ? undefined : dsts[id];
+    return _.find(dsts, function(dst) { return key.indexOf(dst.prefix) === 0; });
   }
   function findByMetricKey(routers, key) {
     var router = findMatchingRouter(routers, key);
