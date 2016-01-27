@@ -82,6 +82,7 @@
   overflow: hidden;
   text-decoration: none;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .interface hr {

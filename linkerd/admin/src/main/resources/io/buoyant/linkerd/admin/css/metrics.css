@@ -1,17 +1,13 @@
-.metrics {
-  padding: 0 20px 0 20px;
+body {
+  padding-top: 64px;
 }
 
 .metrics-names {
-  padding: 0;
+  padding: 15px;
 }
 
 .metrics-list {
-  border-left: 1px solid lightgray;
-  border-top: 1px solid lightgray;
-  border-bottom: 1px solid lightgray;
   margin-bottom: 0;
-  height: 350px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -32,6 +28,7 @@
 
 .metrics-list li.selected {
   background-color: #dfdfdf;
+  border-radius: 5px;
 }
 
 #metrics-title {
@@ -46,13 +43,14 @@
 .metrics-graph {
   text-align: center;
   height: 350px;
-  border: 1px solid lightgray;
   padding: 0 10px 0 10px;
+  position: fixed;
+  right: 10px;
+  top: 100px;
 }
 
 .metrics-json {
-  margin-top: 10px;
-  font-size: 20px;
+  float:left;
 }
 
 .metrics-json a {

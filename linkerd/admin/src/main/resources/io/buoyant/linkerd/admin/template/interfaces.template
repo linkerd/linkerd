@@ -8,7 +8,7 @@
         <h6 class="sr-header col-sm-5">success rate</h6>
       </div>
       <hr>
-      <div class="row name">
+      <div class="row name" title="{{name}}">
         <a href="/metrics#{{requestsKey}}">{{name}}</a>
       </div>
       <div class="row connections">
