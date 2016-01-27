@@ -100,7 +100,7 @@ object Server {
    */
   sealed trait Port
   implicit object Port extends Stack.Param[Port] {
-    val MinValue = 1
+    val MinValue = 0
     val MaxValue = math.pow(2, 16) - 1
     def isValid(n: Int): Boolean = MinValue <= n && n <= MaxValue
 
