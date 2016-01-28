@@ -1,6 +1,6 @@
 # How to Contribute #
 
-:stars: Thank you for contributing to the linkerd project!
+:balloon: Thank you for contributing to the linkerd project!
 
 Before getting started, please take a moment to sign [Buoyant's CLA][cla].
 
@@ -19,9 +19,11 @@ Some common sbt build targets:
 * `./sbt compile` builds all components (whereas `./sbt "project linkerd"
 compile` compiles only the _linkerd_ projects)
 
-* `./sbt test` runs all unit tests
-
-* `./sbt e2e:test` runs end-to-end tests (see [Testing](#testing))
+* There are three supported test configurations (see
+[Testing](#testing) for more details):
+    * `test:test` runs unit tests.
+    * `e2e:test` runs end-to-end tests
+    * `integration:test` runs integration tests
 
 * `./sbt linkerd/assembly` produces a fat-jar containing all library
 dependencies into *linkerd/linkerd/target/scala-2.11/linkerd-VERSION.jar*.
@@ -70,6 +72,9 @@ comprehensive in scope than unit tests. These tests may bind servers on
 ephemeral ports, write temporary files to disk, etc. All end-to-end test files
 can be found in the `src/e2e` directories within each project. Note that not all
 projects have end-to-end tests.
+
+* Integration tests are written similarly, but may use external
+services or programs that must be installed outside of `sbt`.
 
 All tests may leverage the `test-util` project, which provides some helpers for
 writing tests against Finagle's asynchronous APIs.
