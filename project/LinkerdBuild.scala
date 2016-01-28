@@ -90,8 +90,13 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s, core)
         .withTests()
 
+      val serversets = projectDir("linkerd/namer/serversets")
+        .withLib(Deps.finagle("serversets"))
+        .withTests()
+        .dependsOn(core % "compile->compile;test->test")
+
       val all = projectDir("linkerd/namer")
-        .aggregate(fs, k8s, consul)
+        .aggregate(fs, k8s, consul, serversets)
     }
 
     object Protocol {
@@ -162,6 +167,7 @@ object LinkerdBuild extends Base {
   val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdNamerFs = Linkerd.Namer.fs
   val linkerdNamerK8s = Linkerd.Namer.k8s
+  val linkerdNamerServersets = Linkerd.Namer.serversets
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
