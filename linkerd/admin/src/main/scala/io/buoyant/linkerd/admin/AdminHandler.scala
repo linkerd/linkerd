@@ -44,17 +44,15 @@ object AdminHandler {
         </head>
         <body>
           <nav class="navbar navbar-inverse navbar-fixed-top">
-            <ul class="nav navbar-nav navbar-right">
-              <li class="dropdown hide">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                  <span class="router-label">All</span> <span class="caret"></span>
-                </a>
-                <ul class="dropdown-menu">
-                </ul>
-              </li>
-            </ul>
             <div class="container">
               <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+
                 <a class="navbar-brand-img" href="/">
                   <img alt="Logo" src="/files/images/logo.svg">
                 </a>
@@ -65,6 +63,16 @@ object AdminHandler {
                   <li><a href="/metrics">metrics</a></li>
                   <li><a href="/admin/logging">logging</a></li>
                   <li><a href="https://linkerd.io/help/">help</a></li>
+                </ul>
+
+                <ul class="nav navbar-nav navbar-right">
+                  <li class="dropdown hide">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                      <span class="router-label">All</span> <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                    </ul>
+                  </li>
                 </ul>
               </div>
             </div>
