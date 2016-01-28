@@ -3,7 +3,6 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, TreeNode}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.DstBindingFactory
-import io.buoyant.linkerd.config.LinkerConfig
 
 /**
  * Represents the total configuration of a Linkerd process.
@@ -23,6 +22,9 @@ trait Linker {
   def withRouters(routers: Seq[Router]): Linker
   def routing(r: Router): Linker
 
+  def admin: Admin
+  def withAdmin(a: Admin): Linker
+
   /**
    * Read a [[Linker]] from the given parser, using the provided
    * protocol support.
@@ -34,6 +36,9 @@ trait Linker {
    * Example configuration:
    *
    * <pre>
+   *    admin:
+   *      port: 9991
+   *
    *     baseDtab: |
    *       /bar => /bah;
    *       /http/1.1 => /b;
@@ -65,7 +70,7 @@ trait Linker {
    *
    * Ordering of fields is irrelevant.
    */
-  def configure(p: JsonParser): Linker
+  def read(p: JsonParser): Linker
 }
 
 object Linker {
@@ -98,6 +103,8 @@ object Linker {
     def withRouters(rs: Seq[Router]): Linker = copy(routers = rs)
     def routing(r: Router): Linker = withRouters(routers :+ r)
 
+    def withAdmin(a: Admin): Linker = copy(admin = a)
+
     def read(json: JsonParser): Linker = {
       // Make a pass through the linker structure, deferring processing
       // of the `routers` list until after all other fields (params)
@@ -124,6 +131,12 @@ object Linker {
             val params = Router.Params.parser.read(name, json, linker.params)
             val l = linker.withParams(params)
             (l, rs)
+
+          case ((linker, rs), "admin", json) =>
+            Parsing.ensureTok(json, JsonToken.START_OBJECT) { json =>
+              val l = withAdmin(admin.read(json))
+              (l, rs)
+            }
 
           case (_, name, json) => throw Parsing.error(s"unknown parameter: $name", json)
         }
