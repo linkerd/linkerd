@@ -36,7 +36,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
     val namer = new CatalogNamer(testPath, _ => new TestApi())
@@ -51,7 +52,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
     val namer = new CatalogNamer(testPath, _ => new TestApi())
@@ -66,7 +68,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None => Future.exception(new UnexpectedResponse(null))
         case _ => Future.never //don't respond to blocking index calls
@@ -75,7 +78,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.exception(new UnexpectedResponse(null))
         case _ => Future.never //don't respond to blocking index calls
@@ -93,7 +97,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
         case _ => Future.never //don't respond to blocking index calls
@@ -102,7 +107,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
         case _ => Future.never //don't respond to blocking index calls
@@ -122,7 +128,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
         case Some("1") =>
@@ -134,7 +141,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
         case _ => Future.never //don't respond to blocking index calls
@@ -154,7 +162,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
           val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
@@ -165,7 +174,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
         case _ => Future.never //don't respond to blocking index calls
@@ -188,7 +198,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
           val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
@@ -199,7 +210,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
         case Some("1") => blockingCallResponder before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("2")))

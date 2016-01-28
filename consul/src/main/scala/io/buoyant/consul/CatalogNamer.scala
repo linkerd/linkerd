@@ -82,13 +82,17 @@ class CatalogNamer(
     val api = mkApi(name)
     init()
 
+    def setIndex(idx: String) = {
+      index = idx
+    }
+
     def mkRequest(): Future[Seq[ServiceNode]] =
-      api.serviceNodes(name, datacenter = Some(datacenter), blockingIndex = Some(index)).map { indexedNodes =>
-        indexedNodes.index map {
-          index = _
+      api
+        .serviceNodes(name, datacenter = Some(datacenter), blockingIndex = Some(index), retry = true)
+        .map { indexedNodes =>
+          indexedNodes.index.foreach(setIndex)
+          indexedNodes.value
         }
-        indexedNodes.value
-      }
 
     def clear(): Unit = synchronized {
       updateableAddr() = Addr.Pending
@@ -121,7 +125,6 @@ class CatalogNamer(
     }
 
     val handleUnexpected: PartialFunction[Throwable, Unit] = {
-      //TODO: reconnect to consul when consul gets back up
       case e: ChannelClosedException =>
         log.error(s"""lost consul connection while querying for $datacenter/$name updates""")
       case e: Throwable =>
@@ -141,13 +144,17 @@ class CatalogNamer(
     val api = mkApi(name)
     init()
 
+    def setIndex(idx: String) = {
+      index = idx
+    }
+
     def mkRequest(): Future[Seq[String]] =
-      api.serviceMap(datacenter = Some(name), blockingIndex = Some(index)).map { indexedSvcs =>
-        indexedSvcs.index map {
-          index = _
+      api
+        .serviceMap(datacenter = Some(name), blockingIndex = Some(index), retry = true)
+        .map { indexedSvcs =>
+          indexedSvcs.index.foreach(setIndex)
+          indexedSvcs.value.keySet.toSeq
         }
-        indexedSvcs.value.keySet.toSeq
-      }
 
     def clear(): Unit = synchronized {
       activity.sample() match {

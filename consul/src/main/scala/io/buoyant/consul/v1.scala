@@ -3,7 +3,11 @@ package io.buoyant.consul
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.{Service, http}
+import com.twitter.conversions.time._
+import com.twitter.finagle.param.HighResTimer
+import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy, RetryFilter}
+import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
+import com.twitter.finagle.{Filter, Service, http}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -43,14 +47,36 @@ package object v1 {
     def apply(c: Client): CatalogApi = new CatalogApi(c, s"/$versionString")
   }
 
-  class CatalogApi(client: Client, uriPrefix: String) extends Closable {
+  class CatalogApi(
+    client: Client,
+    uriPrefix: String,
+    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    stats: StatsReceiver = DefaultStatsReceiver) extends Closable {
     def close(deadline: Time) = client.close(deadline)
     val catalogPrefix = s"$uriPrefix/catalog"
 
+    private[this] val infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
+      RetryPolicy.backoff(backoffs) {
+        // We will assume 5xx are retryable, everything else is not for now
+        case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+        case (_, Throw(NonFatal(ex))) =>
+          log.error(s"retrying consul catalog request on error $ex")
+          true
+      },
+      HighResTimer.Default,
+      stats,
+      RetryBudget.Infinite
+    )
+
+    def retryClient(retry: Boolean) = {
+      val retryFilter = if (retry) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+      retryFilter andThen client
+    }
+
     // https://www.consul.io/docs/agent/http/catalog.html#catalog_datacenters
-    def datacenters: Future[Seq[String]] = {
+    def datacenters(retry: Boolean = false): Future[Seq[String]] = {
       val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters")
-      client(req).flatMap {
+      retryClient(retry)(req).flatMap {
         case rsp if rsp.status == http.Status.Ok =>
           Future.const(readJson[Seq[String]](rsp.content))
         case rsp => Future.exception(UnexpectedResponse(rsp))
@@ -60,7 +86,8 @@ package object v1 {
     // https://www.consul.io/docs/agent/http/catalog.html#catalog_services
     def serviceMap(
       datacenter: Option[String] = None,
-      blockingIndex: Option[String] = None
+      blockingIndex: Option[String] = None,
+      retry: Boolean = false
     ): Future[Indexed[Map[String, Seq[String]]]] = {
       val req = mkreq(
         http.Method.Get,
@@ -68,14 +95,15 @@ package object v1 {
         "index" -> blockingIndex,
         "dc" -> datacenter
       )
-      client(req).flatMap { rsp => Future.const(Indexed.mk[Map[String, Seq[String]]](rsp)) }
+      retryClient(retry)(req).flatMap { rsp => Future.const(Indexed.mk[Map[String, Seq[String]]](rsp)) }
     }
 
     // https://www.consul.io/docs/agent/http/catalog.html#catalog_service
     def serviceNodes(
       serviceName: String,
       datacenter: Option[String] = None,
-      blockingIndex: Option[String] = None
+      blockingIndex: Option[String] = None,
+      retry: Boolean = false
     ): Future[Indexed[Seq[ServiceNode]]] = {
       val req = mkreq(
         http.Method.Get,
@@ -83,7 +111,7 @@ package object v1 {
         "index" -> blockingIndex,
         "dc" -> datacenter
       )
-      client(req).flatMap { rsp => Future.const(Indexed.mk[Seq[ServiceNode]](rsp)) }
+      retryClient(retry)(req).flatMap { rsp => Future.const(Indexed.mk[Seq[ServiceNode]](rsp)) }
     }
   }
 

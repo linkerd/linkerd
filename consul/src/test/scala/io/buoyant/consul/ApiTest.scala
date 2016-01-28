@@ -26,7 +26,7 @@ class ApiTest extends FunSuite with Awaits {
   test("datacenters endpoint returns a seq of datacenter names") {
     val service = stubService(datacentersBuf)
 
-    val response = await(Api(service).datacenters)
+    val response = await(Api(service).datacenters())
     assert(response.size == 2)
     assert(response.head == "dc1")
   }
@@ -68,6 +68,23 @@ class ApiTest extends FunSuite with Awaits {
     } catch {
       case e: Exception => assert(true)
     }
+  }
+
+  test("makes infinite retry attempts on retry = true") {
+    var requestCount = 0;
+    val failureService = Service.mk[Request, Response] { req =>
+      requestCount = requestCount + 1
+      if(requestCount > 1) {
+        val rsp = Response()
+        rsp.setContentTypeJson()
+        rsp.content = datacentersBuf
+        Future.value(rsp)
+      } else {
+        Future.exception(new Exception("I have no idea who to talk to"))
+      }
+    }
+    val response = await(Api(failureService).datacenters(retry = true))
+    assert(!response.isEmpty)
   }
 
   test("reports invalid datacenter as an unexpected response") {
