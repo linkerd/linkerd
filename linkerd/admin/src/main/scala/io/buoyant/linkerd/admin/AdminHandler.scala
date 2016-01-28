@@ -39,6 +39,7 @@ object AdminHandler {
           <link type="text/css" href="/files/css/styleguide/styleguide.css" rel="stylesheet"/>
           <link type="text/css" href="/files/css/styleguide/local.css" rel="stylesheet"/>
           <link type="text/css" href="/files/css/admin.css" rel="stylesheet"/>
+          <link rel="shortcut icon" href="/favicon.png" />
           $cssesHtml
         </head>
         <body>
