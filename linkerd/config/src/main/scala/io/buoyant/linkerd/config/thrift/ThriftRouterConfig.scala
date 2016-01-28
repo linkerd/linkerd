@@ -1,37 +1,36 @@
 package io.buoyant.linkerd.config.thrift
 
-import com.fasterxml.jackson.annotation.JsonTypeName
+import cats.data.Validated._
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import io.buoyant.linkerd.config._
 
-
-
-trait ThriftRouterConfig extends RouterConfig {
-  override def protocol = ThriftRouterConfig.Protocol
-  def thriftFramed: Option[Boolean]
-  def thriftMethodInDst: Option[Boolean]
-  def servers: Option[Seq[ServerConfig]]
-  def withDefaults(linker: LinkerConfig): ThriftRouterConfig = new ThriftRouterConfig.Defaults(this, linker)
+case class ThriftRouterConfig(
+  thriftFramed: Option[Boolean],
+  thriftMethodInDst: Option[Boolean],
+  // TODO: implement ThriftServerConfig
+  servers: Option[Seq[BaseServerConfig]]
+) extends RouterConfig {
+  val protocol = ThriftRouterConfig.Protocol(
+    thriftFramed getOrElse false,
+    thriftMethodInDst getOrElse false
+  )
 }
 
 object ThriftRouterConfig {
-  val Protocol = "thrift"
+  object Protocol {
+    val name = "thrift"
+  }
 
-  case class Impl(
-    thriftFramed: Option[Boolean],
-    thriftMethodInDst: Option[Boolean],
-    servers: Option[Seq[BaseServerConfig]]
-  ) extends ThriftRouterConfig
-
-  class Defaults(base: ThriftRouterConfig, linker: LinkerConfig) extends RouterConfig.Defaults(base, linker) with ThriftRouterConfig {
-    override def thriftFramed = base.thriftFramed orElse Some(false)
-    override def thriftMethodInDst = base.thriftMethodInDst orElse Some(false)
+  case class Protocol(thriftFramed: Boolean, thriftMethodInDst: Boolean) extends RouterProtocol {
+    def name = Protocol.name
+    // None of the Thrift protocol configuration requires validation.
+    def validated = valid(this)
   }
 }
 
 class ThriftRouterConfigRegistrar extends ConfigRegistrar {
   def register(mapper: ObjectMapper): Unit = {
-    mapper.registerSubtypes(new NamedType(classOf[ThriftRouterConfig.Impl], ThriftRouterConfig.Protocol))
+    mapper.registerSubtypes(new NamedType(classOf[ThriftRouterConfig], ThriftRouterConfig.Protocol.name))
   }
 }

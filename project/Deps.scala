@@ -30,6 +30,10 @@ object Deps {
   val jacksonYaml =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
+  // cats provides a variety of functional programming abstractions. We use it for validation.
+  val cats =
+    "org.spire-math" %% "cats" % "0.3.0"
+
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
 }

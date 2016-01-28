@@ -61,7 +61,7 @@ object LinkerdBuild extends Base {
   object Linkerd {
 
     val config = projectDir("linkerd/config")
-      .withLibs(Deps.jackson :+ Deps.jacksonYaml :+ Deps.finagle("core"))
+      .withLibs(Deps.jackson :+ Deps.jacksonYaml :+ Deps.finagle("core") :+ Deps.cats)
       .withTests()
 
     val core = projectDir("linkerd/core")

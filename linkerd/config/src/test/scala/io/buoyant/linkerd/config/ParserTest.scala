@@ -2,13 +2,16 @@ package io.buoyant.linkerd.config
 
 import java.net.{InetAddress, InetSocketAddress}
 
+import cats.data.{ValidatedNel, NonEmptyList}
+import cats.implicits._
+import io.buoyant.linkerd.config.ServerConfig.Validated
 import org.scalatest.FunSuite
 import io.buoyant.linkerd.config.http._
 import io.buoyant.linkerd.config.thrift._
 
 class ParserTest extends FunSuite {
   val YamlConfig = """
-baseDtab: foo => bar ;
+baseDtab: /foo => /bar ;
 
 routers:
   - protocol: http
@@ -28,19 +31,33 @@ routers:
     baseDtab: |
       /thrift => /$/io.buoyant.fs/thrift;
 """
-
-  val (baseConfig, configWithDefaults) = Parser(YamlConfig).right.get
+  val configs: ParseResult = Parser(YamlConfig)
+  def baseConfig = configs.parsedConfig.get
+  def validatedConfig = configs.validatedConfig.fold(
+    { errs => fail(s"expected config to parse successfully, but got ${errs.unwrap}")},
+    identity)
 
   test("baseDtab on linker") {
-    assert(baseConfig.baseDtab == Some("foo => bar ;"))
+    assert(baseConfig.baseDtab == Some("/foo => /bar ;"))
   }
 
   test("simple http router") {
     val baseRouter = baseConfig.routers.get.head.asInstanceOf[HttpRouterConfig]
     assert(baseRouter.httpUriInDst == Some(true))
     assert(baseRouter.label == None) // label should default to protocol
-    val defaultedRouter = configWithDefaults.routers.get.head.asInstanceOf[HttpRouterConfig]
-    assert(defaultedRouter.label == Some("http")) // label should default to protocol
+
+    val validatedRouter = validatedConfig.routers.head
+    assert(validatedRouter.label == "http") // label should default to protocol
+    val protocol = validatedRouter.protocol.asInstanceOf[HttpRouterConfig.Protocol]
+
+    val server = validatedRouter.servers.head
+    assert(server.addr.getHostName == "localhost") // non-specified servers default to listening on localhost
+    assert(server.addr.getPort == 0) // non-specified servers should default to zero
+  }
+
+  test("http router with more configuration") {
+    val baseRouter = baseConfig.routers.get(1).asInstanceOf[HttpRouterConfig]
+    assert(baseRouter.httpUriInDst == None)
   }
 
   test("thrift router") {
@@ -49,18 +66,41 @@ routers:
     assert(baseRouter.thriftMethodInDst == Some(true))
     assert(baseRouter.servers.isEmpty)
 
-    val defaultedRouter = configWithDefaults.routers.get.last.asInstanceOf[ThriftRouterConfig]
-    assert(defaultedRouter.thriftFramed == Some(false))
-    assert(defaultedRouter.servers.get.head.port == None)
+    val defaultedRouter = validatedConfig.routers.last
+    val protocol = defaultedRouter.protocol.asInstanceOf[ThriftRouterConfig.Protocol]
+    assert(protocol.thriftFramed == false)
+    assert(defaultedRouter.servers.head.addr.getPort == 0)
   }
 
   // validation tests begin here
 
+  def extractErrors(cfg: ValidatedNel[ConfigError, LinkerConfig.Validated]): List[ConfigError] =
+    cfg.fold(
+      { errs => errs },
+      { _ => fail("error expected") }
+    ).unwrap
+
+  test("invalid json") {
+    val invalidJson = "{ whoa }"
+    val parsed = Parser(invalidJson)
+    assert(parsed.parsedConfig.isEmpty) // JSON parsing failures will yield no parsed configuration.
+    val invalid = parsed.validatedConfig
+    assert(invalid.isInvalid)
+
+    val errors = extractErrors(invalid)
+    assert(errors.size == 1)
+    errors.head match {
+      case InvalidSyntax(msg) => assert(msg contains "Unexpected character")
+      case _ => fail("unexpected parser error")
+    }
+  }
+
   test("no routers configured") {
     val noRouters = "baseDtab: foo => bar;"
-    val invalid = Parser(noRouters)
-    assert(invalid.isLeft)
-    val errors = invalid.left.get
+    val invalid = Parser(noRouters).validatedConfig
+    assert(invalid.isInvalid)
+
+    val errors = extractErrors(invalid)
     assert(errors.size == 1)
     assert(errors.head == NoRoutersSpecified)
   }
@@ -79,9 +119,10 @@ routers:
         |    servers:
         |      - port: 1234
       """.stripMargin
-    val invalid = Parser(conflictingRouters)
-    assert(invalid.isLeft)
-    val errors = invalid.left.get
+    val invalid = Parser(conflictingRouters).validatedConfig
+    assert(invalid.isInvalid)
+    val errors = extractErrors(invalid)
+
     assert(errors.size == 2)
     assert(errors contains ConflictingLabels("conflicts!"))
     val conflictAddr = new InetSocketAddress(InetAddress.getLoopbackAddress(), 1234)

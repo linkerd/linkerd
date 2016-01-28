@@ -1,23 +1,51 @@
 package io.buoyant.linkerd.config
 
+import cats.data.{Validated, ValidatedNel}
+import cats.data.Validated._
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.util.LoadService
+import io.buoyant.linkerd.config.LinkerConfig.Impl
 
 trait ConfigRegistrar {
   def register(mapper: ObjectMapper): Unit
 }
 
+/**
+ *
+ * @param parsedConfig A representation of the configuration file as it was provided, without any defaults applied.
+ *                     Will be None if we were unable to parse the file at all due to a syntax error.
+ * @param validatedConfig Either a list of [[ConfigError]]s representing problems validating the configuration, or a
+ *               [[LinkerConfig.Validated]] object which has been validated to initialize a linker.
+ *
+ * TODO: determine if we should consider a more specialized Validation type instead of Either, at the cost
+ *       of bringing in a library dependency. (see https://non.github.io/cats//tut/validated.html, for instance).
+ *       Alternately, we could use something like Finatra's validations or a JSR303 implementation.
+ */
+case class ParseResult(
+  parsedConfig: Option[LinkerConfig],
+  validatedConfig: ValidatedNel[ConfigError, LinkerConfig.Validated]
+)
+
 object Parser {
-  // TODO: should we distinguish types between the without/with defaults configs?
-  def apply(s: String): Either[Seq[ConfigError], (LinkerConfig, LinkerConfig)] = {
-    val baseCfg = objectMapper(s).readValue[LinkerConfig.Impl](s)
-    val defaultedCfg = baseCfg.withDefaults
-    val validationFailures = defaultedCfg.validate
-    if (validationFailures.isEmpty) Right(baseCfg, defaultedCfg) else Left(validationFailures)
+  def apply(s: String): ParseResult = {
+    val baseCfg: ValidatedNel[ConfigError, Impl] = Validated.catchNonFatal {
+      objectMapper(s).readValue[LinkerConfig.Impl](s)
+    }.bimap(
+      ConfigError.transform,
+      identity
+    ).toValidatedNel
+
+    ParseResult(
+      baseCfg.toOption,
+      baseCfg.fold(
+        invalid,
+        { _.validated }
+      )
+    )
   }
 
   private[this] def peekJsonObject(s: String): Boolean =

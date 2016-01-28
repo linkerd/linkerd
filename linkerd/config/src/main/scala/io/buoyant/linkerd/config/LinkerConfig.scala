@@ -1,36 +1,34 @@
 package io.buoyant.linkerd.config
 
+import cats.data.Validated._
+import cats.data.ValidatedNel
+
 trait LinkerConfig {
   def baseDtab: Option[String]
   def routers: Option[Seq[RouterConfig]]
+  def failFast: Option[Boolean]
 
-  def withDefaults = new Defaults(this)
-  class Defaults(base: LinkerConfig) extends LinkerConfig {
-    def baseDtab: Option[String] = base.baseDtab
-    def routers: Option[Seq[RouterConfig]] = base.routers map { _ map { _.withDefaults(this) } }
-  }
-
-  // Returns Nil if there are no errors detected.
-  // TODO: determine if we should instead use a Validation library,
-  // like the one provided by cats.
-  def validate: Seq[ConfigError] = {
-    if (routers.isEmpty) {
-      Seq(NoRoutersSpecified)
-    } else {
-      val (errors, _) = routers.getOrElse(Nil).foldLeft((Seq.empty[ConfigError], Seq.empty[RouterConfig])) {
-        case ((prevErrors, prevRouters), router) =>
-          (router.validate(prevRouters), prevRouters :+ router)
-      }
-      errors
-    }
+  // Currently, the only thing we require of a Linker is that it has at least one Router configured,
+  // TODO: determine what else we might want to validate. Namers?
+  def validated: ValidatedNel[ConfigError, LinkerConfig.Validated] = {
+    routers
+      .filter { _.nonEmpty }
+      .map(RouterConfig.validateRouters(this))
+      .getOrElse(invalidNel[ConfigError, Seq[RouterConfig.Validated]](NoRoutersSpecified))
+      .map { rs => new LinkerConfig.Validated(this, rs) }
   }
 }
 
 object LinkerConfig {
   case class Impl(
-    baseDtab: Option[String], // This could instead be a Dtab if we add a custom deserializer
+    baseDtab: Option[String],
+    failFast: Option[Boolean],
     routers: Option[Seq[RouterConfig]]
   ) extends LinkerConfig
+
+  // Represents a fully validated LinkerConfig, with defaults applied, suitable for configuring a Linker.
+  // NOTE: there are currently no defaults for Linkers, but probably will be in the future.
+  class Validated(base: LinkerConfig, val routers: Seq[RouterConfig.Validated]) {
+    def baseDtab: Option[String] = base.baseDtab
+  }
 }
-
-
