@@ -38,7 +38,7 @@ class LinkerdAdmin(app: App, linker: Linker) {
       baseResourcePath = "twitter-server"
     ),
     "/admin/registry.json" -> new RegistryHandler,
-    "/favicon.ico" -> ResourceHandler.fromJar(
+    "/favicon.png" -> ResourceHandler.fromJar(
       baseRequestPath = "/",
       baseResourcePath = "io/buoyant/linkerd/admin/images"
     )
