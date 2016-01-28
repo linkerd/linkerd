@@ -60,8 +60,13 @@ object LinkerdBuild extends Base {
   }
 
   object Linkerd {
+
+    val config = projectDir("linkerd/config")
+      .withLibs(Deps.jackson :+ Deps.jacksonYaml :+ Deps.finagle("core"))
+      .withTests()
+
     val core = projectDir("linkerd/core")
-      .dependsOn(Router.core)
+      .dependsOn(Router.core, config)
       .withLib(Deps.jacksonCore)
       .withTests()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
@@ -73,7 +78,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core % "compile->compile;test->test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, core)
+      .dependsOn(admin, config, core)
       .withLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
@@ -161,6 +166,7 @@ object LinkerdBuild extends Base {
 
   val linkerd = Linkerd.all
   val linkerdAdmin = Linkerd.admin
+  val linkerdConfig = Linkerd.config
   val linkerdCore = Linkerd.core
   val linkerdMain = Linkerd.main
   val linkerdNamer = Linkerd.Namer.all
