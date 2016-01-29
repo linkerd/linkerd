@@ -40,8 +40,9 @@ class Base extends Build {
 
   val EndToEndTest =
     config("e2e") extend Test
-  val EndToEndSettings =
-    inConfig(EndToEndTest)(Defaults.testSettings)
+
+  val IntegrationTest =
+    config("integration") extend Test
 
   val configFile = settingKey[File]("path to config file")
   val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
@@ -103,7 +104,7 @@ class Base extends Build {
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
-      .configs(EndToEndTest).settings(EndToEndSettings)
+      .configs(EndToEndTest).settings(inConfig(EndToEndTest)(Defaults.testSettings))
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {
@@ -115,6 +116,10 @@ class Base extends Build {
             .dependsOn(runtime % s"${egConfig}->${runConfig}")
       }
     }
+
+    def withIntegration(): Project = project
+      .configs(IntegrationTest).settings(inConfig(IntegrationTest)(Defaults.testSettings))
+      .dependsOn(testUtil % IntegrationTest)
 
     /** Writes build metadata into the projects resources */
     def withBuildProperties(): Project = project
