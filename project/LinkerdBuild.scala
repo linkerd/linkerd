@@ -124,7 +124,7 @@ object LinkerdBuild extends Base {
       .settings(inConfig(Minimal)(MinimalSettings ++ assemblySettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Protocol.mux, Protocol.thrift)
+      .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Namer.serversets, Protocol.mux, Protocol.thrift)
       .settings(inConfig(Bundle)(BundleSettings ++ assemblySettings))
       // top level settings -- make `assembly` do `bundle:assembly`
       .settings(assembly := (assembly in Bundle).value)
