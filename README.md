@@ -3,6 +3,8 @@
 [![Circle CI](https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f)](https://circleci.com/gh/BuoyantIO/linkerd/tree/master)
 [![Slack Status](https://slack.linkerd.io/badge.svg)](https://slack.linkerd.io)
 
+:balloon: Welcome to linkerd! :wave:
+
 linkerd is an out-of-process network stack for microservices. It functions as a
 transparent RPC proxy, handling everything needed to make inter-service RPC
 safe and sane--including load-balancing, service discovery, instrumentation,
@@ -16,48 +18,205 @@ linkerd is built on top of [Finagle](https://twitter.github.io/finagle/), a
 production-tested RPC framework used by high-traffic companies like
 Twitter, Pinterest, Tumblr, PagerDuty, and others.
 
-## Projects ##
+For more information, please see [linkerd.io](https://linkerd.io).
 
-### linkerd ###
 
-The _linkerd_ project provides a configuration engine and runtime harness for
-routers. `linkerd/core` provides basic public APIs for configuring and
-initializing a linker. `linkerd/main` provides a runtime harness that reads
-linker configuration from a file.
+## Working in this repository ##
 
-There are a number of protocol-specific modules that may be auto-loaded by
-`linkerd/main`.
+[sbt][sbt] is used to build and test linkerd. Developers should not
+use a system-installed version of sbt, and should instead use the
+`./sbt` script, which ensures that a compatible version of sbt is
+available.
 
-### router ###
+`./sbt` accepts commands on the command line, or if it is invoked with
+no arguments it loads an interactive sbt shell:
 
-The _router_ project provides a routing library on top of [Finagle][finagle].
-The `Router` and `StackRouter` types are much like Finagle's `Client` and
-`StackClient` types, except that routers are not initialized against a specific
-destination. Instead, a destination is identified for each request, and this
-destination may be refined through Finagle's `Namer` API in order to dispatch
-the request to a downstream service.
+```
+$ ./sbt
+>
+```
 
-### auxiliary ###
+The sbt project consists of many sub-projects:
 
-#### k8s ####
+```
+> projects
+[info] In file:.../linkerd/
+[info] 	 * all
+[info] 	   consul
+[info] 	   examples
+[info] 	   k8s
+[info] 	   linkerd
+[info] 	   linkerd-admin
+[info] 	   linkerd-core
+[info] 	   linkerd-main
+[info] 	   linkerd-namer
+[info] 	   linkerd-namer-consul
+[info] 	   linkerd-namer-fs
+[info] 	   linkerd-namer-k8s
+[info] 	   linkerd-protocol
+[info] 	   linkerd-protocol-http
+[info] 	   linkerd-protocol-mux
+[info] 	   linkerd-protocol-thrift
+[info] 	   router
+[info] 	   router-core
+[info] 	   router-http
+[info] 	   router-mux
+[info] 	   router-thrift
+[info] 	   router-thrift-idl
+[info] 	   test-util
+```
 
-The _k8s_ project implements a client for a subset of the [Kubernetes][k8s]
-master API. This package provides the `io.buoyant.k8s.endpoints` namer that may
-be used with finagle clients or routers, independently of _linkerd_.
+These projects are configured in
+[`project/LinkerdBuild.scala`](project/LinkerdBuild.scala), which must
+be edited to additional sub-projects, build configurations,
+etc. [`project/Base.scala`](project/Base.scala) is used to augment
+sbt's api.
 
-#### consul ####
+You may run commands, for instance, _compile_ on the aggregate
+project, _all_ by invoking:
 
-The _consul_ project implements a client for a subset of the
-[Consul][consul] Catalog API.  It provides the `io.buoyant.consul.catalog` namer.
+```
+> compile
+```
 
-#### test-util ####
+Commands may be scoped by project, as in:
 
-The _test-util_ project provides some helpers for writing tests against
-Finagle's asynchronous APIs.
+```
+> router-http/test
+```
 
-## Contributing ##
+Or by configuration as in:
+
+```
+> e2e:test
+```
+
+or
+
+```
+> router-http/e2e:test
+```
+
+The _inspect_ command helps describe how a command is configured:
+
+```
+> inspect tree examples/http:run
+[info] examples/http:run = InputTask[Unit]
+[info]   +-examples/http:configFile = examples/http.l5d
+[info]   | +-examples/http:configuration = http
+[info]   | 
+[info]   +-examples/http:runtimeConfiguration = minimal
+[info]   +-*/*:settingsData = Task[sbt.Settings[sbt.Scope]]
+[info]
+```
+
+### Tests ###
+
+There are three supported testing configurations:
+- `test`: pure unit tests that do not require system or network
+- `e2e`: tests that compose multiple modules; may allocate random
+ephemeral ports and write temporary files
+
+Both unit and end-to-end tests are run as part of our [CI][ci] setup.
+
+Tests may be run with:
+
+```
+> test
+...
+[success] Total time: 14 s, completed Jan 29, 2016 4:24:16 PM
+```
+```
+> e2e:test
+...
+[success] Total time: 8 s, completed Jan 29, 2016 4:25:18 PM
+```
+
+sbt also provides a `testQuick` command which is especially useful
+when actively editing code:
+
+```
+> ~testQuick
+```
+
+#### Writing tests ####
+
+Test files for each of the above test configurations are stored in a
+per-configuration directory structure, e.g.:
+
+```
+$ ls -l router/http/src
+e2e
+main
+test
+```
+
+Tests are written using the [ScalaTest][scalatest] testing framework,
+and specifically the [`FunSuite`][funsuite] mixin, which supports
+xUnit-like semantics. We avoid using mocking frameworks when testing
+our own code, as they tend to introduce as many problems as they
+solve. Tests may leverage the `test-util` project, which provides some
+helpers for writing tests against Finagle's asynchronous APIs.
+
+### Packaging ###
+
+Running the _package_ command produces jar artifacts for all projects:
+
+```
+> package
+```
+
+Furthermore, the _assembly_ plugin can be used to produce a so-called
+"fat jar", containing all library dependencies.  The `linkerd` project
+has several build configurations to support packaging:
+
+```
+> linkerd/assembly
+[info] SHA-1: 5599e65540ebe6122da114be4a8b9a763475b789
+[info] Packaging ...linkerd//target/scala-2.11/linkerd-0.0.8-SNAPSHOT.jar ...
+[info] Done packaging.
+[success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
+```
+```
+> linkerd/minimal:assembly
+[info] Packaging /Users/ver/b/linkerd/linkerd/target/scala-2.11/linkerd-minimal-0.0.8-SNAPSHOT.jar ...
+[info] Done packaging.
+[success] Total time: 13 s, completed Jan 29, 2016 4:30:58 PM
+```
+
+The '_minimal_' sbt configuration, supporting only the `http`
+protocol and the `io.l5d.fs` namer, is useful for running linkerd
+during development.
+
+### Running ###
+
+The `linkerd` project's packaging configurations may also be used to
+run linkerd locally, e.g.:
+
+```
+> linkerd/minimal:run path/to/config.yml
+```
+
+Furthermore, the `examples` project contains example configurations
+that may be quickly started:
+
+```
+> examples/http:run
+```
+
+As additional configuration files are added into `examples/*.l5d`,
+these configurations will be discovered by sbt and added as
+configurations.
+
+### Contributing ###
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details about how to contribute.
+
+### Style ###
+
+We generally follow [Effective Scala][es] and the
+[Scala Style Guide][ssg]. When in doubt, look around the codebase and
+see how it's done elsewhere.
 
 ## License ##
 
@@ -74,6 +233,14 @@ under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
+
+
 [finagle]: https://twitter.github.io/finagle/
 [k8s]: https://k8s.io/
 [consul]: https://consul.io/
+[sbt]: http://www.scala-sbt.org/
+[scalatest]: http://www.scalatest.org/
+[funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
+[ssg]: http://docs.scala-lang.org/style/scaladoc.html
+[ci]: https://circleci.com/gh/BuoyantIO/linkerd
+[es]: https://twitter.github.io/effectivescala/

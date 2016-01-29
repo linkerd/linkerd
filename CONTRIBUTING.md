@@ -1,98 +1,57 @@
-# How to Contribute #
+# Contributing to linkerd #
 
+<<<<<<< HEAD
 :balloon: Thank you for contributing to the linkerd project!
+=======
+:balloon: Thank you for using the linkerd project!
+>>>>>>> ee54956... Add Developer Guide documentation
 
-Before getting started, please take a moment to sign [Buoyant's CLA][cla].
+Getting Help
 
-The following is a set of guidelines for contributing to linkerd on Github.
-Please send us a pull request if any of these guidelines seem to be incompatible
-with your workflow.
+If you have a question about linkerd or have encountered problems
+using linkerd, you may [file an issue](issue) or join us on
+[Slack](slack).
 
-## Building ##
+# Submitting Changes #
 
-[sbt][sbt] is used to build and test linkerd. Developers should not use a
-system-installed version of sbt, and should instead use the `./sbt` script,
-which ensures that a compatible version of sbt is available.
+If you'd like to make a change to linkerd, you should do the
+following:
 
-Some common sbt build targets:
+1. Submit an [issue](issue) describing your proposed change.
+2. We will respond to your issue promptly.
+3. If your proposed change is accepted, and you haven't already done
+so, sign [Buoyant's Contributor License Agreement](cla).  Before we
+can accept your patches, our lawyers would like to be assured that:
+    - The code you're contributing is yours, and you have the right to
+    license it.
+    - You're granting us a license to distribute said code under the
+    terms of this agreement.
+4. Fork the linkerd repo, [develop](devel) and test your code changes.
+5. Submit a pull request against linkerd's `master` branch.
+6. Your branch may be merged once all configured checks pass,
+including:
+    - 2 shipits via review ninja.  A shipit is typically indicated
+    by placing a :star: or :+1: in the review.
+    - The branch has passed tests in CI.
 
-* `./sbt compile` builds all components (whereas `./sbt "project linkerd"
-compile` compiles only the _linkerd_ projects)
+The project's [README](README.md) provides an overview of the tools
+used to build, test, and package linkerd.
 
-* There are three supported test configurations (see
-[Testing](#testing) for more details):
-    * `test:test` runs unit tests.
-    * `e2e:test` runs end-to-end tests
-    * `integration:test` runs integration tests
+### Git history ###
 
-* `./sbt linkerd/assembly` produces a fat-jar containing all library
-dependencies into *linkerd/linkerd/target/scala-2.11/linkerd-VERSION.jar*.
+Prior to submitting a pull request, please revise the commit history
+of your branch such that each commit is self-explanatory, even without
+the context of the pull request, and that it compiles & tests
+cleanly.
 
-* The '_minimal_' sbt configuration, supporting only the `http`
-protocol and the `io.l5d.fs` namer, is useful for running linkerd
-during development, e.g. `./sbt "linkerd/minimal:run
-path/to/config.yaml"`.  See the [config](docs/config.md) page for more
-information on configuring linkerd.
-
-* Example configurations are provided in the `examples` directory.  A
-basic example may be started with `./sbt examples/http:run`.
-
-## Development ##
-
-Here's the workflow that we're using for ongoing feature development:
-
-1. Fork linkerd on Github
-2. Check out the `master` branch
-3. Make a feature branch (use `git checkout -b "<username>/new-feature"`)
-4. Write code for your feature or bugfix
-5. Write tests for your change (see [Testing](#testing))
-6. From your branch, make a pull request against `BuoyantIO/linkerd/master`
-7. Work with us to get your change reviewed
-8. Wait for your change to be pulled into `BuoyantIO/linkerd/master`
-9. Merge `BuoyantIO/linkerd/master` into your origin `master`
-10. Delete your feature branch
-
-Prior to submitting a pull request, please cleanup the commit history on your
-branch such that each commit is self-explanatory, even without the context of
-the pull request. In general we encourage one commit per pull request, since
-multiple commits could be indicative of multiple features that should be
-submitted as separate pull requests.
-
-## Testing ##
-
-Two types of tests are supported, as follows:
-
-* Unit tests are written using the [ScalaTest][scalatest] testing framework, and
-specifically the [`FunSuite`][funsuite] mixin, which supports xUnit-like
-semantics. All unit test files can be found in the `src/test` directories within
-each project.
-
-* End-to-end tests are also written with [`FunSuite`][funsuite], but are more
-comprehensive in scope than unit tests. These tests may bind servers on
-ephemeral ports, write temporary files to disk, etc. All end-to-end test files
-can be found in the `src/e2e` directories within each project. Note that not all
-projects have end-to-end tests.
-
-* Integration tests are written similarly, but may use external
-services or programs that must be installed outside of `sbt`.
-
-All tests may leverage the `test-util` project, which provides some helpers for
-writing tests against Finagle's asynchronous APIs.
-
-Both unit and end-to-end tests are run as part of our [CI][ci] setup.
-
-## Style ##
-
-We generally follow [Effective Scala][es] and the [Scala Style Guide][ssg]. When
-in doubt, look around the codebase and see how it's done elsewhere.
+Typically, a pull request consists of a single commit.  It may
+occasionally be preferable to submit a change with several commits,
+but each should be a complete change needed to complete a larger
+feature.  Each commit should be documented appropriately.
 
 Thank you for getting involved!
 :heart: Team Buoyant
 
 [cla]: https://buoyant.io/cla/
-[sbt]: http://www.scala-sbt.org/
-[scalatest]: http://www.scalatest.org/
-[funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
-[ci]: https://circleci.com/gh/BuoyantIO/linkerd
-[es]: https://twitter.github.io/effectivescala/
-[ssg]: http://docs.scala-lang.org/style/scaladoc.html
+[issue]: https://github.com/buoyantio/linkerd/issues/new
+[slack]: https://slack.linkerd.io/
