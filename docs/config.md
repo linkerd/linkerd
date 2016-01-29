@@ -37,6 +37,7 @@ routers:
 
 - protocol: thrift
   thriftFramed: false
+  thriftMethodInDst: false
   baseDtab: |
     /thrift => /$/io.l5d.fs/thrift;
 ```
@@ -53,6 +54,20 @@ routers:
   baseDtab: /http => /$/inet/127.1/8888
   servers:
   - port: 8080
+```
+
+## Admin
+
+linkerd supports an administrative interface, both as a web ui and a collection
+of json endpoints. The exposed admin port is configurable via a top-level
+`admin` section:
+
+* *admin* -- Config section for the admin interface, contains keys:
+  * *port* -- Port for the admin interface (default is `9990`)
+
+```yaml
+admin:
+  port: 9990
 ```
 
 ## Routers
@@ -124,7 +139,8 @@ The default _dstPrefix_ is `/thrift`.
 
 * *thriftFramed* -- if `true`, a framed thrift transport is used; otherwise,
   a buffered transport is used.
-* *thriftMethodInDst* -- allows routing based on the thrift method name.
+* *thriftMethodInDst* -- if `true`, thrift method names are appended to
+  destinations.
 
 <a name="protocol-mux"></a>
 #### Mux (experimental)
@@ -142,9 +158,10 @@ values. If no default is provided, the port parameter is required.
 * *ip* -- The local IP address.  By default, the loopback address is
 used.  A value like `0.0.0.0` configures the server to listen on all
 local IPv4 interfaces.
-* *tls* -- The server will serve over TLS if this parameter is provided.  It must be an object containing keys:
-** *certPath* -- File path to the TLS certificate file
-** *keyPath* -- File path to the TLS key file
+* *tls* -- The server will serve over TLS if this parameter is provided.
+  It must be an object containing keys:
+  * *certPath* -- File path to the TLS certificate file
+  * *keyPath* -- File path to the TLS key file
 
 <a name="proto-server-params"></a>
 ### Protocol-specific server parameters
@@ -158,23 +175,18 @@ The default _port_ is 4140.
 The default _port_ is 4114.
 
 * *thriftFramed* -- if `true`, a framed thrift transport is used; otherwise, a buffered transport is used.
+* *thriftMethodInDst* -- if `true`, thrift method names are appended to
+  destinations.
 
 
 #### Mux (experimental)
 
 The default _port_ is 4141.
 
-## Admin
-
-A configuration may define an **admin** key which is an object that configures
-the admin http interface.
-
-* *port* -- The port on which to serve the admin http interface (default `9990`)
-
 ## Configuring service discovery and naming
 
-linkerd currently supports a file-based service discovery mechanism.
-(Upcoming releases will add support for Consul, Zookeeper, and etcd.)
+linkerd currently supports file-based, ZooKeeper, and Consul service discovery
+mechanisms. (An upcoming release will add support for etcd.)
 
 Service discovery access is controlled by linkerd's routing configuration. This
 gives linkerd the ability to access multiple service discovery mechanisms and to
@@ -186,6 +198,8 @@ file. `namers` is an array of objects, consisting of the following parameters:
 * *kind* -- One of the supported namer plugins, by fully-qualified class name.
   Current plugins include:
   * *io.l5d.fs*: [File-based service discovery](#disco-file)
+  * *io.l5d.serversets*: [ZooKeeper ServerSets service discovery](#zookeeper)
+  * *io.l5d.experimental.consul*: [Consul service discovery](#consul) (**experimental**)
   * *io.l5d.experimental.k8s*: [Kubernetes service discovery](#disco-k8s) (**experimental**)
 * *prefix* -- This namer will resolve names beginning with this prefix. See
   [Configuring routing](#configuring-routing) for more on names. Some namers may
@@ -227,6 +241,38 @@ Filesystem namer parameters:
 The default _prefix_ is `io.l5d.fs`.
 
 * *rootDir* -- the directory containing name files as described above.
+
+<a name="zookeeper"></a>
+### ZooKeeper ServerSets service discovery
+
+ZooKeeper namer parameters:
+
+The default _prefix_ is `io.l5d.serversets`.
+
+* *zkAddrs* -- list of ZooKeeper hosts.
+* *host* --  the ZooKeeper host.
+* *port* --  the ZooKeeper port.
+
+Example config:
+```yaml
+namers:
+- kind: io.l5d.serversets
+  zkAddrs:
+  - host: 127.0.0.1
+    port: 2181
+```
+
+<a name="consul"></a>
+### Consul service discovery (experimental)
+
+An experimental namer for [Consul](https://www.consul.io/)-based systems.
+
+Consul namer parameters:
+
+The default _prefix_ is `io.l5d.consul`.
+
+* *host* --  the Consul host. (default: localhost)
+* *port* --  the Consul port. (default: 8500)
 
 <a name="disco-k8s"></a>
 ### Kubernetes service discovery (experimental)
