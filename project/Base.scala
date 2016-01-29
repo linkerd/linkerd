@@ -12,7 +12,7 @@ class Base extends Build {
 
   val orgSettings = Seq(
     organization := "io.buoyant",
-    version := "0.0.9-SNAPSHOT",
+    version := "0.0.9",
     homepage := Some(url("https://linkerd.io"))
   )
 
