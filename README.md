@@ -3,14 +3,18 @@
 [![Circle CI](https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f)](https://circleci.com/gh/BuoyantIO/linkerd/tree/master)
 [![Slack Status](https://slack.linkerd.io/badge.svg)](https://slack.linkerd.io)
 
-linkerd is an open-source dynamic linker for microservices. In an operating
-system, a dynamic linker handles everything an executable needs to make library
-calls. Similarly, for microservice applications, linkerd handles everything
-needed to make RPC calls.
+linkerd is an out-of-process network stack for microservices. It functions as a
+transparent RPC proxy, handling everything needed to make inter-service RPC
+safe and sane--including load-balancing, service discovery, instrumentation,
+and routing.
 
-linkerd is designed not just to make multi-service applications fast and
-reliable (even under extreme traffic) but to decouple application code from the
-mechanics of how it’s operationalized.
+linkerd is designed to drop into existing applications with a minimum of
+configuration, and works with many common RPC formats and service discovery
+backends.
+
+linkerd is built on top of [Finagle](https://twitter.github.io/finagle/), a
+production-tested RPC framework used by high-traffic companies like
+Twitter, Pinterest, Tumblr, PagerDuty, and others.
 
 ## Projects ##
 
