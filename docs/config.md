@@ -16,7 +16,7 @@ admin:
   port: 9990
 
 baseDtab: |
-  /host     => /$/io.buoyant.fs;
+  /host     => /$/io.l5d.fs;
   /method   => /$/io.buoyant.http.anyMethodPfx/host;
   /http/1.1 => /method;
   /ext/http => /host/web;
@@ -38,7 +38,7 @@ routers:
 - protocol: thrift
   thriftFramed: false
   baseDtab: |
-    /thrift => /$/io.buoyant.fs/thrift;
+    /thrift => /$/io.l5d.fs/thrift;
 ```
 
 There are no requirements on field ordering, though it's generally
