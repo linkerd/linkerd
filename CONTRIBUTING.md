@@ -1,41 +1,36 @@
 # Contributing to linkerd #
 
-<<<<<<< HEAD
-:balloon: Thank you for contributing to the linkerd project!
-=======
 :balloon: Thank you for using the linkerd project!
->>>>>>> ee54956... Add Developer Guide documentation
 
 Getting Help
 
 If you have a question about linkerd or have encountered problems
-using linkerd, you may [file an issue](issue) or join us on
-[Slack](slack).
+using linkerd, you may [file an issue][issue] or join us on
+[Slack][slack].
 
 # Submitting Changes #
 
 If you'd like to make a change to linkerd, you should do the
 following:
 
-1. Submit an [issue](issue) describing your proposed change.
+1. Submit an [issue][issue] describing your proposed change.
 2. We will respond to your issue promptly.
 3. If your proposed change is accepted, and you haven't already done
-so, sign [Buoyant's Contributor License Agreement](cla).  Before we
+so, sign [Buoyant's Contributor License Agreement][cla].  Before we
 can accept your patches, our lawyers would like to be assured that:
     - The code you're contributing is yours, and you have the right to
     license it.
     - You're granting us a license to distribute said code under the
     terms of this agreement.
-4. Fork the linkerd repo, [develop](devel) and test your code changes.
+4. Fork the linkerd repo, [develop][devel] and test your code
+changes. See the project's [README](README.md) for further information
+about working in this repository.
 5. Submit a pull request against linkerd's `master` branch.
 6. Your branch may be merged once all configured checks pass,
 including:
     - 2 shipits via review ninja.  A shipit is typically indicated
     by placing a :star: or :+1: in the review.
     - The branch has passed tests in CI.
-
-The project's [README](README.md) provides an overview of the tools
-used to build, test, and package linkerd.
 
 ### Git history ###
 
