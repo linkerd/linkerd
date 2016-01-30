@@ -1,7 +1,9 @@
 package io.buoyant.linkerd.admin.names
 
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.util._
+import io.buoyant.linkerd.NamerInitializers
 
 sealed trait DelegateTree[+T] {
   def path: Path
@@ -94,10 +96,14 @@ object DelegateTree {
 }
 
 trait Delegator {
-  def apply(dtab: Dtab, tree: DelegateTree[Name.Path]): Activity[DelegateTree[Name.Bound]]
+  def apply(
+    dtab: Dtab,
+    tree: DelegateTree[Name.Path],
+    namer: NameInterpreter
+  ): Activity[DelegateTree[Name.Bound]]
 
-  final def apply(dtab: Dtab, path: Path): Activity[DelegateTree[Name.Bound]] =
-    apply(dtab, DelegateTree.Leaf(path, Dentry.nop, Name.Path(path)))
+  final def apply(dtab: Dtab, path: Path, namer: NameInterpreter): Activity[DelegateTree[Name.Bound]] =
+    apply(dtab, DelegateTree.Leaf(path, Dentry.nop, Name.Path(path)), namer)
 }
 
 object Delegator extends Delegator {
@@ -106,10 +112,19 @@ object Delegator extends Delegator {
 
   val MaxDepth = 100
 
-  def apply(dtab: Dtab, tree: DelegateTree[Name.Path]): Activity[DelegateTree[Name.Bound]] =
-    bind(dtab, 0, tree).map(_.simplified)
+  def apply(
+    dtab: Dtab,
+    tree: DelegateTree[Name.Path],
+    namer: NameInterpreter
+  ): Activity[DelegateTree[Name.Bound]] =
+    bind(dtab, 0, tree, namer).map(_.simplified)
 
-  private[this] def lookup(dtab: Dtab, dentry: Dentry, path: Path): Activity[DelegateTree[Name]] = {
+  private[this] def lookup(
+    dtab: Dtab,
+    dentry: Dentry,
+    path: Path,
+    namer: NameInterpreter
+  ): Activity[DelegateTree[Name]] = {
 
     val matches: Seq[DelegateTree[Name.Path]] = dtab.dentries0.reverse.collect {
       case d@Dentry(prefix, dst) if path.startsWith(prefix) =>
@@ -124,8 +139,12 @@ object Delegator extends Delegator {
     }
 
     result match {
-      case DelegateTree.Neg(path, d) =>
-        Namer.global.lookup(path).map(fromNameTree(path, d, _))
+      case DelegateTree.Neg(path, d) => namer match {
+        case interpreter: NamerInitializers.Interpreter =>
+          interpreter.lookup(path).map(fromNameTree(path, d, _))
+        case default =>
+          Namer.global.lookup(path).map(fromNameTree(path, d, _))
+      }
       case tree => Activity.value(tree)
     }
   }
@@ -133,7 +152,8 @@ object Delegator extends Delegator {
   private[this] def bind(
     dtab: Dtab,
     depth: Int,
-    tree: DelegateTree[Name]
+    tree: DelegateTree[Name],
+    namer: NameInterpreter
   ): Activity[DelegateTree[Name.Bound]] =
     if (depth > MaxDepth)
       Activity.exception(new IllegalArgumentException("Max recursion level reached."))
@@ -147,16 +167,16 @@ object Delegator extends Delegator {
 
       case Leaf(_, dentry, Name.Path(path)) =>
         // Resolve this leaf path through the dtab and bind the resulting tree.
-        lookup(dtab, dentry, path).flatMap(bind(dtab, depth + 1, _)).map(Delegate(path, dentry, _))
+        lookup(dtab, dentry, path, namer).flatMap(bind(dtab, depth + 1, _, namer)).map(Delegate(path, dentry, _))
 
       case Delegate(path, dentry, tree) =>
-        bind(dtab, depth, tree).map(Delegate(path, dentry, _))
+        bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
 
       case Alt(path, dentry) => Activity.value(Neg(path, dentry))
-      case Alt(path, dentry, tree) => bind(dtab, depth, tree).map(Delegate(path, dentry, _))
+      case Alt(path, dentry, tree) => bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
       case Alt(path, dentry, trees@_*) =>
         // Unlike Namer.bind, we bind *all* alternate trees.
-        val vars = trees.map(bind(dtab, depth, _).run)
+        val vars = trees.map(bind(dtab, depth, _, namer).run)
         val stateVar = Var.collect(vars).map { states =>
           val oks = states.collect { case Activity.Ok(t) => t }
           if (oks.nonEmpty) Activity.Ok(Alt(path, dentry, oks: _*))
@@ -165,9 +185,9 @@ object Delegator extends Delegator {
         Activity(stateVar)
 
       case Union(path, dentry) => Activity.value(Neg(path, dentry))
-      case Union(path, dentry, Weighted(_, tree)) => bind(dtab, depth, tree).map(Delegate(path, dentry, _))
+      case Union(path, dentry, Weighted(_, tree)) => bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
       case Union(path, dentry, trees@_*) =>
-        val vars = trees.map { case Weighted(w, t) => bind(dtab, depth, t).map(Weighted(w, _)).run }
+        val vars = trees.map { case Weighted(w, t) => bind(dtab, depth, t, namer).map(Weighted(w, _)).run }
         val stateVar = Var.collect(vars).map { states =>
           val oks = states.collect { case Activity.Ok(t) => t }
           if (oks.nonEmpty) Activity.Ok(Union(path, dentry, oks: _*))

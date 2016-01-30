@@ -76,7 +76,7 @@ object NamerInitializers {
 
   val empty: NamerInitializers = _NamerInitializers(Map.empty)
 
-  private case class Interpreter(namers: Seq[(Path, Namer)] = Seq.empty)
+  case class Interpreter(namers: Seq[(Path, Namer)] = Seq.empty)
     extends NameInterpreter {
     private[NamerInitializers] def naming(p: Path, n: Namer) =
       copy(namers = namers :+ (p -> n))
@@ -109,5 +109,8 @@ object NamerInitializers {
         // Not a match, keep looking through namers.
         case Seq(_, namers@_*) => lookup(namers, path)
       }
+
+    def lookup(path: Path): Activity[NameTree[Name]] =
+      lookup(namers, path)
   }
 }

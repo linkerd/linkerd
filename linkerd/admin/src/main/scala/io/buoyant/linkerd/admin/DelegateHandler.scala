@@ -17,7 +17,7 @@ private object DelegateHandler {
     new DelegateHandler(dtabs)
   }
 
-  def api = new WebDelegator
+  def api(linker: Linker) = new WebDelegator(linker)
 
   def render(dtab: Map[String, Dtab]) =
     AdminHandler.adminHtml(

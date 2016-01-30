@@ -1,13 +1,15 @@
-package io.buoyant.linkerd.admin.names
+package io.buoyant.linkerd
+package admin.names
 
 import com.fasterxml.jackson.annotation._
-import com.fasterxml.jackson.core._
+import com.fasterxml.jackson.core.{io => _, _}
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.{Addr => FAddr, Path, Status => _, _}
+import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.http._
+import com.twitter.finagle.{Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import java.net.{InetSocketAddress, SocketAddress}
@@ -157,6 +159,7 @@ private[admin] object WebDelegator {
 }
 
 private[admin] class WebDelegator(
+  linker: Linker,
   delegate: Delegator = Delegator
 ) extends Service[Request, Response] {
 
@@ -165,7 +168,8 @@ private[admin] class WebDelegator(
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get => (req.params.get("d"), req.params.get("n")) match {
       case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
-        delegate(dtab, path).values.toFuture().flatMap(Future.const).map { tree =>
+        val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
+        delegate(dtab, path, namer).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)
           rsp.contentType = MediaType.Json

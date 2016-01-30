@@ -55,7 +55,7 @@ class LinkerdAdmin(app: App, linker: Linker) {
       localFilePath = "linkerd/admin/src/main/resources/io/buoyant/linkerd/admin"
     )),
     "/delegator" -> DelegateHandler.ui(linker),
-    "/delegator.json" -> DelegateHandler.api,
+    "/delegator.json" -> DelegateHandler.api(linker),
     "/routers.json" -> new RouterHandler(linker),
     "/metrics" -> MetricsHandler
   )
