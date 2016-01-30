@@ -22,14 +22,14 @@ can accept your patches, our lawyers would like to be assured that:
     license it.
     - You're granting us a license to distribute said code under the
     terms of this agreement.
-4. Fork the linkerd repo, [develop][devel] and test your code
+4. Fork the linkerd repo, develop and test your code
 changes. See the project's [README](../README.md) for further information
 about working in this repository.
 5. Submit a pull request against linkerd's `master` branch.
 6. Your branch may be merged once all configured checks pass,
 including:
-    - 2 shipits via review ninja.  A shipit is typically indicated
-    by placing a :star: or :+1: in the review.
+    - 2 shipits via [review ninja](https://review.ninja).  A shipit is
+    typically indicated by placing a :star: or :+1: in the review.
     - The branch has passed tests in CI.
 
 ### Git history ###
