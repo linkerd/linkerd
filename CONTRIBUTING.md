@@ -2,13 +2,13 @@
 
 :balloon: Thank you for using the linkerd project!
 
-Getting Help
+## Getting Help ##
 
 If you have a question about linkerd or have encountered problems
 using linkerd, you may [file an issue][issue] or join us on
 [Slack][slack].
 
-# Submitting Changes #
+## Submitting Changes ##
 
 If you'd like to make a change to linkerd, you should do the
 following:
@@ -23,7 +23,7 @@ can accept your patches, our lawyers would like to be assured that:
     - You're granting us a license to distribute said code under the
     terms of this agreement.
 4. Fork the linkerd repo, [develop][devel] and test your code
-changes. See the project's [README](README.md) for further information
+changes. See the project's [README](../README.md) for further information
 about working in this repository.
 5. Submit a pull request against linkerd's `master` branch.
 6. Your branch may be merged once all configured checks pass,
