@@ -3,6 +3,7 @@ import sbt.Keys._
 import Keys._
 import sbtassembly.AssemblyKeys._
 import sbtassembly.AssemblyPlugin.assemblySettings
+import sbtassembly.MergeStrategy
 import sbtunidoc.Plugin._
 
 /**
@@ -91,7 +92,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val serversets = projectDir("linkerd/namer/serversets")
-        .withLib(Deps.finagle("serversets"))
+        .withLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .withTests()
         .dependsOn(core % "compile->compile;test->test")
 
@@ -121,11 +122,11 @@ object LinkerdBuild extends Base {
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
       .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
-      .settings(inConfig(Minimal)(MinimalSettings ++ assemblySettings))
+      .settings(inConfig(Minimal)(assemblySettings ++ MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Namer.serversets, Protocol.mux, Protocol.thrift)
-      .settings(inConfig(Bundle)(BundleSettings ++ assemblySettings))
+      .settings(inConfig(Bundle)(assemblySettings ++ BundleSettings))
       // top level settings -- make `assembly` do `bundle:assembly`
       .settings(assembly := (assembly in Bundle).value)
   }
@@ -138,7 +139,12 @@ object LinkerdBuild extends Base {
   val MinimalSettings = Defaults.configSettings ++ Seq(
     mainClass := Some("io.buoyant.Linkerd"),
     mainClass in assembly := mainClass.value,
-    jarName in assembly := s"${name.value}-${configuration.value}-${version.value}.jar"
+    jarName in assembly := s"${name.value}-${configuration.value}-${version.value}.jar",
+    assemblyMergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+    { // curse you SCIENCE
+      case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.first
+      case f => old(f)
+    }}
   )
 
   val Bundle = config("bundle") extend Minimal

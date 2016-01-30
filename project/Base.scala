@@ -2,6 +2,7 @@ import com.typesafe.sbt.SbtScalariform._
 import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
+import sbtassembly.MergeStrategy
 import scala.language.implicitConversions
 import scalariform.formatter.preferences._
 
