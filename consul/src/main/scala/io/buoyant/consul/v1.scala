@@ -51,7 +51,8 @@ package object v1 {
     client: Client,
     uriPrefix: String,
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
-    stats: StatsReceiver = DefaultStatsReceiver) extends Closable {
+    stats: StatsReceiver = DefaultStatsReceiver
+  ) extends Closable {
     def close(deadline: Time) = client.close(deadline)
     val catalogPrefix = s"$uriPrefix/catalog"
 
