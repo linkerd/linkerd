@@ -23,7 +23,7 @@ can accept your patches, our lawyers would like to be assured that:
     - You're granting us a license to distribute said code under the
     terms of this agreement.
 4. Fork the linkerd repo, develop and test your code
-changes. See the project's [README](../README.md) for further information
+changes. See the project's [README](README.md) for further information
 about working in this repository.
 5. Submit a pull request against linkerd's `master` branch.
 6. Your branch may be merged once all configured checks pass,
