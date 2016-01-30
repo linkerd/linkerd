@@ -28,7 +28,7 @@ about working in this repository.
 5. Submit a pull request against linkerd's `master` branch.
 6. Your branch may be merged once all configured checks pass,
 including:
-    - 2 shipits via [review ninja](https://review.ninja).  A shipit is
+    - 2 shipits via [ReviewNinja](https://review.ninja).  A shipit is
     typically indicated by placing a :star: or :+1: in the review.
     - The branch has passed tests in CI.
 
