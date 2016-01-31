@@ -1,22 +1,22 @@
-![linkerd](https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png)
+![linkerd][l5d-logo]
 
-[![Circle CI](https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f)](https://circleci.com/gh/BuoyantIO/linkerd/tree/master)
+[![Circle CI][l5d-ci-status]][l5d-ci]
 [![Slack Status](https://slack.linkerd.io/badge.svg)](https://slack.linkerd.io)
 
 :balloon: Welcome to linkerd! :wave:
 
-linkerd is an out-of-process network stack for microservices. It functions as a
-transparent RPC proxy, handling everything needed to make inter-service RPC
-safe and sane--including load-balancing, service discovery, instrumentation,
-and routing.
+linkerd is an out-of-process network stack for microservices. It
+functions as a transparent RPC proxy, handling everything needed to
+make inter-service RPC safe and sane--including load-balancing,
+service discovery, instrumentation, and routing.
 
-linkerd is designed to drop into existing applications with a minimum of
-configuration, and works with many common RPC formats and service discovery
-backends.
+linkerd is designed to drop into existing applications with a minimum
+of configuration, and works with many common RPC formats and service
+discovery backends.
 
-linkerd is built on top of [Finagle](https://twitter.github.io/finagle/), a
-production-tested RPC framework used by high-traffic companies like
-Twitter, Pinterest, Tumblr, PagerDuty, and others.
+linkerd is built on top of [Finagle][finagle], a production-tested RPC
+framework used by high-traffic companies like Twitter, Pinterest,
+Tumblr, PagerDuty, and others.
 
 For more information, please see [linkerd.io](https://linkerd.io).
 
@@ -53,6 +53,7 @@ The sbt project consists of many sub-projects:
 [info] 	   linkerd-namer-consul
 [info] 	   linkerd-namer-fs
 [info] 	   linkerd-namer-k8s
+[info] 	   linkerd-namer-serversets
 [info] 	   linkerd-protocol
 [info] 	   linkerd-protocol-http
 [info] 	   linkerd-protocol-mux
@@ -67,13 +68,13 @@ The sbt project consists of many sub-projects:
 ```
 
 These projects are configured in
-[`project/LinkerdBuild.scala`](project/LinkerdBuild.scala), which must
-be edited to additional sub-projects, build configurations,
+[`project/LinkerdBuild.scala`](project/LinkerdBuild.scala), which may
+be edited to include additional sub-projects, build configurations,
 etc. [`project/Base.scala`](project/Base.scala) is used to augment
 sbt's api.
 
 You may run commands, for instance, _compile_ on the aggregate
-project, _all_ by invoking:
+project, _all_, by invoking:
 
 ```
 > compile
@@ -112,12 +113,15 @@ The _inspect_ command helps describe how a command is configured:
 
 ### Tests ###
 
-There are three supported testing configurations:
+There are several supported test configurations:
 - `test`: pure unit tests that do not require system or network
 - `e2e`: tests that compose multiple modules; may allocate random
 ephemeral ports and write temporary files
+- `integration`: tests that rely on external services or programs that
+require external installation and/or configuration.
 
-Both unit and end-to-end tests are run as part of our [CI][ci] setup.
+Both unit and end-to-end tests are run as part of our
+[Continuous Integration][l5d-ci] setup.
 
 Tests may be run with:
 
@@ -173,13 +177,13 @@ has several build configurations to support packaging:
 ```
 > linkerd/assembly
 [info] SHA-1: 5599e65540ebe6122da114be4a8b9a763475b789
-[info] Packaging ...linkerd//target/scala-2.11/linkerd-0.0.8-SNAPSHOT.jar ...
+[info] Packaging ...linkerd/target/scala-2.11/linkerd-0.0.8-SNAPSHOT.jar ...
 [info] Done packaging.
 [success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
 ```
 ```
 > linkerd/minimal:assembly
-[info] Packaging /Users/ver/b/linkerd/linkerd/target/scala-2.11/linkerd-minimal-0.0.8-SNAPSHOT.jar ...
+[info] Packaging .../target/scala-2.11/linkerd-minimal-0.0.8-SNAPSHOT.jar ...
 [info] Done packaging.
 [success] Total time: 13 s, completed Jan 29, 2016 4:30:58 PM
 ```
@@ -197,6 +201,8 @@ run linkerd locally, e.g.:
 > linkerd/minimal:run path/to/config.yml
 ```
 
+#### Example configurations ####
+
 Furthermore, the `examples` project contains example configurations
 that may be quickly started:
 
@@ -210,13 +216,14 @@ configurations.
 
 ### Contributing ###
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details about how to contribute.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more details about how to
+contribute.
 
 ### Style ###
 
 We generally follow [Effective Scala][es] and the
-[Scala Style Guide][ssg]. When in doubt, look around the codebase and
-see how it's done elsewhere.
+[Scala Style Guide][ssg]. When in doubt, we try to use Finagle's
+idioms.
 
 ## License ##
 
@@ -233,14 +240,15 @@ under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
-
-
-[finagle]: https://twitter.github.io/finagle/
-[k8s]: https://k8s.io/
+<!-- references -->
 [consul]: https://consul.io/
+[es]: https://twitter.github.io/effectivescala/
+[finagle]: https://twitter.github.io/finagle/
+[funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
+[k8s]: https://k8s.io/
+[l5d-ci]: https://circleci.com/gh/BuoyantIO/linkerd
+[l5d-ci-status]: https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
 [sbt]: http://www.scala-sbt.org/
 [scalatest]: http://www.scalatest.org/
-[funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
 [ssg]: http://docs.scala-lang.org/style/scaladoc.html
-[ci]: https://circleci.com/gh/BuoyantIO/linkerd
-[es]: https://twitter.github.io/effectivescala/
