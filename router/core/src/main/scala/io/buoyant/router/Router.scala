@@ -247,13 +247,13 @@ object StackRouter {
   }
 
   object Client {
+
     /**
-     * Modifies a client stack to be usable as a router Stack.
-     *
-     * TODO Just layout our own stack instead of modifying existing stacks?
+     * Install the TlsClientPrep module below the endpoint stack so that it
+     * may avail itself of any and all params to set TLS params.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      orig
+      orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack)
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {

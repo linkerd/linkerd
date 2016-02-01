@@ -2,7 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => _, _}
 import com.twitter.finagle.client.StackClient
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import io.buoyant.router.http.{ForwardedFilter, Identifier}
@@ -26,8 +26,12 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack[Request, Response]
 
+    /**
+     * Install better http tracing and prevent TLS/Host-header interference.
+     */
     val client: StackClient[Request, Response] = FinagleHttp.client
       .transformed(_.replace(StackClient.Role.protoTracing, http.TracingFilter))
+      .transformed(_.remove(TlsFilter.role))
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
