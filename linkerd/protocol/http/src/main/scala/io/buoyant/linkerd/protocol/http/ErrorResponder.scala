@@ -1,6 +1,7 @@
-package io.buoyant.router.http
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
+import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.logging.Logger
 import com.twitter.util.NonFatal

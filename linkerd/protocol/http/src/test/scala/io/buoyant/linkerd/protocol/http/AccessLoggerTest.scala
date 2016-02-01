@@ -1,4 +1,4 @@
-package io.buoyant.router.http
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._

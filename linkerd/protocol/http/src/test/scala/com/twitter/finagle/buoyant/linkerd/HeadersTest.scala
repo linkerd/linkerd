@@ -1,4 +1,4 @@
-package io.buoyant.router.http
+package com.twitter.finagle.buoyant.linkerd
 
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.tracing.Trace

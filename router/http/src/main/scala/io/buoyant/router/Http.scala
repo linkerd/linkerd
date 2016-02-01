@@ -1,12 +1,11 @@
 package io.buoyant.router
 
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => _, _}
-import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
-import io.buoyant.router.http.{AccessLogger, ErrorResponder, ForwardedFilter, Headers, Identifier}
+import io.buoyant.router.http.{ForwardedFilter, Identifier}
 import java.net.SocketAddress
 
 object Http extends Router[Request, Response] with FinagleServer[Request, Response] {
@@ -22,20 +21,13 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] =
-      Headers.PathFilter +: StackRouter.newPathStack[Request, Response]
+      StackRouter.newPathStack[Request, Response]
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
-      Headers.BoundFilter +: StackRouter.newBoundStack[Request, Response]
+      StackRouter.newBoundStack[Request, Response]
 
-    val client: StackClient[Request, Response] = {
-      val builder = new StackBuilder(FinagleHttp.Client.stack)
-      builder.push(AccessLogger.module)
-      builder.push(HttpStatusCodeFilter.module)
-      val stk = StackRouter.Client.mkStack(builder.result)
-        .replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
-        .replace(StackClient.Role.protoTracing, http.TracingFilter)
-      FinagleHttp.client.withStack(stk)
-    }
+    val client: StackClient[Request, Response] = FinagleHttp.client
+      .transformed(_.replace(StackClient.Role.protoTracing, http.TracingFilter))
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
@@ -69,12 +61,8 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     router.factory()
 
   object Server {
-    val stack: Stack[ServiceFactory[Request, Response]] = {
-      val stk = new StackBuilder(FinagleHttp.Server.stack)
-      stk.push(ForwardedFilter.module)
-      stk.push(ErrorResponder)
-      stk.result.replace(HttpTraceInitializer.role, HttpTraceInitializer.server)
-    }
+    val stack: Stack[ServiceFactory[Request, Response]] =
+      (ForwardedFilter.module +: FinagleHttp.Server.stack)
 
     val defaultParams: Stack.Params =
       StackServer.defaultParams +

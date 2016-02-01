@@ -1,4 +1,4 @@
-package com.twitter.finagle.buoyant
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
@@ -7,9 +7,7 @@ import com.twitter.util.Future
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
-object Thrown extends Throwable
-
-class HttpStatusCodeFilterTest extends FunSuite with Awaits {
+class StatusCodeStatsFilterTest extends FunSuite with Awaits {
 
   object Thrown extends Throwable
 
@@ -20,8 +18,8 @@ class HttpStatusCodeFilterTest extends FunSuite with Awaits {
       rep.statusCode = 404
       Future.value(rep)
     }
-    val stk = HttpStatusCodeFilter.module.toStack(
-      Stack.Leaf(HttpStatusCodeFilter.role, ServiceFactory.const(svc))
+    val stk = StatusCodeStatsFilter.module.toStack(
+      Stack.Leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
     )
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 
@@ -36,8 +34,8 @@ class HttpStatusCodeFilterTest extends FunSuite with Awaits {
   test("treats exceptions as 500 failures") {
     val stats = new InMemoryStatsReceiver()
     val svc = Service.mk[Request, Response] { _ => Future.exception(Thrown) }
-    val stk = HttpStatusCodeFilter.module.toStack(
-      Stack.Leaf(HttpStatusCodeFilter.role, ServiceFactory.const(svc))
+    val stk = StatusCodeStatsFilter.module.toStack(
+      Stack.Leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
     )
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 

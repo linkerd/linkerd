@@ -1,9 +1,9 @@
-package com.twitter.finagle.buoyant
+package com.twitter.finagle.buoyant.linkerd
 
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
-import io.buoyant.router.http.Headers
+import com.twitter.finagle.buoyant.SampledTracer
 
 /**
  * Typically, finagle clients initialize trace ids to capture a
@@ -25,7 +25,7 @@ object HttpTraceInitializer {
   }
 
   /**
-   * The server reads the `buoy-ctx` header
+   * The server reads the ctx header
    * (`io.buoyant.router.Headers.Ctx.Key`) to load trace information.
    */
   object server extends Stack.Module1[param.Tracer, ServiceFactory[Request, Response]] {
