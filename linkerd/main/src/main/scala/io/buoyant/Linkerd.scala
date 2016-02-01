@@ -59,8 +59,6 @@ object Linkerd extends App {
         if (!f.isFile) throw new IllegalArgumentException(s"config is not a file: $path")
         Source.fromFile(f).mkString
     }
-
-    Linker.configure()
     val parser = loadParser(configText)
     Linker.load().read(parser)
   }
