@@ -125,7 +125,9 @@ object LinkerdBuild extends Base {
       .settings(inConfig(Minimal)(assemblySettings ++ MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Namer.serversets, Protocol.mux, Protocol.thrift)
+      .configDependsOn(Bundle)(
+        Namer.consul, Namer.k8s, Namer.serversets,
+        Protocol.mux, Protocol.thrift)
       .settings(inConfig(Bundle)(assemblySettings ++ BundleSettings))
       // top level settings -- make `assembly` do `bundle:assembly`
       .settings(assembly := (assembly in Bundle).value)
@@ -133,35 +135,42 @@ object LinkerdBuild extends Base {
 
   /*
    * linkerd packaging configurations.
+   *
+   * Linkerd is configured to be assembled into an executable.
    */
+
+  val execScript = Seq(
+    "#!/bin/sh",
+    // TODO detect plugins and add to classpath
+    """exec java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@""""
+  )
 
   val Minimal = config("minimal")
   val MinimalSettings = Defaults.configSettings ++ Seq(
-    mainClass := Some("io.buoyant.Linkerd"),
-    mainClass in assembly := mainClass.value,
-    jarName in assembly := s"${name.value}-${configuration.value}-${version.value}.jar",
-    assemblyMergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
-    { // curse you SCIENCE
-      case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.first
-      case f => old(f)
-    }}
+    assemblyJarName := s"${name.value}-${configuration.value}-${version.value}-exec",
+    assemblyMergeStrategy in assembly := {
+      case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
+      case path => (assemblyMergeStrategy in assembly).value(path)
+    },
+    assemblyOption in assembly := (assemblyOption in assembly).value.copy(
+      prependShellScript = Some(execScript)),
+    mainClass := Some("io.buoyant.Linkerd")
   )
 
   val Bundle = config("bundle") extend Minimal
   val BundleSettings = MinimalSettings ++ Seq(
-    jarName in assembly := s"${name.value}-${version.value}.jar"
+    assemblyJarName in assembly := s"${name.value}-${version.value}-exec"
   )
 
+  // Find example configurations by searching the examples directory for config files.
   val ConfigFileRE = """^(.*)\.l5d$""".r
   val exampleConfigs = file("examples").list().toSeq.collect {
-    case ConfigFileRE(name) =>
-      val runtime = name match {
-        case "http" => Minimal
-        case name => Bundle
-      }
-      config(name) -> runtime
+    case ConfigFileRE(name) => config(name) -> exampleConfig(name)
   }
-
+  def exampleConfig(name:  String): Configuration = name match {
+    case "http" => Minimal
+    case _ => Bundle
+  }
   val examples = projectDir("examples")
     .withExamples(Linkerd.all, exampleConfigs)
 
