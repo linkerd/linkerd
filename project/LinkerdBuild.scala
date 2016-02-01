@@ -87,6 +87,10 @@ object LinkerdBuild extends Base {
       val fs = projectDir("linkerd/namer/fs")
         .dependsOn(core)
 
+      val http = projectDir("linkerd/namer/http")
+        .dependsOn(core)
+        .withTests()
+
       val k8s = projectDir("linkerd/namer/k8s")
         .dependsOn(LinkerdBuild.k8s, core)
         .withTests()
@@ -97,7 +101,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core % "compile->compile;test->test")
 
       val all = projectDir("linkerd/namer")
-        .aggregate(fs, k8s, consul, serversets)
+        .aggregate(consul, fs, k8s, serversets)
     }
 
     object Protocol {
@@ -122,8 +126,7 @@ object LinkerdBuild extends Base {
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
-      .settings(inConfig(Minimal)(assemblySettings ++ MinimalSettings))
+      .settings(inConfig(Minimal)(MinimalSettings ++ assemblySettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(Namer.consul, Namer.k8s, Namer.serversets, Protocol.mux, Protocol.thrift)
@@ -175,6 +178,7 @@ object LinkerdBuild extends Base {
   val linkerdNamer = Linkerd.Namer.all
   val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdNamerFs = Linkerd.Namer.fs
+  val linkerdNamerHttp = Linkerd.Namer.http
   val linkerdNamerK8s = Linkerd.Namer.k8s
   val linkerdNamerServersets = Linkerd.Namer.serversets
   val linkerdProtocol = Linkerd.Protocol.all
