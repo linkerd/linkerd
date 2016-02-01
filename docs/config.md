@@ -251,9 +251,8 @@ $ cat config/web
 192.0.2.210 8080
 ```
 
-linkerd watches all files in this directory with a 10-second refresh time, so
-files can be added, removed, or updated, and linkerd will pick up the changes
-automatically.
+linkerd watches all files in this directory, so files can be added, removed, or
+updated, and linkerd will pick up the changes automatically.
 
 The file-based namer is configured with kind `io.l5d.fs`, and these parameters:
 
