@@ -226,6 +226,36 @@ The _tag_ value must be in the form `release-`_version_.
 3. `./sbt assembly` will produce an executable in
 _linkerd/target/scala-2.11/linkerd-0.0.10-exec_.
 
+
+#### Docker ####
+
+Each of these configurations may be used to build a docker image.
+```
+> linkerd/docker
+...
+[info] Tagging image 94ab0793addf with name: io.buoyant/linkerd:0.0.10-SNAPSHOT
+```
+
+The produced image does not contain any configuration.  It's expected
+that configuration is provided by another docker layer or volume.  For
+example, if you have linkerd configuration in
+_path/to/myapp/linkerd.yml_, you could start linkerd in docker with
+the following command:
+
+```
+$ docker run -p 4140:4140 -v path/to/myapp:/myapp -w /myapp io.buoyant/linkerd:0.0.10-SNAPSHOT linkerd.yml
+```
+
+The list of image names may be changed with a command like:
+
+```
+> set imageNames in docker in (linkerd, Bundle) += ImageName("gcr.io/gce-project/linkerd:v"+version.value)
+...
+> show linkerd/bundle:docker::imageNames
+[info] List(io.buoyant/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
+```
+
+
 ### Running ###
 
 The `linkerd` project's packaging configurations may also be used to
