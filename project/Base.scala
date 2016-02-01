@@ -10,10 +10,22 @@ import scalariform.formatter.preferences._
  * Base project configuration.
  */
 class Base extends Build {
+  val headVersion = "0.0.10"
+
+  object Git {
+    val releaseTag = s"release-$headVersion"
+
+    def git(arg: String, args: String*) = Process("git" +: arg +: args)
+    val headRevision = git("rev-parse", "--short", "HEAD").!!.trim
+    val version = git("name-rev", "--tags", "--name-only", headRevision).!!.trim match {
+      case tag if tag == releaseTag => headVersion
+      case "undefined" => s"$headVersion-SNAPSHOT"
+    }
+  }
 
   val orgSettings = Seq(
     organization := "io.buoyant",
-    version := "0.0.10-SNAPSHOT",
+    version := Git.version,
     homepage := Some(url("https://linkerd.io"))
   )
 

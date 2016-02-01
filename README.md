@@ -21,6 +21,21 @@ Tumblr, PagerDuty, and others.
 For more information, please see [linkerd.io](https://linkerd.io).
 
 
+## Quickstart ##
+
+To get up and running quickly, run:
+
+```
+$ ./sbt examples/http:run
+...
+I 0201 21:17:41.992 THREAD52: serving http on localhost/127.0.0.1:4140
+```
+
+Then, you may browse to http://localhost:9990 to see an admin
+dashboard. Running `curl http://localhost:9990/admin/shutdown` will
+initiate a graceful shutdown of a running router.
+
+
 ## Working in this repository ##
 
 [sbt][sbt] is used to build and test linkerd. Developers should not
@@ -164,33 +179,52 @@ helpers for writing tests against Finagle's asynchronous APIs.
 
 ### Packaging ###
 
-Running the _package_ command produces jar artifacts for all projects:
+#### Building an executable ####
 
-```
-> package
-```
+linkerd provides a plugin system so that features may be chosen at
+packaging time.  To this end, there are multiple configurations for
+running and packaging linkerd executables.
 
-Furthermore, the _assembly_ plugin can be used to produce a so-called
-"fat jar", containing all library dependencies.  The `linkerd` project
-has several build configurations to support packaging:
+The _assembly_ plugin can be used to produce an executable containing
+all library dependencies.  The `linkerd` subproject has several build
+configurations to support packaging:
 
 ```
 > linkerd/assembly
 [info] SHA-1: 5599e65540ebe6122da114be4a8b9a763475b789
-[info] Packaging ...linkerd/target/scala-2.11/linkerd-0.0.8-SNAPSHOT.jar ...
+[info] Packaging ...linkerd/target/scala-2.11/linkerd-0.0.10-SNAPSHOT-exec ...
 [info] Done packaging.
 [success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
 ```
+
+##### _minimal_ build configuration #####
+
+The '_minimal_' sbt configuration, supporting only the `http` protocol
+and the `io.l5d.fs` namer, is useful for running linkerd during
+development. This configuration may be specified explicitly to scope
+build commands:
+
 ```
 > linkerd/minimal:assembly
-[info] Packaging .../target/scala-2.11/linkerd-minimal-0.0.8-SNAPSHOT.jar ...
+[info] Packaging ...linkerd/target/scala-2.11/linkerd-minimal-0.0.10-SNAPSHOT-exec ...
 [info] Done packaging.
 [success] Total time: 13 s, completed Jan 29, 2016 4:30:58 PM
 ```
 
-The '_minimal_' sbt configuration, supporting only the `http`
-protocol and the `io.l5d.fs` namer, is useful for running linkerd
-during development.
+#### Releasing ####
+
+By default, the _-SNAPSHOT_ suffix is appended to the version number
+when building linkerd.  In order to build a non-snapshot
+(i.e. releasable) version of linkerd, the build must occur from a
+release tag in git.
+
+For example, in order to build the 0.0.10 release of linkerd:
+
+1. Ensure that the current version is 0.0.10-SNAPSHOT
+2. `git tag release-0.0.10 && git push origin release-0.0.10`
+The _tag_ value must be in the form `release-`_version_.
+3. `./sbt assembly` will produce an executable in
+_linkerd/target/scala-2.11/linkerd-0.0.10-exec_.
 
 ### Running ###
 
