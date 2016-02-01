@@ -21,9 +21,6 @@ trait ConfigRegistrar {
  * @param validatedConfig Either a list of [[ConfigError]]s representing problems validating the configuration, or a
  *               [[LinkerConfig.Validated]] object which has been validated to initialize a linker.
  *
- * TODO: determine if we should consider a more specialized Validation type instead of Either, at the cost
- *       of bringing in a library dependency. (see https://non.github.io/cats//tut/validated.html, for instance).
- *       Alternately, we could use something like Finatra's validations or a JSR303 implementation.
  */
 case class ParseResult(
   parsedConfig: Option[LinkerConfig],

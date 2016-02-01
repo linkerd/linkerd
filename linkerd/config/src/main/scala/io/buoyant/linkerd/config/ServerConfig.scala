@@ -68,7 +68,6 @@ object ServerConfig {
     router: RouterConfig.Defaults,
     previousServers: Seq[ServerConfig.Defaults]
   ): ValidatedNel[ConfigError, Seq[ServerConfig.Validated]] = {
-    //TODO: implement validation checks, this just gets it to compile
     servers.map(_.withDefaults(router).validated(previousServers)).toList.sequenceU
   }
 }
