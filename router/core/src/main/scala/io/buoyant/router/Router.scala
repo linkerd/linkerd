@@ -244,21 +244,16 @@ object StackRouter {
   object Server {
     def newStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] =
       StackServer.newStack[Req, Rsp]
-        .replace(TraceInitializer.role, TraceInitializer.server[Req, Rsp])
   }
 
   object Client {
     /**
      * Modifies a client stack to be usable as a router Stack.
      *
-     * Ensures that trace initialization is configured to _not_
-     * initialize trace ids (since this is done on the serverside).
-     *
-     * TODO Replace RegistryEntryLifecycle.role with proper RoutingRegistry.
-     * TODO Just layout our own stack instead of modifying existing stacks.
+     * TODO Just layout our own stack instead of modifying existing stacks?
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      orig.replace(TraceInitializer.role, TraceInitializer.client[Req, Rsp])
+      orig
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
