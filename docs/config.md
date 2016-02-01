@@ -46,7 +46,7 @@ There are no requirements on field ordering, though it's generally
 good style to start a router with the _protocol_.
 
 The most minimal configuration looks something like the following,
-which forwards all requests on localhost:8080 to localhost:8888.
+which forwards all requests on `localhost:8080` to `localhost:8888`.
 
 ```yaml
 routers:
@@ -115,17 +115,23 @@ aggressively. Should not be used with small destination pools.
 <a name="protocol-http"></a>
 #### HTTP/1.1
 
-HTTP requests are routed by Host header, i.e. the Host header determines the
-_logical name_ of the server. (See [Basic concepts](#basic-concepts) for more
-on logical names.)
+HTTP requests are routed by a combination of Host header, method, and URI. Specifically, HTTP/1.0 logical names are of the form:
+```
+  dstPrefix / "1.0" / method [/ uri* ]
+```
+and HTTP/1.1 logical names are of the form:
+```
+  dstPrefix / "1.1" / method / host [/ uri* ]
+```
 
-The default _dstPrefix_ is `/http` so that requests
-receive destinations in the form _/http/VERSION/METHOD/HOST_.
+The default _dstPrefix_ is `/http`. In both cases, `uri` is only considered a part
+of the logical name if the config option `httpUriInDst` is true.
 
+Configuration optionns include:
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *httpUriInDst* -- If `true` http paths are appended to destinations
-(to allow path-prefix routing)
+(to allow path-prefix routing).
 
 <a name="protocol-thrift"></a>
 #### Thrift
@@ -344,7 +350,7 @@ baseDtab: |
 ### Kubernetes service discovery (experimental)
 
 linkerd provides support for service discovery via
-[Kubernetes](https://www.consul.io/). Note that this support is still considered
+[Kubernetes](https://k8s.io/). Note that this support is still considered
 experimental.
 
 The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and these parameters:
@@ -373,7 +379,7 @@ The Kubernetes namer takes three path components: `namespace`, `port-name` and
 `svc-name`:
 
 * namespace: the Kubernetes namespace.
-* port-name: the port of the service.
+* port-name: the port name.
 * svc-name: the name of the service.
 
 Once configured, to use the Kubernetes namer, you must reference it in
@@ -381,7 +387,7 @@ the dtab.
 ```
 baseDtab: |
   /host     => /$/io.l5d.fs;
-  /host     => /$/io.l5d.k8s/prod/1234;
+  /host     => /$/io.l5d.k8s/prod/http;
   /method   => /$/io.buoyant.http.anyMethodPfx/host;
   /http/1.1 => /method;
   /ext/http => /host/web;
@@ -402,5 +408,3 @@ Routing is described via a "delegation table", or **dtab**. As noted in
 
 For HTTP RPC calls, the "Dtab-local" header is interpreted by linkerd as an
 additional rule to be appended to the base dtab.
-
-More TBD.
