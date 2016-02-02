@@ -1,8 +1,12 @@
-import com.typesafe.sbt.SbtScalariform._
+import com.typesafe.sbt.SbtScalariform.{scalariformSettings => baseScalariformSettings, _}
 import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
+import sbtassembly.AssemblyPlugin.assemblySettings
 import sbtassembly.MergeStrategy
+import sbtdocker._
+import sbtdocker.DockerKeys._
+import sbtdocker.DockerSettings.baseDockerSettings
 import scala.language.implicitConversions
 import scalariform.formatter.preferences._
 
@@ -44,18 +48,55 @@ class Base extends Build {
     )
   )
 
-  val scalariformPrefs =
-    ScalariformKeys.preferences := ScalariformKeys.preferences.value.
-      setPreference(DoubleIndentClassDeclaration, false).
-      setPreference(PreserveSpaceBeforeArguments, false).
-      setPreference(SpacesAroundMultiImports,     false).
-      setPreference(SpacesWithinPatternBinders,   false)
+  val scalariformSettings = baseScalariformSettings ++ Seq(
+    ScalariformKeys.preferences := ScalariformKeys.preferences.value
+      .setPreference(DoubleIndentClassDeclaration, false)
+      .setPreference(PreserveSpaceBeforeArguments, false)
+      .setPreference(SpacesAroundMultiImports,     false)
+      .setPreference(SpacesWithinPatternBinders,   false)
+  )
 
   val EndToEndTest =
     config("e2e") extend Test
 
   val IntegrationTest =
     config("integration") extend Test
+
+  val defaultExecScript = Seq(
+    "#!/bin/sh",
+    // TODO detect plugins and add to classpath
+    """exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@";"""
+  )
+
+  val dockerJavaImage = settingKey[String]("base docker image, providing java.")
+
+  val appPackagingSettings = assemblySettings ++ baseDockerSettings ++ Seq(
+    assemblyJarName in assembly := s"${name.value}-${configuration.value}-${version.value}-exec",
+    assemblyMergeStrategy in assembly := {
+      case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
+      case path => (assemblyMergeStrategy in assembly).value(path)
+    },
+    assemblyOption in assembly := {
+      (assemblyOption in assembly).value.copy(
+        prependShellScript = Some(defaultExecScript))
+    },
+    docker <<= docker dependsOn (assembly in configuration),
+    dockerJavaImage := "library/java:openjdk-8-jre",
+    dockerfile in docker := new Dockerfile {
+      val root = s"/${organization.value}/${name.value}/${version.value}"
+      val exec = s"$root/${configuration.value}-exec"
+      from(dockerJavaImage.value)
+      run("mkdir", "-p", root)
+      workDir(root)
+      copy((assemblyOutputPath in assembly).value, exec)
+      entryPoint(exec)
+    },
+    imageName in docker := ImageName(
+      namespace = Some(organization.value),
+      repository = name.value,
+      tag = Some(s"${configuration.value}-${version.value}")
+    )
+  )
 
   val configFile = settingKey[File]("path to config file")
   val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
@@ -74,16 +115,16 @@ class Base extends Build {
   )
 
   // Helper method for constructing projects from directory structure
-  def projectDir(dir: String): Project = {
-    val id = dir.replaceAll("/", "-")
-    Project(id, file(dir))
-      .settings(name := id)
-      .settings(orgSettings)
-      .settings(scalaSettings)
-      .settings(resolverSettings)
-      .settings(scalariformSettings :+ scalariformPrefs)
-      .settings(aggregate in assembly := false)
-  }
+  def projectDir(dir: String): Project =
+    project(dir.replaceAll("/", "-"), file(dir))
+
+  def project(id: String, dir: File): Project = Project(id, dir)
+    .settings(name := id)
+    .settings(orgSettings)
+    .settings(scalaSettings)
+    .settings(resolverSettings)
+    .settings(scalariformSettings)
+    .settings(aggregate in assembly := false)
 
   /**
    * Test utilities (mostly for dealing with async APIs)
@@ -147,5 +188,5 @@ class Base extends Build {
         })
   }
 
-  implicit def pimpMyProject(p: Project): ProjectHelpers =  ProjectHelpers(p)
+  implicit def pimpMyProject(p: Project): ProjectHelpers = ProjectHelpers(p)
 }

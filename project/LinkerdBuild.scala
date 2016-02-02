@@ -2,8 +2,7 @@ import sbt._
 import sbt.Keys._
 import Keys._
 import sbtassembly.AssemblyKeys._
-import sbtassembly.AssemblyPlugin.assemblySettings
-import sbtassembly.MergeStrategy
+import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
 
 /**
@@ -123,44 +122,37 @@ object LinkerdBuild extends Base {
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
       .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
-      .settings(inConfig(Minimal)(assemblySettings ++ MinimalSettings))
+      .settings(inConfig(Minimal)(MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.serversets,
         Protocol.mux, Protocol.thrift)
-      .settings(inConfig(Bundle)(assemblySettings ++ BundleSettings))
-      // top level settings -- make `assembly` do `bundle:assembly`
-      .settings(assembly := (assembly in Bundle).value)
+      .settings(inConfig(Bundle)(BundleSettings))
+      .settings(
+        assembly <<= assembly in Bundle,
+        docker <<= docker in Bundle,
+        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
+        dockerPush <<= dockerPush in Bundle
+      )
   }
 
   /*
    * linkerd packaging configurations.
    *
-   * Linkerd is configured to be assembled into an executable.
+   * linkerd is configured to be assembled into an executable and may
+   * be assembled into a dockerfile.
    */
 
-  val execScript = Seq(
-    "#!/bin/sh",
-    // TODO detect plugins and add to classpath
-    """exec java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@""""
-  )
-
   val Minimal = config("minimal")
-  val MinimalSettings = Defaults.configSettings ++ Seq(
-    assemblyJarName := s"${name.value}-${configuration.value}-${version.value}-exec",
-    assemblyMergeStrategy in assembly := {
-      case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
-      case path => (assemblyMergeStrategy in assembly).value(path)
-    },
-    assemblyOption in assembly := (assemblyOption in assembly).value.copy(
-      prependShellScript = Some(execScript)),
+  val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
     mainClass := Some("io.buoyant.Linkerd")
   )
 
   val Bundle = config("bundle") extend Minimal
   val BundleSettings = MinimalSettings ++ Seq(
-    assemblyJarName in assembly := s"${name.value}-${version.value}-exec"
+    assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
+    imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
   )
 
   // Find example configurations by searching the examples directory for config files.
@@ -172,6 +164,7 @@ object LinkerdBuild extends Base {
     case "http" => Minimal
     case _ => Bundle
   }
+
   val examples = projectDir("examples")
     .withExamples(Linkerd.all, exampleConfigs)
 
@@ -198,11 +191,13 @@ object LinkerdBuild extends Base {
   val routerThriftIdl = Router.thriftIdl
 
   // Unified documentation via the sbt-unidoc plugin
-  val all = Project("all", file("."))
+  val all = project("all", file("."))
     .aggregate(k8s, consul, Linkerd.all, Router.all, testUtil)
     .settings(unidocSettings)
     .settings(
-      aggregate in assembly := false,
-      assembly := (assembly in (linkerd, Bundle)).value
+      assembly <<= assembly in linkerd,
+      docker <<= docker in linkerd,
+      dockerBuildAndPush <<= dockerBuildAndPush in linkerd,
+      dockerPush <<= dockerPush in linkerd
     )
 }
