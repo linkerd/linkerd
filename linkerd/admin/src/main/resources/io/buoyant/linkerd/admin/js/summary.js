@@ -25,12 +25,13 @@ $.when(
   var ifacesTemplate = Handlebars.compile(interfacesRsp[0]),
       summaryTemplate = Handlebars.compile(requestStatsRsp[0]),
       routers = Routers(metricsJson[0]),
+      namers = Namers(metricsJson[0]),
       server = BigBoard.findMostActiveServer(routers.data);
 
   $(function() {
     var procInfo = ProcInfo(),
         bigBoard = BigBoard(server, summaryTemplate),
-        interfaces = Interfaces(routers, ifacesTemplate);
+        interfaces = Interfaces(routers, namers, ifacesTemplate);
     procInfo.start(UPDATE_INTERVAL);
     bigBoard.start(UPDATE_INTERVAL);
     interfaces.start(UPDATE_INTERVAL);
@@ -189,7 +190,7 @@ var Interfaces = (function() {
         failures = iface.metrics["failures"] || 0,
         successRate = new SuccessRate(requests, success, failures);
     return {
-      name: iface.router +"/"+ iface.label,
+      name: (iface.router ? iface.router+"/" : "") + iface.label,
       requestsKey: iface.prefix + "requests",
       requests: requests,
       success: success,
@@ -220,7 +221,7 @@ var Interfaces = (function() {
     return sortBySuccess(servers.map(prepInterface));
   }
 
-  function renderInterfaces(routers, template) {
+  function renderInterfaces(routers, namers, template) {
     var servers = _(routers)
       .map('servers')
       .flatten()
@@ -231,16 +232,19 @@ var Interfaces = (function() {
       .flatten()
       .value();
 
-    $('#client-info').html(template({name:'clients', interfaces: prepClients(clients)}));
-    $('#server-info').html(template({name:'servers', interfaces: prepServers(servers)}));
+    var namerIfaces = _.map(namers, prepInterface);
+
+    $('#client-info').html(template({name:'router clients', interfaces: prepClients(clients)}));
+    $('#server-info').html(template({name:'router servers', interfaces: prepServers(servers)}));
+    $('#namer-info').html(template({name:'namer clients', interfaces: sortBySuccess(namerIfaces)}));
   }
 
   /**
    * Renders interfacs, and then returns a function that may be called
    * to trigger an update.
    */
-  return function(routers, template) {
-    renderInterfaces(routers.data, template);
+  return function(routers, namers, template) {
+    renderInterfaces(routers.data, namers.data, template);
     $(".interfaces").on("click", ".interface", function() {
       window.location = $(this).find("a").attr("href");
       return false;
@@ -253,7 +257,8 @@ var Interfaces = (function() {
         cache: false,
         success: function(metrics) {
           routers.update(metrics);
-          renderInterfaces(routers.data, template);
+          namers.update(metrics);
+          renderInterfaces(routers.data, namers.data, template);
         }
       });
     };
