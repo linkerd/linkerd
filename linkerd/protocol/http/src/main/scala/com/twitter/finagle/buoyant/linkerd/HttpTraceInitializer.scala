@@ -25,48 +25,43 @@ object HttpTraceInitializer {
   }
 
   /**
-   * The server reads the ctx header
-   * (`io.buoyant.router.Headers.Ctx.Key`) to load trace information.
+   * The server reads the ctx header ([Headers.Ctx.Key]) to load
+   * trace information.
    */
   object server extends Stack.Module1[param.Tracer, ServiceFactory[Request, Response]] {
     val role = HttpTraceInitializer.role
-    val description = "Attaches trace information to the outgoing request"
+    val description = "Reads trace information from incoming request"
 
-    class Filter(tracer: Tracer) extends SimpleFilter[Request, Response] {
+    class Filter(tracer0: Tracer) extends SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) = {
         val headers = req.headerMap
-
         val ctx = Headers.Ctx.get(headers)
         Headers.Ctx.clear(headers)
-        def withTracer[T](f: => T): T = ctx match {
+        val tracer = Headers.Sample.get(headers) match {
+          case Some(rate) => SampledTracer(rate, tracer0)
+          case _ => tracer0
+        }
+        Headers.Sample.clear(headers)
+
+        withTracer(tracer, ctx) {
+          setId(tracer, Trace.id) {
+            service(req)
+          }
+        }
+      }
+
+      private[this] def withTracer[T](tracer: Tracer, parent: Option[TraceId])(f: => T) =
+        parent match {
           case None => Trace.letTracer(tracer)(f)
           case Some(parent) => Trace.letTracerAndId(tracer, parent)(f)
         }
 
-        val sampledTracer = Headers.Sample.get(headers) match {
-          case Some(rate) => SampledTracer(rate, tracer)
-          case _ => tracer
+      private[this] def setId[T](tracer: Tracer, id0: TraceId)(f: => T) = {
+        val id = id0.sampled match {
+          case Some(s) => id0
+          case None => id0.copy(_sampled = tracer.sampleTrace(id0))
         }
-        Headers.Sample.clear(headers)
-
-        def withTraceId[T](f: => T): T = {
-          val id = Trace.nextId
-          val sampledId = id.sampled match {
-            case None => id.copy(_sampled = sampledTracer.sampleTrace(id))
-            case Some(_) => id
-          }
-          Trace.letId(sampledId)(f)
-        }
-
-        // TODO remove Wire annotations after twitter/finagle#401 lands.
-        withTracer {
-          withTraceId {
-            Trace.record(Annotation.WireRecv)
-            service(req) onSuccess { _ =>
-              Trace.record(Annotation.WireSend)
-            }
-          }
-        }
+        Trace.letId(id)(f)
       }
     }
 
@@ -77,7 +72,7 @@ object HttpTraceInitializer {
   }
 
   /**
-   * So, on the client side, we only set headers and do no initialization.
+   * So, on the client side, we set headers after initializing a new context.
    */
   object client extends Stack.Module1[param.Tracer, ServiceFactory[Request, Response]] {
     val role = HttpTraceInitializer.role
@@ -85,7 +80,7 @@ object HttpTraceInitializer {
 
     class Filter(tracer: Tracer) extends SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) =
-        Trace.letTracer(tracer) {
+        Trace.letTracerAndNextId(tracer) {
           Headers.Ctx.set(req.headerMap, Trace.id)
           Headers.RequestId.set(req.headerMap, Trace.id.traceId)
           service(req)

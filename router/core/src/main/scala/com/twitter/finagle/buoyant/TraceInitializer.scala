@@ -7,9 +7,8 @@ object TraceInitializer {
   val role = TraceInitializerFilter.role
 
   def server[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-    new TraceInitializerFilter.Module[Req, Rsp](newId = true)
-
-  def client[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
     new TraceInitializerFilter.Module[Req, Rsp](newId = false)
 
+  def client[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    new TraceInitializerFilter.Module[Req, Rsp](newId = true)
 }
