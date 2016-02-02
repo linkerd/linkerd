@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.jsontype.NamedType
 import io.buoyant.linkerd.config._
 import cats.data.Validated._
 
-
 case class HttpRouterConfig(
   httpUriInDst: Option[Boolean],
   servers: Option[Seq[BaseServerConfig]]

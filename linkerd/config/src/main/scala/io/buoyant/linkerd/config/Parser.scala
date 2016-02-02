@@ -31,10 +31,8 @@ object Parser {
   def apply(s: String): ParseResult = {
     val baseCfg: ValidatedNel[ConfigError, Impl] = Validated.catchNonFatal {
       objectMapper(s).readValue[LinkerConfig.Impl](s)
-    }.bimap(
-      ConfigError.transform,
-      identity
-    ).toValidatedNel
+    }.leftMap(ConfigError.transform)
+
 
     ParseResult(
       baseCfg.toOption,

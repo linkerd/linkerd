@@ -1,6 +1,5 @@
 package io.buoyant.linkerd.config
 
-import cats.data
 import cats.data.{NonEmptyList, ValidatedNel}
 import cats.data.Validated._
 import cats.implicits._
@@ -68,13 +67,13 @@ object RouterConfig {
     def servers: Seq[ServerConfig] = base.servers getOrElse Seq(base.defaultServer)
 
     def validated(others: Seq[RouterConfig.Defaults]): ValidatedNel[ConfigError, RouterConfig.Validated] = {
-      def validatedBaseDtab: ValidatedNel[ConfigError, Dtab] =
+      def validatedBaseDtab: ValidatedNel[ConfigError, Dtab] = {
         catchOnly[IllegalArgumentException] {
           Dtab.read(baseDtab)
-        }.bimap(
-          { ex => InvalidDtab(baseDtab, ex) },
-          identity
-        ).toValidatedNel
+        }.leftMap { ex =>
+          NonEmptyList(InvalidDtab(baseDtab, ex))
+        }
+      }
 
       def validatedLabel: ValidatedNel[ConfigError, String] =
         if (others.exists(_.label == label))
@@ -89,12 +88,12 @@ object RouterConfig {
         server <- router.servers
       } yield server.withDefaults(this)
 
-      ( validatedLabel |@|
+      (validatedLabel |@|
         validatedBaseDtab |@|
         protocol.validated |@|
         ServerConfig.validateServers(servers, this, prevServers)).map {
-        case (l, dt, pr, srv) => new Validated(l, failFast, dt, pr, srv)
-      }
+          case (l, dt, pr, srv) => new Validated(l, failFast, dt, pr, srv)
+        }
     }
   }
 

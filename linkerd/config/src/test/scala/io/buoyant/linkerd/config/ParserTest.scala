@@ -4,7 +4,8 @@ import java.net.{InetAddress, InetSocketAddress}
 
 import cats.data.{ValidatedNel, NonEmptyList}
 import cats.implicits._
-import io.buoyant.linkerd.config.ServerConfig.Validated
+import com.twitter.finagle.Path
+import io.buoyant.linkerd.config.namers.FileSystemNamerConfig
 import org.scalatest.FunSuite
 import io.buoyant.linkerd.config.http._
 import io.buoyant.linkerd.config.thrift._
@@ -12,6 +13,10 @@ import io.buoyant.linkerd.config.thrift._
 class ParserTest extends FunSuite {
   val YamlConfig = """
 baseDtab: /foo => /bar ;
+
+namers:
+  - kind: io.l5d.fs
+    rootDir: /tmp
 
 routers:
   - protocol: http
@@ -72,11 +77,21 @@ routers:
     assert(defaultedRouter.servers.head.addr.getPort == 0)
   }
 
+  test("filesystem namer") {
+    val baseNamer = baseConfig.namers.get.head.asInstanceOf[FileSystemNamerConfig]
+    assert(baseNamer.rootDir == Some("/tmp"))
+
+    val validatedNamer = validatedConfig.namers.head
+    assert(validatedNamer.prefix == Path.read("/io.l5d.fs"))
+    val proto = validatedNamer.protocol.asInstanceOf[FileSystemNamerConfig.ValidatedProtocol]
+    assert(proto.rootDir == java.nio.file.Paths.get("/tmp"))
+  }
+
   // validation tests begin here
 
   def extractErrors(cfg: ValidatedNel[ConfigError, LinkerConfig.Validated]): List[ConfigError] =
     cfg.fold(
-      { errs => errs },
+      identity,
       { _ => fail("error expected") }
     ).unwrap
 
