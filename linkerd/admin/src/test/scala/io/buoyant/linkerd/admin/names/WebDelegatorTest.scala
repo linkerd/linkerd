@@ -3,11 +3,31 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.http._
 import com.twitter.util._
+import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import java.net.{URLEncoder, InetSocketAddress}
 import org.scalatest.FunSuite
 
 class WebDelegatorTest extends FunSuite with Awaits {
+
+  def parse(
+    yaml: String,
+    protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
+    namers: NamerInitializers = NamerInitializers(new TestNamer)
+  ) = Linker.mk(protos, namers).read(Yaml(yaml))
+
+  val linker = parse("""
+namers:
+- kind: io.buoyant.linkerd.TestNamer
+
+routers:
+- protocol: plain
+  servers:
+  - port: 1
+- protocol: fancy
+  servers:
+  - port: 2
+""")
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;
@@ -18,7 +38,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   """)
 
   test("/delegate response") {
-    val web = new WebDelegator()
+    val web = new WebDelegator(linker)
     val req = Request()
     req.uri = s"/delegate?n=/boo/humbug&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
@@ -35,7 +55,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   }
 
   test("invalid path results in 400") {
-    val web = new WebDelegator()
+    val web = new WebDelegator(linker)
     val req = Request()
     req.uri = s"/delegate?n=invalid-param&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
@@ -43,7 +63,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   }
 
   test("invalid dtab results in 400") {
-    val web = new WebDelegator()
+    val web = new WebDelegator(linker)
     val req = Request()
     req.uri = s"/delegate?n=/boo/humbug&d=invalid-param"
     val rsp = await(web(req))
