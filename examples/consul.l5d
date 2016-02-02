@@ -1,0 +1,15 @@
+namers:
+- kind: io.l5d.experimental.consul
+  prefix: /consul
+
+routers:
+- protocol: http
+  baseDtab: |
+    /host     => /consul/dc1;
+    /method   => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1 => /method;
+
+  httpUriInDst: true
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
