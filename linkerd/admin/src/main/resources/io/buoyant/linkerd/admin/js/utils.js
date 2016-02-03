@@ -128,6 +128,10 @@ function UpdateableChart(userOpts, canvas, widthFn) {
 }
 
 UpdateableChart.prototype.setMetric = function(metric) {
+  this.setMetrics([metric]);
+}
+
+UpdateableChart.prototype.setMetrics = function(metrics) {
   clearTimeout(this.timeout);
 
   if (this.ts !== undefined) {
@@ -143,31 +147,31 @@ UpdateableChart.prototype.setMetric = function(metric) {
     }
   );
 
-  this._getMetric(metric);
+  this._getMetrics(metrics);
 }
 
 UpdateableChart.prototype._resize = function() {
   this.canvas.width = this.widthFn();
 }
 
-UpdateableChart.prototype._getMetric = function(metric) {
+UpdateableChart.prototype._getMetrics = function(metrics) {
   $.ajax({
-    url: "/admin/metrics?m=" + metric,
+    url: "/admin/metrics?" + $.param({m: metrics}, true), //use shallow/traditional encoding
     dataType: "json",
     cache: false,
     success: (function(data) {
-      if (data[0] !== undefined) {
-        this.ts.append(new Date().getTime(), data[0].delta);
+      if (data.length) {
+        this.ts.append(new Date().getTime(), _.sumBy(data, 'delta'));
       }
       $(this.canvas).trigger(
         "stat",
         [
-          metric,
-          data[0] && data[0].delta
+          metrics,
+          _.sumBy(data, 'delta')
         ]
       );
 
-      this.timeout = setTimeout(this._getMetric.bind(this, metric), 1000);
+      this.timeout = setTimeout(this._getMetrics.bind(this, metrics), 1000);
     }).bind(this)
   });
 }

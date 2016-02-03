@@ -14,7 +14,7 @@ Handlebars.registerHelper('pluralize', function(number, single, plural) {
 /*
  * There are 3 segments of the summary page:
  * - ProcInfo: a top-line set of info about linkerd's build/runtime
- * - BigBoard: a big chart and set of stats about the most active server
+ * - BigBoard: a big chart and set of stats about all servers
  * - Interfaces: client and server widgets
  */
 $.when(
@@ -26,11 +26,11 @@ $.when(
       summaryTemplate = Handlebars.compile(requestStatsRsp[0]),
       routers = Routers(metricsJson[0]),
       namers = Namers(metricsJson[0]),
-      server = BigBoard.findMostActiveServer(routers.data);
+      servers = BigBoard.getAllServers(routers.data);
 
   $(function() {
     var procInfo = ProcInfo(),
-        bigBoard = BigBoard(server, summaryTemplate),
+        bigBoard = BigBoard(servers, summaryTemplate),
         interfaces = Interfaces(routers, namers, ifacesTemplate);
     procInfo.start(UPDATE_INTERVAL);
     bigBoard.start(UPDATE_INTERVAL);
@@ -92,7 +92,7 @@ var ProcInfo = (function() {
 })();
 
 /**
- * Big summary board of "most active" server (by number of requests)
+ * Big summary board of server requests
  */
 var BigBoard = (function() {
   var summaryKeys = ['load', 'failures', 'success', 'requests'],
@@ -107,14 +107,14 @@ var BigBoard = (function() {
   /**
    * Returns a function that may be called to trigger an update.
    */
-  var init = function(server, template) {
-    // set up primary server requests chart
-    chart.setMetric(server.prefix + "requests");
+  var init = function(servers, template) {
+    // set up requests chart
+    chart.setMetrics(_.map(servers, function(server) { return server.prefix + "requests"; }));
 
-    // set up primary server metrics
-    $('#request-stats').html(template({server: server, keys: summaryKeys}));
+    // set up metrics
+    $('#request-stats').html(template({keys: summaryKeys}));
 
-    // store primary server metric dom elements
+    // store metric dom elements
     var metrics = {};
     $("#request-stats dd").each(function(i) {
       var key = $(this).data("key");
@@ -123,16 +123,23 @@ var BigBoard = (function() {
       }
     });
 
-    var url = "/admin/metrics?m="+Object.keys(metrics).join("&m=");
+    var metricsParams = _(servers).map(function(server) {
+      return _.map(summaryKeys, function(key) {
+        return server.prefix + key;
+      });
+    }).flatten().value();
+
+    var url = "/admin/metrics?" + $.param({m: metricsParams}, true);
     function update() {
       $.ajax({
         url: url,
         dataType: "json",
         cache: false,
         success: function(data) {
-          for (var i = 0; i < data.length; i++) {
-            metrics[data[i].name].text(data[i].delta);
-          }
+          _.map(summaryKeys, function(key) {
+            var filteredResponses = _.filter(data, function(d){ return d.name.indexOf(key) > 0 });
+            metrics[key].text(_.sumBy(filteredResponses, 'delta'));
+          });
         }
       });
     };
@@ -144,13 +151,11 @@ var BigBoard = (function() {
   };
 
   /** Helper */
-  init.findMostActiveServer = function(routers) {
-    var allServers = _(routers)
+  init.getAllServers = function(routers) {
+    return _(routers)
       .values()
       .flatMap('servers')
       .value();
-
-    return _.maxBy(allServers, 'metrics.requests');
   };
 
   return init;
