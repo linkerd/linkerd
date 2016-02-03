@@ -1,4 +1,4 @@
 {{#each keys}}
-  <dt><a href="/metrics#{{../server.prefix}}{{@this}}">{{@this}}</a></dt>
-  <dd data-key="{{../server.prefix}}{{@this}}">...</dd>
+  <dt>{{@this}}</dt>
+  <dd data-key="{{@this}}">...</dd>
 {{/each}}
