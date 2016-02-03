@@ -2,7 +2,6 @@ package io.buoyant.linkerd.config
 
 import cats.data.{NonEmptyList, ValidatedNel}
 import cats.data.Validated._
-import cats.implicits._
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.twitter.finagle.Path
 
@@ -42,12 +41,14 @@ object NamerConfig {
   class Defaults(base: NamerConfig, protocol: NamerProtocol, linker: LinkerConfig) {
     def prefix: Option[String] = base.prefix orElse protocol.defaultPrefix
     def validated: ValidatedNel[ConfigError, NamerConfig.Validated] = {
+      import cats.syntax.cartesian._
+      import cats.std.list._
       def validatedPrefix: ValidatedNel[ConfigError, Path] = {
         prefix.fold(invalidNel[ConfigError, Path](MissingPath)) { pathStr =>
-          catchOnly[IllegalArgumentException] {
-            Path.read(pathStr)
-          }.leftMap { ex =>
-            NonEmptyList(InvalidPath(pathStr, ex))
+          try {
+            valid(Path.read(pathStr))
+          } catch {
+            case ex: IllegalArgumentException => invalidNel(InvalidPath(pathStr, ex))
           }
         }
       }

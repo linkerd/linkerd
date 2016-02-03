@@ -2,7 +2,6 @@ package io.buoyant.linkerd.config
 
 import cats.data.Validated._
 import cats.data.ValidatedNel
-import cats.implicits._
 
 trait LinkerConfig {
   def baseDtab: Option[String]
@@ -12,6 +11,9 @@ trait LinkerConfig {
 
   // Currently, the only thing we require of a Linker is that it has at least one Router configured.
   def validated: ValidatedNel[ConfigError, LinkerConfig.Validated] = {
+    import cats.syntax.cartesian._
+    import cats.syntax.traverse._
+    import cats.std.list._
     def validatedRouters = routers
       .filter { _.nonEmpty }
       .map(RouterConfig.validateRouters(this))

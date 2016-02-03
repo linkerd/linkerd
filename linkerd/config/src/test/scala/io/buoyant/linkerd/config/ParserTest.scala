@@ -2,13 +2,14 @@ package io.buoyant.linkerd.config
 
 import java.net.{InetAddress, InetSocketAddress}
 
-import cats.data.{ValidatedNel, NonEmptyList}
-import cats.implicits._
+import cats.data.ValidatedNel
+import cats.std.list._
 import com.twitter.finagle.Path
 import io.buoyant.linkerd.config.namers.FileSystemNamerConfig
 import org.scalatest.FunSuite
 import io.buoyant.linkerd.config.http._
 import io.buoyant.linkerd.config.thrift._
+
 
 class ParserTest extends FunSuite {
   val YamlConfig = """

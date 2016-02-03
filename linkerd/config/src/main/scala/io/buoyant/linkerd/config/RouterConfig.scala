@@ -2,7 +2,6 @@ package io.buoyant.linkerd.config
 
 import cats.data.{NonEmptyList, ValidatedNel}
 import cats.data.Validated._
-import cats.implicits._
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.twitter.finagle.{Dtab, Stack}
@@ -60,6 +59,9 @@ trait RouterProtocol {
 }
 
 object RouterConfig {
+  import cats.syntax.cartesian._
+  import cats.std.list._
+
   class Defaults(base: RouterConfig, protocol: RouterProtocol, linker: LinkerConfig) {
     def label: String = base.label getOrElse protocol.name
     def failFast: Boolean = base.failFast orElse linker.failFast getOrElse false
@@ -67,11 +69,13 @@ object RouterConfig {
     def servers: Seq[ServerConfig] = base.servers getOrElse Seq(base.defaultServer)
 
     def validated(others: Seq[RouterConfig.Defaults]): ValidatedNel[ConfigError, RouterConfig.Validated] = {
+
+
       def validatedBaseDtab: ValidatedNel[ConfigError, Dtab] = {
-        catchOnly[IllegalArgumentException] {
-          Dtab.read(baseDtab)
-        }.leftMap { ex =>
-          NonEmptyList(InvalidDtab(baseDtab, ex))
+        try {
+          valid(Dtab.read(baseDtab))
+        } catch {
+          case ex: IllegalArgumentException => invalidNel(InvalidDtab(baseDtab, ex))
         }
       }
 

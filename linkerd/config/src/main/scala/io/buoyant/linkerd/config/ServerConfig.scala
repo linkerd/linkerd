@@ -4,7 +4,6 @@ import java.net.{InetAddress, InetSocketAddress}
 
 import cats.data.{NonEmptyList, OneAnd, ValidatedNel}
 import cats.data.Validated._
-import cats.implicits._
 import com.google.common.net.InetAddresses
 
 trait ServerConfig {
@@ -68,6 +67,8 @@ object ServerConfig {
     router: RouterConfig.Defaults,
     previousServers: Seq[ServerConfig.Defaults]
   ): ValidatedNel[ConfigError, Seq[ServerConfig.Validated]] = {
+    import cats.std.list._
+    import cats.syntax.traverse._
     servers.map(_.withDefaults(router).validated(previousServers)).toList.sequenceU
   }
 }
