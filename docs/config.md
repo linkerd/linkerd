@@ -115,7 +115,8 @@ aggressively. Should not be used with small destination pools.
 <a name="protocol-http"></a>
 #### HTTP/1.1
 
-HTTP requests are routed by a combination of Host header, method, and URI. Specifically, HTTP/1.0 logical names are of the form:
+HTTP requests are routed by a combination of Host header, method, and URI.
+Specifically, HTTP/1.0 logical names are of the form:
 ```
   dstPrefix / "1.0" / method [/ uri* ]
 ```
@@ -219,12 +220,13 @@ linkerd ships with a simple file-based service discovery mechanism, called the
 *file-based namer*. This system is intended to act as a structured form of
 basic host lists.
 
-While simple, the file-based namer is a full-fledged service discovery system
-and can be used in production systems where host configurations are largely
-static. Since its easy to modify, it is also convenient starting point for
-systems that want to upgrade to a dedicated service discovery endpoint.
-Finally, when chained with precedence rules, it can also be a convenient way to
-add local service discovery overrides for debugging or experimental purposes.
+While simple, the file-based namer is a full-fledged service discovery system,
+and can be useful in production systems where host configurations are largely
+static. It can act as an upgrade path for the introduction of an external
+service discovery system, since application code will be isolated from these
+changes. Finally, when chained with precedence rules, the file-based namer can
+be a convenient way to add local service discovery overrides for debugging or
+experimentation.
 
 This service discovery mechanism is tied to the directory set by the
 `namers/rootDir` key in `config.yaml`. This directory must be on the local
