@@ -6,7 +6,7 @@ indicate that the configuration should be read from the standard input.
 For convenience, the release package includes a default `linkerd.yaml` file in
 the `config/` directory.
 
-## Format
+## File Format
 
 The configuration may be specified as a JSON or YAML object, as described
 below.
@@ -46,7 +46,7 @@ There are no requirements on field ordering, though it's generally
 good style to start a router with the _protocol_.
 
 The most minimal configuration looks something like the following,
-which forwards all requests on localhost:8080 to localhost:8888.
+which forwards all requests on `localhost:8080` to `localhost:8888`.
 
 ```yaml
 routers:
@@ -56,7 +56,7 @@ routers:
   - port: 8080
 ```
 
-## Admin
+## Administrative interface
 
 linkerd supports an administrative interface, both as a web ui and a collection
 of json endpoints. The exposed admin port is configurable via a top-level
@@ -65,6 +65,7 @@ of json endpoints. The exposed admin port is configurable via a top-level
 * *admin* -- Config section for the admin interface, contains keys:
   * *port* -- Port for the admin interface (default is `9990`)
 
+For example:
 ```yaml
 admin:
   port: 9990
@@ -74,9 +75,9 @@ admin:
 
 All configurations must define a **routers** key, the value of which
 must be an array of router configurations. Each router implements RPC
-for a supported protocol. linkerd doesn't need to understand the payload
-in an RPC call, but it does need enough protocol support to determine the
-logical name of the destination.
+for a supported protocol. (linkerd doesn't need to understand the payload in an
+RPC call, but it does need to know enough about the protocol to determine the
+logical name of the destination.)
 
 Routers also include **servers**, which define their entry points.
 
@@ -114,17 +115,24 @@ aggressively. Should not be used with small destination pools.
 <a name="protocol-http"></a>
 #### HTTP/1.1
 
-HTTP requests are routed by Host header, i.e. the Host header determines the
-_logical name_ of the server. (See [Basic concepts](https://linkerd.io/doc/latest/userguide/#basic-concepts) for more
-on logical names.)
+HTTP requests are routed by a combination of Host header, method, and URI.
+Specifically, HTTP/1.0 logical names are of the form:
+```
+  dstPrefix / "1.0" / method [/ uri* ]
+```
+and HTTP/1.1 logical names are of the form:
+```
+  dstPrefix / "1.1" / method / host [/ uri* ]
+```
 
-The default _dstPrefix_ is `/http` so that requests
-receive destinations in the form _/http/VERSION/METHOD/HOST_.
+The default _dstPrefix_ is `/http`. In both cases, `uri` is only considered a part
+of the logical name if the config option `httpUriInDst` is true.
 
+Configuration optionns include:
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *httpUriInDst* -- If `true` http paths are appended to destinations
-(to allow path-prefix routing)
+(to allow path-prefix routing).
 
 <a name="protocol-thrift"></a>
 #### Thrift
@@ -178,22 +186,21 @@ The default _port_ is 4114.
 * *thriftMethodInDst* -- if `true`, thrift method names are appended to
   destinations.
 
-
 #### Mux (experimental)
 
 The default _port_ is 4141.
 
-## Configuring service discovery and naming
+## Service discovery and naming
 
-linkerd currently supports file-based, ZooKeeper, and Consul service discovery
-mechanisms. (An upcoming release will add support for etcd.)
+linkerd supports a variety of common service discovery backends, including
+ZooKeeper and Consul. linkerd provides abstractions on top of service discovery
+lookups that allow the use of arbitrary numbers of service discovery backends,
+and for precedence and failover rules to be expressed between them. This logic
+is governed by the [routing](#routing) configuration.
 
-Service discovery access is controlled by linkerd's routing configuration. This
-gives linkerd the ability to access multiple service discovery mechanisms and to
-express precedence and failover logic between them. See [Routing](#routing) for more.
-
-Naming and service discovery are configured via the `namers` section of the configuration
-file. `namers` is an array of objects, consisting of the following parameters:
+Naming and service discovery are configured via the `namers` section of the
+configuration file. In this file, `namers` is an array of objects, consisting
+of the following parameters:
 
 * *kind* -- One of the supported namer plugins, by fully-qualified class name.
   Current plugins include:
@@ -204,56 +211,81 @@ file. `namers` is an array of objects, consisting of the following parameters:
 * *prefix* -- This namer will resolve names beginning with this prefix. See
   [Configuring routing](#configuring-routing) for more on names. Some namers may
   configure a default prefix; see the specific namer section for details.
-* *namer-specific parameters* -- See the namer sections below.
+* *namer-specific parameters*.
 
 <a name="disco-file"></a>
 ### File-based service discovery
 
-linkerd ships with a basic file-based service discovery mechanism, suitable for
-simple configurations.
+linkerd ships with a simple file-based service discovery mechanism, called the
+*file-based namer*. This system is intended to act as a structured form of
+basic host lists.
 
-This service discovery mechanism is tied to a directory, determined by the
+While simple, the file-based namer is a full-fledged service discovery system,
+and can be useful in production systems where host configurations are largely
+static. It can act as an upgrade path for the introduction of an external
+service discovery system, since application code will be isolated from these
+changes. Finally, when chained with precedence rules, the file-based namer can
+be a convenient way to add local service discovery overrides for debugging or
+experimentation.
+
+This service discovery mechanism is tied to the directory set by the
 `namers/rootDir` key in `config.yaml`. This directory must be on the local
-filesystem and relative to linkerd's start path. linkerd watches all files in
-this directory, with a 10-second refresh time.
+filesystem and relative to linkerd's start path. Every file in this directory
+corresponds to a service, where the name of the file is the service's _concrete
+name_, and the contents of the file must be a newline-delimited set of
+addresses.
 
-Each file in the config directory corresponds to a service, where the name of
-the file is the service's _concrete name_, and the contents of the file must be
-a newline-delimited set of "physical" endpoints.
-
-For instance, if you are using linkerd to route traffic to three different
-services, then your `disco/` directory might look like this:
+For example, the directory might look like this:
 
 ```bash
 $ ls disco/
 apps    users   web
 ```
-And the contents of one of the files might look like this:
+And the contents of the files might look like this:
 
 ```bash
 $ cat config/web
-10.187.245.220 9999
-10.187.137.105 9999
-10.187.94.210 9999
+192.0.2.220 8080
+192.0.2.105 8080
+192.0.2.210 8080
 ```
-Filesystem namer parameters:
 
-The default _prefix_ is `io.l5d.fs`.
+linkerd watches all files in this directory, so files can be added, removed, or
+updated, and linkerd will pick up the changes automatically.
+
+The file-based namer is configured with kind `io.l5d.fs`, and these parameters:
 
 * *rootDir* -- the directory containing name files as described above.
+
+For example:
+```yaml
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
+```
+
+The default _prefix_ for the file-based namer is `io.l5d.fs`.
+
+Once configured, to use the file-based namer, you must reference it in
+the dtab. For example:
+```
+baseDtab: |
+  /http/1.1/GET => /io.l5d.fs
+```
 
 <a name="zookeeper"></a>
 ### ZooKeeper ServerSets service discovery
 
-ZooKeeper namer parameters:
+linkerd provides support for [ZooKeeper
+ServerSets]:(https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
-The default _prefix_ is `io.l5d.serversets`.
+The ServerSets namer is configured with kind `io.l5d.serversets`, and these parameters:
 
 * *zkAddrs* -- list of ZooKeeper hosts.
 * *host* --  the ZooKeeper host.
 * *port* --  the ZooKeeper port.
 
-Example config:
+For example:
 ```yaml
 namers:
 - kind: io.l5d.serversets
@@ -262,48 +294,105 @@ namers:
     port: 2181
 ```
 
+The default _prefix_ is `io.l5d.serversets`.
+
+Once configured, to use the ServerSets namer, you must reference it in
+the dtab. For example:
+```
+baseDtab: |
+  /http/1.1/GET => /io.l5d.serversets/discovery/prod;
+```
+
 <a name="consul"></a>
 ### Consul service discovery (experimental)
 
-An experimental namer for [Consul](https://www.consul.io/)-based systems.
+linkerd provides support for service discovery via
+[Consul](https://www.consul.io/). Note that this support is still considered
+experimental.
 
-Consul namer parameters:
-
-The default _prefix_ is `io.l5d.consul`.
+The Consul namer is configured with kind `io.l5d.experimental.consul`, and these parameters:
 
 * *host* --  the Consul host. (default: localhost)
 * *port* --  the Consul port. (default: 8500)
 
+For example:
+```yaml
+namers:
+- kind: io.l5d.experimental.consul
+  - host: 127.0.0.1
+    port: 2181
+```
+
+The default _prefix_ is `io.l5d.consul`. (Note that this is *different* from
+the name in the configuration block.)
+
+Once configured, to use the Consul namer, you must reference it in
+the dtab. The Consul namer takes one parameter in its path, which is the Consul
+datacenter. For example:
+```
+baseDtab: |
+  /http/1.1/GET =>  /io.l5d.consul/dc1;
+```
+
 <a name="disco-k8s"></a>
 ### Kubernetes service discovery (experimental)
 
-An experimental namer for [Kubernetes](http://kubernetes.io/)-based systems.
+linkerd provides support for service discovery via
+[Kubernetes](https://k8s.io/). Note that this support is still considered
+experimental.
 
-Kubernetes namer parameters:
+The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and these parameters:
 
-The default _prefix_ is `io.l5d.k8s`.
-
-* *host* --  the Kubernetes master host. (default: kubernetes.default.cluster.local)
-* *port* --  the Kubernetes master port. (default: 443)
-* *tls* --  Whether TLS should be used in communicating with the Kubernetes master. (default: true)
+* *host* -- the Kubernetes master host. (default: kubernetes.default.cluster.local)
+* *port* -- the Kubernetes master port. (default: 443)
+* *tls* -- Whether TLS should be used in communicating with the Kubernetes master. (default: true)
 * *tlsWithoutValidation* -- Whether certificate-checking should be disabled. (default: false)
 * *authTokenFile* -- Path to a file containing the Kubernetes master's authorization token.
   (default: /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+For example:
+```yaml
+namers:
+- kind: io.l5d.experimental.k8s
+  - host: kubernetes.default.cluster.local
+    port: 443
+    tls: true
+    authTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+```
+
+The default _prefix_ is `io.l5d.k8s`. (Note that this is *different* from
+the name in the configuration block.)
+
+The Kubernetes namer takes three path components: `namespace`, `port-name` and
+`svc-name`:
+
+* namespace: the Kubernetes namespace.
+* port-name: the port name.
+* svc-name: the name of the service.
+
+Once configured, to use the Kubernetes namer, you must reference it in
+the dtab.
+```
+baseDtab: |
+  /http/1.1/GET => /io.l5d.k8s/prod/http;
+```
 
 <a name="configuring-routing"></a>
 ## Configuring routing
 
 Routing rules determine the mapping between a service's logical name and a
-concrete name. (See [Basic concepts](#basic-concepts) for more.)
-
-Routing is described via a "delegation table", or **dtab**. As noted in
-[basic router parameters](#basic-router-params), this is configured via the
-`baseDtab` parameter in the configuration object.
+concrete name. Routing is described via a "delegation table", or **dtab**. As
+noted in [basic router parameters](#basic-router-params), this is configured
+via the `baseDtab` section of the configuration file.
 
 <a name="routing-overrides"></a>
 ### Per-request routing overrides
 
-For HTTP RPC calls, the "Dtab-local" header is interpreted by linkerd as an
-additional rule to be appended to the base dtab.
+For HTTP calls, the `Dtab-local` header is interpreted by linkerd as an
+additional rule to be appended to the base dtab. Since dtab rules are applied
+from bottom to top, this allows overriding of the routing rules specified
+`baseDtab` for this request.
 
-More TBD.
+Note that linkerd copies this header to the outgoing (proxied) RPC call. In
+this manner, override logic can be propagated through the entire call graph for
+the request.
