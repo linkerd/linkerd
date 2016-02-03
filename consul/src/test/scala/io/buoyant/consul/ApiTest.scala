@@ -1,5 +1,6 @@
 package io.buoyant.consul.v1
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Response, Request}
 import com.twitter.io.Buf
@@ -13,6 +14,8 @@ class ApiTest extends FunSuite with Awaits {
   val nodesBuf = Buf.Utf8("""[{"Node":"Sarahs-MBP-2","Address":"192.168.1.37","ServiceID":"hosted_web","ServiceName":"hosted_web","ServiceTags":["master"],"ServiceAddress":"","ServicePort":8084}]""")
   val mapBuf = Buf.Utf8("""{"consul":[],"hosted_web":["master"],"redis":[]}""")
   var lastUri = ""
+
+  override val defaultWait = 2.seconds
 
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
