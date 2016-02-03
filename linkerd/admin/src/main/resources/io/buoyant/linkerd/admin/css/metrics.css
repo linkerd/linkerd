@@ -1,5 +1,7 @@
-body {
-  padding-top: 64px;
+.metrics {
+  position: fixed;
+  width: 100%;
+  top: 64px;
 }
 
 .metrics-names {
@@ -9,7 +11,7 @@ body {
 .metrics-list {
   margin-bottom: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  max-height: calc(100vh - 100px);
 }
 
 .metrics-list li {

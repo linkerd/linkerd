@@ -14,21 +14,6 @@ private object MetricsHandler extends Service[Request, Response] {
     AdminHandler.adminHtml(
       content = s"""
         <div class="metrics">
-          <div class="row">
-            <div class="metrics-names col-sm-3"></div>
-            <div class="metrics-graph col-sm-9">
-              <div id="metrics-title">
-                <div class="metrics-json">
-                  <span>Raw data: </span>
-                  <a href="/admin/metrics.json">/admin/metrics.json</a>
-                </div>
-                <span class="name">&nbsp;</span>
-                <span class="value stat">&nbsp;</span>
-              </div>
-              <canvas id="metrics-canvas" height="300"></canvas>
-            </div>
-          </div>
-
         </div>
       """,
       javaScripts = Seq("lib/smoothie.js", "utils.js", "metrics.js"),

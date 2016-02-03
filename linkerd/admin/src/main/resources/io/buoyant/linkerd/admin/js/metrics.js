@@ -12,6 +12,21 @@ $.when(
 
 function init(template, json) {
 
+  var metricRe = /.*\.(avg|count|max|min|p50|p90|p95|p99|p9990|p9999|sum)$/;
+
+  // init metrics browser
+  var metrics = _(json)
+    .map(function(value, name){
+      if (!name.match(metricRe)) {
+        return name;
+      }
+    })
+    .compact()
+    .sort()
+    .value();
+
+  $('.metrics').html(template({ 'metrics': metrics }));
+
   var canvas = document.getElementById("metrics-canvas");
 
   // init chart
@@ -47,20 +62,6 @@ function init(template, json) {
     chart.setMetric(li.attr("id"));
   }
 
-  var metricRe = /.*\.(avg|count|max|min|p50|p90|p95|p99|p9990|p9999|sum)$/
-
-  // init metrics browser
-  var metrics = _(json)
-    .map(function(value, name){
-      if (!name.match(metricRe)) {
-        return name;
-      }
-    })
-    .compact()
-    .sort()
-    .value();
-
-  $('.metrics-names').html(template({ 'metrics': metrics }));
   $('.metrics-list li').on('click', function(e) {
     var li = $(e.target);
     var selector = "#"+li.attr("id");
