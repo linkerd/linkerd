@@ -1,16 +1,11 @@
 package io.buoyant.linkerd.util
 
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Name, NameTree, Path}
+import com.twitter.util.Activity
 import scala.util.parsing.combinator.RegexParsers
 
 /**
- * A utility for rewriting paths.
- *
- * A PathMatcher accept a rewrite expression supporting numerical
- * positional arguments (much like awk), describing path positions.
- *
- * For example, given a rewrite expression like `$2.$1` and a path,
- * `/io/buoyant`, `buoyant.io` is returned.
+ * Supports creation of strings from path elements.
  */
 trait PathMatcher extends (Path => Option[String]) {
   def expression: String
@@ -59,7 +54,7 @@ object PathMatcher {
           // path.
           val parts = {
             val Path.Utf8(parts@_*) = path
-            parts.toArray
+            parts
           }
           val accum = new StringBuilder
           var i = 0
@@ -77,6 +72,19 @@ object PathMatcher {
             i += 1
           }
           Some(accum.result)
+      }
+  }
+
+  /**
+   * A namer that operates on path matcher rewrite expressions.
+   */
+  class Namer(matcher: PathMatcher) extends com.twitter.finagle.Namer {
+    def this(expr: String) = this(PathMatcher(expr))
+
+    def lookup(path: Path): Activity[NameTree[Name.Path]] =
+      matcher.mkPath(path) match {
+        case None => Activity.value(NameTree.Neg)
+        case Some(path) => Activity.value(NameTree.Leaf(Name.Path(path)))
       }
   }
 
