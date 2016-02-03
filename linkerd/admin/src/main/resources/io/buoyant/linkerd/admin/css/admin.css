@@ -11,8 +11,10 @@ h1 {
   margin-top: 20px;
 }
 
-.container {
-  width: 500px;
+@media (min-width: 992px) {
+  .container {
+    width: 500px;
+  }
 }
 
 .open > a.dropdown-toggle, .open > a.dropdown-toggle:focus {
