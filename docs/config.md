@@ -197,9 +197,6 @@ lookups that allow the use of arbitrary numbers of service discovery backends,
 and for precedence and failover rules to be expressed between them. This logic
 is governed by the [routing](#routing) configuration.
 
-linkerd also ships with a simple file-based service discovery mechanism that
-can be used for simple configurations.
-
 Naming and service discovery are configured via the `namers` section of the
 configuration file. In this file, `namers` is an array of objects, consisting
 of the following parameters:
@@ -226,7 +223,7 @@ While simple, the file-based namer is a full-fledged service discovery system
 and can be used in production systems where host configurations are largely
 static. Since its easy to modify, it is also convenient starting point for
 systems that want to upgrade to a dedicated service discovery endpoint.
-Finally, when chained with precedence rules, it can also a convenient way to
+Finally, when chained with precedence rules, it can also be a convenient way to
 add local service discovery overrides for debugging or experimental purposes.
 
 This service discovery mechanism is tied to the directory set by the
@@ -262,6 +259,7 @@ For example:
 ```yaml
 namers:
 - kind: io.l5d.fs
+  rootDir: disco
 ```
 
 The default _prefix_ for the file-based namer is `io.l5d.fs`.
@@ -270,10 +268,7 @@ Once configured, to use the file-based namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /host     => /$/io.l5d.fs;
-  /method   => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1 => /method;
-  /ext/http => /host/web;
+  /http/1.1/GET => /io.l5d.fs
 ```
 
 <a name="zookeeper"></a>
@@ -303,11 +298,7 @@ Once configured, to use the ServerSets namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /host     => /$/io.l5d.fs;
-  /host     => /$/io.l5d.serversets/foo/bar;
-  /method   => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1 => /method;
-  /ext/http => /host/web;
+  /http/1.1/GET => /io.l5d.serversets/discovery/prod;
 ```
 
 <a name="consul"></a>
@@ -338,11 +329,7 @@ the dtab. The Consul namer takes one parameter in its path, which is the Consul
 datacenter. For example:
 ```
 baseDtab: |
-  /host     => /$/io.l5d.fs;
-  /host     => /$/io.l5d.consul/dc1;
-  /method   => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1 => /method;
-  /ext/http => /host/web;
+  /http/1.1/GET =>  /io.l5d.consul/dc1;
 ```
 
 <a name="disco-k8s"></a>
@@ -385,25 +372,25 @@ Once configured, to use the Kubernetes namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /host     => /$/io.l5d.fs;
-  /host     => /$/io.l5d.k8s/prod/http;
-  /method   => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1 => /method;
-  /ext/http => /host/web;
+  /http/1.1/GET => /io.l5d.k8s/prod/http;
 ```
 
 <a name="configuring-routing"></a>
 ## Configuring routing
 
 Routing rules determine the mapping between a service's logical name and a
-concrete name. (See [Basic concepts](#basic-concepts) for more.)
-
-Routing is described via a "delegation table", or **dtab**. As noted in
-[basic router parameters](#basic-router-params), this is configured via the
-`baseDtab` parameter in the configuration object.
+concrete name. Routing is described via a "delegation table", or **dtab**. As
+noted in [basic router parameters](#basic-router-params), this is configured
+via the `baseDtab` section of the configuration file.
 
 <a name="routing-overrides"></a>
 ### Per-request routing overrides
 
-For HTTP RPC calls, the "Dtab-local" header is interpreted by linkerd as an
-additional rule to be appended to the base dtab.
+For HTTP calls, the `Dtab-local` header is interpreted by linkerd as an
+additional rule to be appended to the base dtab. Since dtab rules are applied
+from bottom to top, this allows overriding of the routing rules specified
+`baseDtab` for this request.
+
+Note that linkerd copies this header to the outgoing (proxied) RPC call. In
+this manner, override logic can be propagated through the entire call graph for
+the request.
