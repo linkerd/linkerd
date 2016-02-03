@@ -25,6 +25,8 @@ trait NamerInitializers {
    * namers are applied.
    */
   def read(p: JsonParser): NameInterpreter
+
+  def readNamer(p: JsonParser): NamerInitializer
 }
 
 object NamerInitializers {
@@ -61,11 +63,14 @@ object NamerInitializers {
     def kinds = initializers.keySet
     def get(k: String) = initializers.get(k)
 
+    def readNamer(p: JsonParser): NamerInitializer =
+      NamerInitializer.read(this.get, p)
+
     def read(p: JsonParser): NameInterpreter =
       Parsing.foldArray(p, Interpreter()) {
         case (interpreter, p) =>
           Parsing.ensureTok(p, JsonToken.START_OBJECT) { p =>
-            val ni = NamerInitializer.read(this.get, p)
+            val ni = readNamer(p)
             ni.prefix match {
               case Path.empty => throw Parsing.error("namer prefix required", p)
               case prefix => interpreter.naming(prefix, ni.newNamer())

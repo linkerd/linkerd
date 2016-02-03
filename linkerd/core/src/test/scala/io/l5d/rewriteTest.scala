@@ -2,7 +2,7 @@ package io.l5d
 
 import com.twitter.finagle.{Addr, Dtab, NameTree, Name, Path}
 import com.twitter.util.Var
-import io.buoyant.linkerd.{NamerInitializers, Yaml}
+import io.buoyant.linkerd.{NamerInitializers, Parsing, Yaml}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -13,43 +13,41 @@ class rewriteTest extends FunSuite with Awaits {
 
   test("supports rewrites") {
     val yaml =
-      """|- kind: io.l5d.rewrite
-         |  prefix: /http/1.1
-         |  dst: /host/$2
+      """|kind: io.l5d.rewrite
+         |prefix: /http/1.1
+         |dst: /host/$2
          |""".stripMargin
-    val namer = namers.read(Yaml(yaml))
-    val path = Path.read("/http/1.1/DELETE/hi/there")
-    val dtab = Dtab.read("/host/hi => /$/inet/127.1/1234 ; /host/there => /$/inet/127.1/2345")
-    val tree = namer.bind(dtab, path).sample()
-
-    assert(tree == NameTree.Leaf(Name.Bound(
-      Var.value(Addr.Bound(new InetSocketAddress("127.1", 1234))),
-      Path.read("/$/inet/127.1/1234")
-    )))
+    val init = namers.readNamer(Yaml(yaml))
+    assert(init.prefix == Path.read("/http/1.1"))
+    val namer = init.newNamer()
+    val path = Path.read("/DELETE/hi/there")
+    val tree = namer.lookup(path).sample()
+    assert(tree == NameTree.Leaf(Name.Path(Path.read("/host/hi"))))
   }
 
   test("neg when out of range") {
     val yaml =
-      """|- kind: io.l5d.rewrite
-         |  prefix: /http/1.1
-         |  dst: /host/$10
+      """|kind: io.l5d.rewrite
+         |prefix: /http/1.1
+         |dst: /host/$10
          |""".stripMargin
-    val namer = namers.read(Yaml(yaml))
-    val path = Path.read("/http/1.1/DELETE/hi/there")
-    val dtab = Dtab.read("/host/hi => /$/inet/127.1/1234 ; /host/there => /$/inet/127.1/2345")
-    val tree = namer.bind(dtab, path).sample()
+    val init = namers.readNamer(Yaml(yaml))
+    assert(init.prefix == Path.read("/http/1.1"))
+    val namer = init.newNamer()
+    val path = Path.read("/DELETE/hi/there")
+    val tree = namer.lookup(path).sample()
     assert(tree == NameTree.Neg)
   }
 
   test("errors when dst is not a path") {
     val yaml =
-      """|- kind: io.l5d.rewrite
-         |  prefix: /http/1.1
-         |  dst: host/$1
+      """|kind: io.l5d.rewrite
+         |prefix: /http/1.1
+         |dst: host/$1
          |""".stripMargin
-    intercept[IllegalArgumentException] {
-      namers.read(Yaml(yaml))
-    }
+    val init = namers.readNamer(Yaml(yaml))
+    val err = intercept[IllegalArgumentException] { init.newNamer() }
+    assert(err.getMessage == "io.l5d.rewrite requires that 'dst' is a path starting with '/'")
   }
 
 }
