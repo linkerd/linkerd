@@ -81,7 +81,7 @@ routers:
 """
 
     val protocols = ProtocolInitializers(new HttpInitializer)
-    val linker = Linker.mk(protocols, NamerInitializers.empty)
+    val linker = Linker.mk(protocols, NamerInitializers.empty, TlsClientInitializers.empty)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
       .read(Yaml(yaml))

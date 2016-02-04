@@ -106,6 +106,21 @@ destinations. Protocols may set defaults.
 * *failFast* -- If `true`, connection failures are punished more
 aggressively. Should not be used with small destination pools.
 * *timeoutMs* -- Per-request timeout in milliseconds.
+* *tls* -- The router will make requests using TLS if this parameter is
+provided.  It must be an object containing keys:
+  * *kind* -- One of the supported TlsClientInitializer plugins, by
+  fully-qualified class name.
+  * Any options specific to the plugin
+  Current plugins include:
+  * *io.l5d.clientTls.noValidation*: Skip hostname validation.  This is unsafe.
+  * *io.l5d.clietnTls.static*: Use a single common name for all TLS
+  requests.  This assumes that all servers that the router connects to all use
+  the same TLS cert (or all use certs generated with the same common name).
+  This plugin supports the following options:
+    * *commonName* -- Required.  The common name to use for all TLS requests.
+    * *caCertPath* -- Optional.  Use the given CA cert for common name
+    validation.
+
 
 <!-- TODO router capacity  -->
 

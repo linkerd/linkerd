@@ -30,6 +30,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
      * Install better http tracing and prevent TLS/Host-header interference.
      */
     val client: StackClient[Request, Response] = FinagleHttp.client
+      .transformed(StackRouter.Client.mkStack(_))
       .transformed(_.replace(StackClient.Role.protoTracing, http.TracingFilter))
       .transformed(_.remove(TlsFilter.role))
 

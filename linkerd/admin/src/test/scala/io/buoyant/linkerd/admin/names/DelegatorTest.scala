@@ -13,9 +13,9 @@ class DelegatorTest extends FunSuite with Awaits {
     yaml: String,
     protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
     namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers).read(Yaml(yaml))
+  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
 
-    val linker = parse("""
+  val linker = parse("""
 namers:
 - kind: io.buoyant.linkerd.TestNamer
   prefix: /namer
@@ -46,7 +46,8 @@ routers:
       Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Leaf(
         Path.read("/namer/bro"),
         Dentry.read("/nah=>/namer"),
-        Name.Bound(Var.value(Addr.Pending), Path.read("/namer"), Path.Utf8("bro"))))))
+        Name.Bound(Var.value(Addr.Pending), Path.read("/namer"), Path.Utf8("bro"))
+      ))))
   }
 
   test("explain neg delegation") {

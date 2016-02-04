@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.util.Future
-import io.buoyant.linkerd.{Build, Linker, NamerInitializers, TestNamer, TestProtocol, Yaml}
+import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -14,7 +14,8 @@ class SummaryHandlerTest extends FunSuite with Awaits {
     yaml: String
   ) = Linker.mk(
     TestProtocol.DefaultInitializers,
-    NamerInitializers(new TestNamer)
+    NamerInitializers(new TestNamer),
+    TlsClientInitializers.empty
   ).read(Yaml(yaml))
 
   val linker = parse("""

@@ -15,7 +15,7 @@ class LinkerTest extends FunSuite {
     yaml: String,
     protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
     namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers).read(Yaml(yaml))
+  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
 
   test("basic") {
     val linker = parse("""

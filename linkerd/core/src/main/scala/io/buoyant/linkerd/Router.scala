@@ -2,8 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.core.{io => _, _}
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Dtab, ListeningServer, Path, Stack}
-import com.twitter.finagle.param
+import com.twitter.finagle._
 import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.Closable
@@ -53,6 +52,9 @@ trait Router {
   /** Return a router with additional servers read from the provided parser. */
   def servingFrom(jp: JsonParser): Router =
     serving(Router.readServers(jp, protocol.server))
+
+  /** Return a router with TLS configuration read from the provided parser. */
+  def tlsFrom(tls: TlsClientInitializers, p: JsonParser): Router
 
   /**
    * Initialize a router by instantiating a downstream router client
@@ -124,7 +126,8 @@ object Router {
   def read(
     origParser: JsonParser,
     linkerParams: Stack.Params,
-    protocols: ProtocolInitializers
+    protocols: ProtocolInitializers,
+    tls: TlsClientInitializers
   ): Router = {
     val routerTree =
       Parsing.ensureTok(origParser, JsonToken.START_OBJECT) { json =>
@@ -159,6 +162,9 @@ object Router {
         case (router, "protocol" | "servers", json) =>
           Parsing.skipValue(json)
           router
+
+        case (router, "tls", json) =>
+          router.tlsFrom(tls, json)
 
         case (router, key, json) if router.paramParser.keys(key) =>
           val params = router.paramParser.read(key, json, router.params)

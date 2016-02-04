@@ -12,6 +12,7 @@ import com.twitter.finagle.buoyant.DstBindingFactory
  */
 trait Linker {
   def protocols: ProtocolInitializers
+  def tls: TlsClientInitializers
 
   def params: Stack.Params
   def withParams(ps: Stack.Params): Linker
@@ -74,13 +75,14 @@ trait Linker {
 
 object Linker {
 
-  def mk(protos: ProtocolInitializers, namers: NamerInitializers): Linker =
-    Impl(protos, namers, Stack.Params.empty, Nil, Admin())
+  def mk(protos: ProtocolInitializers, namers: NamerInitializers, tls: TlsClientInitializers): Linker =
+    Impl(protos, namers, tls, Stack.Params.empty, Nil, Admin())
 
   def load(): Linker = {
     val protos = ProtocolInitializers.load()
     val namers = NamerInitializers.load()
-    mk(protos, namers)
+    val tls = TlsClientInitializers.load()
+    mk(protos, namers, tls)
   }
 
   /**
@@ -90,6 +92,7 @@ object Linker {
   private case class Impl(
     protocols: ProtocolInitializers,
     namers: NamerInitializers,
+    tls: TlsClientInitializers,
     params: Stack.Params,
     routers: Seq[Router],
     admin: Admin
@@ -153,7 +156,7 @@ object Linker {
       // on distinct sockets.
       val linkerWithRouters = Parsing.foldArray(tp, linkerWithParams) {
         case (linker, json) =>
-          val router = Router.read(json, linker.params, linker.protocols)
+          val router = Router.read(json, linker.params, linker.protocols, linker.tls)
 
           // Ensure that neither the router name nor server sockets conflict.
           for (other <- linker.routers) {
