@@ -25,13 +25,20 @@ $.when(
   var ifacesTemplate = Handlebars.compile(interfacesRsp[0]),
       summaryTemplate = Handlebars.compile(requestStatsRsp[0]),
       routers = Routers(metricsJson[0]),
-      namers = Namers(metricsJson[0]),
-      servers = BigBoard.getAllServers(routers.data);
+      namers = Namers(metricsJson[0]);
 
   $(function() {
+    var selectedRouter = getSelectedRouter();
+    var router = routers.data[selectedRouter];
+    if (router)
+      var servers = router.servers;
+    else
+      var servers = _(routers.data).values().flatMap('servers').value();
+
     var procInfo = ProcInfo(),
         bigBoard = BigBoard(servers, summaryTemplate),
-        interfaces = Interfaces(routers, namers, ifacesTemplate);
+        interfaces = Interfaces(selectedRouter, routers, namers, ifacesTemplate);
+
     procInfo.start(UPDATE_INTERVAL);
     bigBoard.start(UPDATE_INTERVAL);
     interfaces.start(UPDATE_INTERVAL);
@@ -150,14 +157,6 @@ var BigBoard = (function() {
     };
   };
 
-  /** Helper */
-  init.getAllServers = function(routers) {
-    return _(routers)
-      .values()
-      .flatMap('servers')
-      .value();
-  };
-
   return init;
 })();
 
@@ -245,11 +244,15 @@ var Interfaces = (function() {
   }
 
   /**
-   * Renders interfacs, and then returns a function that may be called
+   * Renders interfaces, and then returns a function that may be called
    * to trigger an update.
    */
-  return function(routers, namers, template) {
-    renderInterfaces(routers.data, namers.data, template);
+  return function(selectedRouter, routers, namers, template) {
+    var router = routers.data[selectedRouter];
+    var routerData = router ? [router] : routers.data;
+    var namerData = router ? [] : namers.data;
+
+    renderInterfaces(routerData, namerData, template);
     $(".interfaces").on("click", ".interface", function() {
       window.location = $(this).find("a").attr("href");
       return false;
@@ -263,7 +266,7 @@ var Interfaces = (function() {
         success: function(metrics) {
           routers.update(metrics);
           namers.update(metrics);
-          renderInterfaces(routers.data, namers.data, template);
+          renderInterfaces(routerData, namerData, template);
         }
       });
     };

@@ -147,7 +147,10 @@ var Routers = (function() {
       update: function(metrics) { update(this.data, metrics); },
 
       /** Finds a scope (router, dst, or server) associated with a scoped metric name. */
-      findByMetricKey: function(key) { return findByMetricKey(this.data, key); }
+      findByMetricKey: function(key) { return findByMetricKey(this.data, key); },
+
+      /** Finds a router associated with a scoped metric name. */
+      findMatchingRouter: function(key) { return findMatchingRouter(this.data, key); }
     };
   };
 })();

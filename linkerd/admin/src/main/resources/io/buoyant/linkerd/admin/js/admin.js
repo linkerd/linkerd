@@ -1,5 +1,7 @@
 "use strict";
 
+var SINGLE_ROUTER_PAGES_ONLY = SINGLE_ROUTER_PAGES_ONLY || false;
+
 $(function() {
   // highlight current page in navbar
   var path = window.location.pathname;
@@ -15,9 +17,16 @@ $(function() {
 $.when(
   $.get("/files/template/router_option.template"),
   $.get("/routers.json")
-).done(function(templateRsp, routers) {
-  var template = Handlebars.compile(templateRsp[0])
-  var routerHtml = routers[0].map(template);
+).done(function(templateRsp, routersRsp) {
+  var template = Handlebars.compile(templateRsp[0]);
+  var routers = routersRsp[0];
+
+  //Not every page supports a mult-router view!
+  if(!SINGLE_ROUTER_PAGES_ONLY) {
+    routers.unshift({label: "all"});
+  }
+
+  var routerHtml = routers.map(template);
 
   $(".dropdown-menu").html(routerHtml.join(""));
 
@@ -27,6 +36,11 @@ $.when(
 });
 
 function selectRouter(label) {
+  if (label === "all") {
+    unselectRouter();
+    return;
+  }
+
   var uriComponent = "router=" + encodeURIComponent(label);
   var re = /router=(.+)(?:&|$)/
   if (window.location.search == "") {
@@ -36,4 +50,13 @@ function selectRouter(label) {
   } else {
     window.location.search = window.location.search + "&" + uriComponent;
   }
+}
+
+function unselectRouter() {
+  var re = /router=(.+)(?:&|$)/
+  window.location.search = window.location.search.replace(re, "");
+}
+
+function getSelectedRouter() {
+  return $(".dropdown-toggle .router-label").text();
 }

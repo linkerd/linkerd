@@ -13,12 +13,20 @@ $.when(
 function init(template, json) {
 
   var metricRe = /.*\.(avg|count|max|min|p50|p90|p95|p99|p9990|p9999|sum)$/;
+  var routers = Routers(json);
+  var selectedRouter = getSelectedRouter();
+  var router = routers.data[selectedRouter];
 
   // init metrics browser
   var metrics = _(json)
     .map(function(value, name){
       if (!name.match(metricRe)) {
-        return name;
+        if (router) { //filter on router if it exists
+          var matchingRouter = routers.findMatchingRouter(name);
+          return matchingRouter && matchingRouter.label == router.label ? name : null;
+        } else {
+          return name;
+        }
       }
     })
     .compact()
