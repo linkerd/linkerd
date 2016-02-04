@@ -62,32 +62,40 @@ class Base extends Build {
   val IntegrationTest =
     config("integration") extend Test
 
-  val defaultExecScript = Seq(
-    "#!/bin/sh",
-    // TODO detect plugins and add to classpath
-    """exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@";"""
-  )
+  val defaultExecScript =
+    """|#!/bin/sh
+       |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@"
+       |""".stripMargin.split("\n").toSeq
 
-  val dockerJavaImage = settingKey[String]("base docker image, providing java.")
+  val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
+  val dockerJavaImage = settingKey[String]("base docker image, providing java")
+  val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
 
   val appPackagingSettings = assemblySettings ++ baseDockerSettings ++ Seq(
+    assemblyExecScript := defaultExecScript,
+    assemblyOption in assembly := (assemblyOption in assembly).value.copy(
+      prependShellScript = assemblyExecScript.value match {
+        case Nil => None
+        case script => Some(script)
+      }),
     assemblyJarName in assembly := s"${name.value}-${configuration.value}-${version.value}-exec",
     assemblyMergeStrategy in assembly := {
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case path => (assemblyMergeStrategy in assembly).value(path)
     },
-    assemblyOption in assembly := {
-      (assemblyOption in assembly).value.copy(
-        prependShellScript = Some(defaultExecScript))
-    },
+
     docker <<= docker dependsOn (assembly in configuration),
+    dockerEnvPrefix := "",
     dockerJavaImage := "library/java:openjdk-8-jre",
     dockerfile in docker := new Dockerfile {
-      val root = s"/${organization.value}/${name.value}/${version.value}"
-      val exec = s"$root/${configuration.value}-exec"
+      val envPrefix = dockerEnvPrefix.value.toUpperCase
+      val home = s"/${organization.value}/${name.value}/${version.value}"
+      val exec = s"$home/${configuration.value}-exec"
       from(dockerJavaImage.value)
-      run("mkdir", "-p", root)
-      workDir(root)
+      run("mkdir", "-p", home)
+      workDir(home)
+      env(envPrefix+"HOME", home)
+      env(envPrefix+"EXEC", exec)
       copy((assemblyOutputPath in assembly).value, exec)
       entryPoint(exec)
     },

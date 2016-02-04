@@ -1,6 +1,5 @@
 import sbt._
 import sbt.Keys._
-import Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
@@ -144,9 +143,28 @@ object LinkerdBuild extends Base {
    * be assembled into a dockerfile.
    */
 
+  /**
+   * An assembly-running script that adds the linkerd plugin directory
+   * to the classpath if it exists.
+   */
+  val linkerdExecScript =
+    """|#!/bin/sh
+       |
+       |jars="$0"
+       |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
+       |  for jar in $L5D_HOME/plugins/*.jar ; do
+       |    jars="$jars:$jar"
+       |  done
+       |fi
+       |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+       |     $JVM_OPTIONS -cp $jars -server io.buoyant.Linkerd "$@"
+       |""".stripMargin.split("\n").toSeq
+
   val Minimal = config("minimal")
   val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
-    mainClass := Some("io.buoyant.Linkerd")
+    mainClass := Some("io.buoyant.Linkerd"),
+    assemblyExecScript := linkerdExecScript,
+    dockerEnvPrefix := "L5D_"
   )
 
   val Bundle = config("bundle") extend Minimal
