@@ -86,26 +86,27 @@ may be specified in the top-level object as defaults.
 
 Each router must be configured as an object with the following params:
 
-* **protocol** -- a protocol name must match one of the loaded configuration plugins (e.g. _http_, _mux_).
+* *protocol* -- a protocol name must match one of the loaded configuration plugins (e.g. _http_, _mux_).
   linkerd currently supports the following protocols:
   * [HTTP/1.1](#protocol-http)
   * [Thrift](#protocol-thrift)
   * [Mux](#protocol-mux) (experimental)
-* [basic router param](#basic-router-params) or [protocol-specific router param](#proto-router-params)
-* **servers** -- a list of server objects with the following params:
-  * [basic server params](#basic-server-params) or [protocol-specific server params](#proto-server-params)
+* [basic router params](#basic-router-params) or protocol-specific router params
+* *servers* -- a list of server objects with the following params:
+  * [basic server params](#basic-server-params) or protocol-specific server params
 
 <a name="basic-router-params"></a>
 ### Basic router parameters
 
-* *label* -- The name of the router (in stats and the admin ui). If
-not specified, the protocol name is used.
-* *baseDtab* -- Sets the base delegation table. See [Routing](#routing) for more.
-* *dstPrefix* -- A path prefix to be used on request
-destinations. Protocols may set defaults.
-* *failFast* -- If `true`, connection failures are punished more
-aggressively. Should not be used with small destination pools.
-* *timeoutMs* -- Per-request timeout in milliseconds.
+* *label* -- The name of the router (in stats and the admin ui). (default: the
+  protocol name)
+* *baseDtab* -- Sets the base delegation table. See [Routing](#configuring-routing) for
+  more. (default: an empty dtab)
+* *dstPrefix* -- A path prefix to be used on request destinations.
+  (default is protocol dependent)
+* *failFast* -- If `true`, connection failures are punished more aggressively.
+  Should not be used with small destination pools. (default: false)
+* *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
 * *tls* -- The router will make requests using TLS if this parameter is
 provided.  It must be an object containing keys:
   * *kind* -- One of the supported TlsClientInitializer plugins, by
@@ -121,56 +122,7 @@ provided.  It must be an object containing keys:
     * *caCertPath* -- Optional.  Use the given CA cert for common name
     validation.
 
-
 <!-- TODO router capacity  -->
-
-<a name="proto-router-params"></a>
-### Protocol-specific router parameters
-
-<a name="protocol-http"></a>
-#### HTTP/1.1
-
-HTTP requests are routed by a combination of Host header, method, and URI.
-Specifically, HTTP/1.0 logical names are of the form:
-```
-  dstPrefix / "1.0" / method [/ uri* ]
-```
-and HTTP/1.1 logical names are of the form:
-```
-  dstPrefix / "1.1" / method / host [/ uri* ]
-```
-
-The default _dstPrefix_ is `/http`. In both cases, `uri` is only considered a part
-of the logical name if the config option `httpUriInDst` is true.
-
-Configuration optionns include:
-* *httpAccessLog* -- Sets the access log path.  If not specified, no
-access log is written.
-* *httpUriInDst* -- If `true` http paths are appended to destinations
-(to allow path-prefix routing).
-
-<a name="protocol-thrift"></a>
-#### Thrift
-
-Since the Thrift protocol does not encode a destination name in the message
-itself, routing must be done per port. This implies one port per Thrift
-service. For out-of-the-box configuration, this means that the contents of
-`disco/thrift` will be treated as a newline-delimited list of `host:port`
-combinations for a specific thrift service.
-
-The default _dstPrefix_ is `/thrift`.
-
-* *thriftFramed* -- if `true`, a framed thrift transport is used; otherwise,
-  a buffered transport is used.
-* *thriftMethodInDst* -- if `true`, thrift method names are appended to
-  destinations.
-
-<a name="protocol-mux"></a>
-#### Mux (experimental)
-
-linkerd experimentally supports the [mux protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
-
-The default _dstPrefix_ is `/mux`.
 
 <a name="basic-server-params"></a>
 ### Basic server parameters
@@ -186,24 +138,111 @@ local IPv4 interfaces.
   * *certPath* -- File path to the TLS certificate file
   * *keyPath* -- File path to the TLS key file
 
-<a name="proto-server-params"></a>
-### Protocol-specific server parameters
+<a name="protocol-http"></a>
+### HTTP/1.1 protocol parameters
 
-#### HTTP/1.1
+HTTP requests are routed by a combination of Host header, method, and URI.
+Specifically, HTTP/1.0 logical names are of the form:
+```
+  dstPrefix / "1.0" / method [/ uri* ]
+```
+and HTTP/1.1 logical names are of the form:
+```
+  dstPrefix / "1.1" / method / host [/ uri* ]
+```
 
-The default _port_ is 4140.
+The default _dstPrefix_ is `/http`. In both cases, `uri` is only considered a part
+of the logical name if the config option `httpUriInDst` is true.
 
-#### Thrift
+Router configuration options include:
+* *httpAccessLog* -- Sets the access log path.  If not specified, no
+access log is written.
+* *httpUriInDst* -- If `true` http paths are appended to destinations. This allows
+ path-prefix routing. (default: false)
 
-The default _port_ is 4114.
+The default server _port_ is 4140.
 
-* *thriftFramed* -- if `true`, a framed thrift transport is used; otherwise, a buffered transport is used.
+As an example, here's an http router config that routes all `GET` requests to
+8081 and all `POST` requests to 8091
+
+```yaml
+routers:
+- protocol: http
+  label: split-get-and-post
+  baseDtab: |
+    /http/1.1 => /method;
+    /method/GET => /$/io.buoyant.http.anyHost/$/inet/127.1/8081;
+    /method/POST => /$/io.buoyant.http.anyHost/$/inet/127.1/8091;
+  servers:
+    port: 5000
+```
+
+<a name="protocol-thrift"></a>
+### Thrift protocol parameters
+
+Since the Thrift protocol does not encode a destination name in the message
+itself, routing must be done per port. This implies one port per Thrift
+service. For out-of-the-box configuration, this means that the contents of
+`disco/thrift` will be treated as a newline-delimited list of `host:port`
+combinations for a specific thrift service.
+
+The default _dstPrefix_ is `/thrift`.
+
+* *thriftFramed* -- if `true`, a framed thrift transport is used for outgoing
+  requests; otherwise, a buffered transport is used. Typically this setting
+  matches the router's servers' `thriftFramed` param. (default: true)
 * *thriftMethodInDst* -- if `true`, thrift method names are appended to
-  destinations.
+  destinations for outgoing requests. Typically this setting matches the
+  router's servers' `thriftMethodInDst` param. (default: false)
 
-#### Mux (experimental)
+Thrift servers define additional parameters:
 
-The default _port_ is 4141.
+* *thriftFramed* -- if `true`, a framed thrift transport is used for incoming
+  requests; otherwise, a buffered transport is used. Typically this setting
+  matches the router's `thriftFramed` param. (default: true)
+* *thriftMethodInDst* -- if `true`, thrift method names are appended to
+  destinations for incoming requests. Typically this setting matches the
+  router's `thriftMethodInDst` param. (default: false)
+
+The default server _port_ is 4114.
+
+
+As an example: Here's a thrift router configuration that routes thrift--via
+buffered transport--from port 4004 to port 5005
+
+```yaml
+routers:
+- protocol: thrift
+  label: port-shifter
+  baseDtab: |
+    /thrift   => /$/inet/127.1/5005;
+  thriftFramed: false
+  servers:
+  - port: 4004
+    ip: 0.0.0.0
+    thriftFramed: false
+```
+
+<a name="protocol-mux"></a>
+### Mux protocol parameters (experimental)
+
+linkerd experimentally supports the [mux
+protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
+
+The default _dstPrefix_ is `/mux`.
+The default server _port_ is 4141.
+
+As an example: Here's a mux router configuration that routes requests to port 9001
+
+```yaml
+
+routers:
+- protocol: mux
+  label: power-level-router
+  dstPrefix: /overNineThousand
+  baseDtab: |
+    /overNineThousand => /$/inet/127.0.1/9001;
+```
 
 ## Service discovery and naming
 
@@ -211,7 +250,7 @@ linkerd supports a variety of common service discovery backends, including
 ZooKeeper and Consul. linkerd provides abstractions on top of service discovery
 lookups that allow the use of arbitrary numbers of service discovery backends,
 and for precedence and failover rules to be expressed between them. This logic
-is governed by the [routing](#routing) configuration.
+is governed by the [routing](#basic-router-params) configuration.
 
 Naming and service discovery are configured via the `namers` section of the
 configuration file. In this file, `namers` is an array of objects, consisting
