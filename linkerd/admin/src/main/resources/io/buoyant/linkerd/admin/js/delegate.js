@@ -1,6 +1,7 @@
 "use strict";
 
 var templates = {};
+var SINGLE_ROUTER_PAGES_ONLY = true;
 
 $.when(
   $.get("/files/template/dentry.template"),
@@ -10,7 +11,7 @@ $.when(
   templates.node = Handlebars.compile(nodeRsp[0]);
   var dtabMap = JSON.parse($("#data").html());
 
-  var selectedRouter = $(".dropdown-toggle .router-label").text();
+  var selectedRouter = getSelectedRouter();
   var dtab = dtabMap[selectedRouter];
 
   if (!dtab) {
@@ -21,9 +22,6 @@ $.when(
       console.warn("undefined router:", selectedRouter);
     }
   } else {
-    //TODO: remove this once dropdown is site-wide
-    $(".nav .dropdown").removeClass("hide");
-
     $(".router-label-title").text("Router \"" + selectedRouter + "\"");
 
     var dtabViewer = new DtabViewer(dtab, templates.dentry);
