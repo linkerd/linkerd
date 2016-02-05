@@ -1,27 +1,27 @@
 package io.buoyant.linkerd.config
 
-import cats.data.Validated._
-import cats.data.ValidatedNel
+import cats.Apply
 
 trait LinkerConfig extends CommonRouterConfig {
   def routers: Option[Seq[RouterConfig]]
   def namers: Option[Seq[NamerConfig]]
 
   // Currently, the only thing we require of a Linker is that it has at least one Router configured.
-  def validated: ValidatedNel[ConfigError, LinkerConfig.Validated] = {
-    import cats.syntax.cartesian._
-    import cats.syntax.traverse._
+  def validated: ValidatedConfig[LinkerConfig.Validated] = {
     import cats.std.list._
-    def validatedRouters = routers
+    import cats.syntax.traverse._
+    def validatedRouters: ValidatedConfig[Seq[RouterConfig.Validated]] = routers
       .filter { _.nonEmpty }
       .map(RouterConfig.validateRouters(this))
-      .getOrElse(invalidNel[ConfigError, Seq[RouterConfig.Validated]](NoRoutersSpecified))
-    def validatedNamers: ValidatedNel[ConfigError, Seq[NamerConfig.Validated]] =
+      .getOrElse(invalid(NoRoutersSpecified))
+
+    def validatedNamers: ValidatedConfig[Seq[NamerConfig.Validated]] =
       namers.getOrElse(Nil).map { _.withDefaults(this).validated }.toList.sequenceU
 
-    (validatedRouters |@| validatedNamers).map {
+    Apply[ValidatedConfig].map2(validatedRouters, validatedNamers) {
       new LinkerConfig.Validated(this, _, _)
     }
+
   }
 }
 

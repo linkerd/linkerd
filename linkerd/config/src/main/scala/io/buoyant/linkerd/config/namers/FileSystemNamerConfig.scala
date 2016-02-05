@@ -1,16 +1,10 @@
 package io.buoyant.linkerd.config.namers
 
-import cats.data.ValidatedNel
-import cats.data.Validated._
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType
-
 import io.buoyant.linkerd.config._
-import java.nio.file.{Path => NioPath, InvalidPathException, Paths}
+import java.nio.file.{InvalidPathException, Path => NioPath, Paths}
 
-/**
- * Created by greg on 2/2/16.
- */
 case class FileSystemNamerConfig(rootDir: Option[String]) extends NamerConfig {
   def protocol = FileSystemNamerConfig.Protocol(rootDir)
 }
@@ -25,14 +19,14 @@ object FileSystemNamerConfig {
   }
 
   case class Protocol(rootDir: Option[String]) extends FsProtocol {
-    def validated: ValidatedNel[ConfigError, ValidatedProtocol] = {
-      def validatedPath: ValidatedNel[ConfigError, NioPath] =
-        rootDir.fold(invalidNel[ConfigError, NioPath](MissingRootDir)) { pathStr =>
+    def validated: ValidatedConfig[ValidatedProtocol] = {
+      def validatedPath: ValidatedConfig[NioPath] =
+        rootDir.fold(invalid[NioPath](MissingRootDir)) { pathStr =>
           try {
             val path = Paths.get(pathStr)
-            if (path.toFile.isDirectory) valid(path) else invalidNel(RootDirNotDirectory(path))
+            if (path.toFile.isDirectory) valid(path) else invalid(RootDirNotDirectory(path))
           } catch {
-            case ex: InvalidPathException => invalidNel(InvalidPath(pathStr, ex))
+            case ex: InvalidPathException => invalid(InvalidPath(pathStr, ex))
           }
         }
 

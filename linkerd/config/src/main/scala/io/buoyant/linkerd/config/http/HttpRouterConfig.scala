@@ -1,10 +1,8 @@
 package io.buoyant.linkerd.config.http
 
-import cats.data.{ValidatedNel, Validated}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import io.buoyant.linkerd.config._
-import cats.data.Validated._
 
 case class HttpRouterConfig(
   httpUriInDst: Option[Boolean],
@@ -21,7 +19,7 @@ object HttpRouterConfig {
   case class Protocol(httpUriInDst: Boolean) extends RouterProtocol {
     def name: String = Protocol.name
     // There are no invalid HTTP protocol configurations.
-    def validated: ValidatedNel[ConfigError, Protocol] = valid(this)
+    def validated: ValidatedConfig[Protocol] = valid(this)
   }
 }
 

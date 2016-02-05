@@ -90,7 +90,7 @@ routers:
 
   // validation tests begin here
 
-  def extractErrors(cfg: ValidatedNel[ConfigError, LinkerConfig.Validated]): List[ConfigError] =
+  def extractErrors(cfg: ValidatedConfig[LinkerConfig.Validated]): List[ConfigError] =
     cfg.fold(
       identity,
       { _ => fail("error expected") }

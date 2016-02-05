@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.config
 
-import cats.data.{Validated, ValidatedNel}
 import cats.data.Validated._
+import cats.data.{Validated, ValidatedNel}
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
@@ -24,12 +24,12 @@ trait ConfigRegistrar {
  */
 case class ParseResult(
   parsedConfig: Option[LinkerConfig],
-  validatedConfig: ValidatedNel[ConfigError, LinkerConfig.Validated]
+  validatedConfig: ValidatedConfig[LinkerConfig.Validated]
 )
 
 object Parser {
   def apply(s: String): ParseResult = {
-    val baseCfg: ValidatedNel[ConfigError, Impl] = Validated.catchNonFatal {
+    val baseCfg: ValidatedConfig[Impl] = Validated.catchNonFatal {
       objectMapper(s).readValue[LinkerConfig.Impl](s)
     }.leftMap(ConfigError.transform)
 
@@ -37,7 +37,7 @@ object Parser {
     ParseResult(
       baseCfg.toOption,
       baseCfg.fold(
-        invalid,
+        cats.data.Validated.invalid,
         { _.validated }
       )
     )

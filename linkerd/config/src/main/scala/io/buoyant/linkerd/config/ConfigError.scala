@@ -1,10 +1,9 @@
 package io.buoyant.linkerd.config
 
-import java.net.InetSocketAddress
-import java.nio.file.InvalidPathException
-
 import cats.data.NonEmptyList
 import com.fasterxml.jackson.core.JsonParseException
+import java.net.InetSocketAddress
+import java.nio.file.InvalidPathException
 
 trait ConfigError {
   def message: String

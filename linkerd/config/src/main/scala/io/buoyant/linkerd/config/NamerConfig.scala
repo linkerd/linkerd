@@ -1,7 +1,6 @@
 package io.buoyant.linkerd.config
 
-import cats.data.{NonEmptyList, ValidatedNel}
-import cats.data.Validated._
+import cats.Apply
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.twitter.finagle.Path
 
@@ -33,29 +32,28 @@ trait NamerConfig {
 
 trait NamerProtocol {
   def kind: String
-  def validated: ValidatedNel[ConfigError, NamerProtocol]
+  def validated: ValidatedConfig[NamerProtocol]
   def defaultPrefix: Option[String] = Some(Path.Utf8(kind).show)
 }
 
 object NamerConfig {
+  import cats.std.list._
   class Defaults(base: NamerConfig, protocol: NamerProtocol, linker: LinkerConfig) {
     def prefix: Option[String] = base.prefix orElse protocol.defaultPrefix
-    def validated: ValidatedNel[ConfigError, NamerConfig.Validated] = {
-      import cats.syntax.cartesian._
-      import cats.std.list._
-      def validatedPrefix: ValidatedNel[ConfigError, Path] = {
-        prefix.fold(invalidNel[ConfigError, Path](MissingPath)) { pathStr =>
+    def validated: ValidatedConfig[NamerConfig.Validated] = {
+      def validatedPrefix: ValidatedConfig[Path] = {
+        prefix.fold(invalid[Path](MissingPath)) { pathStr =>
           try {
             valid(Path.read(pathStr))
           } catch {
-            case ex: IllegalArgumentException => invalidNel(InvalidPath(pathStr, ex))
+            case ex: IllegalArgumentException => invalid(InvalidPath(pathStr, ex))
           }
         }
       }
-      (validatedPrefix |@|
-        protocol.validated).map {
-          case (prefix, protocol) => new Validated(prefix, protocol)
-        }
+
+      Apply[ValidatedConfig].map2(validatedPrefix, protocol.validated) {
+        case (prefix, protocol) => new Validated(prefix, protocol)
+      }
     }
   }
 

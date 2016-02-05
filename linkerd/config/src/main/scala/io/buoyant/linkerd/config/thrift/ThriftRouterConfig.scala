@@ -1,6 +1,5 @@
 package io.buoyant.linkerd.config.thrift
 
-import cats.data.Validated._
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import io.buoyant.linkerd.config._
