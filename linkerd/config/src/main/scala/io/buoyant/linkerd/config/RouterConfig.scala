@@ -6,6 +6,16 @@ import cats.data.Validated._
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.twitter.finagle.{Dtab, Stack}
 
+/**
+  * LinkerConfig can configure some "default" settings for its routers; this trait
+  * allows those parameters to be shared.
+  */
+trait CommonRouterConfig {
+  var baseDtab: Option[String] = None
+  var failFast: Option[Boolean] = None
+  var timeoutMs: Option[Int] = None
+}
+
 /*
  * RouterConfig implements the generic configuration for a [[Router]]. All
  * Routers must have a protocol (i.e. Thrift, HTTP); those are represented
@@ -20,28 +30,11 @@ import com.twitter.finagle.{Dtab, Stack}
  * * Create a case class (which can be the same as above
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "protocol")
-trait RouterConfig {
-  // We do this to allow case classes to extend the trait without needing to know its properties,
-  // while still allowing Jackson to correctly serialize/deserialize instances.
-  private var _label: Option[String] = None
-  def label: Option[String] = _label
-  def label_=(l: Option[String]): Unit = _label = l
-
-  private var _baseDtab: Option[String] = None
-  def baseDtab: Option[String] = _baseDtab
-  def baseDtab_=(dtab: Option[String]): Unit = { _baseDtab = dtab }
-
-  private var _dstPrefix: Option[String] = None
-  def dstPrefix: Option[String] = _dstPrefix
-  def dstPrefix_=(prefix: Option[String]): Unit = { _dstPrefix = prefix }
-
-  private var _failFast: Option[Boolean] = None
-  def failFast: Option[Boolean] = _failFast
-  def failFast_=(ff: Option[Boolean]): Unit = { _failFast = ff }
-
-  private var _timeoutMs: Option[Int] = None
-  def timeoutMs: Option[Int] = _timeoutMs
-  def timeoutMs_=(timeout: Option[Int]): Unit = { _timeoutMs = timeout }
+trait RouterConfig extends CommonRouterConfig {
+  // These are vars to allow Jackson to deserialize instances without subclasses needing to know about
+  // the base trait's properties.
+  var label: Option[String] = None
+  var dstPrefix: Option[String] = None
 
   def servers: Option[Seq[ServerConfig]]
 

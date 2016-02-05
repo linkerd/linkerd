@@ -3,11 +3,9 @@ package io.buoyant.linkerd.config
 import cats.data.Validated._
 import cats.data.ValidatedNel
 
-trait LinkerConfig {
-  def baseDtab: Option[String]
+trait LinkerConfig extends CommonRouterConfig {
   def routers: Option[Seq[RouterConfig]]
   def namers: Option[Seq[NamerConfig]]
-  def failFast: Option[Boolean]
 
   // Currently, the only thing we require of a Linker is that it has at least one Router configured.
   def validated: ValidatedNel[ConfigError, LinkerConfig.Validated] = {
@@ -29,8 +27,6 @@ trait LinkerConfig {
 
 object LinkerConfig {
   case class Impl(
-    baseDtab: Option[String],
-    failFast: Option[Boolean],
     namers: Option[Seq[NamerConfig]],
     routers: Option[Seq[RouterConfig]]
   ) extends LinkerConfig

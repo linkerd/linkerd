@@ -2,7 +2,7 @@ package io.buoyant.linkerd.config
 
 import java.net.{InetAddress, InetSocketAddress}
 
-import cats.data.{NonEmptyList, OneAnd, ValidatedNel}
+import cats.data.{NonEmptyList, ValidatedNel}
 import cats.data.Validated._
 import com.google.common.net.InetAddresses
 
@@ -35,7 +35,7 @@ object ServerConfig {
 
     def validated(others: Seq[Defaults]): ValidatedNel[ConfigError, Validated] = {
       // TODO: unify this with code in Server.scala
-      def conflicts(other: Defaults) = {
+      def conflicts(other: Defaults): Option[ConflictingPorts] = {
         val addr0 = other.addr
         val addr1 = this.addr
         val conflict = (addr1.getPort != 0) && (addr0.getPort == addr1.getPort) && {
