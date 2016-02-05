@@ -63,7 +63,7 @@ object Parsing {
 
   def skipValue(json: JsonParser): Unit =
     json.getCurrentToken match {
-      case JsonToken.START_ARRAY =>
+      case JsonToken.START_ARRAY | JsonToken.START_OBJECT =>
         json.skipChildren()
         json.nextToken()
       case tok =>

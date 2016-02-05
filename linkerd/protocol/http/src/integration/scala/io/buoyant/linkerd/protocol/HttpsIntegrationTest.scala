@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Http => FinagleHttp, _}
 import com.twitter.finagle.http._
 import com.twitter.finagle.netty3.Netty3TransporterTLSConfig
@@ -11,6 +12,7 @@ import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
 import com.twitter.util._
 import io.buoyant.router.Http
 import io.buoyant.test.Awaits
+import io.l5d.clientTls.{noValidation, static}
 import java.io.{File, FileInputStream}
 import java.net.{InetAddress, InetSocketAddress, SocketAddress}
 import java.security.KeyStore
@@ -25,46 +27,32 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
   override val defaultWait = 2.seconds
 
   test("tls server + plain backend") {
-    // First, we create a CA and get a cert/key for linker
-    val tmpdir = new File("mktemp -d -t linkerd-tls".!!.stripLineEnd)
-    try {
-      val configFile = mkCaDirs(tmpdir)
-
-      val caCert = new File(tmpdir, "cacert.pem")
-      val caKey = new File(tmpdir, "private/cakey.pem")
-      assert(run(newKeyAndCert("/C=US/CN=Test CA", configFile, caKey, caCert)) == 0)
-
-      val routerReq = new File(tmpdir, "routerreq.pem")
-      val routerCert = new File(tmpdir, "routercert.pem")
-      val routerKey = new File(tmpdir, "private/routerkey.pem")
-      assert(run(newReq("/C=US/CN=linkerd", configFile, routerReq, routerKey)) == 0)
-
-      assert(run(signReq(configFile, caKey, caCert, routerReq, routerCert)) == 0)
-      // routerCert has the server's cert, signed by caCert
-
+    withCerts { certs =>
       val dog = Downstream.const("dogs", "woof")
       try {
-        val linkerConfig = s"""
-        |routers:
-        |- protocol: http
-        |  baseDtab: |
-        |    /p/dog => /$$/inet/127.1/${dog.port} ;
-        |    /http/1.1/GET/clifford => /p/dog ;
-        |  servers:
-        |  - port: 0
-        |    tls:
-        |      certPath: ${routerCert.getPath}
-        |      keyPath: ${routerKey.getPath}
-        |""".stripMargin
+        val linkerConfig =
+          s"""
+             |routers:
+             |- protocol: http
+             |  baseDtab: |
+             |    /p/dog => /$$/inet/127.1/${dog.port} ;
+             |    /http/1.1/GET/clifford => /p/dog ;
+             |  servers:
+             |  - port: 0
+             |    tls:
+             |      certPath: ${certs.routerCert.getPath}
+             |      keyPath: ${certs.routerKey.getPath}
+             |""".
+            stripMargin
         val protocols = ProtocolInitializers(new HttpInitializer)
-        val linker = Linker.mk(protocols, NamerInitializers.empty)
+        val linker = Linker.mk(protocols, NamerInitializers.empty, TlsClientInitializers.empty)
           .read(Yaml(linkerConfig))
 
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
           try {
-            val client = upstream(server, "linkerd", caCert)
+            val client = upstreamTls(server, "linkerd", certs.caCert)
             try {
               val rsp = {
                 val req = Request()
@@ -73,12 +61,138 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
               }
               assert(rsp.contentString == "woof")
 
-            } finally(await(client.close()))
-          } finally(await(server.close()))
-        } finally(await(router.close()))
-      } finally(await(dog.server.close()))
-    } finally(Seq("echo", "rm", "-rf", tmpdir.getPath).!)
+            } finally (await(client.close()))
+          } finally (await(server.close()))
+        } finally (await(router.close()))
+      } finally (await(dog.server.close()))
+    }
   }
+
+  test("tls router + plain upstream without validation") {
+    withCerts { certs =>
+      val dog = Downstream.constTls("dogs", "woof", certs.routerCert, certs.routerKey)
+      try {
+        val linkerConfig =
+          s"""
+             |routers:
+             |- protocol: http
+             |  baseDtab: |
+             |    /p/dog => /$$/inet/127.1/${dog.port} ;
+             |    /http/1.1/GET/clifford => /p/dog ;
+             |  servers:
+             |  - port: 0
+             |  tls:
+             |    kind: io.l5d.clientTls.noValidation
+             |""".
+            stripMargin
+        val protocols = ProtocolInitializers(new HttpInitializer)
+        val tls = TlsClientInitializers(new noValidation)
+        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
+          .read(Yaml(linkerConfig))
+        val router = linker.routers.head.initialize()
+        try {
+          val server = router.servers.head.serve()
+          try {
+            val client = upstream(server)
+            try {
+              val rsp = {
+                val req = Request()
+                req.host = "clifford"
+                await(client(req))
+              }
+              assert(rsp.contentString == "woof")
+
+            } finally (await(client.close()))
+          } finally (await(server.close()))
+        } finally (await(router.close()))
+      } finally (await(dog.server.close()))
+    }
+  }
+
+  test("tls router + plain upstream with static validation") {
+    withCerts { certs =>
+      val dog = Downstream.constTls("dogs", "woof", certs.routerCert, certs.routerKey)
+      try {
+        val linkerConfig =
+          s"""
+             |routers:
+             |- protocol: http
+             |  baseDtab: |
+             |    /p/dog => /$$/inet/127.1/${dog.port} ;
+             |    /http/1.1/GET/clifford => /p/dog ;
+             |  servers:
+             |  - port: 0
+             |  tls:
+             |    kind: io.l5d.clientTls.static
+             |    commonName: linkerd
+             |    caCertPath: ${certs.caCert.getPath}
+             |""".
+            stripMargin
+        val protocols = ProtocolInitializers(new HttpInitializer)
+        val tls = TlsClientInitializers(new static)
+        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
+          .read(Yaml(linkerConfig))
+        val router = linker.routers.head.initialize()
+        try {
+          val server = router.servers.head.serve()
+          try {
+            val client = upstream(server)
+            try {
+              val rsp = {
+                val req = Request()
+                req.host = "clifford"
+                await(client(req))
+              }
+              assert(rsp.contentString == "woof")
+
+            } finally (await(client.close()))
+          } finally (await(server.close()))
+        } finally (await(router.close()))
+      } finally (await(dog.server.close()))
+    }
+  }
+
+  test("tls router + plain upstream with static validation and incorrect common name") {
+    withCerts { certs =>
+      val dog = Downstream.constTls("dogs", "woof", certs.routerCert, certs.routerKey)
+      try {
+        val linkerConfig =
+          s"""
+             |routers:
+             |- protocol: http
+             |  baseDtab: |
+             |    /p/dog => /$$/inet/127.1/${dog.port} ;
+             |    /http/1.1/GET/clifford => /p/dog ;
+             |  servers:
+             |  - port: 0
+             |  tls:
+             |    kind: io.l5d.clientTls.static
+             |    commonName: wrong
+             |    caCertPath: ${certs.caCert.getPath}
+             |""".
+            stripMargin
+        val protocols = ProtocolInitializers(new HttpInitializer)
+        val tls = TlsClientInitializers(new static)
+        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
+          .read(Yaml(linkerConfig))
+        val router = linker.routers.head.initialize()
+        try {
+          val server = router.servers.head.serve()
+          try {
+            val client = upstream(server)
+            try {
+              val rsp = {
+                val req = Request()
+                req.host = "clifford"
+                intercept[Failure](await(client(req)))
+              }
+            } finally (await(client.close()))
+          } finally (await(server.close()))
+        } finally (await(router.close()))
+      } finally (await(dog.server.close()))
+    }
+  }
+
 
   /*
    * helpers
@@ -90,7 +204,30 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
     p
   }
 
-  def upstream(server: ListeningServer, tlsName: String, caCert: File) = {
+  case class Certs(caCert: File, routerCert: File, routerKey: File)
+  def withCerts(f: Certs => Unit): Unit = {
+    // First, we create a CA and get a cert/key for linker
+    val tmpdir = new File("mktemp -d -t linkerd-tls".!!.stripLineEnd)
+    try {
+      val configFile = mkCaDirs (tmpdir)
+
+      val caCert = new File (tmpdir, "cacert.pem")
+      val caKey = new File (tmpdir, "private/cakey.pem")
+      assert (run (newKeyAndCert ("/C=US/CN=Test CA", configFile, caKey, caCert) ) == 0)
+
+      val routerReq = new File (tmpdir, "routerreq.pem")
+      val routerCert = new File (tmpdir, "routercert.pem")
+      val routerKey = new File (tmpdir, "private/routerkey.pem")
+      assert (run (newReq ("/C=US/CN=linkerd", configFile, routerReq, routerKey) ) == 0)
+
+      assert (run (signReq (configFile, caKey, caCert, routerReq, routerCert) ) == 0)
+      // routerCert has the server's cert, signed by caCert
+
+      f (Certs (caCert, routerCert, routerKey) )
+    } finally(Seq("echo", "rm", "-rf", tmpdir.getPath).!)
+  }
+
+  def upstreamTls(server: ListeningServer, tlsName: String, caCert: File) = {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
 
     // Establish an SSL context that uses our generated certificate.
@@ -117,6 +254,17 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
       .newClient(name, "upstream").toService
   }
 
+  def upstream(server: ListeningServer) = {
+    val address = server.boundAddress.asInstanceOf[InetSocketAddress]
+
+    val name = Name.Bound(Var.value(Addr.Bound(address)), address)
+    FinagleHttp.client
+      .configured(param.Stats(NullStatsReceiver))
+      .configured(param.Tracer(NullTracer))
+      .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
+      .newClient(name, "upstream").toService
+  }
+
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
@@ -136,8 +284,29 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
       Downstream(name, server)
     }
 
+    def mkTls(name: String, cert: File, key: File)(f: Request=>Response): Downstream = {
+      val service = Service.mk { req: Request => Future(f(req)) }
+      val server = FinagleHttp.server
+        .configured(param.Label(name))
+        .configured(param.Tracer(NullTracer))
+        .configured(
+          Transport.TLSServerEngine(
+            Some(() => Ssl.server(cert.getPath, key.getPath, null, null, null))
+          )
+        )
+        .serve(":*", service)
+      Downstream(name, server)
+    }
+
     def const(name: String, value: String): Downstream =
       mk(name) { _ =>
+        val rsp = Response()
+        rsp.contentString = value
+        rsp
+      }
+
+    def constTls(name: String, value: String, cert: File, key: File): Downstream =
+      mkTls(name, cert, key) { _ =>
         val rsp = Response()
         rsp.contentString = value
         rsp

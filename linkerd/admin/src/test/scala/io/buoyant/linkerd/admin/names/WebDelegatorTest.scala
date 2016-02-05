@@ -14,7 +14,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
     yaml: String,
     protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
     namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers).read(Yaml(yaml))
+  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
 
   val linker = parse("""
 namers:

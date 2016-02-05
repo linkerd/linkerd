@@ -67,6 +67,12 @@ trait ProtocolInitializer {
       }
       InitializedRouter(protocol, params, factory, servable)
     }
+
+    override def tlsFrom(tls: TlsClientInitializers, p: JsonParser): Router = {
+      val tlsPrep = tls.read[RouterReq, RouterRsp](p)
+      val clientStack = router.clientStack.replace(Stack.Role("TlsClientPrep"), tlsPrep)
+      copy(router = router.withClientStack(clientStack))
+    }
   }
 
   def router: Router = ProtocolRouter(defaultRouter)

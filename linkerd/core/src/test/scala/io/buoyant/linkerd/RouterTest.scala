@@ -11,7 +11,7 @@ class RouterTest extends FunSuite {
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
     protos: ProtocolInitializers = TestProtocol.DefaultInitializers
-  ) = Router.read(Yaml(yaml), params, protos)
+  ) = Router.read(Yaml(yaml), params, protos, TlsClientInitializers.empty)
 
   test("with label") {
     val yaml = """

@@ -12,7 +12,8 @@ class RouterHandlerTest extends FunSuite with Awaits {
     yaml: String
   ) = Linker.mk(
     TestProtocol.DefaultInitializers,
-    NamerInitializers(new TestNamer)
+    NamerInitializers(new TestNamer),
+    TlsClientInitializers.empty
   ).read(Yaml(yaml))
 
   test("returns the names of defined routers") {

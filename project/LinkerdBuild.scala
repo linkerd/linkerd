@@ -104,6 +104,7 @@ object LinkerdBuild extends Base {
         .withTests().withE2e().withIntegration()
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
+          tls % "test",
           Router.http)
 
       val mux = projectDir("linkerd/protocol/mux")
@@ -116,8 +117,11 @@ object LinkerdBuild extends Base {
         .aggregate(http, mux, thrift)
     }
 
+    val tls = projectDir("linkerd/tls")
+      .dependsOn(core)
+
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, Namer.all, Protocol.all)
+      .aggregate(admin, core, main, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -183,6 +187,7 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
+  val linkerdTls = Linkerd.tls
   val router = Router.all
   val routerCore = Router.core
   val routerHttp = Router.http
