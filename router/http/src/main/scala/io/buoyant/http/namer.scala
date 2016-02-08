@@ -136,6 +136,40 @@ class subdomainOfPfx extends RewritingNamer {
 }
 
 /**
+ * A rewriting namer that accepts names in the form:
+ *
+ *   /foo.buoyant.io/resource/name
+ *
+ * and rewrites to:
+ *
+ *   /io/buoyant/foo/resource/name
+ */
+class domainToPath extends RewritingNamer {
+  protected[this] def rewrite(path: Path) = path.take(1) match {
+    case Path.Utf8(host@Match.host()) =>
+      Some(Path.Utf8(host.split("\\.").reverse: _*) ++ path.drop(1))
+    case _ => None
+  }
+}
+
+/**
+ * A rewriting namer that accepts names in the form:
+ *
+ *   /pfx/foo.buoyant.io/resource/name
+ *
+ * and rewrites to:
+ *
+ *   /pfx/io/buoyant/foo/resource/name
+ */
+class domainToPathPfx extends RewritingNamer {
+  protected[this] def rewrite(path: Path) = path.take(2) match {
+    case Path.Utf8(pfx, host@Match.host()) =>
+      Some(Path.Utf8(pfx +: host.split("\\.").reverse: _*) ++ path.drop(2))
+    case _ => None
+  }
+}
+
+/**
  * A service namer that accepts names in the form:
  *
  *   /400/resource/name

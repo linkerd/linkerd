@@ -61,6 +61,16 @@ class NamerTest extends FunSuite with Awaits {
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar", "bah"))))
   }
 
+  test("domainToPath") {
+    val path = Path.read("/$/io.buoyant.http.domainToPath/foo.buoyant.io")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("io", "buoyant", "foo"))))
+  }
+
+  test("domainToPathPfx") {
+    val path = Path.read("/$/io.buoyant.http.domainToPathPfx/pfx/foo.buoyant.io")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("pfx", "io", "buoyant", "foo"))))
+  }
+
   test("status") {
     val client = Http.newService("/$/io.buoyant.http.status/401/foo/bar.a.b/bah")
     val rsp = await(client(Request()))
