@@ -37,24 +37,3 @@ object Sampler {
     Sampler(Var.value(v))
   }
 }
-
-/**
- * A tracer proxy that uses `sampler` to determine whether a record should be traced.
- *
- * Records are only sampled when the sampler samples returns `true` for a give
- */
-case class SampledTracer(sampler: Sampler, underlying: Tracer) extends Tracer {
-
-  def sampleTrace(id: TraceId) =
-    id.sampled orElse Some(sampler(id.traceId.toLong))
-
-  def record(r: Record) =
-    if (sampleTrace(r.traceId) getOrElse false) {
-      underlying.record(r)
-    }
-}
-
-object SampledTracer {
-  def apply(rate: Float, tracer: Tracer): SampledTracer =
-    SampledTracer(Sampler(rate), tracer)
-}
