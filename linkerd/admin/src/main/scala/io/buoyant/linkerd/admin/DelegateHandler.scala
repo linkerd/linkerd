@@ -48,6 +48,8 @@ private object DelegateHandler {
         </div>
         <div class="result">
         </div>
+        <div class="modal fade error-modal" tabindex="-1" role="dialog">
+        </div>
       """,
       tailContent = s"""
         <script id="data" type="application/json">${WebDelegator.Codec.writeStr(dtab)}</script>

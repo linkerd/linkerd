@@ -5,10 +5,13 @@ var SINGLE_ROUTER_PAGES_ONLY = true;
 
 $.when(
   $.get("/files/template/dentry.template"),
-  $.get("/files/template/delegatenode.template")
-).done(function(dentryRsp, nodeRsp){
+  $.get("/files/template/delegatenode.template"),
+  $.get("/files/template/error_modal.template")
+).done(function(dentryRsp, nodeRsp, modalRsp){
   templates.dentry = Handlebars.compile(dentryRsp[0]);
   templates.node = Handlebars.compile(nodeRsp[0]);
+  templates.errorModal = Handlebars.compile(modalRsp[0]);
+
   var dtabMap = JSON.parse($("#data").html());
 
   var selectedRouter = getSelectedRouter();
@@ -25,11 +28,17 @@ $.when(
     $(".router-label-title").text("Router \"" + selectedRouter + "\"");
 
     var dtabViewer = new DtabViewer(dtab, templates.dentry);
+    $('#path-input').val(decodeURIComponent(window.location.hash).slice(1));
     $(function(){
       $('.go').click(function(e){
         e.preventDefault();
-        var path = $('.path input').val();
-        $.get("delegator.json?" + $.param({ n: path, d: dtabViewer.dtabStr() }), renderAll);
+        var path = $('#path-input').val();
+        window.location.hash = encodeURIComponent(path);
+        var request = $.get("delegator.json?" + $.param({ n: path, d: dtabViewer.dtabStr() }), renderAll);
+        request.fail(function( jqXHR ) {
+          $(".error-modal").html(templates.errorModal(jqXHR.statusText));
+          $('.error-modal').modal();
+        });
       });
     });
   }
