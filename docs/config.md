@@ -30,8 +30,13 @@ routers:
   - port: 8080
     ip: 0.0.0.0
     tls:
-      certPath: /foo/cert
-      keyPath: /foo/key
+      certPath: /foo/cert.pem
+      keyPath: /foo/key.pem
+  client:
+    tls:
+      kind: io.l5d.clientTls.static
+      commonName: foo
+      caCertPath: /foo/caCert.pem
   timeoutMs: 1000
   dstPrefix: /ext/http
 
@@ -79,7 +84,8 @@ for a supported protocol. (linkerd doesn't need to understand the payload in an
 RPC call, but it does need to know enough about the protocol to determine the
 logical name of the destination.)
 
-Routers also include **servers**, which define their entry points.
+Routers also include **servers**, which define their entry points, and
+**client**, which configures how clients are built.
 
 Additionally, any of the [basic router params](#basic-router-params)
 may be specified in the top-level object as defaults.
@@ -94,6 +100,8 @@ Each router must be configured as an object with the following params:
 * [basic router params](#basic-router-params) or protocol-specific router params
 * *servers* -- a list of server objects with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
+* *client* -- an object containing [basic client params](#basic-client-params)
+  or protocol-specific client params
 
 <a name="basic-router-params"></a>
 ### Basic router parameters
@@ -107,20 +115,6 @@ Each router must be configured as an object with the following params:
 * *failFast* -- If `true`, connection failures are punished more aggressively.
   Should not be used with small destination pools. (default: false)
 * *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
-* *tls* -- The router will make requests using TLS if this parameter is
-provided.  It must be an object containing keys:
-  * *kind* -- One of the supported TlsClientInitializer plugins, by
-  fully-qualified class name.
-  * Any options specific to the plugin
-  Current plugins include:
-  * *io.l5d.clientTls.noValidation*: Skip hostname validation.  This is unsafe.
-  * *io.l5d.clietnTls.static*: Use a single common name for all TLS
-  requests.  This assumes that all servers that the router connects to all use
-  the same TLS cert (or all use certs generated with the same common name).
-  This plugin supports the following options:
-    * *commonName* -- Required.  The common name to use for all TLS requests.
-    * *caCertPath* -- Optional.  Use the given CA cert for common name
-    validation.
 
 <!-- TODO router capacity  -->
 
@@ -137,6 +131,24 @@ local IPv4 interfaces.
   It must be an object containing keys:
   * *certPath* -- File path to the TLS certificate file
   * *keyPath* -- File path to the TLS key file
+
+<a name="basic-client-params"></a>
+### Basic client parameters
+
+* *tls* -- The router will make requests using TLS if this parameter is
+provided.  It must be an object containing keys:
+  * *kind* -- One of the supported TlsClientInitializer plugins, by
+  fully-qualified class name.
+  * Any options specific to the plugin
+  Current plugins include:
+  * *io.l5d.clientTls.noValidation*: Skip hostname validation.  This is unsafe.
+  * *io.l5d.clientTls.static*: Use a single common name for all TLS
+  requests.  This assumes that all servers that the router connects to all use
+  the same TLS cert (or all use certs generated with the same common name).
+  This plugin supports the following options:
+    * *commonName* -- Required.  The common name to use for all TLS requests.
+    * *caCertPath* -- Optional.  Use the given CA cert for common name
+    validation.
 
 <a name="protocol-http"></a>
 ### HTTP/1.1 protocol parameters
@@ -188,24 +200,22 @@ combinations for a specific thrift service.
 
 The default _dstPrefix_ is `/thrift`.
 
-* *thriftFramed* -- if `true`, a framed thrift transport is used for outgoing
-  requests; otherwise, a buffered transport is used. Typically this setting
-  matches the router's servers' `thriftFramed` param. (default: true)
 * *thriftMethodInDst* -- if `true`, thrift method names are appended to
-  destinations for outgoing requests. Typically this setting matches the
-  router's servers' `thriftMethodInDst` param. (default: false)
+  destinations for outgoing requests. (default: false)
 
 Thrift servers define additional parameters:
 
 * *thriftFramed* -- if `true`, a framed thrift transport is used for incoming
   requests; otherwise, a buffered transport is used. Typically this setting
   matches the router's `thriftFramed` param. (default: true)
-* *thriftMethodInDst* -- if `true`, thrift method names are appended to
-  destinations for incoming requests. Typically this setting matches the
-  router's `thriftMethodInDst` param. (default: false)
 
 The default server _port_ is 4114.
 
+Thrift also supports additional *client* parameters:
+
+* *thriftFramed* -- if `true`, a framed thrift transport is used for outgoing
+  requests; otherwise, a buffered transport is used. Typically this setting
+  matches the router's servers' `thriftFramed` param. (default: true)
 
 As an example: Here's a thrift router configuration that routes thrift--via
 buffered transport--from port 4004 to port 5005
@@ -216,10 +226,11 @@ routers:
   label: port-shifter
   baseDtab: |
     /thrift   => /$/inet/127.1/5005;
-  thriftFramed: false
   servers:
   - port: 4004
     ip: 0.0.0.0
+    thriftFramed: false
+  client:
     thriftFramed: false
 ```
 

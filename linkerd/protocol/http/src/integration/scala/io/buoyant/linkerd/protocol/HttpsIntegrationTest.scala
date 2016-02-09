@@ -81,8 +81,9 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
              |    /http/1.1/GET/clifford => /p/dog ;
              |  servers:
              |  - port: 0
-             |  tls:
-             |    kind: io.l5d.clientTls.noValidation
+             |  client:
+             |    tls:
+             |      kind: io.l5d.clientTls.noValidation
              |""".
             stripMargin
         val protocols = ProtocolInitializers(new HttpInitializer)
@@ -122,10 +123,11 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
              |    /http/1.1/GET/clifford => /p/dog ;
              |  servers:
              |  - port: 0
-             |  tls:
-             |    kind: io.l5d.clientTls.static
-             |    commonName: linkerd
-             |    caCertPath: ${certs.caCert.getPath}
+             |  client:
+             |    tls:
+             |      kind: io.l5d.clientTls.static
+             |      commonName: linkerd
+             |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
         val protocols = ProtocolInitializers(new HttpInitializer)
@@ -165,10 +167,11 @@ class HttpsIntegrationTest extends FunSuite with Awaits {
              |    /http/1.1/GET/clifford => /p/dog ;
              |  servers:
              |  - port: 0
-             |  tls:
-             |    kind: io.l5d.clientTls.static
-             |    commonName: wrong
-             |    caCertPath: ${certs.caCert.getPath}
+             |  client:
+             |    tls:
+             |      kind: io.l5d.clientTls.static
+             |      commonName: wrong
+             |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
         val protocols = ProtocolInitializers(new HttpInitializer)
