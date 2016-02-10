@@ -9,6 +9,7 @@ import sbtunidoc.Plugin._
  *
  * - consul/ -- consul client
  * - k8s/ -- finagle kubernetes client
+ * - marathon/ -- marathon client
  * - router/ -- finagle router libraries
  * - linkerd/ -- configuration, runtime, and modules
  * - test-util/ -- async test helpers; provided by [[Base]]
@@ -21,6 +22,11 @@ object LinkerdBuild extends Base {
     .withTests()
 
   val consul = projectDir("consul")
+    .withLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
+  val marathon = projectDir("marathon")
     .withLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -89,13 +95,18 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s, core)
         .withTests()
 
+      val marathon = projectDir("linkerd/namer/marathon")
+        .dependsOn(LinkerdBuild.marathon, core)
+        .dependsOn(core)
+        .withTests()
+
       val serversets = projectDir("linkerd/namer/serversets")
         .withLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .withTests()
         .dependsOn(core % "compile->compile;test->test")
 
       val all = projectDir("linkerd/namer")
-        .aggregate(fs, k8s, consul, serversets)
+        .aggregate(consul, fs, k8s, marathon, serversets)
     }
 
     object Protocol {
@@ -130,7 +141,7 @@ object LinkerdBuild extends Base {
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.serversets,
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
         Protocol.mux, Protocol.thrift,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -202,6 +213,7 @@ object LinkerdBuild extends Base {
   val linkerdNamerConsul = Linkerd.Namer.consul
   val linkerdNamerFs = Linkerd.Namer.fs
   val linkerdNamerK8s = Linkerd.Namer.k8s
+  val linkerdNamerMarathon = Linkerd.Namer.marathon
   val linkerdNamerServersets = Linkerd.Namer.serversets
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
@@ -217,7 +229,7 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, Linkerd.all, Router.all, testUtil)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Router.all, testUtil)
     .settings(unidocSettings)
     .settings(
       assembly <<= assembly in linkerd,

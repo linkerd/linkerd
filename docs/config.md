@@ -311,6 +311,7 @@ of the following parameters:
   * *io.l5d.serversets*: [ZooKeeper ServerSets service discovery](#zookeeper)
   * *io.l5d.experimental.consul*: [Consul service discovery](#consul) (**experimental**)
   * *io.l5d.experimental.k8s*: [Kubernetes service discovery](#disco-k8s) (**experimental**)
+  * *io.l5d.experimental.marathon*: [Marathon service discovery](#marathon) (**experimental**)
 * *prefix* -- This namer will resolve names beginning with this prefix. See
   [Configuring routing](#configuring-routing) for more on names. Some namers may
   configure a default prefix; see the specific namer section for details.
@@ -422,8 +423,8 @@ For example:
 ```yaml
 namers:
 - kind: io.l5d.experimental.consul
-  - host: 127.0.0.1
-    port: 2181
+  host: 127.0.0.1
+  port: 2181
 ```
 
 The default _prefix_ is `io.l5d.consul`. (Note that this is *different* from
@@ -457,10 +458,10 @@ For example:
 ```yaml
 namers:
 - kind: io.l5d.experimental.k8s
-  - host: kubernetes.default.cluster.local
-    port: 443
-    tls: true
-    authTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+  host: kubernetes.default.cluster.local
+  port: 443
+  tls: true
+  authTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
 
 The default _prefix_ is `io.l5d.k8s`. (Note that this is *different* from
@@ -478,6 +479,46 @@ the dtab.
 ```
 baseDtab: |
   /http/1.1/GET => /io.l5d.k8s/prod/http;
+```
+
+<a name="marathon"></a>
+### Marathon service discovery (experimental)
+
+linkerd provides support for service discovery via
+[Marathon](https://mesosphere.github.io/marathon/). Note that this support is still considered
+experimental.
+
+The Marathon namer is configured with kind `io.l5d.experimental.marathon`, and these parameters:
+
+* *host* -- the Marathon master host. (default: marathon.mesos)
+* *port* -- the Marathon master port. (default: 80)
+* *uriPrefix* -- the Marathon API prefix. (default: empty string). This prefix
+  depends on your Marathon configuration. For example, running Marathon
+  locally, the API is avaiable at `localhost:8080/v2/`, while the default setup
+  on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
+
+For example:
+```yaml
+namers:
+- kind:      io.l5d.experimental.marathon
+  prefix:    /io.l5d.marathon
+  host:      marathon.mesos
+  port:      80
+  uriPrefix: /marathon
+```
+
+The default _prefix_ is `io.l5d.marathon`. (Note that this is *different* from
+the name in the configuration block.)
+
+The Marathon namer takes one path component: `app-id`:
+
+* app-id: the id of the marathon application.
+
+Once configured, to use the Marathon namer, you must reference it in
+the dtab.
+```
+baseDtab: |
+  /http/1.1/GET => /io.l5d.marathon/http;
 ```
 
 <a name="configuring-routing"></a>
