@@ -47,22 +47,21 @@ trait Linker {
    *      - protocol: http
    *        servers:
    *        - port: 4140
-   *        router:
-   *          httpUriInDst: true
+   *        httpUriInDst: true
    *
    *      - protocol: http
-   *        router:
-   *          label: http.ext
-   *          dstPrefix: /ext/http
+   *        label: http.ext
+   *        dstPrefix: /ext/http
    *        servers:
    *        - port: 8080
    *          ip: any
    *
-   *      - router:
+   *      - protocol: thrift
+   *        client:
    *          thriftFramed: true
    *        servers:
    *        - port: 9090
-   *        protocol: thrift
+   *
    * </pre>
    *
    * Note that protocol-specific features are delegated to per-

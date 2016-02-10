@@ -38,6 +38,9 @@ trait ProtocolInitializer {
   /** Reads protocol-specific router params. */
   protected def routerParamsParser: Parsing.Params = Parsing.Params.Empty
 
+  /** Reads protocol-specific client params. */
+  protected def clientParamsParser: Parsing.Params = Parsing.Params.Empty
+
   /**
    * Satisfies the protocol-agnostic linkerd Router interface by
    * wrapping the protocol-specific router stack.
@@ -68,10 +71,17 @@ trait ProtocolInitializer {
       InitializedRouter(protocol, params, factory, servable)
     }
 
-    override def tlsFrom(tls: TlsClientInitializers, p: JsonParser): Router = {
-      val tlsPrep = tls.read[RouterReq, RouterRsp](p)
-      val clientStack = router.clientStack.replace(Stack.Role("TlsClientPrep"), tlsPrep)
-      copy(router = router.withClientStack(clientStack))
+    override def clientFrom(tls: TlsClientInitializers, p: JsonParser): Router = {
+      val configuredRouter = Parsing.foldObject(p, router) {
+        case (r, "tls", p) =>
+          val tlsPrep = tls.read[RouterReq, RouterRsp](p)
+          val clientStack = r.clientStack.replace(Stack.Role("TlsClientPrep"), tlsPrep)
+          r.withClientStack(clientStack)
+        case (r, key, p) if clientParamsParser.keys(key) =>
+          val params = clientParamsParser.read(key, p, r.params)
+          r.withParams(params)
+      }
+      copy(router = configuredRouter)
     }
   }
 

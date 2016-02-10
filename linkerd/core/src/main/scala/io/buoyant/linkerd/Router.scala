@@ -53,8 +53,8 @@ trait Router {
   def servingFrom(jp: JsonParser): Router =
     serving(Router.readServers(jp, protocol.server))
 
-  /** Return a router with TLS configuration read from the provided parser. */
-  def tlsFrom(tls: TlsClientInitializers, p: JsonParser): Router
+  /** Return a router with client configuration read from the provided parser. */
+  def clientFrom(tls: TlsClientInitializers, p: JsonParser): Router
 
   /**
    * Initialize a router by instantiating a downstream router client
@@ -80,9 +80,8 @@ object Router {
    *
    * <pre>
    *     protocol: proto
-   *     router:
-   *       label: foo
-   *       protoSpecificParam: true
+   *     label: foo
+   *     protoSpecificParam: true
    *     servers:
    *     - port: 4140
    * </pre>
@@ -163,8 +162,8 @@ object Router {
           Parsing.skipValue(json)
           router
 
-        case (router, "tls", json) =>
-          router.tlsFrom(tls, json)
+        case (router, "client", json) =>
+          router.clientFrom(tls, json)
 
         case (router, key, json) if router.paramParser.keys(key) =>
           val params = router.paramParser.read(key, json, router.params)
