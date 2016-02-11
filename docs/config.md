@@ -23,9 +23,11 @@ baseDtab: |
 
 routers:
 - protocol: http
+  label: int-http
   httpUriInDst: true
 
 - protocol: http
+  label: ext-http
   servers:
   - port: 8080
     ip: 0.0.0.0
@@ -41,7 +43,12 @@ routers:
   dstPrefix: /ext/http
 
 - protocol: thrift
-  thriftFramed: false
+  servers:
+  - port: 8081
+    ip: 0.0.0.0
+    thriftFramed: true
+  client:
+    thriftFramed: true
   thriftMethodInDst: false
   baseDtab: |
     /thrift => /$/io.l5d.fs/thrift;
@@ -121,7 +128,6 @@ Each router must be configured as an object with the following params:
 <a name="basic-server-params"></a>
 ### Basic server parameters
 
-* *label* -- The name of the server (in stats and the admin ui)
 * *port* -- The TCP port number. Protocols may provide default
 values. If no default is provided, the port parameter is required.
 * *ip* -- The local IP address.  By default, the loopback address is
