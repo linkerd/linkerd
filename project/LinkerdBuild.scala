@@ -130,7 +130,8 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.serversets,
-        Protocol.mux, Protocol.thrift)
+        Protocol.mux, Protocol.thrift,
+        tls)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
         assembly <<= assembly in Bundle,
