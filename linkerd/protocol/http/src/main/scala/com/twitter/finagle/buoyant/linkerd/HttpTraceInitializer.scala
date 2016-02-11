@@ -57,10 +57,7 @@ object HttpTraceInitializer {
         sampler match {
           case Some(sampler) =>
             val id = Trace.id
-            val sampled = id._sampled match {
-              case None => id.copy(_sampled = Some(sampler(id.traceId.toLong)))
-              case _ => id
-            }
+            val sampled = id.copy(_sampled = Some(sampler(id.traceId.toLong)))
             Trace.letId(sampled)(f)
           case _ => f
         }
