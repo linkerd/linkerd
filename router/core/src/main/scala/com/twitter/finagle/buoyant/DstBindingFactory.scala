@@ -146,7 +146,7 @@ object DstBindingFactory {
           override def apply(conn: ClientConnection) =
             super.apply(conn).rescue {
               case e: NoBrokersAvailableException =>
-                val nb = new NoBrokersAvailableException(e.name, path.baseDtab, path.localDtab)
+                val nb = new NoBrokersAvailableException(path.path.show, path.baseDtab, path.localDtab)
                 Future.exception(nb)
             }
         }

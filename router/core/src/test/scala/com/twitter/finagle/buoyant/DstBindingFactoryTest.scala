@@ -98,4 +98,40 @@ class DstBindingFactoryTest extends FunSuite with Awaits {
 
     await(c1.close()) // nop
   }
+
+  test("Ignores cached NoBrokersAvailableException info when propagating the exception") {
+    def mkClient(bound: Name.Bound): ServiceFactory[String, String] = synchronized {
+      val svc = Service.const(Future.value(bound.idStr))
+      ServiceFactory.const(svc)
+    }
+
+    val namer = new NameInterpreter {
+      def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = Activity.value(NameTree.Neg)
+    }
+
+    // copy-pasted from NameTreeFactory
+    case class Failed(exn: Throwable) extends ServiceFactory[String, String] {
+      val service: Future[Service[String, String]] = Future.exception(exn)
+      override def status = Status.Closed
+      def apply(conn: ClientConnection) = service
+      def close(deadline: Time) = Future.Done
+    }
+
+    val cache = new DstBindingFactory.Cached[String, String](
+      mkClient,
+      boundMk = (d: Dst.Bound, f: ServiceFactory[String, String]) => Failed(new NoBrokersAvailableException("")),
+      namer = namer
+    )
+
+    val path1exception = intercept[NoBrokersAvailableException] {
+      await(cache(Dst.Path(Path.read("/usa/ca/la"), Dtab.empty, Dtab.empty)))
+    }
+
+    val path2exception = intercept[NoBrokersAvailableException] {
+      await(cache(Dst.Path(Path.read("/usa/ca/sf"), Dtab.empty, Dtab.empty)))
+    }
+
+    assert(path1exception.name == "/usa/ca/la")
+    assert(path2exception.name == "/usa/ca/sf")
+  }
 }
