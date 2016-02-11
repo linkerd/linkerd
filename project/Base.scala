@@ -14,7 +14,7 @@ import scalariform.formatter.preferences._
  * Base project configuration.
  */
 class Base extends Build {
-  val headVersion = "0.0.10"
+  val headVersion = "0.0.11"
 
   object Git {
     val releaseTag = s"release-$headVersion"
