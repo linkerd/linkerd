@@ -25,6 +25,11 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson)
     .withTests()
 
+  val marathon = projectDir("marathon")
+    .withLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
   object Router {
     val core = projectDir("router/core")
       .withLib(Deps.finagle("core"))
