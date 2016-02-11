@@ -103,7 +103,8 @@ object LinkerdBuild extends Base {
         .withTests().withE2e().withIntegration()
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
-          tls % "test",
+          tls % "integration",
+          Namer.fs % "integration",
           Router.http)
 
       val mux = projectDir("linkerd/protocol/mux")
