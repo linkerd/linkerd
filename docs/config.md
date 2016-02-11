@@ -348,7 +348,7 @@ baseDtab: |
 ### ZooKeeper ServerSets service discovery
 
 linkerd provides support for [ZooKeeper
-ServerSets]:(https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
+ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
 The ServerSets namer is configured with kind `io.l5d.serversets`, and these parameters:
 
