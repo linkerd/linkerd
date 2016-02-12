@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.finagle.Path
+import com.twitter.finagle.Thrift.param
 import io.buoyant.router.{Thrift, RoutingFactory}
 
 class ThriftInitializer extends ProtocolInitializer {
@@ -20,7 +21,7 @@ class ThriftInitializer extends ProtocolInitializer {
     .configured(Server.Port(4114))
 
   val Framed = Parsing.Param.Boolean("thriftFramed") { framed =>
-    Thrift.param.Framed(framed)
+    param.Framed(framed)
   }
 
   val MethodInDst = Parsing.Param.Boolean("thriftMethodInDst") { methodInDst =>

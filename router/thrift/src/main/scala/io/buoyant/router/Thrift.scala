@@ -14,15 +14,6 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
   with FinagleServer[Array[Byte], Array[Byte]] {
 
   object param {
-    /**
-     * XXX this should be removed once finagle subsumes this:
-     * https://github.com/twitter/finagle/pull/451
-     */
-    case class Framed(enabled: Boolean)
-    implicit object Framed extends Stack.Param[Framed] {
-      val default = Framed(true)
-    }
-
     case class MethodInDst(enabled: Boolean)
     implicit object MethodInDst extends Stack.Param[MethodInDst] {
       val default = MethodInDst(false)
@@ -53,19 +44,12 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
     }
   }
 
-  /**
-   * @todo framed should be a Stack.Param
-   */
   case class Router(
     pathStack: Stack[ServiceFactory[ThriftClientRequest, Array[Byte]]] = Router.pathStack,
     boundStack: Stack[ServiceFactory[ThriftClientRequest, Array[Byte]]] = Router.boundStack,
-    client0: StackClient[ThriftClientRequest, Array[Byte]] = Router.client,
+    client: StackClient[ThriftClientRequest, Array[Byte]] = Router.client,
     params: Stack.Params = Router.defaultParams
   ) extends StdStackRouter[ThriftClientRequest, Array[Byte], Router] {
-
-    val param.Framed(framed) = params[param.Framed]
-    protected val client =
-      FinagleThrift.client.copy(framed = framed).withStack(client0.stack)
 
     protected def copy1(
       pathStack: Stack[ServiceFactory[ThriftClientRequest, Array[Byte]]] = this.pathStack,
@@ -86,45 +70,7 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
   def factory(): ServiceFactory[ThriftClientRequest, Array[Byte]] =
     router.factory()
 
-  object Server {
-    val stack: Stack[ServiceFactory[Array[Byte], Array[Byte]]] =
-      FinagleThrift.Server.stack
-
-    val defaultParams: Stack.Params =
-      StackServer.defaultParams +
-        ProtocolLibrary("thrift")
-  }
-
-  /** Wraps Finagle-Thrift's server type with support for the [[param.Framed]] Param. */
-  case class Server(
-    underlying: FinagleThrift.Server = FinagleThrift.Server(Server.stack)
-  ) extends StackServer[Array[Byte], Array[Byte]] {
-    def stack = underlying.stack
-    def params = underlying.params
-    def framed = params[param.Framed].enabled
-
-    override def withStack(stack: Stack[ServiceFactory[Array[Byte], Array[Byte]]]): Server =
-      copy(underlying = underlying.withStack(stack))
-
-    override def withParams(ps: Stack.Params): Server =
-      copy(underlying = underlying.withParams(ps))
-
-    override def configured[P: Stack.Param](p: P): Server =
-      withParams(params + p)
-
-    override def configured[P](psp: (P, Stack.Param[P])): Server = {
-      val (p, sp) = psp
-      configured(p)(sp)
-    }
-
-    def serve(
-      addr: SocketAddress,
-      factory: ServiceFactory[Array[Byte], Array[Byte]]
-    ): ListeningServer =
-      underlying.copy(framed = framed).serve(addr, factory)
-  }
-
-  val server = Server()
+  val server = FinagleThrift.Server()
 
   def serve(
     addr: SocketAddress,

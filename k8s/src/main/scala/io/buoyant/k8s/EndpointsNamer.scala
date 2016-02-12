@@ -48,7 +48,7 @@ object master {
     log.debug("building %s client to %s", label, name)
     val client = (masterTls(), masterUnsafe()) match {
       case (false, _) => Http.client
-      case (true, true) => Http.client.withTlsWithoutValidation()
+      case (true, true) => Http.client.withTlsWithoutValidation
       case (true, _) => Http.client.withTls(setHost.host)
     }
     val service = client
