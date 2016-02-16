@@ -110,7 +110,7 @@ class k8s(val params: Stack.Params) extends NamerInitializer {
 
     val client = (params[k8s.Tls], params[k8s.Tls.WithoutValidation]) match {
       case (k8s.Tls(false), _) => Http.client
-      case (_, k8s.Tls.WithoutValidation(true)) => Http.client.withTlsWithoutValidation()
+      case (_, k8s.Tls.WithoutValidation(true)) => Http.client.withTlsWithoutValidation
       case _ => Http.client.withTls(setHost.host)
     }
 
