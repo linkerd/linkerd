@@ -1,0 +1,17 @@
+namers:
+- kind:      io.l5d.experimental.marathon
+  prefix:    /io.l5d.marathon
+  host:      marathon.mesos
+  port:      80
+  uriPrefix: /marathon
+
+routers:
+- protocol: http
+  baseDtab: |
+    /host     => /io.l5d.marathon;
+    /method   => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1 => /method;
+  httpUriInDst: true
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
