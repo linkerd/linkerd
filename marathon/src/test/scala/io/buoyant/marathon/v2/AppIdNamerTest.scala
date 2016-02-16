@@ -2,7 +2,6 @@ package io.buoyant.marathon.v2
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Addr, ChannelWriteException, Name, NameTree, Path}
-import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.test.Awaits
 import java.net.{InetSocketAddress, SocketAddress}
@@ -18,7 +17,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
 
     assert(state == Activity.Pending)
   }
@@ -31,7 +30,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
 
     assert(state == Activity.Failed(ChannelWriteException(null)))
   }
@@ -44,9 +43,31 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/nosuchservice/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/nosuchservice/residual")).states.respond(state = _)
 
     assert(state == Activity.Ok(NameTree.Neg))
+  }
+
+  test("Namer handles looking up both appId and /appId") {
+    class TestApi() extends Api {
+      def getAppIds(): Future[Api.AppIds] = {
+        Future.value(Set[String]("/foo", "/servicename"))
+      }
+      def getAddrs(app: String): Future[Set[SocketAddress]] = Future.never
+    }
+
+    val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+
+    val input1 = Path.Utf8("servicename", "residual")
+    val output1 = Path.Utf8("io.l5d.marathon", "servicename")
+    namer.lookup(input1).states.respond(state = _)
+    assert(state == Activity.Ok(NameTree.Leaf(output1)))
+
+    val input2 = Path.Utf8("/servicename", "residual")
+    val output2 = Path.Utf8("io.l5d.marathon", "/servicename")
+    namer.lookup(input2).states.respond(state = _)
+    assert(state == Activity.Ok(NameTree.Leaf(output2)))
   }
 
   test("Namer updates when blocking call from getAppIds returns") {
@@ -62,11 +83,11 @@ class AppIdNamerTest extends FunSuite with Awaits {
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
-    namer.lookup(Path.read("/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
 
     assert(state == Activity.Pending)
     blockingCallResponder.setDone()
-    assert(state == Activity.Ok(NameTree.Leaf(Path(Buf.Utf8("io.l5d.marathon"), Buf.Utf8("servicename")))))
+    assert(state == Activity.Ok(NameTree.Leaf(Path.Utf8("io.l5d.marathon", "servicename"))))
   }
 
   def assertOnAddrs(state: Activity.State[NameTree[Name]])(f: Set[SocketAddress] => Unit) = state match {
@@ -88,7 +109,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
 
     assertOnAddrs(state) { addrs =>
       assert(addrs.size == 1)
@@ -109,7 +130,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
 
     state match {
       case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Pending)
