@@ -25,6 +25,29 @@ object TlsClientPrep {
       def make(next: ServiceFactory[Req, Rsp]) = next
     }
 
+  private[this] def sslContext(caCert: String): SSLContext = {
+    // Establish an SSL context that uses the provided caCert
+    // Cribbed from http://stackoverflow.com/questions/18513792
+    val cf = CertificateFactory.getInstance("X.509")
+    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    val ks = KeyStore.getInstance(KeyStore.getDefaultType)
+    ks.load(null)
+    ks.setCertificateEntry("caCert", cf.generateCertificate(new FileInputStream(caCert)))
+    tmf.init(ks)
+    val ctx = SSLContext.getInstance("TLS")
+    ctx.init(null, tmf.getTrustManagers, null)
+    ctx
+  }
+
+  def addrEngine(commonName: String, caCert: Option[String])(addr: SocketAddress) = addr match {
+    case addr: InetSocketAddress =>
+      caCert match {
+        case Some(cert) => Ssl.client(sslContext(cert), commonName, addr.getPort)
+        case None => Ssl.client(commonName, addr.getPort)
+      }
+    case _ => Ssl.client()
+  }
+
   /**
    * May be extended to implement a TlsClientPrep module. Supports
    * Params-driven TLS configuration.
@@ -69,31 +92,8 @@ object TlsClientPrep {
   def static[Req, Rsp](commonName: String, caCert: Option[String]): Module[Req, Rsp] =
     new Module[Req, Rsp] {
       val parameters = Seq.empty
-      def newEngine(params: Stack.Params) = Some(addrEngine)
+      def newEngine(params: Stack.Params) = Some(addrEngine(commonName, caCert))
       def peerCommonName(params: Stack.Params) = Some(commonName)
-
-      private[this] def sslContext(caCert: String): SSLContext = {
-        // Establish an SSL context that uses the provided caCert
-        // Cribbed from http://stackoverflow.com/questions/18513792
-        val cf = CertificateFactory.getInstance("X.509");
-        val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-        val ks = KeyStore.getInstance(KeyStore.getDefaultType())
-        ks.load(null)
-        ks.setCertificateEntry("caCert", cf.generateCertificate(new FileInputStream(caCert)))
-        tmf.init(ks)
-        val ctx = SSLContext.getInstance("TLS")
-        ctx.init(null, tmf.getTrustManagers(), null)
-        ctx
-      }
-
-      private[this] def addrEngine(addr: SocketAddress) = addr match {
-        case addr: InetSocketAddress =>
-          caCert match {
-            case Some(cert) => Ssl.client(sslContext(cert), commonName, addr.getPort)
-            case None => Ssl.client(commonName, addr.getPort)
-          }
-        case _ => Ssl.client()
-      }
     }
 
   /** A module that configures TLS to ignore certificate validation. */

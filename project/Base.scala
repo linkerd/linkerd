@@ -180,7 +180,10 @@ class Base extends Build {
     }
 
     def withIntegration(): Project = project
-      .configs(IntegrationTest).settings(inConfig(IntegrationTest)(Defaults.testSettings))
+      .configs(IntegrationTest)
+      .settings(inConfig(IntegrationTest)(
+        Defaults.testSettings :+ (parallelExecution := false)
+      ))
       .dependsOn(testUtil % IntegrationTest)
 
     /** Writes build metadata into the projects resources */
