@@ -1,1 +1,4 @@
 extends: default
+reviewers:
+    required: 2
+    name: default
