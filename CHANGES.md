@@ -1,0 +1,107 @@
+## 0.0.11
+
+* TLS, for real this time.
+* Configuration updates: config now includes a client section, where you can
+  configure client-specific parameters.
+
+## 0.0.10
+
+* We now support end-to-end TLS! However, verification is currently limited to
+  global certs. See  https://github.com/BuoyantIO/linkerd/issues/64 for more on
+  the upcoming roadmap.
+* Prep work for "transparent TLS". Look for this in upcoming releases.
+* Prep work for being able to generate Docker images from the repo, in service
+  of a glorious containerized future.
+* Dashboard improvements! Now harder, faster, better, and also stronger!
+
+## 0.0.9
+
+* Include ZooKeeper ServerSet support, for real this time.
+
+## 0.0.8
+
+* Big new feature alert! We now have Zookeeper ServerSet support.
+* Server-side TLS support! Stay tuned for more security features coming in
+  future releases...
+* Added CONTRIBUTING.md with Contributor License Agreement. We are ready to
+  receive your honorable pull requests!
+* New `thriftMethodInDst` config option to allow for routing based on thrift
+  method names.
+* Admin port now configurable via an `admin/port` config parameters, for those
+  of you who have Opinions About Ports.
+* DTab explorer admin page now supports inspecting DTabs for all configured
+  routers.
+* New `/routers.json` endpoint with runtime router state.
+* We now have a [slack channel](https://slack.linkerd.io)! Operators are
+  standing by to field YOUR questions today.
+* Admin site redesign to match [linkerd.io](https://linkerd.io/), now with
+  favicon!
+
+## 0.0.7
+
+This is a big release! Get ready.
+
+* Brand new name: :sunrise: linkerd :balloon:
+* We're open source! This release is under Apache License v2.
+* Tons of documentation on https://linkerd.io!
+* This release adds config file support! You can express all your routing,
+  listening, and protocol configuration needs in one convenient YAML file! See
+  docs for how this works.
+
+## 0.0.6
+
+* Admin UI now features 25% more amazingness. :rainbow:
+* Preliminary "pure" thrift support.
+  * Default is framed transport with binary encoding; buffered transport also
+    supported.
+  * Out of the box, the router is configured to listen for thrift on port 4141
+    (i.e. in addition to HTTP on port 4140), and forwards thrift calls to
+    localhost:9998. This will almost definitely change in the future.
+* Tons of performance tuning. We're benchmarking sub-1ms p99 request latency and
+  40k+ qps throughput. Working on memory footprint reduction next.
+* By popular demand, HTTP response code stats are now exported in metrics.json.
+* Configurability still limited to what you can change in config.sh and disco/.
+  Expect improvements here soon.
+
+## 0.0.5
+
+* Fancy Request Volume graph in the Admin page.
+* Hide some internal interfaces from the Admin page.
+* Modified interface labels to work in twitter-server's admin.
+
+## 0.0.4
+
+* Experimental Mux protocol support, for Advanced Users Only.
+* New Admin UI that tries to not look like it was built by engineers.
+
+## 0.0.3
+
+* Using sophisticated shell script technology, we now ensure you have a
+  sufficient Java version (we require JDK 8) before attempting to start the
+  router.
+* Upgrades to a newer version of the
+  [Finagle](http://twitter.github.io/finagle/) library.
+* More information added to HTTP tracing:
+  * Host header
+  * Transfer-Encoding header
+* New configuration options for HTTP routing
+  * Routing by URI can be disabled, which simplifies many common use-cases
+  * Allow internal and external http service prefixes to be specified on the
+    command-line
+* Fixed the "downstream clients" admin interface
+
+## 0.0.2
+
+* Router start/stop commands now detect if the router is currently running,
+  easily preventing a whole class of easily-preventable errors.
+* Tarball permissions are fixed.
+* New support for Consul-backed service discovery, if files aren't good enough
+  for ya.
+
+## 0.0.1
+
+First release of the Buoyant Application Router.
+
+* Complete with `router` script to start/stop/restart the router!
+* Router is pre-configured with sane defaults for running locally.
+* Filesystem-backed service discovery mechanism.
