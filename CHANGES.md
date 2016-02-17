@@ -1,3 +1,5 @@
+## 0.1.1
+
 ## 0.1.0
 
 * Introduce Marathon-backed service discovery, for routing traffic in Mesos.
