@@ -120,7 +120,7 @@ The _inspect_ command helps describe how a command is configured:
 [info] examples/http:run = InputTask[Unit]
 [info]   +-examples/http:configFile = examples/http.l5d
 [info]   | +-examples/http:configuration = http
-[info]   | 
+[info]   |
 [info]   +-examples/http:runtimeConfiguration = minimal
 [info]   +-*/*:settingsData = Task[sbt.Settings[sbt.Scope]]
 [info]
@@ -213,19 +213,21 @@ build commands:
 
 #### Releasing ####
 
-By default, the _-SNAPSHOT_ suffix is appended to the version number
-when building linkerd.  In order to build a non-snapshot
-(i.e. releasable) version of linkerd, the build must occur from a
-release tag in git.
+Before releasing ensure that [CHANGES.md](CHANGES.md) is updated to include the
+version that you're trying to release.
+
+By default, the _-SNAPSHOT_ suffix is appended to the version number when
+building linkerd.  In order to build a non-snapshot (i.e. releasable) version of
+linkerd, the build must occur from a release tag in git.
 
 For example, in order to build the 0.0.10 release of linkerd:
 
-1. Ensure that the current version is 0.0.10-SNAPSHOT
-2. `git tag release-0.0.10 && git push origin release-0.0.10`
-The _tag_ value must be in the form `release-`_version_.
+1. Ensure that the head version is 0.0.10
+2. `git tag 0.0.10 && git push origin 0.0.10`
 3. `./sbt assembly` will produce an executable in
 _linkerd/target/scala-2.11/linkerd-0.0.10-exec_.
 
+After release, don't forget to advance head to the next version.
 
 #### Docker ####
 
