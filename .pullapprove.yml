@@ -1,4 +1,16 @@
-extends: default
+approve_by_comment: true
+approve_regex: '^(Approved|lgtm|LGTM|:shipit:|:star:|:+1:|:ship:)'
+reject_regex: ^Rejected
+reset_on_push: false
 reviewers:
-  required: 2
+  members:
+  - adleong
+  - esbie
+  - gtcampbell
+  - klingerf
+  - olix0r
+  - rmars
+  - siggy
+  - stevej
   name: default
+  required: 2
