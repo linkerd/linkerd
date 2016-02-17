@@ -1,3 +1,11 @@
+## 0.1.1
+
+## 0.1.0
+
+* Introduce Marathon-backed service discovery, for routing traffic in Mesos.
+* Add new boundPath client TLS module for per-service TLS authentication.
+* Upgrade to Finagle 6.33, the latest and greatest in Finagle-based technology.
+
 ## 0.0.11
 
 * TLS, for real this time.
