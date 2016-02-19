@@ -48,10 +48,10 @@ class AppIdNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Ok(NameTree.Neg))
   }
 
-  test("Namer handles looking up both appId and /appId") {
+  test("Namer handles looking up /app/id") {
     class TestApi() extends Api {
       def getAppIds(): Future[Api.AppIds] = {
-        Future.value(Set[String]("/foo", "/servicename"))
+        Future.value(Set("/service/name"))
       }
       def getAddrs(app: String): Future[Set[SocketAddress]] = Future.never
     }
@@ -59,15 +59,10 @@ class AppIdNamerTest extends FunSuite with Awaits {
     val namer = new AppIdNamer(new TestApi(), Path.Utf8("io.l5d.marathon"), 250.millis)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
-    val input1 = Path.Utf8("servicename", "residual")
-    val output1 = Path.Utf8("io.l5d.marathon", "servicename")
-    namer.lookup(input1).states.respond(state = _)
-    assert(state == Activity.Ok(NameTree.Leaf(output1)))
-
-    val input2 = Path.Utf8("/servicename", "residual")
-    val output2 = Path.Utf8("io.l5d.marathon", "/servicename")
-    namer.lookup(input2).states.respond(state = _)
-    assert(state == Activity.Ok(NameTree.Leaf(output2)))
+    val input = Path.Utf8("service", "name", "residual")
+    val output = Path.Utf8("io.l5d.marathon", "service", "name")
+    namer.lookup(input).states.respond(state = _)
+    assert(state == Activity.Ok(NameTree.Leaf(output)))
   }
 
   test("Namer updates when blocking call from getAppIds returns") {
