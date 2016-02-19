@@ -3,7 +3,9 @@ package protocol
 
 import com.twitter.finagle.Path
 import com.twitter.finagle.Thrift.param
+import com.twitter.finagle.thrift.Protocols
 import io.buoyant.router.{Thrift, RoutingFactory}
+import org.apache.thrift.protocol.TCompactProtocol
 
 class ThriftInitializer extends ProtocolInitializer {
   val name = "thrift"
@@ -28,7 +30,16 @@ class ThriftInitializer extends ProtocolInitializer {
     Thrift.param.MethodInDst(methodInDst)
   }
 
+  val Protocol = Parsing.Param.Text("thriftProtocol") { protocol =>
+    val factory = protocol match {
+      case "binary" => Protocols.binaryFactory()
+      case "compact" => new TCompactProtocol.Factory()
+      case _ => throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
+    }
+    param.ProtocolFactory(factory)
+  }
+
   override val routerParamsParser = MethodInDst
-  override val serverParamsParser = Framed
-  override val clientParamsParser = Framed
+  override val serverParamsParser = Framed.andThen(Protocol)
+  override val clientParamsParser = Framed.andThen(Protocol)
 }

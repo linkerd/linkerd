@@ -1,5 +1,8 @@
 ## 0.1.1
 
+* New `thriftProtocol` config option to the thrift protocol to be
+  specified.
+
 ## 0.1.0
 
 * Introduce Marathon-backed service discovery, for routing traffic in Mesos.
