@@ -4,7 +4,6 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stacka
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
-import java.lang.{StringBuilder => JStringBuilder}
 
 case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
 
@@ -15,63 +14,13 @@ case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
     val user = "-"
     val referer = reqHeaders.getOrElse("Referer", "-")
     val userAgent = reqHeaders.getOrElse("User-Agent", "-")
+    val reqResource = s"${req.method.toString.toUpperCase} ${req.uri} ${req.version}"
 
-    def buildLogLine(
-      remoteHost: String,
-      identd: String,
-      user: String,
-      requestEndTime: String,
-      method: String,
-      uri: String,
-      version: String,
-      statusCode: String,
-      responseBytes: String,
-      referer: String,
-      userAgent: String
-    ): String =
-      {
-        val logline = new JStringBuilder(2048)
-        logline.append(remoteHost)
-        logline.append(" ")
-        logline.append(identd)
-        logline.append(" ")
-        logline.append(user)
-        logline.append(" [")
-        logline.append(requestEndTime)
-        logline.append("] \"")
-        logline.append(method)
-        logline.append(" ")
-        logline.append(uri)
-        logline.append(" ")
-        logline.append(version)
-        logline.append("\" ")
-        logline.append(statusCode)
-        logline.append(" ")
-        logline.append(responseBytes)
-        logline.append(" \"")
-        logline.append(referer)
-        logline.append("\" \"")
-        logline.append(userAgent)
-        logline.append("\"")
-        return logline.toString()
-      }
     svc(req).onSuccess { rsp =>
       val statusCode = rsp.statusCode
       val responseBytes = rsp.contentLength.map(_.toString).getOrElse("-")
       val requestEndTime = new TimeFormat("dd/MM/yyyy:HH:mm:ss Z").format(Time.now)
-      log.info(buildLogLine(
-        remoteHost,
-        identd,
-        user,
-        requestEndTime,
-        req.method.toString.toUpperCase,
-        req.uri,
-        req.version.toString(),
-        statusCode.toString(),
-        responseBytes,
-        referer,
-        userAgent
-      ))
+      log.info(s"""$remoteHost $identd $user [$requestEndTime] "$reqResource" $statusCode $responseBytes "$referer" "$userAgent"""")
     }
   }
 }

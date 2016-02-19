@@ -3,6 +3,7 @@ import sbt.Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
+import pl.project13.scala.sbt.JmhPlugin
 
 /**
  * Project layout.
@@ -126,6 +127,12 @@ object LinkerdBuild extends Base {
 
       val all = projectDir("linkerd/protocol")
         .aggregate(http, mux, thrift)
+
+      val benchmark = projectDir("linkerd/protocol/benchmark")
+        .dependsOn(http, Protocol.http)
+        .dependsOn(testUtil)
+        .settings(libraryDependencies += Deps.twitterUtil("benchmark"))
+        .enablePlugins(JmhPlugin)
     }
 
     val tls = projectDir("linkerd/tls")
@@ -216,6 +223,7 @@ object LinkerdBuild extends Base {
   val linkerdNamerMarathon = Linkerd.Namer.marathon
   val linkerdNamerServersets = Linkerd.Namer.serversets
   val linkerdProtocol = Linkerd.Protocol.all
+  val linkerdBenchmark = Linkerd.Protocol.benchmark
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
