@@ -8,9 +8,10 @@ namers:
 routers:
 - protocol: http
   baseDtab: |
-    /host     => /io.l5d.marathon;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /marathonId => /io.l5d.marathon;
+    /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
+    /method     => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1   => /method;
   httpUriInDst: true
   servers:
   - port: 4140

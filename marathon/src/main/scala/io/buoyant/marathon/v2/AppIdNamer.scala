@@ -21,37 +21,47 @@ class AppIdNamer(
   import AppIdNamer._
 
   private[this] implicit val _timer = timer
+  private[this] case class PathSpan(app: Path, residual: Path)
 
   /**
    * Accepts names in the form:
    *   /<app-id>/residual/path
    *
+   *   or
+   *
+   *   /<group-id>/<app-id>/residual/path
+   *
+   *   etc
+   *
    * and attempts to bind an Addr by resolving named endpoint from the
    * Marathon master.
    */
-  def lookup(path: Path): Activity[NameTree[Name]] = path match {
-    case Path.Utf8(app, _*) =>
-      val id = prefix ++ Path.Utf8(app)
-      val residual = path.drop(1)
-      // Marathon appends a leading '/' to app names that don't have it.
-      val appId =
-        if (app startsWith "/") app
-        else s"/$app"
-      Trace.recordBinary("marathon.appId", appId)
-      Trace.recordBinary("marathon.id", id.show)
-      Trace.recordBinary("marathon.path", path.show)
-      appsActivity.map {
-        case apps if apps(appId) =>
-          Trace.recordBinary("marathon.found", appId)
-          val addr = getAndMonitorAddr(appId)
-          NameTree.Leaf(Name.Bound(addr, id, residual))
-        case apps =>
-          Trace.recordBinary("marathon.notfound", appId)
-          NameTree.Neg
-      }
+  def lookup(path: Path): Activity[NameTree[Name]] =
+    appsActivity.map {
+      case apps =>
+        Trace.recordBinary("marathon.path", path.show)
 
-    case _ => Activity.value(NameTree.Neg)
-  }
+        // enumerate all possible span lengths that could be marathon ids
+        val possibleSpans: Seq[PathSpan] = 1 to path.size map { i: Int =>
+          PathSpan(path.take(i), path.drop(i))
+        }
+
+        possibleSpans.find(sp => apps(sp.app.show)) match {
+          case Some(PathSpan(app, residual)) =>
+            val id = prefix ++ app
+
+            Trace.recordBinary("marathon.appId", app.show)
+            Trace.recordBinary("marathon.id", id.show)
+            Trace.recordBinary("marathon.found", app.show)
+
+            val addr = getAndMonitorAddr(app.show)
+            NameTree.Leaf(Name.Bound(addr, id, residual))
+
+          case None =>
+            Trace.recordBinary("marathon.notfound", path.show)
+            NameTree.Neg
+        }
+    }
 
   private[this] val appsActivity: Activity[Api.AppIds] = {
     val states = Var.async[Activity.State[Api.AppIds]](Activity.Pending) { state =>
