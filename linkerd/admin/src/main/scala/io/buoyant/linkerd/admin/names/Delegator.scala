@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.util._
-import io.buoyant.linkerd.NamerInitializers
+import io.buoyant.linkerd.Interpreter
 
 sealed trait DelegateTree[+T] {
   def path: Path
@@ -140,7 +140,7 @@ object Delegator extends Delegator {
 
     result match {
       case DelegateTree.Neg(path, d) => namer match {
-        case interpreter: NamerInitializers.Interpreter =>
+        case interpreter: Interpreter =>
           interpreter.lookup(path).map(fromNameTree(path, d, _))
         case default =>
           Namer.global.lookup(path).map(fromNameTree(path, d, _))

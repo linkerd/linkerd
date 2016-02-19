@@ -80,11 +80,9 @@ routers:
   - port: 0
 """
 
-    val protocols = ProtocolInitializers(new HttpInitializer)
-    val linker = Linker.mk(protocols, NamerInitializers.empty, TlsClientInitializers.empty)
+    val linker = Linker.load(yaml, Seq(HttpInitializer))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .read(Yaml(yaml))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 

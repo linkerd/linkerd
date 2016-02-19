@@ -1,9 +1,12 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Path
+import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
-import com.twitter.finagle.thrift.Protocols
+import com.twitter.finagle.Thrift.param.ProtocolFactory
+import io.buoyant.linkerd.config.Parser
 import io.buoyant.router.{Thrift, RoutingFactory}
 import org.apache.thrift.protocol.TCompactProtocol
 
@@ -20,26 +23,45 @@ class ThriftInitializer extends ProtocolInitializer {
 
   protected val adapter = Thrift.Router.IngestingFilter
   protected val defaultServer = Thrift.server
-    .configured(Server.Port(4114))
 
-  val Framed = Parsing.Param.Boolean("thriftFramed") { framed =>
-    param.Framed(framed)
-  }
+  override def defaultServerPort: Int = 4114
 
-  val MethodInDst = Parsing.Param.Boolean("thriftMethodInDst") { methodInDst =>
-    Thrift.param.MethodInDst(methodInDst)
-  }
+  val configClass = Parser.jClass[ThriftConfig]
+  val configId = name
+}
 
-  val Protocol = Parsing.Param.Text("thriftProtocol") { protocol =>
-    val factory = protocol match {
-      case "binary" => Protocols.binaryFactory()
-      case "compact" => new TCompactProtocol.Factory()
-      case _ => throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
-    }
-    param.ProtocolFactory(factory)
-  }
+object ThriftInitializer extends ThriftInitializer
 
-  override val routerParamsParser = MethodInDst
-  override val serverParamsParser = Framed.andThen(Protocol)
-  override val clientParamsParser = Framed.andThen(Protocol)
+case class ThriftConfig(
+  thriftMethodInDst: Option[Boolean]
+) extends RouterConfig {
+
+  var servers: Seq[ThriftServerConfig] = Nil
+  var client: Option[ThriftClientConfig] = None
+
+  @JsonIgnore
+  override def protocol = ThriftInitializer
+
+  override def routerParams = super.routerParams
+    .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
+}
+
+case class ThriftServerConfig(
+  thriftFramed: Option[Boolean],
+  thriftProtocol: Option[ProtocolFactory]
+) extends ServerConfig {
+  @JsonIgnore
+  override protected def serverParams: Params = super.serverParams
+    .maybeWith(thriftFramed.map(param.Framed(_)))
+    .maybeWith(thriftProtocol.map(param.ProtocolFactory(_)))
+}
+
+case class ThriftClientConfig(
+  thriftFramed: Option[Boolean],
+  thriftProtocol: Option[ProtocolFactory]
+) extends ClientConfig {
+  @JsonIgnore
+  override protected def clientParams: Params = super.clientParams
+    .maybeWith(thriftFramed.map(param.Framed(_)))
+    .maybeWith(thriftProtocol.map(param.ProtocolFactory(_)))
 }

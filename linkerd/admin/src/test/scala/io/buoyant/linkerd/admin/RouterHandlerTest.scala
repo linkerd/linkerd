@@ -7,17 +7,8 @@ import org.scalatest.FunSuite
 
 class RouterHandlerTest extends FunSuite with Awaits {
 
-  // TODO: share with LinkerTest
-  def parse(
-    yaml: String
-  ) = Linker.mk(
-    TestProtocol.DefaultInitializers,
-    NamerInitializers(new TestNamer),
-    TlsClientInitializers.empty
-  ).read(Yaml(yaml))
-
   test("returns the names of defined routers") {
-    val linker = parse("""
+    val linker = Linker.load("""
 routers:
 - protocol: plain
   servers:
@@ -25,7 +16,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-                       """)
+                       """, Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamer))
     val handler = new RouterHandler(linker)
     val req = Request()
     val rsp = await(handler(req))

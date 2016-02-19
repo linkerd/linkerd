@@ -1,85 +1,39 @@
 package io.l5d.clientTls
 
-import com.fasterxml.jackson.core.{JsonParser, JsonToken}
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.buoyant.TlsClientPrep
+import com.twitter.finagle.buoyant.TlsClientPrep.Module
 import com.twitter.finagle.client.AddrMetadataExtraction.AddrMetadata
 import com.twitter.finagle.ssl.Engine
-import com.twitter.finagle.{Path, Stack}
 import com.twitter.logging.Logger
+import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.util.PathMatcher
-import io.buoyant.linkerd.{Parsing, TlsClientInitializer}
-import io.l5d.clientTls.boundPath.{CaCert, NameMatcher, NameMatchers}
+import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 import java.net.SocketAddress
 
-object boundPath {
-  val defaultParams = Stack.Params.empty
-
-  case class CaCert(path: Option[String])
-  implicit object CaCert extends Stack.Param[CaCert] {
-    override def default = CaCert(None)
-  }
-
-  case class NameMatcher(matcher: PathMatcher, pattern: String)
-  implicit object NameMatchers extends Stack.Param[Seq[NameMatcher]] {
-    override def default = Seq.empty
-  }
-
-  val caCert = Parsing.Param.Text("caCertPath") { path =>
-    CaCert(Some(path))
-  }
-
-  val nameMatchers = Parsing.Param("names") { (json, params) =>
-    params + Parsing.foldArray(json, Seq.empty[NameMatcher]) { (matchers, json) =>
-      val matcher = Parsing.foldObject(json, NameMatcher(null, "")) {
-        case (nameMatcher, "prefix", json) =>
-          Parsing.ensureTok(json, JsonToken.VALUE_STRING) { json =>
-            val m = nameMatcher.copy(matcher = PathMatcher(json.getText))
-            json.nextToken()
-            m
-          }
-        case (nameMatcher, "commonNamePattern", json) =>
-          Parsing.ensureTok(json, JsonToken.VALUE_STRING) { json =>
-            val m = nameMatcher.copy(pattern = json.getText)
-            json.nextToken()
-            m
-          }
-        case (nameMatcher, key, json) =>
-          throw Parsing.error(s"TLS name has unexpected parameter: $key", json)
-      }
-      if (matcher.matcher == null) throw Parsing.error("TLS name entry must contain a prefix", json)
-      if (matcher.pattern == "") throw Parsing.error("TLS name entry must contain a commonNamePattern", json)
-      matchers :+ matcher
-    }
-  }
-
-  val parser = Parsing.Params(caCert, nameMatchers)
+class boundPath extends TlsClientInitializer {
+  val configClass = Parser.jClass[BoundPathConfig]
+  val configId = "io.l5d.clientTls.boundPath"
 }
 
-class boundPath(val params: Stack.Params) extends TlsClientInitializer {
-  def this() = this(boundPath.defaultParams)
-
-  private val log = Logger.get(getClass.getName)
-
-  override def withParams(ps: Params) = new boundPath(ps)
-
-  override def paramKeys: Set[String] = boundPath.parser.keys
-
-  override def tlsClientPrep[Req, Rsp] = {
-    val CaCert(caCert) = params[CaCert]
-    val nameMatchers = params[Seq[NameMatcher]]
+case class BoundPathConfig(caCertPath: Option[String], names: Seq[NameMatcherConfig]) extends TlsClientConfig {
+  @JsonIgnore
+  override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] = {
 
     def commonNameFromPath(path: Path): Option[String] =
-      nameMatchers.map {
-        case NameMatcher(matcher, pattern) =>
-          matcher.substitute(path, pattern)
+      names.map { n =>
+        n.matcher.substitute(path, n.commonNamePattern)
       }.collectFirst {
         case Some(result) => result
       }
 
     new TlsClientPrep.Module[Req, Rsp] {
+      private val log = Logger.get(getClass.getName)
+
       override def newEngine(params: Params): Option[(SocketAddress) => Engine] =
-        peerCommonName(params).map(TlsClientPrep.addrEngine(_, caCert))
+        peerCommonName(params).map(TlsClientPrep.addrEngine(_, caCertPath))
 
       override def peerCommonName(params: Params): Option[String] = {
         for {
@@ -97,7 +51,8 @@ class boundPath(val params: Stack.Params) extends TlsClientInitializer {
       override def parameters: Seq[Param[_]] = Seq(AddrMetadata.param)
     }
   }
+}
 
-  override def readParam(key: String, p: JsonParser): TlsClientInitializer =
-    withParams(boundPath.parser.read(key, p, params))
+case class NameMatcherConfig(prefix: String, commonNamePattern: String) {
+  def matcher: PathMatcher = PathMatcher(prefix)
 }

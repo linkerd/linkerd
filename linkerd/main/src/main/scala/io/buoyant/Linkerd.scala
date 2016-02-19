@@ -1,11 +1,8 @@
 package io.buoyant
 
-import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.twitter.util.Await
 import io.buoyant.linkerd.admin.{AdminInitializer, LinkerdAdmin}
-import io.buoyant.linkerd.{Build, Linker, Parsing}
+import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
 import scala.io.Source
 
@@ -59,23 +56,7 @@ object Linkerd extends App {
         if (!f.isFile) throw new IllegalArgumentException(s"config is not a file: $path")
         Source.fromFile(f).mkString
     }
-    val parser = loadParser(configText)
-    Linker.load().read(parser)
-  }
 
-  private[this] def peekJsonObject(s: String): Boolean =
-    s.dropWhile(_.isWhitespace).headOption == Some('{')
-
-  /**
-   * Load a Json or Yaml parser, depending on whether the content appears to be Json.
-   */
-  private[this] def loadParser(config: String): JsonParser = {
-    val mapper = new ObjectMapper
-    val factory = if (peekJsonObject(config)) new JsonFactory(mapper) else new YAMLFactory(mapper)
-    val parser = factory.createParser(config)
-    parser.nextToken() match {
-      case JsonToken.START_OBJECT => parser
-      case tok => throw Parsing.error(s"could not load configuration; found $tok", parser)
-    }
+    Linker.load(configText)
   }
 }

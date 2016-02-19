@@ -168,7 +168,7 @@ private[admin] class WebDelegator(
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get => (req.params.get("d"), req.params.get("n")) match {
       case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
-        val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
+        val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
         delegate(dtab, path, namer).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)

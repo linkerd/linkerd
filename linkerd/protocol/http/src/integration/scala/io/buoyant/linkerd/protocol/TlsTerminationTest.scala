@@ -29,9 +29,7 @@ class TlsTerminationTest extends FunSuite with Awaits {
              |      keyPath: ${certs.serviceCerts("linkerd").key.getPath}
              |""".
             stripMargin
-        val protocols = ProtocolInitializers(new HttpInitializer)
-        val linker = Linker.mk(protocols, NamerInitializers.empty, TlsClientInitializers.empty)
-          .read(Yaml(linkerConfig))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer))
 
         val router = linker.routers.head.initialize()
         try {

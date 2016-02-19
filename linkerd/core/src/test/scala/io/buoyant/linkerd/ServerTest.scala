@@ -2,13 +2,17 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
+import io.buoyant.linkerd.config.Parser
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
 class ServerTest extends FunSuite {
 
-  def parse(proto: ProtocolInitializer, yaml: String): Try[Server] =
-    Try(proto.server.configuredFrom(Yaml(yaml)))
+  def parse(proto: ProtocolInitializer, yaml: String): Try[Server] = Try {
+    val mapper = Parser.objectMapper(yaml)
+    val cfg = mapper.readValue[ServerConfig](yaml)
+    cfg.mk(proto, "router")
+  }
 
   val plainYaml = """
 port: 1234
@@ -51,16 +55,6 @@ ip: 127.1
 
   test("unknown server params error") {
     assert(parse(TestProtocol.Plain, fancyYaml).isThrow)
-  }
-
-  test("protocol-specific server defaults") {
-    val Return(server) = parse(TestProtocol.Fancy, plainYaml)
-    assert(!server.params[TestProtocol.Fancy.Pants].fancy)
-  }
-
-  test("protocol-specific server params") {
-    val Return(server) = parse(TestProtocol.Fancy, fancyYaml)
-    assert(server.params[TestProtocol.Fancy.Pants].fancy)
   }
 
   test("protocol-specific router params have no bearing on servers") {

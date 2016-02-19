@@ -1,8 +1,11 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.finagle.{Path, StackBuilder}
-import com.twitter.finagle.buoyant.linkerd._
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.buoyant.linkerd.{HttpTraceInitializer, Headers}
+import com.twitter.finagle.{Path, Stack, StackBuilder}
+import io.buoyant.linkerd.config.Parser
+import io.buoyant.linkerd.protocol.http.AccessLogger
 import io.buoyant.router.{Http, RoutingFactory}
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -31,19 +34,29 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val stk = http.ErrorResponder +: Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.server)
     Http.server.withStack(stk)
-      .configured(Server.Port(4140))
   }
 
-  /*
-   * Router params
-   */
+  val configClass = Parser.jClass[HttpConfig]
+  val configId = name
 
-  val AccessLog = Parsing.Param.Text("httpAccessLog")(http.AccessLogger.param.File(_))
-  val UriInDst = Parsing.Param.Boolean("httpUriInDst")(Http.param.UriInDst(_))
-  // TODO Forwarded
+  override def defaultServerPort: Int = 4140
+}
 
-  override protected val routerParamsParser = Parsing.Params(
-    AccessLog,
-    UriInDst
-  )
+object HttpInitializer extends HttpInitializer
+
+case class HttpConfig(
+  httpAccessLog: Option[String],
+  httpUriInDst: Option[Boolean]
+) extends RouterConfig {
+
+  var client: Option[ClientConfig] = None
+  var servers: Seq[ServerConfig] = Nil
+
+  @JsonIgnore
+  override def protocol: ProtocolInitializer = HttpInitializer
+
+  @JsonIgnore
+  override def routerParams: Stack.Params = super.routerParams
+    .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
+    .maybeWith(httpUriInDst.map(Http.param.UriInDst(_)))
 }

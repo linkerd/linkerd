@@ -9,13 +9,7 @@ import org.scalatest.FunSuite
 
 class DelegatorTest extends FunSuite with Awaits {
 
-  def parse(
-    yaml: String,
-    protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
-    namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
-
-  val linker = parse("""
+  val linker = Linker.load("""
 namers:
 - kind: io.buoyant.linkerd.TestNamer
   prefix: /namer
@@ -27,7 +21,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-""")
+""", Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamer))
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;
@@ -37,7 +31,7 @@ routers:
     /meh => /heh ;
   """)
 
-  val DstBindingFactory.Namer(interpreter) = linker.params[DstBindingFactory.Namer]
+  val DstBindingFactory.Namer(interpreter) = linker.routers.head.params[DstBindingFactory.Namer]
 
   test("uses NamerInterpreter to resolve names") {
     val path = Path.read("/nah/bro")

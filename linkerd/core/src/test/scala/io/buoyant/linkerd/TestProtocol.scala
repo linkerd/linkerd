@@ -1,15 +1,21 @@
 package io.buoyant.linkerd
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.jsontype.NamedType
+import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.util.Future
+import io.buoyant.linkerd.TestProtocol.FancyParam
+import io.buoyant.linkerd.config.Parser
 import io.buoyant.router.{RoutingFactory, StackRouter, StdStackRouter}
 import java.net.SocketAddress
 
-class TestProtocol(val name: String) extends ProtocolInitializer.Simple {
+abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple {
   protected type Req = String
   protected type Rsp = String
 
@@ -103,29 +109,46 @@ class TestProtocol(val name: String) extends ProtocolInitializer.Simple {
   }
 
   protected val defaultServer: StackServer[Req, Rsp] = TestServer()
-    .configured(Server.Port(13))
+
+  val defaultServerPort = 13
+}
+
+class PlainConfig extends RouterConfig {
+
+  var servers: Seq[ServerConfig] = Nil
+  var client: Option[ClientConfig] = None
+
+  @JsonIgnore
+  override def protocol: ProtocolInitializer = TestProtocol.Plain
+}
+
+case class FancyConfig(fancy: Option[Boolean]) extends RouterConfig {
+
+  var servers: Seq[ServerConfig] = Nil
+  var client: Option[ClientConfig] = None
+
+  @JsonIgnore
+  override def protocol: ProtocolInitializer = TestProtocol.Fancy
+
+  @JsonIgnore
+  override def routerParams: Params = super.routerParams
+    .maybeWith(fancy.map(FancyParam(_)))
 }
 
 object TestProtocol {
-  object Plain extends TestProtocol("plain")
 
-  object Fancy extends TestProtocol("fancy") {
-
-    case class Pants(fancy: Boolean)
-    implicit object Pants extends Stack.Param[Pants] {
-      val default = Pants(false)
-    }
-
-    override val routerParamsParser =
-      Parsing.Param.Boolean("fancyRouter") { fancy =>
-        Pants(fancy)
-      }
-
-    override val serverParamsParser =
-      Parsing.Param.Boolean("fancyServer") { fancy =>
-        Pants(fancy)
-      }
+  case class FancyParam(pants: Boolean)
+  implicit object FancyParam extends Stack.Param[FancyParam] {
+    override def default: FancyParam = FancyParam(false)
   }
 
-  val DefaultInitializers = ProtocolInitializers(Plain, Fancy)
+  object Plain extends TestProtocol("plain") {
+    val configClass = Parser.jClass[PlainConfig]
+    val configId = "plain"
+  }
+
+  object Fancy extends TestProtocol("fancy") {
+    val configClass = Parser.jClass[FancyConfig]
+    val configId = "fancy"
+  }
 }

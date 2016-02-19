@@ -33,10 +33,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
-        val protocols = ProtocolInitializers(new HttpInitializer)
-        val tls = TlsClientInitializers(new static)
-        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
-          .read(Yaml(linkerConfig))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new static))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
@@ -77,10 +74,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
-        val protocols = ProtocolInitializers(new HttpInitializer)
-        val tls = TlsClientInitializers(new static)
-        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
-          .read(Yaml(linkerConfig))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new static))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()

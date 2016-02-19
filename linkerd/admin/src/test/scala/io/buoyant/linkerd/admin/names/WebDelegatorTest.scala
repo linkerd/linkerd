@@ -1,22 +1,15 @@
 package io.buoyant.linkerd.admin.names
 
-import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.http._
-import com.twitter.util._
+import com.twitter.finagle.{Status => _, _}
 import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
-import java.net.{URLEncoder, InetSocketAddress}
+import java.net.URLEncoder
 import org.scalatest.FunSuite
 
 class WebDelegatorTest extends FunSuite with Awaits {
 
-  def parse(
-    yaml: String,
-    protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
-    namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
-
-  val linker = parse("""
+  val linker = Linker.load("""
 namers:
 - kind: io.buoyant.linkerd.TestNamer
 
@@ -27,7 +20,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-""")
+""", Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamer))
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;

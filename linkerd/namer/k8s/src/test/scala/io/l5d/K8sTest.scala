@@ -7,6 +7,6 @@ class K8sTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    new k8s().newNamer()
+    k8sConfig(None, None, None, None, None).newNamer()
   }
 }

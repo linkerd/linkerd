@@ -1,5 +1,7 @@
 package io.buoyant
 
+import com.twitter.finagle.Stack
+
 /**
  * Linkerd provides a modular & pluggable configuration layer to
  * support programmatic and configuration-driven initialization of
@@ -36,4 +38,29 @@ package io.buoyant
  * configuration and initialization. ProtocolInitializer modules are
  * discovered at runtime with finagle's `LoadService` facility.
  */
-package object linkerd
+package object linkerd {
+  implicit class MaybeTransform[A](val a: A) extends AnyVal {
+    def maybeTransform(f: Option[A => A]): A = {
+      f match {
+        case Some(f) => f(a)
+        case None => a
+      }
+    }
+  }
+
+  implicit class ParamsMaybeWith(val params: Stack.Params) extends AnyVal {
+    def maybeWith[T: Stack.Param](p: Option[T]): Stack.Params = {
+      p match {
+        case Some(t) => params + t
+        case None => params
+      }
+    }
+
+    def maybeWith(ps: Option[Stack.Params]): Stack.Params = {
+      ps match {
+        case Some(ps) => params ++ ps
+        case None => params
+      }
+    }
+  }
+}

@@ -7,6 +7,6 @@ class MarathonTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    new marathon().newNamer()
+    MarathonConfig(None, None, None).newNamer()
   }
 }

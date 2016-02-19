@@ -276,11 +276,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   }
 
   private[this] def withLinkerdClient(config: String)(f: Service[Request, Response] => Unit): Unit = {
-    val namers = NamerInitializers(new fs)
-    val protocols = ProtocolInitializers(new HttpInitializer)
-    val tls = TlsClientInitializers(new boundPath)
-    val linker = Linker.mk(protocols, namers, tls)
-      .read(Yaml(config))
+    val linker = Linker.load(config, Seq(new fs, HttpInitializer, new boundPath))
     val router = linker.routers.head.initialize()
     try {
       val server = router.servers.head.serve()
