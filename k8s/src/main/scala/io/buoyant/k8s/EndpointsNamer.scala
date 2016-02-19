@@ -1,64 +1,12 @@
 package io.buoyant.k8s
 
 import com.google.common.net.InetAddresses
-import com.twitter.app.GlobalFlag
-import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
 import java.net.{InetSocketAddress, SocketAddress}
 import java.util.concurrent.atomic.AtomicReference
-import scala.collection.JavaConverters._
 import scala.collection.mutable
-
-object masterAddr extends GlobalFlag(
-  new InetSocketAddress("kubernetes.default.cluster.local", 443),
-  "Kubernets master address"
-)
-
-object masterTls extends GlobalFlag(true, "Kubernetes master TLS enabled")
-object masterUnsafe extends GlobalFlag(false, "When true, TLS validation is skipped.")
-
-object masterAuth extends GlobalFlag(
-  Path.read("/var/run/secrets/kubernetes.io/serviceaccount/token"),
-  "Local filesystem path to a file containing kubernetes auth credentials."
-) {
-
-  def load(): Try[String] =
-    Try(scala.io.Source.fromFile(apply().show).mkString)
-
-  def filter: Filter[Request, Response, Request, Response] = load() match {
-    case Return(token) => new AuthFilter(token)
-    case Throw(e) =>
-      master.log.warning(s"failed to load k8s credentials: ${apply().show}: ${e.getMessage}")
-      Filter.identity[Request, Response]
-  }
-}
-
-object master {
-  val log = v1.log
-
-  def mk(ns: String): v1.NsApi = {
-    val addr = masterAddr()
-    val host = addr.getHostString
-    val setHost = new SetHostFilter(addr)
-    val name = s"/$$/inet/${host}/${addr.getPort}"
-    val label = s"k8s/$ns"
-    log.debug("building %s client to %s", label, name)
-    val client = (masterTls(), masterUnsafe()) match {
-      case (false, _) => Http.client
-      case (true, true) => Http.client.withTlsWithoutValidation
-      case (true, _) => Http.client.withTls(setHost.host)
-    }
-    val service = client
-      .filtered(new SetHostFilter(addr))
-      .filtered(masterAuth.filter)
-      .withStreaming(true)
-      .newService(name, label)
-    v1.Api(service).namespace(ns)
-  }
-}
 
 class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
 
@@ -373,8 +321,3 @@ private object EndpointsNamer {
   }
 
 }
-
-class endpoints extends EndpointsNamer(
-  Path.read("/$/io.buoyant.k8s.endpoints"),
-  ns => master.mk(ns)
-)

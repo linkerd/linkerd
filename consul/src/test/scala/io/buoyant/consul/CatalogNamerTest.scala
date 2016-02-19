@@ -1,13 +1,11 @@
 package io.buoyant.consul
 
-import java.net.{InetSocketAddress, SocketAddress}
-
-import com.twitter.app.{GlobalFlag, Flag}
 import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.consul.v1.{CatalogApi, Indexed, ServiceNode}
 import io.buoyant.test.Awaits
+import java.net.SocketAddress
 import org.scalatest.FunSuite
 
 class CatalogNamerTest extends FunSuite with Awaits {

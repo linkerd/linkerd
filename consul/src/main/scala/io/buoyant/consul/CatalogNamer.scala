@@ -1,11 +1,7 @@
 package io.buoyant.consul
 
 import com.google.common.net.InetAddresses
-import com.twitter.app.{Flag, GlobalFlag}
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.service.FailFastFactory.FailFast
-import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1.ServiceNode
 import java.net.{InetSocketAddress, SocketAddress}
