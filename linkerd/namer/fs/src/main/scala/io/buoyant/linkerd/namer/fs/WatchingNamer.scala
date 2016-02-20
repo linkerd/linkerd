@@ -1,15 +1,11 @@
 package io.buoyant.linkerd.namer.fs
 
-import com.twitter.app.GlobalFlag
-import com.twitter.conversions.storage._
 import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import java.net.{InetSocketAddress, SocketAddress}
-import java.nio.file.{Path => NioPath, _}
-import java.nio.file.StandardWatchEventKinds._
-import scala.collection.JavaConverters._
+import java.nio.file.{Path => NioPath}
 
 object WatchingNamer {
   private val log = Logger.get(getClass.getName)
