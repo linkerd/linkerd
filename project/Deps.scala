@@ -18,15 +18,21 @@ object Deps {
   val jacksonVersion = "2.4.4"
   val jacksonCore =
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion
+  val jacksonAnnotations =
+    "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion
   val jacksonDatabind =
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonScala =
     "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion 
   val jackson =
-    jacksonCore :: jacksonDatabind :: jacksonScala :: Nil
+    jacksonCore :: jacksonAnnotations :: jacksonDatabind :: jacksonScala :: Nil
 
   val jacksonYaml =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+
+  // cats provides a variety of functional programming abstractions. We use it for validation.
+  val cats =
+    "org.typelevel" %% "cats" % "0.4.0"
 
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
