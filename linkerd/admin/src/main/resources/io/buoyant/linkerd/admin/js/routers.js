@@ -108,7 +108,7 @@ var Routers = (function() {
     return _.find(routers, function(router) { return key.indexOf(router.prefix) === 0; });
   }
   function findMatchingServer(servers, key) {
-    return servers.find(function(server) { return key.indexOf(server.prefix) === 0; });
+    return _.find(servers, function(server) { return key.indexOf(server.prefix) === 0; });
   }
   function findMatchingDst(dsts, key) {
     return _.find(dsts, function(dst) { return key.indexOf(dst.prefix) === 0; });
