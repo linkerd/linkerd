@@ -1,8 +1,6 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonTypeName, JsonSubTypes, JsonIgnore}
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.jsontype.NamedType
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
 import com.twitter.util.{Activity, Var}
 import io.buoyant.linkerd.config.Parser

@@ -1,8 +1,6 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.jsontype.NamedType
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
@@ -23,7 +21,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
     val role = Endpoint
     val description = "echoes"
     val parameters = Seq.empty
-    val service = Service.mk[String, String](Future.value(_))
+    val service = Service.mk[String, String](Future.value)
     val factory = ServiceFactory.const(service)
     def make(params: Stack.Params, next: Stack[ServiceFactory[String, String]]) =
       Stack.Leaf(this, factory)

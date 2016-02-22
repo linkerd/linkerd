@@ -7,7 +7,8 @@ import io.buoyant.linkerd.config.ConfigDeserializer
 import java.net.InetAddress
 
 class InetAddressDeserializer extends ConfigDeserializer[InetAddress] {
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): InetAddress = catchMappingException(ctxt) {
-    InetAddresses.forString(_parseString(jp, ctxt))
-  }
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): InetAddress =
+    catchMappingException(ctxt) {
+      InetAddresses.forString(_parseString(jp, ctxt))
+    }
 }

@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Stack.{Params, Param}
+import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ListeningServer, Stack}

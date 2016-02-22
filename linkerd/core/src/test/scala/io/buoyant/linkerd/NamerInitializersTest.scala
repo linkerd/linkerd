@@ -19,7 +19,9 @@ class NamerInitializersTest extends FunSuite {
   def interpreter(config: String): NameInterpreter = {
     val mapper = Parser.objectMapper(config)
     mapper.registerSubtypes(new NamedType(Parser.jClass[booNamer], "io.buoyant.linkerd.booNamer"))
-    mapper.registerSubtypes(new NamedType(Parser.jClass[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer"))
+    mapper.registerSubtypes(
+      new NamedType(Parser.jClass[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer")
+    )
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
     Linker.nameInterpreter(cfg)
   }

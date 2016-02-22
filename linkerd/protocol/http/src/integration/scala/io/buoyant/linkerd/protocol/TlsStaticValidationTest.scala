@@ -15,7 +15,8 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
 
   test("tls router + plain upstream with static validation") {
     withCerts("linkerd") { certs =>
-      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert, certs.serviceCerts("linkerd").key)
+      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,
+        certs.serviceCerts("linkerd").key)
       try {
         val linkerConfig =
           s"""
@@ -56,7 +57,8 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
 
   test("tls router + plain upstream with static validation and incorrect common name") {
     withCerts("linkerd") { certs =>
-      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert, certs.serviceCerts("linkerd").key)
+      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,
+        certs.serviceCerts("linkerd").key)
       try {
         val linkerConfig =
           s"""

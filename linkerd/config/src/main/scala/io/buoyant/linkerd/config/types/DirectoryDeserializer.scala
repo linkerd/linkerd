@@ -10,7 +10,8 @@ case class Directory(path: java.nio.file.Path) {
 }
 
 class DirectoryDeserializer extends ConfigDeserializer[Directory] {
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Directory = catchMappingException(ctxt) {
-    Directory(Paths.get(_parseString(jp, ctxt)))
-  }
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Directory =
+    catchMappingException(ctxt) {
+      Directory(Paths.get(_parseString(jp, ctxt)))
+    }
 }

@@ -1,6 +1,5 @@
 package io.buoyant.linkerd.admin.names
 
-import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.linkerd._
@@ -31,7 +30,7 @@ routers:
     /meh => /heh ;
   """)
 
-  val DstBindingFactory.Namer(interpreter) = linker.routers.head.params[DstBindingFactory.Namer]
+  val interpreter = linker.interpreter
 
   test("uses NamerInterpreter to resolve names") {
     val path = Path.read("/nah/bro")
@@ -53,7 +52,11 @@ routers:
   test("explain delegate delegation") {
     val path = Path.read("/meh/hey")
     assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
-      Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Neg(Path.read("/heh/hey"), Dentry.read("/meh=>/heh")))))
+      Return(DelegateTree.Delegate(
+        path,
+        Dentry.nop,
+        DelegateTree.Neg(Path.read("/heh/hey"), Dentry.read("/meh=>/heh"))
+      )))
   }
 
   test("explain alt delegation") {
@@ -75,11 +78,15 @@ routers:
         Path.read("/foo/humbug/ya"),
         Dentry.read("/boo=>/foo"),
         DelegateTree.Neg(Path.read("/bar/humbug/ya"), Dentry.read("/foo=>/bar")),
-        DelegateTree.Delegate(Path.read("/bah/humbug/ya"), Dentry.read("/foo=>/bah | /$/fail"), DelegateTree.Leaf(
-          Path.read("/$/inet/127.1/8080/ya"),
-          Dentry.read("/bah/humbug=>/$/inet/127.1/8080"),
-          Name.Bound(Var.value(Addr.Pending), Path.read("/$/inet/127.1/8080"), Path.Utf8("ya"))
-        )),
+        DelegateTree.Delegate(
+          Path.read("/bah/humbug/ya"),
+          Dentry.read("/foo=>/bah | /$/fail"),
+          DelegateTree.Leaf(
+            Path.read("/$/inet/127.1/8080/ya"),
+            Dentry.read("/bah/humbug=>/$/inet/127.1/8080"),
+            Name.Bound(Var.value(Addr.Pending), Path.read("/$/inet/127.1/8080"), Path.Utf8("ya"))
+          )
+        ),
         DelegateTree.Fail(Path.read("/$/fail/humbug/ya"), Dentry.read("/foo=>/bah | /$/fail"))
       ))))
   }

@@ -66,13 +66,11 @@ object LinkerdBuild extends Base {
   }
 
   object Linkerd {
-
     val config = projectDir("linkerd/config")
       .withLib(Deps.finagle("core"))
       .withLib(Deps.finagle("thrift"))
       .withLibs(Deps.jackson)
       .withLib(Deps.jacksonYaml)
-      .withTests()
 
     val core = projectDir("linkerd/core")
       .dependsOn(Router.core, config)
@@ -131,8 +129,8 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Router.mux)
 
       val thrift = projectDir("linkerd/protocol/thrift")
-        .withTests()
         .dependsOn(core, Router.thrift)
+        .withTests()
 
       val all = projectDir("linkerd/protocol")
         .aggregate(http, mux, thrift)
@@ -148,11 +146,11 @@ object LinkerdBuild extends Base {
       .dependsOn(core)
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, Namer.all, Protocol.all, tls)
+      .aggregate(admin, core, main, config, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
+      .configDependsOn(Minimal)(admin, core, main, config, Namer.fs, Protocol.http)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:

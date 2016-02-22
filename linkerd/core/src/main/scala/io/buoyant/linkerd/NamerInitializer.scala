@@ -1,8 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonAutoDetect, JsonIgnore, JsonTypeInfo}
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.twitter.finagle.{Namer, Path}
 
 /**

@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{Status, Request}
+import com.twitter.finagle.http.{Request, Status}
 import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite

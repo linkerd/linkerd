@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.DefaultInterpreter
-import io.buoyant.linkerd.config.{ConflictingSubtypes, ConflictingLabels, ConflictingPorts}
+import io.buoyant.linkerd.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
@@ -30,6 +30,7 @@ routers:
 
     val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
     assert(namer == DefaultInterpreter)
+    assert(linker.interpreter == DefaultInterpreter)
 
     assert(routers.size == 2)
 
@@ -167,6 +168,7 @@ routers:
     val linker = parse(yaml)
     val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
     assert(namer != DefaultInterpreter)
+    assert(linker.interpreter != DefaultInterpreter)
   }
 
   test("with admin") {

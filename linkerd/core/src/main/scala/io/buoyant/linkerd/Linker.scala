@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle.Stack
 import com.twitter.finagle.Stack.Param
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.naming.{DefaultInterpreter, NameInterpreter}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.config._
 
@@ -12,6 +12,7 @@ import io.buoyant.linkerd.config._
  */
 trait Linker {
   def routers: Seq[Router]
+  def interpreter: NameInterpreter
   def admin: Admin
 
   def configured[T: Stack.Param](t: T): Linker
@@ -46,9 +47,16 @@ object Linker {
     parse(config).mk
   }
 
-  case class LinkerConfig(namers: Option[Seq[NamerConfig]], routers: Seq[RouterConfig], admin: Option[Admin]) {
+  case class LinkerConfig(
+    namers: Option[Seq[NamerConfig]],
+    routers: Seq[RouterConfig],
+    admin: Option[Admin]
+  ) {
     def mk: Linker = {
-      val namersParam = Stack.Params.empty.maybeWith(namers.map(nameInterpreter).map(DstBindingFactory.Namer(_)))
+      val interpreter = namers.map(nameInterpreter)
+
+      val namersParam = Stack.Params.empty
+        .maybeWith(interpreter.map(DstBindingFactory.Namer(_)))
 
       // At least one router must be specified
       if (routers.isEmpty) {
@@ -56,22 +64,20 @@ object Linker {
       }
 
       // Router labels must not conflict
-      routers.groupBy(_.label).collect {
-        case (label, rts) if rts.size > 1 => throw ConflictingLabels(
-          label
-        )
+      routers.groupBy(_.label).foreach {
+        case (label, rts) =>
+          if (rts.size > 1) throw ConflictingLabels(label)
       }
 
       val routerImpls = routers.map(_.router(namersParam))
 
       // Server sockets must not conflict
       routerImpls.flatMap(_.servers).groupBy(_.addr).collect {
-        case (port, svrs) if svrs.size > 1 => throw ConflictingPorts(
-          svrs(0).addr, svrs(1).addr
-        )
+        case (port, svrs) =>
+          if (svrs.size > 1) throw ConflictingPorts(svrs(0).addr, svrs(1).addr)
       }
 
-      new Impl(routerImpls, admin.getOrElse(Admin()))
+      new Impl(routerImpls, interpreter.getOrElse(DefaultInterpreter), admin.getOrElse(Admin()))
     }
   }
 
@@ -86,6 +92,7 @@ object Linker {
    */
   private case class Impl(
     routers: Seq[Router],
+    interpreter: NameInterpreter,
     admin: Admin
   ) extends Linker {
     override def configured[T: Param](t: T) =

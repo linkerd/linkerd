@@ -50,5 +50,4 @@ class TlsTerminationTest extends FunSuite with Awaits {
       } finally (await(dog.server.close()))
     }
   }
-
 }

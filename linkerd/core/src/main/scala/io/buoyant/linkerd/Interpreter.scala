@@ -41,4 +41,3 @@ case class Interpreter(namers: Seq[(Path, Namer)] = Seq.empty)
       case Seq(_, remaining@_*) => lookup(remaining, path)
     }
 }
-

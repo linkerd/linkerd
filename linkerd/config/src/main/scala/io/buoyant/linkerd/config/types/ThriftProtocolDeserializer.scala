@@ -7,11 +7,13 @@ import io.buoyant.linkerd.config.ConfigDeserializer
 import org.apache.thrift.protocol.{TCompactProtocol, TProtocolFactory}
 
 class ThriftProtocolDeserializer extends ConfigDeserializer[TProtocolFactory] {
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): TProtocolFactory = {
-    _parseString(jp, ctxt) match {
-      case "binary" => Protocols.binaryFactory()
-      case "compact" => new TCompactProtocol.Factory()
-      case protocol => throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): TProtocolFactory =
+    catchMappingException(ctxt) {
+      _parseString(jp, ctxt) match {
+        case "binary" => Protocols.binaryFactory()
+        case "compact" => new TCompactProtocol.Factory()
+        case protocol =>
+          throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
+      }
     }
-  }
 }

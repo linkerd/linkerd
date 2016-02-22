@@ -2,8 +2,8 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Service, Failure}
-import com.twitter.finagle.http.{Response, Request}
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Failure, Service}
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
 import io.l5d.clientTls.boundPath

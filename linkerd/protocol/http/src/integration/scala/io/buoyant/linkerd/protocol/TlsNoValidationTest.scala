@@ -14,7 +14,8 @@ class TlsNoValidationTest extends FunSuite with Awaits {
 
   test("tls router + plain upstream without validation") {
     withCerts("linkerd") { certs =>
-      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert, certs.serviceCerts("linkerd").key)
+      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,
+        certs.serviceCerts("linkerd").key)
       try {
         val linkerConfig =
           s"""

@@ -79,20 +79,22 @@ object DelegateTree {
   private def toNameTreeWeighted[T](delegate: DelegateTree.Weighted[T]): NameTree.Weighted[T] =
     NameTree.Weighted(delegate.weight, toNameTree(delegate.tree))
 
-  def fromNameTree[T](path: Path, dentry: Dentry, names: NameTree[T]): DelegateTree[T] = names match {
-    case NameTree.Empty => DelegateTree.Empty(path, dentry)
-    case NameTree.Fail => DelegateTree.Fail(path, dentry)
-    case NameTree.Neg => DelegateTree.Neg(path, dentry)
-    case NameTree.Leaf(v) => DelegateTree.Leaf(path, dentry, v)
-    case NameTree.Alt(names@_*) =>
-      val delegates = names.map(fromNameTree[T](path, dentry, _))
-      DelegateTree.Alt(path, dentry, delegates: _*)
-    case NameTree.Union(names@_*) =>
-      val delegates = names.map {
-        case NameTree.Weighted(w, tree) => DelegateTree.Weighted(w, fromNameTree(path, dentry, tree))
-      }
-      DelegateTree.Union(path, dentry, delegates: _*)
-  }
+  def fromNameTree[T](path: Path, dentry: Dentry, names: NameTree[T]): DelegateTree[T] =
+    names match {
+      case NameTree.Empty => DelegateTree.Empty(path, dentry)
+      case NameTree.Fail => DelegateTree.Fail(path, dentry)
+      case NameTree.Neg => DelegateTree.Neg(path, dentry)
+      case NameTree.Leaf(v) => DelegateTree.Leaf(path, dentry, v)
+      case NameTree.Alt(names@_*) =>
+        val delegates = names.map(fromNameTree[T](path, dentry, _))
+        DelegateTree.Alt(path, dentry, delegates: _*)
+      case NameTree.Union(names@_*) =>
+        val delegates = names.map {
+          case NameTree.Weighted(w, tree) =>
+            DelegateTree.Weighted(w, fromNameTree(path, dentry, tree))
+        }
+        DelegateTree.Union(path, dentry, delegates: _*)
+    }
 }
 
 trait Delegator {
@@ -102,7 +104,11 @@ trait Delegator {
     namer: NameInterpreter
   ): Activity[DelegateTree[Name.Bound]]
 
-  final def apply(dtab: Dtab, path: Path, namer: NameInterpreter): Activity[DelegateTree[Name.Bound]] =
+  final def apply(
+    dtab: Dtab,
+    path: Path,
+    namer: NameInterpreter
+  ): Activity[DelegateTree[Name.Bound]] =
     apply(dtab, DelegateTree.Leaf(path, Dentry.nop, Name.Path(path)), namer)
 }
 
@@ -167,7 +173,9 @@ object Delegator extends Delegator {
 
       case Leaf(_, dentry, Name.Path(path)) =>
         // Resolve this leaf path through the dtab and bind the resulting tree.
-        lookup(dtab, dentry, path, namer).flatMap(bind(dtab, depth + 1, _, namer)).map(Delegate(path, dentry, _))
+        lookup(dtab, dentry, path, namer).flatMap { delegateTree =>
+          bind(dtab, depth + 1, delegateTree, namer)
+        }.map(Delegate(path, dentry, _))
 
       case Delegate(path, dentry, tree) =>
         bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
@@ -185,9 +193,13 @@ object Delegator extends Delegator {
         Activity(stateVar)
 
       case Union(path, dentry) => Activity.value(Neg(path, dentry))
-      case Union(path, dentry, Weighted(_, tree)) => bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
+      case Union(path, dentry, Weighted(_, tree)) =>
+        bind(dtab, depth, tree, namer).map(Delegate(path, dentry, _))
       case Union(path, dentry, trees@_*) =>
-        val vars = trees.map { case Weighted(w, t) => bind(dtab, depth, t, namer).map(Weighted(w, _)).run }
+        val vars = trees.map {
+          case Weighted(w, t) =>
+            bind(dtab, depth, t, namer).map(Weighted(w, _)).run
+        }
         val stateVar = Var.collect(vars).map { states =>
           val oks = states.collect { case Activity.Ok(t) => t }
           if (oks.nonEmpty) Activity.Ok(Union(path, dentry, oks: _*))
@@ -195,5 +207,4 @@ object Delegator extends Delegator {
         }
         Activity(stateVar)
     }
-
 }

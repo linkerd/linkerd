@@ -129,4 +129,3 @@ object ProtocolInitializer {
     def serve() = server.serve(addr, factory)
   }
 }
-
