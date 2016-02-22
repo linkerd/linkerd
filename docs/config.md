@@ -246,6 +246,10 @@ Thrift servers define additional parameters:
 * *thriftFramed* -- if `true`, a framed thrift transport is used for incoming
   requests; otherwise, a buffered transport is used. Typically this setting
   matches the router's `thriftFramed` param. (default: true)
+* *thriftProtocol* -- allows the thrift protocol to be chosen;
+   currently supports 'binary' for `TBinaryProtocol` (default) and
+   'compact' for `TCompactProtocol`. Typically this setting matches
+   the router's client `thriftProtocol` param.
 
 The default server _port_ is 4114.
 
@@ -254,9 +258,13 @@ Thrift also supports additional *client* parameters:
 * *thriftFramed* -- if `true`, a framed thrift transport is used for outgoing
   requests; otherwise, a buffered transport is used. Typically this setting
   matches the router's servers' `thriftFramed` param. (default: true)
+* *thriftProtocol* -- allows the thrift protocol to be chosen;
+   currently supports `binary` for `TBinaryProtocol` (default) and
+   `compact` for `TCompactProtocol`. Typically this setting matches
+   the router's servers' `thriftProtocol` param.
 
 As an example: Here's a thrift router configuration that routes thrift--via
-buffered transport--from port 4004 to port 5005
+buffered transport using the TCompactProtocol --from port 4004 to port 5005
 
 ```yaml
 routers:
@@ -268,8 +276,10 @@ routers:
   - port: 4004
     ip: 0.0.0.0
     thriftFramed: false
+    thriftProtocol: compact
   client:
     thriftFramed: false
+    thriftProtocol: compact
 ```
 
 <a name="protocol-mux"></a>
