@@ -5,17 +5,19 @@ import com.twitter.finagle.thrift.{Protocols, ThriftClientRequest}
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
+import org.apache.thrift.protocol.TProtocolFactory
 import org.apache.thrift.transport.TMemoryInputTransport
 
 case class Identifier(
   name: Path = Path.empty,
   methodInDst: Boolean = false,
-  dtab: () => Dtab = () => Dtab.base
+  dtab: () => Dtab = () => Dtab.base,
+  protocol: TProtocolFactory = Protocols.binaryFactory()
 ) extends RoutingFactory.Identifier[ThriftClientRequest] {
 
   private[this] def suffix(req: ThriftClientRequest): Path = {
     if (methodInDst) {
-      val messageName = Protocols.binaryFactory().getProtocol(
+      val messageName = protocol.getProtocol(
         new TMemoryInputTransport(req.message)
       ).readMessageBegin().name
       Path.read(s"/$messageName")
