@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
@@ -168,8 +167,8 @@ private[admin] class WebDelegator(
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get => (req.params.get("d"), req.params.get("n")) match {
       case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
-        val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
-        delegate(dtab, path, namer).values.toFuture().flatMap(Future.const).map { tree =>
+        val interpreter = linker.interpreter
+        delegate(dtab, path, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)
           rsp.contentType = MediaType.Json

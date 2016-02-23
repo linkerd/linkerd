@@ -1,10 +1,10 @@
 package io.buoyant.router
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Http => FinagleHttp, Status=>_, http=>_, _}
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
+import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -109,5 +109,4 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       await(router.close())
     }
   }
-
 }

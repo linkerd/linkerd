@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.{Dtab, Stack, param}
+import com.twitter.finagle.{Dtab, Stack}
+import io.buoyant.linkerd.config.Parser
 import io.buoyant.router.RoutingFactory
 import java.net.InetAddress
 import org.scalatest.FunSuite
@@ -10,8 +11,13 @@ class RouterTest extends FunSuite {
   def parse(
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
-    protos: ProtocolInitializers = TestProtocol.DefaultInitializers
-  ) = Router.read(Yaml(yaml), params, protos, TlsClientInitializers.empty)
+    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy)
+  ): Router = {
+    val mapper = Parser.objectMapper(yaml)
+    for (p <- protos) p.registerSubtypes(mapper)
+    val cfg = mapper.readValue[RouterConfig](yaml)
+    cfg.router(params)
+  }
 
   test("with label") {
     val yaml = """
@@ -33,9 +39,11 @@ servers:
     val yaml = """
 protocol: plain
 label: yoghurt
+servers:
+  - {}
 """
     val router = parse(yaml)
-    assert(router.servers.head.params[Server.Ip].ip.isLoopbackAddress)
+    assert(router.servers.head.ip.isLoopbackAddress)
     assert(router.servers.head.port == 13)
   }
 
@@ -45,7 +53,7 @@ label: yoghurt
 servers:
 - port: 1234
 """
-    intercept[Parsing.Error] { parse(yaml) }
+    intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("unknown protocol") {
@@ -55,31 +63,7 @@ label: hummus
 servers:
 - port: 1234
 """
-    intercept[Parsing.Error] { parse(yaml) }
-  }
-
-  test("protocol-specific params") {
-    val yaml = """
-protocol: fancy
-fancyRouter: true
-servers:
-- port: 1234
-  fancyServer: true
-"""
-    val router = parse(yaml)
-    assert(router.protocol == TestProtocol.Fancy)
-
-    assert(router.params[param.Label].label == TestProtocol.Fancy.name)
-    assert(router.params[TestProtocol.Fancy.Pants].fancy)
-
-    assert(router.servers.size == 1)
-    assert(router.servers.head.addr.getAddress == InetAddress.getLoopbackAddress)
-    assert(router.servers.head.addr.getPort == 1234)
-
-    assert(router.servers.head.router == "fancy")
-    assert(router.servers.head.params[param.Label].label == "127.0.0.1/1234")
-    assert(router.servers.head.params[TestProtocol.Fancy.Pants].fancy)
-
+    intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("router overrides global params") {
@@ -94,15 +78,5 @@ servers:
     val router = parse(yaml, Stack.Params.empty + defaultDtab)
     val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
     assert(dtab() == Dtab.read("/foo=>/bah"))
-  }
-
-  test("servers must be differentiated") {
-    val yaml = """
-protocol: plain
-servers:
-- port: 1234
-- port: 1234
-"""
-    intercept[Parsing.Error] { parse(yaml) }
   }
 }

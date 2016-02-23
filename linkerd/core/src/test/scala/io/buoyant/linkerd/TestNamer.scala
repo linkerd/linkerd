@@ -1,30 +1,27 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.core.JsonParser
-import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path, Stack}
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
 import com.twitter.util.{Activity, Var}
+import io.buoyant.linkerd.config.Parser
 
-object TestNamer {
-  case class Buh(buh: Boolean)
-  implicit object Buh extends Stack.Param[Buh] {
-    val default = Buh(false)
-    val parser = Parsing.Param.Boolean("buh")(Buh(_))
-  }
-
-  val defaultParams = Stack.Params.empty +
-    NamerInitializer.Prefix(Path.read("/foo"))
+class TestNamer extends NamerInitializer {
+  val configClass = Parser.jClass[TestNamerConfig]
+  val configId = "io.buoyant.linkerd.TestNamer"
 }
 
-class TestNamer(val params: Stack.Params) extends NamerInitializer {
-  def this() = this(TestNamer.defaultParams)
-  def withParams(ps: Stack.Params) = new TestNamer(ps)
+object TestNamer extends TestNamer
 
-  def paramKeys = TestNamer.Buh.parser.keys
-  def readParam(k: String, p: JsonParser) =
-    withParams(TestNamer.Buh.parser.read(k, p, params))
+class TestNamerConfig extends NamerConfig { config =>
+  @JsonIgnore
+  override def defaultPrefix: Path = Path.read("/foo")
 
-  def newNamer() = new Namer {
-    val buh = params[TestNamer.Buh].buh
+  var buh: Option[Boolean] = None
+
+  @JsonIgnore
+  override def newNamer(): Namer = new Namer {
+
+    val buh = config.buh.getOrElse(false)
 
     def lookup(path: Path): Activity[NameTree[Name]] = {
       val t = path match {

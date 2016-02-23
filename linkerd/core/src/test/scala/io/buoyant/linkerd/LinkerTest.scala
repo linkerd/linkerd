@@ -1,11 +1,8 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.core.JsonToken
-import com.twitter.finagle.Dtab
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.DefaultInterpreter
-import io.buoyant.linkerd.Admin.AdminPort
-import io.buoyant.router.RoutingFactory
+import io.buoyant.linkerd.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
@@ -13,9 +10,11 @@ class LinkerTest extends FunSuite {
 
   def parse(
     yaml: String,
-    protos: ProtocolInitializers = TestProtocol.DefaultInitializers,
-    namers: NamerInitializers = NamerInitializers(new TestNamer)
-  ) = Linker.mk(protos, namers, TlsClientInitializers.empty).read(Yaml(yaml))
+    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
+    namers: Seq[NamerInitializer] = Seq(TestNamer)
+  ) = {
+    Linker.load(yaml, protos ++ namers)
+  }
 
   test("basic") {
     val linker = parse("""
@@ -29,8 +28,9 @@ routers:
 """)
     val routers = linker.routers
 
-    val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
+    val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
     assert(namer == DefaultInterpreter)
+    assert(linker.interpreter == DefaultInterpreter)
 
     assert(routers.size == 2)
 
@@ -42,15 +42,14 @@ routers:
 
     assert(routers(1).label == "fancy")
     assert(routers(1).protocol == TestProtocol.Fancy)
-    assert(routers(1).params[TestProtocol.Fancy.Pants].fancy == false)
+    assert(routers(1).params[TestProtocol.FancyParam].pants == false)
     assert(routers(1).servers.size == 1)
     assert(routers(1).servers(0).addr.getAddress == InetAddress.getLoopbackAddress)
     assert(routers(1).servers(0).addr.getPort == 2)
   }
 
   test("empty object") {
-    val e = intercept[Parsing.Error] { parse("") }
-    assert(e.getMessage startsWith "expected 'START_OBJECT'; empty")
+    val e = intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse("") }
   }
 
   test("list instead of an object") {
@@ -58,10 +57,7 @@ routers:
 - foo
 - bar
 """
-    val ut = intercept[Parsing.UnexpectedToken] { parse(yaml) }
-    assert(ut.name == None)
-    assert(ut.observed == Some(JsonToken.START_ARRAY))
-    assert(ut.expected == JsonToken.START_OBJECT)
+    val ut = intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("invalid routers") {
@@ -69,10 +65,7 @@ routers:
 routers:
   protocol: foo
 """
-    val ut = intercept[Parsing.UnexpectedToken] { parse(yaml) }
-    assert(ut.name == Some("routers"))
-    assert(ut.observed == Some(JsonToken.START_OBJECT))
-    assert(ut.expected == JsonToken.START_ARRAY)
+    val ut = intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("protocol-specific params not supported in global context") {
@@ -86,21 +79,7 @@ routers:
   servers:
   - port: 2
 """
-    intercept[Parsing.Error] { parse(yaml) }
-  }
-
-  test("global params propagated") {
-    val yaml = """
-baseDtab: /foo=>/bar;
-routers:
-- protocol: plain
-  servers:
-  - port: 1
-"""
-    val linker = parse(yaml)
-    val routers = linker.routers
-    val RoutingFactory.BaseDtab(dtab) = routers.head.params[RoutingFactory.BaseDtab]
-    assert(dtab() == Dtab.read("/foo=>/bar"))
+    intercept[com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException] { parse(yaml) }
   }
 
   test("router labels conflict") {
@@ -113,7 +92,7 @@ routers:
   servers:
   - port: 2
 """
-    intercept[Parsing.Error] { parse(yaml) }
+    intercept[ConflictingLabels] { parse(yaml) }
   }
 
   test("router labels don't conflict") {
@@ -130,19 +109,32 @@ routers:
     assert(parse(yaml).routers.map(_.label) == Seq("plain", "yohourt"))
   }
 
-  test("servers conflict") {
+  test("servers conflict across routers") {
     val yaml = """
 routers:
 - protocol: plain
+  label: router1
   servers:
   - port: 2
 - protocol: plain
+  label: router2
   servers:
   - port: 1
   - port: 2
   - port: 3
 """
-    intercept[Parsing.Error] { parse(yaml) }
+    intercept[ConflictingPorts] { parse(yaml) }
+  }
+
+  test("servers conflict within a router") {
+    val yaml = """
+routers:
+- protocol: plain
+  servers:
+  - port: 1234
+  - port: 1234
+"""
+    intercept[ConflictingPorts] { parse(yaml) }
   }
 
   test("servers don't conflict on different ips") {
@@ -162,20 +154,6 @@ routers:
     ))
   }
 
-  test("servers conflict when 'any' ip is used") {
-    val yaml = """
-routers:
-- protocol: plain
-  servers:
-  - port: 4
-- protocol: plain
-  servers:
-  - ip: any
-    port: 
-"""
-    intercept[IllegalArgumentException] { parse(yaml) }
-  }
-
   test("with namers") {
     val yaml = """
 namers:
@@ -188,8 +166,9 @@ routers:
   - port: 1
 """
     val linker = parse(yaml)
-    val DstBindingFactory.Namer(namer) = linker.params[DstBindingFactory.Namer]
+    val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
     assert(namer != DefaultInterpreter)
+    assert(linker.interpreter != DefaultInterpreter)
   }
 
   test("with admin") {
@@ -202,6 +181,18 @@ routers:
   - port: 1
 """
     val linker = parse(yaml)
-    assert(linker.admin.params[AdminPort].port == 9991)
+    assert(linker.admin.port.port == 9991)
+  }
+
+  test("conflicting subtypes") {
+    val yaml = """
+namers:
+- kind: io.buoyant.linkerd.TestNamer
+routers:
+- protocol: plain
+  servers:
+  - port: 1
+    """
+    intercept[ConflictingSubtypes] { parse(yaml, namers = Seq(TestNamer, ConflictingNamer)) }
   }
 }

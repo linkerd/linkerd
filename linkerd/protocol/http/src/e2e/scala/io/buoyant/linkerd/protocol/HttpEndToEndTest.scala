@@ -2,14 +2,12 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Http => FinagleHttp, Status=>_, http=>_, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
+import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
-import io.buoyant.router.{Http, RoutingFactory}
-import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -80,11 +78,9 @@ routers:
   - port: 0
 """
 
-    val protocols = ProtocolInitializers(new HttpInitializer)
-    val linker = Linker.mk(protocols, NamerInitializers.empty, TlsClientInitializers.empty)
+    val linker = Linker.load(yaml, Seq(HttpInitializer))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .read(Yaml(yaml))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
@@ -149,5 +145,4 @@ routers:
       await(router.close())
     }
   }
-
 }

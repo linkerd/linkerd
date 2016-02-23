@@ -66,8 +66,14 @@ object LinkerdBuild extends Base {
   }
 
   object Linkerd {
+    val config = projectDir("linkerd/config")
+      .withLib(Deps.finagle("core"))
+      .withLib(Deps.finagle("thrift"))
+      .withLibs(Deps.jackson)
+      .withLib(Deps.jacksonYaml)
+
     val core = projectDir("linkerd/core")
-      .dependsOn(Router.core)
+      .dependsOn(Router.core, config)
       .withLib(Deps.jacksonCore)
       .withTests()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
@@ -79,7 +85,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core % "compile->compile;test->test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, core)
+      .dependsOn(admin, config, core)
       .withLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
@@ -124,6 +130,7 @@ object LinkerdBuild extends Base {
 
       val thrift = projectDir("linkerd/protocol/thrift")
         .dependsOn(core, Router.thrift)
+        .withTests()
 
       val all = projectDir("linkerd/protocol")
         .aggregate(http, mux, thrift)
@@ -139,11 +146,11 @@ object LinkerdBuild extends Base {
       .dependsOn(core)
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, Namer.all, Protocol.all, tls)
+      .aggregate(admin, core, main, config, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, Namer.fs, Protocol.http)
+      .configDependsOn(Minimal)(admin, core, main, config, Namer.fs, Protocol.http)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
@@ -214,6 +221,7 @@ object LinkerdBuild extends Base {
 
   val linkerd = Linkerd.all
   val linkerdAdmin = Linkerd.admin
+  val linkerdConfig = Linkerd.config
   val linkerdCore = Linkerd.core
   val linkerdMain = Linkerd.main
   val linkerdNamer = Linkerd.Namer.all

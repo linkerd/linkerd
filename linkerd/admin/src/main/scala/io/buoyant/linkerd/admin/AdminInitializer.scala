@@ -8,7 +8,6 @@ import com.twitter.logging.{Level, Logger}
 import com.twitter.server.view.NotFoundView
 import com.twitter.util.Monitor
 import io.buoyant.linkerd.Admin
-import io.buoyant.linkerd.Admin.AdminPort
 import java.net.InetSocketAddress
 import scala.util.Properties
 
@@ -23,11 +22,12 @@ class AdminInitializer(admin: Admin, svc: Service[Request, Response]) {
     val loggingMonitor = new Monitor {
       def handle(exc: Throwable): Boolean = {
         log.log(Level.ERROR, s"Caught exception in AdminInitializer: $exc", exc)
-        log.log(Level.ERROR, exc.getStackTrace().mkString("", Properties.lineSeparator, Properties.lineSeparator))
+        log.log(Level.ERROR, exc.getStackTrace.mkString("", Properties.lineSeparator,
+          Properties.lineSeparator))
         false
       }
     }
-    val AdminPort(port) = admin.params[AdminPort]
+    val port = admin.port.port
     log.info(s"Serving admin http on $port")
     _adminHttpServer = Http.server
       .configured(param.Stats(NullStatsReceiver))

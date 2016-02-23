@@ -1,24 +1,13 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.Service
-import com.twitter.finagle.http.{MediaType, Request, Response, Status}
-import com.twitter.util.Future
+import com.twitter.finagle.http.{Request, Status}
 import io.buoyant.linkerd._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
 class SummaryHandlerTest extends FunSuite with Awaits {
 
-  // TODO: share with LinkerTest
-  def parse(
-    yaml: String
-  ) = Linker.mk(
-    TestProtocol.DefaultInitializers,
-    NamerInitializers(new TestNamer),
-    TlsClientInitializers.empty
-  ).read(Yaml(yaml))
-
-  val linker = parse("""
+  val linker = Linker.load("""
 routers:
 - protocol: plain
   servers:
@@ -26,7 +15,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-""")
+""", Seq(TestProtocol.Fancy, TestProtocol.Plain))
   val handler = new SummaryHandler(linker)
 
   test("serves ok on /") {

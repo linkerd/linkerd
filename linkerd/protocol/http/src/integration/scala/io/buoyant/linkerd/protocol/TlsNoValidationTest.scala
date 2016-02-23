@@ -14,7 +14,8 @@ class TlsNoValidationTest extends FunSuite with Awaits {
 
   test("tls router + plain upstream without validation") {
     withCerts("linkerd") { certs =>
-      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert, certs.serviceCerts("linkerd").key)
+      val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,
+        certs.serviceCerts("linkerd").key)
       try {
         val linkerConfig =
           s"""
@@ -30,10 +31,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.noValidation
              |""".
             stripMargin
-        val protocols = ProtocolInitializers(new HttpInitializer)
-        val tls = TlsClientInitializers(new noValidation)
-        val linker = Linker.mk(protocols, NamerInitializers.empty, tls)
-          .read(Yaml(linkerConfig))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new noValidation))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()

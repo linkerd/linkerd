@@ -1,0 +1,6 @@
+io.buoyant.linkerd.config.types.DirectoryDeserializer
+io.buoyant.linkerd.config.types.DtabDeserializer
+io.buoyant.linkerd.config.types.InetAddressDeserializer
+io.buoyant.linkerd.config.types.PathDeserializer
+io.buoyant.linkerd.config.types.PortDeserializer
+io.buoyant.linkerd.config.types.ThriftProtocolDeserializer
