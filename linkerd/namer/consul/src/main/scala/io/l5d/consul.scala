@@ -18,12 +18,11 @@ import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
  *   port: 8600
  * </pre>
  */
-class consul extends NamerInitializer {
-  val configClass = classOf[ConsulConfig]
-  val configId = "io.l5d.experimental.consul"
+class ConsulInitializer extends NamerInitializer {
+  val configClass = classOf[consul]
 }
 
-case class ConsulConfig(
+case class consul(
   host: Option[String],
   port: Option[Port]
 ) extends NamerConfig {

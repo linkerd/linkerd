@@ -11,9 +11,8 @@ import com.twitter.finagle.util.LoadService
 import scala.reflect.{ClassTag, classTag}
 
 abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser.jClass[T]) {
-  def register(module: SimpleModule): SimpleModule = {
-    module.addDeserializer(Parser.jClass[T], this)
-  }
+  def register(module: SimpleModule): SimpleModule = module.addDeserializer(Parser.jClass[T], this)
+
   protected def catchMappingException(ctxt: DeserializationContext)(t: => T): T =
     try t catch {
       case arg: IllegalArgumentException =>
@@ -22,7 +21,6 @@ abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser
 }
 
 object Parser {
-
   private[config] def jClass[T: ClassTag] = classTag[T].runtimeClass.asInstanceOf[Class[T]]
 
   private[this] def peekJsonObject(s: String): Boolean =

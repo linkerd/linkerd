@@ -6,8 +6,8 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Failure, Service}
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
-import io.l5d.clientTls.boundPath
-import io.l5d.fs
+import io.l5d.FsInitializer
+import io.l5d.clientTls.BoundPathInitializer
 import java.io.File
 import org.scalatest.FunSuite
 import scala.sys.process._
@@ -276,7 +276,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   }
 
   private[this] def withLinkerdClient(config: String)(f: Service[Request, Response] => Unit): Unit = {
-    val linker = Linker.load(config, Seq(new fs, HttpInitializer, new boundPath))
+    val linker = Linker.load(config, Seq(FsInitializer, HttpInitializer, BoundPathInitializer))
     val router = linker.routers.head.initialize()
     try {
       val server = router.servers.head.serve()

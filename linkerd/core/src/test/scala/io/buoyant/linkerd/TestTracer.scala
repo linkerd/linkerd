@@ -4,14 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.tracing.{Record, TraceId, Tracer}
 import io.buoyant.linkerd.config.Parser
 
-class TestTracer extends TracerInitializer {
-  val configClass = Parser.jClass[TestTracerConfig]
-  val configId = "io.buoyant.linkerd.TestTracer"
+class TestTracerInitializer extends TracerInitializer {
+  val configClass = classOf[TestTracer]
 }
 
-object TestTracer extends TestTracer
+object TestTracerInitializer extends TestTracerInitializer
 
-class TestTracerConfig extends TracerConfig {
+class TestTracer extends TracerConfig {
   @JsonIgnore
   override def newTracer(): Tracer = new Tracer {
     def record(record: Record): Unit = {}

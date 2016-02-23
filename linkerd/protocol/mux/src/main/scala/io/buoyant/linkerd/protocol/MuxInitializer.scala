@@ -20,7 +20,6 @@ class MuxInitializer extends ProtocolInitializer.Simple {
   override def defaultServerPort: Int = 4141
 
   val configClass = classOf[MuxConfig]
-  val configId = name
 }
 
 object MuxInitializer extends MuxInitializer

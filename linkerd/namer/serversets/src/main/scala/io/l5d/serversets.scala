@@ -7,14 +7,13 @@ import io.buoyant.linkerd.config.types.Port
 import io.buoyant.linkerd.namer.serversets.ServersetNamer
 import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
 
-class serversets extends NamerInitializer {
-  val configClass = classOf[ServersetsConfig]
-  val configId = "io.l5d.serversets"
+class ServersetsInitializer extends NamerInitializer {
+  val configClass = classOf[serversets]
 }
 
-object serversets extends serversets
+object ServersetsInitializer extends ServersetsInitializer
 
-case class ServersetsConfig(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
+case class serversets(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.serversets")
 

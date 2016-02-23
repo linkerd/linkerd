@@ -16,7 +16,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-                       """, Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamer))
+                       """, Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamerInitializer))
     val handler = new RouterHandler(linker)
     val req = Request()
     val rsp = await(handler(req))

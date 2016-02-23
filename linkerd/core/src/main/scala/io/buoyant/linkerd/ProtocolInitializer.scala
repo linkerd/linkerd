@@ -22,6 +22,7 @@ trait ProtocolInitializer extends ConfigInitializer {
 
   /** The protocol name, as read from configuration. */
   def name: String
+  override def configId = name
 
   /*
    * Router configuration & initialization

@@ -5,7 +5,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
-import io.l5d.clientTls.noValidation
+import io.l5d.clientTls.NoValidationInitializer
 import org.scalatest.FunSuite
 
 class TlsNoValidationTest extends FunSuite with Awaits {
@@ -31,7 +31,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.noValidation
              |""".
             stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new noValidation))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, NoValidationInitializer))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()

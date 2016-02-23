@@ -13,12 +13,13 @@ import io.buoyant.linkerd.util.PathMatcher
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 import java.net.SocketAddress
 
-class boundPath extends TlsClientInitializer {
-  val configClass = classOf[BoundPathConfig]
-  val configId = "io.l5d.clientTls.boundPath"
+class BoundPathInitializer extends TlsClientInitializer {
+  val configClass = classOf[boundPath]
 }
 
-case class BoundPathConfig(caCertPath: Option[String], names: Seq[NameMatcherConfig]) extends TlsClientConfig {
+object BoundPathInitializer extends BoundPathInitializer
+
+case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig]) extends TlsClientConfig {
   @JsonIgnore
   override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] = {
 

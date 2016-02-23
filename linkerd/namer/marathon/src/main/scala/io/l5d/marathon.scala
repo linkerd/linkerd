@@ -21,12 +21,11 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  *   uriPrefix: /marathon
  * </pre>
  */
-class marathon extends NamerInitializer {
-  val configClass = classOf[MarathonConfig]
-  val configId = "io.l5d.experimental.marathon"
+class MarathonInitializer extends NamerInitializer {
+  val configClass = classOf[marathon]
 }
 
-case class MarathonConfig(
+case class marathon(
   host: Option[String],
   port: Option[Port],
   uriPrefix: Option[String]

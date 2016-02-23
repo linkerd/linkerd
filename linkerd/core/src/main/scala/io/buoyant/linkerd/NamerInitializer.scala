@@ -38,4 +38,4 @@ trait NamerConfig {
   def newNamer(params: Stack.Params): Namer
 }
 
-abstract class NamerInitializer extends ConfigInitializer
+trait NamerInitializer extends ConfigInitializer

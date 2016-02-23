@@ -1,16 +1,17 @@
 package io.l5d
 
 import com.fasterxml.jackson.databind.JsonMappingException
-import io.buoyant.linkerd.NamerConfig
+import com.twitter.finagle.util.LoadService
+import io.buoyant.linkerd.{NamerInitializer, NamerConfig}
 import io.buoyant.linkerd.config.Parser
 import org.scalatest.FunSuite
 
 class ServersetsTest extends FunSuite {
 
-  def parse(yaml: String): ServersetsConfig = {
+  def parse(yaml: String): serversets = {
     val mapper = Parser.objectMapper(yaml)
-    serversets.registerSubtypes(mapper)
-    mapper.readValue[NamerConfig](yaml).asInstanceOf[ServersetsConfig]
+    ServersetsInitializer.registerSubtypes(mapper)
+    mapper.readValue[NamerConfig](yaml).asInstanceOf[serversets]
   }
 
   test("zkHost list") {
@@ -54,5 +55,9 @@ zkAddrs:
 - host: foo
 """
     assert(parse(yaml).connectString == "foo:2181")
+  }
+
+  test("service registration") {
+    assert(LoadService[NamerInitializer]().exists(_.isInstanceOf[ServersetsInitializer]))
   }
 }

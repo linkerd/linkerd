@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import io.buoyant.linkerd.config.Parser
 
-class ConflictingNamer extends NamerInitializer {
-  val configClass = classOf[ConflictingNamerConfig]
-  val configId = "io.buoyant.linkerd.TestNamer"
+class ConflictingNamerInitializer extends NamerInitializer {
+  val configClass = classOf[ConflictingNamer]
+  override val configId = "io.buoyant.linkerd.TestNamer"
 }
 
-object ConflictingNamer extends ConflictingNamer
+object ConflictingNamerInitializer extends ConflictingNamerInitializer
 
-class ConflictingNamerConfig extends NamerConfig {
+class ConflictingNamer extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = ???
   @JsonIgnore

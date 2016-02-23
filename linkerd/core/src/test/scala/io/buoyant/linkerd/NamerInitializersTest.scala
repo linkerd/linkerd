@@ -6,11 +6,11 @@ import com.twitter.finagle._
 import io.buoyant.linkerd.config.Parser
 import org.scalatest.FunSuite
 
-class booNamer extends TestNamerConfig {
+class booNamer extends TestNamer {
   override def defaultPrefix = Path.read("/boo")
 }
 
-class booUrnsNamer extends TestNamerConfig {
+class booUrnsNamer extends TestNamer {
   override def defaultPrefix = Path.read("/boo/urns")
 }
 

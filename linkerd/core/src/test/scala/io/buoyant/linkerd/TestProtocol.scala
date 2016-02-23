@@ -111,7 +111,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
   val defaultServerPort = 13
 }
 
-class PlainConfig extends RouterConfig {
+class Plain extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
   var client: Option[ClientConfig] = None
@@ -120,7 +120,7 @@ class PlainConfig extends RouterConfig {
   override def protocol: ProtocolInitializer = TestProtocol.Plain
 }
 
-case class FancyConfig(fancy: Option[Boolean]) extends RouterConfig {
+case class Fancy(fancy: Option[Boolean]) extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
   var client: Option[ClientConfig] = None
@@ -141,12 +141,10 @@ object TestProtocol {
   }
 
   object Plain extends TestProtocol("plain") {
-    val configClass = classOf[PlainConfig]
-    val configId = "plain"
+    val configClass = classOf[Plain]
   }
 
   object Fancy extends TestProtocol("fancy") {
-    val configClass = classOf[FancyConfig]
-    val configId = "fancy"
+    val configClass = classOf[Fancy]
   }
 }

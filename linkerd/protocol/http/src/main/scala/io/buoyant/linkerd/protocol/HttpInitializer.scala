@@ -37,7 +37,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   }
 
   val configClass = classOf[HttpConfig]
-  val configId = name
 
   override def defaultServerPort: Int = 4140
 }
