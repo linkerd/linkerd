@@ -22,7 +22,7 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  * </pre>
  */
 class marathon extends NamerInitializer {
-  val configClass = Parser.jClass[MarathonConfig]
+  val configClass = classOf[MarathonConfig]
   val configId = "io.l5d.experimental.marathon"
 }
 

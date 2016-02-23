@@ -9,7 +9,7 @@ import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
 import io.l5d.fs.FsConfig
 
 class fs extends NamerInitializer {
-  val configClass = Parser.jClass[FsConfig]
+  val configClass = classOf[FsConfig]
   val configId = "io.l5d.fs"
 }
 

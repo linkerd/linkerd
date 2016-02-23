@@ -23,7 +23,7 @@ import scala.io.Source
  * </pre>
  */
 class k8s extends NamerInitializer {
-  val configClass = Parser.jClass[k8sConfig]
+  val configClass = classOf[k8sConfig]
   val configId = "io.l5d.experimental.k8s"
 }
 

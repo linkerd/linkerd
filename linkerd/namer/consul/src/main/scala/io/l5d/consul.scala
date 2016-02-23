@@ -19,7 +19,7 @@ import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
  * </pre>
  */
 class consul extends NamerInitializer {
-  val configClass = Parser.jClass[ConsulConfig]
+  val configClass = classOf[ConsulConfig]
   val configId = "io.l5d.experimental.consul"
 }
 

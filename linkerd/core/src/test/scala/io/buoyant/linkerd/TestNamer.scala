@@ -6,7 +6,7 @@ import com.twitter.util.{Activity, Var}
 import io.buoyant.linkerd.config.Parser
 
 class TestNamer extends NamerInitializer {
-  val configClass = Parser.jClass[TestNamerConfig]
+  val configClass = classOf[TestNamerConfig]
   val configId = "io.buoyant.linkerd.TestNamer"
 }
 

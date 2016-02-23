@@ -5,7 +5,7 @@ import com.twitter.finagle._
 import io.buoyant.linkerd.config.Parser
 
 class ConflictingNamer extends NamerInitializer {
-  val configClass = Parser.jClass[ConflictingNamerConfig]
+  val configClass = classOf[ConflictingNamerConfig]
   val configId = "io.buoyant.linkerd.TestNamer"
 }
 

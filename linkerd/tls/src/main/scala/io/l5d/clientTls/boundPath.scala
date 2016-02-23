@@ -14,7 +14,7 @@ import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 import java.net.SocketAddress
 
 class boundPath extends TlsClientInitializer {
-  val configClass = Parser.jClass[BoundPathConfig]
+  val configClass = classOf[BoundPathConfig]
   val configId = "io.l5d.clientTls.boundPath"
 }
 

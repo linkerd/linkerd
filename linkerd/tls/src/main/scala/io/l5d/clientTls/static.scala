@@ -7,7 +7,7 @@ import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
 class static extends TlsClientInitializer {
-  val configClass = Parser.jClass[StaticConfig]
+  val configClass = classOf[StaticConfig]
   val configId = "io.l5d.clientTls.static"
 }
 

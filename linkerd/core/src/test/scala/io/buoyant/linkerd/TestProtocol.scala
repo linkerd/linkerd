@@ -141,12 +141,12 @@ object TestProtocol {
   }
 
   object Plain extends TestProtocol("plain") {
-    val configClass = Parser.jClass[PlainConfig]
+    val configClass = classOf[PlainConfig]
     val configId = "plain"
   }
 
   object Fancy extends TestProtocol("fancy") {
-    val configClass = Parser.jClass[FancyConfig]
+    val configClass = classOf[FancyConfig]
     val configId = "fancy"
   }
 }

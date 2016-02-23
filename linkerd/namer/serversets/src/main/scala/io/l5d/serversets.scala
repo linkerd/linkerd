@@ -8,7 +8,7 @@ import io.buoyant.linkerd.namer.serversets.ServersetNamer
 import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
 
 class serversets extends NamerInitializer {
-  val configClass = Parser.jClass[ServersetsConfig]
+  val configClass = classOf[ServersetsConfig]
   val configId = "io.l5d.serversets"
 }
 

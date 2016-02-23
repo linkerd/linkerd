@@ -7,7 +7,7 @@ import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
 class noValidation extends TlsClientInitializer {
-  val configClass = Parser.jClass[NoValidationConfig]
+  val configClass = classOf[NoValidationConfig]
   val configId = "io.l5d.clientTls.noValidation"
 }
 
