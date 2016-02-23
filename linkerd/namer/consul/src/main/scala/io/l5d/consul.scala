@@ -2,7 +2,7 @@ package io.l5d.experimental
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.{Http, Path}
+import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.consul.{CatalogNamer, SetHostFilter, v1}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Port
@@ -41,8 +41,9 @@ case class ConsulConfig(
    * Build a Namer backed by Consul.
    */
   @JsonIgnore
-  def newNamer(): CatalogNamer = {
+  def newNamer(params: Stack.Params): CatalogNamer = {
     val service = Http.client
+      .withParams(Http.client.params ++ params)
       .configured(Label("namer" + prefix))
       .filtered(new SetHostFilter(getHost, getPort))
       .newService(s"/$$/inet/$getHost/$getPort")

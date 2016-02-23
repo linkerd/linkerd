@@ -2,6 +2,8 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.DefaultInterpreter
+import com.twitter.finagle.param
+import com.twitter.finagle.tracing.DefaultTracer
 import io.buoyant.linkerd.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
@@ -11,9 +13,10 @@ class LinkerTest extends FunSuite {
   def parse(
     yaml: String,
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
-    namers: Seq[NamerInitializer] = Seq(TestNamer)
+    namers: Seq[NamerInitializer] = Seq(TestNamer),
+    tracers: Seq[TracerInitializer] = Seq(TestTracer)
   ) = {
-    Linker.load(yaml, protos ++ namers)
+    Linker.load(yaml, protos ++ namers ++ tracers)
   }
 
   test("basic") {
@@ -169,6 +172,21 @@ routers:
     val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
     assert(namer != DefaultInterpreter)
     assert(linker.interpreter != DefaultInterpreter)
+  }
+
+  test("with tracers") {
+    val yaml = """
+tracers:
+- kind: io.buoyant.linkerd.TestTracer
+routers:
+- protocol: plain
+  servers:
+  - port: 1
+"""
+    val linker = parse(yaml)
+    val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
+    assert(tracer != DefaultTracer)
+    assert(linker.tracer != DefaultTracer)
   }
 
   test("with admin") {

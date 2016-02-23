@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Dtab, NameTree, Path}
+import com.twitter.finagle.{Stack, Dtab, NameTree, Path}
 import io.buoyant.linkerd.config.Parser
 import org.scalatest.FunSuite
 
@@ -11,7 +11,7 @@ class NamerInitializerTest extends FunSuite {
     val mapper = Parser.objectMapper(config)
     TestNamer.registerSubtypes(mapper)
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    Linker.nameInterpreter(cfg)
+    Linker.nameInterpreter(Stack.Params.empty)(cfg)
   }
 
   val kind = "io.buoyant.linkerd.TestNamer"

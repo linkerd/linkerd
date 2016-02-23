@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
+import com.twitter.finagle._
 import com.twitter.util.{Activity, Var}
 import io.buoyant.linkerd.config.Parser
 
@@ -19,7 +19,7 @@ class TestNamerConfig extends NamerConfig { config =>
   var buh: Option[Boolean] = None
 
   @JsonIgnore
-  override def newNamer(): Namer = new Namer {
+  override def newNamer(params: Stack.Params): Namer = new Namer {
 
     val buh = config.buh.getOrElse(false)
 

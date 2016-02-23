@@ -1,9 +1,10 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.Stack.Param
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.{DefaultInterpreter, NameInterpreter}
+import com.twitter.finagle.tracing.{NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.config._
 
@@ -14,7 +15,7 @@ trait Linker {
   def routers: Seq[Router]
   def interpreter: NameInterpreter
   def admin: Admin
-
+  def tracer: Tracer
   def configured[T: Stack.Param](t: T): Linker
 }
 
@@ -40,7 +41,8 @@ object Linker {
     val protocols = LoadService[ProtocolInitializer]
     val namers = LoadService[NamerInitializer]
     val clientTls = LoadService[TlsClientInitializer]
-    parse(config, protocols ++ namers ++ clientTls)
+    val tracers = LoadService[TracerInitializer]
+    parse(config, protocols ++ namers ++ clientTls ++ tracers)
   }
 
   def load(config: String): Linker = {
@@ -50,12 +52,24 @@ object Linker {
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
+    tracers: Option[Seq[TracerConfig]],
     admin: Option[Admin]
   ) {
     def mk: Linker = {
-      val interpreter = namers.map(nameInterpreter)
 
-      val namersParam = Stack.Params.empty
+      val tracerImpls = tracers.map(_.map(_.newTracer()))
+      val tracer: Tracer = tracerImpls match {
+        case Some(Nil) => NullTracer
+        case Some(Seq(tracer)) => tracer
+        case Some(tracers) => BroadcastTracer(tracers)
+        case None => DefaultTracer
+      }
+
+      val namerParams = Stack.Params.empty + param.Tracer(tracer)
+
+      val interpreter = namers.map(nameInterpreter(namerParams))
+
+      val params = namerParams
         .maybeWith(interpreter.map(DstBindingFactory.Namer(_)))
 
       // At least one router must be specified
@@ -69,7 +83,7 @@ object Linker {
           if (rts.size > 1) throw ConflictingLabels(label)
       }
 
-      val routerImpls = routers.map(_.router(namersParam))
+      val routerImpls = routers.map(_.router(params))
 
       // Server sockets must not conflict
       routerImpls.flatMap(_.servers).groupBy(_.addr).collect {
@@ -77,13 +91,13 @@ object Linker {
           if (svrs.size > 1) throw ConflictingPorts(svrs(0).addr, svrs(1).addr)
       }
 
-      new Impl(routerImpls, interpreter.getOrElse(DefaultInterpreter), admin.getOrElse(Admin()))
+      new Impl(routerImpls, interpreter.getOrElse(DefaultInterpreter), tracer, admin.getOrElse(Admin()))
     }
   }
 
-  def nameInterpreter(namers: Seq[NamerConfig]): NameInterpreter =
+  def nameInterpreter(params: Stack.Params)(namers: Seq[NamerConfig]): NameInterpreter =
     Interpreter(namers.map { cfg =>
-      cfg.prefix -> cfg.newNamer()
+      cfg.prefix -> cfg.newNamer(params)
     })
 
   /**
@@ -93,6 +107,7 @@ object Linker {
   private case class Impl(
     routers: Seq[Router],
     interpreter: NameInterpreter,
+    tracer: Tracer,
     admin: Admin
   ) extends Linker {
     override def configured[T: Param](t: T) =

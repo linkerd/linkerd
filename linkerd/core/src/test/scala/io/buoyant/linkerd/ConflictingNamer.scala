@@ -15,5 +15,5 @@ class ConflictingNamerConfig extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = ???
   @JsonIgnore
-  override def newNamer(): Namer = ???
+  override def newNamer(params: Stack.Params): Namer = ???
 }

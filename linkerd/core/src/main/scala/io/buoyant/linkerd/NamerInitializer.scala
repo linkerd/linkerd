@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
-import com.twitter.finagle.{Namer, Path}
+import com.twitter.finagle.{Stack, Namer, Path}
 
 /**
  * Read a single namer configuration in the form:
@@ -35,7 +35,7 @@ trait NamerConfig {
    * Construct a namer.
    */
   @JsonIgnore
-  def newNamer(): Namer
+  def newNamer(params: Stack.Params): Namer
 }
 
 abstract class NamerInitializer extends ConfigInitializer

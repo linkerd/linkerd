@@ -1,7 +1,7 @@
 package io.l5d
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Stack, Path}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Directory
 import io.buoyant.linkerd.namer.fs.WatchingNamer
@@ -22,6 +22,6 @@ object fs {
      * Construct a namer.
      */
     @JsonIgnore
-    def newNamer() = new WatchingNamer(rootDir.path, prefix)
+    def newNamer(params: Stack.Params) = new WatchingNamer(rootDir.path, prefix)
   }
 }

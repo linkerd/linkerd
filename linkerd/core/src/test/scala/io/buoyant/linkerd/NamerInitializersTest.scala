@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Dtab, Name, NameTree, Path}
+import com.twitter.finagle._
 import io.buoyant.linkerd.config.Parser
 import org.scalatest.FunSuite
 
@@ -23,7 +23,7 @@ class NamerInitializersTest extends FunSuite {
       new NamedType(Parser.jClass[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer")
     )
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    Linker.nameInterpreter(cfg)
+    Linker.nameInterpreter(Stack.Params.empty)(cfg)
   }
 
   test("namers evaluated bottom-up") {
