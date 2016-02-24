@@ -2,6 +2,8 @@
 
 * New `thriftProtocol` config option to the thrift protocol to be
   specified.
+* Added traffic routing support for marathon apps with slashes in
+  their ids.
 
 ## 0.1.0
 

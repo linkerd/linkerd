@@ -529,9 +529,11 @@ namers:
 The default _prefix_ is `io.l5d.marathon`. (Note that this is *different* from
 the name in the configuration block.)
 
-The Marathon namer takes one path component: `app-id`:
-
-* app-id: the id of the marathon application.
+The Marathon namer takes any number of path components. The path should
+correspond to the app id of a marathon application. For example, the app with
+id "/users" can be reached with `/io.l5d.marathon/users`. Likewise, the app
+with id "/appgroup/usergroup/users" can be reached with
+`/io.l5d.marathon/appgroup/usergroup/users`.
 
 Once configured, to use the Marathon namer, you must reference it in
 the dtab.
