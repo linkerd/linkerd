@@ -15,19 +15,29 @@ below.
 admin:
   port: 9990
 
-baseDtab: |
-  /host     => /$/io.l5d.fs;
-  /method   => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1 => /method;
-  /ext/http => /host/web;
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
 
 routers:
 - protocol: http
   label: int-http
+  baseDtab: |
+    /host     => /io.l5d.fs;
+    /method   => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1 => /method;
   httpUriInDst: true
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
 
 - protocol: http
   label: ext-http
+  dstPrefix: /ext/http
+  baseDtab: |
+    /host         => /$/io.buoyant.http.anyHostPfx/io.l5d.fs/web;
+    /method       => /$/io.buoyant.http.anyMethodPfx/host;
+    /ext/http/1.1 => /method;
   servers:
   - port: 8080
     ip: 0.0.0.0
@@ -40,7 +50,6 @@ routers:
       commonName: foo
       caCertPath: /foo/caCert.pem
   timeoutMs: 1000
-  dstPrefix: /ext/http
 
 - protocol: thrift
   servers:
@@ -51,7 +60,7 @@ routers:
     thriftFramed: true
   thriftMethodInDst: false
   baseDtab: |
-    /thrift => /$/io.l5d.fs/thrift;
+    /thrift => /io.l5d.fs/thrift;
 ```
 
 There are no requirements on field ordering, though it's generally
