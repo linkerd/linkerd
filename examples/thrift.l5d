@@ -10,3 +10,6 @@ namers:
 routers:
 - protocol: thrift
   thriftMethodInDst: true
+  servers:
+  - port: 4114
+    ip: 0.0.0.0
