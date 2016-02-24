@@ -62,7 +62,8 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val param.MethodInDst(methodInDst) = params[param.MethodInDst]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
-      Identifier(pfx, methodInDst, baseDtab)
+      val FinagleThrift.param.ProtocolFactory(protocol) = params[FinagleThrift.param.ProtocolFactory]
+      Identifier(pfx, methodInDst, baseDtab, protocol)
     }
   }
 
