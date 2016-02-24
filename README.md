@@ -1,5 +1,6 @@
 ![linkerd][l5d-logo]
 
+[![GitHub license](https://img.shields.io/github/license/buoyantio/linkerd.svg)](LICENSE)
 [![Circle CI][l5d-ci-status]][l5d-ci]
 [![Slack Status](https://slack.linkerd.io/badge.svg)](https://slack.linkerd.io)
 
