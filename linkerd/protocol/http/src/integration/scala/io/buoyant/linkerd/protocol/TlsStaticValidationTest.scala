@@ -6,7 +6,7 @@ import com.twitter.finagle.Failure
 import com.twitter.finagle.http.Request
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
-import io.l5d.clientTls.static
+import io.l5d.clientTls.StaticInitializer
 import org.scalatest.FunSuite
 
 class TlsStaticValidationTest extends FunSuite with Awaits {
@@ -34,7 +34,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new static))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, StaticInitializer))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
@@ -76,7 +76,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      caCertPath: ${certs.caCert.getPath}
              |""".
             stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, new static))
+        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, StaticInitializer))
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()

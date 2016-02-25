@@ -6,11 +6,11 @@ import com.twitter.finagle._
 import io.buoyant.linkerd.config.Parser
 import org.scalatest.FunSuite
 
-class booNamer extends TestNamerConfig {
+class booNamer extends TestNamer {
   override def defaultPrefix = Path.read("/boo")
 }
 
-class booUrnsNamer extends TestNamerConfig {
+class booUrnsNamer extends TestNamer {
   override def defaultPrefix = Path.read("/boo/urns")
 }
 
@@ -18,9 +18,9 @@ class NamerInitializersTest extends FunSuite {
 
   def interpreter(config: String): NameInterpreter = {
     val mapper = Parser.objectMapper(config)
-    mapper.registerSubtypes(new NamedType(Parser.jClass[booNamer], "io.buoyant.linkerd.booNamer"))
+    mapper.registerSubtypes(new NamedType(classOf[booNamer], "io.buoyant.linkerd.booNamer"))
     mapper.registerSubtypes(
-      new NamedType(Parser.jClass[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer")
+      new NamedType(classOf[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer")
     )
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
     Linker.nameInterpreter(Stack.Params.empty)(cfg)

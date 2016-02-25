@@ -22,14 +22,13 @@ import scala.io.Source
  *   authTokenFile: ../auth.token
  * </pre>
  */
-class k8s extends NamerInitializer {
-  val configClass = Parser.jClass[k8sConfig]
-  val configId = "io.l5d.experimental.k8s"
+class K8sInitializer extends NamerInitializer {
+  val configClass = classOf[k8s]
 }
 
-object k8s extends k8s
+object K8sInitializer extends K8sInitializer
 
-case class k8sConfig(
+case class k8s(
   host: Option[String],
   port: Option[Port],
   tls: Option[Boolean],

@@ -10,7 +10,7 @@ dependencies:
   cache_directories:
   - .sbt-launch.jar
   override:
-  - ./sbt update test:compile e2e:compile
+  - ./sbt update test:compile e2e:compile integration:compile
 
 test:
   override:

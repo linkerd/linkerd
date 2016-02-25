@@ -6,12 +6,13 @@ import com.twitter.finagle.buoyant.TlsClientPrep.Module
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
-class static extends TlsClientInitializer {
-  val configClass = Parser.jClass[StaticConfig]
-  val configId = "io.l5d.clientTls.static"
+class StaticInitializer extends TlsClientInitializer {
+  val configClass = classOf[static]
 }
 
-case class StaticConfig(commonName: String, caCertPath: Option[String]) extends TlsClientConfig {
+object StaticInitializer extends StaticInitializer
+
+case class static(commonName: String, caCertPath: Option[String]) extends TlsClientConfig {
   @JsonIgnore
   override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] =
     TlsClientPrep.static[Req, Rsp](

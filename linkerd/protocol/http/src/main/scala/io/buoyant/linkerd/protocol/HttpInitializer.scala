@@ -36,8 +36,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     Http.server.withStack(stk)
   }
 
-  val configClass = Parser.jClass[HttpConfig]
-  val configId = name
+  val configClass = classOf[HttpConfig]
 
   override def defaultServerPort: Int = 4140
 }

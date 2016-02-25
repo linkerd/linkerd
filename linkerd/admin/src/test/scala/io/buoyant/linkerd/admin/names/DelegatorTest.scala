@@ -20,7 +20,7 @@ routers:
 - protocol: fancy
   servers:
   - port: 2
-""", Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamer))
+""", Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamerInitializer))
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;

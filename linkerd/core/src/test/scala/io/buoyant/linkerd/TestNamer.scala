@@ -5,14 +5,13 @@ import com.twitter.finagle._
 import com.twitter.util.{Activity, Var}
 import io.buoyant.linkerd.config.Parser
 
-class TestNamer extends NamerInitializer {
-  val configClass = Parser.jClass[TestNamerConfig]
-  val configId = "io.buoyant.linkerd.TestNamer"
+class TestNamerInitializer extends NamerInitializer {
+  val configClass = classOf[TestNamer]
 }
 
-object TestNamer extends TestNamer
+object TestNamerInitializer extends TestNamerInitializer
 
-class TestNamerConfig extends NamerConfig { config =>
+class TestNamer extends NamerConfig { config =>
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/foo")
 

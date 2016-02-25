@@ -9,7 +9,7 @@ class NamerInitializerTest extends FunSuite {
 
   def interpreter(config: String): NameInterpreter = {
     val mapper = Parser.objectMapper(config)
-    TestNamer.registerSubtypes(mapper)
+    TestNamerInitializer.registerSubtypes(mapper)
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
     Linker.nameInterpreter(Stack.Params.empty)(cfg)
   }

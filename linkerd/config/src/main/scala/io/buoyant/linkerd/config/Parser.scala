@@ -12,6 +12,7 @@ import scala.reflect.{ClassTag, classTag}
 
 abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser.jClass[T]) {
   def register(module: SimpleModule): SimpleModule = module.addDeserializer(Parser.jClass[T], this)
+
   protected def catchMappingException(ctxt: DeserializationContext)(t: => T): T =
     try t catch {
       case arg: IllegalArgumentException =>
@@ -20,8 +21,7 @@ abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser
 }
 
 object Parser {
-  // convert to java-compatible class, used for testing
-  def jClass[T: ClassTag]: Class[T] = classTag[T].runtimeClass.asInstanceOf[Class[T]]
+  private[config] def jClass[T: ClassTag] = classTag[T].runtimeClass.asInstanceOf[Class[T]]
 
   private[this] def peekJsonObject(s: String): Boolean =
     s.dropWhile(_.isWhitespace).startsWith("{")

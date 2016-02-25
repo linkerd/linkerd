@@ -26,8 +26,7 @@ class ThriftInitializer extends ProtocolInitializer {
 
   override def defaultServerPort: Int = 4114
 
-  val configClass = Parser.jClass[ThriftConfig]
-  val configId = name
+  val configClass = classOf[ThriftConfig]
 }
 
 object ThriftInitializer extends ThriftInitializer

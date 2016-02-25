@@ -97,6 +97,7 @@ object LinkerdBuild extends Base {
 
       val fs = projectDir("linkerd/namer/fs")
         .dependsOn(core)
+        .withTests()
 
       val k8s = projectDir("linkerd/namer/k8s")
         .dependsOn(LinkerdBuild.k8s, core)
@@ -144,6 +145,7 @@ object LinkerdBuild extends Base {
 
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
+      .withTests()
 
     val all = projectDir("linkerd")
       .aggregate(admin, core, main, config, Namer.all, Protocol.all, tls)

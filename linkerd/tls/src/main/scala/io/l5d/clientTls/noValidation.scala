@@ -6,12 +6,13 @@ import com.twitter.finagle.buoyant.TlsClientPrep.Module
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
-class noValidation extends TlsClientInitializer {
-  val configClass = Parser.jClass[NoValidationConfig]
-  val configId = "io.l5d.clientTls.noValidation"
+class NoValidationInitializer extends TlsClientInitializer {
+  val configClass = classOf[noValidation]
 }
 
-class NoValidationConfig extends TlsClientConfig {
+object NoValidationInitializer extends NoValidationInitializer
+
+class noValidation extends TlsClientConfig {
   @JsonIgnore
   override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] =
     TlsClientPrep.withoutCertificateValidation[Req, Rsp]
