@@ -539,7 +539,10 @@ Once configured, to use the Marathon namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /http/1.1/GET => /io.l5d.marathon/http;
+  /marathonId => /io.l5d.marathon;
+  /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
+  /method     => /$/io.buoyant.http.anyMethodPfx/host;
+  /http/1.1   => /method;
 ```
 
 <a name="configuring-routing"></a>
