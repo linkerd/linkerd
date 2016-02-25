@@ -14,3 +14,6 @@ routers:
     /host/localhost:4140 => /host/default;
     /method => /$/io.buoyant.http.anyMethodPfx/host;
     /http/1.1 => /method;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
