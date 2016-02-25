@@ -1,9 +1,19 @@
-## 0.1.1
+## 0.2.0
 
-* New `thriftProtocol` config option to the thrift protocol to be
-  specified.
+* This release contains **breaking changes** to the configuration file format.
+  linkerd config files are now a bit more explicit and less "magical",
+  in the following ways:
+  * Router configuration options can no longer be specified globally at the
+    root level of the config file, but must be specified per-router.
+  * All routers must now include a `servers` section; previously, a default
+    server port would be used if none was provided.
+* New `thriftProtocol` config option allows the thrift protocol to be
+  specified. We currently support `binary` (default) and `compact`.
 * Added traffic routing support for marathon apps with slashes in
   their ids.
+* Resolved a browser-compatibility issue in the admin page for those not
+  using the latest-and-greatest Chrome/Firefox/Safari.
+
 
 ## 0.1.0
 
