@@ -61,7 +61,7 @@ case class k8sConfig(
    * Construct a namer.
    */
   @JsonIgnore
-  override def newNamer(): Namer = {
+  override def newNamer(params: Stack.Params): Namer = {
     val setHost = new SetHostFilter(getHost, getPort)
 
     val client = (tls, tlsWithoutValidation) match {
@@ -73,6 +73,7 @@ case class k8sConfig(
     // namer path -- should we just support a `label`?
     val path = prefix.show
     val service = client
+      .withParams(client.params ++ params)
       .configured(Label("namer" + path))
       .filtered(setHost)
       .filtered(authFilter)

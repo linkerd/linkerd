@@ -3,7 +3,7 @@ package io.l5d.experimental
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.{Http, Path}
+import com.twitter.finagle.{Stack, Http, Path}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Port
 import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
@@ -44,8 +44,9 @@ case class MarathonConfig(
   /**
    * Construct a namer.
    */
-  def newNamer() = {
+  def newNamer(params: Stack.Params) = {
     val service = Http.client
+      .withParams(params)
       .configured(Label("namer" + prefix.show))
       .newService(s"/$$/inet/$getHost/$getPort")
 

@@ -1,7 +1,7 @@
 package io.l5d
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Stack, Path}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Port
 import io.buoyant.linkerd.namer.serversets.ServersetNamer
@@ -24,7 +24,7 @@ case class ServersetsConfig(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
   /**
    * Construct a namer.
    */
-  def newNamer() = new ServersetNamer(connectString)
+  def newNamer(params: Stack.Params) = new ServersetNamer(connectString)
 }
 
 case class ZkAddr(host: String, port: Option[Port]) {

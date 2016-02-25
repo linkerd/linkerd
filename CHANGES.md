@@ -1,5 +1,8 @@
 ## 0.2.1
 
+* Configs may now include a `tracers` section with pluggable tracers (although
+  we don't provide any out of the box just yet)
+
 ## 0.2.0
 
 * This release contains **breaking changes** to the configuration file format.
