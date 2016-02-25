@@ -1,3 +1,5 @@
+## 0.2.1
+
 ## 0.2.0
 
 * This release contains **breaking changes** to the configuration file format.
