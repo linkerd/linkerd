@@ -64,7 +64,8 @@ object RoutingFactory {
  */
 class RoutingFactory[Req, Rsp](
   getDst: RoutingFactory.Identifier[Req],
-  clientFactory: DstBindingFactory[Req, Rsp]
+  clientFactory: DstBindingFactory[Req, Rsp],
+  label: String
 ) extends ServiceFactory[Req, Rsp] {
   import RoutingFactory._
 
@@ -78,7 +79,8 @@ class RoutingFactory[Req, Rsp](
   private class RoutingService(conn: ClientConnection) extends Service[Req, Rsp] {
     override def close(d: Time) = conn.close(d)
 
-    def apply(req: Req): Future[Rsp] =
+    def apply(req: Req): Future[Rsp] = {
+      Trace.recordBinary("router.label", label)
       for {
         dst <- getDst(req).rescue {
           case e: Throwable =>
@@ -93,6 +95,7 @@ class RoutingFactory[Req, Rsp](
           .onFailure(_ => record(Annotations.Failure.Service))
           .ensure(service.close())
       } yield rsp
+    }
 
     private[this] def record(ann: Annotations.Failure): Unit =
       Trace.recordBinary(Annotations.Failure.key, ann)
