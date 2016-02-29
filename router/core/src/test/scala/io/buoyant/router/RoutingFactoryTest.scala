@@ -40,8 +40,9 @@ class RoutingFactoryTest extends FunSuite with Awaits {
 
   def mkService(
     pathMk: RoutingFactory.Identifier[Request] = (_: Request) => Future.value(Dst.Path.empty),
-    cache: DstBindingFactory[Request, Response] = mkClientFactory()
-  ) = new RoutingFactory(pathMk, cache).toService
+    cache: DstBindingFactory[Request, Response] = mkClientFactory(),
+    label: String = ""
+  ) = new RoutingFactory(pathMk, cache, label).toService
 
   test("produces service that successfully serves requests") {
     val service = mkService()
@@ -56,6 +57,20 @@ class RoutingFactoryTest extends FunSuite with Awaits {
       intercept[RoutingFactory.UnknownDst[Request]] {
         await(service(Request()))
       }
+    }
+  }
+
+  test("annotates router label") {
+    val tracer = new TestTracer()
+    Trace.letTracer(tracer) {
+      val service = mkService(label = "customlabel")
+      await(service(Request()))
+      val annotations = tracer.annotations.collect {
+        case a: BinaryAnnotation => a
+      }
+      assert(annotations.exists { a =>
+        a.key == "router.label" && a.value == "customlabel"
+      })
     }
   }
 

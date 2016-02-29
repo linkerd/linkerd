@@ -231,7 +231,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           params[DstBindingFactory.Capacity]
         )
 
-        Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache))
+        Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
       }
     }
 
