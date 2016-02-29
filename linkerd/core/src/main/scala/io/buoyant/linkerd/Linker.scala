@@ -50,12 +50,14 @@ object Linker {
   }
 
   case class LinkerConfig(
-    namers: Option[Seq[NamerConfig]],
+    namers: Option[Seq[NamingFactoryConfig]],
     routers: Seq[RouterConfig],
     tracers: Option[Seq[TracerConfig]],
     admin: Option[Admin]
   ) {
     def mk: Linker = {
+      // At least one router must be specified
+      if (routers.isEmpty) throw NoRoutersSpecified
 
       val tracerImpls = tracers.map(_.map(_.newTracer()))
       val tracer: Tracer = tracerImpls match {
@@ -66,16 +68,9 @@ object Linker {
       }
 
       val namerParams = Stack.Params.empty + param.Tracer(tracer)
+      val interpreter = mkNameInterpreter(namers.getOrElse(Nil), namerParams)
 
-      val interpreter = namers.map(nameInterpreter(namerParams))
-
-      val params = namerParams
-        .maybeWith(interpreter.map(DstBindingFactory.Namer(_)))
-
-      // At least one router must be specified
-      if (routers.isEmpty) {
-        throw NoRoutersSpecified
-      }
+      val params = namerParams + DstBindingFactory.Namer(interpreter)
 
       // Router labels must not conflict
       routers.groupBy(_.label).foreach {
@@ -86,19 +81,64 @@ object Linker {
       val routerImpls = routers.map(_.router(params))
 
       // Server sockets must not conflict
-      routerImpls.flatMap(_.servers).groupBy(_.addr).collect {
+      routerImpls.flatMap(_.servers).groupBy(_.addr).foreach {
         case (port, svrs) =>
           if (svrs.size > 1) throw ConflictingPorts(svrs(0).addr, svrs(1).addr)
       }
 
-      new Impl(routerImpls, interpreter.getOrElse(DefaultInterpreter), tracer, admin.getOrElse(Admin()))
+      new Impl(routerImpls, interpreter, tracer, admin.getOrElse(Admin()))
     }
   }
 
-  def nameInterpreter(params: Stack.Params)(namers: Seq[NamerConfig]): NameInterpreter =
-    Interpreter(namers.map { cfg =>
-      cfg.prefix -> cfg.newNamer(params)
-    })
+  // namers may contain a single NameInterpreter or a list of Namers
+  private[this] case class NamingConfig(
+    interpreters: Seq[NamingFactory.Interpreter] = Nil,
+    namers: Seq[NamingFactory.Namer] = Nil
+  ) {
+    def +(nf: NamingFactory): NamingConfig = nf match {
+      case i: NamingFactory.Interpreter => copy(interpreters = interpreters :+ i)
+      case n: NamingFactory.Namer => copy(namers = namers :+ n)
+    }
+  }
+
+  private[linkerd] def mkNameInterpreter(
+    configs: Seq[NamingFactoryConfig],
+    params: Stack.Params
+  ): NameInterpreter =
+    configs.map(_.mkFactory(params)).foldLeft(NamingConfig())(_ + _) match {
+      case NamingConfig(Nil, Nil) =>
+        DefaultInterpreter
+
+      case NamingConfig(Seq(interpreter), Nil) =>
+        interpreter.mk()
+
+      case NamingConfig(Nil, namers) if namers.nonEmpty =>
+        val namersByPfx = namers.map { case NamingFactory.Namer(_, pfx, mk) => pfx -> mk() }
+        // Namers are reversed so that last-defined-namer wins
+        ConfiguredNamersInterpreter(namersByPfx.reverse)
+
+      case NamingConfig(interpreters, _) if interpreters.size > 1 =>
+        throw new MultipleInterpeters(interpreters)
+
+      case NamingConfig(interpreters, namers) =>
+        throw new InterpretersWithNamers(interpreters, namers)
+    }
+
+  case class MultipleInterpeters(
+    interpeters: Seq[NamingFactory.Interpreter]
+  ) extends Exception({
+    val kinds = interpeters.map(_.kind).mkString(", ")
+    s"at most one of the following namers may be configured: $kinds"
+  })
+
+  case class InterpretersWithNamers(
+    interpeters: Seq[NamingFactory.Interpreter],
+    namers: Seq[NamingFactory.Namer]
+  ) extends Exception({
+    val ikinds = interpeters.map(_.kind).mkString(", ")
+    val nkinds = namers.map(_.kind).mkString(", ")
+    s"interpreters ($ikinds) may not be specified with namers ($nkinds)"
+  })
 
   /**
    * Private concrete implementation, to help protect compatibility if

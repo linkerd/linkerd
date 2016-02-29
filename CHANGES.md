@@ -2,6 +2,8 @@
 
 * Configs may now include a `tracers` section with pluggable tracers (although
   we don't provide any out of the box just yet)
+* `namers` configurations may now configure Namers or NameInterpreters
+  to support richer namer behavior.
 
 ## 0.2.0
 

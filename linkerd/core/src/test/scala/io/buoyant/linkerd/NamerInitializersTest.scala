@@ -23,7 +23,7 @@ class NamerInitializersTest extends FunSuite {
       new NamedType(classOf[booUrnsNamer], "io.buoyant.linkerd.booUrnsNamer")
     )
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    Linker.nameInterpreter(Stack.Params.empty)(cfg)
+    Linker.mkNameInterpreter(cfg, Stack.Params.empty)
   }
 
   test("namers evaluated bottom-up") {

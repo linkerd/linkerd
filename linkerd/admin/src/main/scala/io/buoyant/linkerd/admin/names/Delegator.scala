@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.util._
-import io.buoyant.linkerd.Interpreter
+import io.buoyant.linkerd.ConfiguredNamersInterpreter
 
 sealed trait DelegateTree[+T] {
   def path: Path
@@ -131,8 +131,7 @@ object Delegator extends Delegator {
     path: Path,
     namer: NameInterpreter
   ): Activity[DelegateTree[Name]] = {
-
-    val matches: Seq[DelegateTree[Name.Path]] = dtab.dentries0.reverse.collect {
+    val matches: Seq[DelegateTree[Name.Path]] = dtab.reverse.collect {
       case d@Dentry(prefix, dst) if path.startsWith(prefix) =>
         val suff = path.drop(prefix.size)
         fromNameTree(prefix ++ suff, d, dst.map { pfx => Name.Path(pfx ++ suff) })
@@ -145,12 +144,16 @@ object Delegator extends Delegator {
     }
 
     result match {
-      case DelegateTree.Neg(path, d) => namer match {
-        case interpreter: Interpreter =>
-          interpreter.lookup(path).map(fromNameTree(path, d, _))
-        case default =>
-          Namer.global.lookup(path).map(fromNameTree(path, d, _))
-      }
+      case DelegateTree.Neg(path, d) =>
+        namer match {
+          case interpreter: ConfiguredNamersInterpreter =>
+            interpreter.lookup(path).map(fromNameTree(path, d, _))
+
+          // XXX this won't work well if another kind of NameInterpeter is configured
+          case _ =>
+            Namer.global.lookup(path).map(fromNameTree(path, d, _))
+        }
+
       case tree => Activity.value(tree)
     }
   }

@@ -2,7 +2,15 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
-import com.twitter.finagle.{Stack, Namer, Path}
+import com.twitter.finagle.{Path, Namer => FinagleNamer, Stack}
+import com.twitter.finagle.naming.NameInterpreter
+
+sealed trait NamingFactory
+
+object NamingFactory {
+  case class Interpreter(kind: String, mk: () => NameInterpreter) extends NamingFactory
+  case class Namer(kind: String, prefix: Path, mk: () => FinagleNamer) extends NamingFactory
+}
 
 /**
  * Read a single namer configuration in the form:
@@ -20,22 +28,36 @@ import com.twitter.finagle.{Stack, Namer, Path}
  * `/i` (after this prefix has been stripped).
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-@JsonAutoDetect(fieldVisibility = Visibility.ANY)
-trait NamerConfig {
+@JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
+trait NamingFactoryConfig {
+
+  def kind = getClass.getName
+
+  /**
+   * Construct a NamingFactory.
+   */
+  @JsonIgnore
+  def mkFactory(params: Stack.Params): NamingFactory
+}
+
+trait NamerConfig extends NamingFactoryConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
   @JsonIgnore
   def defaultPrefix: Path
 
-  @JsonIgnore
-  def prefix = _prefix.getOrElse(defaultPrefix)
+  protected[this] def prefix = _prefix.getOrElse(defaultPrefix)
 
   /**
    * Construct a namer.
    */
   @JsonIgnore
-  def newNamer(params: Stack.Params): Namer
+  def newNamer(params: Stack.Params): FinagleNamer
+
+  @JsonIgnore
+  def mkFactory(params: Stack.Params): NamingFactory =
+    NamingFactory.Namer(kind, prefix, () => newNamer(params))
 }
 
 trait NamerInitializer extends ConfigInitializer
