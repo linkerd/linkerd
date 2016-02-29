@@ -25,6 +25,8 @@ class MarathonInitializer extends NamerInitializer {
   val configClass = classOf[marathon]
 }
 
+object MarathonInitializer extends MarathonInitializer
+
 case class marathon(
   host: Option[String],
   port: Option[Port],
