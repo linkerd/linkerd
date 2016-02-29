@@ -105,7 +105,7 @@ object Linker {
     configs: Seq[NamingFactoryConfig],
     params: Stack.Params
   ): NameInterpreter =
-    configs.map(_.mkFactory(params)).foldLeft(NamingConfig())(_ + _) match {
+    configs.foldLeft(NamingConfig())(_ + _.newFactory(params)) match {
       case NamingConfig(Nil, Nil) =>
         DefaultInterpreter
 
@@ -118,13 +118,13 @@ object Linker {
         ConfiguredNamersInterpreter(namersByPfx.reverse)
 
       case NamingConfig(interpreters, _) if interpreters.size > 1 =>
-        throw new MultipleInterpeters(interpreters)
+        throw MultipleInterpreters(interpreters)
 
       case NamingConfig(interpreters, namers) =>
-        throw new InterpretersWithNamers(interpreters, namers)
+        throw InterpretersWithNamers(interpreters, namers)
     }
 
-  case class MultipleInterpeters(
+  case class MultipleInterpreters(
     interpeters: Seq[NamingFactory.Interpreter]
   ) extends Exception({
     val kinds = interpeters.map(_.kind).mkString(", ")

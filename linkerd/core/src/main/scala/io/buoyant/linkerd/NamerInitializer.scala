@@ -37,7 +37,7 @@ trait NamingFactoryConfig {
    * Construct a NamingFactory.
    */
   @JsonIgnore
-  def mkFactory(params: Stack.Params): NamingFactory
+  def newFactory(params: Stack.Params): NamingFactory
 }
 
 trait NamerConfig extends NamingFactoryConfig {
@@ -49,15 +49,14 @@ trait NamerConfig extends NamingFactoryConfig {
 
   protected[this] def prefix = _prefix.getOrElse(defaultPrefix)
 
-  /**
-   * Construct a namer.
-   */
   @JsonIgnore
   def newNamer(params: Stack.Params): FinagleNamer
 
   @JsonIgnore
-  def mkFactory(params: Stack.Params): NamingFactory =
-    NamingFactory.Namer(kind, prefix, () => newNamer(params))
+  def newFactory(params: Stack.Params): NamingFactory = {
+    val namer = newNamer(params)
+    NamingFactory.Namer(kind, prefix, () => namer)
+  }
 }
 
 trait NamerInitializer extends ConfigInitializer
