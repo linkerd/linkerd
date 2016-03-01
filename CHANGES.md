@@ -62,7 +62,7 @@
 * DTab explorer admin page now supports inspecting DTabs for all configured
   routers.
 * New `/routers.json` endpoint with runtime router state.
-* We now have a [slack channel](https://slack.linkerd.io)! Operators are
+* We now have a [slack channel](http://slack.linkerd.io)! Operators are
   standing by to field YOUR questions today.
 * Admin site redesign to match [linkerd.io](https://linkerd.io/), now with
   favicon!

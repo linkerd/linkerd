@@ -2,7 +2,7 @@
 
 [![GitHub license](https://img.shields.io/github/license/buoyantio/linkerd.svg)](LICENSE)
 [![Circle CI][l5d-ci-status]][l5d-ci]
-[![Slack Status](https://slack.linkerd.io/badge.svg)](https://slack.linkerd.io)
+[![Slack Status](http://slack.linkerd.io/badge.svg)](http://slack.linkerd.io)
 
 :balloon: Welcome to linkerd! :wave:
 
