@@ -4,21 +4,22 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Dtab, Name, NameTree, Namer, Path}
 import com.twitter.util.Activity
 
-case class Interpreter(namers: Seq[(Path, Namer)] = Seq.empty)
+/**
+ * Namers are provided in preference-order so that first-match wins.
+ */
+case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
   extends NameInterpreter {
-
-  private[this] lazy val processOrderNamers = namers.reverse
 
   override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
     Namer.bind(lookup(dtab), NameTree.Leaf(path))
 
   def lookup(path: Path): Activity[NameTree[Name]] =
-    lookup(processOrderNamers, path)
+    lookup(namers, path)
 
   /** Try to refine the name through the dtab, or bind it through a configured namer. */
   private[this] def lookup(dtab: Dtab)(path: Path): Activity[NameTree[Name]] =
     dtab.lookup(path) match {
-      case NameTree.Neg => lookup(processOrderNamers, path)
+      case NameTree.Neg => lookup(namers, path)
       case t => Activity.value(t)
     }
 

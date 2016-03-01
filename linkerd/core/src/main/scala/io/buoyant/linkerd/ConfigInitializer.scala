@@ -10,7 +10,6 @@ trait ConfigInitializer {
 
   lazy val namedType = new NamedType(configClass, configId)
 
-  def registerSubtypes(mapper: ObjectMapper): Unit = {
+  def registerSubtypes(mapper: ObjectMapper): Unit =
     mapper.registerSubtypes(namedType)
-  }
 }
