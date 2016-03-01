@@ -49,4 +49,4 @@ Thank you for getting involved!
 
 [cla]: https://buoyant.io/cla/
 [issue]: https://github.com/buoyantio/linkerd/issues/new
-[slack]: https://slack.linkerd.io/
+[slack]: http://slack.linkerd.io/
