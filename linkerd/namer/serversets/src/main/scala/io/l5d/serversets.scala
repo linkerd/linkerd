@@ -2,7 +2,6 @@ package io.l5d
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Stack, Path}
-import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Port
 import io.buoyant.linkerd.namer.serversets.ServersetNamer
 import io.buoyant.linkerd.{NamerConfig, NamerInitializer}

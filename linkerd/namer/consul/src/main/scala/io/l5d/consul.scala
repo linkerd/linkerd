@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.consul.{CatalogNamer, SetHostFilter, v1}
-import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.Port
 import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
 
@@ -21,6 +20,8 @@ import io.buoyant.linkerd.{NamerConfig, NamerInitializer}
 class ConsulInitializer extends NamerInitializer {
   val configClass = classOf[consul]
 }
+
+object ConsulInitializer extends ConsulInitializer
 
 case class consul(
   host: Option[String],
