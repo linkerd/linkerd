@@ -1,7 +1,6 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.naming.DefaultInterpreter
 import com.twitter.finagle.param
 import com.twitter.finagle.tracing.DefaultTracer
 import io.buoyant.linkerd.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
@@ -31,9 +30,9 @@ routers:
 """)
     val routers = linker.routers
 
-    val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
-    assert(namer == DefaultInterpreter)
-    assert(linker.interpreter == DefaultInterpreter)
+    val Router.Namers(namers) = linker.routers.head.params[Router.Namers]
+    assert(namers == Nil)
+    assert(linker.namers == Nil)
 
     assert(routers.size == 2)
 
@@ -169,9 +168,9 @@ routers:
   - port: 1
 """
     val linker = parse(yaml)
-    val DstBindingFactory.Namer(namer) = linker.routers.head.params[DstBindingFactory.Namer]
-    assert(namer != DefaultInterpreter)
-    assert(linker.interpreter != DefaultInterpreter)
+    val Router.Namers(namers) = linker.routers.head.params[Router.Namers]
+    assert(namers != Nil)
+    assert(linker.namers != Nil)
   }
 
   test("with tracers") {

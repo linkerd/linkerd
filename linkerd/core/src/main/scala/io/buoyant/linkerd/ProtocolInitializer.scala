@@ -43,13 +43,13 @@ trait ProtocolInitializer extends ConfigInitializer {
     servers: Seq[Server] = Nil
   ) extends Router {
     def params = router.params
+    def protocol = ProtocolInitializer.this
 
-    def _withParams(ps: Stack.Params): Router =
+    protected def _withParams(ps: Stack.Params): Router =
       copy(router = router.withParams(ps))
 
     protected def withServers(ss: Seq[Server]): Router = copy(servers = ss)
 
-    val protocol = ProtocolInitializer.this
     def initialize(): Router.Initialized = {
       if (servers.isEmpty) {
         val Label(name) = params[Label]
@@ -65,9 +65,11 @@ trait ProtocolInitializer extends ConfigInitializer {
       InitializedRouter(protocol, params, factory, servable)
     }
 
-    override def withTls(tls: TlsClientConfig): Router = {
+    private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
+
+    def withTls(tls: TlsClientConfig): Router = {
       val tlsPrep = tls.tlsClientPrep[RouterReq, RouterRsp]
-      val clientStack = router.clientStack.replace(Stack.Role("TlsClientPrep"), tlsPrep)
+      val clientStack = router.clientStack.replace(tlsPrepRole, tlsPrep)
       copy(router = router.withClientStack(clientStack))
     }
   }

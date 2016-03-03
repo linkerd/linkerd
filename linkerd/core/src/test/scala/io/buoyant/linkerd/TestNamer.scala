@@ -32,30 +32,3 @@ class TestNamer extends NamerConfig { config =>
     }
   }
 }
-
-class TestInterpreter extends NamingFactoryConfig { config =>
-
-  var buh: Option[Boolean] = None
-
-  private[this] val interpreter = new naming.NameInterpreter {
-    val buh = config.buh.getOrElse(false)
-    def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
-      val t = path match {
-        case Path.Utf8(_, "buh", _*) if !buh => NameTree.Neg
-        case Path.Utf8(id, rest@_*) =>
-          val addr = Var.value(Addr.Pending)
-          NameTree.Leaf(Name.Bound(addr, Path.Utf8(id), Path.Utf8(rest: _*)))
-      }
-      Activity.value(t)
-    }
-  }
-
-  def newFactory(params: Stack.Params): NamingFactory =
-    NamingFactory.Interpreter(kind, () => interpreter)
-}
-
-class TestInterpreterInitializer extends NamerInitializer {
-  val configClass = classOf[TestInterpreter]
-}
-
-object TestInterpreterInitializer extends TestInterpreterInitializer

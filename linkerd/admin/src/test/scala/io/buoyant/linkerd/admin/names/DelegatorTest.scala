@@ -30,7 +30,7 @@ routers:
     /meh => /heh ;
   """)
 
-  val interpreter = linker.interpreter
+  val interpreter = ConfiguredNamersInterpreter(linker.namers)
 
   test("uses NamerInterpreter to resolve names") {
     val path = Path.read("/nah/bro")

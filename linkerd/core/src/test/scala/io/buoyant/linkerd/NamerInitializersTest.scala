@@ -27,7 +27,9 @@ class NamerInitializersTest extends FunSuite {
   def interpreter(config: String): NameInterpreter = {
     val mapper = Parser.objectMapper(config, Seq(booNamerInitializer, booUrnsNamerInitializer))
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    Linker.mkNameInterpreter(cfg, Stack.Params.empty)
+    ConfiguredNamersInterpreter(cfg.reverse.map { c =>
+      c.prefix -> c.newNamer(Stack.Params.empty)
+    })
   }
 
   test("namers evaluated bottom-up") {
@@ -38,7 +40,7 @@ class NamerInitializersTest extends FunSuite {
          |- kind: io.buoyant.linkerd.booNamer
          |""".stripMargin
     interpreter(booYaml).bind(Dtab.empty, path).sample() match {
-      case NameTree.Leaf(bound: Name.Bound) =>
+      case NameTree.Leaf(bound) =>
         assert(bound.id == Path.read("/boo"))
         assert(bound.path == Path.read("/urns"))
       case tree => fail(s"unexpected result: $tree")

@@ -167,7 +167,8 @@ private[admin] class WebDelegator(
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get => (req.params.get("d"), req.params.get("n")) match {
       case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
-        val interpreter = linker.interpreter
+        // XXX this should change to be per-router
+        val interpreter = ConfiguredNamersInterpreter(linker.namers)
         delegate(dtab, path, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)

@@ -2,16 +2,8 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
-import com.twitter.finagle.{Path, Namer => FinagleNamer, Stack}
-import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.{Path, Namer, Stack}
 import io.buoyant.linkerd.config.ConfigInitializer
-
-sealed trait NamingFactory
-
-object NamingFactory {
-  case class Interpreter(kind: String, mk: () => NameInterpreter) extends NamingFactory
-  case class Namer(kind: String, prefix: Path, mk: () => FinagleNamer) extends NamingFactory
-}
 
 /**
  * Read a single namer configuration in the form:
@@ -30,34 +22,18 @@ object NamingFactory {
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 @JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
-trait NamingFactoryConfig {
-
-  def kind = getClass.getCanonicalName
-
-  /**
-   * Construct a NamingFactory.
-   */
-  @JsonIgnore
-  def newFactory(params: Stack.Params): NamingFactory
-}
-
-trait NamerConfig extends NamingFactoryConfig {
+trait NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
   @JsonIgnore
   def defaultPrefix: Path
 
-  protected[this] def prefix = _prefix.getOrElse(defaultPrefix)
+  @JsonIgnore
+  def prefix = _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
-  def newNamer(params: Stack.Params): FinagleNamer
-
-  @JsonIgnore
-  def newFactory(params: Stack.Params): NamingFactory = {
-    val namer = newNamer(params)
-    NamingFactory.Namer(kind, prefix, () => namer)
-  }
+  def newNamer(params: Stack.Params): Namer
 }
 
 trait NamerInitializer extends ConfigInitializer
