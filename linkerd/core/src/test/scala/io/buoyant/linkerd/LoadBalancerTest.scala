@@ -19,7 +19,7 @@ class LoadBalancerTest extends FunSuite {
       |  - {}
       |""".stripMargin
 
-      val linker = Linker.load(config, Seq(TestProtocol.Plain))
+      val linker = Linker.load(config, Linker.Initializers(protocol = Seq(TestProtocol.Plain)))
       val factory = linker.routers.head.params[LoadBalancerFactory.Param]
       assert(factory.loadBalancerFactory != DefaultBalancerFactory)
     }

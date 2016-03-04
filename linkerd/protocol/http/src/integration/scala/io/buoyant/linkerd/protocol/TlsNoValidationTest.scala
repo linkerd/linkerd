@@ -29,9 +29,12 @@ class TlsNoValidationTest extends FunSuite with Awaits {
              |  client:
              |    tls:
              |      kind: io.l5d.clientTls.noValidation
-             |""".
-            stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, NoValidationInitializer))
+             |""".stripMargin
+        val init = Linker.Initializers(
+          protocol = Seq(HttpInitializer),
+          tlsClient = Seq(NoValidationInitializer)
+        )
+        val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
@@ -45,10 +48,10 @@ class TlsNoValidationTest extends FunSuite with Awaits {
               }
               assert(rsp.contentString == "woof")
 
-            } finally (await(client.close()))
-          } finally (await(server.close()))
-        } finally (await(router.close()))
-      } finally (await(dog.server.close()))
+            } finally await(client.close())
+          } finally await(server.close())
+        } finally await(router.close())
+      } finally await(dog.server.close())
     }
   }
 }

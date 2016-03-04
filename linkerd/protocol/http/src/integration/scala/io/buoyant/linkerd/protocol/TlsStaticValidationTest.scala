@@ -13,6 +13,11 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
 
   override val defaultWait = 2.seconds
 
+  val init = Linker.Initializers(
+    protocol = Seq(HttpInitializer),
+    tlsClient = Seq(StaticInitializer)
+  )
+
   test("tls router + plain upstream with static validation") {
     withCerts("linkerd") { certs =>
       val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,
@@ -32,9 +37,8 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.static
              |      commonName: linkerd
              |      caCertPath: ${certs.caCert.getPath}
-             |""".
-            stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, StaticInitializer))
+             |""".stripMargin
+        val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
@@ -48,10 +52,10 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
               }
               assert(rsp.contentString == "woof")
 
-            } finally (await(client.close()))
-          } finally (await(server.close()))
-        } finally (await(router.close()))
-      } finally (await(dog.server.close()))
+            } finally await(client.close())
+          } finally await(server.close())
+        } finally await(router.close())
+      } finally await(dog.server.close())
     }
   }
 
@@ -74,9 +78,8 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.static
              |      commonName: wrong
              |      caCertPath: ${certs.caCert.getPath}
-             |""".
-            stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer, StaticInitializer))
+             |""".stripMargin
+        val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
         try {
           val server = router.servers.head.serve()
@@ -86,12 +89,12 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
               val rsp = {
                 val req = Request()
                 req.host = "clifford"
-                intercept[Failure](await(client(req)))
+                intercept[Failure] { await(client(req)) }
               }
-            } finally (await(client.close()))
-          } finally (await(server.close()))
-        } finally (await(router.close()))
-      } finally (await(dog.server.close()))
+            } finally await(client.close())
+          } finally await(server.close())
+        } finally await(router.close())
+      } finally await(dog.server.close())
     }
   }
 }

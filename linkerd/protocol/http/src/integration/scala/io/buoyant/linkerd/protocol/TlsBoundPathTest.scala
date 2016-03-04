@@ -243,8 +243,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |      names:
              |      - prefix: "/io.l5d.fs/{host}"
              |        commonNamePattern: "{host}.buoyant.io"
-             |""".
-            stripMargin
+             |""".stripMargin
           withLinkerdClient(linkerConfig) { client =>
             val billRsp = {
               val req = Request()
@@ -276,7 +275,12 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   }
 
   private[this] def withLinkerdClient(config: String)(f: Service[Request, Response] => Unit): Unit = {
-    val linker = Linker.load(config, Seq(FsInitializer, HttpInitializer, BoundPathInitializer))
+    val init = Linker.Initializers(
+      protocol = Seq(HttpInitializer),
+      namer = Seq(FsInitializer),
+      tlsClient = Seq(BoundPathInitializer)
+    )
+    val linker = init.load(config)
     val router = linker.routers.head.initialize()
     try {
       val server = router.servers.head.serve()
@@ -284,8 +288,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
         val client = upstream(server)
         try {
           f(client)
-        } finally (await(client.close()))
-      } finally (await(server.close()))
-    } finally (await(router.close()))
+        } finally await(client.close())
+      } finally await(server.close())
+    } finally await(router.close())
   }
 }

@@ -43,20 +43,26 @@ object Parser {
    */
   def objectMapper(
     config: String,
-    configInitializers: Seq[ConfigInitializer]
+    configInitializers: Iterable[Seq[ConfigInitializer]]
   ): ObjectMapper with ScalaObjectMapper = {
     val factory = if (peekJsonObject(config)) new JsonFactory() else new YAMLFactory()
     objectMapper(factory, configInitializers)
   }
 
   def jsonObjectMapper(
-    configInitializers: Seq[ConfigInitializer]
+    configInitializers: Iterable[Seq[ConfigInitializer]]
   ): ObjectMapper with ScalaObjectMapper = objectMapper(new JsonFactory(), configInitializers)
 
   private[this] def objectMapper(
     factory: JsonFactory,
-    configInitializers: Seq[ConfigInitializer]
+    configInitializers: Iterable[Seq[ConfigInitializer]]
   ): ObjectMapper with ScalaObjectMapper = {
+    def ensureUniqueKinds(inits: Seq[ConfigInitializer]): Unit =
+      inits.groupBy(_.configId).foreach {
+        case (_, Seq(a, b, _*)) => throw ConflictingSubtypes(a.namedType, b.namedType)
+        case _ =>
+      }
+
     val customTypes = (LoadService[ConfigDeserializer[_]] ++ LoadService[ConfigSerializer[_]])
       .foldLeft(new SimpleModule("linkerd custom types")) { (module, d) =>
         d.register(module)
@@ -68,11 +74,10 @@ object Parser {
     mapper.setSerializationInclusion(Include.NON_NULL)
 
     // Subtypes must not conflict
-    configInitializers.groupBy(_.configId).collect {
-      case (id, cis) if cis.size > 1 =>
-        throw ConflictingSubtypes(cis(0).namedType, cis(1).namedType)
+    for (kinds <- configInitializers) {
+      ensureUniqueKinds(kinds)
+      for (k <- kinds) k.registerSubtypes(mapper)
     }
-    for (ci <- configInitializers) ci.registerSubtypes(mapper)
 
     mapper
   }

@@ -9,9 +9,13 @@ import org.scalatest.FunSuite
 class ConfigHandlerTest extends FunSuite with Awaits {
 
   test("reserializes config") {
+    val initializers = Linker.Initializers(
+      protocol = Seq(TestProtocol.Plain, TestProtocol.Fancy, ThriftInitializer),
+      namer = Seq(TestNamerInitializer)
+    )
     val linker = Linker.parse("""
 namers:
-- kind: io.buoyant.linkerd.TestNamer
+- kind: test
   buh: true
 routers:
 - protocol: plain
@@ -24,15 +28,15 @@ routers:
   servers:
   - port: 2
     thriftProtocol: compact
-                             """, Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamerInitializer, ThriftInitializer))
-    val handler = new ConfigHandler(linker, Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamerInitializer, ThriftInitializer))
+                             """, initializers)
+    val handler = new ConfigHandler(linker, initializers)
     val req = Request()
     val rsp = await(handler(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """
       |{
       |  "namers":[
-      |    {"kind":"io.buoyant.linkerd.TestNamer", "buh":true}
+      |    {"kind":"test", "buh":true}
       |  ],
       |  "routers":[
       |    {"protocol":"plain","servers":[{"port":1, "ip":"localhost"}]},

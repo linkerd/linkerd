@@ -132,7 +132,10 @@ Each router must be configured as an object with the following params:
   (default is protocol dependent)
 * *failFast* -- If `true`, connection failures are punished more aggressively.
   Should not be used with small destination pools. (default: false)
-* *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
+* *timeoutMs* -- Per-request timeout in milliseconds. (default: no  timeout)
+* *interpreter* -- an interpreter type name, determining what module
+  will be used to process destinations.  Currently only the _default_
+  interpreter is supported.
 
 <!-- TODO router capacity  -->
 

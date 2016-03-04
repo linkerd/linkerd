@@ -7,15 +7,17 @@ import org.scalatest.FunSuite
 
 class SummaryHandlerTest extends FunSuite with Awaits {
 
-  val linker = Linker.load("""
-routers:
-- protocol: plain
-  servers:
-  - port: 1
-- protocol: fancy
-  servers:
-  - port: 2
-""", Seq(TestProtocol.Fancy, TestProtocol.Plain))
+  val yaml =
+    """|routers:
+       |- protocol: plain
+       |  servers:
+       |  - port: 1
+       |- protocol: fancy
+       |  servers:
+       |  - port: 2
+       |""".stripMargin
+
+  val linker = Linker.Initializers(Seq(TestProtocol.Fancy, TestProtocol.Plain)).load(yaml)
   val handler = new SummaryHandler(linker)
 
   test("serves ok on /") {

@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 class ServersetsTest extends FunSuite {
 
   def parse(yaml: String): serversets = {
-    val mapper = Parser.objectMapper(yaml, Seq(ServersetsInitializer))
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(ServersetsInitializer)))
     mapper.readValue[NamerConfig](yaml).asInstanceOf[serversets]
   }
 

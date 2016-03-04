@@ -22,6 +22,8 @@ class DefaultInterpreterInitializer extends InterpreterInitializer {
   override val configId = DefaultInterpreterConfig.kind
 }
 
+object DefaultInterpreterInitializer extends DefaultInterpreterInitializer
+
 /**
  * Namers are provided in preference-order so that first-match wins.
  */

@@ -22,7 +22,7 @@ class ThriftInitializerTest extends FunSuite {
       |    thriftProtocol: compact
     """.stripMargin
 
-    val linker = Linker.load(config, Seq(ThriftInitializer))
+    val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
     val router = linker.routers.head
     assert(router.params[MethodInDst].enabled)
     assert(!router.params[param.Framed].enabled)
@@ -40,7 +40,7 @@ class ThriftInitializerTest extends FunSuite {
     """.stripMargin
 
     intercept[JsonMappingException] {
-      Linker.load(config, Seq(ThriftInitializer))
+      Linker.Initializers(Seq(ThriftInitializer)).load(config)
     }
   }
 }

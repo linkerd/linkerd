@@ -27,9 +27,8 @@ class TlsTerminationTest extends FunSuite with Awaits {
              |    tls:
              |      certPath: ${certs.serviceCerts("linkerd").cert.getPath}
              |      keyPath: ${certs.serviceCerts("linkerd").key.getPath}
-             |""".
-            stripMargin
-        val linker = Linker.load(linkerConfig, Seq(HttpInitializer))
+             |""".stripMargin
+        val linker = Linker.Initializers(Seq(HttpInitializer)).load(linkerConfig)
 
         val router = linker.routers.head.initialize()
         try {
@@ -44,10 +43,10 @@ class TlsTerminationTest extends FunSuite with Awaits {
               }
               assert(rsp.contentString == "woof")
 
-            } finally (await(client.close()))
-          } finally (await(server.close()))
-        } finally (await(router.close()))
-      } finally (await(dog.server.close()))
+            } finally await(client.close())
+          } finally await(server.close())
+        } finally await(router.close())
+      } finally await(dog.server.close())
     }
   }
 }
