@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 class ServerTest extends FunSuite {
 
   def parse(proto: ProtocolInitializer, yaml: String): Try[Server] = Try {
-    val mapper = Parser.objectMapper(yaml)
+    val mapper = Parser.objectMapper(yaml, Seq(proto))
     val cfg = mapper.readValue[ServerConfig](yaml)
     cfg.mk(proto, "router")
   }

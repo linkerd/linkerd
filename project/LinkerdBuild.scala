@@ -79,16 +79,9 @@ object LinkerdBuild extends Base {
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
-    val admin = projectDir("linkerd/admin")
-      .withLib(Deps.twitterServer)
+    val tls = projectDir("linkerd/tls")
+      .dependsOn(core)
       .withTests()
-      .dependsOn(core % "compile->compile;test->test")
-
-    val main = projectDir("linkerd/main")
-      .dependsOn(admin, config, core)
-      .withLib(Deps.twitterServer)
-      .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
-      .withBuildProperties()
 
     object Namer {
       val consul = projectDir("linkerd/namer/consul")
@@ -143,9 +136,17 @@ object LinkerdBuild extends Base {
         .enablePlugins(JmhPlugin)
     }
 
-    val tls = projectDir("linkerd/tls")
-      .dependsOn(core)
+    val admin = projectDir("linkerd/admin")
+      .withLib(Deps.twitterServer)
       .withTests()
+      .dependsOn(core % "compile->compile;test->test")
+      .dependsOn(Protocol.thrift % "test")
+
+    val main = projectDir("linkerd/main")
+      .dependsOn(admin, config, core)
+      .withLib(Deps.twitterServer)
+      .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
+      .withBuildProperties()
 
     val all = projectDir("linkerd")
       .aggregate(admin, core, main, config, Namer.all, Protocol.all, tls)

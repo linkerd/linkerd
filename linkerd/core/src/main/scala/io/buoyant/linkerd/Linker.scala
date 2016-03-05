@@ -21,15 +21,17 @@ trait Linker {
 
 object Linker {
 
+  lazy val configInitializers: Seq[ConfigInitializer] = {
+    val protocols = LoadService[ProtocolInitializer]
+    val namers = LoadService[NamerInitializer]
+    val clientTls = LoadService[TlsClientInitializer]
+    val tracers = LoadService[TracerInitializer]
+    protocols ++ namers ++ clientTls ++ tracers
+  }
+
   def parse(config: String, configInitializers: Seq[ConfigInitializer]): LinkerConfig = {
-    val mapper = Parser.objectMapper(config)
-    // Subtypes must not conflict
-    configInitializers.groupBy(_.configId).collect {
-      case (id, cis) if cis.size > 1 =>
-        throw ConflictingSubtypes(cis(0).namedType, cis(1).namedType)
-    }
-    for (ci <- configInitializers) ci.registerSubtypes(mapper)
-    // TODO: Store the LinkerConfig so that it can be serialized out later
+    val mapper = Parser.objectMapper(config, configInitializers)
+
     mapper.readValue[LinkerConfig](config)
   }
 
@@ -38,11 +40,7 @@ object Linker {
   }
 
   def parse(config: String): LinkerConfig = {
-    val protocols = LoadService[ProtocolInitializer]
-    val namers = LoadService[NamerInitializer]
-    val clientTls = LoadService[TlsClientInitializer]
-    val tracers = LoadService[TracerInitializer]
-    parse(config, protocols ++ namers ++ clientTls ++ tracers)
+    parse(config, configInitializers)
   }
 
   def load(config: String): Linker = {

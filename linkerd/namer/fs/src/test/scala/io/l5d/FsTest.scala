@@ -30,8 +30,7 @@ class FsTest extends FunSuite {
         |rootDir: ${dir.getAbsolutePath}
       """.stripMargin
 
-      val mapper = Parser.objectMapper(yaml)
-      FsInitializer.registerSubtypes(mapper)
+      val mapper = Parser.objectMapper(yaml, Seq(FsInitializer))
       val fs = mapper.readValue[NamerConfig](yaml).asInstanceOf[fs]
       assert(fs.rootDir.path == dir.toPath)
     } finally (Seq("rm", "-rf", dir.getPath).!)

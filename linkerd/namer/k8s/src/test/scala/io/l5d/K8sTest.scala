@@ -27,8 +27,7 @@ class K8sTest extends FunSuite {
                   |authTokenFile: ../auth.token
       """.stripMargin
 
-    val mapper = Parser.objectMapper(yaml)
-    K8sInitializer.registerSubtypes(mapper)
+    val mapper = Parser.objectMapper(yaml, Seq(K8sInitializer))
     val k8s = mapper.readValue[NamerConfig](yaml).asInstanceOf[k8s]
     assert(k8s.host == Some("k8s-master.site.biz"))
     assert(k8s.port == Some(Port(80)))
