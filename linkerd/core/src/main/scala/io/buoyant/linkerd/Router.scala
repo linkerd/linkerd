@@ -130,7 +130,9 @@ trait RouterConfig {
 class ClientConfig {
 
   var tls: Option[TlsClientConfig] = None
+  var loadBalancer: Option[LoadBalancerConfig] = None
 
   @JsonIgnore
   def clientParams: Stack.Params = Stack.Params.empty
+    .maybeWith(loadBalancer.map(_.clientParams))
 }

@@ -49,6 +49,8 @@ routers:
       kind: io.l5d.clientTls.static
       commonName: foo
       caCertPath: /foo/caCert.pem
+    loadBalancer:
+      kind: ewma
   timeoutMs: 1000
 
 - protocol: thrift
@@ -150,6 +152,8 @@ local IPv4 interfaces.
 <a name="basic-client-params"></a>
 ### Basic client parameters
 
+#### TLS
+
 * *tls* -- The router will make requests using TLS if this parameter is
 provided.  It must be an object containing keys:
   * *kind* -- One of the supported TlsClientInitializer plugins, by
@@ -158,11 +162,11 @@ provided.  It must be an object containing keys:
 
 Current TLS plugins include:
 
-#### io.l5d.clientTls.noValidation
+##### io.l5d.clientTls.noValidation
 
 Skip hostname validation.  This is unsafe.
 
-#### io.l5d.clientTls.static
+##### io.l5d.clientTls.static
 
 Use a single common name for all TLS requests.  This assumes that all servers
 that the router connects to all use the same TLS cert (or all use certs
@@ -172,7 +176,7 @@ options:
 * *commonName* -- Required.  The common name to use for all TLS requests.
 * *caCertPath* -- Optional.  Use the given CA cert for common name validation.
 
-#### io.l5d.clientTls.boundPath
+##### io.l5d.clientTls.boundPath
 
 Determine the common name based on the destination bound path.  This plugin
 supports the following options:
@@ -196,6 +200,49 @@ names:
 - prefix: "/io.l5d.fs/{host}"
   commonNamePattern: "{host}.buoyant.io"
 ```
+
+#### Load Balancer
+
+* *loadBalancer* -- Specifies a load balancer to use.  It must be an object
+containing keys:
+  * *kind* -- One of the supported load balancers.
+  * Any options specific to the load balancer.
+
+If unspecified, p2c is used.
+
+Current load balancers include:
+
+[p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded
+[ewma]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma
+[aperture]: https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded
+[heap]: https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded
+
+##### [p2c][p2c]
+
+p2c supports the following options (see [here][p2c] for option semantics and defaults):
+
+* *maxEffort* -- Optional.
+
+##### [ewma][ewma]
+
+ewma supports the following options (see [here][ewma] for option semantics and defaults):
+
+* *maxEffort* -- Optional.
+* *decayTimeMs* -- Optional.
+
+##### [aperture][aperture]
+
+aperture supports the following options (see [here][aperture] for option semantics and defaults):
+
+* *maxEffort* -- Optional.
+* *smoothWindowMs* -- Optional.
+* *lowLoad* -- Optional.
+* *highLoad* -- Optional.
+* *minAperture* -- Optional.
+
+##### [heap][heap]
+
+heap does not support any options.
 
 <a name="protocol-http"></a>
 ### HTTP/1.1 protocol parameters
