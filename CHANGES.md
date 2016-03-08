@@ -4,6 +4,9 @@
   we don't provide any out of the box just yet)
 * `namers` configurations may now configure Namers or NameInterpreters
   to support richer namer behavior.
+* Add a loadBalancer section to the client config where a load balancer can be
+  specified and configured.  The load balancers that are currently supported are
+  p2c, ewma, aperture, and heap.
 * Add a config.json admin endpoint which re-serializes the parsed linkerd config.
 
 ## 0.2.0
