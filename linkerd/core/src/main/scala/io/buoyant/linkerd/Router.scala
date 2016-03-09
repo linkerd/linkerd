@@ -1,9 +1,12 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonIgnore, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Dtab, Path, param, Namer, Stack}
-import com.twitter.finagle.service.{TimeoutFilter, FailFastFactory}
+import com.twitter.finagle._
+import com.twitter.finagle.client.DefaultPool
+import com.twitter.finagle.param.Label
+import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
 import com.twitter.util.Closable
 import io.buoyant.router.RoutingFactory
 
@@ -149,8 +152,28 @@ class ClientConfig {
 
   var tls: Option[TlsClientConfig] = None
   var loadBalancer: Option[LoadBalancerConfig] = None
+  var hostConnectionPool: Option[HostConnectionPool] = None
 
   @JsonIgnore
   def clientParams: Stack.Params = Stack.Params.empty
     .maybeWith(loadBalancer.map(_.clientParams))
+    .maybeWith(hostConnectionPool.map(_.param))
+}
+
+case class HostConnectionPool(
+  minSize: Option[Int],
+  maxSize: Option[Int],
+  idleTimeMs: Option[Int],
+  maxWaiters: Option[Int]
+) {
+  private[this] val default = DefaultPool.Param.param.default
+
+  @JsonIgnore
+  def param = DefaultPool.Param(
+    low = minSize.getOrElse(default.low),
+    high = maxSize.getOrElse(default.high),
+    bufferSize = 0,
+    idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime),
+    maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
+  )
 }

@@ -156,14 +156,28 @@ local IPv4 interfaces.
   It must be an object containing keys:
   * *certPath* -- File path to the TLS certificate file
   * *keyPath* -- File path to the TLS key file
+* *maxConcurrentRequests* -- Optional.  The maximum number of concurrent
+requests the server will accept.  (default: unlimited)
 
 <a name="basic-client-params"></a>
 ### Basic client parameters
 
+* *hostConnectionPool* -- Optional.  Configure the number of connections to
+maintain to each destination host.  It must be an object containing keys:
+  * *minSize* -- Optional. The minimum number of connections to maintain to each
+  host.  (default: 0)
+  * *maxSize* -- Optional.  The maximum number of connections to maintain to
+  each host.  (default: Int.MaxValue)
+  * *idleTimeMs* -- Optional.  The amount of idle time for which a connection is
+  cached in milliseconds.  (default: forever)
+  * *maxWaiters* -- Optional.  The maximum number of connection requests that
+  are queued when the connection concurrency exceeds maxSize.  (default:
+  Int.MaxValue)
+
 #### TLS
 
-* *tls* -- The router will make requests using TLS if this parameter is
-provided.  It must be an object containing keys:
+* *tls* -- Optional.  The router will make requests using TLS if this parameter
+is provided.  It must be an object containing keys:
   * *kind* -- One of the supported TlsClientInitializer plugins, by
   fully-qualified class name.
   * Any options specific to the plugin
@@ -211,8 +225,8 @@ names:
 
 #### Load Balancer
 
-* *loadBalancer* -- Specifies a load balancer to use.  It must be an object
-containing keys:
+* *loadBalancer* -- Optional.  Specifies a load balancer to use.  It must be an
+object containing keys:
   * *kind* -- One of the supported load balancers.
   * Any options specific to the load balancer.
 

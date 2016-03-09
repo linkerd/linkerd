@@ -8,6 +8,10 @@
   specified and configured.  The load balancers that are currently supported are
   p2c, ewma, aperture, and heap.
 * Add a config.json admin endpoint which re-serializes the parsed linkerd config.
+* Add a `maxConcurrentRequests` config option to limit number of concurrent
+  requests accepted by a server.
+* Add a `hostConnectionPool` client config section to control the number of
+  connections maintained to destination hosts.
 
 ## 0.2.0
 
