@@ -1,7 +1,6 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonIgnore, JsonTypeInfo}
-import com.fasterxml.jackson.core.{io => _, _}
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Dtab, Path, param, Namer, Stack}
 import com.twitter.finagle.service.{TimeoutFilter, FailFastFactory}
