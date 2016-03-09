@@ -1,10 +1,8 @@
 package io.buoyant.k8s
 
-import com.google.common.net.InetAddresses
 import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
-import java.net.{InetSocketAddress, SocketAddress}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
@@ -129,13 +127,13 @@ private object EndpointsNamer {
     def sample() = addr.sample()
   }
 
-  private[this] def getAddrs(subsets: Seq[v1.EndpointSubset]): Map[String, Set[SocketAddress]] = {
-    val addrsByPort = mutable.Map.empty[String, Set[SocketAddress]]
+  private[this] def getAddrs(subsets: Seq[v1.EndpointSubset]): Map[String, Set[Address]] = {
+    val addrsByPort = mutable.Map.empty[String, Set[Address]]
 
     for (subset <- subsets) {
       val ips = subset.addresses match {
         case None => Set.empty
-        case Some(addrs) => addrs.map { a => InetAddresses.forString(a.ip) }.toSet
+        case Some(addrs) => addrs.map(_.ip).toSet
       }
 
       for {
@@ -145,7 +143,7 @@ private object EndpointsNamer {
         val proto = port.protocol.map(_.toUpperCase).getOrElse("TCP")
         (proto, port.name) match {
           case ("TCP", Some(name)) =>
-            val addrs: Set[SocketAddress] = ips.map(new InetSocketAddress(_, port.port))
+            val addrs: Set[Address] = ips.map(ip => Address(ip, port.port))
             addrsByPort(name) = addrsByPort.getOrElse(name, Set.empty) ++ addrs
 
           case _ =>

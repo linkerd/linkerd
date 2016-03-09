@@ -4,15 +4,15 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.18.0").
+    ("com.twitter" %% "twitter-server" % "1.19.0").
       exclude("com.twitter", "finagle-zipkin_2.11")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" %  "6.32.0"
+    "com.twitter" %% s"util-$mod" %  "6.33.0"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.33.0"
+    "com.twitter" %% s"finagle-$mod" % "6.34.0"
 
   // Jackson (parsing)
   val jacksonVersion = "2.4.4"

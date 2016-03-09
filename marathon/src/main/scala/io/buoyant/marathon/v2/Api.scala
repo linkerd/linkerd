@@ -3,11 +3,10 @@ package io.buoyant.marathon.v2
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.{Service, http}
-import com.twitter.logging.Logger
+import com.twitter.finagle.{Address, Service, http}
 import com.twitter.io.Buf
-import com.twitter.util.{Await, Closable, Future, Time, Try}
-import java.net.{InetSocketAddress, SocketAddress}
+import com.twitter.logging.Logger
+import com.twitter.util.{Closable, Future, Time, Try}
 
 /**
  * A partial implementation of the Marathon V2 API:
@@ -16,7 +15,7 @@ import java.net.{InetSocketAddress, SocketAddress}
 
 trait Api {
   def getAppIds(): Future[Api.AppIds]
-  def getAddrs(app: String): Future[Set[SocketAddress]]
+  def getAddrs(app: String): Future[Set[Address]]
 }
 
 object Api {
@@ -54,7 +53,7 @@ object Api {
 
   private[v2] def rspToAddrs(
     rsp: http.Response
-  ): Future[Set[SocketAddress]] =
+  ): Future[Set[Address]] =
     rsp.status match {
       case http.Status.Ok =>
         val addrs = readJson[AppRsp](rsp.content).map(_.toAddresses)
@@ -97,14 +96,14 @@ object Api {
   private[this] case class AppRsp(
     app: Option[AppNode] = None
   ) {
-    def toAddresses: Set[SocketAddress] =
+    def toAddresses: Set[Address] =
       app match {
         case Some(AppNode(_, Some(tasks))) =>
           tasks.collect {
             case TaskNode(_, Some(host), Some(Seq(port, _*))) =>
-              new InetSocketAddress(host, port)
-          }.toSet[SocketAddress]
-        case _ => Set.empty[SocketAddress]
+              Address(host, port)
+          }.toSet[Address]
+        case _ => Set.empty[Address]
       }
   }
 }
@@ -121,7 +120,7 @@ private[this] class AppIdApi(client: Api.Client, host: String, apiPrefix: String
     client(req).flatMap(rspToApps(_))
   }
 
-  def getAddrs(app: String): Future[Set[SocketAddress]] = {
+  def getAddrs(app: String): Future[Set[Address]] = {
     val req = mkreq(s"$apiPrefix/apps/$app", host)
     client(req).flatMap(rspToAddrs(_))
   }

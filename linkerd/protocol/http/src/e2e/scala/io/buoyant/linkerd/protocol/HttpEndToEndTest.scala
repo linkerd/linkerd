@@ -44,7 +44,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   }
 
   def upstream(server: ListeningServer) = {
-    val address = server.boundAddress.asInstanceOf[InetSocketAddress]
+    val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
     FinagleHttp.client
       .configured(param.Stats(NullStatsReceiver))

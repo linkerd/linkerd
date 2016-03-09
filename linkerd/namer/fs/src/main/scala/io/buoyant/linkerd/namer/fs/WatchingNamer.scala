@@ -1,10 +1,9 @@
 package io.buoyant.linkerd.namer.fs
 
-import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
+import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import java.net.{InetSocketAddress, SocketAddress}
 import java.nio.file.{Path => NioPath}
 
 object WatchingNamer {
@@ -16,7 +15,7 @@ object WatchingNamer {
   private val Commentless = """^([^#]*)(?:#.*)?""".r
   private def txtToAddr(txt: String): Addr = {
     val lines = txt.split('\n').map { case Commentless(ln) => ln.trim }.filter(_.nonEmpty)
-    Try.collect(lines.map(txtToSocketAddress)) match {
+    Try.collect(lines.map(txtToAddress)) match {
       case Return(addrs) => Addr.Bound(addrs.toSet, Addr.Metadata.empty)
       case Throw(e) => Addr.Failed(e)
     }
@@ -32,8 +31,8 @@ object WatchingNamer {
    * lines are in the format:
    *   host port
    */
-  private def txtToSocketAddress(txt: String): Try[SocketAddress] = txt.split(' ') match {
-    case Array(host, PortNum(port)) => Try(new InetSocketAddress(host, port))
+  private def txtToAddress(txt: String): Try[Address] = txt.split(' ') match {
+    case Array(host, PortNum(port)) => Try(Address(host, port))
     case _ => Throw(MalformedAddress(txt))
   }
 }

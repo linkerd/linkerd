@@ -1,10 +1,8 @@
 package io.buoyant.consul
 
-import com.google.common.net.InetAddresses
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.consul.v1.ServiceNode
-import java.net.{InetSocketAddress, SocketAddress}
 
 class CatalogNamer(
   idPrefix: Path,
@@ -96,12 +94,12 @@ class CatalogNamer(
 
     def init(): Unit = mkRequest().map(update).handle(handleUnexpected)
 
-    def serviceNodeToAddr(node: ServiceNode): Option[SocketAddress] = {
+    def serviceNodeToAddr(node: ServiceNode): Option[Address] = {
       (node.Address, node.ServiceAddress, node.ServicePort) match {
         case (_, Some(addr), Some(port)) if !addr.isEmpty =>
-          Some(new InetSocketAddress(InetAddresses.forString(addr), port))
+          Some(Address(addr, port))
         case (Some(addr), _, Some(port)) if !addr.isEmpty =>
-          Some(new InetSocketAddress(InetAddresses.forString(addr), port))
+          Some(Address(addr, port))
         case _ => None
       }
     }
@@ -109,7 +107,7 @@ class CatalogNamer(
     def update(nodes: Seq[ServiceNode]): Unit = {
       synchronized {
         try {
-          val socketAddrs = nodes.map(serviceNodeToAddr).flatten.toSet
+          val socketAddrs = nodes.flatMap(serviceNodeToAddr).toSet
           updateableAddr() = if (socketAddrs.isEmpty) Addr.Neg else Addr.Bound(socketAddrs)
         } catch {
           // in the event that we are trying to parse an invalid addr

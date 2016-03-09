@@ -8,10 +8,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.http._
-import com.twitter.finagle.{Addr => FAddr, Path, Status => _, _}
+import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import java.net.{InetSocketAddress, SocketAddress}
 
 private[admin] object WebDelegator {
 
@@ -27,8 +26,8 @@ private[admin] object WebDelegator {
 
   case class Address(ip: String, port: Int)
   object Address {
-    def mk(addr: SocketAddress): Option[Address] = addr match {
-      case isa: InetSocketAddress => Some(Address(isa.getAddress.getHostAddress, isa.getPort))
+    def mk(addr: FAddress): Option[Address] = addr match {
+      case FAddress.Inet(isa, _) => Some(Address(isa.getAddress.getHostAddress, isa.getPort))
       case _ => None
     }
   }
