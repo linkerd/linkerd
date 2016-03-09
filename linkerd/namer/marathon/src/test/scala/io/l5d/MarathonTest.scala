@@ -27,8 +27,7 @@ class MarathonTest extends FunSuite {
                   |uriPrefix: /marathon
       """.stripMargin
 
-    val mapper = Parser.objectMapper(yaml)
-    MarathonInitializer.registerSubtypes(mapper)
+    val mapper = Parser.objectMapper(yaml, Seq(MarathonInitializer))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[marathon]
     assert(marathon.host == Some("marathon.mesos"))
     assert(marathon.port == Some(Port(80)))

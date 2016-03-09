@@ -7,6 +7,7 @@ import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.ProtocolFactory
 import io.buoyant.linkerd.config.Parser
+import io.buoyant.linkerd.config.types.ThriftProtocol
 import io.buoyant.router.{RoutingFactory, Thrift}
 import org.apache.thrift.protocol.TProtocolFactory
 
@@ -47,20 +48,20 @@ case class ThriftConfig(
 
 case class ThriftServerConfig(
   thriftFramed: Option[Boolean],
-  thriftProtocol: Option[TProtocolFactory]
+  thriftProtocol: Option[ThriftProtocol]
 ) extends ServerConfig {
   @JsonIgnore
   override protected def serverParams: Params = super.serverParams
     .maybeWith(thriftFramed.map(param.Framed(_)))
-    .maybeWith(thriftProtocol.map(param.ProtocolFactory(_)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
 }
 
 case class ThriftClientConfig(
   thriftFramed: Option[Boolean],
-  thriftProtocol: Option[TProtocolFactory]
+  thriftProtocol: Option[ThriftProtocol]
 ) extends ClientConfig {
   @JsonIgnore
   override def clientParams: Params = super.clientParams
     .maybeWith(thriftFramed.map(param.Framed(_)))
-    .maybeWith(thriftProtocol.map(param.ProtocolFactory(_)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
 }

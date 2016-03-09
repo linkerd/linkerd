@@ -1,0 +1,6 @@
+io.buoyant.linkerd.config.types.DirectorySerializer
+io.buoyant.linkerd.config.types.DtabSerializer
+io.buoyant.linkerd.config.types.InetAddressSerializer
+io.buoyant.linkerd.config.types.PathSerializer
+io.buoyant.linkerd.config.types.PortSerializer
+io.buoyant.linkerd.config.types.ThriftProtocolSerializer

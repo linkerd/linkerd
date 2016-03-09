@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
 import com.twitter.finagle.buoyant.TlsClientPrep
+import io.buoyant.linkerd.config.ConfigInitializer
 
 /**
  * Loadable TLS client configuration module.

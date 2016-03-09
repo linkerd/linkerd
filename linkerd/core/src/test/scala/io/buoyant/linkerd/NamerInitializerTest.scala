@@ -8,9 +8,7 @@ import org.scalatest.FunSuite
 class NamerInitializerTest extends FunSuite {
 
   def parse(config: String): NameInterpreter = {
-    val mapper = Parser.objectMapper(config)
-    TestNamerInitializer.registerSubtypes(mapper)
-    TestInterpreterInitializer.registerSubtypes(mapper)
+    val mapper = Parser.objectMapper(config, Seq(TestNamerInitializer, TestInterpreterInitializer))
     val cfg = mapper.readValue[Seq[NamingFactoryConfig]](config)
     Linker.mkNameInterpreter(cfg, Stack.Params.empty)
   }

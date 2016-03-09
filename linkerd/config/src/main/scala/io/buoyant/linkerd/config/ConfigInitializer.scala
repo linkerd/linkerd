@@ -1,4 +1,4 @@
-package io.buoyant.linkerd
+package io.buoyant.linkerd.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType

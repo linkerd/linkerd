@@ -1,6 +1,7 @@
 package io.buoyant
 
 import com.twitter.util.Await
+import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.{AdminInitializer, LinkerdAdmin}
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
@@ -21,9 +22,10 @@ object Linkerd extends App {
 
     args match {
       case Array(path) =>
-        val linker = loadLinker(path)
+        val linkerConfig = loadLinker(path)
+        val linker = linkerConfig.mk
 
-        val linkerdAdmin = new LinkerdAdmin(this, linker)
+        val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
         val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
         adminInitializer.startServer()
         closeOnExit(adminInitializer.adminHttpServer)
@@ -47,7 +49,7 @@ object Linkerd extends App {
     }
   }
 
-  private def loadLinker(path: String): Linker = {
+  private def loadLinker(path: String): LinkerConfig = {
     val configText = path match {
       case "-" =>
         Source.fromInputStream(System.in).mkString
@@ -57,6 +59,6 @@ object Linkerd extends App {
         Source.fromFile(f).mkString
     }
 
-    Linker.load(configText)
+    Linker.parse(configText)
   }
 }

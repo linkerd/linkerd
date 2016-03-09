@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
 import com.twitter.util.Time
+import io.buoyant.linkerd.config.ConfigInitializer
 import io.buoyant.router._
 import java.net.InetSocketAddress
 

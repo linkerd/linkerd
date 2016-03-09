@@ -4,6 +4,7 @@
   we don't provide any out of the box just yet)
 * `namers` configurations may now configure Namers or NameInterpreters
   to support richer namer behavior.
+* Add a config.json admin endpoint which re-serializes the parsed linkerd config.
 
 ## 0.2.0
 

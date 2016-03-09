@@ -13,8 +13,7 @@ class RouterTest extends FunSuite {
     params: Stack.Params = Stack.Params.empty,
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy)
   ): Router = {
-    val mapper = Parser.objectMapper(yaml)
-    for (p <- protos) p.registerSubtypes(mapper)
+    val mapper = Parser.objectMapper(yaml, protos)
     val cfg = mapper.readValue[RouterConfig](yaml)
     cfg.router(params)
   }
