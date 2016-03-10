@@ -120,6 +120,13 @@ Each router must be configured as an object with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
 * *client* -- an object containing [basic client params](#basic-client-params)
   or protocol-specific client params
+* *interpreter* (optional) -- an object determining what module will be used to process destinations,
+  with the following params:
+  * *kind* -- the name of the interpreter module to be used (default: "default").
+  Currently only the _default_ interpreter is supported; this interpreter resolves names via the
+  configured [`namers`](#naming), with a fallback to the default Finagle `Namer.Global` that
+  handles paths of the form `/$/`.
+  * protocol-specific module params, if any (the _default_ module has none)
 
 <a name="basic-router-params"></a>
 ### Basic router parameters
@@ -133,6 +140,7 @@ Each router must be configured as an object with the following params:
 * *failFast* -- If `true`, connection failures are punished more aggressively.
   Should not be used with small destination pools. (default: false)
 * *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
+
 
 <!-- TODO router capacity  -->
 
@@ -359,6 +367,7 @@ routers:
     /overNineThousand => /$/inet/127.0.1/9001;
 ```
 
+<a name="naming"></a>
 ## Service discovery and naming
 
 linkerd supports a variety of common service discovery backends, including

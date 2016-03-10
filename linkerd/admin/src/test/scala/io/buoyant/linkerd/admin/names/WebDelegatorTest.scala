@@ -9,18 +9,21 @@ import org.scalatest.FunSuite
 
 class WebDelegatorTest extends FunSuite with Awaits {
 
-  val linker = Linker.load("""
-namers:
-- kind: io.buoyant.linkerd.TestNamer
-
-routers:
-- protocol: plain
-  servers:
-  - port: 1
-- protocol: fancy
-  servers:
-  - port: 2
-""", Seq(TestProtocol.Plain, TestProtocol.Fancy, TestNamerInitializer))
+  val yaml =
+    """|namers:
+       |- kind: test
+       |
+       |routers:
+       |- protocol: plain
+       |  servers:
+       |  - port: 1
+       |- protocol: fancy
+       |  servers:
+       |  - port: 2
+       |""".stripMargin
+  val protos = Seq(TestProtocol.Plain, TestProtocol.Fancy)
+  val namers = Seq(TestNamerInitializer)
+  val linker = Linker.Initializers(protos, namers).load(yaml)
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;

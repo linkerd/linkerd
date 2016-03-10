@@ -1,5 +1,6 @@
 package io.buoyant.linkerd
 
+import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{Dtab, Stack}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.router.RoutingFactory
@@ -11,11 +12,13 @@ class RouterTest extends FunSuite {
   def parse(
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
-    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy)
+    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
+    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
   ): Router = {
-    val mapper = Parser.objectMapper(yaml, protos)
+    val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters))
     val cfg = mapper.readValue[RouterConfig](yaml)
-    cfg.router(params)
+    val interpreter = cfg.interpreter.newInterpreter(cfg.routerParams)
+    cfg.router(params + DstBindingFactory.Namer(interpreter))
   }
 
   test("with label") {
@@ -32,6 +35,8 @@ servers:
     assert(router.servers.head.router == "yoghurt")
     assert(router.servers.head.addr.getAddress == InetAddress.getLoopbackAddress)
     assert(router.servers.head.addr.getPort == 1234)
+    val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
+    assert(interpreter.isInstanceOf[ConfiguredNamersInterpreter])
   }
 
   test("loopback & protocol-specific default port used when no ports specified") {
@@ -77,5 +82,16 @@ servers:
     val router = parse(yaml, Stack.Params.empty + defaultDtab)
     val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
     assert(dtab() == Dtab.read("/foo=>/bah"))
+  }
+
+  test("name interpreter specification") {
+    val yaml =
+      """protocol: plain
+        |interpreter:
+        |  kind: test
+      """.stripMargin
+    val router = parse(yaml, Stack.Params.empty)
+    val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
+    assert(interpreter.isInstanceOf[TestInterpreter])
   }
 }

@@ -1,10 +1,8 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonIgnore, JsonTypeInfo}
-import com.fasterxml.jackson.core.{io => _, _}
 import com.twitter.conversions.time._
-import com.twitter.finagle._
-import com.twitter.finagle.param.Label
+import com.twitter.finagle.{Dtab, Path, param, Namer, Stack}
 import com.twitter.finagle.service.{TimeoutFilter, FailFastFactory}
 import com.twitter.util.Closable
 import io.buoyant.router.RoutingFactory
@@ -31,16 +29,18 @@ trait Router {
 
   // configuration
   def params: Stack.Params
+
   protected def _withParams(ps: Stack.Params): Router
+
   def withParams(ps: Stack.Params): Router = {
+    val r = _withParams(ps)
     // Copy stats and tracing params from router to servers
-    withServers(
-      servers.map { s =>
-        s.configured(ps[param.Stats])
-          .configured(ps[param.Tracer])
-      }
-    )._withParams(ps)
+    val param.Stats(stats) = r.params[param.Stats]
+    val srvStats = param.Stats(stats.scope(label, "srv"))
+    val tracer = r.params[param.Tracer]
+    r.withServers(servers.map(_.configured(srvStats).configured(tracer)))
   }
+
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
 
@@ -56,7 +56,7 @@ trait Router {
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
-  /** Return a router with TLS configuration read from the provided parser. */
+  /** Return a router with TLS configuration read from the provided config. */
   def withTls(tls: TlsClientConfig): Router
 
   /**
@@ -76,6 +76,11 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
+  }
+
+  case class Namers(namers: Seq[(Path, Namer)])
+  implicit object Namers extends Stack.Param[Namers] {
+    val default = Namers(Nil)
   }
 
   private def configureServer(router: Router, server: Server): Server = {
@@ -101,12 +106,23 @@ trait RouterConfig {
   var baseDtab: Option[Dtab] = None
   var failFast: Option[Boolean] = None
   var timeoutMs: Option[Int] = None
+  var dstPrefix: Option[String] = None
+
   @JsonProperty("label")
   var _label: Option[String] = None
-  var dstPrefix: Option[String] = None
 
   @JsonIgnore
   def label = _label.getOrElse(protocol.name)
+
+  @JsonProperty("interpreter")
+  var _interpreter: Option[InterpreterConfig] = None
+
+  protected[this] def defaultInterpreter: InterpreterConfig =
+    new DefaultInterpreterConfig
+
+  @JsonIgnore
+  def interpreter: InterpreterConfig =
+    _interpreter.getOrElse(defaultInterpreter)
 
   @JsonIgnore
   def routerParams = Stack.Params.empty
@@ -114,13 +130,15 @@ trait RouterConfig {
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
-    .maybeWith(client.map(_.clientParams)) + Label(label)
+    .maybeWith(client.map(_.clientParams)) + param.Label(label)
 
   @JsonIgnore
   def router(params: Stack.Params): Router = {
-    protocol.router.configured(params ++ routerParams).serving(
-      servers.map(_.mk(protocol, routerParams[Label].label))
-    ).maybeTransform(client.flatMap(_.tls).map(tls => _.withTls(tls)))
+    val prms = params ++ routerParams
+    val param.Label(label) = prms[param.Label]
+    protocol.router.configured(prms)
+      .serving(servers.map(_.mk(protocol, label)))
+      .maybeTransform(client.flatMap(_.tls).map(tls => _.withTls(tls)))
   }
 
   @JsonIgnore

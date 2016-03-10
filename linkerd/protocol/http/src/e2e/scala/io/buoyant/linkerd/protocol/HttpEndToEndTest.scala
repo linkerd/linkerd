@@ -78,7 +78,7 @@ routers:
   - port: 0
 """
 
-    val linker = Linker.load(yaml, Seq(HttpInitializer))
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
     val router = linker.routers.head.initialize()

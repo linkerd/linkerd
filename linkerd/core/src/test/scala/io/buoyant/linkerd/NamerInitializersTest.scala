@@ -10,7 +10,7 @@ object booNamerInitializer extends NamerInitializer {
   override def configClass = classOf[booNamer]
 }
 
-class booNamer extends TestNamer {
+class booNamer extends TestNamerConfig {
   override def defaultPrefix = Path.read("/boo")
 }
 
@@ -18,16 +18,18 @@ object booUrnsNamerInitializer extends NamerInitializer {
   override def configClass = classOf[booUrnsNamer]
 }
 
-class booUrnsNamer extends TestNamer {
+class booUrnsNamer extends TestNamerConfig {
   override def defaultPrefix = Path.read("/boo/urns")
 }
 
 class NamerInitializersTest extends FunSuite {
 
   def interpreter(config: String): NameInterpreter = {
-    val mapper = Parser.objectMapper(config, Seq(booNamerInitializer, booUrnsNamerInitializer))
+    val mapper = Parser.objectMapper(config, Iterable(Seq(booNamerInitializer, booUrnsNamerInitializer)))
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    Linker.mkNameInterpreter(cfg, Stack.Params.empty)
+    ConfiguredNamersInterpreter(cfg.reverse.map { c =>
+      c.prefix -> c.newNamer(Stack.Params.empty)
+    })
   }
 
   test("namers evaluated bottom-up") {
@@ -38,7 +40,7 @@ class NamerInitializersTest extends FunSuite {
          |- kind: io.buoyant.linkerd.booNamer
          |""".stripMargin
     interpreter(booYaml).bind(Dtab.empty, path).sample() match {
-      case NameTree.Leaf(bound: Name.Bound) =>
+      case NameTree.Leaf(bound) =>
         assert(bound.id == Path.read("/boo"))
         assert(bound.path == Path.read("/urns"))
       case tree => fail(s"unexpected result: $tree")

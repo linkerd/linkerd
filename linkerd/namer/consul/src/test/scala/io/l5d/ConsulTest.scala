@@ -25,7 +25,7 @@ class ConsulTest extends FunSuite {
                     |port: 8600
       """.stripMargin
 
-    val mapper = Parser.objectMapper(yaml, Seq(ConsulInitializer))
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
     val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[consul]
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))

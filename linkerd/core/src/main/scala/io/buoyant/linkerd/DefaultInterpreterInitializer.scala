@@ -1,8 +1,28 @@
 package io.buoyant.linkerd
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
+import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonTypeInfo}
+import com.twitter.finagle.{Dtab, Name, NameTree, Namer, Path, Stack}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Dtab, Name, NameTree, Namer, Path}
 import com.twitter.util.Activity
+
+object DefaultInterpreterConfig {
+  val kind = "default"
+}
+
+class DefaultInterpreterConfig extends InterpreterConfig {
+  def newInterpreter(params: Stack.Params): NameInterpreter = {
+    val Router.Namers(namers) = params[Router.Namers]
+    ConfiguredNamersInterpreter(namers)
+  }
+}
+
+class DefaultInterpreterInitializer extends InterpreterInitializer {
+  val configClass = classOf[DefaultInterpreterConfig]
+  override val configId = DefaultInterpreterConfig.kind
+}
+
+object DefaultInterpreterInitializer extends DefaultInterpreterInitializer
 
 /**
  * Namers are provided in preference-order so that first-match wins.
