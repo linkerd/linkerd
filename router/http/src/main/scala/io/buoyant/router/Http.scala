@@ -1,21 +1,20 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => _, _}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
-import io.buoyant.router.http.{ForwardedFilter, Identifier}
+import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => fhttp, _}
+import io.buoyant.router.Http.param.HttpIdentifier
+import io.buoyant.router.http.{DefaultIdentifier, ForwardedFilter}
 import java.net.SocketAddress
 
 object Http extends Router[Request, Response] with FinagleServer[Request, Response] {
 
   object param {
-
-    /** Whether URI paths should be included in Http router destinations. */
-    case class UriInDst(enabled: Boolean)
-    implicit object UriInDst extends Stack.Param[UriInDst] {
-      val default = UriInDst(enabled = false)
+    case class HttpIdentifier(id: (Path, () => Dtab) => RoutingFactory.Identifier[fhttp.Request])
+    implicit object HttpIdentifier extends Stack.Param[HttpIdentifier] {
+      val default = HttpIdentifier(DefaultIdentifier.mk)
     }
   }
 
@@ -55,9 +54,9 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
     protected def newIdentifier(): RoutingFactory.Identifier[Request] = {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
-      val param.UriInDst(uriInDst) = params[param.UriInDst]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
-      Identifier(pfx, uriInDst, baseDtab)
+      val param.HttpIdentifier(id) = params[param.HttpIdentifier]
+      id(pfx, baseDtab)
     }
   }
 

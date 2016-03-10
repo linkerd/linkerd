@@ -5,7 +5,14 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
 
-case class Identifier(
+object DefaultIdentifier {
+  def mk(
+    prefix: Path,
+    baseDtab: () => Dtab = () => Dtab.base
+  ): RoutingFactory.Identifier[http.Request] = DefaultIdentifier(prefix, false, baseDtab)
+}
+
+case class DefaultIdentifier(
   prefix: Path,
   uris: Boolean = false,
   baseDtab: () => Dtab = () => Dtab.base

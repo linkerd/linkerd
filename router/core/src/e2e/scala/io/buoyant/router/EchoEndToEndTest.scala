@@ -58,15 +58,15 @@ class EchoEndToEndTest extends FunSuite with Awaits {
     }
 
     val echo = Downstream.identity("echo")
-    val oche = Downstream.reversed("oche")
+    val ohce = Downstream.reversed("ohce")
     val router = {
       val dtab = Dtab.read(s"""
         /p/echo => /$$/inet/127.1/${echo.port} ;
-        /p/oche => /$$/inet/127.1/${oche.port} ;
+        /p/ohce => /$$/inet/127.1/${ohce.port} ;
 
         /s => /p/echo ;
         /s/idk => /$$/fail ;
-        /s/dog => /p/oche ;
+        /s/dog => /p/ohce ;
       """)
 
       val factory = Echo.router
@@ -94,7 +94,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
     assert(await(client("dog/bark")) == "krab/god")
     withAnnotations { anns =>
       assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/dog/bark")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/$$/inet/127.1/${oche.port}")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/$$/inet/127.1/${ohce.port}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/bark")))
     }
 
@@ -119,7 +119,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
     // todo check stats
 
     await(echo.server.close())
-    await(oche.server.close())
+    await(ohce.server.close())
     await(router.close())
   }
 

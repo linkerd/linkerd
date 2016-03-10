@@ -4,9 +4,9 @@ package protocol
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.{Path, Stack, StackBuilder}
-import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.protocol.http.AccessLogger
 import io.buoyant.router.{Http, RoutingFactory}
+import io.l5d.HttpIdentifierConfig
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
@@ -45,7 +45,7 @@ object HttpInitializer extends HttpInitializer
 
 case class HttpConfig(
   httpAccessLog: Option[String],
-  httpUriInDst: Option[Boolean]
+  identifier: Option[HttpIdentifierConfig]
 ) extends RouterConfig {
 
   var client: Option[ClientConfig] = None
@@ -57,5 +57,5 @@ case class HttpConfig(
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
-    .maybeWith(httpUriInDst.map(Http.param.UriInDst(_)))
+    .maybeWith(identifier.map(id => Http.param.HttpIdentifier(id.newIdentifier)))
 }

@@ -8,6 +8,8 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
+import io.buoyant.router.Http
+import io.buoyant.router.http.DefaultIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -73,7 +75,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 routers:
 - protocol: http
   baseDtab: ${dtab.show}
-  httpUriInDst: true
   servers:
   - port: 0
 """
@@ -81,6 +82,7 @@ routers:
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
+      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
