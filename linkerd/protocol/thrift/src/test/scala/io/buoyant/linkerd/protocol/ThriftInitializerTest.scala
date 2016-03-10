@@ -2,6 +2,7 @@ package io.buoyant.linkerd.protocol
 
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.twitter.finagle.Thrift.param
+import com.twitter.finagle.Thrift.param.AttemptTTwitterUpgrade
 import io.buoyant.linkerd.Linker
 import io.buoyant.router.Thrift.param.MethodInDst
 import org.apache.thrift.protocol.TCompactProtocol
@@ -17,6 +18,7 @@ class ThriftInitializerTest extends FunSuite {
       |  client:
       |    thriftFramed: false
       |    thriftProtocol: binary
+      |    attemptTTwitterUpgrade: false
       |  servers:
       |  - thriftFramed: true
       |    thriftProtocol: compact
@@ -29,6 +31,7 @@ class ThriftInitializerTest extends FunSuite {
     assert(!router.params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
     assert(router.servers.head.params[param.Framed].enabled)
     assert(router.servers.head.params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
+    assert(!router.params[AttemptTTwitterUpgrade].upgrade)
   }
 
   test("unsupported thrift protocol") {

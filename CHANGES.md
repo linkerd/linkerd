@@ -12,6 +12,8 @@
   requests accepted by a server.
 * Add a `hostConnectionPool` client config section to control the number of
   connections maintained to destination hosts.
+* Add a `attemptTTwitterUpgrade` thrift client config option to control whether
+  thrift protocol upgrade should be attempted.
 
 ## 0.2.0
 

@@ -340,6 +340,8 @@ Thrift also supports additional *client* parameters:
    currently supports `binary` for `TBinaryProtocol` (default) and
    `compact` for `TCompactProtocol`. Typically this setting matches
    the router's servers' `thriftProtocol` param.
+* *attemptTTwitterUpgrade* -- controls whether thrift protocol upgrade should be
+   attempted.  (default: true)
 
 As an example: Here's a thrift router configuration that routes thrift--via
 buffered transport using the TCompactProtocol --from port 4004 to port 5005
