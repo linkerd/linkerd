@@ -1,10 +1,8 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
-import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonTypeInfo}
-import com.twitter.finagle.{Dtab, Name, NameTree, Namer, Path, Stack}
+import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.Activity
+import com.twitter.util.{Var, Activity}
 
 object DefaultInterpreterConfig {
   val kind = "default"
@@ -23,6 +21,10 @@ class DefaultInterpreterInitializer extends InterpreterInitializer {
 }
 
 object DefaultInterpreterInitializer extends DefaultInterpreterInitializer
+
+case class UnknownNamer[Req](path: Path, cause: Throwable)
+  extends Exception(s"Unknown namer: ${cause.getMessage} for path: ${path.show}", cause)
+  with NoStacktrace
 
 /**
  * Namers are provided in preference-order so that first-match wins.
@@ -48,7 +50,12 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
       // For now, punt to the default interpreter. Later, we
       // should consider removing the finagle Namer.global, which
       // provides /$/ names.
-      case Nil => Namer.global.lookup(path)
+      case Nil =>
+        Namer.global.lookup(path).transform {
+          case Activity.Failed(e: ClassNotFoundException) =>
+            Activity.exception(UnknownNamer(path, e))
+          case state => Activity(Var.value(state))
+        }
 
       // try to lookup the path with the matching namer, or
       // fallback to the rest of the namers.
