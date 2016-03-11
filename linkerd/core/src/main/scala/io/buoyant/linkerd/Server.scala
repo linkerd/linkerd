@@ -1,7 +1,9 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.Stack.{Param, Params}
+import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ListeningServer, Stack}
@@ -77,12 +79,15 @@ class ServerConfig { config =>
   var ip: Option[InetAddress] = None
   var tls: Option[TlsServerConfig] = None
   var label: Option[String] = None
+  var maxConcurrentRequests: Option[Int] = None
+
+  private[this] def requestSemaphore = maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
     .maybeWith(tls.map {
       case TlsServerConfig(certPath, keyPath) => tlsParam(certPath, keyPath)
-    })
+    }) + RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
   private[this] def tlsParam(certificatePath: String, keyPath: String) =

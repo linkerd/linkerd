@@ -1,5 +1,6 @@
 package io.buoyant.linkerd
 
+import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.linkerd.config.Parser
@@ -91,5 +92,13 @@ fancyRouter: true
         |port: 1234
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.TLSServerEngine].e.isEmpty)
+  }
+
+  test("maxConcurrentRequests") {
+    val yaml =
+      """
+        |maxConcurrentRequests: 1000
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.params[RequestSemaphoreFilter.Param].sem.get.numInitialPermits == 1000)
   }
 }
