@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
-import com.twitter.finagle.Thrift.param.ProtocolFactory
+import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
 import io.buoyant.linkerd.config.Parser
 import io.buoyant.linkerd.config.types.ThriftProtocol
 import io.buoyant.router.{RoutingFactory, Thrift}
@@ -58,10 +58,12 @@ case class ThriftServerConfig(
 
 case class ThriftClientConfig(
   thriftFramed: Option[Boolean],
-  thriftProtocol: Option[ThriftProtocol]
+  thriftProtocol: Option[ThriftProtocol],
+  attemptTTwitterUpgrade: Option[Boolean]
 ) extends ClientConfig {
   @JsonIgnore
   override def clientParams: Params = super.clientParams
     .maybeWith(thriftFramed.map(param.Framed(_)))
     .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
+    .maybeWith(attemptTTwitterUpgrade.map(AttemptTTwitterUpgrade(_)))
 }
