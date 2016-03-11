@@ -166,6 +166,7 @@ case class HostConnectionPool(
   idleTimeMs: Option[Int],
   maxWaiters: Option[Int]
 ) {
+  @JsonIgnore
   private[this] val default = DefaultPool.Param.param.default
 
   @JsonIgnore
