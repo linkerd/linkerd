@@ -71,7 +71,7 @@ class MuxEndToEndTest extends FunSuite with Awaits {
   object Upstream {
     def apply(server: ListeningServer): Upstream = {
       val address = server.boundAddress.asInstanceOf[InetSocketAddress]
-      val name = Name.Bound(Var.value(Addr.Bound(address)), address)
+      val name = Name.Bound(Var.value(Addr.Bound(Address(address))), address)
       Upstream(FinagleMux.client
         .configured(param.Stats(NullStatsReceiver))
         .configured(param.Tracer(NullTracer))

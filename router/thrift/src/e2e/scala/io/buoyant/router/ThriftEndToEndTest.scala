@@ -38,7 +38,7 @@ class ThriftEndToEndTest extends FunSuite with Awaits {
 
   def upstream(server: ListeningServer) = {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
-    val name = Name.Bound(Var.value(Addr.Bound(address)), address)
+    val name = Name.Bound(Var.value(Addr.Bound(Address(address))), address)
     FinagleThrift.client
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))

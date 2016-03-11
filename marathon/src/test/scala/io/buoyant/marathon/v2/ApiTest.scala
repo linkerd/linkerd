@@ -1,7 +1,7 @@
 package io.buoyant.marathon.v2
 
 import com.twitter.finagle.http.{Response, Request}
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Address, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.Awaits
@@ -88,9 +88,9 @@ class ApiTest extends FunSuite with Awaits {
 
     val response = await(Api(service, "host", "prefix").getAddrs("foo"))
     assert(response.size == 2)
-    assert(response == Set[InetSocketAddress](
-      new InetSocketAddress("1.2.3.4", 7000),
-      new InetSocketAddress("5.6.7.8", 7003)
+    assert(response == Set[Address](
+      Address("1.2.3.4", 7000),
+      Address("5.6.7.8", 7003)
     ))
   }
 

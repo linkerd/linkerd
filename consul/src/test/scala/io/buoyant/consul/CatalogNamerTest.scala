@@ -21,7 +21,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
     Some(8080)
   )
 
-  def assertOnAddrs(state: Activity.State[NameTree[Name]])(f: Set[SocketAddress] => Unit) = state match {
+  def assertOnAddrs(state: Activity.State[NameTree[Name]])(f: Set[Address] => Unit) = state match {
     case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
       bound.addr.sample() match {
         case Addr.Bound(addrs, metadata) => f(addrs)

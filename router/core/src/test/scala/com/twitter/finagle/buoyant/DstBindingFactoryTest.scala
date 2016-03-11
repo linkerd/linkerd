@@ -10,7 +10,7 @@ import org.scalatest.FunSuite
 
 class DstBindingFactoryTest extends FunSuite with Awaits {
 
-  object TestSockAddr extends SocketAddress
+  val testAddress = Address("test", 1)
 
   test("Cached: caches residuals independently") {
     var creates = Map.empty[String, Int]
@@ -30,7 +30,7 @@ class DstBindingFactoryTest extends FunSuite with Awaits {
     val namer = new NameInterpreter {
       def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = path match {
         case Path.Utf8(_, _*) =>
-          val addr = Var.value(Addr.Bound(TestSockAddr))
+          val addr = Var.value(Addr.Bound(testAddress))
           Activity.value(NameTree.Leaf(Name.Bound(addr, path.take(1), path.drop(1))))
 
         case _ => fail("invalid destination: ${path.show}")

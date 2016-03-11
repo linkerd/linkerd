@@ -66,11 +66,11 @@ object TlsUtils {
       }.toMap
 
       f(Certs (caCert, svcCerts) )
-    } finally(Seq("echo", "rm", "-rf", tmpdir.getPath).!)
+    } finally(Seq("rm", "-rf", tmpdir.getPath).!)
   }
 
   def upstreamTls(server: ListeningServer, tlsName: String, caCert: File) = {
-    val address = server.boundAddress.asInstanceOf[InetSocketAddress]
+    val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
 
     // Establish an SSL context that uses our generated certificate.
     // Cribbed from http://stackoverflow.com/questions/18513792
@@ -97,7 +97,7 @@ object TlsUtils {
   }
 
   def upstream(server: ListeningServer) = {
-    val address = server.boundAddress.asInstanceOf[InetSocketAddress]
+    val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
 
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
     FinagleHttp.client
