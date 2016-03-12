@@ -5,9 +5,9 @@ import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.client.DefaultPool
-import com.twitter.finagle.param.Label
 import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
 import com.twitter.util.Closable
+import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
 import io.buoyant.router.RoutingFactory
 
 /**
@@ -79,11 +79,6 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
-  }
-
-  case class Namers(namers: Seq[(Path, Namer)])
-  implicit object Namers extends Stack.Param[Namers] {
-    val default = Namers(Nil)
   }
 
   private def configureServer(router: Router, server: Server): Server = {

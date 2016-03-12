@@ -6,8 +6,8 @@ import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
-import io.buoyant.linkerd.config.Parser
-import io.buoyant.linkerd.config.types.ThriftProtocol
+import io.buoyant.config.Parser
+import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.{RoutingFactory, Thrift}
 import org.apache.thrift.protocol.TProtocolFactory
 

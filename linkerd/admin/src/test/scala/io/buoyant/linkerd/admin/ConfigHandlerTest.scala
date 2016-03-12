@@ -3,6 +3,7 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{Request, Status}
 import io.buoyant.linkerd._
 import io.buoyant.linkerd.protocol.ThriftInitializer
+import io.buoyant.namer.TestNamerInitializer
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -29,7 +30,7 @@ routers:
   - port: 2
     thriftProtocol: compact
                              """, initializers)
-    val handler = new ConfigHandler(linker, initializers)
+    val handler = new ConfigHandler(linker, initializers.iter)
     val req = Request()
     val rsp = await(handler(req))
     assert(rsp.status == Status.Ok)

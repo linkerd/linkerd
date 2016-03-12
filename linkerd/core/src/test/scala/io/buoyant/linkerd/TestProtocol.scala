@@ -9,7 +9,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.util.Future
 import io.buoyant.linkerd.TestProtocol.FancyParam
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
 import io.buoyant.router.{RoutingFactory, StackRouter, StdStackRouter}
 import java.net.SocketAddress
 

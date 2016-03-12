@@ -1,11 +1,13 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.naming.{DefaultInterpreter, NameInterpreter}
+import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.tracing.{NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
-import io.buoyant.linkerd.config._
+import io.buoyant.admin.AdminConfig
+import io.buoyant.config._
+import io.buoyant.namer.Param.Namers
+import io.buoyant.namer.{DefaultInterpreterInitializer, InterpreterInitializer, NamerConfig, NamerInitializer}
 
 /**
  * Represents the total configuration of a Linkerd process.
@@ -13,7 +15,7 @@ import io.buoyant.linkerd.config._
 trait Linker {
   def routers: Seq[Router]
   def namers: Seq[(Path, Namer)]
-  def admin: Admin
+  def admin: AdminConfig
   def tracer: Tracer
   def configured[T: Stack.Param](t: T): Linker
 }
@@ -30,6 +32,8 @@ object Linker {
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
       Seq(protocol, namer, interpreter, tlsClient, tracer, identifier)
+
+    def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
     def parse(config: String): LinkerConfig =
       Linker.parse(config, this)
@@ -66,7 +70,7 @@ object Linker {
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
     tracers: Option[Seq[TracerConfig]],
-    admin: Option[Admin]
+    admin: Option[AdminConfig]
   ) {
     def mk(): Linker = {
       // At least one router must be specified
@@ -88,7 +92,7 @@ object Linker {
       for ((label, rts) <- routers.groupBy(_.label))
         if (rts.size > 1) throw ConflictingLabels(label)
 
-      val routerParams = namerParams + Router.Namers(namersByPrefix)
+      val routerParams = namerParams + Namers(namersByPrefix)
       val routerImpls = routers.map { router =>
         val interpreter = router.interpreter.newInterpreter(routerParams)
         router.router(routerParams + DstBindingFactory.Namer(interpreter))
@@ -101,7 +105,7 @@ object Linker {
           case _ =>
         }
 
-      new Impl(routerImpls, namersByPrefix, tracer, admin.getOrElse(Admin()))
+      new Impl(routerImpls, namersByPrefix, tracer, admin.getOrElse(AdminConfig()))
     }
   }
 
@@ -113,7 +117,7 @@ object Linker {
     routers: Seq[Router],
     namers: Seq[(Path, Namer)],
     tracer: Tracer,
-    admin: Admin
+    admin: AdminConfig
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
       copy(routers = routers.map(_.configured(t)))

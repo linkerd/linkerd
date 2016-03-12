@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.tracing.{Record, TraceId, Tracer}
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
 
 class TestTracerInitializer extends TracerInitializer {
   val configClass = classOf[TestTracerConfig]

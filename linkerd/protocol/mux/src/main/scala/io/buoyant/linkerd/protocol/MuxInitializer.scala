@@ -3,7 +3,7 @@ package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Path
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
 import io.buoyant.router.{Mux, RoutingFactory}
 
 class MuxInitializer extends ProtocolInitializer.Simple {

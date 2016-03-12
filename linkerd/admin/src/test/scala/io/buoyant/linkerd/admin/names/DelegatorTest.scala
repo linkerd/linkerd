@@ -3,6 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.linkerd._
+import io.buoyant.namer.{ConfiguredNamersInterpreter, TestNamerInitializer}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 

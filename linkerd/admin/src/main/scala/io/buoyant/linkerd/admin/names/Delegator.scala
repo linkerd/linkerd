@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.util._
-import io.buoyant.linkerd.ConfiguredNamersInterpreter
+import io.buoyant.namer.ConfiguredNamersInterpreter
 
 sealed trait DelegateTree[+T] {
   def path: Path

@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
