@@ -1,7 +1,7 @@
 package io.buoyant.marathon.v2
 
 import com.twitter.finagle.http.{Response, Request}
-import com.twitter.finagle.{Address, Service}
+import com.twitter.finagle.{Address, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.Awaits
@@ -54,9 +54,7 @@ class ApiTest extends FunSuite with Awaits {
     {"apps":[]}
   """)
 
-  val appNotFoundBuf = Buf.Utf8("""
-    {"message":"App '/foo' does not exist"}
-  """)
+  val appNotFoundBuf = Buf.Utf8("""{"message":"App '/foo' does not exist"}""")
 
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
@@ -68,11 +66,10 @@ class ApiTest extends FunSuite with Awaits {
     val service = stubService(appsBuf)
 
     val response = await(Api(service, "host", "prefix").getAppIds())
-    assert(response.size == 3)
-    assert(response == Set[String](
-      "/foo",
-      "/bar",
-      "/baz"
+    assert(response == Set(
+      Path.read("/foo"),
+      Path.read("/bar"),
+      Path.read("/baz")
     ))
   }
 
@@ -86,9 +83,8 @@ class ApiTest extends FunSuite with Awaits {
   test("getAddrs endpoint returns a seq of addresses") {
     val service = stubService(appBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs("foo"))
-    assert(response.size == 2)
-    assert(response == Set[Address](
+    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
+    assert(response == Set(
       Address("1.2.3.4", 7000),
       Address("5.6.7.8", 7003)
     ))
@@ -97,19 +93,18 @@ class ApiTest extends FunSuite with Awaits {
   test("getAddrs endpoint returns an empty set of addresses if app not found") {
     val service = stubService(appNotFoundBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs("foo"))
+    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
     assert(response.size == 0)
   }
 
+  class ClientFailure extends Exception("I have no idea who to talk to")
+
   test("propagates client failures") {
     val failureService = Service.mk[Request, Response] { req =>
-      Future.exception(new Exception("I have no idea who to talk to"))
+      Future.exception(new ClientFailure)
     }
-    try {
+    intercept[ClientFailure] {
       await(Api(failureService, "host", "prefix").getAppIds())
-      assert(false)
-    } catch {
-      case e: Exception => assert(true)
     }
   }
 }

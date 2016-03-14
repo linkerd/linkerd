@@ -3,9 +3,8 @@ package io.buoyant.marathon.v2
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.{Address, Service, http}
+import com.twitter.finagle.{Address, Path, Service, SimpleFilter, http}
 import com.twitter.io.Buf
-import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Time, Try}
 
 /**
@@ -15,45 +14,38 @@ import com.twitter.util.{Closable, Future, Time, Try}
 
 trait Api {
   def getAppIds(): Future[Api.AppIds]
-  def getAddrs(app: String): Future[Set[Address]]
+  def getAddrs(app: Path): Future[Set[Address]]
 }
 
 object Api {
 
-  type AppIds = Set[String]
+  type AppIds = Set[Path]
   type Client = Service[http.Request, http.Response]
 
   val versionString = "v2"
 
-  def apply(c: Client, host: String, uriPrefix: String): Api =
-    new AppIdApi(c, host, s"$uriPrefix/$versionString")
+  private[this] case class SetHost(host: String)
+    extends SimpleFilter[http.Request, http.Response] {
 
-  private[v2] val log = Logger.get("marathon")
-
-  private[v2] def mkreq(
-    path: String,
-    host: String
-  ): http.Request = {
-    val req = http.Request(path)
-    req.method = http.Method.Get
-    req.host = host
-    req
+    def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
+      req.host = host
+      service(req)
+    }
   }
 
-  private[v2] def rspToApps(
-    rsp: http.Response
-  ): Future[Api.AppIds] =
+  def apply(client: Client, host: String, uriPrefix: String): Api =
+    new AppIdApi(SetHost(host).andThen(client), s"$uriPrefix/$versionString")
+
+  private[v2] def rspToApps(rsp: http.Response): Future[Api.AppIds] =
     rsp.status match {
       case http.Status.Ok =>
         val apps = readJson[AppsRsp](rsp.content).map(_.toApps)
         Future.const(apps)
-      case _ =>
-        Future.exception(UnexpectedResponse(rsp))
+
+      case _ => Future.exception(UnexpectedResponse(rsp))
     }
 
-  private[v2] def rspToAddrs(
-    rsp: http.Response
-  ): Future[Set[Address]] =
+  private[v2] def rspToAddrs(rsp: http.Response): Future[Set[Address]] =
     rsp.status match {
       case http.Status.Ok =>
         val addrs = readJson[AppRsp](rsp.content).map(_.toAddresses)
@@ -72,56 +64,57 @@ object Api {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[this] case class TaskNode(
+  private[this] case class Task(
     id: Option[String],
     host: Option[String],
     ports: Option[Seq[Int]]
   )
 
-  private[this] case class AppNode(
+  private[this] case class App(
     id: Option[String],
-    tasks: Option[Seq[TaskNode]]
+    tasks: Option[Seq[Task]]
   )
 
-  private[this] case class AppsRsp(
-    apps: Option[Seq[AppNode]] = None
-  ) {
+  private[this] case class AppsRsp(apps: Option[Seq[App]] = None) {
+
     def toApps: Api.AppIds =
       apps match {
-        case Some(apps) => apps.map { app => app.id.getOrElse("") }.toSet
-        case None => Set.empty[String]
+        case Some(apps) =>
+          apps.collect { case App(Some(id), _) => Path.read(id) }.toSet
+        case None => Set.empty
       }
   }
 
-  private[this] case class AppRsp(
-    app: Option[AppNode] = None
-  ) {
+  private[this] case class AppRsp(app: Option[App] = None) {
+
     def toAddresses: Set[Address] =
       app match {
-        case Some(AppNode(_, Some(tasks))) =>
+        case Some(App(_, Some(tasks))) =>
           tasks.collect {
-            case TaskNode(_, Some(host), Some(Seq(port, _*))) =>
+            case Task(_, Some(host), Some(Seq(port, _*))) =>
               Address(host, port)
-          }.toSet[Address]
-        case _ => Set.empty[Address]
+          }.toSet
+
+        case _ => Set.empty
       }
   }
 }
 
-private[this] class AppIdApi(client: Api.Client, host: String, apiPrefix: String) extends Closable
-  with Api {
+private class AppIdApi(client: Api.Client, apiPrefix: String)
+  extends Api
+  with Closable {
 
   import Api._
 
   def close(deadline: Time) = client.close(deadline)
 
   def getAppIds(): Future[Api.AppIds] = {
-    val req = mkreq(s"$apiPrefix/apps", host)
+    val req = http.Request(s"$apiPrefix/apps")
     client(req).flatMap(rspToApps(_))
   }
 
-  def getAddrs(app: String): Future[Set[Address]] = {
-    val req = mkreq(s"$apiPrefix/apps/$app", host)
+  def getAddrs(app: Path): Future[Set[Address]] = {
+    val req = http.Request(s"$apiPrefix/apps${app.show}")
     client(req).flatMap(rspToAddrs(_))
   }
 }
