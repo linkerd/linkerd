@@ -31,12 +31,12 @@ $.when(
     var selectedRouter = getSelectedRouter();
     var router = routers.data[selectedRouter];
     if (router)
-      var servers = router.servers;
+      var clients = _.values(router.dstIds);
     else
-      var servers = _(routers.data).values().flatMap('servers').value();
+      var clients = _(routers.data).values().flatMap(function(r){return _.values(r.dstIds);}).value();
 
     var procInfo = ProcInfo(),
-        bigBoard = BigBoard(servers, summaryTemplate),
+        bigBoard = BigBoard(clients, summaryTemplate),
         interfaces = Interfaces(selectedRouter, routers, namers, ifacesTemplate);
 
     procInfo.start(UPDATE_INTERVAL);
@@ -116,7 +116,9 @@ var BigBoard = (function() {
    */
   var init = function(servers, template) {
     // set up requests chart
-    chart.setMetrics(_.map(servers, function(server) { return server.prefix + "requests"; }));
+    chart.setMetrics(_.map(servers, function(server) {
+      return {name: server.prefix + "requests", color: server.color};
+    }));
 
     // set up metrics
     $('#request-stats').html(template({keys: summaryKeys}));
@@ -214,6 +216,7 @@ var Interfaces = (function() {
     var iface = prepInterface(client);
     iface.lbSize = client.metrics["loadbalancer/size"] || 0;
     iface.lbAvail = client.metrics["loadbalancer/available"] || 0;
+    iface.color = "rgb(" + client.color + ")";
     return iface;
   }
 

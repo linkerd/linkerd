@@ -134,20 +134,26 @@ UpdateableChart.prototype.setMetric = function(metric) {
 UpdateableChart.prototype.setMetrics = function(metrics) {
   clearTimeout(this.timeout);
 
-  if (this.ts !== undefined) {
-    this.chart.removeTimeSeries(this.ts);
+  if (this.tsMap !== undefined) {
+    _.map(this.tsMap, function(ts){
+      this.chart.removeTimeSeries(ts);
+    });
   }
-  this.ts = new TimeSeries();
-  this.chart.addTimeSeries(
-    this.ts,
-    {
-      strokeStyle: 'rgb(83,176,196)',
-      fillStyle: 'rgba(83,176,196,0.3)',
-      lineWidth: 3
-    }
-  );
 
-  this._getMetrics(metrics);
+  this.tsMap = {};
+
+  _.each(metrics, function(metric) {
+    this.tsMap[metric.name] = new TimeSeries();
+    this.chart.addTimeSeries(
+      this.tsMap[metric.name],
+      {
+        strokeStyle: "rgb(" + metric.color + ")",
+        fillStyle: "rgba(" + metric.color + ",0.3)",
+        lineWidth: 3
+    });
+  }.bind(this));
+
+  this._getMetrics(_.map(metrics, 'name'));
 }
 
 UpdateableChart.prototype._resize = function() {
@@ -160,9 +166,10 @@ UpdateableChart.prototype._getMetrics = function(metrics) {
     dataType: "json",
     cache: false,
     success: (function(data) {
-      if (data.length) {
-        this.ts.append(new Date().getTime(), _.sumBy(data, 'delta'));
-      }
+      _.each(data, function(datum){
+        this.tsMap[datum.name].append(new Date().getTime(), datum.delta);
+      }.bind(this));
+
       $(this.canvas).trigger(
         "stat",
         [

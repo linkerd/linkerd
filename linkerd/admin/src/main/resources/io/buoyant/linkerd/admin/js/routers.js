@@ -36,12 +36,33 @@ var Routers = (function() {
   var clientRE = /^rt\/(.+)\/dst\/id\/(.*)\/requests$/,
       serverRE = /^rt\/(.+)\/srv\/([^/]+)\/(\d+)\/requests$/;
 
+  var mkColor = function() {
+    var colors = [
+      "224,243,219",
+      "204,235,197",
+      "168,221,181",
+      "123,204,196",
+      "78,179,211",
+      "43,140,190",
+      "8,104,172",
+      "8,64,129"
+    ];
+
+    //returns a color based on summed ascii values
+    return function(label) {
+      var idx = _.sumBy(label.split(""), function(char) { return char.charCodeAt(0); });
+      var color = colors[idx % colors.length];
+      return color;
+    }
+  }();
+
   function mk(router, label, prefix) {
     return {
       router: router,
       label: label,
       prefix: prefix,
-      metrics: {requests: -1}
+      metrics: {requests: -1},
+      color: mkColor(label)
     };
   }
 
