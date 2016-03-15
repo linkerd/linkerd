@@ -8,6 +8,9 @@ namers:
 # A simple HTTP router that looks up host header values in io.l5d.fs.
 routers:
 - protocol: http
+  identifier:
+    kind: default
+    httpUriInDst: true
   baseDtab: |
     /host => /io.l5d.fs;
     /host/127.0.0.1:4140 => /host/default;

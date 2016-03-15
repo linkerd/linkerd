@@ -1,3 +1,8 @@
+## 0.3.0
+
+* Breaking change to configs: `httpUriInDst` is now specified under the
+  `identifier` header (see docs for add'l info)
+
 ## 0.2.1
 
 * Configs may now include a `tracers` section with pluggable tracers (although

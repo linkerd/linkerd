@@ -83,6 +83,16 @@ object LinkerdBuild extends Base {
       .dependsOn(core)
       .withTests()
 
+
+    object Identifier {
+      val http = projectDir("linkerd/identifier/http")
+        .dependsOn(core, Router.http)
+        .withTests()
+
+      val all = projectDir("linkerd/identifier")
+        .aggregate(http)
+    }
+
     object Namer {
       val consul = projectDir("linkerd/namer/consul")
         .dependsOn(LinkerdBuild.consul, core)
@@ -117,6 +127,7 @@ object LinkerdBuild extends Base {
           core % "compile->compile;e2e->test;integration->test",
           tls % "integration",
           Namer.fs % "integration",
+          Identifier.http,
           Router.http)
 
       val mux = projectDir("linkerd/protocol/mux")
@@ -149,7 +160,7 @@ object LinkerdBuild extends Base {
       .withBuildProperties()
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, config, Namer.all, Protocol.all, tls)
+      .aggregate(admin, core, main, config, Identifier.all, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -158,6 +169,7 @@ object LinkerdBuild extends Base {
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
+        Identifier.http,
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
         Protocol.mux, Protocol.thrift,
         tls)
@@ -226,6 +238,8 @@ object LinkerdBuild extends Base {
   val linkerdAdmin = Linkerd.admin
   val linkerdConfig = Linkerd.config
   val linkerdCore = Linkerd.core
+  val linkerdIdentifier = Linkerd.Identifier.all
+  val linkerdIdentifierHttp = Linkerd.Identifier.http
   val linkerdMain = Linkerd.main
   val linkerdNamer = Linkerd.Namer.all
   val linkerdNamerConsul = Linkerd.Namer.consul

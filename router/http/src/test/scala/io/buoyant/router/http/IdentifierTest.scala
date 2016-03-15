@@ -11,7 +11,7 @@ import org.scalatest.FunSuite
 class IdentifierTest extends FunSuite with Awaits {
 
   test("http/1.1 request without a host header") {
-    val identifier = Identifier(Path.Utf8("https"), false)
+    val identifier = DefaultIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     intercept[IllegalArgumentException] {
@@ -20,7 +20,7 @@ class IdentifierTest extends FunSuite with Awaits {
   }
 
   test("http/1.1 request with a host header") {
-    val identifier = Identifier(Path.Utf8("https"), false)
+    val identifier = DefaultIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
@@ -28,7 +28,7 @@ class IdentifierTest extends FunSuite with Awaits {
   }
 
   test("http/1.1 with URIs") {
-    val identifier = Identifier(Path.Utf8("https"), true)
+    val identifier = DefaultIdentifier(Path.Utf8("https"), true)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
@@ -36,14 +36,14 @@ class IdentifierTest extends FunSuite with Awaits {
   }
 
   test("http/1.0") {
-    val identifier = Identifier(Path.Utf8("prefix"), false)
+    val identifier = DefaultIdentifier(Path.Utf8("prefix"), false)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
     assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST")))
   }
 
   test("http/1.0 with uri") {
-    val identifier = Identifier(Path.Utf8("prefix"), true)
+    val identifier = DefaultIdentifier(Path.Utf8("prefix"), true)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
     assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST/drum/bass")))
