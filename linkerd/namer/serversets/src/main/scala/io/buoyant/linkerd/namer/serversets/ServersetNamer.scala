@@ -41,7 +41,10 @@ class ServersetNamer(zkHost: String) extends Namer {
     resolve(s"zk2!$hosts!$path!$endpoint")
 
   /** Bind a name. */
-  protected[this] def bind(path: Path): Option[Name.Bound] = {
+  protected[this] def bind(path: Path, residual: Path = Path.empty): Option[Name.Bound] = {
+    // Clients may depend on Name.Bound ids being Paths which resolve
+    // back to the same Name.Bound
+    val id = idPrefix ++ path
     path match {
       case Path.Utf8(segments@_*) =>
         val addr = if (segments.nonEmpty && (segments.last contains ":")) {
@@ -53,10 +56,12 @@ class ServersetNamer(zkHost: String) extends Namer {
           resolveServerset(zkHost, zkPath)
         }
 
-        // Clients may depend on Name.Bound ids being Paths which resolve
-        // back to the same Name.Bound
-        val id = idPrefix ++ path
-        Some(Name.Bound(addr, id))
+        addr.sample match {
+          case Addr.Neg if !path.isEmpty =>
+            val n = path.size
+            bind(path.take(n - 1), path.drop(n - 1) ++ residual)
+          case _ => Some(Name.Bound(addr, id, residual))
+        }
 
       case _ => None
     }
