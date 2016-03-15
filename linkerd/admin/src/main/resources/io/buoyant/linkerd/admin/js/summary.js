@@ -29,14 +29,8 @@ $.when(
 
   $(function() {
     var selectedRouter = getSelectedRouter();
-    var router = routers.data[selectedRouter];
-    if (router)
-      var clients = _.values(router.dstIds);
-    else
-      var clients = _(routers.data).values().flatMap(function(r){return _.values(r.dstIds);}).value();
-
     var procInfo = ProcInfo(),
-        bigBoard = BigBoard(clients, summaryTemplate),
+        bigBoard = BigBoard(selectedRouter, routers, summaryTemplate),
         interfaces = Interfaces(selectedRouter, routers, namers, ifacesTemplate);
 
     procInfo.start(UPDATE_INTERVAL);
@@ -102,23 +96,45 @@ var ProcInfo = (function() {
  * Big summary board of server requests
  */
 var BigBoard = (function() {
-  var summaryKeys = ['load', 'failures', 'success', 'requests'],
-      chart = new UpdateableChart(
-        {minValue: 0},
-        document.getElementById("request-canvas"),
-        function() {
-          return window.innerWidth * 0.75;
-        }
-      );
+  var summaryKeys = ['load', 'failures', 'success', 'requests'];
+  var chart = new UpdateableChart(
+    {minValue: 0},
+    document.getElementById("request-canvas"),
+    function() {
+      return window.innerWidth * 0.75;
+    }
+  );
+  var metricsParams = [];
+
+  function url() {
+    return "/admin/metrics?" + $.param({m: metricsParams}, true);
+  }
+
+  function clientToMetric(client) {
+    return {name: client.prefix + "requests", color: client.color};
+  }
+
+  function clientsToMetricParam(clients) {
+    return _(clients).map(function(client) {
+      return _.map(summaryKeys, function(key) {
+        return client.prefix + key;
+      });
+    }).flatten().value();
+  }
+
+  function addClients(clients) {
+    chart.addMetrics(_.map(clients, clientToMetric));
+    metricsParams = metricsParams.concat(clientsToMetricParam(clients));
+  }
 
   /**
    * Returns a function that may be called to trigger an update.
    */
-  var init = function(servers, template) {
+  var init = function(selectedRouter, routers, template) {
     // set up requests chart
-    chart.setMetrics(_.map(servers, function(server) {
-      return {name: server.prefix + "requests", color: server.color};
-    }));
+    chart.setMetrics(_.map(routers.clients(selectedRouter), clientToMetric));
+
+    routers.onAddedClients(addClients);
 
     // set up metrics
     $('#request-stats').html(template({keys: summaryKeys}));
@@ -132,16 +148,11 @@ var BigBoard = (function() {
       }
     });
 
-    var metricsParams = _(servers).map(function(server) {
-      return _.map(summaryKeys, function(key) {
-        return server.prefix + key;
-      });
-    }).flatten().value();
+    metricsParams = clientsToMetricParam(routers.clients(selectedRouter));
 
-    var url = "/admin/metrics?" + $.param({m: metricsParams}, true);
     function update() {
       $.ajax({
-        url: url,
+        url: url(),
         dataType: "json",
         cache: false,
         success: function(data) {
@@ -228,22 +239,23 @@ var Interfaces = (function() {
     return sortBySuccess(servers.map(prepInterface));
   }
 
-  function renderInterfaces(routers, namers, template) {
-    var servers = _(routers)
-      .map('servers')
-      .flatten()
-      .value();
-
-    var clients = _(routers)
-      .map(function(router) { return _.values(router.dstIds); })
-      .flatten()
-      .value();
-
+  function renderInterfaces(selectedRouter, routers, namers, template) {
     var namerIfaces = _.map(namers, prepInterface);
 
-    $('#client-info').html(template({name:'router clients', interfaces: prepClients(clients)}));
-    $('#server-info').html(template({name:'router servers', interfaces: prepServers(servers)}));
-    $('#namer-info').html(template({name:'namer clients', interfaces: sortBySuccess(namerIfaces)}));
+    $('#client-info').html(template({
+      name:'router clients',
+      interfaces: prepClients(routers.clients(selectedRouter))
+    }));
+
+    $('#server-info').html(template({
+      name:'router servers',
+      interfaces: prepServers(routers.servers(selectedRouter))
+    }));
+
+    $('#namer-info').html(template({
+      name:'namer clients',
+      interfaces: sortBySuccess(namerIfaces)
+    }));
   }
 
   /**
@@ -252,10 +264,9 @@ var Interfaces = (function() {
    */
   return function(selectedRouter, routers, namers, template) {
     var router = routers.data[selectedRouter];
-    var routerData = router ? [router] : routers.data;
     var namerData = router ? [] : namers.data;
 
-    renderInterfaces(routerData, namerData, template);
+    renderInterfaces(selectedRouter, routers, namerData, template);
     $(".interfaces").on("click", ".interface", function() {
       window.location = $(this).find("a").attr("href");
       return false;
@@ -269,7 +280,7 @@ var Interfaces = (function() {
         success: function(metrics) {
           routers.update(metrics);
           namers.update(metrics);
-          renderInterfaces(routerData, namerData, template);
+          renderInterfaces(selectedRouter, routers, namerData, template);
         }
       });
     };

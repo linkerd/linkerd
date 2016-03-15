@@ -88,19 +88,36 @@ var Routers = (function() {
     return server;
   }
 
+  function onAddedClients(handler) {
+    var wrapper = function(events, clients) {
+      handler(clients);
+    }
+    $("body").on("addedClients", wrapper);
+    return wrapper;
+  }
+
   // Updates router clients and metrics from raw-key val metrics.
   function update(routers, metrics) {
     // first, check for new clients and add them
+    var addedClients = [];
+
     _.each(metrics, function(metric, key) {
       var match = key.match(clientRE);
       if (match) {
         var name = match[1], id = match[2],
             router = routers[name];
-        if (router) {
-          router.dstIds[id] = mkDst(name, id);
+        if (router && !router.dstIds[id]) {
+          var addedClient = mkDst(name, id);
+          addedClients.push(addedClient)
+          router.dstIds[id] = addedClient;
         }
       }
     });
+
+    if (addedClients.length)
+      $("body").trigger("addedClients", [addedClients]);
+
+    //TODO: remove any unused clients
 
     // then, attach metrics to each appropriate scope
     var routerNames = Object.keys(routers);
@@ -171,7 +188,27 @@ var Routers = (function() {
       findByMetricKey: function(key) { return findByMetricKey(this.data, key); },
 
       /** Finds a router associated with a scoped metric name. */
-      findMatchingRouter: function(key) { return findMatchingRouter(this.data, key); }
+      findMatchingRouter: function(key) { return findMatchingRouter(this.data, key); },
+
+      /** Add event handler for new clients */
+      onAddedClients: onAddedClients,
+
+      //convenience methods
+      servers: function(routerName) {
+        if (routerName && this.data[routerName]) {
+          return this.data[routerName].servers;
+        } else {
+          return _(this.data).map('servers').flatten().value();
+        }
+      },
+
+      clients: function(routerName) {
+        if (routerName && this.data[routerName]) {
+          return _.values(this.data[routerName].dstIds);
+        } else {
+          return _(this.data).map(function(router) { return _.values(router.dstIds); }).flatten().value();
+        }
+      }
     };
   };
 })();
