@@ -53,7 +53,7 @@ class AppIdNamer(
         Trace.recordBinary("marathon.found", found.isDefined)
         found match {
           case Some(name) => NameTree.Leaf(name)
-          case None =>  NameTree.Neg
+          case None => NameTree.Neg
         }
       }
     }
