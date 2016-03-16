@@ -18,6 +18,7 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  *   host:      marathon.mesos
  *   port:      80
  *   uriPrefix: /marathon
+ *   ttlMs:     5000
  * </pre>
  */
 class MarathonInitializer extends NamerInitializer {
@@ -29,7 +30,8 @@ object MarathonInitializer extends MarathonInitializer
 case class marathon(
   host: Option[String],
   port: Option[Port],
-  uriPrefix: Option[String]
+  uriPrefix: Option[String],
+  ttlMs: Option[Int]
 ) extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.marathon")
@@ -40,6 +42,7 @@ case class marathon(
     case None => 80
   }
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
+  private[this] def getTtl = ttlMs.getOrElse(5000).millis
 
   /**
    * Construct a namer.
@@ -50,6 +53,6 @@ case class marathon(
       .configured(Label("namer" + prefix.show))
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new AppIdNamer(Api(service, getHost, getUriPrefix), prefix, 250.millis)
+    new AppIdNamer(Api(service, getHost, getUriPrefix), prefix, getTtl)
   }
 }

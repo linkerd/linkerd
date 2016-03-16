@@ -604,6 +604,8 @@ The Marathon namer is configured with kind `io.l5d.experimental.marathon`, and t
   depends on your Marathon configuration. For example, running Marathon
   locally, the API is avaiable at `localhost:8080/v2/`, while the default setup
   on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
+* *ttlMs* -- the polling timeout in milliseconds against the marathon API
+  (default: 5000)
 
 For example:
 ```yaml
@@ -613,6 +615,7 @@ namers:
   host:      marathon.mesos
   port:      80
   uriPrefix: /marathon
+  ttlMs:     500
 ```
 
 The default _prefix_ is `io.l5d.marathon`. (Note that this is *different* from

@@ -11,7 +11,7 @@ class MarathonTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    marathon(None, None, None).newNamer(Stack.Params.empty)
+    marathon(None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -25,13 +25,15 @@ class MarathonTest extends FunSuite {
                   |host:      marathon.mesos
                   |port:      80
                   |uriPrefix: /marathon
+                  |ttlMs:     300
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[marathon]
-    assert(marathon.host == Some("marathon.mesos"))
-    assert(marathon.port == Some(Port(80)))
-    assert(marathon.uriPrefix == Some("/marathon"))
-    assert(marathon._prefix == Some(Path.read("/io.l5d.marathon")))
+    assert(marathon.host.contains("marathon.mesos"))
+    assert(marathon.port.contains(Port(80)))
+    assert(marathon.uriPrefix.contains("/marathon"))
+    assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
+    assert(marathon.ttlMs.contains(300))
   }
 }
