@@ -12,7 +12,9 @@ import pl.project13.scala.sbt.JmhPlugin
  * - k8s/ -- finagle kubernetes client
  * - marathon/ -- marathon client
  * - router/ -- finagle router libraries
- * - linkerd/ -- configuration, runtime, and modules
+ * - namer/ -- name resolution
+ * - config/ -- configuration utilities
+ * - linkerd/ -- runtime, and modules
  * - test-util/ -- async test helpers; provided by [[Base]]
  */
 object LinkerdBuild extends Base {
@@ -65,15 +67,57 @@ object LinkerdBuild extends Base {
       .aggregate(core, http, mux, thrift)
   }
 
+  val configCore = projectDir("config")
+    .withLib(Deps.finagle("core"))
+    .withLib(Deps.finagle("thrift"))
+    .withLibs(Deps.jackson)
+    .withLib(Deps.jacksonYaml)
+
+  object Namer {
+    val core = projectDir("namer/core")
+      .dependsOn(configCore)
+      .withLib(Deps.jacksonCore)
+      .withTests()
+
+    val consul = projectDir("namer/consul")
+      .dependsOn(LinkerdBuild.consul, core)
+      .withTests()
+
+    val fs = projectDir("namer/fs")
+      .dependsOn(core)
+      .withTests()
+
+    val k8s = projectDir("namer/k8s")
+      .dependsOn(LinkerdBuild.k8s, core)
+      .withTests()
+
+    val marathon = projectDir("namer/marathon")
+      .dependsOn(LinkerdBuild.marathon, core)
+      .dependsOn(core)
+      .withTests()
+
+    val serversets = projectDir("namer/serversets")
+      .withLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
+      .withTests()
+      .dependsOn(core % "compile->compile;test->test")
+
+    val all = projectDir("namer")
+      .aggregate(core, consul, fs, k8s, marathon, serversets)
+  }
+
+  val admin = projectDir("admin")
+    .dependsOn(configCore)
+    .withLib(Deps.twitterServer)
+
   object Linkerd {
-    val config = projectDir("linkerd/config")
-      .withLib(Deps.finagle("core"))
-      .withLib(Deps.finagle("thrift"))
-      .withLibs(Deps.jackson)
-      .withLib(Deps.jacksonYaml)
 
     val core = projectDir("linkerd/core")
-      .dependsOn(Router.core, config)
+      .dependsOn(
+        Router.core,
+        configCore,
+        LinkerdBuild.admin,
+        Namer.core % "compile->compile;test->test"
+      )
       .withLib(Deps.jacksonCore)
       .withTests()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
@@ -91,33 +135,6 @@ object LinkerdBuild extends Base {
 
       val all = projectDir("linkerd/identifier")
         .aggregate(http)
-    }
-
-    object Namer {
-      val consul = projectDir("linkerd/namer/consul")
-        .dependsOn(LinkerdBuild.consul, core)
-        .withTests()
-
-      val fs = projectDir("linkerd/namer/fs")
-        .dependsOn(core)
-        .withTests()
-
-      val k8s = projectDir("linkerd/namer/k8s")
-        .dependsOn(LinkerdBuild.k8s, core)
-        .withTests()
-
-      val marathon = projectDir("linkerd/namer/marathon")
-        .dependsOn(LinkerdBuild.marathon, core)
-        .dependsOn(core)
-        .withTests()
-
-      val serversets = projectDir("linkerd/namer/serversets")
-        .withLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-        .withTests()
-        .dependsOn(core % "compile->compile;test->test")
-
-      val all = projectDir("linkerd/namer")
-        .aggregate(consul, fs, k8s, marathon, serversets)
     }
 
     object Protocol {
@@ -151,20 +168,22 @@ object LinkerdBuild extends Base {
       .withLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
+      .dependsOn(LinkerdBuild.admin)
+      .dependsOn(Namer.core)
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, config, core)
+      .dependsOn(admin, configCore, core, LinkerdBuild.admin)
       .withLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, config, Identifier.all, Namer.all, Protocol.all, tls)
+      .aggregate(admin, core, main, configCore, Identifier.all, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, config, Namer.fs, Protocol.http)
+      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
@@ -236,17 +255,18 @@ object LinkerdBuild extends Base {
 
   val linkerd = Linkerd.all
   val linkerdAdmin = Linkerd.admin
-  val linkerdConfig = Linkerd.config
+  val linkerdConfig = configCore
   val linkerdCore = Linkerd.core
   val linkerdIdentifier = Linkerd.Identifier.all
   val linkerdIdentifierHttp = Linkerd.Identifier.http
   val linkerdMain = Linkerd.main
-  val linkerdNamer = Linkerd.Namer.all
-  val linkerdNamerConsul = Linkerd.Namer.consul
-  val linkerdNamerFs = Linkerd.Namer.fs
-  val linkerdNamerK8s = Linkerd.Namer.k8s
-  val linkerdNamerMarathon = Linkerd.Namer.marathon
-  val linkerdNamerServersets = Linkerd.Namer.serversets
+  val namer = Namer.all
+  val namerCore = Namer.core
+  val namerConsul = Namer.consul
+  val namerFs = Namer.fs
+  val namerK8s = Namer.k8s
+  val namerMarathon = Namer.marathon
+  val namerServersets = Namer.serversets
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark
   val linkerdProtocolHttp = Linkerd.Protocol.http
@@ -262,7 +282,7 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Router.all, testUtil)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
     .settings(
       assembly <<= assembly in linkerd,

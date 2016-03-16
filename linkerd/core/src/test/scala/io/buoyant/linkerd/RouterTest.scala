@@ -2,7 +2,8 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{Dtab, Stack}
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
+import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
 import io.buoyant.router.RoutingFactory
 import java.net.InetAddress
 import org.scalatest.FunSuite

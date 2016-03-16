@@ -3,6 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Status => _, _}
 import io.buoyant.linkerd._
+import io.buoyant.namer.TestNamerInitializer
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import org.scalatest.FunSuite

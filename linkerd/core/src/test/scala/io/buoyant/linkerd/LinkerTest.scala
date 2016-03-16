@@ -3,7 +3,9 @@ package io.buoyant.linkerd
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.param
 import com.twitter.finagle.tracing.DefaultTracer
-import io.buoyant.linkerd.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
+import io.buoyant.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
+import io.buoyant.namer.Param.Namers
+import io.buoyant.namer.{NamerInitializer, ConflictingNamerInitializer, TestNamerInitializer, TestNamer}
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
@@ -30,7 +32,7 @@ class LinkerTest extends FunSuite {
     val linker = parse(yaml)
     val routers = linker.routers
 
-    val Router.Namers(namers) = linker.routers.head.params[Router.Namers]
+    val Namers(namers) = linker.routers.head.params[Namers]
     assert(namers == Nil)
     assert(linker.namers == Nil)
 
@@ -168,7 +170,7 @@ class LinkerTest extends FunSuite {
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    val Router.Namers(namers) = linker.routers.head.params[Router.Namers]
+    val Namers(namers) = linker.routers.head.params[Namers]
     assert(namers != Nil)
     assert(linker.namers != Nil)
   }
@@ -200,7 +202,7 @@ class LinkerTest extends FunSuite {
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    linker.routers.head.params[Router.Namers].namers match {
+    linker.routers.head.params[Namers].namers match {
       case Seq((_, namer)) => assert(namer.isInstanceOf[TestNamer])
       case namers => fail(s"unexpected namers: $namers")
     }

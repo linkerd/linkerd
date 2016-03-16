@@ -1,8 +1,9 @@
 package io.buoyant
 
 import com.twitter.util.Await
+import io.buoyant.admin.{App, AdminInitializer}
 import io.buoyant.linkerd.Linker.LinkerConfig
-import io.buoyant.linkerd.admin.{AdminInitializer, LinkerdAdmin}
+import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
 import scala.io.Source

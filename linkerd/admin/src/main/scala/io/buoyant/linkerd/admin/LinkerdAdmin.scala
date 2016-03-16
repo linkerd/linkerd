@@ -2,51 +2,13 @@ package io.buoyant.linkerd.admin
 
 import com.twitter.app.App
 import com.twitter.finagle._
-import com.twitter.finagle.http.{HttpMuxer, Request, Response}
-import com.twitter.logging.Logger
-import com.twitter.server.Admin.Path
-import com.twitter.server.handler.{SummaryHandler => TSummaryHandler, _}
-import com.twitter.server.view.{IndexView, TextBlockView}
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.server.handler.{SummaryHandler => _, _}
+import io.buoyant.admin.Admin
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
 
-class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) {
-
-  private[this] val log = Logger()
-
-  private[this] def twitterServerRoutes: Seq[(String, Service[Request, Response])] = Seq(
-    "/admin" -> new TSummaryHandler,
-    "/admin/server_info" -> (new TextBlockView andThen new ServerInfoHandler(app)),
-    "/admin/contention" -> (new TextBlockView andThen new ContentionHandler),
-    "/admin/lint" -> new LintHandler(),
-    "/admin/lint.json" -> new LintHandler(),
-    "/admin/threads" -> new ThreadsHandler,
-    "/admin/threads.json" -> new ThreadsHandler,
-    "/admin/announcer" -> (new TextBlockView andThen new AnnouncerHandler),
-    "/admin/dtab" -> (new TextBlockView andThen new DtabHandler),
-    "/admin/pprof/heap" -> new HeapResourceHandler,
-    "/admin/pprof/profile" -> new ProfileResourceHandler(Thread.State.RUNNABLE),
-    "/admin/pprof/contention" -> new ProfileResourceHandler(Thread.State.BLOCKED),
-    "/admin/ping" -> new ReplyHandler("pong"),
-    "/admin/shutdown" -> new ShutdownHandler(app),
-    "/admin/tracing" -> new TracingHandler,
-    "/admin/logging" -> new LoggingHandler,
-    "/admin/metrics" -> new MetricQueryHandler,
-    Path.Clients -> new ClientRegistryHandler(Path.Clients),
-    Path.Servers -> new ServerRegistryHandler(Path.Servers),
-    "/admin/files/" -> ResourceHandler.fromJar(
-      baseRequestPath = "/admin/files/",
-      baseResourcePath = "twitter-server"
-    ),
-    "/admin/registry.json" -> new RegistryHandler,
-    "/favicon.png" -> ResourceHandler.fromJar(
-      baseRequestPath = "/",
-      baseResourcePath = "io/buoyant/linkerd/admin/images"
-    )
-  ).map {
-      case (path, handler) =>
-        path -> (new IndexView(path, path, () => Nil) andThen handler)
-    }
+class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
 
@@ -60,19 +22,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) {
     "/delegator.json" -> DelegateHandler.api(linker),
     "/routers.json" -> new RouterHandler(linker),
     "/metrics" -> MetricsHandler,
-    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers)
+    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
   )
 
-  private[this] def metricsRoutes: Seq[(String, Service[Request, Response])] = Seq(
-    "/admin/metrics.json" -> HttpMuxer,
-    "/admin/per_host_metrics.json" -> HttpMuxer
-  )
-
-  def adminMuxer = {
-    (twitterServerRoutes ++ linkerdAdminRoutes ++ metricsRoutes).foldLeft(new HttpMuxer) {
-      case (muxer, (path, handler)) =>
-        log.info(s"$path => ${handler.getClass.getName}")
-        muxer.withHandler(path, handler)
-    }
-  }
+  override def allRoutes = super.allRoutes ++ linkerdAdminRoutes
 }

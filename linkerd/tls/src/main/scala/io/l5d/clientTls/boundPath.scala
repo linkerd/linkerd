@@ -8,7 +8,7 @@ import com.twitter.finagle.buoyant.TlsClientPrep.Module
 import com.twitter.finagle.client.AddrMetadataExtraction.AddrMetadata
 import com.twitter.finagle.ssl.Engine
 import com.twitter.logging.Logger
-import io.buoyant.linkerd.config.Parser
+import io.buoyant.config.Parser
 import io.buoyant.linkerd.util.PathMatcher
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 import java.net.SocketAddress

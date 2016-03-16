@@ -1,5 +1,5 @@
 package io.buoyant.linkerd
 
-import io.buoyant.linkerd.config.ConfigInitializer
+import io.buoyant.config.ConfigInitializer
 
 trait IdentifierInitializer extends ConfigInitializer

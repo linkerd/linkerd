@@ -7,7 +7,7 @@ import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ListeningServer, Stack}
-import io.buoyant.linkerd.config.types.Port
+import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
 /**

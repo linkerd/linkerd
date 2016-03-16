@@ -11,6 +11,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.namer.ConfiguredNamersInterpreter
 
 private[admin] object WebDelegator {
 
