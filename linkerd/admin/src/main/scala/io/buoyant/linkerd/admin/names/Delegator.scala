@@ -15,6 +15,7 @@ sealed trait DelegateTree[+T] {
 
 object DelegateTree {
 
+  case class Exception(path: Path, dentry: Dentry, thrown: Throwable) extends DelegateTree[Nothing]
   case class Empty(path: Path, dentry: Dentry) extends DelegateTree[Nothing]
   case class Fail(path: Path, dentry: Dentry) extends DelegateTree[Nothing]
   case class Neg(path: Path, dentry: Dentry) extends DelegateTree[Nothing]
@@ -26,10 +27,11 @@ object DelegateTree {
     def map[U](f: T => U): Weighted[U] = copy(tree = tree.map(f))
   }
 
-  private def map[T, U](tree: DelegateTree[T], f: T => U): DelegateTree[U] = tree match {
-    case tree@Empty(_, _) => tree
-    case tree@Fail(_, _) => tree
-    case tree@Neg(_, _) => tree
+  private def map[T, U](orig: DelegateTree[T], f: T => U): DelegateTree[U] = orig match {
+    case tree: Exception => tree
+    case tree: Empty => tree
+    case tree: Fail => tree
+    case tree: Neg => tree
     case Delegate(path, dentry, tree) => Delegate(path, dentry, tree.map(f))
     case Leaf(path, dentry, v) => Leaf(path, dentry, f(v))
     case Alt(path, dentry, trees@_*) => Alt(path, dentry, trees.map(_.map(f)): _*)
@@ -67,6 +69,7 @@ object DelegateTree {
   }
 
   private def toNameTree[T](delegates: DelegateTree[T]): NameTree[T] = delegates match {
+    case Exception(_, _, e) => throw e
     case Empty(_, _) => NameTree.Empty
     case Fail(_, _) => NameTree.Fail
     case Neg(_, _) => NameTree.Neg
@@ -137,25 +140,26 @@ object Delegator extends Delegator {
         fromNameTree(prefix ++ suff, d, dst.map { pfx => Name.Path(pfx ++ suff) })
     }
 
-    val result: DelegateTree[Name.Path] = matches.size match {
-      case 0 => DelegateTree.Neg(path, dentry)
-      case 1 => matches.head
-      case _ => DelegateTree.Alt(path, dentry, matches: _*)
+    val result: DelegateTree[Name.Path] = matches match {
+      case Nil => DelegateTree.Neg(path, dentry)
+      case Seq(tree) => tree
+      case trees => DelegateTree.Alt(path, dentry, trees: _*)
     }
 
-    result match {
+    val lookup: Activity[DelegateTree[Name]] = result match {
       case DelegateTree.Neg(path, d) =>
         namer match {
           case interpreter: ConfiguredNamersInterpreter =>
             interpreter.lookup(path).map(fromNameTree(path, d, _))
 
           // XXX this won't work well if another kind of NameInterpeter is configured
-          case _ =>
-            Namer.global.lookup(path).map(fromNameTree(path, d, _))
+          case _ => Namer.global.lookup(path).map(fromNameTree(path, d, _))
         }
 
       case tree => Activity.value(tree)
     }
+
+    lookup.handle { case NonFatal(e) => DelegateTree.Exception(path, dentry, e) }
   }
 
   private[this] def bind(
@@ -167,6 +171,7 @@ object Delegator extends Delegator {
     if (depth > MaxDepth)
       Activity.exception(new IllegalArgumentException("Max recursion level reached."))
     else tree match {
+      case tree@Exception(_, _, _) => Activity.value(tree)
       case tree@Empty(_, _) => Activity.value(tree)
       case tree@Fail(_, _) => Activity.value(tree)
       case tree@Neg(_, _) => Activity.value(tree)

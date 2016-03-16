@@ -48,3 +48,24 @@ class ConflictingNamer extends NamerConfig {
   @JsonIgnore
   override def newNamer(params: Stack.Params): Namer = ???
 }
+
+class ErrorNamerInitializer extends NamerInitializer {
+  val configClass = classOf[ErrorNamerConfig]
+  override val configId = "error"
+}
+
+object ErrorNamerInitializer extends ErrorNamerInitializer
+
+case class TestNamingError(path: Path) extends Throwable(s"error naming ${path.show}") {
+  override def toString = s"TestNamingError(${path.show})"
+}
+
+class ErrorNamerConfig extends NamerConfig { config =>
+  @JsonIgnore
+  override def defaultPrefix: Path = Path.read("/error")
+
+  @JsonIgnore
+  override def newNamer(params: Stack.Params) = new Namer {
+    def lookup(path: Path) = Activity.exception(TestNamingError(prefix ++ path))
+  }
+}

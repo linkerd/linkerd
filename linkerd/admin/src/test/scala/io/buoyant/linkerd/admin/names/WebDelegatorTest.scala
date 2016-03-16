@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Status => _, _}
 import io.buoyant.linkerd._
-import io.buoyant.namer.TestNamerInitializer
+import io.buoyant.namer._
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import org.scalatest.FunSuite
@@ -13,22 +13,20 @@ class WebDelegatorTest extends FunSuite with Awaits {
   val yaml =
     """|namers:
        |- kind: test
+       |- kind: error
        |
        |routers:
        |- protocol: plain
        |  servers:
        |  - port: 1
-       |- protocol: fancy
-       |  servers:
-       |  - port: 2
        |""".stripMargin
-  val protos = Seq(TestProtocol.Plain, TestProtocol.Fancy)
-  val namers = Seq(TestNamerInitializer)
-  val linker = Linker.Initializers(protos, namers).load(yaml)
+  val namers = Seq(TestNamerInitializer, ErrorNamerInitializer)
+  val linker = Linker.Initializers(Seq(TestProtocol.Plain), namers).load(yaml)
 
   val dtab = Dtab.read("""
+    /beh => /error ;
     /bah/humbug => /$/inet/127.1/8080 ;
-    /foo => /bah | /$/fail ;
+    /foo => /bah | /beh | /$/fail ;
     /foo => /bar ;
     /boo => /foo ;
     /meh => /heh ;
@@ -40,15 +38,23 @@ class WebDelegatorTest extends FunSuite with Awaits {
     req.uri = s"/delegate?n=/boo/humbug&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
-    assert(rsp.contentString ==
-      """{"type":"delegate","path":"/boo/humbug","dentry":null,"delegate":{""" +
-      """"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[""" +
-      """{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},""" +
-      """{"type":"delegate","path":"/bah/humbug","dentry":{"prefix":"/foo","dst":"/bah | /$/fail"},"delegate":{""" +
-      """"type":"leaf","path":"/$/inet/127.1/8080","dentry":{"prefix":"/bah/humbug","dst":"/$/inet/127.1/8080"},"bound":{""" +
-      """"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080}],"meta":{}},""" +
-      """"id":"/$/inet/127.1/8080","path":"/"}}},""" +
-      """{"type":"fail","path":"/$/fail/humbug","dentry":{"prefix":"/foo","dst":"/bah | /$/fail"}}]}}""")
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/boo/humbug","dentry":null,"delegate":{
+        |"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[
+          |{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},
+          |{"type":"delegate","path":"/bah/humbug",
+          |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
+            |"type":"leaf","path":"/$/inet/127.1/8080","dentry":{"prefix":"/bah/humbug",
+              |"dst":"/$/inet/127.1/8080"},
+            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080}],"meta":{}},
+              |"id":"/$/inet/127.1/8080","path":"/"}}},
+          |{"type":"delegate","path":"/beh/humbug",
+            |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
+              |"type":"exception","path":"/error/humbug","dentry":{"prefix":"/beh","dst":"/error"},
+                |"message":"error naming /error/humbug"}},
+          |{"type":"fail","path":"/$/fail/humbug",
+            |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
   test("invalid path results in 400") {

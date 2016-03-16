@@ -7,14 +7,14 @@ namers:
 
 routers:
 - protocol: http
+  identifier:
+    kind: default
+    httpUriInDst: true
   baseDtab: |
     /marathonId => /io.l5d.marathon;
     /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
     /method     => /$/io.buoyant.http.anyMethodPfx/host;
     /http/1.1   => /method;
-  identifier:
-    kind: default
-    httpUriInDst: true
   servers:
   - port: 4140
     ip: 0.0.0.0

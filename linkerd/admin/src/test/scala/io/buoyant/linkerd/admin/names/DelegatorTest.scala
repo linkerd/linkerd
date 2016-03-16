@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin.names
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.linkerd._
-import io.buoyant.namer.{ConfiguredNamersInterpreter, TestNamerInitializer}
+import io.buoyant.namer._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -13,22 +13,20 @@ class DelegatorTest extends FunSuite with Awaits {
     """|namers:
        |- kind: test
        |  prefix: /namer
+       |- kind: error
        |
        |routers:
        |- protocol: plain
        |  servers:
        |  - port: 1
-       |- protocol: fancy
-       |  servers:
-       |  - port: 2
        |""".stripMargin
 
-  val protos = Seq(TestProtocol.Plain, TestProtocol.Fancy)
-  val namers = Seq(TestNamerInitializer)
-  val linker = Linker.Initializers(protos, namers).load(yaml)
+  val namers = Seq(TestNamerInitializer, ErrorNamerInitializer)
+  val linker = Linker.Initializers(Seq(TestProtocol.Plain), namers).load(yaml)
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;
+    /beh => /error ;
     /foo => /bah | /$/fail ;
     /foo => /bar ;
     /boo => /foo ;
@@ -94,5 +92,19 @@ class DelegatorTest extends FunSuite with Awaits {
         ),
         DelegateTree.Fail(Path.read("/$/fail/humbug/ya"), Dentry.read("/foo=>/bah | /$/fail"))
       ))))
+  }
+
+  test("explain error delegation") {
+    val path = Path.read("/beh/humbug")
+    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+      Return(DelegateTree.Delegate(
+        path,
+        Dentry.nop,
+        DelegateTree.Exception(
+          Path.read("/error/humbug"),
+          Dentry.read("/beh=>/error"),
+          TestNamingError(Path.read("/error/humbug"))
+        )
+      )))
   }
 }
