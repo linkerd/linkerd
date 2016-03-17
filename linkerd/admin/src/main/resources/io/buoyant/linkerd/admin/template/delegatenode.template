@@ -25,6 +25,8 @@
       list-group-item-danger
     {{else if isFail}}
       list-group-item-danger
+    {{else if isException}}
+      list-group-item-danger
     {{else}}
       list-group-item-success
     {{/if}}'
@@ -36,6 +38,12 @@
         No Further Branch Matches
       {{else if isFail}}
         Explicit Failure
+      {{else if isException}}
+        {{#if message}}
+          Exception: {{message}}
+        {{else}}
+          Unknown Exception
+        {{/if}}
       {{else}}
         Bound Path
       {{/if}}

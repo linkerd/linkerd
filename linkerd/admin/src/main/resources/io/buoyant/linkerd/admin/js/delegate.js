@@ -63,9 +63,10 @@ function renderNode(obj){
   switch(obj.type) {
     case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate); break;
     case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,i){ return renderNode(e); }).join(""); break;
-    case "neg": obj.isNeg = true; obj.break;
+    case "neg": obj.isNeg = true; break;
     case "fail": obj.isFail = true; break;
     case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound); break;
+    case "exception": obj.isException = true; break;
   }
   return templates.node(obj);
 }

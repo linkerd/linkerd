@@ -71,6 +71,7 @@ private[admin] object WebDelegator {
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Empty], name = "empty"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Fail], name = "fail"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Neg], name = "neg"),
+    new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Exception], name = "exception"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Delegate], name = "delegate"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Leaf], name = "leaf"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Alt], name = "alt"),
@@ -81,6 +82,7 @@ private[admin] object WebDelegator {
     case class Empty(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Fail(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Neg(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
+    case class Exception(path: Path, dentry: Option[Dentry], message: String) extends JsonDelegateTree
     case class Delegate(path: Path, dentry: Option[Dentry], delegate: JsonDelegateTree) extends JsonDelegateTree
     case class Leaf(path: Path, dentry: Option[Dentry], bound: Bound) extends JsonDelegateTree
     case class Alt(path: Path, dentry: Option[Dentry], alt: Seq[JsonDelegateTree]) extends JsonDelegateTree
@@ -88,6 +90,7 @@ private[admin] object WebDelegator {
     case class Weighted(weight: Double, tree: JsonDelegateTree)
 
     def mk(d: DelegateTree[Name.Bound]): JsonDelegateTree = d match {
+      case DelegateTree.Exception(p, d, e) => JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage)
       case DelegateTree.Empty(p, d) => JsonDelegateTree.Empty(p, mkDentry(d))
       case DelegateTree.Fail(p, d) => JsonDelegateTree.Fail(p, mkDentry(d))
       case DelegateTree.Neg(p, d) => JsonDelegateTree.Neg(p, mkDentry(d))
