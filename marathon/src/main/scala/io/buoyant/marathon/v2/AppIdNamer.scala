@@ -8,7 +8,6 @@ import java.net.SocketAddress
 
 object AppIdNamer {
   object Closed extends Throwable
-  val log = Api.log
 }
 
 class AppIdNamer(
@@ -21,7 +20,6 @@ class AppIdNamer(
   import AppIdNamer._
 
   private[this] implicit val _timer = timer
-  private[this] case class PathSpan(app: Path, residual: Path)
 
   /**
    * Accepts names in the form:
@@ -37,93 +35,110 @@ class AppIdNamer(
    * Marathon master.
    */
   def lookup(path: Path): Activity[NameTree[Name]] =
-    appsActivity.map {
-      case apps =>
+    if (path.isEmpty) Activity.value(NameTree.Neg)
+    else {
+      // each time the map of all Apps updates, find the
+      // shortest-matching part of `path` that exists as an App ID.
+      val possibleIds = (1 to path.size).map(path.take(_))
+      appsActivity.map { apps =>
         Trace.recordBinary("marathon.path", path.show)
-
-        // enumerate all possible span lengths that could be marathon ids
-        val possibleSpans: Seq[PathSpan] = 1 to path.size map { i: Int =>
-          PathSpan(path.take(i), path.drop(i))
-        }
-
-        possibleSpans.find(sp => apps(sp.app.show)) match {
-          case Some(PathSpan(app, residual)) =>
-            val id = prefix ++ app
-
+        val found = possibleIds.collectFirst {
+          case app if apps(app) =>
             Trace.recordBinary("marathon.appId", app.show)
-            Trace.recordBinary("marathon.id", id.show)
-            Trace.recordBinary("marathon.found", app.show)
-
-            val addr = getAndMonitorAddr(app.show)
-            NameTree.Leaf(Name.Bound(addr, id, residual))
-
-          case None =>
-            Trace.recordBinary("marathon.notfound", path.show)
-            NameTree.Neg
+            val residual = path.drop(app.size)
+            val id = prefix ++ app
+            val addr = getAndMonitorAddr(app)
+            Name.Bound(addr, id, residual)
         }
+        Trace.recordBinary("marathon.found", found.isDefined)
+        found match {
+          case Some(name) => NameTree.Leaf(name)
+          case None => NameTree.Neg
+        }
+      }
     }
 
-  private[this] val appsActivity: Activity[Api.AppIds] = {
-    val states = Var.async[Activity.State[Api.AppIds]](Activity.Pending) { state =>
-      def loop(): Future[Unit] =
-        api.getAppIds().transform {
+  private[this] val appsActivity: Activity[Api.AppIds] =
+    Activity(Var.async[Activity.State[Api.AppIds]](Activity.Pending) { state =>
+      @volatile var initialized, stopped = false
+      @volatile var pending: Future[_] = Future.never
+
+      def loop(): Unit = if (!stopped) {
+        pending = api.getAppIds().respond {
           case Return(apps) =>
+            initialized = true
             state() = Activity.Ok(apps)
-            Future.sleep(ttl).before(loop())
+            Trace.recordBinary("marathon.apps", apps.map(_.show).mkString(","))
+            if (!stopped) {
+              pending = Future.sleep(ttl).onSuccess(_ => loop())
+            }
 
           case Throw(NonFatal(e)) =>
-            state() = Activity.Failed(e)
-            Future.sleep(ttl).before(loop())
+            if (!initialized) {
+              state() = Activity.Failed(e)
+            }
+            if (!stopped) {
+              pending = Future.sleep(ttl).onSuccess(_ => loop())
+            }
 
           case Throw(e) =>
             state() = Activity.Failed(e)
-            Future.exception(e)
         }
+      }
 
-      val work = loop()
+      loop()
       Closable.make { deadline =>
-        work.raise(Closed)
+        stopped = true
+        pending.raise(Closed)
         Future.Unit
       }
-    }
-    Activity(states)
-  }
+    })
 
-  private[this] var appMonitors: Map[String, Var[Addr]] = Map.empty
-  private[this] def getAndMonitorAddr(app: String): Var[Addr] = synchronized {
+  private[this] var appMonitors: Map[Path, Var[Addr]] = Map.empty
+
+  private[this] def getAndMonitorAddr(app: Path): Var[Addr] = synchronized {
     appMonitors.get(app) match {
       case Some(addr) => addr
 
       case None =>
         val addr = Var.async[Addr](Addr.Pending) { addr =>
-          def loop(): Future[Unit] =
-            api.getAddrs(app).transform { ret =>
-              ret match {
-                case Return(addrs) =>
-                  addr() = Addr.Bound(addrs)
-                  Future.sleep(ttl).before(loop())
+          @volatile var initialized, stopped = false
+          @volatile var pending: Future[_] = Future.never
 
-                case Throw(NonFatal(e)) =>
-                  addr() = Addr.Failed(e)
-                  Future.sleep(ttl).before(loop())
+          def loop(): Unit = if (!stopped) {
+            pending = api.getAddrs(app).respond {
+              case Return(addrs) =>
+                initialized = true
+                addr() = Addr.Bound(addrs)
+                if (!stopped) {
+                  pending = Future.sleep(ttl).onSuccess(_ => loop())
+                }
 
-                case Throw(e) =>
+              case Throw(NonFatal(e)) =>
+                if (!initialized) {
                   addr() = Addr.Failed(e)
-                  Future.exception(e)
-              }
+                }
+                if (!stopped) {
+                  pending = Future.sleep(ttl).onSuccess(_ => loop())
+                }
+
+              case Throw(e) =>
+                addr() = Addr.Failed(e)
             }
+          }
 
-          val work = loop()
+          loop()
           Closable.make { deadline =>
+            stopped = true
             synchronized {
               appMonitors -= app
             }
-            work.raise(Closed)
+            pending.raise(Closed)
             Future.Unit
           }
         }
-        appMonitors += (app -> addr)
 
+        appMonitors += (app -> addr)
         addr
     }
   }

@@ -26,7 +26,9 @@ routers:
     /host     => /io.l5d.fs;
     /method   => /$/io.buoyant.http.anyMethodPfx/host;
     /http/1.1 => /method;
-  httpUriInDst: true
+  identifier:
+    kind: default
+    httpUriInDst: true
   servers:
   - port: 4140
     ip: 0.0.0.0
