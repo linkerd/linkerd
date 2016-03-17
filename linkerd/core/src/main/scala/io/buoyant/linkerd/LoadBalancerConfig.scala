@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
+import com.twitter.finagle.loadbalancer.LoadBalancerFactory.EnableProbation
 import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
@@ -16,8 +17,11 @@ import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
 trait LoadBalancerConfig {
   val factory: LoadBalancerFactory
 
+  val enableProbation: Option[Boolean] = None
+
   @JsonIgnore
-  def clientParams = Stack.Params.empty + LoadBalancerFactory.Param(factory)
+  def clientParams = Stack.Params.empty + LoadBalancerFactory.Param(factory) +
+    LoadBalancerFactory.EnableProbation(enableProbation.getOrElse(true))
 }
 
 case class P2C(maxEffort: Option[Int]) extends LoadBalancerConfig {

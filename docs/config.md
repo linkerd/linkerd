@@ -53,6 +53,7 @@ routers:
       caCertPath: /foo/caCert.pem
     loadBalancer:
       kind: ewma
+      enableProbation: false
   timeoutMs: 1000
 
 - protocol: thrift
@@ -230,6 +231,9 @@ names:
 * *loadBalancer* -- Optional.  Specifies a load balancer to use.  It must be an
 object containing keys:
   * *kind* -- One of the supported load balancers.
+  * *enableProbation* -- Optional.  Controls whether endpoints are eagerly evicted from
+    service discovery. (default: true)
+    See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28)
   * Any options specific to the load balancer.
 
 If unspecified, p2c is used.
