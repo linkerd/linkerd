@@ -2,7 +2,7 @@
   <h1 class="text-center">{{name}}</h3>
   <div class="row">
   {{#each interfaces}}
-    <div class="col-sm-3">
+    <div class="col-sm-4">
       <div class="interface">
         <div class="row">
           <h3 class="sr-text col-sm-6 {{rateStyle}}">{{prettyRate}}</h3>
@@ -10,7 +10,9 @@
         </div>
         <hr>
         <div class="row name" title="{{name}}">
-          <a href="/metrics#{{requestsKey}}">{{name}}</a>
+          <a {{#if color}}style="color:{{color}}"{{/if}} href="/metrics#{{requestsKey}}">
+            {{name}}
+          </a>
         </div>
         <div class="row connections">
           {{connections}} active {{pluralize connections 'connection' 'connections'}}

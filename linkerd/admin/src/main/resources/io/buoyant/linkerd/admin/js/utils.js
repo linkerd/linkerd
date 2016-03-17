@@ -102,7 +102,7 @@ function UpdateableChart(userOpts, canvas, widthFn) {
 
   this.chart = undefined;
   this.timeout = undefined;
-  this.ts = undefined;
+  this.tsMap = undefined;
 
   var defaults = {
     grid: {
@@ -128,50 +128,68 @@ function UpdateableChart(userOpts, canvas, widthFn) {
 }
 
 UpdateableChart.prototype.setMetric = function(metric) {
-  this.setMetrics([metric]);
+  this.setMetrics([{ name: metric, color: "83,176,196"}]);
 }
 
 UpdateableChart.prototype.setMetrics = function(metrics) {
   clearTimeout(this.timeout);
 
-  if (this.ts !== undefined) {
-    this.chart.removeTimeSeries(this.ts);
+  if (this.tsMap !== undefined) {
+    _.map(this.tsMap, function(ts){
+      this.chart.removeTimeSeries(ts);
+    });
   }
-  this.ts = new TimeSeries();
-  this.chart.addTimeSeries(
-    this.ts,
-    {
-      strokeStyle: 'rgb(83,176,196)',
-      fillStyle: 'rgba(83,176,196,0.3)',
-      lineWidth: 3
-    }
-  );
 
-  this._getMetrics(metrics);
+  this.tsMap = {};
+  _.each(metrics, this._addMetric.bind(this));
+
+  this.metrics = _.map(metrics, 'name');
+  this._getMetrics();
+}
+
+UpdateableChart.prototype.addMetrics = function(metrics) {
+  _.each(metrics, this._addMetric.bind(this));
+  this.metrics = this.metrics.concat(_.map(metrics, 'name'));
+}
+
+UpdateableChart.prototype._addMetric = function(metric) {
+  this.tsMap[metric.name] = new TimeSeries();
+  this.chart.addTimeSeries(
+    this.tsMap[metric.name],
+    {
+      strokeStyle: "rgb(" + metric.color + ")",
+      fillStyle: "rgba(" + metric.color + ",0.3)",
+      lineWidth: 3
+  });
 }
 
 UpdateableChart.prototype._resize = function() {
   this.canvas.width = this.widthFn();
 }
 
-UpdateableChart.prototype._getMetrics = function(metrics) {
-  $.ajax({
-    url: "/admin/metrics?" + $.param({m: metrics}, true), //use shallow/traditional encoding
-    dataType: "json",
-    cache: false,
-    success: (function(data) {
-      if (data.length) {
-        this.ts.append(new Date().getTime(), _.sumBy(data, 'delta'));
-      }
-      $(this.canvas).trigger(
-        "stat",
-        [
-          metrics,
-          _.sumBy(data, 'delta')
-        ]
-      );
+UpdateableChart.prototype._getMetrics = function() {
+  if (this.metrics.length) {
+    $.ajax({
+      url: "/admin/metrics?" + $.param({m: this.metrics}, true), //use shallow/traditional encoding
+      dataType: "json",
+      cache: false,
+      success: (function(data) {
+        _.each(data, function(datum){
+          this.tsMap[datum.name].append(new Date().getTime(), datum.delta);
+        }.bind(this));
 
-      this.timeout = setTimeout(this._getMetrics.bind(this, metrics), 1000);
-    }).bind(this)
-  });
+        $(this.canvas).trigger(
+          "stat",
+          [
+            this.metrics,
+            _.sumBy(data, 'delta')
+          ]
+        );
+
+        this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
+      }).bind(this)
+    });
+  } else {
+    this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
+  }
 }
