@@ -37,22 +37,21 @@ var Routers = (function() {
       serverRE = /^rt\/(.+)\/srv\/([^/]+)\/(\d+)\/requests$/;
 
   var mkColor = function() {
+    var colorIdx = 0;
     var colors = [
-      "224,243,219",
-      "204,235,197",
-      "168,221,181",
+      "8,64,129",
       "123,204,196",
-      "78,179,211",
-      "43,140,190",
       "8,104,172",
-      "8,64,129"
+      "168,221,181",
+      "43,140,190",
+      "204,235,197",
+      "78,179,211",
+      "224,243,219",
     ];
 
-    //returns a color based on summed ascii values
-    return function(label) {
-      var idx = _.sumBy(label.split(""), function(char) { return char.charCodeAt(0); });
-      var color = colors[idx % colors.length];
-      return color;
+    //returns the next available color
+    return function() {
+      return colors[colorIdx++ % colors.length];
     }
   }();
 
@@ -61,8 +60,7 @@ var Routers = (function() {
       router: router,
       label: label,
       prefix: prefix,
-      metrics: {requests: -1},
-      color: mkColor(label)
+      metrics: {requests: -1}
     };
   }
 
@@ -76,7 +74,9 @@ var Routers = (function() {
 
   function mkDst(router, id) {
     var prefix = "rt/" + router + "/dst/id/" + id + "/";
-    return mk(router, id, prefix);
+    var dst = mk(router, id, prefix);
+    dst.color = mkColor();
+    return dst;
   }
 
   function mkServer(router, ip, port) {
@@ -117,7 +117,8 @@ var Routers = (function() {
     if (addedClients.length)
       $("body").trigger("addedClients", [addedClients]);
 
-    //TODO: remove any unused clients
+    // TODO: Remove any unused clients. This will require more intelligent
+    // color assignment to ensure client => color mapping is deterministic.
 
     // then, attach metrics to each appropriate scope
     var routerNames = Object.keys(routers);
