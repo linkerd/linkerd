@@ -1,0 +1,138 @@
+# Configuration for all possible linkerd options
+
+admin:
+  port: 9990
+
+namers:
+- kind: io.l5d.fs
+  rootDir: ./examples/io.l5d.fs
+
+- kind: io.l5d.serversets
+  zkAddrs:
+  - host: 127.0.0.1
+    port: 2181
+
+- kind: io.l5d.experimental.consul
+  host: 127.0.0.1
+  port: 2181
+
+- kind: io.l5d.experimental.k8s
+  host: kubernetes.default.cluster.local
+  port: 443
+  tls: true
+  authTokenFile: ./examples/io.l5d.k8s/kube_token
+
+- kind: io.l5d.experimental.marathon
+  prefix: /io.l5d.marathon
+  host: marathon.mesos
+  port: 80
+  uriPrefix: /marathon
+
+routers:
+- protocol: http
+  label: int
+  baseDtab: |
+    /http/1.1 => /$/inet/127.1/9999;
+  dstPrefix: /http
+  failFast: false
+  timeoutMs: 100
+  httpAccessLog: logs/access.log
+  identifier:
+    kind: default
+    httpUriInDst: true
+  client:
+    loadBalancer:
+      kind: p2c
+      maxEffort: 10
+    hostConnectionPool:
+      minSize: 5
+      maxSize: 20
+      idleTimeMs: 10000
+      maxWaiters: 15
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+    maxConcurrentRequests: 1000
+
+# TODO: test thrift traffic
+- protocol: thrift
+  label: /host/thrift-framed
+  baseDtab: |
+    /host        => /io.l5d.fs;
+    /thrift/echo => /host/thrift-framed;
+  dstPrefix: /thrift
+  failFast: true
+  timeoutMs: 200
+  thriftMethodInDst: true
+  client:
+    thriftFramed: true
+    thriftProtocol: binary
+    loadBalancer:
+      kind: ewma
+      maxEffort: 10
+      decayTimeMs: 10000
+  servers:
+  - port: 4141
+    ip: 0.0.0.0
+    thriftFramed: true
+    thriftProtocol: binary
+
+- protocol: thrift
+  label: /host/thrift-buffered
+  baseDtab: |
+    /host   => /io.l5d.fs;
+    /thrift => /host/thrift-buffered;
+  dstPrefix: /thrift
+  failFast: false
+  timeoutMs: 300
+  thriftMethodInDst: true
+  client:
+    thriftFramed: false
+    thriftProtocol: compact
+    loadBalancer:
+      kind: heap
+  servers:
+  - port: 4142
+    ip: 0.0.0.0
+    thriftFramed: false
+    thriftProtocol: compact
+
+# TODO: test mux traffic
+- protocol: mux
+  label: /host/mux
+  baseDtab: |
+    /host   => /io.l5d.fs;
+    /mux    => /host/mux;
+  dstPrefix: /mux
+  failFast: true
+  timeoutMs: 400
+  client:
+    loadBalancer:
+      kind: aperture
+      maxEffort: 10
+      lowLoad: 0.5
+      highLoad: 2.0
+      smoothWindowMs: 5000
+      minAperture: 5
+  servers:
+  - port: 4143
+    ip: 0.0.0.0
+
+# TODO: test ssl traffic
+- protocol: http
+  label: tls
+  baseDtab: |
+    /host     => /io.l5d.fs;
+    /method   => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1 => /method;
+  client:
+    tls:
+      kind: io.l5d.clientTls.static
+      commonName: foo
+      caCertPath: /foo/caCert.pem
+  servers:
+  - port: 4144
+    ip: 0.0.0.0
+    tls:
+      certPath: /foo/cert.pem
+      keyPath: /foo/key.pem
