@@ -30,7 +30,11 @@ function cleanup {
 function run_tests {
   export LOG_LEVEL=DEBUG
 
-  ./sbt examples/acceptance-test:run &
+  if [ -n "${TWITTER_DEVELOP}" ]; then
+    ./sbt 'set developTwitterDeps in Global := true' examples/acceptance-test:run &
+  else
+    ./sbt examples/acceptance-test:run &
+  fi
 
   # Wait for linkerd to initialize
   sleep 60
