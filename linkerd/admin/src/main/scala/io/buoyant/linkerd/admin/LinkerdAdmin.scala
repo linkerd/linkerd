@@ -20,7 +20,6 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     )),
     "/delegator" -> DelegateHandler.ui(linker),
     "/delegator.json" -> DelegateHandler.api(linker),
-    "/routers.json" -> new RouterHandler(linker),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
   )

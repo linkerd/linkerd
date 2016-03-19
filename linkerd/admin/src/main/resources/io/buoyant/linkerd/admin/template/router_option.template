@@ -1,1 +1,1 @@
-<li><a href='#' class='router-menu-option'>{{label}}</a></li>
+<li><a href='#' class='router-menu-option'>{{#if label}}{{label}}{{else}}{{protocol}}{{/if}}</a></li>

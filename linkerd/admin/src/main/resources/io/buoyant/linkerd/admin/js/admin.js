@@ -16,10 +16,10 @@ $(function() {
 
 $.when(
   $.get("/files/template/router_option.template"),
-  $.get("/routers.json")
+  $.get("/config.json")
 ).done(function(templateRsp, routersRsp) {
   var template = Handlebars.compile(templateRsp[0]);
-  var routers = routersRsp[0];
+  var routers = routersRsp[0].routers;
 
   //Not every page supports a mult-router view!
   if(!SINGLE_ROUTER_PAGES_ONLY) {
