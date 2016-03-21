@@ -9,12 +9,23 @@ general:
 dependencies:
   cache_directories:
   - .sbt-launch.jar
+  - .gitshas
+
   override:
-  - ./sbt update test:compile e2e:compile integration:compile
+  - >
+    if [ -n "${TWITTER_DEVELOP}" ]; then
+      mkdir -p .gitshas
+      export GIT_SHA_DIR=$PWD/.gitshas
+      ./project/install-twitter-develop-deps.sh
+    fi
+  - ./sbt update
 
 test:
   override:
-  # unfortunately these have to be two separate sbt commands ¯\_(ツ)_/¯
-  - ./sbt coverage test && ./sbt coverageAggregate
-  - ./sbt e2e:test assembly
+  - ./sbt coverage test
+  - ./sbt integration:compile e2e:test assembly
   - ./test-config.sh
+
+  post:
+  - ./sbt coverageAggregate
+  - mkdir -p $CIRCLE_TEST_REPORTS/junit && find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;

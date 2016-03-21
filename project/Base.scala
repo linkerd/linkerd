@@ -25,25 +25,24 @@ class Base extends Build {
     }
   }
 
-  val orgSettings = Seq(
+  val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
+  val doDevelopTwitterDeps = developTwitterDeps ?? false
+
+  val baseSettings = Seq(
     organization := "io.buoyant",
     version := Git.version,
-    homepage := Some(url("https://linkerd.io"))
-  )
-
-  val scalaSettings = Seq(
+    homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.11.7",
-    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation")
-  )
-
-  val resolverSettings = Seq(
+    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation"),
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
       "twitter-repo" at "https://maven.twttr.com",
       "local-m2" at s"file:${Path.userHome.absolutePath}/.m2/repository",
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
-    )
+    ),
+    aggregate in assembly := false,
+    developTwitterDeps := sys.env.contains("TWITTER_DEVELOP")
   )
 
   val scalariformSettings = baseScalariformSettings ++ Seq(
@@ -126,18 +125,20 @@ class Base extends Build {
 
   def project(id: String, dir: File): Project = Project(id, dir)
     .settings(name := id)
-    .settings(orgSettings)
-    .settings(scalaSettings)
-    .settings(resolverSettings)
+    .settings(baseSettings)
     .settings(scalariformSettings)
-    .settings(aggregate in assembly := false)
 
   /**
    * Test utilities (mostly for dealing with async APIs)
    */
   val testUtil = projectDir("test-util")
-    .settings(libraryDependencies += Deps.twitterUtil("core"))
     .settings(libraryDependencies += Deps.scalatest)
+    .settings(libraryDependencies += {
+      val dep = Deps.twitterUtil("core")
+      if (doDevelopTwitterDeps.value) {
+        dep.copy(revision = dep.revision+"-SNAPSHOT")
+      } else dep
+    })
 
   /**
    * Extends Project with helpers to reduce boilerplate in project definitions.
@@ -158,6 +159,19 @@ class Base extends Build {
 
     def configWithLibs(cfg: Configuration)(dep: ModuleID, deps: ModuleID*): Project =
       withLibs((dep +: deps).map(_ % cfg))
+
+    def withTwitterLib(dep: ModuleID): Project =
+      project.settings(libraryDependencies += {
+        if (doDevelopTwitterDeps.value) {
+          dep.copy(revision = dep.revision+"-SNAPSHOT")
+        } else dep
+      })
+
+    def withTwitterLibs(deps: Seq[ModuleID]): Project =
+      deps.foldLeft(project) { case (project, dep) => project.withTwitterLib(dep) }
+
+    def withTwitterLibs(dep: ModuleID, deps: ModuleID*): Project =
+      withTwitterLibs(dep +: deps)
 
     /** Enable the test config for a project with basic dependencies */
     def withTests(): Project = project.dependsOn(testUtil % Test)

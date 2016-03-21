@@ -20,42 +20,42 @@ import pl.project13.scala.sbt.JmhPlugin
 object LinkerdBuild extends Base {
 
   val k8s = projectDir("k8s")
-    .withLib(Deps.finagle("http"))
+    .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
 
   val consul = projectDir("consul")
-    .withLib(Deps.finagle("http"))
+    .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
 
   val marathon = projectDir("marathon")
-    .withLib(Deps.finagle("http"))
+    .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
 
   object Router {
     val core = projectDir("router/core")
-      .withLib(Deps.finagle("core"))
+      .withTwitterLib(Deps.finagle("core"))
       .withTests()
       .withE2e()
 
     val http = projectDir("router/http")
       .dependsOn(core)
-      .withLib(Deps.finagle("http"))
+      .withTwitterLib(Deps.finagle("http"))
       .withTests()
       .withE2e()
 
     val mux = projectDir("router/mux")
       .dependsOn(core)
-      .withLib(Deps.finagle("mux"))
+      .withTwitterLib(Deps.finagle("mux"))
       .withE2e()
 
     val thriftIdl = projectDir("router/thrift-idl")
-      .withLib(Deps.finagle("thrift"))
+      .withTwitterLib(Deps.finagle("thrift"))
 
     val thrift = projectDir("router/thrift")
-      .withLib(Deps.finagle("thrift"))
+      .withTwitterLib(Deps.finagle("thrift"))
       .withTests()
       .withE2e()
       .dependsOn(
@@ -68,8 +68,7 @@ object LinkerdBuild extends Base {
   }
 
   val configCore = projectDir("config")
-    .withLib(Deps.finagle("core"))
-    .withLib(Deps.finagle("thrift"))
+    .withTwitterLibs(Deps.finagle("core"), Deps.finagle("thrift"))
     .withLibs(Deps.jackson)
     .withLib(Deps.jacksonYaml)
 
@@ -97,7 +96,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val serversets = projectDir("namer/serversets")
-      .withLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
+      .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
 
@@ -107,7 +106,7 @@ object LinkerdBuild extends Base {
 
   val admin = projectDir("admin")
     .dependsOn(configCore)
-    .withLib(Deps.twitterServer)
+    .withTwitterLib(Deps.twitterServer)
 
   object Linkerd {
 
@@ -160,12 +159,12 @@ object LinkerdBuild extends Base {
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, Protocol.http)
         .dependsOn(testUtil)
-        .settings(libraryDependencies += Deps.twitterUtil("benchmark"))
+        .withTwitterLib(Deps.twitterUtil("benchmark"))
         .enablePlugins(JmhPlugin)
     }
 
     val admin = projectDir("linkerd/admin")
-      .withLib(Deps.twitterServer)
+      .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
       .dependsOn(LinkerdBuild.admin)
@@ -174,7 +173,7 @@ object LinkerdBuild extends Base {
 
     val main = projectDir("linkerd/main")
       .dependsOn(admin, configCore, core, LinkerdBuild.admin)
-      .withLib(Deps.twitterServer)
+      .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
@@ -185,7 +184,7 @@ object LinkerdBuild extends Base {
       // fs service discovery.
       .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http)
       .settings(inConfig(Minimal)(MinimalSettings))
-      .withLib(Deps.finagle("stats") % Minimal)
+      .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Identifier.http,
