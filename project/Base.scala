@@ -41,7 +41,8 @@ class Base extends Build {
       "local-m2" at s"file:${Path.userHome.absolutePath}/.m2/repository",
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
-    aggregate in assembly := false
+    aggregate in assembly := false,
+    developTwitterDeps := sys.env.contains("TWITTER_DEVELOP")
   )
 
   val scalariformSettings = baseScalariformSettings ++ Seq(

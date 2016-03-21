@@ -17,21 +17,13 @@ dependencies:
       mkdir -p .gitshas
       export GIT_SHA_DIR=$PWD/.gitshas
       ./project/install-twitter-develop-deps.sh
-      ./sbt 'set developTwitterDeps in Global := true' update
-    else
-      ./sbt update
     fi
+  - ./sbt update
 
 test:
   override:
-  - >
-    if [ -n "${TWITTER_DEVELOP}" ]; then
-      ./sbt 'set developTwitterDeps in Global := true' coverage test
-      ./sbt 'set developTwitterDeps in Global := true' integration:compile e2e:test assembly
-    else
-      ./sbt coverage test
-      ./sbt integration:compile e2e:test assembly
-    fi
+  - ./sbt coverage test
+  - ./sbt integration:compile e2e:test assembly
   - ./test-config.sh
 
   post:
