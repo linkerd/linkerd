@@ -4,7 +4,7 @@ import com.twitter.app.App
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.server.handler.{SummaryHandler => _, _}
-import io.buoyant.admin.Admin
+import io.buoyant.admin.{ConfigHandler, Admin}
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
 
