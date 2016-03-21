@@ -2,6 +2,8 @@
 
 * Breaking change to configs: `httpUriInDst` is now specified under the
   `identifier` header (see docs for add'l info)
+* Add a `ttlMs` marathon namer config option to configure the polling
+  timeout against the marathon API.
 
 ## 0.2.1
 
