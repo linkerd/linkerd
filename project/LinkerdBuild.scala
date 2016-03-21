@@ -105,7 +105,7 @@ object LinkerdBuild extends Base {
   }
 
   val admin = projectDir("admin")
-    .dependsOn(configCore)
+    .dependsOn(configCore, Namer.core)
     .withTwitterLib(Deps.twitterServer)
 
   object Linkerd {

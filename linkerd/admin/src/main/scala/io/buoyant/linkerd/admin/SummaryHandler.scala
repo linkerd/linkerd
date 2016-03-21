@@ -50,7 +50,7 @@ private object SummaryHandler {
         """
         }.mkString("\n")
 
-    AdminHandler.adminHtml(
+    AdminHandler.html(
       content = s"""
         <div class="row text-center">
           <div id="process-info" data-refresh-uri="/admin/metrics">

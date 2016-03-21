@@ -13,7 +13,7 @@ import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namer.ConfiguredNamersInterpreter
 
-private[admin] object WebDelegator {
+object DelegateApiHandler {
 
   private object PathStr {
     def unapply(p: String) = Try(Path.read(p)).toOption
@@ -160,18 +160,18 @@ private[admin] object WebDelegator {
 
 }
 
-private[admin] class WebDelegator(
-  linker: Linker,
+class DelegateApiHandler(
+  namers: Seq[(Path, Namer)],
   delegate: Delegator = Delegator
 ) extends Service[Request, Response] {
 
-  import WebDelegator._
+  import DelegateApiHandler._
 
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get => (req.params.get("d"), req.params.get("n")) match {
       case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
         // XXX this should change to be per-router
-        val interpreter = ConfiguredNamersInterpreter(linker.namers)
+        val interpreter = ConfiguredNamersInterpreter(namers)
         delegate(dtab, path, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)

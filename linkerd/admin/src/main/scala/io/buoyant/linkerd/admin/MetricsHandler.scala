@@ -11,7 +11,7 @@ private object MetricsHandler extends Service[Request, Response] {
   }
 
   val render =
-    AdminHandler.adminHtml(
+    AdminHandler.html(
       content = s"""
         <div class="metrics">
         </div>
