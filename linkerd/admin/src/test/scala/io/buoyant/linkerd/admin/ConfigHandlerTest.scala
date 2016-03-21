@@ -1,6 +1,7 @@
 package io.buoyant.linkerd.admin
 
 import com.twitter.finagle.http.{Request, Status}
+import io.buoyant.admin.ConfigHandler
 import io.buoyant.linkerd._
 import io.buoyant.linkerd.protocol.ThriftInitializer
 import io.buoyant.namer.TestNamerInitializer
