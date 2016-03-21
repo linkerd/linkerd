@@ -1,8 +1,10 @@
 target/
 dist/
+logs/
 project/boot/
 project/plugins/project/
 project/plugins/src_managed/
+http.pid
 .sbt-launch.jar
 .idea
 .iml

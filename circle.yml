@@ -17,3 +17,4 @@ test:
   # unfortunately these have to be two separate sbt commands ¯\_(ツ)_/¯
   - ./sbt coverage test && ./sbt coverageAggregate
   - ./sbt e2e:test assembly
+  - ./test-config.sh
