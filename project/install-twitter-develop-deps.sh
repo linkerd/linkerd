@@ -48,6 +48,22 @@ function run_sbt() {
   fi
 }
 
+function build(){
+  local name=$1
+  shift
+  local sbt_cmd=$@
+  if tracking_shas; then
+    orig_sha=$(get_cached_sha $name)
+    new_sha=$(git rev-list -1 HEAD)
+    if [ "$orig_sha" != "$new_sha" ]; then
+      run_sbt $sbt_cmd
+    fi
+    update_sha $name $new_sha
+  else
+    run_sbt $sbt_cmd
+  fi
+}
+
 git clone --depth=1 --branch=develop https://github.com/twitter/util.git
 git clone --depth=1 --branch=develop https://github.com/twitter/ostrich.git
 git clone --depth=1 --branch=develop https://github.com/twitter/finagle.git
@@ -55,61 +71,17 @@ git clone --depth=1 --branch=develop https://github.com/twitter/scrooge.git
 git clone --depth=1 --branch=develop https://github.com/twitter/twitter-server.git
 
 cd $TMP_DIR/util
-if tracking_shas; then
-  orig_sha=$(get_cached_sha util)
-  new_sha=$(git rev-list -1 --abbrev-commit HEAD)
-  if [ "$orig_sha" != "$new_sha" ]; then
-    run_sbt publishLocal
-  fi
-  update_sha util $new_sha
-else
-  run_sbt publishLocal
-fi
+build util publishLocal
 
 cd $TMP_DIR/ostrich
-if tracking_shas; then
-  orig_sha=$(get_cached_sha ostrich)
-  new_sha=$(git rev-list -1 --abbrev-commit HEAD)
-  if [ "$orig_sha" != "$new_sha" ]; then
-    run_sbt publishLocal
-  fi
-  update_sha ostrich $new_sha
-else
-  run_sbt publishLocal
-fi
+build ostrich publishLocal
 
 cd $TMP_DIR/scrooge
-if tracking_shas; then
-  orig_sha=$(get_cached_sha scrooge-core)
-  new_sha=$(git rev-list -1 --abbrev-commit HEAD)
-  if [ "$orig_sha" != "$new_sha" ]; then
-    run_sbt scrooge-core/publishLocal
-  fi
-  update_sha scrooge-core $new_sha
-else
-  run_sbt scrooge-core/publishLocal
-fi
+build scrooge-core scrooge-core/publishLocal
 
 cd $TMP_DIR/finagle
-if tracking_shas; then
-  orig_sha=$(get_cached_sha finagle)
-  new_sha=$(git rev-list -1 --abbrev-commit HEAD)
-  if [ "$orig_sha" != "$new_sha" ]; then
-    run_sbt finagle-core/publishLocal \
-        finagle-http/publishLocal \
-        finagle-http2/publishLocal \
-        finagle-mux/publishLocal \
-        finagle-ostrich4/publishLocal \
-        finagle-thrift/publishLocal \
-        finagle-thriftmux/publishLocal \
-        finagle-stats/publishLocal \
-        finagle-serversets/publishLocal \
-        finagle-zipkin/publishLocal \
-        finagle-benchmark/publishLocal
-  fi
-  update_sha finagle $new_sha
-else
-  run_sbt finagle-core/publishLocal \
+build finagle \
+      finagle-core/publishLocal \
       finagle-http/publishLocal \
       finagle-http2/publishLocal \
       finagle-mux/publishLocal \
@@ -120,19 +92,9 @@ else
       finagle-serversets/publishLocal \
       finagle-zipkin/publishLocal \
       finagle-benchmark/publishLocal
-fi
 
 cd $TMP_DIR/twitter-server
-if tracking_shas; then
-  orig_sha=$(get_cached_sha twitter-server)
-  new_sha=$(git rev-list -1 --abbrev-commit HEAD)
-  if [ "$orig_sha" != "$new_sha" ]; then
-    run_sbt publishLocal
-  fi
-  update_sha twitter-server $new_sha
-else
-  run_sbt publishLocal
-fi
+build twitter-server publishLocal
 
 # clean up
 cd $BASE_DIR
