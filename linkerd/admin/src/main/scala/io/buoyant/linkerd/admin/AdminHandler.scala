@@ -3,8 +3,9 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util.Future
+import io.buoyant.admin.HtmlView
 
-object AdminHandler {
+object AdminHandler extends HtmlView {
 
   def mkResponse(
     content: String,
@@ -16,7 +17,7 @@ object AdminHandler {
     Future.value(response)
   }
 
-  def adminHtml(
+  def html(
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
@@ -93,30 +94,5 @@ object AdminHandler {
         </body>
       </html>
     """
-  }
-}
-
-object StaticFilter extends SimpleFilter[Request, Response] {
-
-  private[this] val contentTypes: Map[String, String] = Map(
-    "css" -> "text/css",
-    "gif" -> MediaType.Gif,
-    "html" -> MediaType.Html,
-    "jpeg" -> MediaType.Jpeg,
-    "jpg" -> MediaType.Jpeg,
-    "js" -> MediaType.Javascript,
-    "json" -> MediaType.Json,
-    "png" -> MediaType.Png,
-    "svg" -> "image/svg+xml",
-    "txt" -> MediaType.Txt
-  )
-
-  def apply(req: Request, svc: Service[Request, Response]) = {
-    svc(req).flatMap { res =>
-      val ext = req.path.split('.').lastOption.getOrElse("")
-      val contentType = contentTypes.getOrElse(ext, "application/octet-stream")
-      res.contentType = contentType + ";charset=UTF-8"
-      Future.value(res)
-    }
   }
 }

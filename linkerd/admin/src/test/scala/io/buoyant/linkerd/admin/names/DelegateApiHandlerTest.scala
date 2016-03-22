@@ -8,7 +8,7 @@ import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import org.scalatest.FunSuite
 
-class WebDelegatorTest extends FunSuite with Awaits {
+class DelegateApiHandlerTest extends FunSuite with Awaits {
 
   val yaml =
     """|namers:
@@ -33,7 +33,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   """)
 
   test("/delegate response") {
-    val web = new WebDelegator(linker)
+    val web = new DelegateApiHandler(linker.namers)
     val req = Request()
     req.uri = s"/delegate?n=/boo/humbug&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
@@ -58,7 +58,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   }
 
   test("invalid path results in 400") {
-    val web = new WebDelegator(linker)
+    val web = new DelegateApiHandler(linker.namers)
     val req = Request()
     req.uri = s"/delegate?n=invalid-param&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
@@ -66,7 +66,7 @@ class WebDelegatorTest extends FunSuite with Awaits {
   }
 
   test("invalid dtab results in 400") {
-    val web = new WebDelegator(linker)
+    val web = new DelegateApiHandler(linker.namers)
     val req = Request()
     req.uri = s"/delegate?n=/boo/humbug&d=invalid-param"
     val rsp = await(web(req))

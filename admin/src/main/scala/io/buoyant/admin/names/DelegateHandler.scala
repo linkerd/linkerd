@@ -1,26 +1,22 @@
-package io.buoyant.linkerd.admin
+package io.buoyant.admin.names
 
-import com.twitter.finagle.{Dtab, Service}
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Dtab, Namer, Path, Service}
 import com.twitter.util.Future
-import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.admin.names.WebDelegator
-import io.buoyant.router.RoutingFactory
+import io.buoyant.admin.HtmlView
+import io.buoyant.linkerd.admin.names.DelegateApiHandler
 
-private object DelegateHandler {
+class DelegateHandler(
+  view: HtmlView,
+  dtabs: () => Future[Map[String, Dtab]],
+  namers: Seq[(Path, Namer)]
+) extends Service[Request, Response] {
 
-  def ui(linker: Linker) = {
-    var dtabs = linker.routers.map { router =>
-      val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
-      router.label -> dtab()
-    }.toMap
-    new DelegateHandler(dtabs)
-  }
-
-  def api(linker: Linker) = new WebDelegator(linker)
+  def apply(req: Request): Future[Response] =
+    dtabs().map(render).flatMap(view.mkResponse(_))
 
   def render(dtab: Map[String, Dtab]) =
-    AdminHandler.adminHtml(
+    view.html(
       content = s"""
         <div class="row">
           <div class="col-lg-6">
@@ -52,18 +48,9 @@ private object DelegateHandler {
         </div>
       """,
       tailContent = s"""
-        <script id="data" type="application/json">${WebDelegator.Codec.writeStr(dtab)}</script>
+        <script id="data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
       """,
       javaScripts = Seq("dtab_viewer.js", "delegate.js"),
       csses = Seq("delegator.css")
     )
-}
-
-private class DelegateHandler(dtab: Map[String, Dtab]) extends Service[Request, Response] {
-  import DelegateHandler._
-
-  lazy val dtabString = render(dtab)
-
-  override def apply(req: Request): Future[Response] =
-    AdminHandler.mkResponse(dtabString)
 }

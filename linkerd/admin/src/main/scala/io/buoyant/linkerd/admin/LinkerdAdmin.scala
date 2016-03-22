@@ -4,11 +4,23 @@ import com.twitter.app.App
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.server.handler.{SummaryHandler => _, _}
-import io.buoyant.admin.{ConfigHandler, Admin}
+import com.twitter.util.Future
+import io.buoyant.admin.names.DelegateHandler
+import io.buoyant.admin.{StaticFilter, ConfigHandler, Admin}
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
+import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.router.RoutingFactory
 
 class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
+
+  private[this] val dtabs: Future[Map[String, Dtab]] =
+    Future.value(
+      linker.routers.map { router =>
+        val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
+        router.label -> dtab()
+      }.toMap
+    )
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
 
@@ -18,8 +30,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
       baseResourcePath = "io/buoyant/linkerd/admin",
       localFilePath = "linkerd/admin/src/main/resources/io/buoyant/linkerd/admin"
     )),
-    "/delegator" -> DelegateHandler.ui(linker),
-    "/delegator.json" -> DelegateHandler.api(linker),
+    "/delegator" -> new DelegateHandler(AdminHandler, () => dtabs, linker.namers),
+    "/delegator.json" -> new DelegateApiHandler(linker.namers),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
   )
