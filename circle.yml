@@ -8,23 +8,23 @@ general:
 
 dependencies:
   cache_directories:
+  - ~/.gitshas
   - .sbt-launch.jar
-  - .gitshas
 
   override:
-  - >
+  - |
+    mkdir -p ~/.gitshas
     if [ -n "${TWITTER_DEVELOP}" ]; then
-      mkdir -p .gitshas
-      export GIT_SHA_DIR=$PWD/.gitshas
+      export GIT_SHA_DIR=~/.gitshas
       ./project/install-twitter-develop-deps.sh
     fi
-  - ./sbt update
+    ./sbt update
 
 test:
   override:
   - ./sbt coverage test
-  - ./sbt integration:compile e2e:test assembly
-  - ./test-config.sh
+  - ./sbt integration:compile e2e:test
+  - ./sbt assembly && ./test-config.sh
 
   post:
   - ./sbt coverageAggregate
