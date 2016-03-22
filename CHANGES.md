@@ -4,6 +4,8 @@
   `identifier` header (see docs for add'l info)
 * Add a `ttlMs` marathon namer config option to configure the polling
   timeout against the marathon API.
+* Add a `enableProbation` config option for configuring a client's load balancer
+  probation setting
 
 ## 0.2.1
 

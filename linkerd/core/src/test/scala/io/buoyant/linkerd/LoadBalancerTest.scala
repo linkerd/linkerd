@@ -15,6 +15,7 @@ class LoadBalancerTest extends FunSuite {
       |  client:
       |    loadBalancer:
       |      kind: $balancer
+      |      enableProbation: false
       |  servers:
       |  - {}
       |""".stripMargin
@@ -22,6 +23,9 @@ class LoadBalancerTest extends FunSuite {
       val linker = Linker.load(config, Linker.Initializers(protocol = Seq(TestProtocol.Plain)))
       val factory = linker.routers.head.params[LoadBalancerFactory.Param]
       assert(factory.loadBalancerFactory != DefaultBalancerFactory)
+
+      val enableProbation = linker.routers.head.params[LoadBalancerFactory.EnableProbation]
+      assert(enableProbation == LoadBalancerFactory.EnableProbation(false))
     }
   }
 }
