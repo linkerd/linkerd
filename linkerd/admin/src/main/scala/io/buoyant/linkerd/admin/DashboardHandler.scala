@@ -5,21 +5,20 @@ import com.twitter.finagle.Service
 import com.twitter.util.Future
 import io.buoyant.linkerd.{Build, Linker}
 
-private[admin] class SummaryHandler(linker: Linker) extends Service[Request, Response] {
-  import SummaryHandler._
+private[admin] class DashboardHandler(linker: Linker) extends Service[Request, Response] {
+  import DashboardHandler._
 
   lazy val html = summaryHtml(linker.routers.length)
 
   override def apply(req: Request): Future[Response] = req.path match {
-    case "/" =>
+    case "/dashboard" =>
       AdminHandler.mkResponse(html)
     case _ =>
       Future.value(Response(Status.NotFound))
   }
 }
 
-private object SummaryHandler {
-
+private object DashboardHandler {
   private[this] case class Stat(
     description: String,
     elemId: String,
@@ -29,7 +28,6 @@ private object SummaryHandler {
   )
 
   def summaryHtml(routerCount: Int) = {
-
     val statsHtml =
       List(
         Stat("linkerd version", "linkerd-version", Build.load().version, "primary-stat", ""),
@@ -50,28 +48,15 @@ private object SummaryHandler {
     AdminHandler.html(
       content = s"""
         <div class="row text-center">
-          <div id="process-info" data-refresh-uri="/admin/metrics">
-            <ul class="list-inline topline-stats">
-              $statsHtml
-            </ul>
-          </div>
+          Welcome to the beta dashboard!
         </div>
-        <hr/>
-
-        <h1 class="text-center">request volume</h1>
-        <div class="row text-center requests">
-          <div id="request-stats" class="col-sm-2 dl-horizontal"></div>
-          <div class="col-sm-10">
-            <canvas id="request-canvas" height="200"></canvas>
-          </div>
+        <hr>
+        <div class="row text-center test-div">
         </div>
-
-        <div id="client-info" class="interfaces"></div>
-        <div id="server-info" class="interfaces"></div>
-        <div id="namer-info" class="interfaces"></div>
+        <hr>
       """,
-      csses = Seq("summary.css"),
-      javaScripts = Seq("lib/smoothie.js", "utils.js", "routers.js", "namers.js", "summary.js")
+      csses = Seq("dashboard.css"),
+      javaScripts = Seq("dashboard.js")
     )
   }
 }

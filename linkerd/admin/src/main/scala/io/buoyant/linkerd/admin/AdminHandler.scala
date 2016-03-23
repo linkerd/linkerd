@@ -64,6 +64,7 @@ object AdminHandler extends HtmlView {
                   <li><a href="/metrics">metrics</a></li>
                   <li><a href="/admin/logging">logging</a></li>
                   <li><a href="https://linkerd.io/help/">help</a></li>
+                  <!-- <li><a href="/dashboard">Beta</a></li> -->
                 </ul>
 
                 <ul class="nav navbar-nav navbar-right">
