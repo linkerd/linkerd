@@ -1,12 +1,9 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{MediaType, Request, Response, Status}
-import com.twitter.finagle.{Http => FHttp, Service, http => fhttp, param}
-import com.twitter.io.Buf
-import com.twitter.server.TwitterServer
+import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.Service
 import com.twitter.util.Future
 import io.buoyant.linkerd.{Build, Linker}
-import scala.util.matching.Regex
 
 private[admin] class SummaryHandler(linker: Linker) extends Service[Request, Response] {
   import SummaryHandler._
