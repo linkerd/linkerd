@@ -17,15 +17,15 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
   private[this] val dtabs: Future[Map[String, Dtab]] =
     Future.value(
       linker.routers.map { router =>
-        val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
-        router.label -> dtab()
-      }.toMap
+      val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
+      router.label -> dtab()
+    }.toMap
     )
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
 
     "/" -> new SummaryHandler(linker),
-    "/dashboard" -> new DashboardHandler(linker),
+    "/dashboard" -> new DashboardHandler,
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/linkerd/admin",
