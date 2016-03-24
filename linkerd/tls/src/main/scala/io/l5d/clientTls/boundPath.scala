@@ -19,7 +19,8 @@ class BoundPathInitializer extends TlsClientInitializer {
 
 object BoundPathInitializer extends BoundPathInitializer
 
-case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig]) extends TlsClientConfig {
+case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig], strict: Option[Boolean])
+  extends TlsClientConfig {
   @JsonIgnore
   override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] = {
 
@@ -28,6 +29,9 @@ case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig]) 
         n.matcher.substitute(path, n.commonNamePattern)
       }.collectFirst {
         case Some(result) => result
+      } match {
+        case None if (strict.getOrElse(true)) =>
+          throw new MatcherError(s"Unable to match ${path.show} with available names: ${(names.map(_.prefix)).mkString(",")}")
       }
 
     new TlsClientPrep.Module[Req, Rsp] {
@@ -36,7 +40,7 @@ case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig]) 
       override def newEngine(params: Params): Option[(SocketAddress) => Engine] =
         peerCommonName(params).map(TlsClientPrep.addrEngine(_, caCertPath))
 
-      override def peerCommonName(params: Params): Option[String] = {
+      override def peerCommonName(params: Params): Option[String] =
         for {
           path <- params[AddrMetadata].metadata("id") match {
             case id: String => Some(Path.read(id))
@@ -47,12 +51,13 @@ case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig]) 
           log.info(s"Using $commonName as the TLS common name for ${path.show}")
           commonName
         }
-      }
 
       override def parameters: Seq[Param[_]] = Seq(AddrMetadata.param)
     }
   }
 }
+
+class MatcherError(msg: String) extends Throwable(msg)
 
 case class NameMatcherConfig(prefix: String, commonNamePattern: String) {
   def matcher: PathMatcher = PathMatcher(prefix)

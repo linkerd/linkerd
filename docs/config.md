@@ -215,6 +215,8 @@ supports the following options:
   * *commonNamePattern* -- The common name to use for destinations matching
     the above prefix.  Variables captured in the prefix may be used in this
     string.
+* *strict* -- Optional. When true, paths that fail to match any prefixes throw
+    an exception. Defaults to true.
 
 For example,
 
@@ -224,6 +226,7 @@ caCertPath: /foo/cacert.pem
 names:
 - prefix: "/io.l5d.fs/{host}"
   commonNamePattern: "{host}.buoyant.io"
+ strict: false
 ```
 
 #### Load Balancer
