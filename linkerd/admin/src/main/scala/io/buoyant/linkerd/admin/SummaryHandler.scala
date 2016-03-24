@@ -49,6 +49,13 @@ private object SummaryHandler {
 
     AdminHandler.html(
       content = s"""
+        <div class="row text-center">
+          <div id="process-info" data-refresh-uri="/admin/metrics">
+            <ul class="list-inline topline-stats">
+              $statsHtml
+            </ul>
+          </div>
+        </div>
         <hr/>
 
         <h1 class="text-center">request volume</h1>
