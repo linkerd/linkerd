@@ -8,7 +8,7 @@ import io.buoyant.linkerd.{Build, Linker}
 private[admin] class DashboardHandler(linker: Linker) extends Service[Request, Response] {
   import DashboardHandler._
 
-  lazy val html = summaryHtml(linker.routers.length)
+  lazy val html = dashboardHtml(linker.routers.length)
 
   override def apply(req: Request): Future[Response] = req.path match {
     case "/dashboard" =>
@@ -27,7 +27,7 @@ private object DashboardHandler {
     dataKey: String
   )
 
-  def summaryHtml(routerCount: Int) = {
+  def dashboardHtml(routerCount: Int) = {
     val statsHtml =
       List(
         Stat("linkerd version", "linkerd-version", Build.load().version, "primary-stat", ""),
