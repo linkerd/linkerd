@@ -3,6 +3,7 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.Service
 import com.twitter.util.Future
+import io.buoyant.linkerd.Build
 
 private[admin] class DashboardHandler extends Service[Request, Response] {
   lazy val html = dashboardHtml
@@ -17,6 +18,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
   def dashboardHtml = {
     AdminHandler.html(
       content = s"""
+        <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
         <div class="row text-center">
           Welcome to the beta dashboard!
         </div>
@@ -26,7 +28,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <hr>
       """,
       csses = Seq("dashboard.css"),
-      javaScripts = Seq("dashboard.js")
+      javaScripts = Seq("utils.js", "process_info.js", "dashboard.js")
     )
   }
 }
