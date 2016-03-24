@@ -71,7 +71,7 @@ private object SummaryHandler {
         <div id="namer-info" class="interfaces"></div>
       """,
       csses = Seq("summary.css"),
-      javaScripts = Seq("lib/smoothie.js", "utils.js", "routers.js", "namers.js", "summary.js")
+      javaScripts = Seq("lib/smoothie.js", "utils.js", "process_info.js", "routers.js", "namers.js", "summary.js")
     )
   }
 }
