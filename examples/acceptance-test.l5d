@@ -120,7 +120,7 @@ routers:
 
 # TODO: test ssl traffic
 - protocol: http
-  label: tls
+  label: tlsStatic
   baseDtab: |
     /host     => /io.l5d.fs;
     /method   => /$/io.buoyant.http.anyMethodPfx/host;
@@ -132,6 +132,27 @@ routers:
       caCertPath: /foo/caCert.pem
   servers:
   - port: 4144
+    ip: 0.0.0.0
+    tls:
+      certPath: /foo/cert.pem
+      keyPath: /foo/key.pem
+
+- protocol: http
+  label: tlsBoundPath
+  baseDtab: |
+    /host     => /io.l5d.fs;
+    /method   => /$/io.buoyant.http.anyMethodPfx/host;
+    /http/1.1 => /method;
+  client:
+    tls:
+      kind: io.l5d.clientTls.boundPath
+      caCertPath: /foo/caCert.pem
+      strict: false
+      names:
+      - prefix: "/io.l5d.fs/{service}"
+        commonNamePattern: "{service}"
+  servers:
+  - port: 4145
     ip: 0.0.0.0
     tls:
       certPath: /foo/cert.pem
