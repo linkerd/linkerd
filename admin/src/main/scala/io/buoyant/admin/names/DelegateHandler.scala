@@ -51,6 +51,6 @@ class DelegateHandler(
         <script id="data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
       """,
       javaScripts = Seq("dtab_viewer.js", "delegate.js"),
-      csses = Seq("delegator.css")
+      csses = Seq("styleguide/styleguide.css", "styleguide/local.css", "admin.css", "delegator.css")
     )
 }

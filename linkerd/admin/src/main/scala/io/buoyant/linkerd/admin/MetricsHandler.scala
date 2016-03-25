@@ -17,6 +17,6 @@ private object MetricsHandler extends Service[Request, Response] {
         </div>
       """,
       javaScripts = Seq("lib/smoothie.js", "utils.js", "routers.js", "metrics.js"),
-      csses = Seq("metrics.css")
+      csses = Seq("styleguide/styleguide.css", "styleguide/local.css", "admin.css", "metrics.css")
     )
 }
