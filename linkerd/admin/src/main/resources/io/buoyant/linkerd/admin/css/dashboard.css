@@ -1,4 +1,26 @@
 body {
   background-image: radial-gradient(34% 43%, #161963 23%, #090B34 47%);
+  background-size: cover;
+  background-repeat: no-repeat;
   color: #FFFFFF;
+  height: 100vh;
+}
+
+nav {
+  padding: 9px 28px;
+  font-size: 18px;
+  font-weight: 100;
+  line-height: 1.1
+}
+
+#navbar {
+  margin-top: 4px;
+}
+
+.navbar-brand-img img {
+  height: 26px;
+}
+
+nav ul.navbar-nav {
+  margin-left: 18px;
 }
