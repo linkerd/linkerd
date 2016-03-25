@@ -1,0 +1,12 @@
+<div class="row text-center">
+  <div id="process-info" data-refresh-uri="/admin/metrics">
+    <ul class="list-inline topline-stats">
+      {{#each stats}}
+        <li data-key="{{dataKey}}">
+          <strong class="stat-label">{{description}}</strong>
+          <span id="{{elemId}}" class="stat">{{value}}</span>
+        </li>
+      {{/each}}
+    </ul>
+  </div>
+</div>
