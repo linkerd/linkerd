@@ -6,7 +6,7 @@ function DtabViewer(initialDtab, dentryTemplate) {
 
   this.render();
 
-  $('#edit-dtab-btn').click(this._toggleEdit);
+  $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
 
   $('#save-dtab-btn').click(function(e){
     var text = $("#dtab-input").val().replace(/\s+/g, '');
