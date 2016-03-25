@@ -28,7 +28,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <hr>
       """,
       csses = Seq("dashboard.css"),
-      javaScripts = Seq("utils.js", "process_info.js", "dashboard.js"),
+      javaScripts = Seq("utils.js", "process_info.js", "metrics_collector.js", "dashboard.js"),
       navbar = AdminHandler.version2NavBar
     )
   }
