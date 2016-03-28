@@ -15,6 +15,7 @@
 var MetricsCollector = (function() {
   var generalUpdateUri = "/admin/metrics.json";
   var metricsUpdateUri = "/admin/metrics?";
+  var listeners = [];
 
   function url(listeners) {
     var params = _.reduce(listeners, function(mem, listener) {
@@ -24,16 +25,26 @@ var MetricsCollector = (function() {
     return metricsUpdateUri + $.param({ m: params }, true);
   }
 
-  function validateListeners(listeners) {
-    _.each(listeners, function(listener) {
-      if (!listener.onMetricsUpdate || !listener.desiredMetrics) {
-        console.error("This listener needs to implement onMetricsUpdate and desiredMetrics");
-      }
-    });
+  function validateListener(listener) {
+    if (!listener.onMetricsUpdate || !listener.desiredMetrics) {
+      console.error("This listener needs to implement onMetricsUpdate and desiredMetrics");
+      return false;
+    }
+    return true;
   }
 
-  return function(listeners) {
-    validateListeners(listeners);
+  function registerListener(listener) {
+    validateListener(listener);
+    listeners.push(listener);
+  }
+
+  function deregisterListener(listener) {
+    _.remove(listeners, function(l) { return l === listener; });
+  }
+
+  return function(initialListeners) {
+    _.each(initialListeners, validateListener);
+    listeners = listeners.concat(initialListeners);
 
     function update() {
       var general = $.ajax({
@@ -61,7 +72,9 @@ var MetricsCollector = (function() {
     }
 
     return {
-      start: function(interval) { setInterval(update, interval); }
+      start: function(interval) { setInterval(update, interval); },
+      registerListener: registerListener,
+      deregisterListener: deregisterListener
     };
   };
 })();
