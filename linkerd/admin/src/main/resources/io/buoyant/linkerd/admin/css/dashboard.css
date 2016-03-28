@@ -24,3 +24,22 @@ nav {
 nav ul.navbar-nav {
   margin-left: 18px;
 }
+
+.modal-content {
+  border-color: #fff;
+  background-color: #999;
+}
+
+/* dtab specific css overrides*/
+
+.panel {
+  background-color: transparent;
+}
+
+.panel-heading, .panel>.list-group:last-child .list-group-item:last-child {
+  border-radius: 0;
+}
+
+.dentry .dentry-part:hover {
+  background-color: #222;
+}

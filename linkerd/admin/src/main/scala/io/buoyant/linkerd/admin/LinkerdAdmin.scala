@@ -33,6 +33,7 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     )),
     "/delegator" -> new DelegateHandler(AdminHandler, () => dtabs, linker.namers),
     "/delegator.json" -> new DelegateApiHandler(linker.namers),
+    "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
   )

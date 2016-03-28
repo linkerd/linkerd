@@ -1,4 +1,5 @@
 var Delegator = (function() {
+  var templates;
 
   function renderAll(resp) {
     $('.result').html(renderNode(resp));
@@ -16,7 +17,8 @@ var Delegator = (function() {
     return templates.node(obj);
   }
 
-  return function($root, dtab, templates) {
+  return function($root, dtab, t) {
+    templates = t
     $root.html(templates.delegator({}));
 
     var dtabViewer = new DtabViewer(dtab, templates.dentry);
@@ -26,7 +28,9 @@ var Delegator = (function() {
       e.preventDefault();
       var path = $('#path-input').val();
       window.location.hash = encodeURIComponent(path);
-      var request = $.get("delegator.json?" + $.param({ n: path, d: dtabViewer.dtabStr() }), renderAll);
+      var request = $.get(
+        "/delegator.json?" + $.param({ n: path, d: dtabViewer.dtabStr() }),
+        renderAll.bind(this));
       request.fail(function( jqXHR ) {
         $(".error-modal").html(templates.errorModal(jqXHR.statusText));
         $('.error-modal').modal();
