@@ -6,6 +6,7 @@ var ProcInfo = (function() {
   var msToStr = new MsToStringConverter();
   var bytesToStr = new BytesToStringConverter();
   var refreshUri = "/admin/metrics";
+  var desiredMetrics = [];
 
   function pretty(name, value) {
     switch (name) {
@@ -17,8 +18,7 @@ var ProcInfo = (function() {
   }
 
   function render(data) {
-    var json = $.parseJSON(data);
-    _(json).each(function(obj) {
+    _(data).each(function(obj) {
       var id = obj.name.replace(/\//g, "-");
       var value = pretty(obj.name, obj.value);
       $("#"+id).text(value);
@@ -35,20 +35,27 @@ var ProcInfo = (function() {
       var key = $(this).data("key");
       if (key) {
         url += "&m="+key;
+        desiredMetrics.push(key);
       }
     });
 
     function update() {
       $.ajax({
         url: url,
-        dataType: "text",
+        dataType: "json",
         cache: false,
         success: render
       });
     }
 
     return {
-      start: function(interval) { setInterval(update, interval); }
+      start: function(interval) { setInterval(update, interval); }, // TODO: remove once linkerd#183 is complete
+      onMetricsUpdate: function(data) {
+        render(data.specific);
+      },
+      desiredMetrics: function() {
+        return desiredMetrics;
+      }
     };
   };
 })();

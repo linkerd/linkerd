@@ -11,11 +11,13 @@ $.when(
 ).done(function(overviewStatsRsp, metricsJson) {
   appendOverviewSection();
   var procInfo = ProcInfo();
+  var dashboard = Dashboard();
+
+  var metricsListeners = [procInfo, dashboard];
+  var metricsCollector = MetricsCollector(metricsListeners);
 
   $(function() {
-    var dashboard = Dashboard();
-    procInfo.start(UPDATE_INTERVAL);
-    dashboard.start(UPDATE_INTERVAL);
+    metricsCollector.start(UPDATE_INTERVAL);
   });
 
   function appendOverviewSection() {
@@ -44,28 +46,17 @@ $.when(
 var Dashboard = (function() {
 
   function render(data) {
-    var json = $.parseJSON(data);
     $(".test-div").text("Fill in content.");
   }
 
-  /**
-   * Returns a function that may be called to trigger an update.
-   */
   return function() {
-
-    function update() {
-      $.ajax({
-        url: "/admin/metrics.json",
-        dataType: "text",
-        cache: false,
-        success: function(metrics) {
-          render(metrics);
-        }
-      });
-    }
-
     return {
-      start: function(interval) { setInterval(update, interval); }
+      onMetricsUpdate: function(data) {
+        render(data.general);
+      },
+      desiredMetrics: function() {
+        return [];
+      }
     };
   };
 })();
