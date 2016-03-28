@@ -2,11 +2,12 @@ package io.l5d
 
 import com.twitter.finagle._
 import com.twitter.util.Var
+import io.buoyant.namer.NamerTestUtil
 import io.buoyant.namer.serversets.ServersetNamer
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
-class ServersetNamerTest extends FunSuite {
+class ServersetNamerTest extends FunSuite with NamerTestUtil {
 
   test("falls back to path prefixes") {
     namer("/foo/bar").lookup(Path.read("/foo/bar/x/y/z")).sample() match {
@@ -39,6 +40,11 @@ class ServersetNamerTest extends FunSuite {
         assert(name.path == Path.read("/x/y/z"))
       case _ => fail("failed to bind")
     }
+  }
+
+  test("id is bound name") {
+    val testNamer = namer("/test")
+    assertBoundIdAutobinds(testNamer, Path.read("/$/io.l5d.serversets/test"), testNamer.idPrefix)
   }
 
   def namer(path: String) = new ServersetNamer("host") {

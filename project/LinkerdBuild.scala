@@ -83,7 +83,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val fs = projectDir("namer/fs")
-      .dependsOn(core)
+      .dependsOn(core % "compile->compile;test->test")
       .withTests()
 
     val k8s = projectDir("namer/k8s")
