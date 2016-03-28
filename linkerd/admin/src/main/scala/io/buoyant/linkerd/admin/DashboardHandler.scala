@@ -20,16 +20,21 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
       content = s"""
         <div class="request-totals"></div>
         <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
-        <div class="row text-center">
-          Welcome to the beta dashboard!
-        </div>
-        <hr>
-        <div class="row text-center test-div">
-        </div>
+        <div class="text-center dashboard-container"></div>
         <hr>
       """,
       csses = Seq("dashboard.css"),
-      javaScripts = Seq("utils.js", "routers.js", "process_info.js", "metrics_collector.js", "request_totals.js", "dashboard.js"),
+      javaScripts = Seq(
+        "utils.js",
+        "process_info.js",
+        "routers.js",
+        "router_summary.js",
+        "router_server.js",
+        "router_controller.js",
+        "metrics_collector.js",
+        "request_totals.js",
+        "dashboard.js"
+      ),
       navbar = AdminHandler.version2NavBar
     )
   }

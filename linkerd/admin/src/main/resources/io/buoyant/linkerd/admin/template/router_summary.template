@@ -1,0 +1,58 @@
+
+<div class="router-summary router-{{router}} clearfix">
+  <div class="router-header">
+    <dt>Router</dt>
+    <dd>
+      {{#if router}}
+        {{router}}
+      {{else}}
+        inactive...
+      {{/if}}
+    </dd>
+  </div>
+
+  <div class="router-data">
+    <dl>
+      <span class="router-summary-stat">
+        <dt>Pending</dt>
+        <dd data-key="load">
+          {{#if load}}
+            {{load}}
+          {{else}}
+            0
+          {{/if}}
+        </dd>
+      </span>
+      <span class="router-summary-stat">
+        <dt>Requests</dt>
+        <dd data-key="requests">
+          {{#if requests}}
+            {{requests}}
+          {{else}}
+            0
+          {{/if}}
+        </dd>
+      </span>
+      <span class="router-summary-stat">
+        <dt>Success rate</dt>
+        <dd data-key="success-rate">
+          {{#if successRate}}
+            {{successRate}}
+          {{else}}
+            N/A
+          {{/if}}
+        </dd>
+      </span>
+      <span class="router-summary-stat">
+        <dt>Fail rate</dt>
+        <dd data-key="fail-rate">
+          {{#if failureRate}}
+            {{failureRate}}
+          {{else}}
+            N/A
+          {{/if}}
+        </dd>
+      </span>
+    </dl>
+  </div>
+</div>

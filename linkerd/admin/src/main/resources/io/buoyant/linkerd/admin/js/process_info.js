@@ -19,7 +19,7 @@ var ProcInfo = (function() {
 
   function render(data) {
     _(data).each(function(obj) {
-      var id = obj.name.replace(/\//g, "-");
+      var id = obj.name.replace(/[/$.]/g, "-");
       var value = pretty(obj.name, obj.value);
       $("#"+id).text(value);
     });
@@ -49,7 +49,7 @@ var ProcInfo = (function() {
     }
 
     return {
-      start: function(interval) { setInterval(update, interval); }, // TODO: remove once linkerd#183 is complete
+      start: function(interval) { setInterval(update, interval); }, // TODO: #198 remove once linkerd#183 is complete
       onMetricsUpdate: function(data) {
         render(data.specific);
       },
