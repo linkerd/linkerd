@@ -32,6 +32,7 @@ case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig], 
       } match {
         case None if (strict.getOrElse(true)) =>
           throw new MatcherError(s"Unable to match ${path.show} with available names: ${(names.map(_.prefix)).mkString(",")}")
+        case default => default
       }
 
     new TlsClientPrep.Module[Req, Rsp] {
