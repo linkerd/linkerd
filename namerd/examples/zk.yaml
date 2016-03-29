@@ -1,0 +1,10 @@
+storage:
+  kind: io.buoyant.namerd.storage.experimental.zk
+  hosts:
+  - localhost:2181
+interfaces:
+- kind: thriftNameInterpreter
+- kind: httpController
+namers:
+- kind: io.l5d.fs
+  rootDir: namerd/examples/disco

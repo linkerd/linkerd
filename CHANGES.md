@@ -6,6 +6,7 @@
   timeout against the marathon API.
 * Add a `enableProbation` config option for configuring a client's load balancer
   probation setting
+* Added namerd: a service for managing linkerd (and finagle) name delegation
 
 ## 0.2.1
 

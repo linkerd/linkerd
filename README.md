@@ -21,21 +21,11 @@ Tumblr, PagerDuty, and others.
 
 For more information, please see [linkerd.io](https://linkerd.io).
 
+This repo contains two main projects: linkerd itself and namerd, a service for
+centrally managing routing policy and fronting service discovery.
 
-## Quickstart ##
-
-To get up and running quickly, run:
-
-```
-$ ./sbt examples/http:run
-...
-I 0201 21:17:41.992 THREAD52: serving http on localhost/127.0.0.1:4140
-```
-
-Then, you may browse to http://localhost:9990 to see an admin
-dashboard. Running `curl http://localhost:9990/admin/shutdown` will
-initiate a graceful shutdown of a running router.
-
+* [linkerd](linkerd/README.md)
+* [namerd](namerd/README.md)
 
 ## Working in this repository ##
 
@@ -57,30 +47,52 @@ The sbt project consists of many sub-projects:
 ```
 > projects
 [info] In file:.../linkerd/
-[info] 	 * all
-[info] 	   consul
-[info] 	   examples
-[info] 	   k8s
-[info] 	   linkerd
-[info] 	   linkerd-admin
-[info] 	   linkerd-core
-[info] 	   linkerd-main
-[info] 	   linkerd-namer
-[info] 	   linkerd-namer-consul
-[info] 	   linkerd-namer-fs
-[info] 	   linkerd-namer-k8s
-[info] 	   linkerd-namer-serversets
-[info] 	   linkerd-protocol
-[info] 	   linkerd-protocol-http
-[info] 	   linkerd-protocol-mux
-[info] 	   linkerd-protocol-thrift
-[info] 	   router
-[info] 	   router-core
-[info] 	   router-http
-[info] 	   router-mux
-[info] 	   router-thrift
-[info] 	   router-thrift-idl
-[info] 	   test-util
+[info]     admin
+[info]   * all
+[info]     config
+[info]     consul
+[info]     interpreter-namerd
+[info]     k8s
+[info]     linkerd
+[info]     linkerd-admin
+[info]     linkerd-core
+[info]     linkerd-examples
+[info]     linkerd-identifier
+[info]     linkerd-identifier-http
+[info]     linkerd-main
+[info]     linkerd-protocol
+[info]     linkerd-protocol-benchmark
+[info]     linkerd-protocol-http
+[info]     linkerd-protocol-mux
+[info]     linkerd-protocol-thrift
+[info]     linkerd-tls
+[info]     marathon
+[info]     namer
+[info]     namer-consul
+[info]     namer-core
+[info]     namer-fs
+[info]     namer-k8s
+[info]     namer-marathon
+[info]     namer-serversets
+[info]     namerd
+[info]     namerd-core
+[info]     namerd-examples
+[info]     namerd-iface
+[info]     namerd-iface-control-http
+[info]     namerd-iface-interpreter-thrift
+[info]     namerd-iface-interpreter-thrift-idl
+[info]     namerd-main
+[info]     namerd-storage
+[info]     namerd-storage-in-memory
+[info]     namerd-storage-zk
+[info]     router
+[info]     router-core
+[info]     router-http
+[info]     router-mux
+[info]     router-thrift
+[info]     router-thrift-idl
+[info]     test-util
+[info]     validator
 ```
 
 These projects are configured in
@@ -212,6 +224,11 @@ build commands:
 [success] Total time: 13 s, completed Jan 29, 2016 4:30:58 PM
 ```
 
+Similarly, a namerd executable can be produced with the command:
+```
+> namerd/assembly
+```
+
 #### Releasing ####
 
 Before releasing ensure that [CHANGES.md](CHANGES.md) is updated to include the
@@ -225,8 +242,10 @@ For example, in order to build the 0.0.10 release of linkerd:
 
 1. Ensure that the head version is 0.0.10
 2. `git tag 0.0.10 && git push origin 0.0.10`
-3. `./sbt assembly` will produce an executable in
+3. `./sbt linkerd/assembly` will produce an executable in
 _linkerd/target/scala-2.11/linkerd-0.0.10-exec_.
+4. `./sbt namerd/assembly` will produce an executable in
+_namerd/target/scala-2.11/namerd-0.0.10-exec_.
 
 After release, don't forget to advance head to the next version.
 
@@ -234,7 +253,7 @@ After release, don't forget to advance head to the next version.
 
 Each of these configurations may be used to build a docker image.
 ```
-> linkerd/docker
+> ;linkerd/docker ;namerd/docker
 ...
 [info] Tagging image 94ab0793addf with name: io.buoyant/linkerd:0.0.10-SNAPSHOT
 ```
@@ -257,29 +276,6 @@ The list of image names may be changed with a command like:
 > show linkerd/bundle:docker::imageNames
 [info] List(io.buoyant/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
 ```
-
-
-### Running ###
-
-The `linkerd` project's packaging configurations may also be used to
-run linkerd locally, e.g.:
-
-```
-> linkerd/minimal:run path/to/config.yml
-```
-
-#### Example configurations ####
-
-Furthermore, the `examples` project contains example configurations
-that may be quickly started:
-
-```
-> examples/http:run
-```
-
-As additional configuration files are added into `examples/*.l5d`,
-these configurations will be discovered by sbt and added as
-configurations.
 
 ### Contributing ###
 
