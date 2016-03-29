@@ -9,7 +9,7 @@
     </div>
   </div>
 </div>
-<div class="well well-sm dtab">
+<div class="dtab">
   <h4 class="header">
     Dtab
     <button id="edit-dtab-btn" class="btn btn-info btn-sm">Edit</button>
