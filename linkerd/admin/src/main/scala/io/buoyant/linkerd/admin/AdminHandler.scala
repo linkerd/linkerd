@@ -48,7 +48,7 @@ object AdminHandler extends HtmlView {
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-header">
         <a class="navbar-brand-img" href="/">
-          <img alt="Logo" src="/files/images/logo.svg">
+          <img alt="Logo" src="/files/images/linkerd-horizontal-white-transbg-vectorized.svg">
         </a>
       </div>
       <div id="navbar" class="collapse navbar-collapse">

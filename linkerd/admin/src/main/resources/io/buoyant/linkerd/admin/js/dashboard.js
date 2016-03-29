@@ -7,14 +7,21 @@ var UPDATE_INTERVAL = 1000;
 
 $.when(
   $.get("/files/template/process_info.template"),
+  $.get("/files/template/request_totals.template"),
   $.get("/admin/metrics.json")
-).done(function(overviewStatsRsp, metricsJson) {
+).done(function(overviewStatsRsp, requestTotalsRsp, metricsJson) {
   appendOverviewSection();
+
+  var routers = Routers(metricsJson[0]);
+
   var procInfo = ProcInfo();
   var dashboard = Dashboard();
+  var requestTotals = RequestTotals($(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), routers);
 
-  var metricsListeners = [procInfo, dashboard];
+  var metricsListeners = [procInfo, dashboard, requestTotals];
   var metricsCollector = MetricsCollector(metricsListeners);
+
+
 
   $(function() {
     metricsCollector.start(UPDATE_INTERVAL);

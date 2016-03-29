@@ -18,6 +18,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
   def dashboardHtml = {
     AdminHandler.html(
       content = s"""
+        <div class="request-totals"></div>
         <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
         <div class="row text-center">
           Welcome to the beta dashboard!
@@ -28,7 +29,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <hr>
       """,
       csses = Seq("dashboard.css"),
-      javaScripts = Seq("utils.js", "process_info.js", "metrics_collector.js", "dashboard.js"),
+      javaScripts = Seq("utils.js", "routers.js", "process_info.js", "metrics_collector.js", "request_totals.js", "dashboard.js"),
       navbar = AdminHandler.version2NavBar
     )
   }
