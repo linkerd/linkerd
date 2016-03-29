@@ -30,7 +30,7 @@ function cleanup {
 function run_tests {
   export LOG_LEVEL=DEBUG
 
-  ./sbt examples/acceptance-test:run &
+  ./sbt linkerd-examples/acceptance-test:run &
 
   # Wait for linkerd to initialize
   sleep 60

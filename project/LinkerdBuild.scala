@@ -14,7 +14,8 @@ import pl.project13.scala.sbt.JmhPlugin
  * - router/ -- finagle router libraries
  * - namer/ -- name resolution
  * - config/ -- configuration utilities
- * - linkerd/ -- runtime, and modules
+ * - linkerd/ -- linkerd runtime and modules
+ * - namerd/ -- namerd runtime and modules
  * - test-util/ -- async test helpers; provided by [[Base]]
  */
 object LinkerdBuild extends Base {
@@ -104,6 +105,16 @@ object LinkerdBuild extends Base {
       .aggregate(core, consul, fs, k8s, marathon, serversets)
   }
 
+  object Interpreter {
+
+    Namerd.hashCode
+
+    val namerd = projectDir("interpreter/namerd")
+      .dependsOn(Namerd.Iface.interpreterThrift, Linkerd.core)
+      .withTests()
+
+  }
+
   val admin = projectDir("admin")
     .dependsOn(configCore, Namer.core)
     .withTwitterLib(Deps.twitterServer)
@@ -177,6 +188,43 @@ object LinkerdBuild extends Base {
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
+    /*
+     * linkerd packaging configurations.
+     *
+     * linkerd is configured to be assembled into an executable and may
+     * be assembled into a dockerfile.
+     */
+
+    /**
+     * An assembly-running script that adds the linkerd plugin directory
+     * to the classpath if it exists.
+     */
+    val linkerdExecScript =
+      """|#!/bin/sh
+         |
+         |jars="$0"
+         |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
+         |  for jar in $L5D_HOME/plugins/*.jar ; do
+         |    jars="$jars:$jar"
+         |  done
+         |fi
+         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |     $JVM_OPTIONS -cp $jars -server io.buoyant.Linkerd "$@"
+         |""".stripMargin.split("\n").toSeq
+
+    val Minimal = config("minimal")
+    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
+      mainClass := Some("io.buoyant.Linkerd"),
+      assemblyExecScript := linkerdExecScript,
+      dockerEnvPrefix := "L5D_"
+    )
+
+    val Bundle = config("bundle") extend Minimal
+    val BundleSettings = MinimalSettings ++ Seq(
+      assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
+      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
+    )
+
     val all = projectDir("linkerd")
       .aggregate(admin, core, main, configCore, Identifier.all, Namer.all, Protocol.all, tls)
       .configs(Minimal, Bundle)
@@ -188,7 +236,7 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Identifier.http,
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -198,61 +246,128 @@ object LinkerdBuild extends Base {
         dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
         dockerPush <<= dockerPush in Bundle
       )
+
+    // Find example configurations by searching the examples directory for config files.
+    val ConfigFileRE = """^(.*)\.l5d$""".r
+    val exampleConfigs = file("linkerd/examples").list().toSeq.collect {
+      case ConfigFileRE(name) => config(name) -> exampleConfig(name)
+    }
+    def exampleConfig(name:  String): Configuration = name match {
+      case "http" => Minimal
+      case _ => Bundle
+    }
+
+    val examples = projectDir("linkerd/examples")
+      .withExamples(Linkerd.all, exampleConfigs)
   }
 
-  /*
-   * linkerd packaging configurations.
-   *
-   * linkerd is configured to be assembled into an executable and may
-   * be assembled into a dockerfile.
-   */
+  object Namerd {
 
-  /**
-   * An assembly-running script that adds the linkerd plugin directory
-   * to the classpath if it exists.
-   */
-  val linkerdExecScript =
-    """|#!/bin/sh
-       |
-       |jars="$0"
-       |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
-       |  for jar in $L5D_HOME/plugins/*.jar ; do
-       |    jars="$jars:$jar"
-       |  done
-       |fi
-       |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-       |     $JVM_OPTIONS -cp $jars -server io.buoyant.Linkerd "$@"
-       |""".stripMargin.split("\n").toSeq
+    val core = projectDir("namerd/core")
+      .dependsOn(
+        Namer.core,
+        configCore,
+        admin,
+        Namer.fs % "test"
+      )
+      .withTests()
 
-  val Minimal = config("minimal")
-  val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
-    mainClass := Some("io.buoyant.Linkerd"),
-    assemblyExecScript := linkerdExecScript,
-    dockerEnvPrefix := "L5D_"
-  )
+    object Storage {
 
-  val Bundle = config("bundle") extend Minimal
-  val BundleSettings = MinimalSettings ++ Seq(
-    assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
-    imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
-  )
+      val inMemory = projectDir("namerd/storage/in-memory")
+        .dependsOn(core % "test->test;compile->compile")
+        .withTests()
 
-  // Find example configurations by searching the examples directory for config files.
-  val ConfigFileRE = """^(.*)\.l5d$""".r
-  val exampleConfigs = file("examples").list().toSeq.collect {
-    case ConfigFileRE(name) => config(name) -> exampleConfig(name)
+      val zk = projectDir("namerd/storage/zk")
+        .dependsOn(core)
+        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
+        .withTests()
+
+      val all = projectDir("namerd/storage")
+        .aggregate(inMemory, zk)
+    }
+
+    object Iface {
+
+      val controlHttp = projectDir("namerd/iface/control-http")
+        .dependsOn(core, Storage.inMemory % "test")
+        .withTwitterLib(Deps.finagle("http"))
+        .withTests()
+
+      val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
+        .withTwitterLib(Deps.finagle("thrift"))
+
+      val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
+        .dependsOn(core, interpreterThriftIdl)
+        .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
+        .withTests()
+
+      val all = projectDir("namerd/iface")
+        .aggregate(controlHttp, interpreterThrift)
+
+    }
+
+    val main = projectDir("namerd/main")
+      .dependsOn(core, admin, configCore)
+      .withBuildProperties()
+
+    val Minimal = config("minimal")
+    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
+      mainClass := Some("io.buoyant.namerd.Main"),
+      dockerEnvPrefix := "N4D"
+    )
+
+    val Bundle = config("bundle") extend Minimal
+    val BundleSettings = MinimalSettings ++ Seq(
+      assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
+      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
+    )
+
+    val all = projectDir("namerd")
+      .aggregate(core, Storage.all, Iface.all, main, Router.http)
+      .configs(Minimal, Bundle)
+      // Minimal cofiguration includes a runtime, HTTP routing and the
+      // fs service discovery.
+      .configDependsOn(Minimal)(
+        core, main, Namer.fs, Storage.inMemory, Router.http,
+        Iface.controlHttp, Iface.interpreterThrift
+      )
+      .settings(inConfig(Minimal)(MinimalSettings))
+      .withTwitterLib(Deps.finagle("stats") % Minimal)
+      // Bundle is includes all of the supported features:
+      .configDependsOn(Bundle)(
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Storage.zk
+      )
+      .settings(inConfig(Bundle)(BundleSettings))
+      .settings(
+        assembly <<= assembly in Bundle,
+        docker <<= docker in Bundle,
+        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
+        dockerPush <<= dockerPush in Bundle
+      )
+
+    // Find example configurations by searching the examples directory for config files.
+    val ConfigFileRE = """^(.*)\.yaml$""".r
+    val exampleConfigs = file("namerd/examples").list().toSeq.collect {
+      case ConfigFileRE(name) => config(name) -> exampleConfig(name)
+    }
+    def exampleConfig(name:  String): Configuration = name match {
+      case "basic" => Minimal
+      case _ => Bundle
+    }
+
+    val examples = projectDir("namerd/examples")
+      .withExamples(Namerd.all, exampleConfigs)
   }
-  def exampleConfig(name:  String): Configuration = name match {
-    case "http" => Minimal
-    case _ => Bundle
-  }
 
-  val examples = projectDir("examples")
-    .withExamples(Linkerd.all, exampleConfigs)
+  val validator = projectDir("validator")
+    .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
+    .settings(mainClass := Some("io.buoyant.namerd.Validator"))
 
   // All projects must be exposed at the root of the object:
 
   val linkerd = Linkerd.all
+  val linkerdExamples = Linkerd.examples
   val linkerdAdmin = Linkerd.admin
   val linkerdConfig = configCore
   val linkerdCore = Linkerd.core
@@ -278,10 +393,22 @@ object LinkerdBuild extends Base {
   val routerMux = Router.mux
   val routerThrift = Router.thrift
   val routerThriftIdl = Router.thriftIdl
+  val namerd = Namerd.all
+  val namerdExamples = Namerd.examples
+  val namerdCore = Namerd.core
+  val namerdStorageInMemory = Namerd.Storage.inMemory
+  val namerdStorageZk = Namerd.Storage.zk
+  val namerdStorage = Namerd.Storage.all
+  val namerdIfaceControlHttp = Namerd.Iface.controlHttp
+  val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
+  val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdIface = Namerd.Iface.all
+  val namerdMain = Namerd.main
+  val interpreterNamerd = Interpreter.namerd
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Router.all, Namer.all, configCore, admin, testUtil)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
     .settings(
       assembly <<= assembly in linkerd,

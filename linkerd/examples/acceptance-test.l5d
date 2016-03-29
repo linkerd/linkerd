@@ -5,7 +5,7 @@ admin:
 
 namers:
 - kind: io.l5d.fs
-  rootDir: ./examples/io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
 
 - kind: io.l5d.serversets
   zkAddrs:
@@ -20,7 +20,7 @@ namers:
   host: kubernetes.default.cluster.local
   port: 443
   tls: true
-  authTokenFile: ./examples/io.l5d.k8s/kube_token
+  authTokenFile: linkerd/examples/io.l5d.k8s/kube_token
 
 - kind: io.l5d.experimental.marathon
   prefix: /io.l5d.marathon

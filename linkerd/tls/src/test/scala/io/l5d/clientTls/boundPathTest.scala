@@ -11,11 +11,11 @@ class boundPathTest extends FunSuite {
     val meta = AddrMetadata(Addr.Metadata("id" -> "/foo/bar"))
     val params = Stack.Params.empty + meta
     val clientPrep = boundPath(
-        None,
-        Seq(NameMatcherConfig("/foo/{service}", "{service}")),
-        Some(true)
-      ).tlsClientPrep
-      assert(clientPrep.peerCommonName(params) == Some("bar"))
+      None,
+      Seq(NameMatcherConfig("/foo/{service}", "{service}")),
+      Some(true)
+    ).tlsClientPrep
+    assert(clientPrep.peerCommonName(params) == Some("bar"))
   }
 
   test("boundPath throws MatcherError on failed match in strict mode") {
