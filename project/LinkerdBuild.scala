@@ -303,7 +303,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("namerd/iface")
-        .aggregate(controlHttp, interpreterThrift)
+        .aggregate(controlHttp, interpreterThriftIdl, interpreterThrift)
 
     }
 
