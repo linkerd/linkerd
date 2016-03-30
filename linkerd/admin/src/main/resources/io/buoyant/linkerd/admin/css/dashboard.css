@@ -6,6 +6,14 @@ body {
   height: 100vh;
 }
 
+.container-fluid {
+  padding: 0;
+}
+
+.navbar {
+  margin-bottom: 0;
+}
+
 nav {
   padding: 9px 28px;
   font-size: 18px;
@@ -22,12 +30,35 @@ nav {
 }
 
 nav ul.navbar-nav {
-  margin-left: 18px;
+  margin-left: 10px;
 }
 
 .modal-content {
   border-color: #fff;
   background-color: #999;
+}
+
+/* request totals */
+
+.request-totals {
+  height: 72px;
+  padding: 15px 26px;
+  background: #163F79; /* For browsers that do not support gradients */
+  background: -webkit-linear-gradient(left top, #163F79, #4076C4);
+  background: -o-linear-gradient(bottom right, #163F79, #4076C4);
+  background: -moz-linear-gradient(bottom right, #163F79, #4076C4);
+  background: linear-gradient(to bottom right, #163F79, #4076C4);
+}
+
+.request-total {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.request-total-title {
+  font-weight: 100;
+  font-size: 13px;
+  letter-spacing: 1px;
 }
 
 /* dtab specific css overrides*/
