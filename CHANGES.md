@@ -1,12 +1,13 @@
 ## 0.3.0
 
-* Breaking change to configs: `httpUriInDst` is now specified under the
-  `identifier` header (see docs for add'l info)
+* Added :sparkles: namerd :sparkles: : a service for managing linkerd (and finagle)
+  name delegation.
+* **Breaking change** to configs: `httpUriInDst` is now specified under the
+  `identifier` header (see linkerd/docs/config.md for add'l info)
 * Add a `ttlMs` marathon namer config option to configure the polling
   timeout against the marathon API.
 * Add a `enableProbation` config option for configuring a client's load balancer
   probation setting
-* Added namerd: a service for managing linkerd (and finagle) name delegation
 
 ## 0.2.1
 
