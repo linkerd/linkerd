@@ -23,13 +23,11 @@ $.when(
 
   var procInfo = ProcInfo();
   var dashboard = Dashboard();
-  var requestTotals = RequestTotals($(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), routers);
+  var requestTotals = RequestTotals($(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
   var routerDisplays = RouterController(selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   var metricsListeners = [procInfo, dashboard, requestTotals, routerDisplays];
   var metricsCollector = MetricsCollector(metricsListeners);
-
-
 
   $(function() {
     metricsCollector.start(UPDATE_INTERVAL);
