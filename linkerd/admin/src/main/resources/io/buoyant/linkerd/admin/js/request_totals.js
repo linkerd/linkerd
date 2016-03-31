@@ -1,57 +1,35 @@
 "use strict";
 
 var RequestTotals = (function() {
-  const SERVER = "server";
-  const CLIENT = "client";
-
-
   var metricDefinitions = [
     {
       description: "Current requests",
-      metricSuffix: "requests",
-      metricType: SERVER
+      query: Query.serverQuery().allRouters().allServers().withMetric("requests").build()
     },
     {
       description: "Pending",
-      metricSuffix: "load",
-      metricType: SERVER
+      query: Query.serverQuery().allRouters().allServers().withMetric("load").build()
     },
     {
       description: "Incoming Connections",
-      metricSuffix: "connections",
-      metricType: SERVER
+      query: Query.serverQuery().allRouters().allServers().withMetric("connections").build()
     },
     {
       description: "Outgoing Connections",
-      metricSuffix: "connections",
-      metricType: CLIENT
+      query: Query.clientQuery().allRouters().allClients().withMetric("connections").build()
     },
   ];
 
+  function matchesQuery(metricName, defn) {
+    return metricName.search(defn.query) >= 0;
+  }
 
-  /*
-   * Maps metric definitions of a specific type to metric ids
-   * using provided prefixes and definition suffixes
-   */
-  function toMetricIds(objs, metricType) {
-    var metrics = _.filter(metricDefinitions, ["metricType", metricType]);
-    return _(objs).map(function(obj) {
-      return _.map(metrics, function(metric) {
-        return obj.prefix + metric.metricSuffix;
+  function desiredMetrics(possibleMetrics) {
+    return _.filter(possibleMetrics, function(m) {
+      return _.find(metricDefinitions, function(defn) {
+        return matchesQuery(m, defn);
       });
-    }).flatten().value();
-  }
-
-  function serversToMetricIds(routers) {
-    return toMetricIds(routers.servers(), SERVER);
-  }
-
-  function clientsToMetricIds(routers) {
-    return toMetricIds(routers.clients(), CLIENT);
-  }
-
-  function desiredMetrics(routers) {
-    return (serversToMetricIds(routers)).concat(clientsToMetricIds(routers));
+    })
   }
 
   function render($root, template, metricData) {
@@ -60,40 +38,25 @@ var RequestTotals = (function() {
     }));
   }
 
-  function filterMetricsByIds(metrics, ids) {
-    return _.filter(metrics, function(m) {
-      return ids.indexOf(m.name) >= 0;
-    });
-  }
-
-  /*
-   * Filter metrics by suffix and return the sum of their deltas
-   */
-  function sumMetricsForDefinition(metrics, defn) {
-    var filteredResponses = _.filter(metrics, function(m){ return m.name.indexOf(defn.metricSuffix) > 0 });
-    return _.sumBy(filteredResponses, 'delta');
-  }
-
-  return function($root, template, routers) {
+  return function($root, template, initialList) {
+    var metricsList = initialList;
     render($root, template, metricDefinitions);
     return {
       onMetricsUpdate: function(data) {
-        var serverMetrics = filterMetricsByIds(data.specific, serversToMetricIds(routers));
-        var clientMetrics = filterMetricsByIds(data.specific, clientsToMetricIds(routers));
-
+        metricsList = _.keys(data.general);
         var transformedData = _.map(metricDefinitions, function(defn) {
-          var metrics = defn.metricType === SERVER ? serverMetrics : clientMetrics;
-          var value = sumMetricsForDefinition(metrics, defn);
+          var metricsByQuery = _.filter(data.specific, function(m) { return matchesQuery(m.name, defn); });
+          var value = _.sumBy(metricsByQuery, 'delta');
           return {
             description: defn.description,
             value: value
-          }
+          };
         });
 
         render($root, template, transformedData);
 
       },
-      desiredMetrics: function() { return desiredMetrics(routers); }
+      desiredMetrics: function() { return desiredMetrics(metricsList); }
     };
   }
 })();

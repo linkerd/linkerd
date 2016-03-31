@@ -33,8 +33,8 @@
  */
 var Routers = (function() {
 
-  var clientRE = /^rt\/(.+)\/dst\/id\/(.*)\/requests$/,
-      serverRE = /^rt\/(.+)\/srv\/([^/]+)\/(\d+)\/requests$/;
+  var clientRE = Query.clientQuery().withMetric("requests").build(),
+      serverRE = Query.serverQuery().withMetric("requests").build();
 
   var mkColor = function() {
     var colorIdx = 0;

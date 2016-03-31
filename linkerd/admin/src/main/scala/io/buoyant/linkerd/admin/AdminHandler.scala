@@ -109,6 +109,7 @@ object AdminHandler extends HtmlView {
           <script src="/files/js/lib/lodash.min.js"></script>
           <script src="/files/js/lib/handlebars-v4.0.5.js"></script>
           <script src="/files/js/admin.js"></script>
+          <script src="/files/js/query.js"></script>
           $javaScriptsHtml
         </body>
       </html>
