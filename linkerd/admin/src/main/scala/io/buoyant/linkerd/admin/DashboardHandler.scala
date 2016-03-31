@@ -22,6 +22,8 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
         <div class="text-center dashboard-container"></div>
         <hr>
+        <div class="row text-center proc-info">
+        </div>
       """,
       csses = Seq("dashboard.css"),
       javaScripts = Seq(
