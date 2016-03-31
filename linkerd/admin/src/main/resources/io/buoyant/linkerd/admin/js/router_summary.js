@@ -14,16 +14,23 @@ var RouterSummary = (function() {
     }).flatten().value();
   }
 
-  function processResponses(data) {
+  function processResponses(data, routerName) {
+    var process = function(metricName) { return processResponse(data, routerName, metricName); };
+
     var result = {
-      router: data.router,
-      load: data.load.delta,
-      requests: data.requests.delta,
-      success: !data.success ? 0 : data.success.delta,
-      failures: !data.failures ? 0 : data.failures.delta
+      router: routerName,
+      load: process("load"),
+      requests: process("requests"),
+      success: process("success"),
+      failures: process("failures")
     }
     var rates = getSuccessAndFailureRate(result);
     return  $.extend(result, rates);
+  }
+
+  function processResponse(data, routerName, metricName) {
+    var datum = Query.find(Query.clientQuery().withRouter(routerName).withMetric(metricName).build(), data);
+    return !datum ? 0 : datum.delta;
   }
 
   function getSuccessAndFailureRate(result) {
@@ -51,18 +58,16 @@ var RouterSummary = (function() {
     $summaryEl.html(template(routerData));
   }
 
-  return function(routers, summaryTemplate, $summaryEl, routerName) {
-    var metricsParams = clientsToMetricParam(routers.clients(routerName));
-    routers.onAddedClients(addClients, metricsParams, routerName);
+  return function(metricsCollector, routers, summaryTemplate, $summaryEl, routerName) {
+    var query = Query.clientQuery().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
+
     renderRouterSummary({ router: routerName }, summaryTemplate, routerName, $summaryEl);
 
-    return {
-      onMetricsUpdate: function(data) {
-        var summaryData = processResponses(data);
+    metricsCollector.registerListener(function(data) {
+        var summaryData = processResponses(data.specific, routerName);
         renderRouterSummary(summaryData, summaryTemplate, routerName, $summaryEl);
-      },
-      desiredMetrics: function() { return metricsParams; },
-      getRouterName: function() { return routerName; }
-    };
+      }, function(metrics) { return Query.filter(query, metrics); });
+
+    return {};
   };
 })();

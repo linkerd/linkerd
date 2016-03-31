@@ -2,49 +2,41 @@
   A module to consolidate our backend metric requests. Collects all metrics that
   we need and gets them in two requests - one to metrics.json and one to metrics
   with the desired params.
-
-  Register a listener to receive metric updates. Each listener needs to implement:
-    - onMetricsUpdate(data) - to handle new incoming data
-      data is of the form:
-      {
-        general: {}, // data obtained from /metrics.json
-        specific: {} // data obtained from /metrics?m=...
-      }
-    - desiredMetrics() - returns a list of metrics the listener wants
 */
 var MetricsCollector = (function() {
   var generalUpdateUri = "/admin/metrics.json";
   var metricsUpdateUri = "/admin/metrics?";
   var listeners = [];
 
-  function url(listeners) {
-    var params = _.reduce(listeners, function(mem, listener) {
-      return mem.concat(listener.desiredMetrics())
-    }, []);
-
+  function url(listeners, defaultMetrics) {
+    var params = _(listeners)
+      .map(function(listener){ return listener.metrics(defaultMetrics); })
+      .flatten()
+      .uniq()
+      .value();
     return metricsUpdateUri + $.param({ m: params }, true);
   }
 
-  function validateListener(listener) {
-    if (!listener.onMetricsUpdate || !listener.desiredMetrics) {
-      console.error("This listener needs to implement onMetricsUpdate and desiredMetrics");
-      return false;
-    }
-    return true;
-  }
-
-  function registerListener(listener) {
-    validateListener(listener);
-    listeners.push(listener);
+  /**
+    Register a listener to receive metric updates.
+    handler: function called with incoming data of the form:
+      {
+        general: {}, // data obtained from /metrics.json
+        specific: {} // data obtained from /metrics?m=...
+      }
+    metrics: returns a list of metrics the listener wants.
+      Called with a list of metric names to choose from.
+  */
+  function registerListener(handler, metrics) {
+    listeners.push({handler: handler, metrics: metrics});
   }
 
   function deregisterListener(listener) {
-    _.remove(listeners, function(l) { return l === listener; });
+    _.remove(listeners, function(l) { return l.handler === listener; });
   }
 
-  return function(initialListeners) {
-    _.each(initialListeners, validateListener);
-    listeners = listeners.concat(initialListeners);
+  return function(initialMetrics) {
+    var defaultMetrics = _.keys(initialMetrics);
 
     function update() {
       var general = $.ajax({
@@ -54,7 +46,7 @@ var MetricsCollector = (function() {
       });
 
       var metricSpecific = $.ajax({
-        url: url(listeners),
+        url: url(listeners, defaultMetrics),
         dataType: "json",
         cache: false
       });
@@ -65,8 +57,10 @@ var MetricsCollector = (function() {
           specific: metricSpecificData[0]
         }
 
+        defaultMetrics = _.keys(data.general);
+
         _.each(listeners, function(listener) {
-          listener.onMetricsUpdate(data);
+          listener.handler(data);
         });
       });
     }

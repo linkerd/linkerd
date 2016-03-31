@@ -20,16 +20,9 @@ var RequestTotals = (function() {
     },
   ];
 
-  function matchesQuery(metricName, defn) {
-    return metricName.search(defn.query) >= 0;
-  }
-
   function desiredMetrics(possibleMetrics) {
-    return _.filter(possibleMetrics, function(m) {
-      return _.find(metricDefinitions, function(defn) {
-        return matchesQuery(m, defn);
-      });
-    })
+    var metaQuery = _.map(metricDefinitions, "query.source");
+    return Query.filter(new RegExp(metaQuery.join("|")), possibleMetrics);
   }
 
   function render($root, template, metricData) {
@@ -38,25 +31,22 @@ var RequestTotals = (function() {
     }));
   }
 
-  return function($root, template, initialList) {
-    var metricsList = initialList;
+  return function(metricsCollector, $root, template) {
+    function onMetricsUpdate(data) {
+      var transformedData = _.map(metricDefinitions, function(defn) {
+        var metricsByQuery = Query.filter(defn.query, data.specific);
+        var value = _.sumBy(metricsByQuery, 'delta');
+        return {
+          description: defn.description,
+          value: value
+        };
+      });
+
+      render($root, template, transformedData);
+    }
+
     render($root, template, metricDefinitions);
-    return {
-      onMetricsUpdate: function(data) {
-        metricsList = _.keys(data.general);
-        var transformedData = _.map(metricDefinitions, function(defn) {
-          var metricsByQuery = _.filter(data.specific, function(m) { return matchesQuery(m.name, defn); });
-          var value = _.sumBy(metricsByQuery, 'delta');
-          return {
-            description: defn.description,
-            value: value
-          };
-        });
-
-        render($root, template, transformedData);
-
-      },
-      desiredMetrics: function() { return desiredMetrics(metricsList); }
-    };
+    metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
+    return {};
   }
 })();
