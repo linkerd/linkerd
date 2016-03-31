@@ -3,6 +3,12 @@
 admin:
   port: 9990
 
+tracers:
+- kind: io.l5d.zipkin
+  host: zipkincollector
+  port: 9410
+  sampleRate: 0.02
+
 namers:
 - kind: io.l5d.fs
   rootDir: linkerd/examples/io.l5d.fs

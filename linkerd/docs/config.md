@@ -407,6 +407,37 @@ routers:
     /overNineThousand => /$/inet/127.0.1/9001;
 ```
 
+<a name="tracing"></a>
+## Tracers
+
+Requests that are routed by linkerd are also traceable using Finagle's built-in
+tracing instrumentation. Trace data can be exported from a linkerd process by
+configuring tracers via a top-level `tracers` section:
+
+* *tracers* --
+  * *kind* -- One of the supported tracers, by fully-qualified class name.
+  * Any options specific to the tracer
+
+Current tracers include:
+
+### io.l5d.zipkin
+
+Finagle's [zipkin-tracer](https://github.com/twitter/finagle/tree/develop/finagle-zipkin).
+
+* *host* -- Optional. Host to send trace data to. (default: localhost)
+* *port* -- Optional. Port to send trace data to. (default: 9410)
+* *sampleRate* -- Optional. How much data to collect. (default: 0.001)
+
+For example:
+
+```yaml
+tracers:
+- kind: io.l5d.zipkin
+  host: localhost
+  port: 9410
+  sampleRate: 0.02
+```
+
 <a name="naming"></a>
 ## Service discovery and naming
 

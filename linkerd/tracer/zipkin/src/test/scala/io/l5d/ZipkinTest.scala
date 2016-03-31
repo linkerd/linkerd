@@ -1,0 +1,33 @@
+package io.l5d
+
+import com.twitter.finagle.util.LoadService
+import io.buoyant.config.Parser
+import io.buoyant.linkerd.{TracerConfig, TracerInitializer}
+import org.scalatest.FunSuite
+
+class ZipkinTest extends FunSuite {
+
+  test("sanity") {
+    // ensure it doesn't totally blowup
+    zipkin(None, None, None).newTracer()
+  }
+
+  test("service registration") {
+    assert(LoadService[TracerInitializer]().exists(_.isInstanceOf[ZipkinTracerInitializer]))
+  }
+
+  test("parse config") {
+    val yaml = s"""
+                  |kind: io.l5d.zipkin
+                  |host: foo
+                  |port: 1234
+                  |sampleRate: 0.5
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(ZipkinTracerInitializer)))
+    val zipkin = mapper.readValue[TracerConfig](yaml).asInstanceOf[zipkin]
+    assert(zipkin.host == Some("foo"))
+    assert(zipkin.port == Some(1234))
+    assert(zipkin.sampleRate == Some(0.5))
+  }
+}

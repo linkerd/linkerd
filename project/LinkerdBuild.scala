@@ -174,6 +174,16 @@ object LinkerdBuild extends Base {
         .enablePlugins(JmhPlugin)
     }
 
+    object Tracer {
+      val zipkin = projectDir("linkerd/tracer/zipkin")
+        .withTwitterLib(Deps.finagle("zipkin"))
+        .dependsOn(core)
+        .withTests()
+
+      val all = projectDir("linkerd/tracer")
+        .aggregate(zipkin)
+    }
+
     val admin = projectDir("linkerd/admin")
       .withTwitterLib(Deps.twitterServer)
       .withTests()
@@ -226,7 +236,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, configCore, Identifier.all, Namer.all, Protocol.all, tls)
+      .aggregate(admin, core, main, configCore, Identifier.all, Namer.all, Protocol.all, Tracer.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -238,6 +248,7 @@ object LinkerdBuild extends Base {
         Identifier.http,
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
+        Tracer.zipkin,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
@@ -386,6 +397,8 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
+  val linkerdTracer = Linkerd.Tracer.all
+  val linkerdTracerZipkin = Linkerd.Tracer.zipkin
   val linkerdTls = Linkerd.tls
   val router = Router.all
   val routerCore = Router.core
