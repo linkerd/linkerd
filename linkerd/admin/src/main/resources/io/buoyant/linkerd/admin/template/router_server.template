@@ -1,0 +1,30 @@
+<div class="server-header router-header-large">
+  {{server}}
+</div>
+
+<div class="server-metrics">
+  <dl>
+  {{#each metrics}}
+    <div class="col-md-2">
+      <dt>
+        {{description}}
+      </dt>
+      <dd>
+        <span class="metric-medium">
+          {{#if value}}
+            {{value}}
+          {{else}}
+            0
+          {{/if}}
+        </span>
+
+        <span class="metric-small">
+          {{#if rate}}
+            {{rate}}
+          {{/if}}
+        </span>
+      </dd>
+    </div>
+  {{/each}}
+  </dl>
+</div>

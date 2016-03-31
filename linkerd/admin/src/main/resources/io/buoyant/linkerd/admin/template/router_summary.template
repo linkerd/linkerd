@@ -1,6 +1,6 @@
 
 <div class="router-summary router-{{router}} clearfix">
-  <div class="router-header">
+  <div class="router-header metric-large">
     <dt>Router</dt>
     <dd>
       {{#if router}}
@@ -12,7 +12,7 @@
   </div>
 
   <div class="router-data">
-    <dl>
+    <dl class="metric-large">
       <span class="router-summary-stat">
         <dt>Pending</dt>
         <dd data-key="load">

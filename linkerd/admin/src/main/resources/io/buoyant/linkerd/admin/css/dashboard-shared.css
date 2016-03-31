@@ -1,0 +1,26 @@
+/*
+* Styles from the new dashboard that are general enough to share.
+*/
+
+.metric-large dt {
+  font-size: 14px;
+}
+
+.router-header-large, .metric-large, .metric-large dd {
+  font-size: 30px;
+  line-height: 37px;
+}
+
+.metric-medium dt {
+  font-size: 14px;
+}
+
+.router-header-medium, .metric-medium, .metric-medium dd {
+  font-size: 16px;
+  line-height: 32px;
+}
+
+.metric-small {
+  font-size: 12px;
+  line-height: 16px;
+}

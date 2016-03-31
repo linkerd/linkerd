@@ -3,7 +3,7 @@ body {
   background-size: cover;
   background-repeat: no-repeat;
   color: #FFFFFF;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .container-fluid {
@@ -75,6 +75,18 @@ nav ul.navbar-nav {
   background-color: #222;
 }
 
+.router {
+  border-top: 3px solid gray;
+}
+
+.router div {
+  text-align: left;
+}
+
+.router > div {
+  padding:15px;
+}
+
 /*
 * Router summary
 */
@@ -83,13 +95,8 @@ nav ul.navbar-nav {
   clear: both;
 }
 
-.router-summary div {
-  padding: 10px;
-}
-
 .router-header {
   float: left;
-  text-align: left;
 }
 
 .router-data {
@@ -100,23 +107,4 @@ nav ul.navbar-nav {
   float: left;
   margin: 0 30px;
   text-align: right;
-}
-
-
-.router-summary dt {
-  font-size: 14px;
-}
-
-.router-summary dd {
-  font-size: 30px;
-  line-height: 37px;
-}
-
-/*
-* Router server
-*/
-
-.router-server {
-  text-align: left;
-  padding: 0 10px;
 }
