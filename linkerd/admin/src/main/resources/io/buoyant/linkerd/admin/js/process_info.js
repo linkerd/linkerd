@@ -6,7 +6,15 @@ var ProcInfo = (function() {
   var msToStr = new MsToStringConverter();
   var bytesToStr = new BytesToStringConverter();
   var refreshUri = "/admin/metrics";
-  var desiredMetrics = [];
+  var template;
+
+  var stats = [
+    { description: "linkerd version", dataKey: "" },
+    { description: "uptime", dataKey: "jvm/uptime",  value: "0s" },
+    { description: "thread count", dataKey: "jvm/thread/count", value: "0" },
+    { description: "memory used", dataKey: "jvm/mem/current/used", value: "0MB" },
+    { description: "gc", dataKey: "jvm/gc/msec", value: "1ms" }
+  ];
 
   function pretty(name, value) {
     switch (name) {
@@ -17,26 +25,30 @@ var ProcInfo = (function() {
     }
   }
 
-  function render(data) {
-    _(data).each(function(obj) {
-      var id = obj.name.replace(/[/$.]/g, "-");
-      var value = pretty(obj.name, obj.value);
-      $("#"+id).text(value);
+  function render($root, data) {
+    var templateData = _.map(stats, function(stat) {
+      if (stat.dataKey) {
+        var obj = _.find(data, ["name", stat.dataKey]);
+        var value = pretty(obj.name, obj.value);
+        return _.merge(stat, {value: value});
+      } else {
+        return stat;
+      }
     });
+    $root.html(template({stats: templateData}))
   }
 
   /**
    * Returns a function that may be called to trigger an update.
    */
-  return function() {
+  return function($root, t, buildVersion) {
+    template = t
+    stats[0].value = buildVersion;
     var url = refreshUri + "?";
 
-    $("#process-info ul li").each(function(i) {
-      var key = $(this).data("key");
-      if (key) {
-        url += "&m="+key;
-        desiredMetrics.push(key);
-      }
+    _.map(stats, function(stat) {
+      if (stat.dataKey)
+        url += "&m="+stat.dataKey;
     });
 
     function update() {
@@ -44,17 +56,19 @@ var ProcInfo = (function() {
         url: url,
         dataType: "json",
         cache: false,
-        success: render
+        success: function(data) {
+          render($root, data);
+        }
       });
     }
 
     return {
       start: function(interval) { setInterval(update, interval); }, // TODO: #198 remove once linkerd#183 is complete
       onMetricsUpdate: function(data) {
-        render(data.specific);
+        render($root, data.specific);
       },
       desiredMetrics: function() {
-        return desiredMetrics;
+        return _.map(stats, "dataKey");
       }
     };
   };

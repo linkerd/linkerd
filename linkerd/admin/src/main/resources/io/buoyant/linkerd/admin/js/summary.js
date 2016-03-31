@@ -18,10 +18,11 @@ Handlebars.registerHelper('pluralize', function(number, single, plural) {
  * - Interfaces: client and server widgets
  */
 $.when(
+  $.get("/files/template/process_info.template"),
   $.get("/files/template/interfaces.template"),
   $.get("/files/template/request_stats.template"),
   $.get("/admin/metrics.json")
-).done(function(interfacesRsp, requestStatsRsp, metricsJson) {
+).done(function(processInfoRsp, interfacesRsp, requestStatsRsp, metricsJson) {
   var ifacesTemplate = Handlebars.compile(interfacesRsp[0]),
       summaryTemplate = Handlebars.compile(requestStatsRsp[0]),
       routers = Routers(metricsJson[0]),
@@ -29,7 +30,7 @@ $.when(
 
   $(function() {
     var selectedRouter = getSelectedRouter();
-    var procInfo = ProcInfo(),
+    var procInfo = ProcInfo($("#process-info"), Handlebars.compile(processInfoRsp[0]), $("#linkerd-version").text()),
         bigBoard = BigBoard(selectedRouter, routers, summaryTemplate),
         interfaces = Interfaces(selectedRouter, routers, namers, ifacesTemplate);
 
