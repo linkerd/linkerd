@@ -74,3 +74,49 @@ nav ul.navbar-nav {
 .dentry .dentry-part:hover {
   background-color: #222;
 }
+
+/*
+* Router summary
+*/
+
+.router-summary {
+  clear: both;
+}
+
+.router-summary div {
+  padding: 10px;
+}
+
+.router-header {
+  float: left;
+  text-align: left;
+}
+
+.router-data {
+  float: right;
+}
+
+.router-data span {
+  float: left;
+  margin: 0 30px;
+  text-align: right;
+}
+
+
+.router-summary dt {
+  font-size: 14px;
+}
+
+.router-summary dd {
+  font-size: 30px;
+  line-height: 37px;
+}
+
+/*
+* Router server
+*/
+
+.router-server {
+  text-align: left;
+  padding: 0 10px;
+}

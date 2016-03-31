@@ -6,19 +6,27 @@
 var UPDATE_INTERVAL = 1000;
 
 $.when(
+  $.get("/files/template/router_container.template"),
+  $.get("/files/template/router_summary.template"),
   $.get("/files/template/process_info.template"),
   $.get("/files/template/request_totals.template"),
   $.get("/admin/metrics.json")
-).done(function(overviewStatsRsp, requestTotalsRsp, metricsJson) {
+).done(function(routerContainerRsp, routerSummaryRsp, overviewStatsRsp, requestTotalsRsp, metricsJson) {
   appendOverviewSection();
 
+  var selectedRouter = getSelectedRouter(); // TODO: update this to avoid passing params in urls #198
   var routers = Routers(metricsJson[0]);
+  var routerTemplates = {
+    summary: Handlebars.compile(routerSummaryRsp[0]),
+    container: Handlebars.compile(routerContainerRsp[0])
+  }
 
   var procInfo = ProcInfo();
   var dashboard = Dashboard();
   var requestTotals = RequestTotals($(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), routers);
+  var routerDisplays = RouterController(selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
-  var metricsListeners = [procInfo, dashboard, requestTotals];
+  var metricsListeners = [procInfo, dashboard, requestTotals, routerDisplays];
   var metricsCollector = MetricsCollector(metricsListeners);
 
 
@@ -36,6 +44,7 @@ $.when(
   }
 
   function getOverviewStatsData() {
+    // todo: move to process_info.js after old dashboard is killed #198
     var buildVersion = $(".server-data").data("linkerd-version");
 
     return {
@@ -53,7 +62,6 @@ $.when(
 var Dashboard = (function() {
 
   function render(data) {
-    $(".test-div").text("Fill in content.");
   }
 
   return function() {
