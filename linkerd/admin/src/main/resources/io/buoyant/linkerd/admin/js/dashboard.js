@@ -19,7 +19,7 @@ $.when(
     container: Handlebars.compile(routerContainerRsp[0])
   }
 
-  var metricsCollector = MetricsCollector();
+  var metricsCollector = MetricsCollector(metricsJson[0]);
 
   var buildVersion = $(".server-data").data("linkerd-version");
   var procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);

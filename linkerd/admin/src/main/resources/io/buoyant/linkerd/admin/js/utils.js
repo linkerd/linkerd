@@ -96,18 +96,19 @@ SuccessRate.prototype.rateStyle = function() {
  * Smoothie Utils
  */
 
-function UpdateableChart(userOpts, canvas, widthFn) {
+function UpdateableChart(userOpts, canvas, widthFn, tsOpts) {
   this.canvas = canvas;
   this.widthFn = widthFn;
 
   this.chart = undefined;
   this.timeout = undefined;
   this.tsMap = undefined;
+  this.tsOpts = tsOpts;
 
   var defaults = {
     grid: {
       strokeStyle: 'rgba(39,66,69,0.3)',
-      fillStyle: 'rgb(255,255,255)',
+      fillStyle: 'rgba(255,255,255, 0)',
       verticalSections: 2,
       millisPerLine: 5000
     },
@@ -120,7 +121,7 @@ function UpdateableChart(userOpts, canvas, widthFn) {
     millisPerPixel: 30
   }
 
-  this.chart = new SmoothieChart($.extend(defaults, userOpts));
+  this.chart = new SmoothieChart(_.merge(defaults, userOpts));
   this.chart.streamTo(this.canvas, 1000);
 
   window.addEventListener('resize', this._resize.bind(this), false);
@@ -131,7 +132,7 @@ UpdateableChart.prototype.setMetric = function(metric) {
   this.setMetrics([{ name: metric, color: "83,176,196"}]);
 }
 
-UpdateableChart.prototype.setMetrics = function(metrics) {
+UpdateableChart.prototype.setMetrics = function(metrics, suppressUpdates) {
   clearTimeout(this.timeout);
 
   if (this.tsMap !== undefined) {
@@ -144,7 +145,8 @@ UpdateableChart.prototype.setMetrics = function(metrics) {
   _.each(metrics, this._addMetric.bind(this));
 
   this.metrics = _.map(metrics, 'name');
-  this._getMetrics();
+  if (!suppressUpdates)
+    this._getMetrics();
 }
 
 UpdateableChart.prototype.addMetrics = function(metrics) {
@@ -153,14 +155,17 @@ UpdateableChart.prototype.addMetrics = function(metrics) {
 }
 
 UpdateableChart.prototype._addMetric = function(metric) {
-  this.tsMap[metric.name] = new TimeSeries();
-  this.chart.addTimeSeries(
-    this.tsMap[metric.name],
-    {
+  var tsOptions = this.tsOpts ? this.tsOpts(metric.name) :  {
       strokeStyle: "rgb(" + metric.color + ")",
       fillStyle: "rgba(" + metric.color + ",0.3)",
       lineWidth: 3
-  });
+    };
+
+  this.tsMap[metric.name] = new TimeSeries();
+  this.chart.addTimeSeries(
+    this.tsMap[metric.name],
+    tsOptions
+  );
 }
 
 UpdateableChart.prototype._resize = function() {
@@ -174,18 +179,7 @@ UpdateableChart.prototype._getMetrics = function() {
       dataType: "json",
       cache: false,
       success: (function(data) {
-        _.each(data, function(datum){
-          this.tsMap[datum.name].append(new Date().getTime(), datum.delta);
-        }.bind(this));
-
-        $(this.canvas).trigger(
-          "stat",
-          [
-            this.metrics,
-            _.sumBy(data, 'delta')
-          ]
-        );
-
+        this.updateMetrics(data);
         this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
       }).bind(this)
     });
@@ -193,3 +187,23 @@ UpdateableChart.prototype._getMetrics = function() {
     this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
   }
 }
+
+UpdateableChart.prototype.updateMetrics = function(data) {
+  _.each(data, function(datum){
+    var ts = this.tsMap[datum.name];
+    if (!ts) {
+      this._addMetric(datum);
+      ts = this.tsMap[datum.name];
+    }
+    ts.append(new Date().getTime(), datum.delta);
+  }.bind(this));
+
+  $(this.canvas).trigger(
+    "stat",
+    [
+      this.metrics,
+      _.sumBy(data, 'delta')
+    ]
+  );
+}
+

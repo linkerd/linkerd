@@ -27,10 +27,12 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
       """,
       csses = Seq("dashboard.css"),
       javaScripts = Seq(
+        "lib/smoothie.js",
         "utils.js",
         "process_info.js",
         "routers.js",
         "router_summary.js",
+        "combined_client_graph.js",
         "router_server.js",
         "router_controller.js",
         "metrics_collector.js",
