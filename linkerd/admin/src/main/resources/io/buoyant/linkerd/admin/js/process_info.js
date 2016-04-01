@@ -41,7 +41,7 @@ var ProcInfo = (function() {
   /**
    * Returns a function that may be called to trigger an update.
    */
-  return function($root, t, buildVersion) {
+  return function(metricsCollector, $root, t, buildVersion) {
     template = t
     stats[0].value = buildVersion;
     var url = refreshUri + "?";
@@ -62,14 +62,14 @@ var ProcInfo = (function() {
       });
     }
 
+    if (metricsCollector) {
+      metricsCollector.registerListener(
+        function(data){ render($root, data.specific); },
+        function() { return _.map(stats, "dataKey"); });
+    }
+
     return {
-      start: function(interval) { setInterval(update, interval); }, // TODO: #198 remove once linkerd#183 is complete
-      onMetricsUpdate: function(data) {
-        render($root, data.specific);
-      },
-      desiredMetrics: function() {
-        return _.map(stats, "dataKey");
-      }
+      start: function(interval) { setInterval(update, interval); } // TODO: #198 remove once linkerd#183 is complete
     };
   };
 })();

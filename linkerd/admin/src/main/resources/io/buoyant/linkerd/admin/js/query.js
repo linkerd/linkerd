@@ -33,7 +33,7 @@ var Query = function() {
     }
     query.withRouters = function(routers) {
       if (_.isArray(query.routerLabels))
-        query.routerLabels.concat(routers);
+        query.routerLabels = query.routerLabels.concat(routers);
       return query;
     }
     query.allMetrics = function() {
@@ -45,9 +45,9 @@ var Query = function() {
         query.metricNames.push(metric);
       return query;
     }
-    query.withMetrics = function(metric) {
+    query.withMetrics = function(metrics) {
       if (_.isArray(query.metricNames))
-        query.metricNames.concat(metrics);
+        query.metricNames = query.metricNames.concat(metrics);
       return query;
     }
     return query;
@@ -68,7 +68,7 @@ var Query = function() {
     }
     q.withClients = function(clients) {
       if (_.isArray(query.clientLabels))
-        query.clientLabels.concat(clients);
+        query.clientLabels = query.clientLabels.concat(clients);
       return q;
     }
     q.build = function() {
@@ -104,9 +104,27 @@ var Query = function() {
     return q;
   }
 
+  function matchesQuery(metricName, q) {
+    return metricName.search(q) >= 0;
+  }
+
+  function find(query, metrics) {
+    return _.find(metrics, function(m) {
+      return matchesQuery(m.name ? m.name : m, query);
+    });
+  }
+
+  function filter(query, metrics) {
+    return _.filter(metrics, function(m) {
+      return matchesQuery(m.name ? m.name : m, query);
+    });
+  }
+
   return {
     serverQuery: serverQuery,
-    clientQuery: clientQuery
+    clientQuery: clientQuery,
+    find: find,
+    filter: filter
   };
 
 }();

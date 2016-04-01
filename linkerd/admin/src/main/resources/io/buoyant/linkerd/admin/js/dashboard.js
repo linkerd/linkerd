@@ -19,33 +19,15 @@ $.when(
     container: Handlebars.compile(routerContainerRsp[0])
   }
 
-  var buildVersion = $(".server-data").data("linkerd-version");
-  var procInfo = ProcInfo($(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-  var dashboard = Dashboard();
-  var requestTotals = RequestTotals($(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
-  var routerDisplays = RouterController(selectedRouter, routers, routerTemplates, $(".dashboard-container"));
+  var metricsCollector = MetricsCollector();
 
-  var metricsListeners = [procInfo, dashboard, requestTotals, routerDisplays];
-  var metricsCollector = MetricsCollector(metricsListeners);
+  var buildVersion = $(".server-data").data("linkerd-version");
+  var procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
+  var requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+  var routerDisplays = RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   $(function() {
     metricsCollector.start(UPDATE_INTERVAL);
   });
 });
 
-var Dashboard = (function() {
-
-  function render(data) {
-  }
-
-  return function() {
-    return {
-      onMetricsUpdate: function(data) {
-        render(data.general);
-      },
-      desiredMetrics: function() {
-        return [];
-      }
-    };
-  };
-})();

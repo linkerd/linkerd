@@ -30,7 +30,7 @@ $.when(
 
   $(function() {
     var selectedRouter = getSelectedRouter();
-    var procInfo = ProcInfo($("#process-info"), Handlebars.compile(processInfoRsp[0]), $("#linkerd-version").text()),
+    var procInfo = ProcInfo(null, $("#process-info"), Handlebars.compile(processInfoRsp[0]), $("#linkerd-version").text()),
         bigBoard = BigBoard(selectedRouter, routers, summaryTemplate),
         interfaces = Interfaces(selectedRouter, routers, namers, ifacesTemplate);
 
