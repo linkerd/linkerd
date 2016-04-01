@@ -55,8 +55,9 @@ Stores the dtab in memory.  Not suitable for production use.
 Stores the dtab in ZooKeeper.  Supports the following options
 
 * *hosts* -- Required.  A list of hosts where ZooKeeper is running.
-* *pathPrefix* -- Optional.  The ZooKeeper path under which dtabs should be stored.  (default:
-"/dtabs")
+* *pathPrefix* -- Optional.  The ZooKeeper path under which dtabs should be stored.
+Note that if `pathPrefix` does not exist in ZooKeeper, namerd will attempt to create it with global-writability.
+(default: "/dtabs")
 * *sessionTimeoutMs* -- Optional.  ZooKeeper session timeout in milliseconds.
 (default: 10000)
 

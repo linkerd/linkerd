@@ -55,9 +55,7 @@ class ZkDtabStore(
       None,
       Seq(Data.ACL.AnyoneAllUnsafe),
       CreateMode.Persistent
-    ).rescue {
-        case KeeperException.NodeExists(_) => Future.Unit
-      }.unit
+    ).unit.handle { case KeeperException.NodeExists(_) => }
   }
 
   def list(): Future[Set[String]] = actNs.values.toFuture.flatMap(Future.const)
