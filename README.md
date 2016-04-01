@@ -131,7 +131,7 @@ The _inspect_ command helps describe how a command is configured:
 ```
 > inspect tree examples/http:run
 [info] examples/http:run = InputTask[Unit]
-[info]   +-examples/http:configFile = examples/http.l5d
+[info]   +-examples/http:configFile = examples/http.yaml
 [info]   | +-examples/http:configuration = http
 [info]   |
 [info]   +-examples/http:runtimeConfiguration = minimal

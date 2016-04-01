@@ -30,8 +30,12 @@ a long-poll thrift interface.
 
 ## Quickstart ##
 
-namerd can be run locally with the command
+namerd can be run locally with the commands
 
+```
+./sbt namerd-examples/basic:run
+```
+or
 ```
 ./sbt 'namerd-main:run path/to/config.yml'
 ```

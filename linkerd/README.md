@@ -35,6 +35,6 @@ that may be quickly started:
 > linkerd-examples/http:run
 ```
 
-As additional configuration files are added into `examples/*.l5d`,
+As additional configuration files are added into `examples/*.yaml`,
 these configurations will be discovered by sbt and added as
 configurations.
