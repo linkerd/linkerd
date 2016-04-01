@@ -136,7 +136,8 @@ var Routers = (function() {
     _.each(metrics, function(metric, key) {
       var match = key.match(serverRE);
       if (match) {
-        var name = match[1], ip = match[2], port = match[3];
+        var name = match[1], ipAndPort = match[2].split("/");
+        var ip = ipAndPort[0], port = ipAndPort[1];
         var router = routers[name] = routers[name] || mkRouter(name);
         router.servers.push(mkServer(name, ip, port));
       }

@@ -67,6 +67,7 @@ var MetricsCollector = (function() {
 
     return {
       start: function(interval) { setInterval(update, interval); },
+      getCurrentMetrics: function() { return defaultMetrics; },
       registerListener: registerListener,
       deregisterListener: deregisterListener
     };
