@@ -44,11 +44,31 @@ class ZkDtabStore(
     children <- zk.getChildrenOf(zkPrefix)
   } yield children.children.toSet
 
+  private[this] def ensurePath(path: String) {
+    val components = path.split('/')
+    if (components.length > 2) {
+      ensurePath(components.dropRight(1).mkString("/"))
+    }
+
+    writerConnect().flatMap { zkw =>
+      zkw.create(
+        path,
+        None,
+        Seq(Data.ACL.AnyoneAllUnsafe),
+        CreateMode.Persistent
+      ).rescue {
+          case KeeperException.NodeExists(_) => Future.Unit
+        }
+    }.unit
+  }
+
   def list(): Future[Set[String]] = actNs.values.toFuture.flatMap(Future.const)
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
     log.info(s"Attempting to create dtab at $path")
+
+    ensurePath(zkPrefix)
 
     writerConnect().flatMap { zkw =>
       zkw.create(
@@ -76,7 +96,7 @@ class ZkDtabStore(
   }
 
   private[this] val dtabWatchOp = Memoize { path: String =>
-    log.info(s"Attempting to obverve $path")
+    log.info(s"Attempting to observe $path")
     actZk.flatMap(_.getDataOf(path)).flatMap { data =>
       data.data match {
         case Some(Buf.Utf8(s)) => Activity.value(Some(VersionedDtab(Dtab.read(s), versionBuf(data.stat.version))))
