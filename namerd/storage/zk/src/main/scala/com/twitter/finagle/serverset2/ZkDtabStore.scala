@@ -1,6 +1,6 @@
 package com.twitter.finagle.serverset2
 
-import com.twitter.finagle.Dtab
+import com.twitter.finagle.{Dtab, Path}
 import com.twitter.finagle.serverset2.client.KeeperException.{BadVersion, NoNode}
 import com.twitter.finagle.serverset2.client._
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
@@ -44,22 +44,20 @@ class ZkDtabStore(
     children <- zk.getChildrenOf(zkPrefix)
   } yield children.children.toSet
 
-  private[this] def ensurePath(path: String) {
-    val components = path.split('/')
-    if (components.length > 2) {
-      ensurePath(components.dropRight(1).mkString("/"))
+  private[this] def ensurePath(zkw: ZooKeeperWriter, path: String) {
+    val components = Path.read(path)
+    if (components.size > 1) {
+      ensurePath(zkw, components.take(components.size - 1).show)
     }
 
-    writerConnect().flatMap { zkw =>
-      zkw.create(
-        path,
-        None,
-        Seq(Data.ACL.AnyoneAllUnsafe),
-        CreateMode.Persistent
-      ).rescue {
-          case KeeperException.NodeExists(_) => Future.Unit
-        }
-    }.unit
+    zkw.create(
+      path,
+      None,
+      Seq(Data.ACL.AnyoneAllUnsafe),
+      CreateMode.Persistent
+    ).rescue {
+        case KeeperException.NodeExists(_) => Future.Unit
+      }.unit
   }
 
   def list(): Future[Set[String]] = actNs.values.toFuture.flatMap(Future.const)
@@ -68,9 +66,8 @@ class ZkDtabStore(
     val path = s"$zkPrefix/$ns"
     log.info(s"Attempting to create dtab at $path")
 
-    ensurePath(zkPrefix)
-
     writerConnect().flatMap { zkw =>
+      ensurePath(zkw, zkPrefix)
       zkw.create(
         path,
         Some(Buf.Utf8(dtab.show)),
