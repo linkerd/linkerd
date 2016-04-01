@@ -102,6 +102,17 @@ class HttpControlServiceTest extends FunSuite {
     assert(rsp.status == Status.BadRequest)
   }
 
+  test("HEAD /api/1/dtabs/ns returns ETag") {
+    val req = Request()
+    req.method = Method.Head
+    req.uri = "/api/1/dtabs/yeezus"
+    val service = newService()
+    val rsp = Await.result(service(req), 1.second)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.headerMap("ETag") == v1Stamp)
+    assert(rsp.contentLength == None)
+  }
+
   val data = Map(
     MediaType.Json -> """[{"prefix":"/yeezy","dst":"/kanye"}]""",
     MediaType.Txt -> "/yeezy => /kanye",
@@ -132,9 +143,9 @@ class HttpControlServiceTest extends FunSuite {
       val store = newDtabStore()
       val service = newService(store)
       val rsp = Await.result(service(req), 1.second)
-      assert(rsp.status == Status.PreconditionRequired)
+      assert(rsp.status == Status.NoContent)
       val result = Await.result(store.observe("yeezus").values.toFuture())
-      assert(result.get.get.dtab == Dtab.read("/yeezy=>/yeezus"))
+      assert(result.get.get.dtab == Dtab.read("/yeezy=>/kanye"))
     }
 
     test(s"PUT with valid stamp; $ct") {

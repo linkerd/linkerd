@@ -120,91 +120,100 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).values.toFuture.flatMap(Future.const)
 
-  def apply(req: Request): Future[Response] = req.path match {
-    case DtabUri(None) =>
-      req.method match {
-        case Method.Get =>
-          storage.list().map { namespaces =>
-            val rsp = Response()
-            rsp.contentType = MediaType.Json
-            rsp.content = Json.write(namespaces)
-            rsp
-          }
-
-        case _ => Future.value(Response(Status.NotFound))
-      }
-
-    case DtabUri(Some(ns)) =>
-      req.method match {
-        case Method.Get =>
-          getDtab(ns).map {
-            case Some(dtab) =>
-              val rsp = Response()
-              val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
-              rsp.contentType = contentType
-              rsp.headerMap.add("ETag", versionString(dtab.version))
-              rsp.content = codec.write(dtab.dtab)
-              rsp
-
-            case _ => Response(Status.NotFound)
-          }
-
-        case Method.Put =>
-          req.contentType.flatMap(DtabCodec.byContentType) match {
-            case Some(codec) =>
-              codec.read(req.content) match {
-                case Return(dtab) =>
-                  req.headerMap.get("If-Match") match {
-                    case Some(stamp) =>
-                      val buf = Buf.ByteArray.Owned(Base64StringEncoder.decode(stamp))
-                      storage.update(ns, dtab, buf).transform {
-                        case Return(_) =>
-                          Future.value(Response(Status.NoContent))
-                        case Throw(e: DtabNamespaceDoesNotExist) =>
-                          Future.value(Response(Status.NotFound))
-                        case Throw(e: DtabVersionMismatchException) =>
-                          Future.value(Response(Status.PreconditionFailed))
-                        case Throw(_) =>
-                          Future.value(Response(Status.InternalServerError))
-                      }
-                    case None =>
-                      val rsp = Response(Status.PreconditionRequired)
-                      rsp.contentString = "If-Match must be used."
-                      rsp.contentType = MediaType.PlainText
-                      Future.value(rsp)
-                  }
-
-                // invalid dtab
-                case _ => Future.value(Response(Status.BadRequest))
-              }
-
-            // invalid content type
-            case _ => Future.value(Response(Status.BadRequest))
-          }
-
-        case Method.Post =>
-          req.contentType.flatMap(DtabCodec.byContentType(_)) match {
-            case Some(codec) =>
-              codec.read(req.content) match {
-                case Return(dtab) =>
-                  storage.create(ns, dtab).transform {
-                    case Return(_) => Future.value(Response(Status.NoContent))
-                    case _ => Future.value(Response(Status.InternalServerError))
-                  }
-
-                // invalid dtab
-                case _ => Future.value(Response(Status.BadRequest))
-              }
-
-            // invalid content type
-            case _ => Future.value(Response(Status.BadRequest))
-          }
-
-        // invalid method
-        case _ => Future.value(Response(Status.NotFound))
-      }
-
-    // invalid uri
-    case _ => Future.value(Response(Status.NotFound))
+  def apply(req: Request): Future[Response] = (req.path, req.method) match {
+    case (DtabUri(None), _) =>
+      handleList()
+    case (DtabUri(Some(ns)), Method.Head) =>
+      handleHeadDtab(ns, req)
+    case (DtabUri(Some(ns)), Method.Get) =>
+      handleGetDtab(ns, req)
+    case (DtabUri(Some(ns)), Method.Put) =>
+      handlePutDtab(ns, req)
+    case (DtabUri(Some(ns)), Method.Post) =>
+      handlePostDtab(ns, req)
+    // invalid uri/method
+    case _ =>
+      Future.value(Response(Status.NotFound))
   }
+
+  private[this] def handleList(): Future[Response] =
+    storage.list().map { namespaces =>
+      val rsp = Response()
+      rsp.contentType = MediaType.Json
+      rsp.content = Json.write(namespaces)
+      rsp
+    }
+
+  private[this] def handleGetDtab(ns: String, req: Request): Future[Response] =
+    getDtab(ns).map {
+      case Some(dtab) =>
+        val rsp = Response()
+        val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
+        rsp.contentType = contentType
+        rsp.headerMap.add(Fields.Etag, versionString(dtab.version))
+        rsp.content = codec.write(dtab.dtab)
+        rsp
+
+      case None => Response(Status.NotFound)
+    }
+
+  private[this] def handleHeadDtab(ns: String, req: Request): Future[Response] =
+    getDtab(ns).map {
+      case Some(dtab) =>
+        val rsp = Response()
+        rsp.headerMap.add(Fields.Etag, versionString(dtab.version))
+        rsp
+
+      case None => Response(Status.NotFound)
+    }
+
+  private[this] def handlePutDtab(ns: String, req: Request): Future[Response] =
+    req.contentType.flatMap(DtabCodec.byContentType) match {
+      case Some(codec) =>
+        codec.read(req.content) match {
+          case Return(dtab) =>
+            req.headerMap.get(Fields.IfMatch) match {
+              case Some(stamp) =>
+                val buf = Buf.ByteArray.Owned(Base64StringEncoder.decode(stamp))
+                storage.update(ns, dtab, buf).transform {
+                  case Return(_) =>
+                    Future.value(Response(Status.NoContent))
+                  case Throw(e: DtabNamespaceDoesNotExist) =>
+                    Future.value(Response(Status.NotFound))
+                  case Throw(e: DtabVersionMismatchException) =>
+                    Future.value(Response(Status.PreconditionFailed))
+                  case Throw(_) =>
+                    Future.value(Response(Status.InternalServerError))
+                }
+              case None =>
+                storage.put(ns, dtab).map { _ =>
+                  Response(Status.NoContent)
+                }
+            }
+
+          // invalid dtab
+          case Throw(_) => Future.value(Response(Status.BadRequest))
+        }
+
+      // invalid content type
+      case None => Future.value(Response(Status.BadRequest))
+    }
+
+  private[this] def handlePostDtab(ns: String, req: Request): Future[Response] =
+    req.contentType.flatMap(DtabCodec.byContentType) match {
+      case Some(codec) =>
+        codec.read(req.content) match {
+          case Return(dtab) =>
+            storage.create(ns, dtab).transform {
+              case Return(_) => Future.value(Response(Status.NoContent))
+              case Throw(_) => Future.value(Response(Status.InternalServerError))
+            }
+
+          // invalid dtab
+          case Throw(_) => Future.value(Response(Status.BadRequest))
+        }
+
+      // invalid content type
+      case None => Future.value(Response(Status.BadRequest))
+    }
 }
