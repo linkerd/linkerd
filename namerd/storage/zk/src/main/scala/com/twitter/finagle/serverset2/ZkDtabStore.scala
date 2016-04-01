@@ -44,18 +44,20 @@ class ZkDtabStore(
     children <- zk.getChildrenOf(zkPrefix)
   } yield children.children.toSet
 
-  private[this] def ensurePath(zkw: ZooKeeperWriter, path: String) {
+  private[this] def ensurePath(zkw: ZooKeeperWriter, path: String): Future[Unit] = {
     val components = Path.read(path)
-    if (components.size > 1) {
-      ensurePath(zkw, components.take(components.size - 1).show)
+    if (components.size == 0) {
+      return Future.Unit
     }
 
-    zkw.create(
-      path,
-      None,
-      Seq(Data.ACL.AnyoneAllUnsafe),
-      CreateMode.Persistent
-    ).unit.handle { case KeeperException.NodeExists(_) => }
+    ensurePath(zkw, components.take(components.size - 1).show).flatMap { _ =>
+      zkw.create(
+        path,
+        None,
+        Seq(Data.ACL.AnyoneAllUnsafe),
+        CreateMode.Persistent
+      ).unit.handle { case KeeperException.NodeExists(_) => }
+    }
   }
 
   def list(): Future[Set[String]] = actNs.values.toFuture.flatMap(Future.const)
@@ -65,16 +67,17 @@ class ZkDtabStore(
     log.info(s"Attempting to create dtab at $path")
 
     writerConnect().flatMap { zkw =>
-      ensurePath(zkw, zkPrefix)
-      zkw.create(
-        path,
-        Some(Buf.Utf8(dtab.show)),
-        Seq(Data.ACL.AnyoneAllUnsafe),
-        CreateMode.Persistent
-      ).rescue {
-          case KeeperException.NodeExists(_) =>
-            Future.exception(new DtabNamespaceAlreadyExistsException(ns))
-        }
+      ensurePath(zkw, zkPrefix).flatMap { _ =>
+        zkw.create(
+          path,
+          Some(Buf.Utf8(dtab.show)),
+          Seq(Data.ACL.AnyoneAllUnsafe),
+          CreateMode.Persistent
+        ).rescue {
+            case KeeperException.NodeExists(_) =>
+              Future.exception(new DtabNamespaceAlreadyExistsException(ns))
+          }
+      }
     }.unit
   }
 
