@@ -119,6 +119,8 @@ object LinkerdBuild extends Base {
     .dependsOn(configCore, Namer.core)
     .withTwitterLib(Deps.twitterServer)
 
+  val ConfigFileRE = """^(.*)\.yaml$""".r
+
   object Linkerd {
 
     val core = projectDir("linkerd/core")
@@ -259,7 +261,6 @@ object LinkerdBuild extends Base {
       )
 
     // Find example configurations by searching the examples directory for config files.
-    val ConfigFileRE = """^(.*)\.l5d$""".r
     val exampleConfigs = file("linkerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }
@@ -358,7 +359,6 @@ object LinkerdBuild extends Base {
       )
 
     // Find example configurations by searching the examples directory for config files.
-    val ConfigFileRE = """^(.*)\.yaml$""".r
     val exampleConfigs = file("namerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }

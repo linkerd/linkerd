@@ -106,10 +106,10 @@ class Base extends Build {
   val configFile = settingKey[File]("path to config file")
   val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
 
-  // Examples are named by a .l5d config file
+  // Examples are named by a .yaml config file
   def exampleSettings(runtime: Project) = Seq(
     // The example config file should match the example configuration name.
-    configFile := file(s"linkerd/examples/${configuration.value}.l5d"),
+    configFile := file(s"${runtime.id}/examples/${configuration.value}.yaml"),
     // The runtime configuration may be different from the example configuration.
     runtimeConfiguration := configuration.value,
     run := // call linkerd's run command with a config file
