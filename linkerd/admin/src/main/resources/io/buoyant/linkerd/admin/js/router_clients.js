@@ -2,72 +2,57 @@ var RouterClient = (function() {
   var template;
 
   function getMetricDefinition(routerName, clientName) {
-    return [
-      {
-        description: "Requests",
-        metricSuffix: "requests",
-        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric("requests").build()
-      },
-      {
-        description: "Connections",
-        metricSuffix: "connections",
-        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric("connections").build()
-      },
-      {
-        description: "Successes",
-        metricSuffix: "success",
-        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric("success").build(),
-        getRate: function(data) {
-          var successRate = new SuccessRate(data.requests, data.success, data.failures);
-          return successRate.prettyRate();
-        }
-      },
-      {
-        description: "Failures",
-        metricSuffix: "failures",
-        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric("failures").build()
+    return _.map(["requests", "connections", "success", "failures"], function(metric) {
+      return {
+        metricSuffix: metric,
+        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric).build()
       }
-    ];
+    });
   }
 
-  function renderClient($container, client, data) {
-    var clientHtml = template({
+  function renderClient($container, client, summaryData, latencyData) {
+    var clientHtml = template($.extend({
       client: client.label,
-      metrics: data
-    });
-    var $clientHtml = ($("<div />").addClass("router-client").html(clientHtml));
+      latencies: latencyData
+    }, summaryData));
+    var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
     $container.html($clientHtml);
   }
 
-  function processData(data, metricDefinitions) {
-    var lookup = {}; // track # requests for SuccessRate()
+  function getLatencyData(client, latencyKeys) {
+    var latencyData = _.pick(client.metrics, latencyKeys);
 
-    return _.map(metricDefinitions, function(defn) {
-      var clientData = Query.filter(defn.query, data);
-
-      if (!_.isEmpty(clientData)) {
-        defn.value = clientData[0].delta;
-        lookup[defn.metricSuffix] = defn.value;
-
-        if(_.isFunction(defn.getRate)) {
-          defn.rate = defn.getRate(lookup);
-        }
-      }
-
-      return defn;
+    return _.mapKeys(latencyData, function(value, key) {
+      return key.split(".")[1];
     });
+  }
+
+  function getSummaryData(data, metricDefinitions) {
+    var summary = _.reduce(metricDefinitions, function(mem, defn) {
+      var clientData = Query.filter(defn.query, data);
+      mem[defn.metricSuffix] = _.isEmpty(clientData) ? null : clientData[0].delta;
+
+      return mem;
+    }, {});
+
+    var successRate = new SuccessRate(summary.requests, summary.success, summary.failures);
+    summary.successRate = successRate.prettyRate();
+
+    return summary;
   }
 
   return function (metricsCollector, routers, client, $clientEl, routerName, clientTemplate) {
     template = clientTemplate;
     var metricDefinitions = getMetricDefinition(routerName, client.label);
+    var latencyKeys = Query.filter(/^request_latency_ms\..*/, _.keys(client.metrics));
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
-      var transformedData = processData(filteredData, metricDefinitions);
+      var summaryData = getSummaryData(filteredData, metricDefinitions);
+      var latencyData = getLatencyData(client, latencyKeys);
 
-      renderClient($clientEl, client, transformedData);
+      renderClient($clientEl, client, summaryData, latencyData);
     }
 
     var getDesiredMetrics = function(metrics) {
