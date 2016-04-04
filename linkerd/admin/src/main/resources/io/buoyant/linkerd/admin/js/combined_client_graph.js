@@ -31,7 +31,7 @@ var CombinedClientGraph = (function() {
       },
       $root[0],
       function() {
-        return window.innerWidth * 0.75;
+        return 1161;
       },
       timeseriesParams
     );

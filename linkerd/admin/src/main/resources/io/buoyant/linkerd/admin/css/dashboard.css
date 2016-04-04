@@ -6,6 +6,25 @@ body {
   min-height: 100vh;
 }
 
+.col-md-2 {
+  width: 198px;
+  padding: 0 27px 0 0;
+}
+
+.col-md-4 {
+  width: 396px;
+  padding: 0 27px 0 0;
+}
+
+.col-md-6 {
+  width: 594px;
+  padding: 0 27px 0 0;
+}
+
+.row {
+  margin: 0 -27px 0 0;
+}
+
 .container-fluid {
   padding: 0;
 }
@@ -15,13 +34,18 @@ body {
 }
 
 nav {
-  padding: 9px 28px;
   font-size: 18px;
   font-weight: 100;
-  line-height: 1.1
+  line-height: 1.1;
 }
 
-#navbar {
+.navbar-container {
+  padding: 9px 27px;
+  width: 1215px; /*1161 + 27 + 27 (padding)*/
+}
+
+
+.nav {
   margin-top: 4px;
 }
 
@@ -42,7 +66,7 @@ nav ul.navbar-nav {
 
 .request-totals {
   height: 72px;
-  padding: 15px 26px;
+  padding: 15px 27px;
   background: #163F79; /* For browsers that do not support gradients */
   background: -webkit-linear-gradient(left top, #163F79, #4076C4);
   background: -o-linear-gradient(bottom right, #163F79, #4076C4);
@@ -75,36 +99,38 @@ nav ul.navbar-nav {
   background-color: #222;
 }
 
-.router {
-  border-top: 3px solid gray;
+/*
+* Router container
+*/
+
+.dashboard-container {
+  margin: 27px 27px 0;
+  width: 1161px;
+  border-bottom: 2px solid grey;
 }
 
-.router div {
-  text-align: left;
-}
-
-.router > div {
-  padding:15px;
+.proc-info {
+  margin: 10px 27px 0;
+  width: 1161px;
 }
 
 /*
 * Router summary
 */
 
-.router-summary {
-  clear: both;
-}
-
-.router-header {
-  float: left;
-}
-
-.router-data {
-  float: right;
-}
-
-.router-data span {
-  float: left;
-  margin: 0 30px;
+.router-summary-stat dt, .router-summary-stat dd {
   text-align: right;
+}
+
+.router .summary {
+  border-top: 2px solid gray;
+  padding-top: 18px;
+}
+
+/**
+* Router servers
+*/
+
+.router-servers-title {
+  border-bottom: 1px solid grey;
 }

@@ -8,6 +8,7 @@
 
 .topline-stats li {
   color: #02B2C8;
+  width: inherit;
 }
 
 .stat-label {

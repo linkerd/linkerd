@@ -20,9 +20,8 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
       content = s"""
         <div class="request-totals"></div>
         <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
-        <div class="text-center dashboard-container"></div>
-        <hr>
-        <div class="row text-center proc-info">
+        <div class="dashboard-container"></div>
+        <div class="row proc-info">
         </div>
       """,
       csses = Seq("dashboard.css", "dashboard-shared.css"),

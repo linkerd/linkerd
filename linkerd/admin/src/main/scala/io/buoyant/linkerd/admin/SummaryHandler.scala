@@ -32,7 +32,7 @@ private object SummaryHandler {
 
     val statsHtml =
       List(
-        Stat("linkerd version", "linkerd-version", Build.load().version, "primary-stat", ""),
+        Stat("version", "linkerd-version", Build.load().version, "primary-stat", ""),
         Stat("router count", "router-count", routerCount.toString, "primary-stat", ""),
         Stat("uptime", "jvm-uptime", "0s", "", "jvm/uptime"),
         Stat("thread count", "jvm-thread-count", "0", "", "jvm/thread/count"),
