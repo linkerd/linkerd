@@ -2,7 +2,7 @@
   {{client}}
 </div>
 
-<div class="client-medivics row">
+<div class="client-metrics row">
   <div class="col-md-2">
     <dl>
       <dt>Requests</dt>
