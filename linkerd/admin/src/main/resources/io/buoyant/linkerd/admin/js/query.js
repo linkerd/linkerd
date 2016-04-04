@@ -62,13 +62,13 @@ var Query = function() {
       return q;
     }
     q.withClient = function(client) {
-      if (_.isArray(query.clientLabels))
-        query.clientLabels.push(client);
+      if (_.isArray(q.clientLabels))
+        q.clientLabels.push(client);
       return q;
     }
     q.withClients = function(clients) {
-      if (_.isArray(query.clientLabels))
-        query.clientLabels = query.clientLabels.concat(clients);
+      if (_.isArray(q.clientLabels))
+        q.clientLabels = q.clientLabels.concat(clients);
       return q;
     }
     q.build = function() {
@@ -88,13 +88,13 @@ var Query = function() {
       return q;
     }
     q.withServer = function(server) {
-      if (_.isArray(query.serverLabels))
-        query.serverLabels.push(server);
+      if (_.isArray(q.serverLabels))
+        q.serverLabels.push(server);
       return q;
     }
     q.withServers = function(servers) {
-      if (_.isArray(query.serverLabels))
-        query.serverLabels.concat(servers);
+      if (_.isArray(q.serverLabels))
+        q.serverLabels.concat(servers);
       return q;
     }
     q.build = function() {

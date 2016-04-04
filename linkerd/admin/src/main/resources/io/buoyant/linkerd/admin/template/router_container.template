@@ -2,6 +2,6 @@
   <div class="router router-{{this}}" data-router="{{this}}">
     <div class="summary"></div>
     <canvas class="router-graph" height="181"></canvas>
-    <div class="server"></div>
+    <div class='server router-servers clearfix'><div>Servers</div></div>
   </div>
 {{/each}}
