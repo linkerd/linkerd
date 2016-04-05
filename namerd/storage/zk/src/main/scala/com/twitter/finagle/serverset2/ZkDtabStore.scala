@@ -9,7 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namerd.{VersionedDtab, DtabStore}
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExist, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import java.nio.ByteBuffer
 
 /**
@@ -63,6 +63,17 @@ class ZkDtabStore(
     }.unit
   }
 
+  def delete(ns: String): Future[Unit] = {
+    val path = s"$zkPrefix/$ns"
+    log.info(s"Attempting to delete dtab at $path")
+    writerConnect().flatMap { zkw =>
+      zkw.delete(path, None)
+    }.rescue {
+      case KeeperException.NoNode(_) =>
+        Future.exception(new DtabNamespaceDoesNotExistException(ns))
+    }
+  }
+
   override def update(ns: String, dtab: Dtab, version: Buf): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
     log.info(s"Attempting to update dtab at $path")
@@ -70,7 +81,7 @@ class ZkDtabStore(
     writerConnect().flatMap { zkw =>
       zkw.setData(path, Some(Buf.Utf8(dtab.show)), Some(versionInt(version))).rescue {
         case BadVersion(_) => Future.exception(new DtabVersionMismatchException)
-        case NoNode(_) => Future.exception(new DtabNamespaceDoesNotExist(ns))
+        case NoNode(_) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
       }
     }.unit
   }

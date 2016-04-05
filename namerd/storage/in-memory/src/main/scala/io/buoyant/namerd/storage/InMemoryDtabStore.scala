@@ -3,7 +3,7 @@ package io.buoyant.namerd.storage
 import com.twitter.finagle.Dtab
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExist, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import io.buoyant.namerd.{VersionedDtab, DtabStore}
 import java.nio.ByteBuffer
 
@@ -31,8 +31,11 @@ class InMemoryDtabStore(namespaces: Map[String, Dtab]) extends DtabStore {
       }
     }
 
-  def list(): Future[Set[String]] =
-    Future.value(dtabStatesMu.synchronized(dtabStates).keySet)
+  def list(): Future[Set[String]] = Future.value {
+    dtabStatesMu.synchronized(dtabStates).filter {
+      case (key, value) => value.sample.isDefined
+    }.keySet
+  }
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val state = get(ns)
@@ -47,6 +50,19 @@ class InMemoryDtabStore(namespaces: Map[String, Dtab]) extends DtabStore {
     }
   }
 
+  def delete(ns: String): Future[Unit] = {
+    val state = get(ns)
+    dtabStatesMu.synchronized {
+      state.sample match {
+        case Some(_) =>
+          state.update(None)
+          Future.Unit
+        case None =>
+          Future.exception(new DtabNamespaceDoesNotExistException(ns))
+      }
+    }
+  }
+
   def update(ns: String, dtab: Dtab, version: Buf): Future[Unit] = {
     val state = get(ns)
     dtabStatesMu.synchronized {
@@ -57,7 +73,7 @@ class InMemoryDtabStore(namespaces: Map[String, Dtab]) extends DtabStore {
         case Some(VersionedDtab(_, currentVersion)) =>
           Future.exception(new DtabVersionMismatchException)
         case None =>
-          Future.exception(new DtabNamespaceDoesNotExist(ns))
+          Future.exception(new DtabNamespaceDoesNotExistException(ns))
       }
     }
   }

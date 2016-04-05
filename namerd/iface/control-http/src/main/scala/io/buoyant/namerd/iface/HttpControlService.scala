@@ -9,7 +9,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.{Dentry, Dtab, NameTree, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExist}
+import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException}
 import io.buoyant.namerd.{DtabStore, VersionedDtab}
 
 object HttpControlService {
@@ -131,6 +131,8 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
       handlePutDtab(ns, req)
     case (DtabUri(Some(ns)), Method.Post) =>
       handlePostDtab(ns, req)
+    case (DtabUri(Some(ns)), Method.Delete) =>
+      handleDeleteDtab(ns)
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
@@ -178,7 +180,7 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
                 storage.update(ns, dtab, buf).transform {
                   case Return(_) =>
                     Future.value(Response(Status.NoContent))
-                  case Throw(e: DtabNamespaceDoesNotExist) =>
+                  case Throw(e: DtabNamespaceDoesNotExistException) =>
                     Future.value(Response(Status.NotFound))
                   case Throw(e: DtabVersionMismatchException) =>
                     Future.value(Response(Status.PreconditionFailed))
@@ -215,5 +217,12 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
 
       // invalid content type
       case None => Future.value(Response(Status.BadRequest))
+    }
+
+  private[this] def handleDeleteDtab(ns: String): Future[Response] =
+    storage.delete(ns).transform {
+      case Return(()) => Future.value(Response(Status.NoContent))
+      case Throw(_: DtabNamespaceDoesNotExistException) => Future.value(Response(Status.NotFound))
+      case Throw(_) => Future.value(Response(Status.InternalServerError))
     }
 }
