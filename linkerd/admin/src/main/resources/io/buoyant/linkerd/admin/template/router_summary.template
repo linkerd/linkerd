@@ -1,6 +1,6 @@
 
-<div class="router-summary router-{{router}} clearfix">
-  <div class="router-header metric-large">
+<div class="router-summary router-{{router}} row">
+  <div class="router-header col-md-4 metric-large">
     <dt>Router</dt>
     <dd>
       {{#if router}}
@@ -12,8 +12,8 @@
   </div>
 
   <div class="router-data">
-    <dl class="metric-large">
-      <span class="router-summary-stat">
+    <div class="metric-large">
+      <div class="router-summary-stat col-md-2">
         <dt>Pending</dt>
         <dd data-key="load">
           {{#if load}}
@@ -22,8 +22,8 @@
             0
           {{/if}}
         </dd>
-      </span>
-      <span class="router-summary-stat">
+      </div>
+      <div class="router-summary-stat col-md-2">
         <dt>Requests</dt>
         <dd data-key="requests">
           {{#if requests}}
@@ -32,8 +32,8 @@
             0
           {{/if}}
         </dd>
-      </span>
-      <span class="router-summary-stat">
+      </div>
+      <div class="router-summary-stat col-md-2">
         <dt>Success rate</dt>
         <dd data-key="success-rate">
           {{#if successRate}}
@@ -42,8 +42,8 @@
             N/A
           {{/if}}
         </dd>
-      </span>
-      <span class="router-summary-stat">
+      </div>
+      <div class="router-summary-stat col-md-2">
         <dt>Fail rate</dt>
         <dd data-key="fail-rate">
           {{#if failureRate}}
@@ -52,7 +52,7 @@
             N/A
           {{/if}}
         </dd>
-      </span>
-    </dl>
+      </div>
+    </div>
   </div>
 </div>

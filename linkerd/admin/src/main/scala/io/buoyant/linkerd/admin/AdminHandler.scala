@@ -46,18 +46,20 @@ object AdminHandler extends HtmlView {
 
   val version2NavBar =
     s"""<nav class="navbar navbar-inverse">
-      <div class="navbar-header">
-        <a class="navbar-brand-img" href="/">
-          <img alt="Logo" src="/files/images/linkerd-horizontal-white-transbg-vectorized.svg">
-        </a>
-      </div>
-      <div id="navbar" class="collapse navbar-collapse">
-        <ul class="nav navbar-nav">
-          <li>router overview</li>
-        </ul>
-        <ul class="nav navbar-nav navbar-right">
-          <li>version 2.0</li>
-        </ul>
+      <div class="navbar-container">
+        <div class="navbar-header">
+          <a class="navbar-brand-img" href="/">
+            <img alt="Logo" src="/files/images/linkerd-horizontal-white-transbg-vectorized.svg">
+          </a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li>router overview</li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li>version 2.0</li>
+          </ul>
+        </div>
       </div>
     </nav>"""
 

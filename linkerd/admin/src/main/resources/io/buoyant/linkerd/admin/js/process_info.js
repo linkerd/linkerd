@@ -9,7 +9,7 @@ var ProcInfo = (function() {
   var template;
 
   var stats = [
-    { description: "linkerd version", dataKey: "" },
+    { description: "version", dataKey: "" },
     { description: "uptime", dataKey: "jvm/uptime",  value: "0s" },
     { description: "thread count", dataKey: "jvm/thread/count", value: "0" },
     { description: "memory used", dataKey: "jvm/mem/current/used", value: "0MB" },

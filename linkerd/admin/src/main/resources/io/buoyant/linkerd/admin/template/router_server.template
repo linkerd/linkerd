@@ -3,7 +3,7 @@
 </div>
 
 <div class="server-metrics">
-  <dl>
+  <dl class="row">
   {{#each metrics}}
     <div class="col-md-2">
       <dt>
