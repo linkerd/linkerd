@@ -6,22 +6,24 @@
 var UPDATE_INTERVAL = 1000;
 
 $.when(
-  $.get("/files/template/router_server.template"),
   $.get("/files/template/router_container.template"),
+  $.get("/files/template/router_server.template"),
+  $.get("/files/template/router_client.template"),
   $.get("/files/template/router_summary.template"),
   $.get("/files/template/process_info.template"),
   $.get("/files/template/request_totals.template"),
   $.get("/admin/metrics.json")
-).done(function(routerServerRsp, routerContainerRsp, routerSummaryRsp, overviewStatsRsp, requestTotalsRsp, metricsJson) {
+).done(function(routerContainerRsp, routerServerRsp, routerClientRsp, routerSummaryRsp, overviewStatsRsp, requestTotalsRsp, metricsJson) {
   var selectedRouter = getSelectedRouter(); // TODO: update this to avoid passing params in urls #198
-  var routers = Routers(metricsJson[0]);
   var routerTemplates = {
     summary: Handlebars.compile(routerSummaryRsp[0]),
     container: Handlebars.compile(routerContainerRsp[0]),
-    server: Handlebars.compile(routerServerRsp[0])
+    server: Handlebars.compile(routerServerRsp[0]),
+    client: Handlebars.compile(routerClientRsp[0])
   }
 
   var metricsCollector = MetricsCollector(metricsJson[0]);
+  var routers = Routers(metricsJson[0], metricsCollector);
 
   var buildVersion = $(".server-data").data("linkerd-version");
   var procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);

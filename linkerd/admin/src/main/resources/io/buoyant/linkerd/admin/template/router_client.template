@@ -1,0 +1,28 @@
+<div class="client-header router-header-large">
+  {{client}}
+</div>
+
+<div class="client-metrics">
+  <dl>
+  {{#each metrics}}
+    <div class="col-md-2">
+      <dt>
+        {{description}}
+      </dt>
+      <dd>
+        <span class="metric-medium">
+          {{#if rate}}
+            {{rate}}
+          {{else}}
+            {{#if value}}
+              {{value}}
+            {{else}}
+              0
+            {{/if}}
+          {{/if}}
+        </span>
+      </dd>
+    </div>
+  {{/each}}
+  </dl>
+</div>

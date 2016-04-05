@@ -117,6 +117,7 @@ var Routers = (function() {
     if (addedClients.length)
       $("body").trigger("addedClients", [addedClients]);
 
+
     // TODO: Remove any unused clients. This will require more intelligent
     // color assignment to ensure client => color mapping is deterministic.
 
@@ -171,7 +172,7 @@ var Routers = (function() {
    *
    * Returns an object that may be updated with additional data.
    */
-  return function(metrics) {
+  return function(metrics, metricsCollector) {
     var routers = {};
 
     // servers are only added the first time.
@@ -179,6 +180,11 @@ var Routers = (function() {
 
     // clients and metrics are initialized now, and then may be updated later.
     update(routers, metrics);
+
+    if (!_.isEmpty(metricsCollector)) {
+      var metricsHandler = function(data) { update(routers, data.general); }
+      metricsCollector.registerListener(metricsHandler, function(metrics) {});
+    }
 
     return {
       data: routers,
