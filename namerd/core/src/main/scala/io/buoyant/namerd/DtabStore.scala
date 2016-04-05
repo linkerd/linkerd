@@ -31,6 +31,22 @@ trait DtabStore {
 
   /** Watch a dtab and it's version. */
   def observe(ns: String): Activity[Option[VersionedDtab]]
+
+  /** Watch a dtab composed with its ancestors */
+  def observeComposed(ns: String): Activity[Option[VersionedDtab]] = {
+    def ancestors(ns: String): Seq[String] = {
+      ns.split("/").reverse.tails.map(_.reverse.mkString("/")).toSeq.reverse.drop(1)
+    }
+
+    Activity.collect(ancestors(ns).map(observe).toList).map { dtabs =>
+      dtabs.reduce[Option[VersionedDtab]] {
+        case (Some(a), Some(b)) =>
+          Some(VersionedDtab(a.dtab ++ b.dtab, b.version))
+        case _ =>
+          None
+      }
+    }
+  }
 }
 
 object DtabStore {
