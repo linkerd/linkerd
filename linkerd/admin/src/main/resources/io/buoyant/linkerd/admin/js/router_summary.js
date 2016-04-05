@@ -1,19 +1,4 @@
 var RouterSummary = (function() {
-  var summaryKeys = ["load", "requests", "success", "failures"];
-
-  function addClients(clients, metricsParams, routerName) {
-    var routerClients = _.filter(clients, ["router", routerName]);
-    metricsParams = metricsParams.concat(clientsToMetricParam(routerClients));
-  }
-
-  function clientsToMetricParam(clients) {
-    return _(clients).map(function(client) {
-      return _.map(summaryKeys, function(key) {
-        return client.prefix + key;
-      });
-    }).flatten().value();
-  }
-
   function processResponses(data, routerName) {
     var process = function(metricName) { return processResponse(data, routerName, metricName); };
 
@@ -58,7 +43,7 @@ var RouterSummary = (function() {
     $summaryEl.html(template(routerData));
   }
 
-  return function(metricsCollector, routers, summaryTemplate, $summaryEl, routerName) {
+  return function(metricsCollector, summaryTemplate, $summaryEl, routerName) {
     var query = Query.clientQuery().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
 
     renderRouterSummary({ router: routerName }, summaryTemplate, routerName, $summaryEl);
