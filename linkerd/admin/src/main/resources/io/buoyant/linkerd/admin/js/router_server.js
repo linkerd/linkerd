@@ -67,7 +67,7 @@ var RouterServer = (function() {
 
     var getDesiredMetrics = function(metrics) {
       var metricDefinitions = getMetricDefinitions(routerName, server.label);
-      return _.map(metricDefinitions, function(d) {
+      return _.flatMap(metricDefinitions, function(d) {
         return Query.filter(d.query, metrics);
       });
     }
