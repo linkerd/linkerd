@@ -24,3 +24,7 @@
   font-size: 12px;
   line-height: 16px;
 }
+
+.summary-metric-label {
+  font-weight: 700;
+}
