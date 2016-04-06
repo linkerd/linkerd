@@ -1,7 +1,7 @@
 package io.buoyant.router.http
 
 import com.twitter.finagle.{Service, SimpleFilter}
-import com.twitter.finagle.http.{Message, Request, Response}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.Trace
 
 /**
@@ -10,31 +10,31 @@ import com.twitter.finagle.tracing.Trace
 object TracingFilter extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, service: Service[Request, Response]) = {
+    recordRequest(req)
+    service(req).onSuccess(recordResponse)
+  }
+
+  private[this] def recordRequest(req: Request): Unit = {
     Trace.recordRpc(req.method.toString)
     // http.uri is used here for consistency with finagle-http's tracing filter
     Trace.recordBinary("http.uri", req.uri)
     Trace.recordBinary("http.req.method", req.method.toString)
-    for (h <- req.host) {
-      Trace.recordBinary("http.req.host", h)
-    }
-    recordMessage("req", req)
-
-    service(req).onSuccess { rsp =>
-      Trace.recordBinary("http.rsp.status", rsp.status.code)
-      recordMessage("rsp", rsp)
+    req.host.foreach(Trace.recordBinary("http.req.host", _))
+    Trace.recordBinary("http.req.version", req.version.toString)
+    req.contentLength.foreach(Trace.recordBinary("http.req.content-length", _))
+    req.contentType.foreach(Trace.recordBinary("http.req.content-type", _))
+    req.headerMap.get("transfer-encoding").foreach { te =>
+      Trace.recordBinary("http.req.transfer-encoding", te)
     }
   }
 
-  private[this] def recordMessage(scope: String, msg: Message): Unit = {
-    Trace.recordBinary(s"http.$scope.version", msg.version.toString)
-    for (length <- msg.contentLength) {
-      Trace.recordBinary(s"http.$scope.content-length", length)
-    }
-    for (t <- msg.contentType) {
-      Trace.recordBinary(s"http.$scope.content-type", t)
-    }
-    for (te <- msg.headerMap.get("transfer-encoding")) {
-      Trace.recordBinary(s"http.$scope.transfer-encoding", te)
+  private[this] def recordResponse(rsp: Response): Unit = {
+    Trace.recordBinary("http.rsp.status", rsp.status.code)
+    Trace.recordBinary("http.rsp.version", rsp.version.toString)
+    rsp.contentLength.foreach(Trace.recordBinary("http.rsp.content-length", _))
+    rsp.contentType.foreach(Trace.recordBinary("http.rsp.content-type", _))
+    rsp.headerMap.get("transfer-encoding").foreach { te =>
+      Trace.recordBinary("http.rsp.transfer-encoding", te)
     }
   }
 }

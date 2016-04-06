@@ -65,10 +65,14 @@ class RoutingFactoryTest extends FunSuite with Awaits {
     Trace.letTracer(tracer) {
       val service = mkService(label = "customlabel")
       await(service(Request()))
-      val annotations = tracer.annotations.collect {
-        case a: Rpc => a
-      }
-      assert(annotations.exists(_.name == "customlabel"))
+      assert(tracer.annotations.exists {
+        case Rpc(name) => name == "customlabel"
+        case _ => false
+      })
+      assert(tracer.annotations.exists {
+        case BinaryAnnotation(key, value) => key == "router.label" && value == "customlabel"
+        case _ => false
+      })
     }
   }
 
