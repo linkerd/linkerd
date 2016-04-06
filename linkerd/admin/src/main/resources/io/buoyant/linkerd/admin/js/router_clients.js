@@ -68,7 +68,9 @@ var RouterClient = (function() {
 })();
 
 var RouterClients = (function() {
-  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate) {
+  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, colorOrder) {
+    CombinedClientGraph(metricsCollector, routerName, $clientEl.find(".router-graph"), colorOrder);
+
     var clients = routers.clients(routerName);
     routers.onAddedClients(addClients);
 
