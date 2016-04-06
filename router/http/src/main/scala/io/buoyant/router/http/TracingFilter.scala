@@ -10,29 +10,30 @@ import com.twitter.finagle.tracing.Trace
 object TracingFilter extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, service: Service[Request, Response]) = {
+    Trace.recordRpc(req.method.toString)
     Trace.recordBinary("http.method", req.method.toString)
     Trace.recordBinary("http.uri", req.uri)
     for (h <- req.host) {
       Trace.recordBinary("http.host", h)
     }
-    recordMessage(req)
+    recordMessage("req", req)
 
     service(req).onSuccess { rsp =>
       Trace.recordBinary("http.status", rsp.status.code)
-      recordMessage(rsp)
+      recordMessage("rsp", rsp)
     }
   }
 
-  private[this] def recordMessage(msg: Message): Unit = {
-    Trace.recordBinary("http.version", msg.version.toString)
+  private[this] def recordMessage(prefix: String, msg: Message): Unit = {
+    Trace.recordBinary(s"$prefix.http.version", msg.version.toString)
     for (length <- msg.contentLength) {
-      Trace.recordBinary("http.content-length", length)
+      Trace.recordBinary(s"$prefix.http.content-length", length)
     }
     for (t <- msg.contentType) {
-      Trace.recordBinary("http.content-type", t)
+      Trace.recordBinary(s"$prefix.http.content-type", t)
     }
     for (te <- msg.headerMap.get("transfer-encoding")) {
-      Trace.recordBinary("http.transfer-encoding", te)
+      Trace.recordBinary(s"$prefix.http.transfer-encoding", te)
     }
   }
 }

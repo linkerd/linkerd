@@ -80,7 +80,7 @@ class RoutingFactory[Req, Rsp](
     override def close(d: Time) = conn.close(d)
 
     def apply(req: Req): Future[Rsp] = {
-      Trace.recordBinary("router.label", label)
+      Trace.recordRpc(label)
       for {
         dst <- getDst(req).rescue {
           case e: Throwable =>

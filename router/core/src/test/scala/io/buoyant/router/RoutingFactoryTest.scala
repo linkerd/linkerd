@@ -2,7 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
-import com.twitter.finagle.tracing.Annotation.BinaryAnnotation
+import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Time}
 import io.buoyant.test.Awaits
@@ -66,11 +66,9 @@ class RoutingFactoryTest extends FunSuite with Awaits {
       val service = mkService(label = "customlabel")
       await(service(Request()))
       val annotations = tracer.annotations.collect {
-        case a: BinaryAnnotation => a
+        case a: Rpc => a
       }
-      assert(annotations.exists { a =>
-        a.key == "router.label" && a.value == "customlabel"
-      })
+      assert(annotations.exists(_.name == "customlabel"))
     }
   }
 
