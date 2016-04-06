@@ -45,7 +45,8 @@ var RouterClient = (function() {
   return function (metricsCollector, routers, client, $clientEl, routerName, clientTemplate) {
     template = clientTemplate;
     var metricDefinitions = getMetricDefinition(routerName, client.label);
-    var latencyKeys = Query.filter(/^request_latency_ms\..*/, _.keys(client.metrics));
+    var desiredLatencies = ["max","p9990", "p99", "p95", "p50"];
+    var latencyKeys = _.map(desiredLatencies, function(key) { return "request_latency_ms." + key; });
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
