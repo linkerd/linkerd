@@ -39,7 +39,6 @@ var CombinedClientGraph = (function() {
     var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
     var colorIdx = 0;
 
-
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
 
     metricsCollector.registerListener(function(data) {

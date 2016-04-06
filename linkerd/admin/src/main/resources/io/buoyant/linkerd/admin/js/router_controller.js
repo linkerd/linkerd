@@ -87,7 +87,7 @@ var RouterController = (function () {
       CombinedClientGraph(metricsCollector, router, container.find(".router-graph"), colorOrder);
       RouterSummary(metricsCollector, templates.summary, $summaryEl, router);
       RouterServers(metricsCollector, routers, $serversEl, router, templates.server);
-      RouterClients(metricsCollector, routers, $clientsEl, router , templates.client);
+      RouterClients(metricsCollector, routers, $clientsEl, router , templates.client, colorOrder);
     });
 
     return {};
