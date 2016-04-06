@@ -24,16 +24,15 @@ var RouterClient = (function() {
 
   function getLatencyData(client, latencyKeys) {
     var latencyData = _.pick(client.metrics, latencyKeys);
+    var tableData = {};
+    var chartData = [];
 
-    var tableData = _.mapKeys(latencyData, function(value, key) {
-      return key.split(".")[1];
-    });
-
-    var chartData = _.map(latencyData, function(latency, metricName) {
-      return {
+    _.each(latencyData, function(latencyValue, metricName) {
+      tableData[metricName.split(".")[1]] = latencyValue;
+      chartData.push({
         name: metricName,
-        delta: latency
-      }
+        delta: latencyValue
+      });
     });
 
     return { tableData: tableData, chartData: chartData };
@@ -101,7 +100,7 @@ var RouterClient = (function() {
     template = clientTemplate;
     colorLookup = colors;
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
-    var latencyKeys = Query.filter(/^request_latency_ms\.(max|min|p9990|p99|p95|p50).*/, _.keys(client.metrics));
+    var latencyKeys = Query.filter(/^request_latency_ms\.(max|min|p9990|p99|p95|p50)$/, _.keys(client.metrics));
 
     renderMetrics($metricsEl, client, [], []);
     var chart = initializeChart($chartEl, latencyKeys);
