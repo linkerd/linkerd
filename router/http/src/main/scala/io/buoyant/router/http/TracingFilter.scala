@@ -11,29 +11,30 @@ object TracingFilter extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, service: Service[Request, Response]) = {
     Trace.recordRpc(req.method.toString)
-    Trace.recordBinary("http.method", req.method.toString)
+    // http.uri is used here for consistency with finagle-http's tracing filter
     Trace.recordBinary("http.uri", req.uri)
+    Trace.recordBinary("http.req.method", req.method.toString)
     for (h <- req.host) {
-      Trace.recordBinary("http.host", h)
+      Trace.recordBinary("http.req.host", h)
     }
     recordMessage("req", req)
 
     service(req).onSuccess { rsp =>
-      Trace.recordBinary("http.status", rsp.status.code)
+      Trace.recordBinary("http.rsp.status", rsp.status.code)
       recordMessage("rsp", rsp)
     }
   }
 
-  private[this] def recordMessage(prefix: String, msg: Message): Unit = {
-    Trace.recordBinary(s"$prefix.http.version", msg.version.toString)
+  private[this] def recordMessage(scope: String, msg: Message): Unit = {
+    Trace.recordBinary(s"http.$scope.version", msg.version.toString)
     for (length <- msg.contentLength) {
-      Trace.recordBinary(s"$prefix.http.content-length", length)
+      Trace.recordBinary(s"http.$scope.content-length", length)
     }
     for (t <- msg.contentType) {
-      Trace.recordBinary(s"$prefix.http.content-type", t)
+      Trace.recordBinary(s"http.$scope.content-type", t)
     }
     for (te <- msg.headerMap.get("transfer-encoding")) {
-      Trace.recordBinary(s"$prefix.http.transfer-encoding", te)
+      Trace.recordBinary(s"http.$scope.transfer-encoding", te)
     }
   }
 }

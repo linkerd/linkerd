@@ -29,25 +29,26 @@ class TracingFilterTest extends FunSuite with Awaits {
     req.contentLength = 94114
 
     Trace.letTracer(tracer) {
-      service(req)
+      val f = service(req)
 
       val reqEvents = tracer.iterator.toSeq
       assert(reqEvents.exists(_.annotation == Annotation.Rpc("HEAD")))
-      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.method", "HEAD")))
       assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.uri", "/foo?bar=bah")))
-      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.host", "monkeys")))
-      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("req.http.version", "HTTP/1.1")))
-      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("req.http.content-type", "text/plain")))
-      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("req.http.content-length", 94114)))
+      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.method", "HEAD")))
+      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.host", "monkeys")))
+      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.version", "HTTP/1.1")))
+      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.content-type", "text/plain")))
+      assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.content-length", 94114)))
 
       tracer.clear()
       done.setDone()
+      await(f)
 
       val rspEvents = tracer.iterator.toSeq
-      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.status", Status.PaymentRequired.code)))
-      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("rsp.http.version", "HTTP/1.1")))
-      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("rsp.http.content-type", "application/json")))
-      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("rsp.http.content-length", 304374)))
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.status", Status.PaymentRequired.code)))
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.version", "HTTP/1.1")))
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.content-type", "application/json")))
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.content-length", 304374)))
     }
   }
 }
