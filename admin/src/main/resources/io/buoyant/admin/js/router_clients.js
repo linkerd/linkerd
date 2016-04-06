@@ -1,7 +1,18 @@
 var RouterClient = (function() {
   var template;
-  var colorLookup;
-  var colorIdx = 0;
+  const metricToColorShade = {
+    "max": "dark",
+    "p9990": "shade",
+    "p99": "neutral",
+    "p95": "tint",
+    "p50": "light"
+  }
+
+  function createChartLegend(colorLookup) {
+    return _.mapValues(metricToColorShade, function(shade) {
+      return colorLookup[shade];
+    });
+  }
 
   function getMetricDefinitions(routerName, clientName) {
     return _.map(["requests", "connections", "success", "failures"], function(metric) {
@@ -12,10 +23,11 @@ var RouterClient = (function() {
     });
   }
 
-  function renderMetrics($container, client, summaryData, latencyData) {
+  function renderMetrics($container, client, summaryData, latencyData, chartLegend) {
     var clientHtml = template($.extend({
       client: client.label,
-      latencies: latencyData
+      latencies: latencyData,
+      legend: chartLegend
     }, summaryData));
     var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
@@ -52,15 +64,8 @@ var RouterClient = (function() {
     return summary;
   }
 
-  function timeseriesParams() {
-    return {
-      strokeStyle: colorLookup[colorIdx++ % colorLookup.length], //TODO: #242 per client color scheme
-      lineWidth: 2
-    };
-  };
-
-  function initializeChart($chartEl, latencyKeys) {
-    var $canvas = $("<canvas id='canvas' height='181'></canvas>");
+  function initializeChart($chartEl, latencyKeys, timeseriesParamsFn) {
+    var $canvas = $("<canvas id='canvas' height='141'></canvas>");
     $chartEl.append($canvas);
 
     var chart = new UpdateableChart(
@@ -83,7 +88,7 @@ var RouterClient = (function() {
       function() {
         return $chartEl.width();
       },
-      timeseriesParams
+      timeseriesParamsFn
     );
     var desiredLatencyMetrics = _.map(latencyKeys, function(metric) {
       return {
@@ -91,19 +96,26 @@ var RouterClient = (function() {
         color: ""
       }
     });
-    chart.setMetrics(desiredLatencyMetrics, timeseriesParams, true);
+    chart.setMetrics(desiredLatencyMetrics, true);
 
     return chart;
   }
 
-  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, $chartEl, colors) {
+  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, $chartEl, colorShadesForClient) {
     template = clientTemplate;
-    colorLookup = colors;
+    var chartLegend = createChartLegend(colorShadesForClient);
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
-    var latencyKeys = Query.filter(/^request_latency_ms\.(max|min|p9990|p99|p95|p50)$/, _.keys(client.metrics));
+    var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
 
-    renderMetrics($metricsEl, client, [], []);
-    var chart = initializeChart($chartEl, latencyKeys);
+    renderMetrics($metricsEl, client, [], [], chartLegend);
+    var chart = initializeChart($chartEl, latencyKeys, timeseriesParams);
+
+    function timeseriesParams(name) {
+      return {
+        strokeStyle: chartLegend[name.replace("request_latency_ms.", "")],
+        lineWidth: 2
+      };
+    };
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
@@ -111,7 +123,7 @@ var RouterClient = (function() {
       var latencies = getLatencyData(client, latencyKeys);
 
       chart.updateMetrics(latencies.chartData);
-      renderMetrics($metricsEl, client, summaryData, latencies.tableData);
+      renderMetrics($metricsEl, client, summaryData, latencies.tableData, chartLegend);
     }
 
     var getDesiredMetrics = function(metrics) {
@@ -122,25 +134,57 @@ var RouterClient = (function() {
 
     metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
 
-    return {};
+    return {
+      updateColors: function(clientToColor) {
+        chartLegend = createChartLegend(clientToColor[client.label].colorFamily);
+      }
+    };
   };
 })();
 
 var RouterClients = (function() {
-  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, colors) {
-    var clients = routers.clients(routerName);
+  function assignColorsToClients(colors, clients) {
+    var colorIdx = 0;
+
+    return _.reduce(clients, function(clientMapping, client) {
+      clientMapping[client.label] = colors[colorIdx++ % colors.length];
+      return clientMapping;
+    }, {});
+  }
+
+  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, clientContainerTemplate, colors) {
+    var clientToColor = assignColorsToClients(colors, routers.clients(routerName));
+
+    var routerClients = [];
+    var combinedClientGraph = CombinedClientGraph(metricsCollector, routerName, $clientEl.find(".router-graph"), clientToColor);
+
     routers.onAddedClients(addClients);
 
-    _.map(clients, initializeClient);
+    _.map(routers.clients(routerName), initializeClient);
 
     function initializeClient(client) {
-      var $metrics = $("<div />").addClass("col-md-6").appendTo($clientEl);
-      var $chart = $("<div />").addClass("col-md-6").appendTo($clientEl);
+      var colorsForClient = clientToColor[client.label].colorFamily;
+      var $container = $(clientContainerTemplate({
+        clientColor: colorsForClient.neutral
+      })).appendTo($clientEl);
+      var $metrics = $container.find(".metrics-container");
+      var $chart = $container.find(".chart-container");
 
-      RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, $chart, colors);
+      routerClients.push(RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, $chart, colorsForClient));
     }
 
     function addClients(addedClients) {
+      // reassign colors
+      clientToColor = assignColorsToClients(colors, routers.clients(routerName));
+
+      // update existing client colors
+      combinedClientGraph.updateColors(clientToColor);
+
+      _.each(routerClients, function(routerClient) {
+        routerClient.updateColors(clientToColor);
+      });
+
+      // add new clients
       _.chain(addedClients)
         .filter(function(client) { return client.router === routerName })
         .each(initializeClient)

@@ -4,11 +4,12 @@ var CombinedClientGraph = (function() {
   }
 
   return function(metricsCollector, routerName, $root, colors) {
+    var clientColors = colors;
     var query = Query.clientQuery().withRouter(routerName).withMetric("requests").build();
 
-    var timeseriesParams = function() {
+    function timeseriesParams(name) {
       return {
-        strokeStyle: colors[colorIdx++ % colors.length],
+        strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
         lineWidth: 2
       };
     };
@@ -37,14 +38,16 @@ var CombinedClientGraph = (function() {
     );
 
     var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
-    var colorIdx = 0;
-
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
 
     metricsCollector.registerListener(function(data) {
       var filteredData = Query.filter(query, data.specific);
       chart.updateMetrics(filteredData);
     }, function(metrics) { return Query.filter(query, metrics); });
-    return {};
+    return {
+      updateColors: function(newColors) {
+        clientColors = newColors;
+      }
+    };
   };
 })();
