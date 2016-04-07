@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, NameTree, Path}
+import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -229,7 +229,8 @@ object ThriftNamerInterface {
  * Exposes a polling interface to Namers.
  */
 class ThriftNamerInterface(
-  val namers: Ns => NameInterpreter,
+  interpreters: Ns => NameInterpreter,
+  namers: Map[Path, Namer],
   stamper: ThriftNamerInterface.Stamper,
   retryIn: () => Duration
 ) extends thrift.Namer.FutureIface {
@@ -246,66 +247,6 @@ class ThriftNamerInterface(
    * XXX I expect this could be more efficient, even lockless.
    */
 
-  private[this] val bindingCacheMu = new {}
-  private[this] var bindingCache: Map[(String, Dtab, Path), Activity[NameTree[Name.Bound]]] = Map.empty
-  private[this] def getBind(ns: String, dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
-    bindingCacheMu.synchronized {
-      val key = (ns, dtab, path)
-      bindingCache.get(key) match {
-        case Some(act) => act
-        case None =>
-          val act = namers(ns).bind(dtab, path)
-          bindingCache += (key -> act)
-          act
-      }
-    }
-
-  private[this] val bindingObserverCacheMu = new {}
-  private[this] var bindingObserverCache: Map[(Ns, Dtab, Path), BindingObserver] = Map.empty
-  private[this] def observe(ns: String, dtab: Dtab, path: Path): BindingObserver =
-    bindingObserverCacheMu.synchronized {
-      val key = (ns, dtab, path)
-      bindingObserverCache.get(key) match {
-        case Some(obs) =>
-          Trace.recordBinary("namerd.srv/bind.cached", true)
-          obs
-        case None =>
-          Trace.recordBinary("namerd.srv/bind.cached", false)
-          val obs = BindingObserver(getBind(ns, dtab, path), stamper)
-          bindingObserverCache += (key -> obs)
-          obs
-      }
-    }
-
-  private[this] val addrObserverCacheMu = new {}
-  private[this] var addrObserverCache: Map[Path, AddrObserver] = Map.empty
-  private[this] def observeAddr(ns: String, id: Path): AddrObserver =
-    addrObserverCacheMu.synchronized {
-      addrObserverCache.get(id) match {
-        case Some(obs) =>
-          Trace.recordBinary("namerd.srv/addr.cached", true)
-          obs
-        case None =>
-          Trace.recordBinary("namerd.srv/addr.cached", false)
-          val addr = getBind(ns, Dtab.empty, id).run.flatMap {
-            case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
-            case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
-            case Activity.Ok(NameTree.Leaf(bound)) if bound.id == id =>
-              bound.addr.map(Resolution.Resolved(_))
-            case _ => Var.value(Resolution.Released)
-          }
-          val obs = AddrObserver(addr, stamper, () => releaseAddr(id))
-          addrObserverCache += (id -> obs)
-          obs
-      }
-    }
-
-  private[this] def releaseAddr(id: Path): Unit =
-    addrObserverCacheMu.synchronized {
-      addrObserverCache.get(id).foreach(_.close())
-      addrObserverCache -= id
-    }
-
   /**
    * Refine a Name (Path) to a NameTree[Path] in a given (Dtab)
    * namespace.
@@ -316,23 +257,47 @@ class ThriftNamerInterface(
   def bind(req: thrift.BindReq): Future[thrift.Bound] = {
     val thrift.BindReq(tdentries, ref@thrift.NameRef(reqStamp, reqName, ns), _) = req
     val dtab = mkDtab(tdentries)
-    val path = mkPath(reqName)
-    Trace.recordBinary("namerd.srv/bind.ns", ns)
-    Trace.recordBinary("namerd.srv/bind.path", path.show)
-
-    val bindingObserver = observe(ns, dtab, path)
-    bindingObserver(reqStamp).transform {
-      case Throw(e) =>
-        Trace.recordBinary("namerd.srv/bind.fail", e.toString)
-        val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
+    mkPath(reqName) match {
+      case Path.empty =>
+        Trace.recordBinary("namerd.srv/bind.err", "empty path")
+        val failure = thrift.BindFailure("empty path", Int.MaxValue, ref, ns)
         Future.exception(failure)
 
-      case Return((TStamp(tstamp), nameTree)) =>
-        Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
-        val (root, nodes, _) = mkTree(nameTree)
-        Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
+      case path =>
+        Trace.recordBinary("namerd.srv/bind.ns", ns)
+        Trace.recordBinary("namerd.srv/bind.path", path.show)
+
+        val bindingObserver = observeBind(ns, dtab, path)
+        bindingObserver(reqStamp).transform {
+          case Throw(e) =>
+            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
+            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
+            Future.exception(failure)
+
+          case Return((TStamp(tstamp), nameTree)) =>
+            Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
+            val (root, nodes, _) = mkTree(nameTree)
+            Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
+        }
     }
   }
+
+  private[this] val bindingCacheMu = new {}
+  private[this] var bindingCache: Map[(Ns, Dtab, Path), BindingObserver] = Map.empty
+  private[this] def observeBind(ns: String, dtab: Dtab, path: Path): BindingObserver =
+    bindingCacheMu.synchronized {
+      val key = (ns, dtab, path)
+      bindingCache.get(key) match {
+        case Some(obs) =>
+          Trace.recordBinary("namerd.srv/bind.cached", true)
+          obs
+        case None =>
+          Trace.recordBinary("namerd.srv/bind.cached", false)
+          val obs = BindingObserver(interpreters(ns).bind(dtab, path), stamper)
+          bindingCache += (key -> obs)
+          obs
+      }
+    }
 
   /**
    * Observe a bound address pool.
@@ -344,27 +309,75 @@ class ThriftNamerInterface(
    * debugging, rate limiting, etc.
    */
   def addr(req: thrift.AddrReq): Future[thrift.Addr] = {
-    val thrift.AddrReq(ref@thrift.NameRef(reqStamp, reqName, ns), _) = req
-    val path = mkPath(reqName)
-    Trace.recordBinary("namerd.srv/addr.path", path.show)
+    val thrift.AddrReq(ref@thrift.NameRef(reqStamp, reqName, _), _) = req
+    mkPath(reqName) match {
+      case Path.empty =>
+        Trace.recordBinary("namerd.srv/addr.err", "empty path")
+        val failure = thrift.AddrFailure("empty path", Int.MaxValue, ref)
+        Future.exception(failure)
 
-    val addrObserver = observeAddr(ns, path)
-    addrObserver(reqStamp).map {
-      case (newStamp, None) =>
-        Trace.recordBinary("namerd.srv/addr.result", "neg")
-        thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
+      case path =>
+        Trace.recordBinary("namerd.srv/addr.path", path.show)
+        val addrObserver = observeAddr(path)
+        addrObserver(reqStamp).map {
+          case (newStamp, None) =>
+            Trace.recordBinary("namerd.srv/addr.result", "neg")
+            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
 
-      case (newStamp, Some(bound@Addr.Bound(addrs, meta))) =>
-        Trace.recordBinary("namerd.srv/addr.result", bound.toString)
-        val taddrs = addrs.collect {
-          case Address.Inet(isa, _) =>
-            // TODO translate metadata (weight info, latency compensation, etc)
-            val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-            thrift.TransportAddress(ip, isa.getPort)
+          case (newStamp, Some(bound@Addr.Bound(addrs, meta))) =>
+            Trace.recordBinary("namerd.srv/addr.result", bound.toString)
+            val taddrs = addrs.collect {
+              case Address.Inet(isa, _) =>
+                // TODO translate metadata (weight info, latency compensation, etc)
+                val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
+                thrift.TransportAddress(ip, isa.getPort)
+            }
+            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
         }
-        thrift.Addr(TStamp(newStamp), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+    }
+  }
+
+  private[this] val addrCacheMu = new {}
+  private[this] var addrCache: Map[Path, AddrObserver] = Map.empty
+  private[this] def observeAddr(id: Path): AddrObserver =
+    addrCacheMu.synchronized {
+      addrCache.get(id) match {
+        case Some(obs) =>
+          Trace.recordBinary("namerd.srv/addr.cached", true)
+          obs
+
+        case None =>
+          Trace.recordBinary("namerd.srv/addr.cached", false)
+          val resolution = namers.find { case (pfx, namer) => id.startsWith(pfx) } match {
+            case None =>
+              // could not find a namer, this addr will never bind
+              Var.value(Resolution.Resolved(Addr.Neg))
+
+            case Some((pfx, namer)) =>
+              namer.bind(NameTree.Leaf(id.drop(pfx.size))).run.flatMap {
+                case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
+                case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
+                case Activity.Ok(tree) => tree match {
+                  case NameTree.Leaf(bound) => bound.addr.map(Resolution.Resolved(_))
+                  case NameTree.Empty => Var.value(Resolution.Resolved(Addr.Bound()))
+                  case NameTree.Fail => Var.value(Resolution.Resolved(Addr.Failed("name tree failed")))
+                  case NameTree.Neg => Var.value(Resolution.Released)
+                  case NameTree.Alt(_) | NameTree.Union(_) =>
+                    Var.value(Resolution.Resolved(Addr.Failed(s"${id.show} is not a concrete bound id")))
+                }
+              }
+          }
+          val obs = AddrObserver(resolution, stamper, () => releaseAddr(id))
+          addrCache += (id -> obs)
+          obs
+      }
     }
 
-  }
+  private[this] def releaseAddr(id: Path): Unit =
+    addrCacheMu.synchronized {
+      addrCache.get(id).foreach(_.close())
+      addrCache -= id
+    }
+
 }
 

@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Path}
+import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.util.{Activity, Await, Var}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.InetSocketAddress
@@ -15,14 +15,16 @@ class ThriftNamerInterfaceTest extends FunSuite {
 
   test("simple binding") {
     val states = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
-    val namer = new NameInterpreter { def bind(dtab: Dtab, path: Path) = Activity(states) }
+    val interpreter = new NameInterpreter { def bind(dtab: Dtab, path: Path) = Activity(states) }
+    val namer = new Namer { def lookup(path: Path) = Activity(states) }
+    val namers = Map(Path.Utf8("atl") -> namer)
 
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
 
     def retry() = 1.second
 
-    val service = new ThriftNamerInterface(_ => namer, stamper, retry)
+    val service = new ThriftNamerInterface(_ => interpreter, namers, stamper, retry)
     val clientId = TPath(Path.empty)
 
     // The first request before the tree has been refined -- no value initially
@@ -34,8 +36,8 @@ class ThriftNamerInterfaceTest extends FunSuite {
     states() = Activity.Ok(NameTree.Alt(
       NameTree.Leaf(Name.Bound(ss2Addr, Path.Utf8("slime", "season", "2"))),
       NameTree.Union(
-        NameTree.Weighted(2.0, NameTree.Leaf(Name.Bound(imupAddr, Path.Utf8("im", "up")))),
-        NameTree.Weighted(0.2, NameTree.Leaf(Name.Bound(ss3Addr, Path.Utf8("slime", "season", "3"))))
+        NameTree.Weighted(2.0, NameTree.Leaf(Name.Bound(imupAddr, Path.Utf8("atl", "im", "up")))),
+        NameTree.Weighted(0.2, NameTree.Leaf(Name.Bound(ss3Addr, Path.Utf8("atl", "slime", "season", "3"))))
       )
     ))
 
@@ -52,9 +54,9 @@ class ThriftNamerInterfaceTest extends FunSuite {
             assert(init.tree.nodes.contains(w0.id) && init.tree.nodes.contains(w1.id))
             assert(w0.weight == 2.0 && w1.weight == 0.2)
             assert(init.tree.nodes(w0.id) ==
-              thrift.BoundNode.Leaf(thrift.BoundName(TPath("im", "up"))))
+              thrift.BoundNode.Leaf(thrift.BoundName(TPath("atl", "im", "up"))))
             assert(init.tree.nodes(w1.id) ==
-              thrift.BoundNode.Leaf(thrift.BoundName(TPath("slime", "season", "3"))))
+              thrift.BoundNode.Leaf(thrift.BoundName(TPath("atl", "slime", "season", "3"))))
 
           case node => fail(s"$node is not a BoundNode.Weighted(w0, w1)")
         }
@@ -65,14 +67,16 @@ class ThriftNamerInterfaceTest extends FunSuite {
 
   test("binding") {
     val states = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
-    val namer = new NameInterpreter { def bind(dtab: Dtab, path: Path) = Activity(states) }
+    val interpreter = new NameInterpreter { def bind(dtab: Dtab, path: Path) = Activity(states) }
+    val namer = new Namer { def lookup(path: Path) = Activity(states) }
+    val namers = Map(Path.Utf8("atl") -> namer)
 
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
 
     def retry() = 1.second
 
-    val service = new ThriftNamerInterface(_ => namer, stamper, retry)
+    val service = new ThriftNamerInterface(_ => interpreter, namers, stamper, retry)
     val clientId = TPath.empty
 
     val initName = thrift.NameRef(TStamp.empty, TPath("ysl", "thugger"), "testns")
@@ -80,18 +84,18 @@ class ThriftNamerInterfaceTest extends FunSuite {
     assert(!initF.isDefined)
 
     val addrs = Var[Addr](Addr.Pending)
-    val boundLeaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("slime", "season"), Path.Utf8("3")))
+    val boundLeaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("atl", "slime", "season"), Path.Utf8("3")))
     states() = Activity.Ok(boundLeaf)
 
     assert(initF.isDefined)
     val init = Await.result(initF)
     assert(init.tree.root == thrift.BoundNode.Leaf(thrift.BoundName(
-      TPath("slime", "season"),
+      TPath("atl", "slime", "season"),
       TPath("3")
     )))
     assert(init.tree.nodes.isEmpty)
 
-    val addrName = thrift.NameRef(TStamp.empty, TPath("slime", "season"), "testns")
+    val addrName = thrift.NameRef(TStamp.empty, TPath("atl", "slime", "season"), "testns")
     val addrF = service.addr(thrift.AddrReq(addrName, clientId))
     assert(!addrF.isDefined)
 

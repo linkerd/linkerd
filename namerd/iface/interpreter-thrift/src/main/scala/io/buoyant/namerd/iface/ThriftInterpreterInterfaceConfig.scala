@@ -1,7 +1,7 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.ThriftMux
+import com.twitter.finagle.{Path, Namer, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.scrooge.ThriftService
 import com.twitter.util.Duration
@@ -19,13 +19,14 @@ case class ThriftInterpreterInterfaceConfig(
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
 
   @JsonIgnore
-  def mk(namers: Ns => NameInterpreter): Servable = {
+  def mk(interpeters: Ns => NameInterpreter, namers: Map[Path, Namer]): Servable = {
     val retryIn: () => Duration = {
       val retry = retryBaseSecs.map(_.seconds).getOrElse(10.minutes)
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
       () => retry + (Random.nextGaussian() * jitter.inSeconds).toInt.seconds
     }
-    ThriftServable(addr, new ThriftNamerInterface(namers, new LocalStamper, retryIn))
+    val iface = new ThriftNamerInterface(interpeters, namers, new LocalStamper, retryIn)
+    ThriftServable(addr, iface)
   }
 }
 
