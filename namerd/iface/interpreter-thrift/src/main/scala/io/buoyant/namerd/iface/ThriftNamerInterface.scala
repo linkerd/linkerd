@@ -223,6 +223,8 @@ object ThriftNamerInterface {
         }
         (node, Map.empty, nextId)
     }
+
+  private val DefaultNamer: (Path, Namer) = Path.empty -> Namer.global
 }
 
 /**
@@ -348,24 +350,18 @@ class ThriftNamerInterface(
 
         case None =>
           Trace.recordBinary("namerd.srv/addr.cached", false)
-          val resolution = namers.find { case (pfx, namer) => id.startsWith(pfx) } match {
-            case None =>
-              // could not find a namer, this addr will never bind
-              Var.value(Resolution.Resolved(Addr.Neg))
-
-            case Some((pfx, namer)) =>
-              namer.bind(NameTree.Leaf(id.drop(pfx.size))).run.flatMap {
-                case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
-                case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
-                case Activity.Ok(tree) => tree match {
-                  case NameTree.Leaf(bound) => bound.addr.map(Resolution.Resolved(_))
-                  case NameTree.Empty => Var.value(Resolution.Resolved(Addr.Bound()))
-                  case NameTree.Fail => Var.value(Resolution.Resolved(Addr.Failed("name tree failed")))
-                  case NameTree.Neg => Var.value(Resolution.Released)
-                  case NameTree.Alt(_) | NameTree.Union(_) =>
-                    Var.value(Resolution.Resolved(Addr.Failed(s"${id.show} is not a concrete bound id")))
-                }
-              }
+          val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
+          val resolution = namer.bind(NameTree.Leaf(id.drop(pfx.size))).run.flatMap {
+            case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
+            case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
+            case Activity.Ok(tree) => tree match {
+              case NameTree.Leaf(bound) => bound.addr.map(Resolution.Resolved(_))
+              case NameTree.Empty => Var.value(Resolution.Resolved(Addr.Bound()))
+              case NameTree.Fail => Var.value(Resolution.Resolved(Addr.Failed("name tree failed")))
+              case NameTree.Neg => Var.value(Resolution.Released)
+              case NameTree.Alt(_) | NameTree.Union(_) =>
+                Var.value(Resolution.Resolved(Addr.Failed(s"${id.show} is not a concrete bound id")))
+            }
           }
           val obs = AddrObserver(resolution, stamper, () => releaseAddr(id))
           addrCache += (id -> obs)
