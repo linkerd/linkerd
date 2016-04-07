@@ -350,8 +350,7 @@ class ThriftNamerInterface(
 
         case None =>
           Trace.recordBinary("namerd.srv/addr.cached", false)
-          val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
-          val resolution = namer.bind(NameTree.Leaf(id.drop(pfx.size))).run.flatMap {
+          val resolution = bindAddrId(id).run.flatMap {
             case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
             case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
             case Activity.Ok(tree) => tree match {
@@ -368,6 +367,11 @@ class ThriftNamerInterface(
           obs
       }
     }
+
+  private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
+    val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
+    namer.bind(NameTree.Leaf(id.drop(pfx.size)))
+  }
 
   private[this] def releaseAddr(id: Path): Unit =
     addrCacheMu.synchronized {

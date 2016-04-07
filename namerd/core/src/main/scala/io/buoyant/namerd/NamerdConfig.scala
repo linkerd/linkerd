@@ -25,6 +25,9 @@ case class NamerdConfig(
   private[this] def mkInterfaces(dtabStore: DtabStore): Seq[Servable] = {
     val namersByPfx = namers.foldLeft(Map.empty[Path, Namer]) {
       case (namers, config) =>
+        if (config.prefix.isEmpty)
+          throw NamerdConfig.EmptyNamerPrefix
+
         for (prefix <- namers.keys)
           if (prefix.startsWith(config.prefix) || config.prefix.startsWith(prefix))
             throw NamerdConfig.ConflictingNamers(prefix, config.prefix)
@@ -42,6 +45,10 @@ object NamerdConfig {
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
     lazy val message =
       s"Namers must not have overlapping prefixes: ${prefix0.show} & ${prefix1.show}"
+  }
+
+  object EmptyNamerPrefix extends ConfigError {
+    lazy val message = s"Namers must not have an empty prefix"
   }
 
   private[namerd] case class Initializers(
