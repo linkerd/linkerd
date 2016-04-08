@@ -24,6 +24,7 @@ class TestDtabStore extends DtabStoreConfig {
     override def put(ns: String, dtab: Dtab): Future[Unit] = Future.Unit
     override def observe(ns: String): Activity[Option[VersionedDtab]] = Activity.pending
     override def create(ns: String, dtab: Dtab): Future[Unit] = Future.Unit
+    override def delete(ns: String): Future[Unit] = Future.Unit
   }
 }
 

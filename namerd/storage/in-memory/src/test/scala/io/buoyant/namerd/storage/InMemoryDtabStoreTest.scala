@@ -3,7 +3,7 @@ package io.buoyant.namerd.storage
 import com.twitter.conversions.time._
 import com.twitter.finagle.Dtab
 import com.twitter.util.{Await, Activity}
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExist, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, VersionedDtab}
 import org.scalatest.FunSuite
 
@@ -66,7 +66,7 @@ class InMemoryDtabStoreTest extends FunSuite {
 
   test("fail to update non-existent namespace") {
     val store = mkStore
-    intercept[DtabNamespaceDoesNotExist] {
+    intercept[DtabNamespaceDoesNotExistException] {
       Await.result(store.update("nothing", Dtab.read("/hello => /world"), InMemoryDtabStore.version(1)))
     }
   }
@@ -85,5 +85,14 @@ class InMemoryDtabStoreTest extends FunSuite {
     assert(
       extractDtab(store.observe("test")) == Dtab.read("/hello => /world")
     )
+  }
+
+  test("delete deletes dtab") {
+    val store = mkStore
+    val obs = store.observe("test")
+    assert(obs.sample.isDefined)
+    Await.result(store.delete("test"))
+    assert(obs.sample.isEmpty)
+    assert(!Await.result(store.list()).contains("test"))
   }
 }
