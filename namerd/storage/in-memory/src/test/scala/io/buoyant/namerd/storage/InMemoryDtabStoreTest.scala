@@ -86,4 +86,14 @@ class InMemoryDtabStoreTest extends FunSuite {
       extractDtab(store.observe("test")) == Dtab.read("/hello => /world")
     )
   }
+
+  test("observe composed") {
+    val store = mkStore
+    val obs = store.observeComposed("test/child")
+    assert(obs.sample.isEmpty)
+    Await.result(store.create("test/child", Dtab.read("/nice => /to/meet/you")))
+    assert(obs.sample.get.dtab == Dtab.read("/foo => /bar; /nice => /to/meet/you"))
+    Await.result(store.put("test", Dtab.read("/foo => /bas")))
+    assert(obs.sample.get.dtab == Dtab.read("/foo => /bas; /nice => /to/meet/you"))
+  }
 }

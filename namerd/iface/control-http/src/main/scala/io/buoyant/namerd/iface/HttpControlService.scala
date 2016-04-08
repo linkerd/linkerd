@@ -117,8 +117,10 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
   import HttpControlService._
 
   /** Get the dtab, if it exists. */
-  private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
-    storage.observe(ns).values.toFuture.flatMap(Future.const)
+  private[this] def getDtab(ns: String, composed: Boolean = false): Future[Option[VersionedDtab]] = {
+    val obs = if (composed) storage.observeComposed(ns) else storage.observe(ns)
+    obs.values.toFuture.flatMap(Future.const)
+  }
 
   def apply(req: Request): Future[Response] = (req.path, req.method) match {
     case (DtabUri(None), _) =>
@@ -145,7 +147,7 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
     }
 
   private[this] def handleGetDtab(ns: String, req: Request): Future[Response] =
-    getDtab(ns).map {
+    getDtab(ns, req.getBooleanParam("composed")).map {
       case Some(dtab) =>
         val rsp = Response()
         val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
@@ -158,7 +160,7 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
     }
 
   private[this] def handleHeadDtab(ns: String, req: Request): Future[Response] =
-    getDtab(ns).map {
+    getDtab(ns, req.getBooleanParam("composed")).map {
       case Some(dtab) =>
         val rsp = Response()
         rsp.headerMap.add(Fields.Etag, versionString(dtab.version))

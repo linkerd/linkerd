@@ -8,7 +8,7 @@ import io.buoyant.config.ConfigInitializer
 trait InterpreterInterfaceConfig extends InterfaceConfig {
   @JsonIgnore
   final def mk(store: DtabStore, namers: Seq[(Path, Namer)]): Servable =
-    mk(ns => ConfiguredDtabNamer(store.observe(ns).map(extractDtab), namers))
+    mk(ns => ConfiguredDtabNamer(store.observeComposed(ns).map(extractDtab), namers))
 
   @JsonIgnore
   protected def mk(namers: Ns => NameInterpreter): Servable
