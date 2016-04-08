@@ -1,8 +1,10 @@
 {{#each routers}}
   <div class="router router-{{this}}" data-router="{{this}}">
     <div class="summary row"></div>
-    <canvas class="router-graph" height="181"></canvas>
-    <div class="clients router-clients row"><div>Clients</div></div>
+    <div class="clients router-clients row">
+      <canvas class="router-graph" height="181"></canvas>
+      <div>Clients</div>
+    </div>
     <div class="servers router-servers row">
       <div class="router-servers-title">Servers</div>
     </div>
