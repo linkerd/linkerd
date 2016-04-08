@@ -1,6 +1,6 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{Path, Namer, Stack}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigInitializer, Parser}
@@ -19,14 +19,13 @@ case class NamerdConfig(
 
   def mk: Namerd = {
     val dtabStore = storage.mkDtabStore
-    Namerd(mkInterfaces(dtabStore), dtabStore)
-  }
-
-  private[this] def mkInterfaces(dtabStore: DtabStore): Seq[Servable] = {
     val namersByPfx = namers.map { config =>
       config.prefix -> config.newNamer(Stack.Params.empty)
     }
+    Namerd(mkInterfaces(dtabStore, namersByPfx), dtabStore, namersByPfx)
+  }
 
+  private[this] def mkInterfaces(dtabStore: DtabStore, namersByPfx: Seq[(Path, Namer)]): Seq[Servable] = {
     // TODO: validate the absence of port conflicts
     interfaces.map(_.mk(dtabStore, namersByPfx))
   }

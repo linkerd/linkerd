@@ -15,7 +15,7 @@ object Main extends App {
         val config = loadNamerd(path)
         val namerd = config.mk
 
-        val admin = new NamerdAdmin(this, config)
+        val admin = new NamerdAdmin(this, config, namerd)
         val adminInitializer = new AdminInitializer(
           config.admin.getOrElse(AdminConfig(Port(9991))),
           admin.adminMuxer

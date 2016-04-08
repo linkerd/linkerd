@@ -1,8 +1,8 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.ListeningServer
+import com.twitter.finagle.{Path, Namer, ListeningServer}
 
-case class Namerd(interfaces: Seq[Servable], dtabStore: DtabStore)
+case class Namerd(interfaces: Seq[Servable], dtabStore: DtabStore, namers: Seq[(Path, Namer)])
 
 trait Servable {
   def kind: String
