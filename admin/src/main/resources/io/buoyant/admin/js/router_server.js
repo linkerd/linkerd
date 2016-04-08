@@ -31,9 +31,18 @@ var RouterServer = (function() {
   }
 
   function renderServer($container, server, data) {
+    var metrics = _.reduce(data, function(metrics, d) {
+      metrics[d.metricSuffix] = {
+        description: d.description,
+        value: d.value,
+        rate: d.rate
+      };
+      return metrics;
+    }, {});
+
     $container.html(template({
       server: server.label,
-      metrics: data
+      metrics: metrics
     }));
   }
 

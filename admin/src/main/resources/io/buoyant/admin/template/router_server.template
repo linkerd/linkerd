@@ -3,28 +3,72 @@
 </div>
 
 <div class="server-metrics">
-  <dl class="row">
-  {{#each metrics}}
-    <div class="col-md-2">
-      <dt>
-        {{description}}
-      </dt>
-      <dd>
+  <div class="row">
+
+    <div class="col-md-2 server-metric-container">
+      <div class="metric-header">
+        {{metrics.requests.description}}
+      </div>
+      <div>
         <span class="metric-medium">
-          {{#if value}}
-            {{value}}
+          {{#if metrics.requests.value}}
+            {{metrics.requests.value}}
+          {{else}}
+            0
+          {{/if}}
+        </span>
+      </div>
+    </div>
+
+    <div class="col-md-2 server-metric-container">
+      <div class="metric-header">
+        {{metrics.load.description}}
+      </div>
+      <div>
+        <span class="metric-medium">
+          {{#if metrics.load.value}}
+            {{metrics.load.value}}
+          {{else}}
+            0
+          {{/if}}
+        </span>
+      </div>
+    </div>
+
+    <div class="success-metric-container metric-container col-md-2">
+      <div class="metric-header">
+        {{metrics.success.description}}
+      </div>
+      <div>
+        <span class="metric-medium success-metric">
+          {{#if metrics.success.value}}
+            {{metrics.success.value}}
           {{else}}
             0
           {{/if}}
         </span>
 
         <span class="metric-small">
-          {{#if rate}}
-            {{rate}}
+          {{#if metrics.success.rate}}
+            {{metrics.success.rate}}
           {{/if}}
         </span>
-      </dd>
+      </div>
     </div>
-  {{/each}}
-  </dl>
+
+    <div class="failure-metric-container metric-container col-md-2">
+      <div class="metric-header">
+        {{metrics.failures.description}}
+      </div>
+      <div>
+        <span class="metric-medium failure-metric">
+          {{#if metrics.failures.value}}
+            {{metrics.failures.value}}
+          {{else}}
+            0
+          {{/if}}
+        </span>
+      </div>
+    </div>
+  </div>
 </div>
