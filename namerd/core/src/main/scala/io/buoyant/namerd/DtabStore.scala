@@ -7,7 +7,7 @@ import com.twitter.util.{Activity, Future}
 case class VersionedDtab(dtab: Dtab, version: DtabStore.Version)
 
 trait DtabStore {
-  import DtabStore.Namespace
+  import DtabStore.{Namespace, Version}
 
   /** List all namespaces */
   def list(): Future[Set[Namespace]]
@@ -28,7 +28,7 @@ trait DtabStore {
    * Update an existing dtab.  Returns a DtabVersionMismatchException if the
    * supplied version doesn't match the current version.
    */
-  def update(ns: Namespace, dtab: Dtab, version: DtabStore.Version): Future[Unit]
+  def update(ns: Namespace, dtab: Dtab, version: Version): Future[Unit]
 
   /**
    * Update an existing dtab regardless of the current version or create a new
