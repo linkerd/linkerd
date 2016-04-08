@@ -1,57 +1,57 @@
 
 <div class="router-summary router-{{router}} row">
   <div class="router-header col-md-4 metric-large">
-    <dt>Router</dt>
-    <dd>
+    <div class="metric-header">Router</div>
+    <div>
       {{#if router}}
         {{router}}
       {{else}}
         inactive...
       {{/if}}
-    </dd>
+    </div>
   </div>
 
   <div class="router-data">
     <div class="metric-large">
       <div class="router-summary-stat col-md-2">
-        <dt>Pending</dt>
-        <dd data-key="load">
+        <div class="metric-header">Pending</div>
+        <div data-key="load">
           {{#if load}}
             {{load}}
           {{else}}
             0
           {{/if}}
-        </dd>
+        </div>
       </div>
       <div class="router-summary-stat col-md-2">
-        <dt>Requests</dt>
-        <dd data-key="requests">
+        <div class="metric-header">Requests</div>
+        <div data-key="requests">
           {{#if requests}}
             {{requests}}
           {{else}}
             0
           {{/if}}
-        </dd>
+        </div>
       </div>
       <div class="router-summary-stat col-md-2">
-        <dt>Success rate</dt>
-        <dd data-key="success-rate">
+        <div class="metric-header">Success rate</div>
+        <div data-key="success-rate" class="success-metric">
           {{#if successRate}}
             {{successRate}}
           {{else}}
             N/A
           {{/if}}
-        </dd>
+        </div>
       </div>
       <div class="router-summary-stat col-md-2">
-        <dt>Fail rate</dt>
-        <dd data-key="fail-rate">
+        <div class="metric-header">Fail rate</div>
+        <div data-key="fail-rate" class="failure-metric">
           {{#if failureRate}}
             {{failureRate}}
           {{else}}
             N/A
           {{/if}}
-        </dd>
+        </div>
       </div>
     </div>
   </div>

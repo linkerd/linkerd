@@ -2,21 +2,18 @@
 * Styles from the new dashboard that are general enough to share.
 */
 
-.metric-large dt {
-  font-size: 14px;
+.metric-header {
+  font-size: 16px;
+  line-height: 16px;
 }
 
-.router-header-large, .metric-large, .metric-large dd {
+.router-header-large, .metric-large {
   font-size: 30px;
   line-height: 37px;
 }
 
-.metric-medium dt {
-  font-size: 14px;
-}
-
-.router-header-medium, .metric-medium, .metric-medium dd {
-  font-size: 16px;
+.metric-medium {
+  font-size: 24px;
   line-height: 32px;
 }
 
@@ -25,6 +22,18 @@
   line-height: 16px;
 }
 
-.summary-metric-label {
-  font-weight: 700;
+.success-metric-container {
+  border-left: 1px solid #4AD8AC;
+}
+
+.failure-metric-container {
+  border-left: 1px solid #D84A4A;
+}
+
+.success-metric {
+  color: #4AD8AC;
+}
+
+.failure-metric {
+  color: #D84A4A;
 }

@@ -1,11 +1,12 @@
 var RouterClient = (function() {
   var template;
+
   const metricToColorShade = {
-    "max": "dark",
-    "p9990": "shade",
+    "max": "light",
+    "p9990": "tint",
     "p99": "neutral",
-    "p95": "tint",
-    "p50": "light"
+    "p95": "shade",
+    "p50": "dark"
   }
 
   function createChartLegend(colorLookup) {
@@ -23,24 +24,29 @@ var RouterClient = (function() {
     });
   }
 
-  function renderMetrics($container, client, summaryData, latencyData, chartLegend) {
+  function renderMetrics($container, client, summaryData, latencyData, clientColor) {
     var clientHtml = template($.extend({
+      clientColor: clientColor,
       client: client.label,
-      latencies: latencyData,
-      legend: chartLegend
+      latencies: latencyData
     }, summaryData));
     var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
     $container.html($clientHtml);
   }
 
-  function getLatencyData(client, latencyKeys) {
+  function getLatencyData(client, latencyKeys, chartLegend) {
     var latencyData = _.pick(client.metrics, latencyKeys);
-    var tableData = {};
+    var tableData = [];
     var chartData = [];
 
     _.each(latencyData, function(latencyValue, metricName) {
-      tableData[metricName.split(".")[1]] = latencyValue;
+      var key = metricName.split(".")[1];
+      tableData.push({
+        latencyLabel: key,
+        latencyValue: latencyValue,
+        latencyColor: chartLegend[key]
+      });
       chartData.push({
         name: metricName,
         delta: latencyValue
@@ -101,13 +107,14 @@ var RouterClient = (function() {
     return chart;
   }
 
-  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, $chartEl, colorShadesForClient) {
+  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, $chartEl, colors) {
     template = clientTemplate;
-    var chartLegend = createChartLegend(colorShadesForClient);
+    var chartLegend = createChartLegend(colors.colorFamily);
+    var clientColor = colors.color;
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
     var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
 
-    renderMetrics($metricsEl, client, [], [], chartLegend);
+    renderMetrics($metricsEl, client, [], [], clientColor);
     var chart = initializeChart($chartEl, latencyKeys, timeseriesParams);
 
     function timeseriesParams(name) {
@@ -120,10 +127,10 @@ var RouterClient = (function() {
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
       var summaryData = getSummaryData(filteredData, metricDefinitions);
-      var latencies = getLatencyData(client, latencyKeys);
+      var latencies = getLatencyData(client, latencyKeys, chartLegend);
 
       chart.updateMetrics(latencies.chartData);
-      renderMetrics($metricsEl, client, summaryData, latencies.tableData, chartLegend);
+      renderMetrics($metricsEl, client, summaryData, latencies.tableData, clientColor);
     }
 
     var getDesiredMetrics = function(metrics) {
@@ -163,9 +170,9 @@ var RouterClients = (function() {
     _.map(routers.clients(routerName), initializeClient);
 
     function initializeClient(client) {
-      var colorsForClient = clientToColor[client.label].colorFamily;
+      var colorsForClient = clientToColor[client.label];
       var $container = $(clientContainerTemplate({
-        clientColor: colorsForClient.neutral
+        clientColor: colorsForClient.color
       })).appendTo($clientEl);
       var $metrics = $container.find(".metrics-container");
       var $chart = $container.find(".chart-container");

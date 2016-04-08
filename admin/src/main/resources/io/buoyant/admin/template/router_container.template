@@ -2,8 +2,9 @@
   <div class="router router-{{this}}" data-router="{{this}}">
     <div class="summary row"></div>
     <div class="clients router-clients row">
+      <div class="router-graph-header">Requests per client</div>
       <canvas class="router-graph" height="181"></canvas>
-      <div>Clients</div>
+      <div class="router-clients-title">Clients</div>
     </div>
     <div class="servers router-servers row">
       <div class="router-servers-title">Servers</div>

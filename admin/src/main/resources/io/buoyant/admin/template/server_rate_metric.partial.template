@@ -1,0 +1,20 @@
+<div class="{{containerClass}}">
+  <div class="metric-header">
+    {{description}}
+  </div>
+  <div>
+    <span class="{{metricClass}}">
+      {{#if value}}
+        {{value}}
+      {{else}}
+        0
+      {{/if}}
+    </span>
+
+    <span class="metric-small">
+      {{#if rate}}
+        {{rate}}
+      {{/if}}
+    </span>
+  </div>
+</div>
