@@ -2,7 +2,7 @@ package io.buoyant.namerd.storage.experimental
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.serverset2.ZkDtabStore
+import com.twitter.finagle.serverset2.buoyant.ZkDtabStore
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 class ZkDtabStoreInitializer extends DtabStoreInitializer {
