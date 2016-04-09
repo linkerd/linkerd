@@ -3,28 +3,10 @@
 </div>
 
 <div class="server-metrics">
-  <dl class="row">
-  {{#each metrics}}
-    <div class="col-md-2">
-      <dt>
-        {{description}}
-      </dt>
-      <dd>
-        <span class="metric-medium">
-          {{#if value}}
-            {{value}}
-          {{else}}
-            0
-          {{/if}}
-        </span>
-
-        <span class="metric-small">
-          {{#if rate}}
-            {{rate}}
-          {{/if}}
-        </span>
-      </dd>
-    </div>
-  {{/each}}
-  </dl>
+  <div class="row">
+    {{> rateMetricPartial metrics.requests containerClass="metric-container col-md-2" metricClass="metric-medium"}}
+    {{> rateMetricPartial metrics.load containerClass="metric-container col-md-2" metricClass="metric-medium"}}
+    {{> rateMetricPartial metrics.success containerClass="success-metric-container metric-container col-md-2" metricClass="metric-medium success-metric"}}
+    {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-medium failure-metric"}}
+  </div>
 </div>

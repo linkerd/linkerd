@@ -91,7 +91,7 @@ var RouterController = (function () {
       var $clientsEl = $(container.find(".clients")[0]);
 
       RouterSummary(metricsCollector, templates.summary, $summaryEl, router);
-      RouterServers(metricsCollector, routers, $serversEl, router, templates.server);
+      RouterServers(metricsCollector, routers, $serversEl, router, templates.server, templates.serverMetric);
       RouterClients(metricsCollector, routers, $clientsEl, router , templates.client, templates.clientContainer, colorOrder);
     });
 
