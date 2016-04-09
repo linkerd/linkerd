@@ -4,71 +4,9 @@
 
 <div class="server-metrics">
   <div class="row">
-
-    <div class="col-md-2 server-metric-container">
-      <div class="metric-header">
-        {{metrics.requests.description}}
-      </div>
-      <div>
-        <span class="metric-medium">
-          {{#if metrics.requests.value}}
-            {{metrics.requests.value}}
-          {{else}}
-            0
-          {{/if}}
-        </span>
-      </div>
-    </div>
-
-    <div class="col-md-2 server-metric-container">
-      <div class="metric-header">
-        {{metrics.load.description}}
-      </div>
-      <div>
-        <span class="metric-medium">
-          {{#if metrics.load.value}}
-            {{metrics.load.value}}
-          {{else}}
-            0
-          {{/if}}
-        </span>
-      </div>
-    </div>
-
-    <div class="success-metric-container metric-container col-md-2">
-      <div class="metric-header">
-        {{metrics.success.description}}
-      </div>
-      <div>
-        <span class="metric-medium success-metric">
-          {{#if metrics.success.value}}
-            {{metrics.success.value}}
-          {{else}}
-            0
-          {{/if}}
-        </span>
-
-        <span class="metric-small">
-          {{#if metrics.success.rate}}
-            {{metrics.success.rate}}
-          {{/if}}
-        </span>
-      </div>
-    </div>
-
-    <div class="failure-metric-container metric-container col-md-2">
-      <div class="metric-header">
-        {{metrics.failures.description}}
-      </div>
-      <div>
-        <span class="metric-medium failure-metric">
-          {{#if metrics.failures.value}}
-            {{metrics.failures.value}}
-          {{else}}
-            0
-          {{/if}}
-        </span>
-      </div>
-    </div>
+    {{> rateMetricPartial metrics.requests containerClass="metric-container col-md-2" metricClass="metric-medium"}}
+    {{> rateMetricPartial metrics.load containerClass="metric-container col-md-2" metricClass="metric-medium"}}
+    {{> rateMetricPartial metrics.success containerClass="success-metric-container metric-container col-md-2" metricClass="metric-medium success-metric"}}
+    {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-medium failure-metric"}}
   </div>
 </div>

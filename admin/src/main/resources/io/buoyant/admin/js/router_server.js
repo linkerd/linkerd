@@ -88,8 +88,9 @@ var RouterServer = (function() {
 })();
 
 var RouterServers = (function() {
-  return function (metricsCollector, routers, $serverEl, routerName, serverTemplate) {
+  return function (metricsCollector, routers, $serverEl, routerName, serverTemplate, rateMetricPartial) {
     var servers = routers.servers(routerName);
+    Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
     _.map(servers, function(server) {
       var $el = $("<div />").addClass("router-server");
