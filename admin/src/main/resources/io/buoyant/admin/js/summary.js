@@ -151,14 +151,13 @@ var Interfaces = (function() {
   //   ...
   // ]
   function prepInterface(iface) {
-    var requests = iface.metrics["requests"] || 0,
-        success  = iface.metrics["success"]  || 0,
+    var success  = iface.metrics["success"]  || 0,
         failures = iface.metrics["failures"] || 0,
-        successRate = new SuccessRate(requests, success, failures);
+        successRate = new SuccessRate(success, failures);
     return {
       name: (iface.router ? iface.router+"/" : "") + iface.label,
       requestsKey: iface.prefix + "requests",
-      requests: requests,
+      requests: success + failures,
       success: success,
       failures: failures,
       connections: iface.metrics["connections"] || 0,

@@ -53,8 +53,8 @@ BytesToStringConverter.prototype.convert = function(b) {
  * Success Rate Utils
  */
 
-function SuccessRate(requests, success, failures) {
-  this.requests = requests;
+function SuccessRate(success, failures) {
+  this.requests = success + failures;
   this.success = success;
   this.failures = failures;
 

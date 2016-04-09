@@ -18,7 +18,7 @@ var RouterServer = (function() {
         metricSuffix: "success",
         query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("success").build(),
         getRate: function(data) {
-          var successRate = new SuccessRate(data.requests, data.success, data.failures);
+          var successRate = new SuccessRate(data.success || 0, data.failures || 0);
           return successRate.prettyRate();
         }
       },
