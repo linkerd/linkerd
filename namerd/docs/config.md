@@ -47,6 +47,24 @@ Stores the dtab in memory.  Not suitable for production use.
 
 * *namespaces* -- Optional.  A map of namespaces to corresponding dtabs.
 
+### K8sDtabStore
+*experimental*
+
+`io.buoyant.namerd.storage.experimental.k8s`
+
+Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs. Requires a cluster
+running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
+
+* *host* -- Optional. The location of the Kubernetes API. (default: "kubernetes.default.svc.cluster.local")
+* *port* -- Optional. The port used to connect to the Kubernetes API. (default: 443)
+* *tls*  -- Optional. Whether to connect to the Kubernetes API using TLS. (default: true)
+* *tlsWithoutValidation* -- Optional. Whether to disable certificate checking against the Kubernetes
+  API. Meaningless if *tls* is false. (default: false)
+* *authTokenFile* -- Optional. The location of the token used to authenticate against the Kubernetes
+  API, if any. (default: no authentication)
+* *namespace* The Kubernetes namespace in which dtabs will be stored. This should usually be the
+  same namespace in which namerd is running. (default: "default")
+
 ### ZkDtabStore
 *experimental*
 

@@ -54,5 +54,6 @@ trait ClientConfig {
 
 object ClientConfig {
   val DefaultHost = "kubernetes.default.svc.cluster.local"
+  val DefaultNamespace = "default"
   val DefaultPort = 443
 }
