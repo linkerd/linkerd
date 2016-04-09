@@ -40,36 +40,14 @@
   <div class="col-md-2">
     <div class="metric-header">Latencies</div>
     <div class="router-latencies">
-      <div>
-        <span class="latency-label">
-          <span class="latency-legend" style="background-color:{{legend.max}};">&nbsp;</span>Max
-        </span>
-        <span class="pull-right latency-value">{{latencies.max}} ms</span>
-      </div>
-      <div>
-        <span class="latency-label">
-          <span class="latency-legend" style="background-color:{{legend.p9990}};">&nbsp;</span>p999
-        </span>
-        <span class="pull-right latency-value">{{latencies.p9990}} ms</span>
-      </div>
-      <div>
-        <span class="latency-label">
-          <span class="latency-legend" style="background-color:{{legend.p99}};">&nbsp;</span>p99
-        </span>
-        <span class="pull-right latency-value">{{latencies.p99}} ms</span>
-      </div>
-      <div>
-        <span class="latency-label">
-          <span class="latency-legend" style="background-color:{{legend.p95}};">&nbsp;</span>p95
-        </span>
-        <span class="pull-right latency-value">{{latencies.p95}} ms</span>
-      </div>
-      <div>
-        <span class="latency-label">
-          <span class="latency-legend" style="background-color:{{legend.p50}};">&nbsp;</span>p50
-        </span>
-        <span class="pull-right latency-value">{{latencies.p50}} ms</span>
-      </div>
+      {{#each latencies}}
+        <div>
+          <span class="latency-label">
+            <span class="latency-legend" style="background-color:{{latencyColor}};">&nbsp;</span>{{latencyLabel}}
+          </span>
+          <span class="pull-right latency-value">{{latencyValue}} ms</span>
+        </div>
+      {{/each}}
     </div>
   </div>
 </div>

@@ -24,25 +24,29 @@ var RouterClient = (function() {
     });
   }
 
-  function renderMetrics($container, client, summaryData, latencyData, chartLegend, clientColor) {
+  function renderMetrics($container, client, summaryData, latencyData, clientColor) {
     var clientHtml = template($.extend({
       clientColor: clientColor,
       client: client.label,
-      latencies: latencyData,
-      legend: chartLegend
+      latencies: latencyData
     }, summaryData));
     var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
     $container.html($clientHtml);
   }
 
-  function getLatencyData(client, latencyKeys) {
+  function getLatencyData(client, latencyKeys, chartLegend) {
     var latencyData = _.pick(client.metrics, latencyKeys);
-    var tableData = {};
+    var tableData = [];
     var chartData = [];
 
     _.each(latencyData, function(latencyValue, metricName) {
-      tableData[metricName.split(".")[1]] = latencyValue;
+      var key = metricName.split(".")[1];
+      tableData.push({
+        latencyLabel: key,
+        latencyValue: latencyValue,
+        latencyColor: chartLegend[key]
+      });
       chartData.push({
         name: metricName,
         delta: latencyValue
@@ -110,7 +114,7 @@ var RouterClient = (function() {
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
     var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
 
-    renderMetrics($metricsEl, client, [], [], chartLegend, clientColor);
+    renderMetrics($metricsEl, client, [], [], clientColor);
     var chart = initializeChart($chartEl, latencyKeys, timeseriesParams);
 
     function timeseriesParams(name) {
@@ -123,10 +127,10 @@ var RouterClient = (function() {
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
       var summaryData = getSummaryData(filteredData, metricDefinitions);
-      var latencies = getLatencyData(client, latencyKeys);
+      var latencies = getLatencyData(client, latencyKeys, chartLegend);
 
       chart.updateMetrics(latencies.chartData);
-      renderMetrics($metricsEl, client, summaryData, latencies.tableData, chartLegend, clientColor);
+      renderMetrics($metricsEl, client, summaryData, latencies.tableData, clientColor);
     }
 
     var getDesiredMetrics = function(metrics) {
