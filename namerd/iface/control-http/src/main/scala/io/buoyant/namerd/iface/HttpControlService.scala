@@ -10,42 +10,15 @@ import com.twitter.finagle.{Dentry, Dtab, NameTree, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namerd.DtabStore.{Forbidden, DtabVersionMismatchException, DtabNamespaceDoesNotExistException}
-import io.buoyant.namerd.{DtabStore, VersionedDtab}
+import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, VersionedDtab}
 
 object HttpControlService {
 
   object Json {
-    private[this] def mkModule() = {
-      val module = new SimpleModule
-
-      module.addSerializer(classOf[Path], new JsonSerializer[Path] {
-        override def serialize(path: Path, json: JsonGenerator, p: SerializerProvider): Unit =
-          json.writeString(path.show)
-      })
-      module.addDeserializer(classOf[Path], new JsonDeserializer[Path] {
-        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
-          Path.read(json.getValueAsString)
-      })
-
-      module.addSerializer(classOf[NameTree[Path]], new JsonSerializer[NameTree[Path]] {
-        override def serialize(
-          nameTree: NameTree[Path],
-          json: JsonGenerator,
-          p: SerializerProvider
-        ): Unit = json.writeString(nameTree.show)
-      })
-
-      module.addDeserializer(classOf[NameTree[Path]], new JsonDeserializer[NameTree[Path]] {
-        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
-          NameTree.read(json.getValueAsString)
-      })
-
-      module
-    }
 
     private[this] val mapper = new ObjectMapper with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
-    mapper.registerModule(mkModule())
+    mapper.registerModule(DtabModule.module)
 
     def read[T: Manifest](buf: Buf): Try[T] = {
       val Buf.ByteBuffer.Owned(bb) = Buf.ByteBuffer.coerce(buf)

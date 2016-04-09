@@ -42,7 +42,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), api.namespace(_))
+    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace(_))
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val obs = namer.lookup(Path.read("/srv/http/sessions")).states respond { s =>
@@ -86,7 +86,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), api.namespace(_))
+    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace(_))
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val obs = namer.lookup(Path.read("/srv/thrift/sessions")).states respond { s =>
