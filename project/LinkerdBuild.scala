@@ -20,6 +20,9 @@ import pl.project13.scala.sbt.JmhPlugin
  */
 object LinkerdBuild extends Base {
 
+  val Minimal = config("minimal")
+  val Bundle = config("bundle") extend Minimal
+
   val k8s = projectDir("k8s")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
@@ -319,14 +322,12 @@ object LinkerdBuild extends Base {
          |     $JVM_OPTIONS -cp $jars -server io.buoyant.Linkerd "$@"
          |""".stripMargin.split("\n").toSeq
 
-    val Minimal = config("minimal")
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.Linkerd"),
       assemblyExecScript := linkerdExecScript,
       dockerEnvPrefix := "L5D_"
     )
 
-    val Bundle = config("bundle") extend Minimal
     val BundleSettings = MinimalSettings ++ Seq(
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
@@ -371,7 +372,16 @@ object LinkerdBuild extends Base {
 
   val validator = projectDir("validator")
     .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
-    .settings(mainClass := Some("io.buoyant.namerd.Validator"))
+    .settings(
+      mainClass := Some("io.buoyant.namerd.Validator"),
+      run := (Def.taskDyn {
+        val linkerd = (assemblyOutputPath in assembly in Bundle in Linkerd.all).value
+        val namerd = (assemblyOutputPath in assembly in Bundle in Namerd.all).value
+        Def.task {
+          (run in Compile).toTask(s" -linkerd.exec=$linkerd -namerd.exec=$namerd").value
+        }
+      }).value
+    )
 
   // All projects must be exposed at the root of the object in
   // dependency-order:
