@@ -160,10 +160,43 @@ object LinkerdBuild extends Base {
       .dependsOn(core, admin, configCore)
       .withBuildProperties()
 
+    /**
+     * An assembly-running script that adds the namerd plugin directory
+     * to the classpath if it exists.
+     */
+    val execScript =
+      """|#!/bin/sh
+         |
+         |jars="$0"
+         |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
+         |  for jar in $NAMERD_HOME/plugins/*.jar ; do
+         |    jars="$jars:$jar"
+         |  done
+         |fi
+         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
+         |   -Dsun.net.inetaddr.ttl=60                         \
+         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+         |   -XX:+AggressiveOpts                               \
+         |   -XX:+UseConcMarkSweepGC                           \
+         |   -XX:+CMSParallelRemarkEnabled                     \
+         |   -XX:+CMSClassUnloadingEnabled                     \
+         |   -XX:+ScavengeBeforeFullGC                         \
+         |   -XX:+CMSScavengeBeforeRemark                      \
+         |   -XX:+UseCMSInitiatingOccupancyOnly                \
+         |   -XX:CMSInitiatingOccupancyFraction=70             \
+         |   -XX:ReservedCodeCacheSize=32m                     \
+         |   -XX:CICompilerCount=2                             \
+         |   -XX:+UseStringDeduplication                       "
+         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     io.buoyant.namerd.Main "$@"
+         |""".stripMargin
+
     val Minimal = config("minimal")
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.namerd.Main"),
-      dockerEnvPrefix := "N4D"
+      assemblyExecScript := execScript.split("\n").toSeq,
+      dockerEnvPrefix := "NAMERD_"
     )
 
     val Bundle = config("bundle") extend Minimal
@@ -306,7 +339,7 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the linkerd plugin directory
      * to the classpath if it exists.
      */
-    val linkerdExecScript =
+    val execScript =
       """|#!/bin/sh
          |
          |jars="$0"
@@ -315,14 +348,29 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
+         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
+         |   -Dsun.net.inetaddr.ttl=60                         \
+         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+         |   -XX:+AggressiveOpts                               \
+         |   -XX:+UseConcMarkSweepGC                           \
+         |   -XX:+CMSParallelRemarkEnabled                     \
+         |   -XX:+CMSClassUnloadingEnabled                     \
+         |   -XX:+ScavengeBeforeFullGC                         \
+         |   -XX:+CMSScavengeBeforeRemark                      \
+         |   -XX:+UseCMSInitiatingOccupancyOnly                \
+         |   -XX:CMSInitiatingOccupancyFraction=70             \
+         |   -XX:ReservedCodeCacheSize=32m                     \
+         |   -XX:CICompilerCount=2                             \
+         |   -XX:+UseStringDeduplication                       "
          |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |     $JVM_OPTIONS -cp $jars -server io.buoyant.Linkerd "$@"
-         |""".stripMargin.split("\n").toSeq
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     io.buoyant.Linkerd "$@"
+         |""".stripMargin
 
     val Minimal = config("minimal")
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.Linkerd"),
-      assemblyExecScript := linkerdExecScript,
+      assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "L5D_"
     )
 
