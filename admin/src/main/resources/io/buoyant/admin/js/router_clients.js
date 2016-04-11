@@ -134,7 +134,7 @@ var RouterClient = (function() {
     }
 
     var getDesiredMetrics = function(metrics) {
-      return _.map(metricDefinitions, function(d) {
+      return  _.flatMap(metricDefinitions, function(d) {
         return Query.filter(d.query, metrics);
       });
     }

@@ -14,11 +14,12 @@ var RouterSummary = (function() {
   }
 
   function processResponse(data, routerName, metricName) {
-    var datum = Query.find(Query.clientQuery().withRouter(routerName).withMetric(metricName).build(), data);
-    return !datum ? 0 : datum.delta;
+    var datum = Query.filter(Query.serverQuery().allServers().withRouter(routerName).withMetric(metricName).build(), data);
+    return _.sumBy(datum, "delta");
   }
 
   function getSuccessAndFailureRate(result) {
+    if (_.isUndefined(result.failures)) result.failures = null;
     var successRate = new SuccessRate(result.requests, result.success, result.failures);
 
     return {
@@ -44,7 +45,7 @@ var RouterSummary = (function() {
   }
 
   return function(metricsCollector, summaryTemplate, $summaryEl, routerName) {
-    var query = Query.clientQuery().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
+    var query = Query.serverQuery().allServers().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
 
     renderRouterSummary({ router: routerName }, summaryTemplate, routerName, $summaryEl);
 
