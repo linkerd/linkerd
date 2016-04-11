@@ -19,7 +19,7 @@ class NamerdAdmin(app: App, config: NamerdConfig, namerd: Namerd) extends Admin(
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/" -> new DtabListHandler(namerd.dtabStore),
-    "/delegator.json" -> new DelegateApiHandler(namerd.namers),
+    "/delegator.json" -> new DelegateApiHandler(namerd.namers.toSeq),
     "/dtab/" -> new DtabHandler(namerd.dtabStore)
   )
 }
