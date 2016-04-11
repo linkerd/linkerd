@@ -110,6 +110,9 @@ nav ul.navbar-nav {
 }
 
 .proc-info {
+  color: #E1E8ED;
+  font-size: 13px;
+  line-height: 16px;
   margin: 10px 27px 0;
   width: 1161px;
 }
@@ -118,13 +121,21 @@ nav ul.navbar-nav {
 * Router summary
 */
 
-.router-summary-stat dt, .router-summary-stat dd {
+.router-summary-stat {
   text-align: right;
 }
 
 .router .summary {
   border-top: 2px solid gray;
-  padding-top: 18px;
+  padding-top: 16px;
+}
+
+.router-graph-header {
+  color: #709DDD;
+  font-size: 14px;
+  line-height: 15px;
+  height: 15px;
+  margin-bottom: 9px;
 }
 
 /**
@@ -136,9 +147,23 @@ nav ul.navbar-nav {
   font-size: 18px;
 }
 
+.server-metric-container {
+  margin-top: 20px; /* to match metric-container */
+}
+
 /**
 * Router clients
 */
+
+.router-clients-title {
+  color: #F2F2F2;
+  font-size: 16px;
+  line-height: 19px;
+}
+
+.client-container {
+  margin-bottom: 63px;
+}
 
 .router-clients {
   border-bottom: 1px solid grey;
@@ -151,4 +176,26 @@ nav ul.navbar-nav {
 
 .chart-container {
   padding-top: 40px;
+}
+
+.router-latencies > div{
+  font-size:16px;
+  line-height: 32px;
+}
+
+.router-latencies > div:not(:last-child) {
+  border-bottom: 1px solid gray;
+}
+
+.latency-legend {
+  margin-right: 5px;
+}
+
+/**
+* Shared but not general enough for dashboard-shared.css
+*/
+
+.metric-container {
+  padding-left: 15px;
+  margin: 20px 0 30px 0;
 }
