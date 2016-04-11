@@ -19,11 +19,12 @@ case class NamerdConfig(
 
   def mk: Namerd = {
     val dtabStore = storage.mkDtabStore
-    Namerd(mkInterfaces(dtabStore), dtabStore)
+    val namersByPfx = mkNamers
+    Namerd(mkInterfaces(dtabStore, namersByPfx), dtabStore, namersByPfx)
   }
 
-  private[this] def mkInterfaces(dtabStore: DtabStore): Seq[Servable] = {
-    val namersByPfx = namers.foldLeft(Map.empty[Path, Namer]) {
+  private[this] def mkNamers: Map[Path, Namer] =
+    namers.foldLeft(Map.empty[Path, Namer]) {
       case (namers, config) =>
         if (config.prefix.isEmpty)
           throw NamerdConfig.EmptyNamerPrefix
@@ -35,9 +36,8 @@ case class NamerdConfig(
         namers + (config.prefix -> config.newNamer(Stack.Params.empty))
     }
 
-    // TODO: validate the absence of port conflicts
+  private[this] def mkInterfaces(dtabStore: DtabStore, namersByPfx: Map[Path, Namer]): Seq[Servable] =
     interfaces.map(_.mk(dtabStore, namersByPfx))
-  }
 }
 
 object NamerdConfig {
