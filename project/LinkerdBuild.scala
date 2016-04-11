@@ -69,7 +69,7 @@ object LinkerdBuild extends Base {
   }
 
   val configCore = projectDir("config")
-    .withTwitterLibs(Deps.finagle("core"), Deps.finagle("thrift"))
+    .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
     .withLib(Deps.jacksonYaml)
 
@@ -105,21 +105,118 @@ object LinkerdBuild extends Base {
       .aggregate(core, consul, fs, k8s, marathon, serversets)
   }
 
-  object Interpreter {
-
-    Namerd.hashCode
-
-    val namerd = projectDir("interpreter/namerd")
-      .dependsOn(Namerd.Iface.interpreterThrift, Linkerd.core)
-      .withTests()
-
-  }
-
   val admin = projectDir("admin")
     .dependsOn(configCore, Namer.core)
     .withTwitterLib(Deps.twitterServer)
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
+
+  object Namerd {
+
+    val core = projectDir("namerd/core")
+      .dependsOn(
+        admin,
+        configCore,
+        Namer.core,
+        Namer.fs % "test"
+      )
+      .withTests()
+
+    object Storage {
+
+      val inMemory = projectDir("namerd/storage/in-memory")
+        .dependsOn(core % "test->test;compile->compile")
+        .withTests()
+
+      val zk = projectDir("namerd/storage/zk")
+        .dependsOn(core)
+        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
+        .withTests()
+
+      val all = projectDir("namerd/storage")
+        .aggregate(inMemory, zk)
+    }
+
+    object Iface {
+
+      val controlHttp = projectDir("namerd/iface/control-http")
+        .dependsOn(core).withTwitterLib(Deps.finagle("http"))
+        .withTests().dependsOn(Storage.inMemory % "test")
+
+      val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
+        .withTwitterLib(Deps.finagle("thrift"))
+
+      val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
+        .dependsOn(core)
+        .dependsOn(interpreterThriftIdl)
+        .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
+        .withTests()
+
+      val all = projectDir("namerd/iface")
+        .aggregate(controlHttp, interpreterThriftIdl, interpreterThrift)
+    }
+
+    val main = projectDir("namerd/main")
+      .dependsOn(core, admin, configCore)
+      .withBuildProperties()
+
+    val Minimal = config("minimal")
+    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
+      mainClass := Some("io.buoyant.namerd.Main"),
+      dockerEnvPrefix := "N4D"
+    )
+
+    val Bundle = config("bundle") extend Minimal
+    val BundleSettings = MinimalSettings ++ Seq(
+      assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
+      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
+    )
+
+    val all = projectDir("namerd")
+      .aggregate(core, Storage.all, Iface.all, main)
+      .configs(Minimal, Bundle)
+      // Minimal cofiguration includes a runtime, HTTP routing and the
+      // fs service discovery.
+      .configDependsOn(Minimal)(
+        core, main, Namer.fs, Storage.inMemory, Router.http,
+        Iface.controlHttp, Iface.interpreterThrift
+      )
+      .settings(inConfig(Minimal)(MinimalSettings))
+      .withTwitterLib(Deps.finagle("stats") % Minimal)
+      // Bundle is includes all of the supported features:
+      .configDependsOn(Bundle)(
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Storage.zk
+      )
+      .settings(inConfig(Bundle)(BundleSettings))
+      .settings(
+        assembly <<= assembly in Bundle,
+        docker <<= docker in Bundle,
+        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
+        dockerPush <<= dockerPush in Bundle
+      )
+
+    // Find example configurations by searching the examples directory for config files.
+    val exampleConfigs = file("namerd/examples").list().toSeq.collect {
+      case ConfigFileRE(name) => config(name) -> exampleConfig(name)
+    }
+    def exampleConfig(name:  String): Configuration = name match {
+      case "basic" => Minimal
+      case _ => Bundle
+    }
+
+    val examples = projectDir("namerd/examples")
+      .withExamples(Namerd.all, exampleConfigs)
+  }
+
+  object Interpreter {
+    val namerd = projectDir("interpreter/namerd")
+      .withTests()
+      .dependsOn(Namer.core, Namerd.Iface.interpreterThrift)
+
+    val all = projectDir("interpreter")
+      .aggregate(namerd)
+  }
 
   object Linkerd {
 
@@ -138,7 +235,6 @@ object LinkerdBuild extends Base {
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
       .withTests()
-
 
     object Identifier {
       val http = projectDir("linkerd/identifier/http")
@@ -190,8 +286,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
-      .dependsOn(LinkerdBuild.admin)
-      .dependsOn(Namer.core)
+      .dependsOn(LinkerdBuild.admin, Namer.core)
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")
@@ -248,7 +343,8 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Identifier.http,
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Interpreter.namerd,
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
         Tracer.zipkin,
         tls)
@@ -273,118 +369,20 @@ object LinkerdBuild extends Base {
       .withExamples(Linkerd.all, exampleConfigs)
   }
 
-  object Namerd {
-
-    val core = projectDir("namerd/core")
-      .dependsOn(
-        Namer.core,
-        configCore,
-        admin,
-        Namer.fs % "test"
-      )
-      .withTests()
-
-    object Storage {
-
-      val inMemory = projectDir("namerd/storage/in-memory")
-        .dependsOn(core % "test->test;compile->compile")
-        .withTests()
-
-      val zk = projectDir("namerd/storage/zk")
-        .dependsOn(core)
-        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-        .withTests()
-
-      val all = projectDir("namerd/storage")
-        .aggregate(inMemory, zk)
-    }
-
-    object Iface {
-
-      val controlHttp = projectDir("namerd/iface/control-http")
-        .dependsOn(core, Storage.inMemory % "test")
-        .withTwitterLib(Deps.finagle("http"))
-        .withTests()
-
-      val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
-        .withTwitterLib(Deps.finagle("thrift"))
-
-      val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
-        .dependsOn(core, interpreterThriftIdl)
-        .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
-        .withTests()
-
-      val all = projectDir("namerd/iface")
-        .aggregate(controlHttp, interpreterThriftIdl, interpreterThrift)
-
-    }
-
-    val main = projectDir("namerd/main")
-      .dependsOn(core, admin, configCore)
-      .withBuildProperties()
-
-    val Minimal = config("minimal")
-    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
-      mainClass := Some("io.buoyant.namerd.Main"),
-      dockerEnvPrefix := "N4D"
-    )
-
-    val Bundle = config("bundle") extend Minimal
-    val BundleSettings = MinimalSettings ++ Seq(
-      assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
-      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
-    )
-
-    val all = projectDir("namerd")
-      .aggregate(core, Storage.all, Iface.all, main, Router.http)
-      .configs(Minimal, Bundle)
-      // Minimal cofiguration includes a runtime, HTTP routing and the
-      // fs service discovery.
-      .configDependsOn(Minimal)(
-        core, main, Namer.fs, Storage.inMemory, Router.http,
-        Iface.controlHttp, Iface.interpreterThrift
-      )
-      .settings(inConfig(Minimal)(MinimalSettings))
-      .withTwitterLib(Deps.finagle("stats") % Minimal)
-      // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Storage.zk
-      )
-      .settings(inConfig(Bundle)(BundleSettings))
-      .settings(
-        assembly <<= assembly in Bundle,
-        docker <<= docker in Bundle,
-        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
-        dockerPush <<= dockerPush in Bundle
-      )
-
-    // Find example configurations by searching the examples directory for config files.
-    val exampleConfigs = file("namerd/examples").list().toSeq.collect {
-      case ConfigFileRE(name) => config(name) -> exampleConfig(name)
-    }
-    def exampleConfig(name:  String): Configuration = name match {
-      case "basic" => Minimal
-      case _ => Bundle
-    }
-
-    val examples = projectDir("namerd/examples")
-      .withExamples(Namerd.all, exampleConfigs)
-  }
-
   val validator = projectDir("validator")
     .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
     .settings(mainClass := Some("io.buoyant.namerd.Validator"))
 
-  // All projects must be exposed at the root of the object:
+  // All projects must be exposed at the root of the object in
+  // dependency-order:
 
-  val linkerd = Linkerd.all
-  val linkerdExamples = Linkerd.examples
-  val linkerdAdmin = Linkerd.admin
-  val linkerdConfig = configCore
-  val linkerdCore = Linkerd.core
-  val linkerdIdentifier = Linkerd.Identifier.all
-  val linkerdIdentifierHttp = Linkerd.Identifier.http
-  val linkerdMain = Linkerd.main
+  val router = Router.all
+  val routerCore = Router.core
+  val routerHttp = Router.http
+  val routerMux = Router.mux
+  val routerThrift = Router.thrift
+  val routerThriftIdl = Router.thriftIdl
+
   val namer = Namer.all
   val namerCore = Namer.core
   val namerConsul = Namer.consul
@@ -392,36 +390,42 @@ object LinkerdBuild extends Base {
   val namerK8s = Namer.k8s
   val namerMarathon = Namer.marathon
   val namerServersets = Namer.serversets
-  val linkerdProtocol = Linkerd.Protocol.all
+
+  val namerd = Namerd.all
+  val namerdExamples = Namerd.examples
+  val namerdCore = Namerd.core
+  val namerdIfaceControlHttp = Namerd.Iface.controlHttp
+  val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
+  val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdStorageInMemory = Namerd.Storage.inMemory
+  val namerdStorageZk = Namerd.Storage.zk
+  val namerdStorage = Namerd.Storage.all
+  val namerdIface = Namerd.Iface.all
+  val namerdMain = Namerd.main
+
+  val interpreter = Interpreter.all
+  val interpreterNamerd = Interpreter.namerd
+
+  val linkerd = Linkerd.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark
+  val linkerdExamples = Linkerd.examples
+  val linkerdAdmin = Linkerd.admin
+  val linkerdConfig = configCore
+  val linkerdCore = Linkerd.core
+  val linkerdIdentifier = Linkerd.Identifier.all
+  val linkerdIdentifierHttp = Linkerd.Identifier.http
+  val linkerdMain = Linkerd.main
+  val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
   val linkerdTracer = Linkerd.Tracer.all
   val linkerdTracerZipkin = Linkerd.Tracer.zipkin
   val linkerdTls = Linkerd.tls
-  val router = Router.all
-  val routerCore = Router.core
-  val routerHttp = Router.http
-  val routerMux = Router.mux
-  val routerThrift = Router.thrift
-  val routerThriftIdl = Router.thriftIdl
-  val namerd = Namerd.all
-  val namerdExamples = Namerd.examples
-  val namerdCore = Namerd.core
-  val namerdStorageInMemory = Namerd.Storage.inMemory
-  val namerdStorageZk = Namerd.Storage.zk
-  val namerdStorage = Namerd.Storage.all
-  val namerdIfaceControlHttp = Namerd.Iface.controlHttp
-  val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
-  val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
-  val namerdIface = Namerd.Iface.all
-  val namerdMain = Namerd.main
-  val interpreterNamerd = Interpreter.namerd
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil, interpreterNamerd)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
     .settings(
       assembly <<= assembly in linkerd,
