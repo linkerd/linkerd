@@ -1,9 +1,9 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{Path, Namer, Stack}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
-import io.buoyant.config.{ConfigInitializer, Parser}
+import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 case class NamerdConfig(
@@ -23,8 +23,16 @@ case class NamerdConfig(
   }
 
   private[this] def mkInterfaces(dtabStore: DtabStore): Seq[Servable] = {
-    val namersByPfx = namers.map { config =>
-      config.prefix -> config.newNamer(Stack.Params.empty)
+    val namersByPfx = namers.foldLeft(Map.empty[Path, Namer]) {
+      case (namers, config) =>
+        if (config.prefix.isEmpty)
+          throw NamerdConfig.EmptyNamerPrefix
+
+        for (prefix <- namers.keys)
+          if (prefix.startsWith(config.prefix) || config.prefix.startsWith(prefix))
+            throw NamerdConfig.ConflictingNamers(prefix, config.prefix)
+
+        namers + (config.prefix -> config.newNamer(Stack.Params.empty))
     }
 
     // TODO: validate the absence of port conflicts
@@ -33,6 +41,15 @@ case class NamerdConfig(
 }
 
 object NamerdConfig {
+
+  case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
+    lazy val message =
+      s"Namers must not have overlapping prefixes: ${prefix0.show} & ${prefix1.show}"
+  }
+
+  object EmptyNamerPrefix extends ConfigError {
+    lazy val message = s"Namers must not have an empty prefix"
+  }
 
   private[namerd] case class Initializers(
     namer: Seq[NamerInitializer] = Nil,

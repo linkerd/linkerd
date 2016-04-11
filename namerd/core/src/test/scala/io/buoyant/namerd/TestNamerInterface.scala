@@ -1,13 +1,14 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.NullServer
+import com.twitter.finagle.{Path, Namer, NullServer}
 import com.twitter.finagle.naming.NameInterpreter
 import java.net.InetSocketAddress
 
 class TestInterpreterInterfaceConfig extends InterpreterInterfaceConfig {
   val defaultAddr: InetSocketAddress = new InetSocketAddress(0)
 
-  def mk(namers: Ns => NameInterpreter): Servable = TestNamerInterfaceServable
+  def mk(interpreters: Ns => NameInterpreter, namers: Map[Path, Namer]): Servable =
+    TestNamerInterfaceServable
 }
 
 object TestNamerInterfaceServable extends Servable {

@@ -23,7 +23,7 @@ trait InterfaceConfig {
   @JsonIgnore
   protected def defaultAddr: InetSocketAddress
 
-  def mk(store: DtabStore, namers: Seq[(Path, Namer)]): Servable
+  def mk(store: DtabStore, namers: Map[Path, Namer]): Servable
 }
 
 trait InterfaceInitializer extends ConfigInitializer
