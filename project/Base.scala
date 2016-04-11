@@ -97,7 +97,7 @@ class Base extends Build {
       entryPoint(exec)
     },
     imageName in docker := ImageName(
-      namespace = Some(organization.value),
+      namespace = Some("buoyantio"),
       repository = name.value,
       tag = Some(s"${configuration.value}-${version.value}")
     )

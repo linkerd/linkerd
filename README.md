@@ -171,6 +171,12 @@ when actively editing code:
 > ~testQuick
 ```
 
+The `validator` project provides an integration test that operates on
+assembled artifacts. It may be run with:
+```
+> validator/validateAssembled
+```
+
 #### Writing tests ####
 
 Test files for each of the above test configurations are stored in a
@@ -242,10 +248,9 @@ For example, in order to build the 0.0.10 release of linkerd:
 
 1. Ensure that the head version is 0.0.10
 2. `git tag 0.0.10 && git push origin 0.0.10`
-3. `./sbt linkerd/assembly` will produce an executable in
-_linkerd/target/scala-2.11/linkerd-0.0.10-exec_.
-4. `./sbt namerd/assembly` will produce an executable in
-_namerd/target/scala-2.11/namerd-0.0.10-exec_.
+3. `./sbt linkerd/assembly namerd/assembly` will produce executables
+  in _linkerd/target/scala-2.11/linkerd-0.0.10-exec_ and
+  _namerd/target/scala-2.11/namerd-0.0.10-exec_.
 
 After release, don't forget to advance head to the next version.
 
@@ -255,7 +260,7 @@ Each of these configurations may be used to build a docker image.
 ```
 > ;linkerd/docker ;namerd/docker
 ...
-[info] Tagging image 94ab0793addf with name: io.buoyant/linkerd:0.0.10-SNAPSHOT
+[info] Tagging image 94ab0793addf with name: buoyantio/linkerd:0.0.10-SNAPSHOT
 ```
 
 The produced image does not contain any configuration.  It's expected
@@ -265,7 +270,7 @@ _path/to/myapp/linkerd.yml_, you could start linkerd in docker with
 the following command:
 
 ```
-$ docker run -p 4140:4140 -v path/to/myapp:/myapp -w /myapp io.buoyant/linkerd:0.0.10-SNAPSHOT linkerd.yml
+$ docker run -p 4140:4140 -v path/to/myapp:/myapp -w /myapp buoyantio/linkerd:0.0.10-SNAPSHOT linkerd.yml
 ```
 
 The list of image names may be changed with a command like:
@@ -274,7 +279,7 @@ The list of image names may be changed with a command like:
 > set imageNames in docker in (linkerd, Bundle) += ImageName("gcr.io/gce-project/linkerd:v"+version.value)
 ...
 > show linkerd/bundle:docker::imageNames
-[info] List(io.buoyant/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
+[info] List(buoyantio/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
 ```
 
 ### Contributing ###

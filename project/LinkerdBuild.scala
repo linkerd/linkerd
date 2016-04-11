@@ -370,13 +370,14 @@ object LinkerdBuild extends Base {
       .withExamples(Linkerd.all, exampleConfigs)
   }
 
+  val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
   val validator = projectDir("validator")
     .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
     .settings(
       mainClass := Some("io.buoyant.namerd.Validator"),
-      run := (Def.taskDyn {
-        val linkerd = (assemblyOutputPath in assembly in Bundle in Linkerd.all).value
-        val namerd = (assemblyOutputPath in assembly in Bundle in Namerd.all).value
+      validateAssembled := (Def.taskDyn {
+        val linkerd = (assembly in Bundle in Linkerd.all).value
+        val namerd = (assembly in Bundle in Namerd.all).value
         Def.task {
           (run in Compile).toTask(s" -linkerd.exec=$linkerd -namerd.exec=$namerd").value
         }
@@ -437,10 +438,4 @@ object LinkerdBuild extends Base {
   val all = project("all", file("."))
     .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
-    .settings(
-      assembly <<= assembly in linkerd,
-      docker <<= docker in linkerd,
-      dockerBuildAndPush <<= dockerBuildAndPush in linkerd,
-      dockerPush <<= dockerPush in linkerd
-    )
 }
