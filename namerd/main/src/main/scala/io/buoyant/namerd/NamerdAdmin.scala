@@ -8,15 +8,15 @@ import io.buoyant.linkerd.admin.names.DelegateApiHandler
 
 class NamerdAdmin(app: App, config: NamerdConfig, namerd: Namerd) extends Admin(app) {
   override def allRoutes: Seq[(String, Service[Request, Response])] = {
-    super.allRoutes ++ linkerdAdminRoutes
+    super.allRoutes ++ namerdAdminRoutes
   }
 
-  private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
+  private[this] def namerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
     "/config.json" -> new ConfigHandler(config, NamerdConfig.LoadedInitializers.iter),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
-      baseResourcePath = "io/buoyant/linkerd/admin",
-      localFilePath = "linkerd/admin/src/main/resources/io/buoyant/linkerd/admin"
+      baseResourcePath = "io/buoyant/admin",
+      localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/" -> new DtabListHandler(namerd.dtabStore),
     "/delegator.json" -> new DelegateApiHandler(namerd.namers),

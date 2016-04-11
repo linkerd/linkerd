@@ -11,15 +11,19 @@ class DtabHandler(
 
   import DtabHandler._
 
+  /** Get the dtab, if it exists. */
+  private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
+    store.observe(ns).values.toFuture.flatMap(Future.const)
+
   override def apply(req: Request): Future[Response] = req.path match {
     case rexp(namespace) =>
-      store.observe(namespace).sample() match {
+      getDtab(namespace).map {
         case Some(dtab) =>
           val response = Response()
           response.contentType = MediaType.Html + ";charset=UTF-8"
           response.contentString = render(namespace, dtab.dtab)
-          Future.value(response)
-        case None => Future.value(Response(Status.NotFound))
+          response
+        case None => Response(Status.NotFound)
       }
     case _ =>
       Future.value(Response(Status.NotFound))
