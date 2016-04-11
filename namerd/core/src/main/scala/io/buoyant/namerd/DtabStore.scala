@@ -18,6 +18,12 @@ trait DtabStore {
   def create(ns: String, dtab: Dtab): Future[Unit]
 
   /**
+   * Deletes a dtab.  Returns a DtabNamespaceDoesNotExistException if the
+   * namespace does not exist.
+   */
+  def delete(ns: String): Future[Unit]
+
+  /**
    * Update an existing dtab.  Returns a DtabVersionMismatchException if the
    * supplied version doesn't match the current version.
    */
@@ -38,6 +44,6 @@ object DtabStore {
     extends Exception(s"The dtab namespace $ns already exists")
   class DtabVersionMismatchException
     extends Exception("Could not update dtab: current version does not match provided version")
-  class DtabNamespaceDoesNotExist(ns: String)
+  class DtabNamespaceDoesNotExistException(ns: String)
     extends Exception(s"The dtab namespace $ns does not exist")
 }

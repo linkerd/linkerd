@@ -3,7 +3,7 @@ package io.buoyant.namerd
 import com.twitter.finagle.{Path, Namer, Stack}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
-import io.buoyant.config.{ConfigInitializer, Parser}
+import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 case class NamerdConfig(
@@ -19,19 +19,39 @@ case class NamerdConfig(
 
   def mk: Namerd = {
     val dtabStore = storage.mkDtabStore
-    val namersByPfx = namers.map { config =>
-      config.prefix -> config.newNamer(Stack.Params.empty)
-    }
-    Namerd(mkInterfaces(dtabStore, namersByPfx), dtabStore, namersByPfx)
+    val namersByPfx = mkNamers()
+    Namerd(mkInterfaces(dtabStore, namersByPfx), dtabStore, namersByPfx.toSeq)
   }
 
-  private[this] def mkInterfaces(dtabStore: DtabStore, namersByPfx: Seq[(Path, Namer)]): Seq[Servable] = {
-    // TODO: validate the absence of port conflicts
+  private[this] def mkNamers(): Map[Path, Namer] = {
+    namers.foldLeft(Map.empty[Path, Namer]) {
+      case (namers, config) =>
+        if (config.prefix.isEmpty)
+          throw NamerdConfig.EmptyNamerPrefix
+
+        for (prefix <- namers.keys)
+          if (prefix.startsWith(config.prefix) || config.prefix.startsWith(prefix))
+            throw NamerdConfig.ConflictingNamers(prefix, config.prefix)
+
+        namers + (config.prefix -> config.newNamer(Stack.Params.empty))
+    }
+  }
+
+  private[this] def mkInterfaces(dtabStore: DtabStore, namersByPfx: Map[Path, Namer]): Seq[Servable] = {
     interfaces.map(_.mk(dtabStore, namersByPfx))
   }
 }
 
 object NamerdConfig {
+
+  case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
+    lazy val message =
+      s"Namers must not have overlapping prefixes: ${prefix0.show} & ${prefix1.show}"
+  }
+
+  object EmptyNamerPrefix extends ConfigError {
+    lazy val message = s"Namers must not have an empty prefix"
+  }
 
   private[namerd] case class Initializers(
     namer: Seq[NamerInitializer] = Nil,

@@ -6,7 +6,7 @@ import java.net.{InetAddress, InetSocketAddress}
 
 class HttpControlServiceConfig extends InterfaceConfig {
   // note that `namers` is currently ignored here, but we may later wish to expose them via this interface
-  def mk(store: DtabStore, namers: Seq[(Path, Namer)]) = HttpControlServable(addr, store)
+  def mk(store: DtabStore, namers: Map[Path, Namer]) = HttpControlServable(addr, store)
   def defaultAddr = HttpControlServiceConfig.defaultAddr
 }
 

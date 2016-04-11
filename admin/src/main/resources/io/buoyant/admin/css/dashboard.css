@@ -133,4 +133,22 @@ nav ul.navbar-nav {
 
 .router-servers-title {
   border-bottom: 1px solid grey;
+  font-size: 18px;
+}
+
+/**
+* Router clients
+*/
+
+.router-clients {
+  border-bottom: 1px solid grey;
+  margin-bottom: 30px;
+}
+
+.router-graph {
+  margin-bottom: 30px;
+}
+
+.chart-container {
+  padding-top: 40px;
 }

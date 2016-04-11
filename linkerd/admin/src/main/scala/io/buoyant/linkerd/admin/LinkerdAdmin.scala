@@ -28,8 +28,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     "/dashboard" -> new DashboardHandler,
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
-      baseResourcePath = "io/buoyant/linkerd/admin",
-      localFilePath = "linkerd/admin/src/main/resources/io/buoyant/linkerd/admin"
+      baseResourcePath = "io/buoyant/admin",
+      localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/delegator" -> new DelegateHandler(AdminHandler, () => dtabs, linker.namers),
     "/delegator.json" -> new DelegateApiHandler(linker.namers),

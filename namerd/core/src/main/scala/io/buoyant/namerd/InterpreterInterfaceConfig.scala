@@ -7,11 +7,11 @@ import io.buoyant.config.ConfigInitializer
 
 trait InterpreterInterfaceConfig extends InterfaceConfig {
   @JsonIgnore
-  final def mk(store: DtabStore, namers: Seq[(Path, Namer)]): Servable =
-    mk(ns => ConfiguredDtabNamer(store.observe(ns).map(extractDtab), namers))
+  final def mk(store: DtabStore, namers: Map[Path, Namer]): Servable =
+    mk(ns => ConfiguredDtabNamer(store.observe(ns).map(extractDtab), namers.toSeq), namers)
 
   @JsonIgnore
-  protected def mk(namers: Ns => NameInterpreter): Servable
+  protected def mk(delegate: Ns => NameInterpreter, namers: Map[Path, Namer]): Servable
 
   @JsonIgnore
   private[this] def extractDtab(versioned: Option[VersionedDtab]): Dtab =
