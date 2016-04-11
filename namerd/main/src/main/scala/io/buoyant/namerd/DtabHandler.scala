@@ -13,7 +13,7 @@ class DtabHandler(
 
   /** Get the dtab, if it exists. */
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
-    store.observe(ns).values.toFuture.flatMap(Future.const)
+    store.observe(ns).toFuture
 
   override def apply(req: Request): Future[Response] = req.path match {
     case rexp(namespace) =>

@@ -118,7 +118,7 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
 
   /** Get the dtab, if it exists. */
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
-    storage.observe(ns).values.toFuture.flatMap(Future.const)
+    storage.observe(ns).toFuture
 
   def apply(req: Request): Future[Response] = (req.path, req.method) match {
     case (DtabUri(None), _) =>
