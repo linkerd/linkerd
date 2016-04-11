@@ -2,6 +2,7 @@ storage:
   kind: io.buoyant.namerd.storage.experimental.zk
   hosts:
   - localhost:2181
+  pathPrefix: /dtabs
 interfaces:
 - kind: thriftNameInterpreter
 - kind: httpController
