@@ -1,3 +1,12 @@
+## 0.3.1
+
+* Add beta version of linkerd dashboard version 2.0.  Try it out at
+  `/dashboard` on the linkerd admin site. :chart_with_upwards_trend:
+* Support Zipkin tracer configuration via config file, to enable automatic
+  export of tracing data from linkerd to a Zipkin collector.
+* namerd's HTTP dtab API now supports the HEAD and DELETE methods
+* Tear-down address observations in namerd if a service is deleted
+
 ## 0.3.0
 
 * Added :sparkles: namerd :sparkles: : a service for managing linkerd (and finagle)
