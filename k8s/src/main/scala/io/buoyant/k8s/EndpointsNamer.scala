@@ -95,7 +95,11 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
             Future.Unit
           })
 
-          endpoints.foreach(services.initialize)
+          endpoints.onSuccess { list =>
+            services.initialize(list)
+          }.onFailure { e =>
+            log.error(e, "k8s failed to list endpoints")
+          }
         }
 
         init.foreach { init =>
