@@ -409,7 +409,7 @@ object LinkerdBuild extends Base {
     val exampleConfigs = file("linkerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }
-    def exampleConfig(name:  String): Configuration = name match {
+    def exampleConfig(name: String): Configuration = name match {
       case "http" => Minimal
       case _ => Bundle
     }
@@ -485,6 +485,6 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Namerd.dcosBootstrap, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
 }

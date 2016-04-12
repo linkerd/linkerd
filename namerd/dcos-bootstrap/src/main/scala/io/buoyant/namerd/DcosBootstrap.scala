@@ -7,7 +7,7 @@ import io.buoyant.admin.App
 import java.io.File
 import scala.io.Source
 
-object Main extends App {
+object DcosBootstrap extends App {
 
   val defaultNs = "default"
   val defaultDtab = Dtab.read(
