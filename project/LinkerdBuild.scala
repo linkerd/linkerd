@@ -208,9 +208,11 @@ object LinkerdBuild extends Base {
       imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
     )
 
+    val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
+      .dependsOn(core, admin, configCore, Storage.zk)
+
     val Dcos = config("dcos") extend Bundle
-    val DcosSettings = BundleSettings ++ Seq(
-      assemblyJarName in assembly := s"${name.value}-${version.value}-dcos-exec"
+    val DcosSettings = MinimalSettings ++ Seq(
       //assemblyExecScript := linkerdExecScript
     )
 
