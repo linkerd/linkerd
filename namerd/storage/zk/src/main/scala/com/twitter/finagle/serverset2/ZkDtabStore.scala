@@ -87,7 +87,7 @@ class ZkDtabStore(
   }
 
   private[this] val dtabWatchOp = Memoize { path: String =>
-    log.info(s"Attempting to obverve $path")
+    log.info(s"Attempting to observe $path")
     actZk.flatMap(_.getDataOf(path)).flatMap { data =>
       data.data match {
         case Some(Buf.Utf8(s)) => Activity.value(Some(VersionedDtab(Dtab.read(s), versionBuf(data.stat.version))))

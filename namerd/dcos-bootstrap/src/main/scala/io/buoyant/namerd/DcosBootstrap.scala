@@ -3,7 +3,9 @@ package io.buoyant.namerd
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.serverset2.ZkClient
 import com.twitter.io.Buf
+import com.twitter.util.Await
 import io.buoyant.admin.App
+import io.buoyant.namerd.storage.experimental.zk
 import java.io.File
 import scala.io.Source
 
@@ -24,22 +26,18 @@ object DcosBootstrap extends App {
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
-        val storage = config.storage
-
-        if (!storage.isInstanceOf[io.buoyant.namerd.storage.experimental.zk]) {
-          exitOnError(s"config file does not specify zk storage: ${config.storage}")
+        config.storage match {
+          case zkStorage: zk => {
+            // TODO: consider sharing with ZkDtabStoreInitializer
+            val zkClient = new ZkClient(
+              zkStorage.hosts.mkString(","),
+              zkStorage.pathPrefix.getOrElse("/dtabs")
+            )
+            closeOnExit(zkClient)
+            Await.result(zkClient.create(defaultNs, Buf.Utf8(defaultDtab.show)))
+          }
+          case storage => exitOnError(s"config file does not specify zk storage: ${storage}")
         }
-
-        val zkStorage = storage.asInstanceOf[io.buoyant.namerd.storage.experimental.zk]
-
-        // TODO: share with ZkDtabStoreInitializer
-        val zkClient = new ZkClient(
-          zkStorage.hosts.mkString(","),
-          zkStorage.pathPrefix.getOrElse("/dtabs"),
-          zkStorage.sessionTimeout
-        )
-
-        zkClient.create(defaultNs, Buf.Utf8(defaultDtab.show))
 
       case _ => exitOnError("usage: namerd-dcos-bootstrap path/to/config")
     }

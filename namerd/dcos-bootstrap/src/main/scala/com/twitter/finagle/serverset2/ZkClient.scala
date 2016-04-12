@@ -3,23 +3,28 @@ package com.twitter.finagle.serverset2
 import com.twitter.finagle.Path
 import com.twitter.finagle.serverset2.client.{ClientBuilder, CreateMode, Data, KeeperException, SessionState, WatchState, ZooKeeperWriter}
 import com.twitter.io.Buf
-import com.twitter.util.{Duration, Future}
+import com.twitter.util.{Closable, Duration, Future, Time}
 
 /**
- * A generic Zk Client
+ * A Zk Client for recursively creating paths
  */
 class ZkClient(
   hosts: String,
-  zkPrefix: String,
-  sessionTimeout: Option[Duration]
-) {
+  zkPrefix: String
+) extends Closable {
   private[this] val builder = ClientBuilder()
     .hosts(hosts)
-    .sessionTimeout(sessionTimeout.getOrElse(ZkSession.DefaultSessionTimeout))
+    .sessionTimeout(ZkSession.DefaultSessionTimeout)
+  private[this] val watchedZkw = builder.writer()
+  private[this] val zkw = watchedZkw.value
 
   def create(ns: String, data: Buf): Future[Unit] = {
-    writerConnect().flatMap { zkw =>
-      ensurePath(zkw, zkPrefix).flatMap { _ =>
+    watchedZkw.state.changes.filter {
+      // wait until we are connected
+      _ == WatchState.SessionState(SessionState.SyncConnected)
+      // TODO: send auth
+    }.toFuture.flatMap { _ =>
+      ensurePath(zkPrefix).flatMap { _ =>
         zkw.create(
           s"$zkPrefix/$ns",
           Some(data),
@@ -32,13 +37,13 @@ class ZkClient(
     }.unit
   }
 
-  private[this] def ensurePath(zkw: ZooKeeperWriter, path: String): Future[Unit] = {
+  private[this] def ensurePath(path: String): Future[Unit] = {
     val components = Path.read(path)
     if (components.size == 0) {
       return Future.Unit
     }
 
-    ensurePath(zkw, components.take(components.size - 1).show).flatMap { _ =>
+    ensurePath(components.take(components.size - 1).show).flatMap { _ =>
       zkw.create(
         path,
         None,
@@ -48,15 +53,7 @@ class ZkClient(
     }
   }
 
-  // TODO: share with ZkDtabStore
-  private[this] def writerConnect(): Future[ZooKeeperWriter] = {
-    val watchedZkw = builder.writer()
-    val zkw = watchedZkw.value
-
-    watchedZkw.state.changes.filter {
-      // wait until we are connected
-      _ == WatchState.SessionState(SessionState.SyncConnected)
-      // TODO: send auth
-    }.toFuture.map(_ => zkw)
+  def close(deadline: Time) = {
+    zkw.close()
   }
 }
