@@ -38,7 +38,7 @@ case class k8s(
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.k8s")
 
-  private[this] def getHost = host.getOrElse("kubernetes.default.cluster.local")
+  private[this] def getHost = host.getOrElse("kubernetes.default.svc.cluster.local")
 
   private[this] def getPort = port match {
     case Some(p) => p.port

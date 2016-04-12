@@ -593,7 +593,7 @@ experimental.
 
 The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and these parameters:
 
-* *host* -- the Kubernetes master host. (default: kubernetes.default.cluster.local)
+* *host* -- the Kubernetes master host. (default: kubernetes.default.svc.cluster.local)
 * *port* -- the Kubernetes master port. (default: 443)
 * *tls* -- Whether TLS should be used in communicating with the Kubernetes master. (default: true)
 * *tlsWithoutValidation* -- Whether certificate-checking should be disabled. (default: false)
@@ -604,7 +604,7 @@ For example:
 ```yaml
 namers:
 - kind: io.l5d.experimental.k8s
-  host: kubernetes.default.cluster.local
+  host: kubernetes.default.svc.cluster.local
   port: 443
   tls: true
   authTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
