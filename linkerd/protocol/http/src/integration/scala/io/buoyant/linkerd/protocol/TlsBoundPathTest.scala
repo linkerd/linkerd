@@ -111,6 +111,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |    tls:
             |      kind: io.l5d.clientTls.boundPath
             |      caCertPath: ${certs.caCert.getPath}
+            |      strict: false
             |      names:
             |      - prefix: "/io.l5d.fs/bill"
             |        commonNamePattern: "bill.buoyant.io"
