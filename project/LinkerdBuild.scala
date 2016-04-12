@@ -453,6 +453,7 @@ object LinkerdBuild extends Base {
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
+  val namerdDcosBootstrap = Namerd.dcosBootstrap
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
