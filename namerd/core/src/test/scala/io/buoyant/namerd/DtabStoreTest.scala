@@ -9,34 +9,38 @@ import org.scalatest.FunSuite
 class DtabStoreTest extends FunSuite {
 
   object FailStore extends DtabStore {
-    def create(ns: DtabStore.Namespace, dtab: Dtab) =
+    def create(ns: Ns, dtab: Dtab) =
       fail("unexpected create")
 
-    def update(ns: DtabStore.Namespace, dtab: Dtab, v: DtabStore.Version) =
+    def delete(ns: Ns) =
+      fail("unexpected delete")
+
+    def update(ns: Ns, dtab: Dtab, v: DtabStore.Version) =
       fail("unexpected update")
 
-    def put(ns: DtabStore.Namespace, dtab: Dtab) =
+    def put(ns: Ns, dtab: Dtab) =
       fail("unexpected put")
 
     def list() =
       fail("unexpected list")
 
-    def observe(ns: DtabStore.Namespace) =
+    def observe(ns: Ns) =
       fail("unexpected observe")
   }
 
   object OkStore extends DtabStore {
-    def create(ns: DtabStore.Namespace, dtab: Dtab) = Future.Unit
-    def update(ns: DtabStore.Namespace, dtab: Dtab, v: DtabStore.Version) = Future.Unit
-    def put(ns: DtabStore.Namespace, dtab: Dtab) = Future.Unit
+    def create(ns: Ns, dtab: Dtab) = Future.Unit
+    def delete(ns: Ns) = Future.Unit
+    def update(ns: Ns, dtab: Dtab, v: DtabStore.Version) = Future.Unit
+    def put(ns: Ns, dtab: Dtab) = Future.Unit
     def list() = Future.value(Set.empty)
-    def observe(ns: DtabStore.Namespace) = Activity.pending
+    def observe(ns: Ns) = Activity.pending
   }
 
   class Invalid extends Throwable
   def validate(store: DtabStore): DtabStore =
     new DtabStore.Validator(store) {
-      protected[this] def validate(ns: DtabStore.Namespace, dtab: Dtab) = ns match {
+      protected[this] def validate(ns: Ns, dtab: Dtab) = ns match {
         case "bad" => Future.exception(new Invalid)
         case _ => Future.Unit
       }
