@@ -24,7 +24,7 @@ test:
   override:
   - ./sbt coverage test
   - ./sbt integration:compile e2e:test
-  - ./sbt assembly && ./test-config.sh
+  - ./sbt linkerd/assembly && ./test-config.sh
 
   post:
   - ./sbt coverageAggregate
