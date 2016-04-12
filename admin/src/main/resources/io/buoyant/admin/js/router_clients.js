@@ -64,7 +64,7 @@ var RouterClient = (function() {
       return mem;
     }, {});
 
-    var successRate = new SuccessRate(summary.requests, summary.success, summary.failures);
+    var successRate = new SuccessRate(summary.success || 0, summary.failures || 0);
     summary.successRate = successRate.prettyRate();
 
     return summary;

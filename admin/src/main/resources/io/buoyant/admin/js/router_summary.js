@@ -20,8 +20,7 @@ var RouterSummary = (function() {
 
   function getSuccessAndFailureRate(result) {
     if (_.isUndefined(result.failures)) result.failures = null;
-    var successRate = new SuccessRate(result.requests, result.success, result.failures);
-
+    var successRate = new SuccessRate(result.success || 0, result.failures || 0);
     return {
       successRate: successRate.prettyRate(),
       failureRate: getFailureRate(result)
