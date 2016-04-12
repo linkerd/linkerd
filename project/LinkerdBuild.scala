@@ -208,9 +208,15 @@ object LinkerdBuild extends Base {
       imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
     )
 
+    val Dcos = config("dcos") extend Bundle
+    val DcosSettings = BundleSettings ++ Seq(
+      assemblyJarName in assembly := s"${name.value}-${version.value}-dcos-exec"
+      //assemblyExecScript := linkerdExecScript
+    )
+
     val all = projectDir("namerd")
-      .aggregate(core, Storage.all, Iface.all, main)
-      .configs(Minimal, Bundle)
+      .aggregate(core, Storage.all, Iface.all, main, Router.http)
+      .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
       .configDependsOn(Minimal)(
@@ -219,12 +225,13 @@ object LinkerdBuild extends Base {
       )
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
-      // Bundle is includes all of the supported features:
+      // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.zk
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(Dcos)(dcosBootstrap)
+      .settings(inConfig(Dcos)(DcosSettings))
       .settings(
         assembly <<= assembly in Bundle,
         docker <<= docker in Bundle,
