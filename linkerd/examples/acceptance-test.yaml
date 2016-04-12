@@ -23,7 +23,7 @@ namers:
   port: 2181
 
 - kind: io.l5d.experimental.k8s
-  host: kubernetes.default.cluster.local
+  host: kubernetes.default.svc.cluster.local
   port: 443
   tls: true
   authTokenFile: linkerd/examples/io.l5d.k8s/kube_token
