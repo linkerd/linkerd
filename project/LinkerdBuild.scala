@@ -215,7 +215,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("namerd")
-      .aggregate(core, Storage.all, Iface.all, main, Router.http)
+      .aggregate(core, Storage.all, Iface.all, main)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -227,7 +227,8 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Storage.zk
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
