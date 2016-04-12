@@ -8,7 +8,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.{VersionedDtab, DtabStore}
+import io.buoyant.namerd.{VersionedDtab, DtabStore, RichActivity}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import java.nio.ByteBuffer
 
@@ -44,7 +44,7 @@ class ZkDtabStore(
     children <- zk.getChildrenOf(zkPrefix)
   } yield children.children.toSet
 
-  def list(): Future[Set[String]] = actNs.values.toFuture.flatMap(Future.const)
+  def list(): Future[Set[String]] = actNs.toFuture
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
