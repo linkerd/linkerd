@@ -208,12 +208,52 @@ object LinkerdBuild extends Base {
       imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
     )
 
+    /**
+     * A DCOS-specific assembly-running script that:
+     * 1) adds the namerd plugin directory to the classpath if it exists
+     * 2) bootstraps zookeeper with a default path and dtabs
+     * 3) boots namerd
+     */
+    val dcosExecScript =
+      """|#!/bin/sh
+         |
+         |jars="$0"
+         |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
+         |  for jar in $NAMERD_HOME/plugins/*.jar ; do
+         |    jars="$jars:$jar"
+         |  done
+         |fi
+         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
+         |   -Dsun.net.inetaddr.ttl=60                         \
+         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+         |   -XX:+AggressiveOpts                               \
+         |   -XX:+UseConcMarkSweepGC                           \
+         |   -XX:+CMSParallelRemarkEnabled                     \
+         |   -XX:+CMSClassUnloadingEnabled                     \
+         |   -XX:+ScavengeBeforeFullGC                         \
+         |   -XX:+CMSScavengeBeforeRemark                      \
+         |   -XX:+UseCMSInitiatingOccupancyOnly                \
+         |   -XX:CMSInitiatingOccupancyFraction=70             \
+         |   -XX:ReservedCodeCacheSize=32m                     \
+         |   -XX:CICompilerCount=2                             \
+         |   -XX:+UseStringDeduplication                       "
+         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |io.buoyant.namerd.DcosBootstrap "$@"
+         |
+         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |io.buoyant.namerd.Main "$@"
+         |
+         |exit
+         |""".stripMargin
+
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
       .dependsOn(core, admin, configCore, Storage.zk)
 
     val Dcos = config("dcos") extend Bundle
     val DcosSettings = MinimalSettings ++ Seq(
-      //assemblyExecScript := linkerdExecScript
+      assemblyExecScript := dcosExecScript.split("\n").toSeq
     )
 
     val all = projectDir("namerd")

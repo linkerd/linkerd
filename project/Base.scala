@@ -75,7 +75,7 @@ class Base extends Build {
         case Nil => None
         case script => Some(script)
       }),
-    assemblyJarName in assembly := s"${name.value}-${configuration.value}-${version.value}-exec",
+    assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     assemblyMergeStrategy in assembly := {
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case path => (assemblyMergeStrategy in assembly).value(path)
@@ -99,7 +99,7 @@ class Base extends Build {
     imageName in docker := ImageName(
       namespace = Some("buoyantio"),
       repository = name.value,
-      tag = Some(s"${configuration.value}-${version.value}")
+      tag = Some(s"${version.value}-${configuration.value}")
     )
   )
 

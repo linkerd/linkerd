@@ -282,6 +282,21 @@ The list of image names may be changed with a command like:
 [info] List(buoyantio/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
 ```
 
+#### DCOS ####
+
+Namerd supports a DCOS-specific configuration. When used in conjunction with
+namerd's `io.buoyant.namerd.storage.experimental.zk` dtab storage, this
+configuration provides bootstrapping of the ZooKeeper `pathPrefix`, along with
+a default dtab.
+
+```bash
+$ ./sbt namerd/dcos:assembly
+$ namerd/target/scala-2.11/namerd-0.3.0-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+
+$ ./sbt namerd/dcos:docker
+$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.3.0-SNAPSHOT-dcos namerd/examples/zk.yaml
+```
+
 ### Contributing ###
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details about how to
