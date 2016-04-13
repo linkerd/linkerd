@@ -18,7 +18,7 @@ class ZkClient(
   private[this] val watchedZkw = builder.writer()
   private[this] val zkw = watchedZkw.value
 
-  def create(ns: String, data: Buf): Future[Unit] = {
+  def create(ns: String, data: Buf): Future[Unit] =
     watchedZkw.state.changes.filter {
       // wait until we are connected
       _ == WatchState.SessionState(SessionState.SyncConnected)
@@ -33,7 +33,6 @@ class ZkClient(
         CreateMode.Persistent
       ).handle { case KeeperException.NodeExists(_) => () }
     }.unit
-  }
 
   private[this] def ensurePath(path: String): Future[Unit] = {
     val components = Path.read(path)
@@ -51,7 +50,5 @@ class ZkClient(
     }
   }
 
-  def close(deadline: Time) = {
-    zkw.close(deadline)
-  }
+  def close(deadline: Time) = zkw.close(deadline)
 }

@@ -114,6 +114,23 @@ object LinkerdBuild extends Base {
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
+  val execScriptJvmOptions =
+    """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
+       |   -Dsun.net.inetaddr.ttl=60                         \
+       |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+       |   -XX:+AggressiveOpts                               \
+       |   -XX:+UseConcMarkSweepGC                           \
+       |   -XX:+CMSParallelRemarkEnabled                     \
+       |   -XX:+CMSClassUnloadingEnabled                     \
+       |   -XX:+ScavengeBeforeFullGC                         \
+       |   -XX:+CMSScavengeBeforeRemark                      \
+       |   -XX:+UseCMSInitiatingOccupancyOnly                \
+       |   -XX:CMSInitiatingOccupancyFraction=70             \
+       |   -XX:ReservedCodeCacheSize=32m                     \
+       |   -XX:CICompilerCount=2                             \
+       |   -XX:+UseStringDeduplication                       "
+       |""".stripMargin
+
   object Namerd {
 
     val core = projectDir("namerd/core")
@@ -167,7 +184,7 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the namerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript =
+    val execScript = (
       """|#!/bin/sh
          |
          |jars="$0"
@@ -176,24 +193,13 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
-         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-         |   -Dsun.net.inetaddr.ttl=60                         \
-         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
-         |   -XX:+AggressiveOpts                               \
-         |   -XX:+UseConcMarkSweepGC                           \
-         |   -XX:+CMSParallelRemarkEnabled                     \
-         |   -XX:+CMSClassUnloadingEnabled                     \
-         |   -XX:+ScavengeBeforeFullGC                         \
-         |   -XX:+CMSScavengeBeforeRemark                      \
-         |   -XX:+UseCMSInitiatingOccupancyOnly                \
-         |   -XX:CMSInitiatingOccupancyFraction=70             \
-         |   -XX:ReservedCodeCacheSize=32m                     \
-         |   -XX:CICompilerCount=2                             \
-         |   -XX:+UseStringDeduplication                       "
-         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |""" +
+      execScriptJvmOptions +
+      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
-         |""".stripMargin
+         |"""
+      ).stripMargin
 
     val Minimal = config("minimal")
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
@@ -214,7 +220,7 @@ object LinkerdBuild extends Base {
      * 2) bootstraps zookeeper with a default path and dtabs
      * 3) boots namerd
      */
-    val dcosExecScript =
+    val dcosExecScript = (
       """|#!/bin/sh
          |
          |jars="$0"
@@ -223,21 +229,9 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
-         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-         |   -Dsun.net.inetaddr.ttl=60                         \
-         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
-         |   -XX:+AggressiveOpts                               \
-         |   -XX:+UseConcMarkSweepGC                           \
-         |   -XX:+CMSParallelRemarkEnabled                     \
-         |   -XX:+CMSClassUnloadingEnabled                     \
-         |   -XX:+ScavengeBeforeFullGC                         \
-         |   -XX:+CMSScavengeBeforeRemark                      \
-         |   -XX:+UseCMSInitiatingOccupancyOnly                \
-         |   -XX:CMSInitiatingOccupancyFraction=70             \
-         |   -XX:ReservedCodeCacheSize=32m                     \
-         |   -XX:CICompilerCount=2                             \
-         |   -XX:+UseStringDeduplication                       "
-         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |""" +
+      execScriptJvmOptions +
+      """|${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
@@ -246,7 +240,8 @@ object LinkerdBuild extends Base {
          |io.buoyant.namerd.Main "$@"
          |
          |exit
-         |""".stripMargin
+         |"""
+      ).stripMargin
 
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
       .dependsOn(core, admin, configCore, Storage.zk)
@@ -392,7 +387,7 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the linkerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript =
+    val execScript = (
       """|#!/bin/sh
          |
          |jars="$0"
@@ -401,24 +396,13 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
-         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-         |   -Dsun.net.inetaddr.ttl=60                         \
-         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
-         |   -XX:+AggressiveOpts                               \
-         |   -XX:+UseConcMarkSweepGC                           \
-         |   -XX:+CMSParallelRemarkEnabled                     \
-         |   -XX:+CMSClassUnloadingEnabled                     \
-         |   -XX:+ScavengeBeforeFullGC                         \
-         |   -XX:+CMSScavengeBeforeRemark                      \
-         |   -XX:+UseCMSInitiatingOccupancyOnly                \
-         |   -XX:CMSInitiatingOccupancyFraction=70             \
-         |   -XX:ReservedCodeCacheSize=32m                     \
-         |   -XX:CICompilerCount=2                             \
-         |   -XX:+UseStringDeduplication                       "
-         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |""" +
+      execScriptJvmOptions +
+      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.Linkerd "$@"
-         |""".stripMargin
+         |"""
+      ).stripMargin
 
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.Linkerd"),
