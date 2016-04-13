@@ -1,8 +1,9 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.finagle.{NoStacktrace => _, _}
 import com.twitter.finagle.naming._
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
+import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{NoStacktrace => _, _}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
@@ -107,6 +108,11 @@ object DstBindingFactory {
     val default = Capacity(50, 50, 50, 5)
   }
 
+  case class BindingTimeout(timeout: Duration)
+  implicit object BindingTimeout extends Stack.Param[BindingTimeout] {
+    val default = BindingTimeout(Duration.Top)
+  }
+
   /**
    * Binds a Dst to a ServiceFactory.
    *
@@ -126,12 +132,15 @@ object DstBindingFactory {
     boundMk: Mk[Dst.Bound, Req, Rsp] = Mk.identity[Dst.Bound, Req, Rsp],
     namer: NameInterpreter = DefaultInterpreter,
     statsReceiver: StatsReceiver = DefaultStatsReceiver,
-    capacity: Capacity = Capacity.default
-  ) extends DstBindingFactory[Req, Rsp] {
+    capacity: Capacity = Capacity.default,
+    bindingTimeout: BindingTimeout = BindingTimeout.default
+  )(implicit timer: Timer = DefaultTimer.twitter) extends DstBindingFactory[Req, Rsp] {
     private[this]type Cache[Key] = XXX_ServiceFactoryCache[Key, Req, Rsp]
 
     def apply(dst: Dst, conn: ClientConnection): Future[Service[Req, Rsp]] = dst match {
-      case path: Dst.Path => pathCache(path, conn)
+      case path: Dst.Path =>
+        val exc = new RequestTimeoutException(bindingTimeout.timeout, s"Binding ${path.path.show} exceeded timeout")
+        pathCache(path, conn).raiseWithin(bindingTimeout.timeout, exc)
       case bound: Dst.Bound => boundCache(bound, conn)
     }
 

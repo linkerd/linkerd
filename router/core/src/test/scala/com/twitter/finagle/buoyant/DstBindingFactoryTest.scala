@@ -1,10 +1,10 @@
 package com.twitter.finagle.buoyant
 
+import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{Activity, Future, Time, Var}
+import com.twitter.util._
 import io.buoyant.test.Awaits
-import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.FunSuite
 
@@ -133,5 +133,29 @@ class DstBindingFactoryTest extends FunSuite with Awaits {
 
     assert(path1exception.name == "/usa/ca/la")
     assert(path2exception.name == "/usa/ca/sf")
+  }
+
+  test("Binding timeout is respected") {
+    val pendingNamer = new NameInterpreter {
+      override def bind(dtab: Dtab, path: Path) = Activity.pending
+    }
+
+    Time.withCurrentTimeFrozen { time =>
+      val timer = new MockTimer
+      val cache = new DstBindingFactory.Cached(
+        mkClient = _ => null,
+        namer = pendingNamer,
+        bindingTimeout = DstBindingFactory.BindingTimeout(10.seconds)
+      )(timer)
+
+      val result = cache(Dst.Path(Path.read("/foo"), Dtab.empty, Dtab.empty))
+      time.advance(9.seconds)
+      timer.tick()
+      assert(!result.isDefined)
+      time.advance(1.second)
+      timer.tick()
+      assert(result.isDefined)
+      intercept[RequestTimeoutException](await(0.seconds)(result))
+    }
   }
 }

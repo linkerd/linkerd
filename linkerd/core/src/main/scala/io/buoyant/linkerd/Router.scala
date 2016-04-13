@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
 import com.twitter.util.Closable
@@ -122,13 +123,21 @@ trait RouterConfig {
   def interpreter: InterpreterConfig =
     _interpreter.getOrElse(defaultInterpreter)
 
+  @JsonProperty("bindingTimeoutMs")
+  var _bindingTimeoutMs: Option[Int] = None
+
+  @JsonIgnore
+  def bindingTimeout = _bindingTimeoutMs.map(_.millis).getOrElse(10.seconds)
+
   @JsonIgnore
   def routerParams = Stack.Params.empty
     .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
-    .maybeWith(client.map(_.clientParams)) + param.Label(label)
+    .maybeWith(client.map(_.clientParams)) +
+    param.Label(label) +
+    DstBindingFactory.BindingTimeout(bindingTimeout)
 
   @JsonIgnore
   def router(params: Stack.Params): Router = {
