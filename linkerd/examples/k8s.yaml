@@ -1,0 +1,19 @@
+admin:
+  port: 9990
+
+namers:
+- kind: io.l5d.experimental.k8s
+  host: localhost
+  port: 443
+  tls: true
+  tlsWithoutValidation: true
+  authTokenFile: linkerd/examples/io.l5d.k8s/kube_token
+
+routers:
+- protocol: http
+  baseDtab: |
+    /http/1.1/GET => /io.l5d.k8s/foo/http;
+  label: int
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
