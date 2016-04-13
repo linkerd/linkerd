@@ -114,6 +114,23 @@ object LinkerdBuild extends Base {
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
+  val execScriptJvmOptions =
+    """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
+       |   -Dsun.net.inetaddr.ttl=60                         \
+       |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+       |   -XX:+AggressiveOpts                               \
+       |   -XX:+UseConcMarkSweepGC                           \
+       |   -XX:+CMSParallelRemarkEnabled                     \
+       |   -XX:+CMSClassUnloadingEnabled                     \
+       |   -XX:+ScavengeBeforeFullGC                         \
+       |   -XX:+CMSScavengeBeforeRemark                      \
+       |   -XX:+UseCMSInitiatingOccupancyOnly                \
+       |   -XX:CMSInitiatingOccupancyFraction=70             \
+       |   -XX:ReservedCodeCacheSize=32m                     \
+       |   -XX:CICompilerCount=2                             \
+       |   -XX:+UseStringDeduplication                       "
+       |""".stripMargin
+
   object Namerd {
 
     val core = projectDir("namerd/core")
@@ -167,7 +184,7 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the namerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript =
+    val execScript = (
       """|#!/bin/sh
          |
          |jars="$0"
@@ -176,24 +193,13 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
-         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-         |   -Dsun.net.inetaddr.ttl=60                         \
-         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
-         |   -XX:+AggressiveOpts                               \
-         |   -XX:+UseConcMarkSweepGC                           \
-         |   -XX:+CMSParallelRemarkEnabled                     \
-         |   -XX:+CMSClassUnloadingEnabled                     \
-         |   -XX:+ScavengeBeforeFullGC                         \
-         |   -XX:+CMSScavengeBeforeRemark                      \
-         |   -XX:+UseCMSInitiatingOccupancyOnly                \
-         |   -XX:CMSInitiatingOccupancyFraction=70             \
-         |   -XX:ReservedCodeCacheSize=32m                     \
-         |   -XX:CICompilerCount=2                             \
-         |   -XX:+UseStringDeduplication                       "
-         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |""" +
+      execScriptJvmOptions +
+      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
-         |""".stripMargin
+         |"""
+      ).stripMargin
 
     val Minimal = config("minimal")
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
@@ -208,9 +214,46 @@ object LinkerdBuild extends Base {
       imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
     )
 
+    /**
+     * A DCOS-specific assembly-running script that:
+     * 1) adds the namerd plugin directory to the classpath if it exists
+     * 2) bootstraps zookeeper with a default path and dtabs
+     * 3) boots namerd
+     */
+    val dcosExecScript = (
+      """|#!/bin/sh
+         |
+         |jars="$0"
+         |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
+         |  for jar in $NAMERD_HOME/plugins/*.jar ; do
+         |    jars="$jars:$jar"
+         |  done
+         |fi
+         |""" +
+      execScriptJvmOptions +
+      """|${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |io.buoyant.namerd.DcosBootstrap "$@"
+         |
+         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |io.buoyant.namerd.Main "$@"
+         |
+         |exit
+         |"""
+      ).stripMargin
+
+    val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
+      .dependsOn(core, admin, configCore, Storage.zk)
+
+    val Dcos = config("dcos") extend Bundle
+    val DcosSettings = MinimalSettings ++ Seq(
+      assemblyExecScript := dcosExecScript.split("\n").toSeq
+    )
+
     val all = projectDir("namerd")
       .aggregate(core, Storage.all, Iface.all, main)
-      .configs(Minimal, Bundle)
+      .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
       .configDependsOn(Minimal)(
@@ -219,12 +262,14 @@ object LinkerdBuild extends Base {
       )
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
-      // Bundle is includes all of the supported features:
+      // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
         Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(Dcos)(dcosBootstrap)
+      .settings(inConfig(Dcos)(DcosSettings))
       .settings(
         assembly <<= assembly in Bundle,
         docker <<= docker in Bundle,
@@ -342,7 +387,7 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the linkerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript =
+    val execScript = (
       """|#!/bin/sh
          |
          |jars="$0"
@@ -351,24 +396,13 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
-         |DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-         |   -Dsun.net.inetaddr.ttl=60                         \
-         |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
-         |   -XX:+AggressiveOpts                               \
-         |   -XX:+UseConcMarkSweepGC                           \
-         |   -XX:+CMSParallelRemarkEnabled                     \
-         |   -XX:+CMSClassUnloadingEnabled                     \
-         |   -XX:+ScavengeBeforeFullGC                         \
-         |   -XX:+CMSScavengeBeforeRemark                      \
-         |   -XX:+UseCMSInitiatingOccupancyOnly                \
-         |   -XX:CMSInitiatingOccupancyFraction=70             \
-         |   -XX:ReservedCodeCacheSize=32m                     \
-         |   -XX:CICompilerCount=2                             \
-         |   -XX:+UseStringDeduplication                       "
-         |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+         |""" +
+      execScriptJvmOptions +
+      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.Linkerd "$@"
-         |""".stripMargin
+         |"""
+      ).stripMargin
 
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.Linkerd"),
@@ -409,7 +443,7 @@ object LinkerdBuild extends Base {
     val exampleConfigs = file("linkerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }
-    def exampleConfig(name:  String): Configuration = name match {
+    def exampleConfig(name: String): Configuration = name match {
       case "http" => Minimal
       case _ => Bundle
     }
@@ -453,6 +487,7 @@ object LinkerdBuild extends Base {
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
+  val namerdDcosBootstrap = Namerd.dcosBootstrap
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
@@ -484,6 +519,6 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Router.all, Namer.all, configCore, admin, testUtil)
+    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Namerd.dcosBootstrap, Router.all, Namer.all, configCore, admin, testUtil)
     .settings(unidocSettings)
 }
