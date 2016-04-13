@@ -4,6 +4,7 @@ import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util.Future
 import io.buoyant.admin.HtmlView
+import io.buoyant.linkerd.Build
 
 object AdminHandler extends HtmlView {
 
@@ -57,7 +58,7 @@ object AdminHandler extends HtmlView {
             <li>router overview</li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li>version 2.0</li>
+            <li>version ${Build.load().version}</li>
           </ul>
         </div>
       </div>
