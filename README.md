@@ -289,10 +289,28 @@ namerd's `io.buoyant.namerd.storage.experimental.zk` dtab storage, this
 configuration provides bootstrapping of the ZooKeeper `pathPrefix`, along with
 a default dtab.
 
+##### Run locally #####
+
+This executes only the namerd-dcos-bootstrap command, it does not boot namerd.
+
+```bash
+$ ./sbt "namerd/dcos:run-main io.buoyant.namerd.DcosBootstrap namerd/examples/zk.yaml"
+```
+
+##### Run assembly script locally #####
+
+The assembly script executes two commands serially:
+1. runs namerd-dcos-bootstrap
+2. boots namerd
+
 ```bash
 $ ./sbt namerd/dcos:assembly
 $ namerd/target/scala-2.11/namerd-0.3.0-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+```
 
+##### Run assembly script in docker #####
+
+```bash
 $ ./sbt namerd/dcos:docker
 $ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.3.0-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```

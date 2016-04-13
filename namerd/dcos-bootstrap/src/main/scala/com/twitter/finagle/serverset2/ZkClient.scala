@@ -24,16 +24,14 @@ class ZkClient(
       _ == WatchState.SessionState(SessionState.SyncConnected)
       // TODO: send auth
     }.toFuture.flatMap { _ =>
-      ensurePath(zkPrefix).flatMap { _ =>
-        zkw.create(
-          s"$zkPrefix/$ns",
-          Some(data),
-          Seq(Data.ACL.AnyoneAllUnsafe),
-          CreateMode.Persistent
-        ).rescue {
-            case KeeperException.NodeExists(_) => Future.Unit
-          }
-      }
+      ensurePath(zkPrefix)
+    }.flatMap { _ =>
+      zkw.create(
+        s"$zkPrefix/$ns",
+        Some(data),
+        Seq(Data.ACL.AnyoneAllUnsafe),
+        CreateMode.Persistent
+      ).handle { case KeeperException.NodeExists(_) => () }
     }.unit
   }
 
@@ -49,11 +47,11 @@ class ZkClient(
         None,
         Seq(Data.ACL.AnyoneAllUnsafe),
         CreateMode.Persistent
-      ).unit.handle { case KeeperException.NodeExists(_) => }
+      ).unit.handle { case KeeperException.NodeExists(_) => () }
     }
   }
 
   def close(deadline: Time) = {
-    zkw.close()
+    zkw.close(deadline)
   }
 }
