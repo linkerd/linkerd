@@ -252,8 +252,6 @@ For example, in order to build the 0.0.10 release of linkerd:
   in _linkerd/target/scala-2.11/linkerd-0.0.10-exec_ and
   _namerd/target/scala-2.11/namerd-0.0.10-exec_.
 
-After release, don't forget to advance head to the next version.
-
 #### Docker ####
 
 Each of these configurations may be used to build a docker image.
