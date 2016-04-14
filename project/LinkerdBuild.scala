@@ -23,7 +23,12 @@ object LinkerdBuild extends Base {
   val Minimal = config("minimal")
   val Bundle = config("bundle") extend Minimal
 
+  val tls = projectDir("tls")
+    .withTwitterLib(Deps.finagle("core"))
+    .withTests()
+
   val k8s = projectDir("k8s")
+    .dependsOn(tls)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -40,6 +45,7 @@ object LinkerdBuild extends Base {
 
   object Router {
     val core = projectDir("router/core")
+      .dependsOn(tls)
       .withTwitterLib(Deps.finagle("core"))
       .withTests()
       .withE2e()
@@ -91,7 +97,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val k8s = projectDir("namer/k8s")
-      .dependsOn(LinkerdBuild.k8s, core)
+      .dependsOn(LinkerdBuild.k8s, core, tls)
       .withTests()
 
     val marathon = projectDir("namer/marathon")
@@ -149,7 +155,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val zk = projectDir("namerd/storage/zk")
-        .dependsOn(core)
+        .dependsOn(core, tls)
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .withTests()
 
@@ -319,7 +325,7 @@ object LinkerdBuild extends Base {
       .withBuildProperties()
 
     val tls = projectDir("linkerd/tls")
-      .dependsOn(core)
+      .dependsOn(core, LinkerdBuild.tls)
       .withTests()
 
     object Identifier {

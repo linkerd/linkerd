@@ -2,7 +2,6 @@ package io.buoyant.k8s
 
 import com.twitter.finagle.{Filter, Http, Stack}
 import com.twitter.finagle.http.{Request, Response}
-import io.buoyant.k8s
 import scala.io.Source
 
 /**
@@ -14,8 +13,7 @@ trait ClientConfig {
 
   def host: Option[String]
   def portNum: Option[Int]
-  def tls: Option[Boolean]
-  def tlsWithoutValidation: Option[Boolean]
+  def tls: Option[TlsClientConfig]
   def authTokenFile: Option[String]
 
   protected def getHost = host.getOrElse(DefaultHost)
@@ -32,18 +30,16 @@ trait ClientConfig {
     case None => Filter.identity[Request, Response]
   }
 
+  private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
+
   protected def mkClient(
     params: Stack.Params = Stack.Params.empty
   ) = {
     val setHost = new SetHostFilter(getHost, getPort)
-    val client = (tls, tlsWithoutValidation) match {
-      case (Some(false), Some(_)) =>
-        log.warning("tlsWithoutValidation is specified, but has no effect as tls is disabled")
-        Http.client
-      case (Some(false), _) => Http.client
-      case (_, Some(true)) => Http.client.withTlsWithoutValidation
-      case _ => Http.client.withTls(setHost.host)
-    }
+    val module = tls.getOrElse(DefaultTlsConfig).tlsClientPrep(getHost)
+
+    val client = Http.Client(Http.Client.stack.replace(tlsPrepRole, module))
+
     client.withParams(client.params ++ params)
       .withStreaming(true)
       .filtered(setHost)
@@ -56,4 +52,6 @@ object ClientConfig {
   val DefaultHost = "kubernetes.default.svc.cluster.local"
   val DefaultNamespace = "default"
   val DefaultPort = 443
+  val DefaultTlsConfig = new TlsClientConfig(None, None, None)
 }
+

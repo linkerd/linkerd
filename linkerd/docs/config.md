@@ -596,10 +596,16 @@ The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and thes
 
 * *host* -- the Kubernetes master host. (default: kubernetes.default.svc.cluster.local)
 * *port* -- the Kubernetes master port. (default: 443)
-* *tls* -- Whether TLS should be used in communicating with the Kubernetes master. (default: true)
-* *tlsWithoutValidation* -- Whether certificate-checking should be disabled. (default: false)
+* *tls* -- Object or Boolean configuring the usage of TLS in communicating with the Kubernetes master.
+  Object contains the following attributes. If Boolean is used, it will control  the *enabled*
+  attribute and others will be defaulted.
+  * *enabled* -- Whether TLS should be used in communicating with the Kubernetes master.
+    (default: true)
+  * *strict* -- Whether certificate-checking should be enabled (default: true)
+  * *caCertPath* -- path on the local filesystem to the k8s root ca certificate.
+    (default: `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`)
 * *authTokenFile* -- Path to a file containing the Kubernetes master's authorization token.
-  (default: /var/run/secrets/kubernetes.io/serviceaccount/token)
+  (default: `/var/run/secrets/kubernetes.io/serviceaccount/token`)
 
 For example:
 ```yaml

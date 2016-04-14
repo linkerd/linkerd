@@ -30,8 +30,7 @@ object K8sInitializer extends K8sInitializer
 case class k8s(
   host: Option[String],
   port: Option[Port],
-  tls: Option[Boolean],
-  tlsWithoutValidation: Option[Boolean],
+  tls: Option[TlsClientConfig],
   authTokenFile: Option[String]
 ) extends NamerConfig with ClientConfig {
 

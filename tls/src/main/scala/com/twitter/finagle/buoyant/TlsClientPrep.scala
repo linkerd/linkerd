@@ -2,9 +2,8 @@ package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter
-import com.twitter.finagle.factory.BindingFactory
 import com.twitter.finagle.netty3._
-import com.twitter.finagle.ssl.{Ssl, Engine}
+import com.twitter.finagle.ssl.{Engine, Ssl}
 import com.twitter.finagle.transport.Transport
 import java.io.FileInputStream
 import java.net.{InetSocketAddress, SocketAddress}
