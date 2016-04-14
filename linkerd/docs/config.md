@@ -143,7 +143,8 @@ Each router must be configured as an object with the following params:
 * *failFast* -- If `true`, connection failures are punished more aggressively.
   Should not be used with small destination pools. (default: false)
 * *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
-
+* *bindingTimeoutMs* -- Optional.  The maximum amount of time in milliseconds to
+  spend binding a path.  (default: 10 seconds)
 
 <!-- TODO router capacity  -->
 

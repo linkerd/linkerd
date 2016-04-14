@@ -1,5 +1,8 @@
 ## x.x.x
 
+* Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
+  time to spend binding a path.
+
 ## 0.3.1
 
 * Add beta version of linkerd dashboard version 2.0.  Try it out at

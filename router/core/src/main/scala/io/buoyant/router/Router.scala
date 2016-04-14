@@ -228,7 +228,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           boundMk _,
           namer,
           stats.scope("bindcache"),
-          params[DstBindingFactory.Capacity]
+          params[DstBindingFactory.Capacity],
+          params[DstBindingFactory.BindingTimeout]
         )
 
         Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
