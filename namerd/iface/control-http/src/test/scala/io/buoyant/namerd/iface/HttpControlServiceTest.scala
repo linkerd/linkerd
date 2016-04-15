@@ -5,6 +5,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.{Dentry, Dtab, Service}
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.namer.ConfiguredNamersInterpreter
 import io.buoyant.namerd.DtabStore
 import io.buoyant.namerd.storage.InMemoryDtabStore
 import org.scalatest.FunSuite
@@ -22,7 +23,7 @@ class HttpControlServiceTest extends FunSuite {
     new InMemoryDtabStore(dtabs)
 
   def newService(store: DtabStore = newDtabStore()): Service[Request, Response] =
-    new HttpControlService(store)
+    new HttpControlService(store, _ => ConfiguredNamersInterpreter(Nil))
 
   test("dtab round-trips through json") {
     val dtab = Dtab.read("/tshirt => /suit")
