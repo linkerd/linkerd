@@ -5,6 +5,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -18,6 +19,7 @@ class ThriftNamerClient(
 ) extends NameInterpreter {
   import ThriftNamerInterface._
 
+  private[this] implicit val log = Logger.get(getClass.getName)
   private[this] implicit val timer = _timer
   private[this] val tclientId = TPath(clientId)
 
@@ -31,17 +33,17 @@ class ThriftNamerClient(
   private[this] var addrCache = Map.empty[Path, Var[Addr]]
 
   def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
-    Trace.recordBinary("namerd/client/bind/dtab", dtab.show)
-    Trace.recordBinary("namerd/client/bind/path", path.show)
+    Trace.recordBinary("namerd.client/bind.dtab", dtab.show)
+    Trace.recordBinary("namerd.client/bind.path", path.show)
     val key = (dtab, path)
     bindCacheMu.synchronized {
       bindCache.get(key) match {
         case Some(act) =>
-          Trace.recordBinary("namerd/client/bind/cached", true)
+          Trace.recordBinary("namerd.client/bind.cached", true)
           act
 
         case None =>
-          Trace.recordBinary("namerd/client/bind/cached", false)
+          Trace.recordBinary("namerd.client/bind.cached", false)
           val act = watchName(dtab, path)
           bindCache += (key -> act)
           act
@@ -58,24 +60,24 @@ class ThriftNamerClient(
       @volatile var pending: Future[_] = Future.Unit
 
       def loop(stamp0: TStamp): Unit = if (!stopped) {
-        Trace.recordBinary("namerd/client/bind/ns", namespace)
-        Trace.recordBinary("namerd/client/bind/path", path.show)
+        Trace.recordBinary("namerd.client/bind.ns", namespace)
+        Trace.recordBinary("namerd.client/bind.path", path.show)
 
         val req = thrift.BindReq(tdtab, thrift.NameRef(stamp0, tpath, namespace), tclientId)
         pending = Trace.letClear(client.bind(req)).respond {
           case Return(thrift.Bound(stamp1, ttree, _)) =>
             states() = Try(mkTree(ttree)) match {
               case Return(tree) =>
-                Trace.recordBinary("namerd/client/bind/tree", tree.show)
+                Trace.recordBinary("namerd.client/bind.tree", tree.show)
                 Activity.Ok(tree)
               case Throw(e) =>
-                Trace.recordBinary("namerd/client/bind/err", e.toString)
+                Trace.recordBinary("namerd.client/bind.err", e.toString)
                 Activity.Failed(e)
             }
             loop(stamp1)
 
           case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
-            Trace.recordBinary("namerd/client/bind/fail", reason)
+            Trace.recordBinary("namerd.client/bind.fail", reason)
             states() = Activity.Failed(e)
             if (!stopped) {
               pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
@@ -83,13 +85,15 @@ class ThriftNamerClient(
 
           // XXX we have to handle other errors, right?
           case Throw(e) =>
-            Trace.recordBinary("namerd/client/bind/exc", e.toString)
+            log.error(e, s"""bind ${path.show}""")
+            Trace.recordBinary("namerd.client/bind.exc", e.toString)
             states() = Activity.Failed(e)
         }
       }
 
       loop(TStamp.empty)
       Closable.make { deadline =>
+        log.debug(s"""bind released ${path.show}""")
         stopped = true
         Future.Unit
       }
@@ -142,16 +146,19 @@ class ThriftNamerClient(
   }
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {
+    val idPath = mkPath(id).show
+
     Var.async[Addr](Addr.Pending) { addr =>
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
       def loop(stamp0: TStamp): Unit = if (!stopped) {
-        Trace.recordBinary("namerd/client/addr/path", mkPath(id).show)
+        Trace.recordBinary("namerd.client/addr.path", idPath)
         val req = thrift.AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
         pending = Trace.letClear(client.addr(req)).respond {
           case Return(thrift.Addr(stamp1, thrift.AddrVal.Neg(_))) =>
             addr() = Addr.Neg
+            Trace.record("namerd.client/addr.neg")
             loop(stamp1)
 
           case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, _)))) =>
@@ -163,22 +170,27 @@ class ThriftNamerClient(
               Address(new InetSocketAddress(ip, port))
             }
             // TODO convert metadata
+            Trace.recordBinary("namerd.client/addr.bound", addrs)
             addr() = Addr.Bound(addrs.toSet)
             loop(stamp1)
 
-          case Throw(e@thrift.AddrFailure(_, retry, _)) =>
+          case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
+            Trace.recordBinary("namerd.client/addr.fail", msg)
             addr() = Addr.Failed(e)
             if (!stopped) {
               pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
             }
 
           case Throw(e) =>
+            log.error(e, s"addr on $idPath")
+            Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
             addr() = Addr.Failed(e)
         }
       }
 
       loop(TStamp.empty)
       Closable.make { deadline =>
+        log.debug(s"addr released $idPath")
         stopped = true
         Future.Unit
       }

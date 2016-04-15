@@ -4,6 +4,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.namerd.Ns
@@ -229,6 +230,8 @@ class ThriftNamerInterface(
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
 
+  private[this] val log = Logger.get(getClass.getName)
+
   /*
    * We keep a cache of observations.  Each observer keeps track of
    * the most recently observed state, and provides a Future that will
@@ -262,15 +265,15 @@ class ThriftNamerInterface(
 
         val bindingObserver = observeBind(ns, dtab, path)
         bindingObserver(reqStamp).transform {
-          case Throw(e) =>
-            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
-            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
-            Future.exception(failure)
-
           case Return((TStamp(tstamp), nameTree)) =>
             Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
             val (root, nodes, _) = mkTree(nameTree)
             Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
+
+          case Throw(e) =>
+            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
+            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
+            Future.exception(failure)
         }
     }
   }
