@@ -146,16 +146,22 @@ class ThriftNamerClient(
   }
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {
-    val idPath = mkPath(id).show
+    val idPath = mkPath(id)
 
     Var.async[Addr](Addr.Pending) { addr =>
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
       def loop(stamp0: TStamp): Unit = if (!stopped) {
-        Trace.recordBinary("namerd.client/addr.path", idPath)
+        Trace.recordBinary("namerd.client/addr.path", idPath.show)
         val req = thrift.AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
         pending = Trace.letClear(client.addr(req)).respond {
+          case Return(thrift.Addr(stamp1, thrift.AddrVal.Released(_))) =>
+            addrCacheMu.synchronized {
+              addrCache -= idPath
+            }
+            addr() = Addr.Neg
+
           case Return(thrift.Addr(stamp1, thrift.AddrVal.Neg(_))) =>
             addr() = Addr.Neg
             Trace.record("namerd.client/addr.neg")
@@ -182,7 +188,7 @@ class ThriftNamerClient(
             }
 
           case Throw(e) =>
-            log.error(e, s"addr on $idPath")
+            log.error(e, s"addr on ${idPath.show}")
             Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
             addr() = Addr.Failed(e)
         }
@@ -190,7 +196,7 @@ class ThriftNamerClient(
 
       loop(TStamp.empty)
       Closable.make { deadline =>
-        log.debug(s"addr released $idPath")
+        log.debug(s"addr released ${idPath.show}")
         stopped = true
         Future.Unit
       }

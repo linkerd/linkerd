@@ -145,23 +145,26 @@ object ThriftNamerInterface {
     protected[this] val updater = trees.values.respond(update)
   }
 
-  sealed trait Resolution
-  object Resolution {
-    case class Resolved(addr: Addr) extends Resolution
-    object Released extends Resolution
+  private sealed trait Resolution[+T]
+  private object Resolution {
+    case class Resolved[+T](value: T) extends Resolution[T]
+    object Released extends Resolution[Nothing]
   }
 
   private case class AddrObserver(
-    addr: Var[Resolution],
+    addr: Var[Resolution[Addr]],
     stamper: Stamper,
     release: () => Unit
-  ) extends Observer[Option[Addr.Bound]] {
+  ) extends Observer[Resolution[Option[Addr.Bound]]] {
     protected[this] def nextStamp() = stamper()
     protected[this] val updater = addr.changes.respond {
-      case Resolution.Released => release()
+      case Resolution.Released =>
+        update(Return(Resolution.Released))
+        release()
+
       case Resolution.Resolved(addr) => addr match {
-        case bound: Addr.Bound => update(Return(Some(bound)))
-        case Addr.Neg => update(Return(None))
+        case bound: Addr.Bound => update(Return(Resolution.Resolved(Some(bound))))
+        case Addr.Neg => update(Return(Resolution.Resolved(None)))
         case Addr.Failed(e) => update(Throw(e))
         case Addr.Pending =>
       }
@@ -325,11 +328,15 @@ class ThriftNamerInterface(
         Trace.recordBinary("namerd.srv/addr.path", path.show)
         val addrObserver = observeAddr(path)
         addrObserver(reqStamp).map {
-          case (newStamp, None) =>
+          case (newStamp, Resolution.Released) =>
+            Trace.recordBinary("namerd.srv/addr.result", "released")
+            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Released(TVoid))
+
+          case (newStamp, Resolution.Resolved(None)) =>
             Trace.recordBinary("namerd.srv/addr.result", "neg")
             thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
 
-          case (newStamp, Some(bound@Addr.Bound(addrs, meta))) =>
+          case (newStamp, Resolution.Resolved(Some(bound@Addr.Bound(addrs, meta)))) =>
             Trace.recordBinary("namerd.srv/addr.result", bound.toString)
             val taddrs = addrs.collect {
               case Address.Inet(isa, _) =>
