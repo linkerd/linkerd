@@ -111,11 +111,15 @@ object HttpControlService {
   trait NsPathUri {
     val prefix: String
 
-    def unapply(path: String): Option[(Ns, Path)] = {
-      if (!path.startsWith(prefix)) return None
-      val segments = path.stripPrefix(prefix).split("/")
-      if (segments.size < 2) return None
-      Some((segments.head, Path.Utf8(segments.drop(1): _*)))
+    def unapply(uri: String): Option[(Ns, Path)] = {
+      if (uri.startsWith(prefix)) {
+        uri.stripPrefix(prefix).split("/").toSeq match {
+          case ns +: path if path.nonEmpty => Some((ns, Path.Utf8(path: _*)))
+          case _ => None
+        }
+      } else {
+        None
+      }
     }
   }
 
