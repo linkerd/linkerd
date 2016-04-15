@@ -4,6 +4,7 @@ import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.tracing.{NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
+import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
@@ -21,6 +22,7 @@ trait Linker {
 }
 
 object Linker {
+  private[this] val log = Logger()
 
   private[linkerd] case class Initializers(
     protocol: Seq[ProtocolInitializer] = Nil,
@@ -82,6 +84,8 @@ object Linker {
         case Some(tracers) => BroadcastTracer(tracers)
         case None => DefaultTracer
       }
+
+      log.info(s"Loading tracer: $tracer")
 
       val namerParams = Stack.Params.empty + param.Tracer(tracer)
       val namersByPrefix = namers.getOrElse(Nil).reverse.map { namer =>
