@@ -4,10 +4,10 @@
     <div class="clients router-clients row">
       <div class="router-graph-header">Requests per client</div>
       <canvas class="router-graph" height="181"></canvas>
-      <div class="router-clients-title">Clients</div>
+      <div class="router-subsection-title">Clients</div>
     </div>
     <div class="servers router-servers row">
-      <div class="router-servers-title">Servers</div>
+      <div class="router-subsection-title">Servers</div>
     </div>
   </div>
 {{/each}}
