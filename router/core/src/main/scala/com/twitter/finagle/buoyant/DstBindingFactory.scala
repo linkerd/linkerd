@@ -1,9 +1,10 @@
 package com.twitter.finagle.buoyant
 
+import com.twitter.finagle.{NoStacktrace => _, _}
+import com.twitter.finagle.factory.{NameTreeFactory, ServiceFactoryCache}
 import com.twitter.finagle.naming._
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{NoStacktrace => _, _}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
@@ -135,7 +136,7 @@ object DstBindingFactory {
     capacity: Capacity = Capacity.default,
     bindingTimeout: BindingTimeout = BindingTimeout.default
   )(implicit timer: Timer = DefaultTimer.twitter) extends DstBindingFactory[Req, Rsp] {
-    private[this]type Cache[Key] = XXX_ServiceFactoryCache[Key, Req, Rsp]
+    private[this]type Cache[Key] = ServiceFactoryCache[Key, Req, Rsp]
 
     def apply(dst: Dst, conn: ClientConnection): Future[Service[Req, Rsp]] = dst match {
       case path: Dst.Path =>
@@ -161,16 +162,16 @@ object DstBindingFactory {
         }
       }
 
-      new XXX_ServiceFactoryCache(mk, statsReceiver.scope("path"), capacity.paths)
+      new ServiceFactoryCache(mk, statsReceiver.scope("path"), capacity.paths)
     }
 
     // The tree cache is effectively keyed on a NameTree of Bound names
     // with their residual paths.
     private[this] val treeCache: Cache[Dst.BoundTree] = {
       def mk(tree: Dst.BoundTree): ServiceFactory[Req, Rsp] =
-        XXX_NameTreeFactory(tree.path, tree.nameTree, boundCache)
+        NameTreeFactory(tree.path, tree.nameTree, boundCache)
 
-      new XXX_ServiceFactoryCache(mk, statsReceiver.scope("tree"), capacity.trees)
+      new ServiceFactoryCache(mk, statsReceiver.scope("tree"), capacity.trees)
     }
 
     // The bound cache is effectively keyed on the underlying service id
@@ -189,13 +190,13 @@ object DstBindingFactory {
         boundMk(bound, client)
       }
 
-      new XXX_ServiceFactoryCache(mk, statsReceiver.scope("bound"), capacity.bounds)
+      new ServiceFactoryCache(mk, statsReceiver.scope("bound"), capacity.bounds)
     }
 
     // The bottom cache is effectively keyed on the bound destination id
     // (i.e. concrete service name).
     private[this] val clientCache: Cache[Name.Bound] =
-      new XXX_ServiceFactoryCache(mkClient, statsReceiver.scope("client"), capacity.clients)
+      new ServiceFactoryCache(mkClient, statsReceiver.scope("client"), capacity.clients)
 
     private[this] val caches: Seq[Cache[_]] =
       Seq(pathCache, treeCache, boundCache, clientCache)
