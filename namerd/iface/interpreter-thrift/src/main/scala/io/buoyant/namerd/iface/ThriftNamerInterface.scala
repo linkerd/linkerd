@@ -100,15 +100,14 @@ object ThriftNamerInterface {
     protected[this] def nextStamp(): Stamp
 
     protected[this] final def update(v: Try[T]): Unit = {
-      if (!current.exists(_.value == v)) {
-        val obs = Observation(nextStamp(), v)
-        val promise = synchronized {
+      synchronized {
+        if (!current.exists(_.value == v)) {
+          val obs = Observation(nextStamp(), v)
           val previous = pending
           current = Some(obs)
           pending = new Promise[Observation]
-          previous
+          previous.setValue(obs)
         }
-        promise.setValue(obs)
       }
     }
 
