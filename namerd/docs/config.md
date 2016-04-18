@@ -59,6 +59,16 @@ Stores the dtab in ZooKeeper.  Supports the following options
 "/dtabs")
 * *sessionTimeoutMs* -- Optional.  ZooKeeper session timeout in milliseconds.
 (default: 10000)
+* *authInfo* -- Optional.  An object containing the authentication information to use when logging
+in ZooKeeper:
+  * *scheme* -- Required.  The ZooKeeper auth scheme to use.
+  * *auth* -- Required.  The ZooKeeper auth value to use.
+* *acls* -- Optional.  A list of ACLs to set on each dtab znode created.  Each ACL is an object
+containing:
+  * *scheme* -- Required.  The ACL auth scheme to use.
+  * *id* -- Required.  The ACL id to use.
+  * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
+  The characters represent create, read, write, delete, and admin, respectively.
 
 ## Namers
 

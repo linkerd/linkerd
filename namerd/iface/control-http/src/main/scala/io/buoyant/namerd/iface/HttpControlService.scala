@@ -9,7 +9,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.{Dentry, Dtab, NameTree, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException}
+import io.buoyant.namerd.DtabStore.{Forbidden, DtabVersionMismatchException, DtabNamespaceDoesNotExistException}
 import io.buoyant.namerd.{DtabStore, VersionedDtab}
 
 object HttpControlService {
@@ -120,7 +120,7 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  def apply(req: Request): Future[Response] = (req.path, req.method) match {
+  def apply(req: Request): Future[Response] = ((req.path, req.method) match {
     case (DtabUri(None), _) =>
       handleList()
     case (DtabUri(Some(ns)), Method.Head) =>
@@ -136,6 +136,8 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
+  }).handle {
+    case Forbidden => Response(Status.Forbidden)
   }
 
   private[this] def handleList(): Future[Response] =

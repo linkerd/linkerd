@@ -1,7 +1,6 @@
 package com.twitter.finagle.serverset2.buoyant
 
 import com.twitter.finagle.Dtab
-import com.twitter.finagle.serverset2.client.KeeperException.{BadVersion, NoNode}
 import com.twitter.finagle.serverset2.client._
 import com.twitter.finagle.serverset2.{RetryStream, Zk2Resolver, ZkSession => FZkSession}
 import com.twitter.finagle.stats.DefaultStatsReceiver
@@ -9,8 +8,9 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabNamespaceAlreadyExistsException, DtabVersionMismatchException}
-import io.buoyant.namerd.{DtabStore, VersionedDtab, RichActivity}
+import io.buoyant.namerd.{VersionedDtab, DtabStore, RichActivity}
+import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException, DtabNamespaceAlreadyExistsException, Forbidden}
+import io.buoyant.namerd.storage.experimental.{AuthInfo, Acl}
 import java.nio.ByteBuffer
 
 /**
@@ -20,7 +20,9 @@ import java.nio.ByteBuffer
 class ZkDtabStore(
   hosts: String,
   zkPrefix: String,
-  sessionTimeout: Option[Duration]
+  sessionTimeout: Option[Duration],
+  authInfo: Option[AuthInfo],
+  acls: Seq[Acl]
 ) extends DtabStore {
 
   private[this] val log = Logger()
@@ -37,6 +39,7 @@ class ZkDtabStore(
     retryStream,
     retryStream,
     () => builder.writer(),
+    authInfo,
     stats
   )
   private[this] def actOf[T](go: ZooKeeperRW => Future[Watched[T]]): Activity[T] =
@@ -44,7 +47,9 @@ class ZkDtabStore(
 
   private[this] val actNs = actOf(_.getChildrenWatch(zkPrefix)).map(_.children.toSet)
 
-  def list(): Future[Set[String]] = actNs.toFuture
+  def list(): Future[Set[String]] = actNs.toFuture.rescue {
+    case KeeperException.NoAuth(_) => Future.exception(Forbidden)
+  }
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
@@ -53,11 +58,13 @@ class ZkDtabStore(
     zkSession.zk.create(
       path,
       Some(Buf.Utf8(dtab.show)),
-      Seq(Data.ACL.AnyoneAllUnsafe),
+      acls.map(ZkDtabStore.zkAcl),
       CreateMode.Persistent
     ).rescue {
         case KeeperException.NodeExists(_) =>
           Future.exception(new DtabNamespaceAlreadyExistsException(ns))
+        case KeeperException.NoAuth(_) =>
+          Future.exception(Forbidden)
       }.unit
   }
 
@@ -68,6 +75,8 @@ class ZkDtabStore(
     zkSession.zk.delete(path, None).rescue {
       case KeeperException.NoNode(_) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
+      case KeeperException.NoAuth(_) =>
+        Future.exception(Forbidden)
     }
   }
 
@@ -80,14 +89,15 @@ class ZkDtabStore(
       Some(Buf.Utf8(dtab.show)),
       Some(versionInt(version))
     ).rescue {
-        case BadVersion(_) => Future.exception(new DtabVersionMismatchException)
-        case NoNode(_) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
+        case KeeperException.BadVersion(_) => Future.exception(new DtabVersionMismatchException)
+        case KeeperException.NoNode(_) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
+        case KeeperException.NoAuth(_) => Future.exception(Forbidden)
       }.unit
   }
 
   def observe(ns: String): Activity[Option[VersionedDtab]] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to obverve $path")
+    log.info(s"Attempting to observe $path")
 
     actOf(_.getDataWatch(path)).flatMap { data =>
       data.data match {
@@ -96,8 +106,10 @@ class ZkDtabStore(
         case None =>
           Activity.exception(new IllegalStateException(s"Empty node: $path"))
       }
-    }.handle {
-      case NoNode(_) => None
+    }.transform {
+      case Activity.Failed(KeeperException.NoNode(_)) => Activity.value(None)
+      case Activity.Failed(KeeperException.NoAuth(_)) => Activity.exception(Forbidden)
+      case state => Activity(Var.value(state))
     }
   }
 
@@ -112,12 +124,14 @@ class ZkDtabStore(
         zkSession.zk.create(
         path,
         Some(Buf.Utf8(dtab.show)),
-        Seq(Data.ACL.AnyoneAllUnsafe),
+        acls.map(ZkDtabStore.zkAcl),
         CreateMode.Persistent
       ).unit,
         zkSession.zk.setData(path, Some(Buf.Utf8(dtab.show)), None).unit
       )
     ).flatMap {
+        case Seq(Throw(KeeperException.NoAuth(_)), _) |
+          Seq(_, Throw(KeeperException.NoAuth(_))) => Future.exception(Forbidden)
         case Seq(Throw(e1), Throw(e2)) => Future.exception(new Exception("Failed to put, try again."))
         case Seq(_, _) => Future.Done
       }
@@ -133,5 +147,19 @@ class ZkDtabStore(
     bb.putInt(version)
     bb.rewind()
     Buf.ByteBuffer.Owned(bb)
+  }
+}
+
+object ZkDtabStore {
+  def zkAcl(acl: Acl): Data.ACL = {
+    val perms = acl.perms.map {
+      case 'r' => Perms.Read
+      case 'w' => Perms.Write
+      case 'c' => Perms.Create
+      case 'd' => Perms.Delete
+      case 'a' => Perms.Admin
+      case c => throw new IllegalArgumentException(s"$c is not a valid permission")
+    }.sum
+    Data.ACL(perms, Data.Id(acl.scheme, acl.id))
   }
 }
