@@ -4,6 +4,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.namerd.Ns
@@ -144,23 +145,26 @@ object ThriftNamerInterface {
     protected[this] val updater = trees.values.respond(update)
   }
 
-  sealed trait Resolution
-  object Resolution {
-    case class Resolved(addr: Addr) extends Resolution
-    object Released extends Resolution
+  private sealed trait Resolution[+T]
+  private object Resolution {
+    case class Resolved[+T](value: T) extends Resolution[T]
+    object Released extends Resolution[Nothing]
   }
 
   private case class AddrObserver(
-    addr: Var[Resolution],
+    addr: Var[Resolution[Addr]],
     stamper: Stamper,
     release: () => Unit
-  ) extends Observer[Option[Addr.Bound]] {
+  ) extends Observer[Resolution[Option[Addr.Bound]]] {
     protected[this] def nextStamp() = stamper()
     protected[this] val updater = addr.changes.respond {
-      case Resolution.Released => release()
+      case Resolution.Released =>
+        update(Return(Resolution.Released))
+        release()
+
       case Resolution.Resolved(addr) => addr match {
-        case bound: Addr.Bound => update(Return(Some(bound)))
-        case Addr.Neg => update(Return(None))
+        case bound: Addr.Bound => update(Return(Resolution.Resolved(Some(bound))))
+        case Addr.Neg => update(Return(Resolution.Resolved(None)))
         case Addr.Failed(e) => update(Throw(e))
         case Addr.Pending =>
       }
@@ -238,6 +242,8 @@ class ThriftNamerInterface(
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
 
+  private[this] val log = Logger.get(getClass.getName)
+
   /*
    * We keep a cache of observations.  Each observer keeps track of
    * the most recently observed state, and provides a Future that will
@@ -271,15 +277,15 @@ class ThriftNamerInterface(
 
         val bindingObserver = observeBind(ns, dtab, path)
         bindingObserver(reqStamp).transform {
-          case Throw(e) =>
-            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
-            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
-            Future.exception(failure)
-
           case Return((TStamp(tstamp), nameTree)) =>
             Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
             val (root, nodes, _) = mkTree(nameTree)
             Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
+
+          case Throw(e) =>
+            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
+            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
+            Future.exception(failure)
         }
     }
   }
@@ -322,11 +328,15 @@ class ThriftNamerInterface(
         Trace.recordBinary("namerd.srv/addr.path", path.show)
         val addrObserver = observeAddr(path)
         addrObserver(reqStamp).map {
-          case (newStamp, None) =>
+          case (newStamp, Resolution.Released) =>
+            Trace.recordBinary("namerd.srv/addr.result", "released")
+            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Released(TVoid))
+
+          case (newStamp, Resolution.Resolved(None)) =>
             Trace.recordBinary("namerd.srv/addr.result", "neg")
             thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
 
-          case (newStamp, Some(bound@Addr.Bound(addrs, meta))) =>
+          case (newStamp, Resolution.Resolved(Some(bound@Addr.Bound(addrs, meta)))) =>
             Trace.recordBinary("namerd.srv/addr.result", bound.toString)
             val taddrs = addrs.collect {
               case Address.Inet(isa, _) =>

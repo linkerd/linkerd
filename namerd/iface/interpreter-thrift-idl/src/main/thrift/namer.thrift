@@ -101,6 +101,7 @@ struct BoundAddr {
 union AddrVal {
   1: BoundAddr bound
   2: Void neg
+  3: Void released
 }
 
 struct Addr {
