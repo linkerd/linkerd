@@ -74,8 +74,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     serverState() = Activity.Ok(NameTree.Neg)
     eventually { assert(clientState == serverState.sample()) }
 
-    // XXX should this happen?
-    //eventually { assert(clientAddr0 == Addr.Neg) }
+    eventually { assert(clientAddr0 == Addr.Neg) }
 
     val serverAddr1 = Var[Addr](Addr.Pending)
     serverState() = Activity.Ok(NameTree.Leaf(Name.Bound(serverAddr1, id)))
@@ -85,7 +84,6 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
 
     @volatile var clientAddr1: Addr = Addr.Pending
     bound1.addr.changes.respond(clientAddr1 = _)
-    assert(clientAddr0 == Addr.Pending)
 
     serverAddr1() = Addr.Bound(Address("127.1", 5432))
     eventually { assert(clientAddr1 == serverAddr1.sample()) }
