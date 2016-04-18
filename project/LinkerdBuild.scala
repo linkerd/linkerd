@@ -5,30 +5,22 @@ import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
 import pl.project13.scala.sbt.JmhPlugin
 
-/**
- * Project layout.
- *
- * - consul/ -- consul client
- * - k8s/ -- finagle kubernetes client
- * - marathon/ -- marathon client
- * - router/ -- finagle router libraries
- * - namer/ -- name resolution
- * - config/ -- configuration utilities
- * - linkerd/ -- linkerd runtime and modules
- * - namerd/ -- namerd runtime and modules
- * - test-util/ -- async test helpers; provided by [[Base]]
- */
 object LinkerdBuild extends Base {
 
   val Minimal = config("minimal")
   val Bundle = config("bundle") extend Minimal
 
-  val k8s = projectDir("k8s")
+  val consul = projectDir("consul")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
 
-  val consul = projectDir("consul")
+  val etcd = projectDir("etcd")
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson ++ Deps.jodaTime)
+    .withTests().withIntegration()
+
+  val k8s = projectDir("k8s")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -529,6 +521,7 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
+    .settings(unidocSettings)
     .aggregate(
       admin,
       configCore,
@@ -542,5 +535,4 @@ object LinkerdBuild extends Base {
       Namerd.all,
       Router.all
     )
-    .settings(unidocSettings)
 }
