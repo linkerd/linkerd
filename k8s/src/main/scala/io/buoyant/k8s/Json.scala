@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.concurrent.AsyncStream
+import com.twitter.finagle.util.LoadService
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Return, Throw, Try}
@@ -19,6 +20,7 @@ object Json {
   private[this] val mapper = new ObjectMapper with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  LoadService[SerializationModule].foreach { svc => mapper.registerModule(svc.module) }
 
   def read[T: Manifest](buf: Buf): Try[T] = {
     val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)

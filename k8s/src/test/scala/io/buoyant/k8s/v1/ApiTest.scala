@@ -1,9 +1,10 @@
 package io.buoyant.k8s.v1
 
 import com.twitter.finagle.http._
-import com.twitter.finagle.{Name, Path, Service}
-import com.twitter.io.{Buf, Reader, Writer}
+import com.twitter.finagle.Service
+import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
+import io.buoyant.k8s.{ObjectMeta, ObjectReference}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -31,8 +32,8 @@ class ApiTest extends FunSuite with Awaits {
       Future.value(rsp)
     }
 
-    val ns = Api(service).namespace("srv")
-    val endpoints = await(ns.endpoints.named("accounts"))
+    val ns = Api(service).withNamespace("srv")
+    val endpoints = await(ns.endpoints.named("accounts").get)
     assert(endpoints == Endpoints(
       subsets = Seq(
         EndpointSubset(

@@ -36,7 +36,7 @@ trait DtabStore {
    */
   def put(ns: Ns, dtab: Dtab): Future[Unit]
 
-  /** Watch a dtab and it's version. */
+  /** Watch a dtab and its version. */
   def observe(ns: Ns): Activity[Option[VersionedDtab]]
 }
 

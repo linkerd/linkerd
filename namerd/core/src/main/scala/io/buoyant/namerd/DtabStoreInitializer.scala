@@ -9,16 +9,6 @@ trait DtabStoreInitializer extends ConfigInitializer
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 trait DtabStoreConfig {
-
-  var ip: Option[InetAddress] = None
-  var port: Option[Port] = None
-
   @JsonIgnore
   def mkDtabStore: DtabStore
-
-  @JsonIgnore
-  def addr = new InetSocketAddress(
-    ip.getOrElse(InetAddress.getLoopbackAddress),
-    port.map(_.port).getOrElse(4180)
-  )
 }

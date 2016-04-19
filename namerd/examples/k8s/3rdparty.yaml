@@ -1,0 +1,7 @@
+metadata:
+  name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: stores dtabs used by Buoyant's `namerd` service
+versions:
+  - name: v1alpha1
