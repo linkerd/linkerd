@@ -8,7 +8,7 @@ import java.net.{InetAddress, InetSocketAddress}
 
 class HttpControlServiceConfig extends InterpreterInterfaceConfig {
   @JsonIgnore override protected def mk(
-    delegate: (Ns) => NameInterpreter,
+    delegate: Ns => NameInterpreter,
     namers: Map[Path, Namer],
     store: DtabStore
   ): Servable = HttpControlServable(addr, store, delegate)
@@ -25,10 +25,10 @@ object HttpControlServiceConfig {
 case class HttpControlServable(
   addr: InetSocketAddress,
   store: DtabStore,
-  namers: Ns => NameInterpreter
+  delegate: Ns => NameInterpreter
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
-  def serve(): ListeningServer = Http.serve(addr, new HttpControlService(store, namers))
+  def serve(): ListeningServer = Http.serve(addr, new HttpControlService(store, delegate))
 }
 
 class HttpControlServiceInitializer extends InterfaceInitializer {

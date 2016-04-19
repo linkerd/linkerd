@@ -15,6 +15,8 @@ import org.scalatest.FunSuite
 
 class HttpControlServiceTest extends FunSuite with Awaits {
 
+  override def defaultWait: Duration = 2.seconds
+
   val defaultDtabs = Map(
     "yeezus" -> Dtab.read("/yeezy => /yeezus"),
     "tlop" -> Dtab.read("/yeezy => /pablo")

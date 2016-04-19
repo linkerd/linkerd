@@ -66,8 +66,10 @@ object HttpControlService {
     val default = (MediaType.Json, Json)
   }
 
+  val apiPrefix = "/api/1"
+
   object DtabUri {
-    val prefix = "/api/1/dtabs"
+    val prefix = s"$apiPrefix/dtabs"
     val prefixSlash = s"$prefix/"
 
     def unapply(request: Request): Option[(Method, Option[Ns])] =
@@ -102,15 +104,15 @@ object HttpControlService {
   }
 
   object BindUri extends NsPathUri {
-    val prefix = "/api/1/bind"
+    val prefix = s"$apiPrefix/bind"
   }
 
   object AddrUri extends NsPathUri {
-    val prefix = "/api/1/addr"
+    val prefix = s"$apiPrefix/addr"
   }
 
   object DelegateUri extends NsPathUri {
-    val prefix = "/api/1/delegate"
+    val prefix = s"$apiPrefix/delegate"
   }
 
   def versionString(buf: Buf): String = {
@@ -252,7 +254,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     val writer = resp.writer
     // closable is a handle to the values observation so that we can close the observation when the
     // streaming connection is terminated
-    @volatile var closable: Closable = null
+    @volatile var closable: Closable = Closable.nop
     // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
     // writeFuture is an accumulator of those flatMapped Futures
     @volatile var writeFuture: Future[Unit] = Future.Unit
@@ -262,9 +264,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
         if (buf == Buf.Empty)
           Future.Unit
         else
-          writer.write(buf).onFailure { _ =>
-            if (closable != null) closable.close()
-          }
+          writer.write(buf).onFailure { _ => closable.close() }
       }
     }
     Future.value(resp)
@@ -284,14 +284,13 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
       }
     }
 
-  private[this] val renderTryTree =
-    (tryTree: Try[NameTree[Name.Bound]], closable: Closable) => tryTree match {
-      case Return(tree) =>
-        Buf.Utf8(tree.show + "\n")
-      case Throw(e) =>
-        closable.close()
-        Buf.Empty
-    }
+  private[this] def renderTryTree(tryTree: Try[NameTree[Name.Bound]], closable: Closable) = tryTree match {
+    case Return(tree) =>
+      Buf.Utf8(tree.show + "\n")
+    case Throw(e) =>
+      closable.close()
+      Buf.Empty
+  }
 
   private[this] def handleGetBind(ns: String, path: Path): Future[Response] = {
     val act = getBind(ns, path)
