@@ -1,5 +1,5 @@
 approve_by_comment: true
-approve_regex: '^(Approved|lgtm|LGTM|:shipit:|:star:|:\+1:|:ship:|⭐|👍)'
+approve_regex: '^(Approved|lgtm|LGTM|:shipit:|:star:|:\+1:|:ship:)'
 reject_regex: ^Rejected
 reset_on_push: false
 reviewers:
