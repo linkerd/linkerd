@@ -3,23 +3,22 @@
 */
 
 .metric-header {
-  font-size: 16px;
-  line-height: 16px;
+  font-size: 13px;
+  letter-spacing: 1px;
 }
 
 .router-header-large, .metric-large {
-  font-size: 30px;
-  line-height: 37px;
-}
-
-.metric-medium {
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 21px;
+  line-height: 21px;
 }
 
 .metric-small {
   font-size: 12px;
-  line-height: 16px;
+  line-height: 12px;
+}
+
+.metric-large, .metric-small {
+  font-weight: 600;
 }
 
 .success-metric-container {

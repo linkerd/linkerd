@@ -1,5 +1,6 @@
 body {
-  background-image: radial-gradient(34% 43%, #161963 23%, #090B34 47%);
+  font-family: "DIN Next W01","Helvetica Neue",sans-serif;
+  background-image: radial-gradient(54% 23%, #161963 0%, #090B34 97%);
   background-size: cover;
   background-repeat: no-repeat;
   color: #FFFFFF;
@@ -79,12 +80,6 @@ nav ul.navbar-nav {
   line-height: 1.2;
 }
 
-.request-total-title {
-  font-weight: 100;
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
 /* dtab specific css overrides*/
 
 .panel {
@@ -104,7 +99,7 @@ nav ul.navbar-nav {
 */
 
 .dashboard-container {
-  margin: 27px 27px 0;
+  margin: 0 27px 0;
   width: 1161px;
   border-bottom: 2px solid grey;
 }
@@ -117,6 +112,10 @@ nav ul.navbar-nav {
   width: 1161px;
 }
 
+.router:not(:last-child) {
+  border-bottom: 7px solid #163F79;
+}
+
 /*
 * Router summary
 */
@@ -126,15 +125,15 @@ nav ul.navbar-nav {
 }
 
 .router .summary {
-  border-top: 2px solid gray;
-  padding-top: 16px;
+  margin-top: 9px;
 }
 
 .router-graph-header {
-  color: #709DDD;
+  color: #878787;
   font-size: 14px;
   line-height: 15px;
   height: 15px;
+  margin-top: 18px;
   margin-bottom: 9px;
 }
 
@@ -142,9 +141,8 @@ nav ul.navbar-nav {
 * Router servers
 */
 
-.router-servers-title {
-  border-bottom: 1px solid grey;
-  font-size: 18px;
+.router-servers {
+  padding-bottom: 30px;
 }
 
 .server-metric-container {
@@ -155,23 +153,16 @@ nav ul.navbar-nav {
 * Router clients
 */
 
-.router-clients-title {
+.router-subsection-title {
   color: #F2F2F2;
-  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 12px;
   line-height: 19px;
 }
 
 .client-container {
-  margin-bottom: 63px;
-}
-
-.router-clients {
-  border-bottom: 1px solid grey;
-  margin-bottom: 30px;
-}
-
-.router-graph {
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .chart-container {
@@ -179,7 +170,7 @@ nav ul.navbar-nav {
 }
 
 .router-latencies > div{
-  font-size:16px;
+  font-size:12px;
   line-height: 32px;
 }
 
@@ -188,6 +179,8 @@ nav ul.navbar-nav {
 }
 
 .latency-legend {
+  border-radius: 2px;
+  height: 12px;
   margin-right: 5px;
 }
 

@@ -1,7 +1,7 @@
 <div class="row">
   {{#each metrics}}
     <div class="col-md-2">
-      <div class="request-total-title">
+      <div class="metric-header">
         {{description}}
       </div>
       <div class="request-total">

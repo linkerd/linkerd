@@ -1,4 +1,4 @@
-<div class="client-header router-header-large">
+<div class="router-header-large">
   {{client}}
 </div>
 
@@ -6,11 +6,11 @@
   <div class="col-md-2">
     <div class="metric-container" style="border-left: 1px solid {{clientColor}};">
       <div class="metric-header">Requests</div>
-      <div class="metric-medium">{{requests}}</div>
+      <div class="metric-large">{{requests}}</div>
     </div>
     <div class="success-metric-container metric-container">
       <div class="metric-header">Successes</div>
-      <div class="success-metric metric-medium">
+      <div class="success-metric metric-large">
         {{#if successRate}}
           {{successRate}}
         {{else}}
@@ -23,11 +23,11 @@
   <div class="col-md-2">
     <div class="metric-container" style="border-left: 1px solid {{clientColor}};">
       <div class="metric-header">Connections</div>
-      <div class="metric-medium">{{connections}}</div>
+      <div class="metric-large">{{connections}}</div>
     </div>
     <div class="failure-metric-container metric-container">
       <div class="metric-header">Failures</div>
-      <div class="failure-metric metric-medium">
+      <div class="failure-metric metric-large">
         {{#if failures}}
           {{failures}}
         {{else}}

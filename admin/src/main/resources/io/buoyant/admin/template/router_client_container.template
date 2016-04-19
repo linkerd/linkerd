@@ -1,4 +1,4 @@
-<div class="client-container clearfix" style="border-top:2px solid {{clientColor}};">
+<div class="client-container clearfix">
   <div class="metrics-container col-md-6"></div>
   <div class="chart-container col-md-6"></div>
 </div>
