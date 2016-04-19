@@ -52,6 +52,8 @@ object DtabStore {
   class DtabNamespaceDoesNotExistException(ns: Ns)
     extends Exception(s"The dtab namespace $ns does not exist")
 
+  object Forbidden extends Exception("You do not have sufficient permissions")
+
   class Proxy(underlying: DtabStore) extends DtabStore {
     protected[this] val self = underlying
 

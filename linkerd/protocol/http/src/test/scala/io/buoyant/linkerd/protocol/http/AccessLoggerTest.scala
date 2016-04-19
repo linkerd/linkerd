@@ -41,7 +41,7 @@ class AccessLoggerTest extends FunSuite with Awaits {
 
       val f = service(req)
       assert(StringLogger.getLoggedLines() ==
-        """0.0.0.0 - - [06/01/2016:21:21:26 +0000] "HEAD /foo?bar=bah HTTP/1.1" 402 304374 "-" "-"""")
+        """monkeys 0.0.0.0 - - [06/01/2016:21:21:26 +0000] "HEAD /foo?bar=bah HTTP/1.1" 402 304374 "-" "-"""")
     }
   }
 }

@@ -3,6 +3,13 @@ storage:
   pathPrefix: /dtabs
   hosts:
   - localhost:2181
+  authInfo:
+    scheme: digest
+    auth: user_123:password_123
+  acls:
+  - scheme: auth
+    id: ""
+    perms: crwda 
 interfaces:
 - kind: thriftNameInterpreter
 - kind: httpController

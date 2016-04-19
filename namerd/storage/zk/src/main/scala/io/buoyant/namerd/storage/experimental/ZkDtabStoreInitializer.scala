@@ -12,7 +12,9 @@ class ZkDtabStoreInitializer extends DtabStoreInitializer {
 case class zk(
   hosts: Seq[String],
   pathPrefix: Option[String],
-  sessionTimeoutMs: Option[Int]
+  sessionTimeoutMs: Option[Int],
+  authInfo: Option[AuthInfo],
+  acls: Option[Seq[Acl]]
 ) extends DtabStoreConfig {
 
   @JsonIgnore val sessionTimeout = sessionTimeoutMs.map(_.millis)
@@ -21,6 +23,20 @@ case class zk(
   override def mkDtabStore: DtabStore = new ZkDtabStore(
     hosts.mkString(","),
     pathPrefix.getOrElse("/dtabs"),
-    sessionTimeout
+    sessionTimeout,
+    authInfo,
+    acls.getOrElse(Seq(Acl.AnyoneUnsafe))
   )
+}
+
+case class AuthInfo(scheme: String, auth: String)
+
+case class Acl(scheme: String, id: String, perms: String) {
+  if (!Acl.validPerms(perms))
+    throw new IllegalArgumentException(s"$perms is not a valid permission string")
+}
+
+object Acl {
+  val validPerms = "[crwda]+".r.pattern.asPredicate.test _
+  val AnyoneUnsafe = Acl("crwda", "world", "anyone")
 }

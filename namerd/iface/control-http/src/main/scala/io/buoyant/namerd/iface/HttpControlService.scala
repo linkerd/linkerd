@@ -11,7 +11,7 @@ import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.linkerd.admin.names.{DelegateApiHandler, Delegator}
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
+import io.buoyant.namerd.DtabStore.{Forbidden, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
 import io.buoyant.namerd.{DtabStore, Ns, RichActivity, VersionedDtab}
 
 object HttpControlService {
@@ -150,7 +150,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  def apply(req: Request): Future[Response] = (req.path, req.method) match {
+  def apply(req: Request): Future[Response] = ((req.path, req.method) match {
     case (DtabUri(None), _) =>
       handleList()
     case (DtabUri(Some(ns)), Method.Head) =>
@@ -172,6 +172,8 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
+  }).handle {
+    case Forbidden => Response(Status.Forbidden)
   }
 
   private[this] def handleList(): Future[Response] =

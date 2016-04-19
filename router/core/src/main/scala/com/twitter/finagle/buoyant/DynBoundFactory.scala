@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
+import com.twitter.finagle.factory.ServiceFactoryCache
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util.{Activity, Duration, Future, Promise, Stopwatch, Time}
@@ -11,7 +12,7 @@ import scala.collection.immutable
  */
 private[buoyant] class DynBoundFactory[Req, Rep](
   name: Activity[Dst.BoundTree],
-  cache: XXX_ServiceFactoryCache[Dst.BoundTree, Req, Rep],
+  cache: ServiceFactoryCache[Dst.BoundTree, Req, Rep],
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends ServiceFactory[Req, Rep] {
 

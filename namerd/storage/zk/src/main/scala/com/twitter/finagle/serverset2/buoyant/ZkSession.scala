@@ -5,8 +5,10 @@ import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.serverset2.RetryStream
 import com.twitter.finagle.serverset2.client._
 import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.namerd.storage.experimental.AuthInfo
 
 /**
  * ZkSession wraps a ZooKeeper client which automatically reconnects upon session expiry.
@@ -16,6 +18,7 @@ class ZkSession(
   retryBackoff: RetryStream,
   reconnectBackoff: RetryStream,
   clientBuilder: () => Watched[ZooKeeperRW],
+  authInfo: Option[AuthInfo],
   statsReceiver: StatsReceiver
 )(implicit timer: Timer) {
   val logger = Logger()
@@ -46,8 +49,10 @@ class ZkSession(
     newClient.state.changes.filter {
       _ == WatchState.SessionState(SessionState.SyncConnected)
     }.toFuture.unit.before {
-      // TODO: send auth info https://github.com/BuoyantIO/linkerd/issues/249
-      Future.Unit
+      authInfo match {
+        case Some(AuthInfo(scheme, auth)) => newClient.value.addAuthInfo(scheme, Buf.Utf8(auth))
+        case None => Future.Unit
+      }
     }.onSuccess { _ =>
       logger.info(s"New ZKSession is connected. Session ID: ${sessionId(newClient)}")
       client() = newClient

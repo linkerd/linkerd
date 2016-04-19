@@ -4,7 +4,8 @@ import com.twitter.finagle.{Name, Path, Service, ServiceFactory, SimpleFilter, S
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
-import com.twitter.util.{Base64StringEncoder, Try}
+import com.twitter.util.Try
+import java.util.Base64
 
 // all of this based on com.twitter.finagle.http.Codec
 
@@ -24,7 +25,7 @@ object Headers {
      *   ''reqId:8 parentId:8 traceId:8 flags:8''
      */
     def get(b64: String): Try[TraceId] =
-      Try(Base64StringEncoder.decode(b64)).flatMap(TraceId.deserialize)
+      Try(Base64.getDecoder.decode(b64)).flatMap(TraceId.deserialize)
 
     def get(headers: HeaderMap): Option[TraceId] =
       for {
@@ -34,7 +35,7 @@ object Headers {
 
     def set(headers: HeaderMap, id: TraceId): Unit = {
       val bytes = TraceId.serialize(id)
-      val b64 = Base64StringEncoder.encode(bytes)
+      val b64 = Base64.getEncoder().encodeToString(bytes)
       headers.set(Key, b64)
     }
 
