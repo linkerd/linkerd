@@ -2,6 +2,8 @@
 
 * Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
   time to spend binding a path.
+* Add experimental support for storing dtabs in Kubernetes via the
+  ThirdPartyResource API (which must be enabled in your cluster).
 
 ## 0.3.1
 

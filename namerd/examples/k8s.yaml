@@ -1,0 +1,12 @@
+# This file assumes you are running through `kubectl proxy` on localhost:8001.
+storage:
+  kind: io.buoyant.namerd.storage.experimental.k8s
+  host: localhost
+  port: 8001 # Running through kubectl proxy
+  tls: false # kubectl proxy does not support tls
+interfaces:
+- kind: thriftNameInterpreter
+- kind: httpController
+namers:
+- kind: io.l5d.fs
+  rootDir: namerd/examples/disco

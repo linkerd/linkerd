@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import io.buoyant.k8s.v1.Api
-import io.buoyant.k8s.{AuthFilter, EndpointsNamer, SetHostFilter}
+import io.buoyant.k8s._
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import scala.io.Source
@@ -33,48 +33,23 @@ case class k8s(
   tls: Option[Boolean],
   tlsWithoutValidation: Option[Boolean],
   authTokenFile: Option[String]
-) extends NamerConfig {
+) extends NamerConfig with ClientConfig {
 
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.k8s")
 
-  private[this] def getHost = host.getOrElse("kubernetes.default.svc.cluster.local")
-
-  private[this] def getPort = port match {
-    case Some(p) => p.port
-    case None => 443
-  }
-
-  private[this] def authFilter = authTokenFile match {
-    case Some(path) =>
-      val token = Source.fromFile(path).mkString
-      if (token.nonEmpty) new AuthFilter(token)
-      else Filter.identity[Request, Response]
-    case None => Filter.identity[Request, Response]
-  }
+  @JsonIgnore
+  def portNum = port.map(_.port)
 
   /**
    * Construct a namer.
    */
   @JsonIgnore
   override def newNamer(params: Stack.Params): Namer = {
-    val (host, port) = (getHost, getPort)
-    val client = {
-      val setHost = new SetHostFilter(host, port)
-      val client = (tls, tlsWithoutValidation) match {
-        case (Some(false), _) => Http.client
-        case (_, Some(true)) => Http.client.withTlsWithoutValidation
-        case _ => Http.client.withTls(setHost.host)
-      }
-      client.withParams(client.params ++ params)
-        .withStreaming(true)
-        .filtered(setHost)
-        .filtered(authFilter)
-    }
-    val dst = s"/$$/inet/$host/$port"
+    val client = mkClient(params)
     def mkNs(ns: String) = {
       val label = param.Label(s"namer${prefix.show}/$ns")
-      Api(client.configured(label).newService(dst)).namespace(ns)
+      Api(client.configured(label).newService(dst)).withNamespace(ns)
     }
     new EndpointsNamer(prefix, mkNs)
   }

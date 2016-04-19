@@ -153,8 +153,13 @@ object LinkerdBuild extends Base {
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .withTests()
 
+      val k8s = projectDir("namerd/storage/k8s")
+        .dependsOn(core)
+        .dependsOn(LinkerdBuild.k8s)
+        .withTests()
+
       val all = projectDir("namerd/storage")
-        .aggregate(inMemory, zk)
+        .aggregate(inMemory, zk, k8s)
     }
 
     object Iface {
@@ -268,7 +273,7 @@ object LinkerdBuild extends Base {
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.zk
+        Storage.k8s, Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
@@ -472,6 +477,7 @@ object LinkerdBuild extends Base {
   // All projects must be exposed at the root of the object in
   // dependency-order:
 
+
   val router = Router.all
   val routerCore = Router.core
   val routerHttp = Router.http
@@ -495,6 +501,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
   val namerdStorageInMemory = Namerd.Storage.inMemory
+  val namerdStorageK8s = Namerd.Storage.k8s
   val namerdStorageZk = Namerd.Storage.zk
   val namerdStorage = Namerd.Storage.all
   val namerdIface = Namerd.Iface.all

@@ -3,10 +3,12 @@ package io.buoyant.k8s
 import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
+import io.buoyant.k8s.Api.Closed
+import io.buoyant.k8s.v1.{Endpoints, EndpointsList, EndpointsWatch, NsApi}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
-class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
+class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 
   import EndpointsNamer._
 
@@ -83,12 +85,13 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
 
     private[this] def watch(namespace: String, services: NsCache): Closable = {
       val ns = mkApi(namespace)
+      val endpointsApi = ns.endpoints
       val close = new AtomicReference(Closable.nop)
 
       Trace.letClear {
         val init = {
           log.debug("k8s initializing %s", namespace)
-          val endpoints = ns.endpoints()
+          val endpoints = endpointsApi.get()
 
           close.set(Closable.make { _ =>
             endpoints.raise(Closed)
@@ -103,7 +106,7 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
         }
 
         init.foreach { init =>
-          val (updates, closable) = ns.endpoints.watch(
+          val (updates, closable) = endpointsApi.watch(
             resourceVersion = init.metadata.flatMap(_.resourceVersion)
           )
           close.set(closable)
@@ -117,8 +120,6 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => v1.NsApi) extends Namer {
 }
 
 private object EndpointsNamer {
-
-  val log = v1.log
   val PrefixLen = 3
 
   type VarUp[T] = Var[T] with Updatable[T]
@@ -265,11 +266,11 @@ private object EndpointsNamer {
       }
     }
 
-    def update(watch: v1.EndpointsWatch): Unit = watch match {
-      case v1.EndpointsWatch.Error(e) => log.error("k8s watch error: %s", e)
-      case v1.EndpointsWatch.Added(endpoints) => add(endpoints)
-      case v1.EndpointsWatch.Modified(endpoints) => modify(endpoints)
-      case v1.EndpointsWatch.Deleted(endpoints) => delete(endpoints)
+    def update(watch: EndpointsWatch): Unit = watch match {
+      case EndpointsWatch.Error(e) => log.error("k8s watch error: %s", e)
+      case EndpointsWatch.Added(endpoints) => add(endpoints)
+      case EndpointsWatch.Modified(endpoints) => modify(endpoints)
+      case EndpointsWatch.Deleted(endpoints) => delete(endpoints)
     }
 
     private[this] def getName(endpoints: v1.Endpoints) =
