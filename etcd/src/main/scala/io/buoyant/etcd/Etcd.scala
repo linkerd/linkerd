@@ -3,128 +3,13 @@ package io.buoyant.etcd
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.conversions.time._
 import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
 import scala.collection.JavaConverters._
 
-/*
- * TODO: use residual path on client to set key prefix.
- */
-
-/*
- * Wire-format representations of NodeOp and Node.
- */
-
 case class Version(etcdserver: String, etcdcluster: String)
-
-private[etcd] case class NodeRsp(
-  key: String,
-  modifiedIndex: Long,
-  createdIndex: Long,
-  dir: Boolean = false,
-  value: Option[String] = None,
-  nodes: Option[Seq[NodeRsp]] = None,
-  expiration: Option[String] = None,
-  ttl: Option[Int] = None
-) {
-
-  def toLease: Try[Option[Lease]] =
-    for {
-      expiration <- Try {
-        expiration map { e =>
-          val ms = ISODateTimeFormat.dateTime.parseDateTime(e).getMillis
-          Time.fromMilliseconds(ms)
-        }
-      }
-      ttl <- Try(ttl map (_.toInt.seconds))
-    } yield for {
-      e <- expiration
-      t <- ttl
-    } yield Lease(e, t)
-
-  def toNode: Try[Node] = {
-    val k = if (key == null || key == "") "/" else key
-    Try(Path.read(key)) flatMap { key =>
-      toLease flatMap { lease =>
-        if (dir) {
-          val init = Dir(key, modifiedIndex, createdIndex, lease)
-          nodes.getOrElse(Seq.empty).foldLeft[Try[Dir]](Return(init)) {
-            case (e@Throw(_), _) => e
-            case (Return(tree), n) => n.toNode map (tree :+ _)
-          }
-        } else {
-          val buf = value.map(Buf.Utf8(_)) getOrElse Buf.Empty
-          Return(Data(key, modifiedIndex, createdIndex, lease, buf))
-        }
-      }
-    }
-  }
-
-}
-
-private[etcd] object NodeRsp {
-
-  private[this] def toIsoDate(t: Time): String =
-    ISODateTimeFormat.dateTime.print(t.inMillis)
-
-  def apply(node: Node): NodeRsp = node match {
-    case Data(key, modified, created, lease, Buf.Utf8(value)) =>
-      NodeRsp(key.show, modified, created, false, Some(value), None,
-        lease.map { l => toIsoDate(l.expiration) },
-        lease.map(_.ttl.inSeconds))
-
-    case Dir(key, modified, created, lease, nodes) =>
-      NodeRsp(key.show, modified, created, true, None, Some(nodes.map(NodeRsp(_))),
-        lease.map { l => toIsoDate(l.expiration) },
-        lease.map(_.ttl.inSeconds))
-
-  }
-}
-
-private[etcd] case class NodeOpRsp(
-  action: String,
-  node: Option[NodeRsp] = None,
-  prevNode: Option[NodeRsp] = None
-) {
-
-  def toNodeOp(etcd: EtcdState): Try[NodeOp] =
-    Action(action) flatMap { action =>
-      node match {
-        case None =>
-          Throw(new Exception("node not specified"))
-
-        case Some(node) =>
-          node.toNode match {
-            case Throw(e) => Throw(e)
-
-            case Return(node) =>
-              val prev = prevNode match {
-                case None => Return(None)
-                case Some(prev) => prev.toNode map (Some(_))
-              }
-              prev map (NodeOp(action, node, etcd, _))
-          }
-      }
-    }
-}
-
-private[etcd] object NodeOpRsp {
-
-  def apply(op: NodeOp): NodeOpRsp =
-    NodeOpRsp(op.action.name, Some(NodeRsp(op.node)), op.prevNode.map(NodeRsp(_)))
-}
-
-/*
- * Errors
- */
-
-case class BackoffsExhausted(key: Path, throwable: Throwable)
-  extends Exception(key.show, throwable)
 
 case class UnexpectedResponse(
   method: Method,
@@ -201,9 +86,9 @@ object Etcd {
   }
 
   private[etcd] def getEtcdState(msg: Message): EtcdState = {
-    val index = msg.headerMap.get(Headers.EtcdIndex).
-      flatMap { i => Try(i.toLong).toOption }.
-      getOrElse(0L)
+    val index = msg.headerMap.get(Headers.EtcdIndex)
+      .flatMap { i => Try(i.toLong).toOption }
+      .getOrElse(0L)
 
     val id = msg.headerMap.getOrElse(Headers.ClusterId, "")
 
@@ -225,7 +110,7 @@ class Etcd(client: Service[Request, Response]) extends Closable {
     val req = mkReq(versionPath)
     req.headerMap("accept") = MediaType.Json
 
-    client(req) flatMap { rsp =>
+    client(req).flatMap { rsp =>
       rsp.status match {
         case Status.Ok =>
           Future.const(readJson[Version](rsp.content))

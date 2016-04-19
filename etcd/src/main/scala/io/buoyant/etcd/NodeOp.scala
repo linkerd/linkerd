@@ -51,3 +51,39 @@ case class NodeOp(
   etcd: EtcdState,
   prevNode: Option[Node] = None
 )
+
+/**
+ * Wire representation
+ */
+private[etcd] case class NodeOpRsp(
+  action: String,
+  node: Option[NodeRsp] = None,
+  prevNode: Option[NodeRsp] = None
+) {
+
+  def toNodeOp(etcd: EtcdState): Try[NodeOp] =
+    Action(action).flatMap { action =>
+      node match {
+        case None =>
+          Throw(new Exception("node not specified"))
+
+        case Some(node) =>
+          node.toNode match {
+            case Throw(e) => Throw(e)
+
+            case Return(node) =>
+              val prev = prevNode match {
+                case None => Return(None)
+                case Some(prev) => prev.toNode.map(Some(_))
+              }
+              prev.map(NodeOp(action, node, etcd, _))
+          }
+      }
+    }
+}
+
+private[etcd] object NodeOpRsp {
+
+  def apply(op: NodeOp): NodeOpRsp =
+    NodeOpRsp(op.action.name, Some(NodeRsp(op.node)), op.prevNode.map(NodeRsp(_)))
+}

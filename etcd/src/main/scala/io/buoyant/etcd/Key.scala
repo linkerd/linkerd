@@ -6,6 +6,9 @@ import com.twitter.io.Buf
 import com.twitter.util._
 import scala.collection.JavaConverters._
 
+case class BackoffsExhausted(key: Path, throwable: Throwable)
+  extends Exception(key.show, throwable)
+
 class Key(key: Path, client: Service[Request, Response]) {
 
   import Etcd._
@@ -77,7 +80,7 @@ class Key(key: Path, client: Service[Request, Response]) {
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
-    client(req) flatMap (toNodeOp(req, _, key, params))
+    client(req).flatMap(toNodeOp(req, _, key, params))
   }
 
   def create(
@@ -96,7 +99,7 @@ class Key(key: Path, client: Service[Request, Response]) {
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Post, params)
-    client(req) flatMap (toNodeOp(req, _, key, params))
+    client(req).flatMap(toNodeOp(req, _, key, params))
   }
 
   def compareAndSwap(
@@ -121,7 +124,7 @@ class Key(key: Path, client: Service[Request, Response]) {
     params = params :+ "value" -> v
 
     val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
-    client(req) flatMap (toNodeOp(req, _, key, params))
+    client(req).flatMap(toNodeOp(req, _, key, params))
   }
 
   def delete(
@@ -137,7 +140,7 @@ class Key(key: Path, client: Service[Request, Response]) {
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Delete, params)
-    client(req) flatMap (toNodeOp(req, _, key, params))
+    client(req).flatMap(toNodeOp(req, _, key, params))
   }
 
   private[this] def getIndex(node: Node): Long = node match {
