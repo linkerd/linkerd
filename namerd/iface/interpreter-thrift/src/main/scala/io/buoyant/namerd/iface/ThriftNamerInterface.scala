@@ -4,6 +4,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.namerd.Ns
@@ -100,14 +101,15 @@ object ThriftNamerInterface {
     protected[this] def nextStamp(): Stamp
 
     protected[this] final def update(v: Try[T]): Unit = {
-      val obs = Observation(nextStamp(), v)
-      val promise = synchronized {
-        val previous = pending
-        current = Some(obs)
-        pending = new Promise[Observation]
-        previous
+      synchronized {
+        if (!current.exists(_.value == v)) {
+          val obs = Observation(nextStamp(), v)
+          val previous = pending
+          current = Some(obs)
+          pending = new Promise[Observation]
+          previous.setValue(obs)
+        }
       }
-      promise.setValue(obs)
     }
 
     /** Responsible for calling update() */
@@ -144,26 +146,16 @@ object ThriftNamerInterface {
     protected[this] val updater = trees.values.respond(update)
   }
 
-  sealed trait Resolution
-  object Resolution {
-    case class Resolved(addr: Addr) extends Resolution
-    object Released extends Resolution
-  }
-
   private case class AddrObserver(
-    addr: Var[Resolution],
-    stamper: Stamper,
-    release: () => Unit
+    addr: Var[Addr],
+    stamper: Stamper
   ) extends Observer[Option[Addr.Bound]] {
     protected[this] def nextStamp() = stamper()
     protected[this] val updater = addr.changes.respond {
-      case Resolution.Released => release()
-      case Resolution.Resolved(addr) => addr match {
-        case bound: Addr.Bound => update(Return(Some(bound)))
-        case Addr.Neg => update(Return(None))
-        case Addr.Failed(e) => update(Throw(e))
-        case Addr.Pending =>
-      }
+      case bound: Addr.Bound => update(Return(Some(bound)))
+      case Addr.Neg => update(Return(None))
+      case Addr.Failed(e) => update(Throw(e))
+      case Addr.Pending =>
     }
   }
 
@@ -238,6 +230,8 @@ class ThriftNamerInterface(
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
 
+  private[this] val log = Logger.get(getClass.getName)
+
   /*
    * We keep a cache of observations.  Each observer keeps track of
    * the most recently observed state, and provides a Future that will
@@ -271,15 +265,15 @@ class ThriftNamerInterface(
 
         val bindingObserver = observeBind(ns, dtab, path)
         bindingObserver(reqStamp).transform {
-          case Throw(e) =>
-            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
-            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
-            Future.exception(failure)
-
           case Return((TStamp(tstamp), nameTree)) =>
             Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
             val (root, nodes, _) = mkTree(nameTree)
             Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
+
+          case Throw(e) =>
+            Trace.recordBinary("namerd.srv/bind.fail", e.toString)
+            val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
+            Future.exception(failure)
         }
     }
   }
@@ -351,18 +345,18 @@ class ThriftNamerInterface(
         case None =>
           Trace.recordBinary("namerd.srv/addr.cached", false)
           val resolution = bindAddrId(id).run.flatMap {
-            case Activity.Pending => Var.value(Resolution.Resolved(Addr.Pending))
-            case Activity.Failed(e) => Var.value(Resolution.Resolved(Addr.Failed(e)))
+            case Activity.Pending => Var.value(Addr.Pending)
+            case Activity.Failed(e) => Var.value(Addr.Failed(e))
             case Activity.Ok(tree) => tree match {
-              case NameTree.Leaf(bound) => bound.addr.map(Resolution.Resolved(_))
-              case NameTree.Empty => Var.value(Resolution.Resolved(Addr.Bound()))
-              case NameTree.Fail => Var.value(Resolution.Resolved(Addr.Failed("name tree failed")))
-              case NameTree.Neg => Var.value(Resolution.Released)
+              case NameTree.Leaf(bound) => bound.addr
+              case NameTree.Empty => Var.value(Addr.Bound())
+              case NameTree.Fail => Var.value(Addr.Failed("name tree failed"))
+              case NameTree.Neg => Var.value(Addr.Neg)
               case NameTree.Alt(_) | NameTree.Union(_) =>
-                Var.value(Resolution.Resolved(Addr.Failed(s"${id.show} is not a concrete bound id")))
+                Var.value(Addr.Failed(s"${id.show} is not a concrete bound id"))
             }
           }
-          val obs = AddrObserver(resolution, stamper, () => releaseAddr(id))
+          val obs = AddrObserver(resolution, stamper)
           addrCache += (id -> obs)
           obs
       }
@@ -372,12 +366,5 @@ class ThriftNamerInterface(
     val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
-
-  private[this] def releaseAddr(id: Path): Unit =
-    addrCacheMu.synchronized {
-      addrCache.get(id).foreach(_.close())
-      addrCache -= id
-    }
-
 }
 
