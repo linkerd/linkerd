@@ -7,7 +7,7 @@ import java.net.InetSocketAddress
 class TestInterpreterInterfaceConfig extends InterpreterInterfaceConfig {
   val defaultAddr: InetSocketAddress = new InetSocketAddress(0)
 
-  def mk(interpreters: Ns => NameInterpreter, namers: Map[Path, Namer]): Servable =
+  def mk(interpreters: Ns => NameInterpreter, namers: Map[Path, Namer], store: DtabStore): Servable =
     TestNamerInterfaceServable
 }
 

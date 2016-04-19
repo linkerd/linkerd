@@ -19,13 +19,13 @@ case class ThriftInterpreterInterfaceConfig(
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
 
   @JsonIgnore
-  def mk(interpeters: Ns => NameInterpreter, namers: Map[Path, Namer]): Servable = {
+  def mk(interpreters: Ns => NameInterpreter, namers: Map[Path, Namer], store: DtabStore): Servable = {
     val retryIn: () => Duration = {
       val retry = retryBaseSecs.map(_.seconds).getOrElse(10.minutes)
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
       () => retry + (Random.nextGaussian() * jitter.inSeconds).toInt.seconds
     }
-    val iface = new ThriftNamerInterface(interpeters, namers, new LocalStamper, retryIn)
+    val iface = new ThriftNamerInterface(interpreters, namers, new LocalStamper, retryIn)
     ThriftServable(addr, iface)
   }
 }

@@ -1,16 +1,16 @@
 package io.buoyant.namerd.iface
 
-import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.http._
-import com.twitter.finagle.{Dentry, Dtab, NameTree, Path, Service}
+import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{Forbidden, DtabVersionMismatchException, DtabNamespaceDoesNotExistException}
-import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, VersionedDtab}
+import io.buoyant.linkerd.admin.names.{DelegateApiHandler, Delegator}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
+import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
 
 object HttpControlService {
 
@@ -66,17 +66,53 @@ object HttpControlService {
     val default = (MediaType.Json, Json)
   }
 
+  val apiPrefix = "/api/1"
+
   object DtabUri {
-    val prefix = "/api/1/dtabs"
+    val prefix = s"$apiPrefix/dtabs"
     val prefixSlash = s"$prefix/"
 
-    def unapply(path: String): Option[Option[String]] =
-      if (path == prefix) Some(None)
-      else if (!path.startsWith(prefixSlash)) None
-      else path.stripPrefix(prefixSlash) match {
-        case "" => Some(None)
-        case ns => Some(Some(ns))
+    def unapply(request: Request): Option[(Method, Option[Ns])] =
+      if (request.path == prefix) Some(request.method, None)
+      else if (!request.path.startsWith(prefixSlash)) None
+      else request.path.stripPrefix(prefixSlash) match {
+        case "" => Some(request.method, None)
+        case ns => Some(request.method, Some(ns))
       }
+  }
+
+  case class InvalidPathException(path: String, underlying: Exception)
+    extends Exception(s"Invalid path: $path\n${underlying.getMessage}", underlying)
+
+  trait NsPathUri {
+    val prefix: String
+
+    def unapply(request: Request): Option[(Ns, Path)] = {
+      if (request.path.startsWith(prefix)) {
+        val ns = request.path.stripPrefix(prefix)
+        val path = try {
+          Path.read(request.getParam("path"))
+        } catch {
+          case e: IllegalArgumentException =>
+            throw InvalidPathException(request.getParam("path"), e)
+        }
+        Some(ns, path)
+      } else {
+        None
+      }
+    }
+  }
+
+  object BindUri extends NsPathUri {
+    val prefix = s"$apiPrefix/bind"
+  }
+
+  object AddrUri extends NsPathUri {
+    val prefix = s"$apiPrefix/addr"
+  }
+
+  object DelegateUri extends NsPathUri {
+    val prefix = s"$apiPrefix/delegate"
   }
 
   def versionString(buf: Buf): String = {
@@ -86,31 +122,42 @@ object HttpControlService {
   }
 }
 
-class HttpControlService(storage: DtabStore) extends Service[Request, Response] {
+class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
+  extends Service[Request, Response] {
   import HttpControlService._
 
   /** Get the dtab, if it exists. */
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  def apply(req: Request): Future[Response] = ((req.path, req.method) match {
-    case (DtabUri(None), _) =>
+  def apply(req: Request): Future[Response] = Future(req match {
+    case DtabUri(_, None) =>
       handleList()
-    case (DtabUri(Some(ns)), Method.Head) =>
+    case DtabUri(Method.Head, Some(ns)) =>
       handleHeadDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Get) =>
+    case DtabUri(Method.Get, Some(ns)) =>
       handleGetDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Put) =>
+    case DtabUri(Method.Put, Some(ns)) =>
       handlePutDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Post) =>
+    case DtabUri(Method.Post, Some(ns)) =>
       handlePostDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Delete) =>
+    case DtabUri(Method.Delete, Some(ns)) =>
       handleDeleteDtab(ns)
+    case BindUri(ns, path) =>
+      handleGetBind(ns, path)
+    case AddrUri(ns, path) =>
+      handleGetAddr(ns, path)
+    case DelegateUri(ns, path) =>
+      handleGetDelegate(ns, path)
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
-  }).handle {
+  }).flatten.handle {
     case Forbidden => Response(Status.Forbidden)
+    case ex@InvalidPathException(path, _) =>
+      val resp = Response(Status.BadRequest)
+      resp.contentString = ex.getMessage
+      resp
   }
 
   private[this] def handleList(): Future[Response] =
@@ -200,4 +247,108 @@ class HttpControlService(storage: DtabStore) extends Service[Request, Response] 
       case Throw(_: DtabNamespaceDoesNotExistException) => Future.value(Response(Status.NotFound))
       case Throw(_) => Future.value(Response(Status.InternalServerError))
     }
+
+  private[this] def streamingResp[T](values: Event[T], render: (T, Closable) => Buf): Future[Response] = {
+    val resp = Response()
+    resp.setChunked(true)
+    val writer = resp.writer
+    // closable is a handle to the values observation so that we can close the observation when the
+    // streaming connection is terminated
+    @volatile var closable: Closable = Closable.nop
+    // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
+    // writeFuture is an accumulator of those flatMapped Futures
+    @volatile var writeFuture: Future[Unit] = Future.Unit
+    closable = values.respond { t =>
+      writeFuture = writeFuture.before {
+        val buf = render(t, closable)
+        if (buf == Buf.Empty)
+          Future.Unit
+        else
+          writer.write(buf).onFailure { _ => closable.close() }
+      }
+    }
+    Future.value(resp)
+  }
+
+  private[this] val bindingCacheMu = new {}
+  private[this] var bindingCache: Map[(String, Path), Activity[NameTree[Name.Bound]]] = Map.empty
+  private[this] def getBind(ns: String, path: Path): Activity[NameTree[Name.Bound]] =
+    bindingCacheMu.synchronized {
+      val key = (ns, path)
+      bindingCache.get(key) match {
+        case Some(act) => act
+        case None =>
+          val act = namers(ns).bind(Dtab.empty, path)
+          bindingCache += (key -> act)
+          act
+      }
+    }
+
+  private[this] def renderTryTree(tryTree: Try[NameTree[Name.Bound]], closable: Closable) = tryTree match {
+    case Return(tree) =>
+      Buf.Utf8(tree.show + "\n")
+    case Throw(e) =>
+      closable.close()
+      Buf.Empty
+  }
+
+  private[this] def handleGetBind(ns: String, path: Path): Future[Response] = {
+    val act = getBind(ns, path)
+    streamingResp(act.values, renderTryTree)
+  }
+
+  private[this] val addrCacheMu = new {}
+  private[this] var addrCache: Map[(String, Path), Var[Addr]] = Map.empty
+  private[this] def getAddr(ns: String, path: Path): Var[Addr] = addrCacheMu.synchronized {
+    val key = (ns, path)
+    addrCache.get(key) match {
+      case Some(addr) => addr
+      case None =>
+        val addr = getBind(ns, path).run.flatMap {
+          case Activity.Pending => Var.value(Addr.Pending)
+          case Activity.Failed(e) => Var.value(Addr.Failed(e))
+          case Activity.Ok(tree) => tree match {
+            case NameTree.Leaf(bound) => bound.addr
+            case NameTree.Empty => Var.value(Addr.Bound())
+            case NameTree.Fail => Var.value(Addr.Failed("name tree failed"))
+            case NameTree.Neg => Var.value(Addr.Neg)
+            case NameTree.Alt(_) | NameTree.Union(_) =>
+              Var.value(Addr.Failed(s"${path.show} is not a concrete bound id"))
+          }
+        }
+        addrCache += (key -> addr)
+        addr
+    }
+  }
+
+  private[this] val renderAddr = (addr: Addr, _: Closable) => addr match {
+    case Addr.Bound(addrs, metadata) =>
+      val bound = addrs.map {
+        case Address.Inet(isa, meta) => isa.toString
+        case a => a.toString
+      }.mkString("Bound(", ",", ")\n")
+      Buf.Utf8(bound)
+    case Addr.Pending =>
+      Buf.Empty
+    case _ =>
+      Buf.Utf8(addr.toString + "\n")
+  }
+
+  private[this] def handleGetAddr(ns: String, path: Path): Future[Response] = {
+    val addr = getAddr(ns, path)
+    streamingResp(addr.changes, renderAddr)
+  }
+
+  private[this] def handleGetDelegate(ns: String, path: Path): Future[Response] = {
+    getDtab(ns).flatMap {
+      case Some(dtab) =>
+        Delegator(dtab.dtab, path, namers(ns)).toFuture.map { delegateTree =>
+          val rsp = Response()
+          rsp.content = DelegateApiHandler.Codec.writeBuf(delegateTree)
+          rsp.contentType = MediaType.Json
+          rsp
+        }
+      case None => Future.value(Response(Status.NotFound))
+    }
+  }
 }
