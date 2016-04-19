@@ -217,6 +217,12 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     resp.reader.discard()
   }
 
+  test("bind an invalid path") {
+    val service = newService(NullDtabStore)
+    val resp = await(service(Request("/api/1/bind/default?path=invalid")))
+    assert(resp.status == Status.BadRequest)
+  }
+
   test("addr") {
     val (ni, witness) = interpreter
     val service = new HttpControlService(NullDtabStore, _ => ni)
@@ -240,5 +246,17 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     readAndAssert(resp.reader, "Bound(0.0.0.0/0.0.0.0:3)")
 
     resp.reader.discard()
+  }
+
+  test("addr an invalid path") {
+    val service = newService(NullDtabStore)
+    val resp = await(service(Request("/api/1/addr/default?path=invalid")))
+    assert(resp.status == Status.BadRequest)
+  }
+
+  test("delegate an invalid path") {
+    val service = newService(NullDtabStore)
+    val resp = await(service(Request("/api/1/delegate/default?path=invalid")))
+    assert(resp.status == Status.BadRequest)
   }
 }

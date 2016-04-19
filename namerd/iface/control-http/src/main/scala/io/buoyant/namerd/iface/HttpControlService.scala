@@ -108,13 +108,21 @@ object HttpControlService {
       }
   }
 
+  case class InvalidPathException(path: String, underlying: Exception)
+    extends Exception(s"Invalid path: $path\n${underlying.getMessage}", underlying)
+
   trait NsPathUri {
     val prefix: String
 
     def unapply(request: Request): Option[(Ns, Path)] = {
       if (request.path.startsWith(prefix)) {
         val ns = request.path.stripPrefix(prefix)
-        val path = Path.read(request.getParam("path"))
+        val path = try {
+          Path.read(request.getParam("path"))
+        } catch {
+          case e: IllegalArgumentException =>
+            throw InvalidPathException(request.getParam("path"), e)
+        }
         Some(ns, path)
       } else {
         None
@@ -149,7 +157,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  def apply(req: Request): Future[Response] = (req match {
+  def apply(req: Request): Future[Response] = Future(req match {
     case DtabUri(_, None) =>
       handleList()
     case DtabUri(Method.Head, Some(ns)) =>
@@ -171,8 +179,12 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
-  }).handle {
+  }).flatten.handle {
     case Forbidden => Response(Status.Forbidden)
+    case ex@InvalidPathException(path, _) =>
+      val resp = Response(Status.BadRequest)
+      resp.contentString = ex.getMessage
+      resp
   }
 
   private[this] def handleList(): Future[Response] =
