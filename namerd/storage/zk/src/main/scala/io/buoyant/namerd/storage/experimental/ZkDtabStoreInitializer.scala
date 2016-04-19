@@ -37,6 +37,8 @@ case class Acl(scheme: String, id: String, perms: String) {
 }
 
 object Acl {
-  val validPerms = "[crwda]+".r.pattern.asPredicate.test _
-  val AnyoneUnsafe = Acl("crwda", "world", "anyone")
+  private[this] val legalPerms = "^[crwda]+$".r.pattern.asPredicate.test _
+  private[this] def noDuplicatePerms(perms: String): Boolean = perms.distinct == perms
+  def validPerms(perms: String): Boolean = legalPerms(perms) && noDuplicatePerms(perms)
+  val AnyoneUnsafe = Acl("world", "anyone", "crwda")
 }
