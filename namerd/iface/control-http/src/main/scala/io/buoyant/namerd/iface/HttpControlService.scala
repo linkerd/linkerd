@@ -99,24 +99,23 @@ object HttpControlService {
     val prefix = "/api/1/dtabs"
     val prefixSlash = s"$prefix/"
 
-    def unapply(path: String): Option[Option[String]] =
-      if (path == prefix) Some(None)
-      else if (!path.startsWith(prefixSlash)) None
-      else path.stripPrefix(prefixSlash) match {
-        case "" => Some(None)
-        case ns => Some(Some(ns))
+    def unapply(request: Request): Option[(Method, Option[Ns])] =
+      if (request.path == prefix) Some(request.method, None)
+      else if (!request.path.startsWith(prefixSlash)) None
+      else request.path.stripPrefix(prefixSlash) match {
+        case "" => Some(request.method, None)
+        case ns => Some(request.method, Some(ns))
       }
   }
 
   trait NsPathUri {
     val prefix: String
 
-    def unapply(uri: String): Option[(Ns, Path)] = {
-      if (uri.startsWith(prefix)) {
-        uri.stripPrefix(prefix).split("/").toSeq match {
-          case ns +: path if path.nonEmpty => Some((ns, Path.Utf8(path: _*)))
-          case _ => None
-        }
+    def unapply(request: Request): Option[(Ns, Path)] = {
+      if (request.path.startsWith(prefix)) {
+        val ns = request.path.stripPrefix(prefix)
+        val path = Path.read(request.getParam("path"))
+        Some(ns, path)
       } else {
         None
       }
@@ -124,15 +123,15 @@ object HttpControlService {
   }
 
   object BindUri extends NsPathUri {
-    val prefix = "/api/1/bind/"
+    val prefix = "/api/1/bind"
   }
 
   object AddrUri extends NsPathUri {
-    val prefix = "/api/1/addr/"
+    val prefix = "/api/1/addr"
   }
 
   object DelegateUri extends NsPathUri {
-    val prefix = "/api/1/delegate/"
+    val prefix = "/api/1/delegate"
   }
 
   def versionString(buf: Buf): String = {
@@ -150,24 +149,24 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  def apply(req: Request): Future[Response] = ((req.path, req.method) match {
-    case (DtabUri(None), _) =>
+  def apply(req: Request): Future[Response] = (req match {
+    case DtabUri(_, None) =>
       handleList()
-    case (DtabUri(Some(ns)), Method.Head) =>
+    case DtabUri(Method.Head, Some(ns)) =>
       handleHeadDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Get) =>
+    case DtabUri(Method.Get, Some(ns)) =>
       handleGetDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Put) =>
+    case DtabUri(Method.Put, Some(ns)) =>
       handlePutDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Post) =>
+    case DtabUri(Method.Post, Some(ns)) =>
       handlePostDtab(ns, req)
-    case (DtabUri(Some(ns)), Method.Delete) =>
+    case DtabUri(Method.Delete, Some(ns)) =>
       handleDeleteDtab(ns)
-    case (BindUri(ns, path), Method.Get) =>
+    case BindUri(ns, path) =>
       handleGetBind(ns, path)
-    case (AddrUri(ns, path), Method.Get) =>
+    case AddrUri(ns, path) =>
       handleGetAddr(ns, path)
-    case (DelegateUri(ns, path), Method.Get) =>
+    case DelegateUri(ns, path) =>
       handleGetDelegate(ns, path)
     // invalid uri/method
     case _ =>
