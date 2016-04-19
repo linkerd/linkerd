@@ -51,23 +51,14 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
   }
 
   private[this] object Ns {
-    private[this] val activity: ActUp[Map[String, NsCache]] =
-      Var(Activity.Pending)
+    private[this] var caches: Map[String, NsCache] = Map.empty
 
     def get(name: String): NsCache = synchronized {
-      activity.sample() match {
-        case Activity.Ok(snap) =>
-          snap.get(name) match {
-            case Some(ns) => ns
-            case None =>
-              val ns = mkNs(name)
-              activity() = Activity.Ok(snap + (name -> ns))
-              ns
-          }
-
-        case _ =>
+      caches.get(name) match {
+        case Some(ns) => ns
+        case None =>
           val ns = mkNs(name)
-          activity() = Activity.Ok(Map(name -> ns))
+          caches += (name -> ns)
           ns
       }
     }
