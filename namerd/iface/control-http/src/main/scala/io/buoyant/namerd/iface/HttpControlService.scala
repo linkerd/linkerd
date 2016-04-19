@@ -266,13 +266,21 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     val resp = Response()
     resp.setChunked(true)
     val writer = resp.writer
-    var closable: Closable = null
-    var writeFuture: Future[Unit] = Future.Unit
+    // closable is a handle to the values observation so that we can close the observation when the
+    // streaming connection is terminated
+    @volatile var closable: Closable = null
+    // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
+    // writeFuture is an accumulator of those flatMapped Futures
+    @volatile var writeFuture: Future[Unit] = Future.Unit
     closable = values.respond { t =>
       writeFuture = writeFuture.before {
-        writer.write(render(t, closable)).onFailure { _ =>
-          closable.close()
-        }
+        val buf = render(t, closable)
+        if (buf == Buf.Empty)
+          Future.Unit
+        else
+          writer.write(buf).onFailure { _ =>
+            if (closable != null) closable.close()
+          }
       }
     }
     Future.value(resp)
@@ -337,6 +345,8 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
         case a => a.toString
       }.mkString("Bound(", ",", ")\n")
       Buf.Utf8(bound)
+    case Addr.Pending =>
+      Buf.Empty
     case _ =>
       Buf.Utf8(addr.toString + "\n")
   }

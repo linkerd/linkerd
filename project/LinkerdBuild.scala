@@ -160,8 +160,11 @@ object LinkerdBuild extends Base {
     object Iface {
 
       val controlHttp = projectDir("namerd/iface/control-http")
-        .dependsOn(core).withTwitterLib(Deps.finagle("http"))
-        .withTests().dependsOn(Storage.inMemory % "test")
+        .withTwitterLib(Deps.finagle("http"))
+        .withTests().dependsOn(
+          core % "test->test;compile->compile",
+          Storage.inMemory % "test"
+        )
 
       val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
         .withTwitterLib(Deps.finagle("thrift"))
