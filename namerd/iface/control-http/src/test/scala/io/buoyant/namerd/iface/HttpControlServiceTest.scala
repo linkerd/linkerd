@@ -9,7 +9,7 @@ import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.namer.ConfiguredNamersInterpreter
 import io.buoyant.namerd.storage.InMemoryDtabStore
-import io.buoyant.namerd.{DtabStore, NullDtabStore}
+import io.buoyant.namerd.{Ns, DtabStore, NullDtabStore}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -30,6 +30,17 @@ class HttpControlServiceTest extends FunSuite with Awaits {
   def newService(store: DtabStore = newDtabStore()): Service[Request, Response] =
     new HttpControlService(store, _ => ConfiguredNamersInterpreter(Nil))
 
+  def readAndAssert(reader: Reader, value: String): Unit = {
+    val buf = Buf.Utf8(value)
+    readAndAssert(reader, buf)
+  }
+
+  def readAndAssert(reader: Reader, value: Buf): Unit = {
+    val buf = value.concat(HttpControlService.newline)
+    val res = await(reader.read(buf.length)).flatMap(Buf.Utf8.unapply)
+    assert(res == Some(buf).flatMap(Buf.Utf8.unapply))
+  }
+
   test("dtab round-trips through json") {
     val dtab = Dtab.read("/tshirt => /suit")
     val json = Buf.Utf8("""[{"prefix":"/tshirt","dst":"/suit"}]""")
@@ -44,7 +55,24 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    assert(rsp.content == HttpControlService.Json.write(defaultDtabs.keys))
+    val expected = HttpControlService.Json.write(defaultDtabs.keys).concat(HttpControlService.newline)
+    assert(rsp.content == expected)
+  }
+
+  test("GET /api/1/dtabs watch") {
+    val req = Request("/api/1/dtabs?watch=true")
+    val store = newDtabStore()
+    val service = newService(store)
+    val rsp = Await.result(service(req), 1.second)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentType == Some(MediaType.Json))
+
+    readAndAssert(rsp.reader, """["yeezus","tlop"]""")
+
+    await(store.create("graduation", Dtab.empty))
+    readAndAssert(rsp.reader, """["yeezus","tlop","graduation"]""")
+
+    rsp.reader.discard()
   }
 
   test("GET /api/1/dtabs/") {
@@ -54,7 +82,8 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    assert(rsp.content == HttpControlService.Json.write(defaultDtabs.keys))
+    val expected = HttpControlService.Json.write(defaultDtabs.keys).concat(HttpControlService.newline)
+    assert(rsp.content == expected)
   }
 
   test("GET /api/1/dtabsexpialidocious") {
@@ -73,7 +102,25 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
     assert(rsp.headerMap("ETag") == v1Stamp)
-    assert(rsp.content == HttpControlService.Json.write(defaultDtabs("yeezus")))
+    val expected = HttpControlService.Json.write(defaultDtabs("yeezus")).concat(HttpControlService.newline)
+    assert(rsp.content == expected)
+  }
+
+  test("GET /api/1/dtabs/ns watch") {
+    val req = Request("/api/1/dtabs/yeezus?watch=true")
+    val store = newDtabStore()
+    val service = newService(store)
+    val rsp = Await.result(service(req), 1.second)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentType == Some(MediaType.Json))
+
+    readAndAssert(rsp.reader, HttpControlService.Json.write(defaultDtabs("yeezus")))
+
+    val newDtab = Dtab.read("/yeezy=>/kanye")
+    await(store.put("yeezus", newDtab))
+    readAndAssert(rsp.reader, HttpControlService.Json.write(newDtab))
+
+    rsp.reader.discard()
   }
 
   for (ct <- Seq("application/dtab", MediaType.Txt))
@@ -86,7 +133,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       assert(rsp.status == Status.Ok)
       assert(rsp.contentType == Some(ct))
       assert(rsp.headerMap("ETag") == v1Stamp)
-      assert(rsp.contentString == defaultDtabs("yeezus").show)
+      assert(rsp.contentString == defaultDtabs("yeezus").show + "\n")
     }
 
   test("GET /api/1/dtabs/ns not exists") {
@@ -193,16 +240,29 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     (ni, witness)
   }
 
-  def readAndAssert(reader: Reader, value: String): Unit = {
-    val buf = Buf.Utf8(value + "\n")
-    val res = await(reader.read(buf.length)).flatMap(Buf.Utf8.unapply)
-    assert(res == Some(buf).flatMap(Buf.Utf8.unapply))
-  }
-
   test("bind") {
     val (ni, witness) = interpreter
-    val service = new HttpControlService(NullDtabStore, _ => ni)
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate)
+    val bound = "/io.l5d.namer/foo"
+    witness.notify(Return(NameTree.Leaf(Name.Bound(Var(null), bound))))
+
     val resp = await(service(Request("/api/1/bind/default?path=/foo")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == bound + "\n")
+  }
+
+  test("bind watch") {
+    val (ni, witness) = interpreter
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate)
+    val resp = await(service(Request("/api/1/bind/default?path=/foo&watch=true")))
 
     val bound = "/io.l5d.namer/foo"
     witness.notify(Return(NameTree.Leaf(Name.Bound(Var(null), bound))))
@@ -227,9 +287,30 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
   test("addr") {
     val (ni, witness) = interpreter
-    val service = new HttpControlService(NullDtabStore, _ => ni)
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate)
     val id = "/io.l5d.namer/foo"
+    val addr = Var[Addr](Addr.Pending)
+    witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
+    addr() = Addr.Bound(Address(1))
+
     val resp = await(service(Request(s"/api/1/addr/default?path=$id")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == "Bound(0.0.0.0/0.0.0.0:1)\n")
+  }
+
+  test("addr watch") {
+    val (ni, witness) = interpreter
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate)
+    val id = "/io.l5d.namer/foo"
+    val resp = await(service(Request(s"/api/1/addr/default?path=$id&watch=true")))
     val addr = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
 

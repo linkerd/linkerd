@@ -7,7 +7,7 @@ import com.twitter.util._
 import io.buoyant.k8s.ObjectMeta
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
 import io.buoyant.namerd.storage.experimental.kubernetes._
-import io.buoyant.namerd.{DtabStore, VersionedDtab}
+import io.buoyant.namerd.{Ns, DtabStore, VersionedDtab}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.breakOut
 
@@ -93,11 +93,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   private[this] val act = Activity(states)
 
   /** List all Dtab namespaces */
-  def list(): Future[Set[String]] = act.run.sample match {
-    case Activity.Ok(nses) => Future.value(nses.keySet)
-    case Activity.Pending => act.values.toFuture.flatMap(Future.const).map(_.keySet)
-    case Activity.Failed(ex) => Future.exception(ex)
-  }
+  def list(): Activity[Set[Ns]] = act.map(_.keySet)
 
   private[this] def namedDtab(ns: String, dtab: FDtab, version: Option[String] = None): Dtab = Dtab(
     dentries = dtab,
