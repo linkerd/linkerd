@@ -230,9 +230,8 @@ private object EndpointsNamer {
   class NsCache(name: String) {
 
     private[this] val state = Var[Activity.State[Map[String, SvcCache]]](Activity.Pending)
-    private[this] val activity = Activity(state)
 
-    def services: Activity[Map[String, SvcCache]] = activity
+    val services: Activity[Map[String, SvcCache]] = Activity(state)
 
     def clear(): Unit = synchronized {
       state.sample() match {
