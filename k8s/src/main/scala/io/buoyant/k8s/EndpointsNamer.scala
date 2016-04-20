@@ -32,7 +32,7 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 
           case Some(services) =>
             log.debug("k8s ns %s service %s found", nsName, serviceName)
-            Activity(services.ports).map { ports =>
+            services.ports.map { ports =>
               ports.get(portName) match {
                 case None =>
                   log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
@@ -155,26 +155,30 @@ private object EndpointsNamer {
       case (name, addrs) => name -> Port(name, Var(Addr.Bound(addrs)))
     }
 
-  case class SvcCache(name: String, ports: ActUp[Map[String, Port]]) {
+  case class SvcCache(name: String, init: Map[String, Port]) {
+
+    private[this] val state = Var[Activity.State[Map[String, Port]]](Activity.Ok(init))
+
+    val ports = Activity(state)
 
     def clear(): Unit = synchronized {
-      ports.sample() match {
+      state.sample() match {
         case Activity.Ok(snap) =>
           for (port <- snap.values) {
             port() = Addr.Neg
           }
-          ports() = Activity.Pending
+          state() = Activity.Pending
 
         case _ =>
       }
     }
 
     def delete(name: String): Unit = synchronized {
-      ports.sample() match {
+      state.sample() match {
         case Activity.Ok(snap) =>
           for (port <- snap.get(name)) {
             port() = Addr.Neg
-            ports() = Activity.Ok(snap - name)
+            state() = Activity.Ok(snap - name)
           }
 
         case _ =>
@@ -185,7 +189,7 @@ private object EndpointsNamer {
       getAddrs(subsets) match {
         case addrs if addrs.isEmpty =>
           synchronized {
-            ports.sample() match {
+            state.sample() match {
               case Activity.Ok(ps) =>
                 for (port <- ps.values) {
                   port() = Addr.Neg
@@ -197,7 +201,7 @@ private object EndpointsNamer {
 
         case addrs =>
           synchronized {
-            val base = ports.sample() match {
+            val base = state.sample() match {
               case Activity.Ok(base) => base
               case _ => Map.empty[String, Port]
             }
@@ -221,7 +225,7 @@ private object EndpointsNamer {
             }
 
             if (updated.size > base.size) {
-              ports() = Activity.Ok(updated)
+              state() = Activity.Ok(updated)
             }
           }
       }
@@ -270,7 +274,7 @@ private object EndpointsNamer {
     private[this] def mkSvc(endpoints: v1.Endpoints): Option[SvcCache] =
       getName(endpoints).map { name =>
         val ports = mkPorts(endpoints.subsets)
-        SvcCache(name, Var(Activity.Ok(ports)))
+        SvcCache(name, ports)
       }
 
     private[this] def add(endpoints: v1.Endpoints): Unit =
