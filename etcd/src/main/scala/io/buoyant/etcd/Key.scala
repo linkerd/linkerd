@@ -18,7 +18,11 @@ class Key(key: Path, client: Service[Request, Response]) {
   def key(path: Path): Key = new Key(key ++ path, client)
   def key(name: String): Key = key(Path.read(name))
 
-  private[this] val noParams = Seq.empty[(String, String)]
+  private[this] def boolParam(cond: Boolean) = if (cond) Some("true") else None
+  private[this] def valueParams(v: Option[Buf]): Seq[(String, String)] = v match {
+    case Some(Buf.Utf8(v)) => Seq("value" -> v)
+    case _ => Seq("dir" -> "true")
+  }
 
   /** Get a key */
   def get(
@@ -27,50 +31,38 @@ class Key(key: Path, client: Service[Request, Response]) {
     waitIndex: Option[Long] = None,
     quorum: Boolean = false
   ): Future[NodeOp] = {
-    var params = noParams
-    if (quorum) {
-      params = params :+ "quorum" -> "true"
-    }
-    if (recursive) {
-      params = params :+ "recursive" -> "true"
-    }
-    if (wait) {
-      params = params :+ ("wait" -> "true")
-    }
-    for (wait <- waitIndex) {
-      params = params :+ ("waitIndex" -> wait.toString)
-    }
+    val paramOpts = Map(
+      "recursive" -> boolParam(recursive),
+      "quorum" -> boolParam(quorum),
+      "wait" -> boolParam(wait),
+      "waitIndex" -> waitIndex.map(_.toString)
+    )
+    val params = paramOpts.collect { case (k, Some(v)) => k -> v }.toSeq
     val req = mkReq(keysPrefixPath ++ key, params = params)
 
     req.headerMap("accept") = MediaType.Json
-    client(req).flatMap(toNodeOp(req, _, key, params))
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
-  /*
+  /**
    * Set the contents of a key.
    *
-   * If value is None, the key is treated as a directory.  In order to unset the value
-   * of a data node, use `Some(Buf.Empty)`.
+   * If value is None, the key is treated as a directory.  In order to
+   * unset the value of a data node, use `Some(Buf.Empty)`.
    *
-   * Optionally, a `ttl` may be specified to inform etcd to remove the node after some
-   * time period (only second-granularity is supported by etcd).
+   * Optionally, a `ttl` may be specified to inform etcd to remove the
+   * node after some time period (only second-granularity is supported
+   * by etcd).
    *
-   * If the `prevExist` flag is set to true, the node operation will fail if the node does not
-   * already exist.
+   * If the `prevExist` flag is set to true, the node operation will
+   * fail if the node does not already exist.
    */
   def set(
     value: Option[Buf],
     ttl: Option[Duration] = None,
     prevExist: Boolean = false
   ): Future[NodeOp] = {
-    var params = noParams
-    value match {
-      case Some(Buf.Utf8(value)) =>
-        params = params :+ "value" -> value
-
-      case _ =>
-        params = params :+ "dir" -> "true"
-    }
+    var params = valueParams(value)
     for (ttl <- ttl) {
       val v = if (ttl == Duration.Zero) "" else ttl.inSeconds.toString
       params = params :+ "ttl" -> v
@@ -80,26 +72,20 @@ class Key(key: Path, client: Service[Request, Response]) {
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
-    client(req).flatMap(toNodeOp(req, _, key, params))
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
   def create(
     value: Option[Buf],
     ttl: Option[Duration] = None
   ): Future[NodeOp] = {
-    var params = noParams
-    value match {
-      case Some(Buf.Utf8(value)) =>
-        params = params :+ ("value" -> value)
-      case None =>
-        params = params :+ ("dir" -> "true")
-    }
+    var params = valueParams(value)
     for (ttl <- ttl) {
       params = params :+ ("ttl" -> ttl.inSeconds.toString)
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Post, params)
-    client(req).flatMap(toNodeOp(req, _, key, params))
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
   def compareAndSwap(
@@ -110,7 +96,7 @@ class Key(key: Path, client: Service[Request, Response]) {
   ): Future[NodeOp] = {
     require(prevIndex.isDefined || prevValue.isDefined || !prevExist)
 
-    var params = noParams
+    var params = Seq.empty[(String, String)]
     for (i <- prevIndex) {
       params = params :+ "prevIndex" -> i.toString
     }
@@ -124,14 +110,14 @@ class Key(key: Path, client: Service[Request, Response]) {
     params = params :+ "value" -> v
 
     val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
-    client(req).flatMap(toNodeOp(req, _, key, params))
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
   def delete(
     dir: Boolean = false,
     recursive: Boolean = false
   ): Future[NodeOp] = {
-    var params = noParams
+    var params = Seq.empty[(String, String)]
     if (dir) {
       params = params :+ ("dir" -> "true")
       if (recursive) {
@@ -140,12 +126,12 @@ class Key(key: Path, client: Service[Request, Response]) {
     }
 
     val req = mkReq(keysPrefixPath ++ key, Method.Delete, params)
-    client(req).flatMap(toNodeOp(req, _, key, params))
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
   private[this] def getIndex(node: Node): Long = node match {
-    case Data(_, idx, _, _, _) => idx
-    case Dir(_, idx, _, _, nodes) => nodes.foldLeft(idx)(_ max getIndex(_))
+    case Node.Data(_, idx, _, _, _) => idx
+    case Node.Dir(_, idx, _, _, nodes) => nodes.foldLeft(idx)(_ max getIndex(_))
   }
 
   def events(

@@ -16,7 +16,7 @@ case class UnexpectedResponse(
   uri: String,
   params: Seq[(String, String)],
   status: Status,
-  state: EtcdState
+  state: Etcd.State
 ) extends Exception({
   val ps = params.map { case (k, v) => s"$k -> $v" }.mkString("(", "), (", ")")
   s"""$method $uri [$ps] $status"""
@@ -54,45 +54,26 @@ object Etcd {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[etcd] def toNodeOp(
-    req: Request,
-    rsp: Response,
-    key: Path,
-    params: Seq[(String, String)] = Seq.empty
-  ): Future[NodeOp] = {
-    val state = getEtcdState(rsp)
-    (req.method, rsp.status) match {
+  case class State(
+    index: Long,
+    clusterId: String = ""
+  )
 
-      case (Method.Get | Method.Head | Method.Delete, Status.Ok) =>
-        val op = readJson[NodeOpRsp](rsp.content).flatMap(_.toNodeOp(state))
-        Future.const(op)
-
-      case (Method.Put | Method.Post, Status.Created) =>
-        val op = readJson[NodeOpRsp](rsp.content).flatMap(_.toNodeOp(state))
-        Future.const(op)
-
-      case (method, status) =>
-        val e = readJson[ApiError](rsp.content) match {
-          case Return(apiError) => apiError
-          case Throw(e) => UnexpectedResponse(method, req.uri, params, status, state)
-        }
-        Future.exception(e)
+  object State {
+    private[etcd] object Headers {
+      val ClusterId = "x-etcd-cluster-id"
+      val EtcdIndex = "x-etcd-index"
     }
-  }
 
-  private[etcd] object Headers {
-    val ClusterId = "x-etcd-cluster-id"
-    val EtcdIndex = "x-etcd-index"
-  }
+    private[etcd] def mk(msg: Message): State = {
+      val index = msg.headerMap.get(Headers.EtcdIndex)
+        .flatMap { i => Try(i.toLong).toOption }
+        .getOrElse(0L)
 
-  private[etcd] def getEtcdState(msg: Message): EtcdState = {
-    val index = msg.headerMap.get(Headers.EtcdIndex)
-      .flatMap { i => Try(i.toLong).toOption }
-      .getOrElse(0L)
+      val id = msg.headerMap.getOrElse(Headers.ClusterId, "")
 
-    val id = msg.headerMap.getOrElse(Headers.ClusterId, "")
-
-    EtcdState(index, id)
+      State(index, id)
+    }
   }
 }
 
@@ -116,7 +97,7 @@ class Etcd(client: Service[Request, Response]) extends Closable {
           Future.const(readJson[Version](rsp.content))
 
         case status =>
-          Future.exception(UnexpectedResponse(req.method, req.uri, Nil, status, EtcdState(0)))
+          Future.exception(UnexpectedResponse(req.method, req.uri, Nil, status, Etcd.State(0)))
       }
     }
   }

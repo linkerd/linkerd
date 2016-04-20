@@ -93,9 +93,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     val value = UUID.randomUUID().toString
 
     val createOp = await { key.create(Some(Buf.Utf8(value))) }
-    assert(createOp.action == Action.Create)
+    assert(createOp.action == NodeOp.Action.Create)
     createOp.node match {
-      case createData@Data(createKey, createModified, createCreated, None, createVal) =>
+      case createData@Node.Data(createKey, createModified, createCreated, None, createVal) =>
         assert(createKey.take(1) == key.path)
         assert(createModified == createCreated)
         assert(createModified == createOp.etcd.index)
@@ -103,9 +103,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
         info("create data")
 
         val delOp = await { etcd.key(createKey).delete() }
-        assert(delOp.action == Action.Delete)
+        assert(delOp.action == NodeOp.Action.Delete)
         delOp.node match {
-          case Data(delKey, delModified, delCreated, None, delVal) =>
+          case Node.Data(delKey, delModified, delCreated, None, delVal) =>
             assert(delKey == createKey)
             assert(delModified > createModified)
             assert(delCreated == createCreated)
@@ -118,7 +118,7 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
         assert(createOp.etcd.clusterId == delOp.etcd.clusterId)
 
         delOp.prevNode match {
-          case Some(Data(prevKey, prevModified, prevCreated, None, prevVal)) =>
+          case Some(Node.Data(prevKey, prevModified, prevCreated, None, prevVal)) =>
             assert(prevKey == createKey)
             assert(prevModified == createModified)
             assert(prevCreated == createCreated)
@@ -144,9 +144,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     val woof = Buf.Utf8("woof woof woof")
     val ttl = 10.seconds
     val created = await { key.set(value = Some(woof), ttl=Some(ttl)) }
-    assert(created.action == Action.Set)
+    assert(created.action == NodeOp.Action.Set)
     created.node match {
-      case Data(path, _, _, lease, value) =>
+      case Node.Data(path, _, _, lease, value) =>
         assert(path == key.path)
         assert(lease.isDefined)
         assert(value == woof)
@@ -157,9 +157,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     }
 
     val set = await(wait)
-    assert(set.action == Action.Set)
+    assert(set.action == NodeOp.Action.Set)
     set.node match {
-      case Data(path, _, _, lease, value) =>
+      case Node.Data(path, _, _, lease, value) =>
         assert(path == created.node.key)
         assert(lease.isDefined)
         assert(lease.map(_.expiration) == created.node.lease.map(_.expiration))
@@ -172,9 +172,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     val expire = await(ttl+1.second) {
       key.get(wait = true, waitIndex = Some(set.node.modifiedIndex+1))
     }
-    assert(expire.action == Action.Expire)
+    assert(expire.action == NodeOp.Action.Expire)
     expire.node match {
-      case Data(path, _, _, None, Buf.Empty) =>
+      case Node.Data(path, _, _, None, Buf.Empty) =>
         assert(path == created.node.key)
       case node =>
         fail(s"expecting expired data node, found $node")
@@ -182,7 +182,7 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     assert(expire.prevNode.isDefined)
     val Some(prev) = expire.prevNode
     prev match {
-      case Data(path, _, _, lease, value) =>
+      case Node.Data(path, _, _, lease, value) =>
         assert(path == created.node.key)
         assert(lease == None)
         assert(value == woof)
@@ -208,9 +208,9 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
             val created = await {
               key.set(value = Some(bowwow), ttl = Some(ttl))
             }
-            assert(created.action == Action.Set)
+            assert(created.action == NodeOp.Action.Set)
             created.node match {
-              case Data(path, _, _, lease, value) =>
+              case Node.Data(path, _, _, lease, value) =>
                 assert(path == key.path)
                 assert(lease.isDefined)
                 assert(value == bowwow)
@@ -221,7 +221,7 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
             info("set data node")
 
             await { events.next() } match {
-              case (Activity.Ok(NodeOp(Action.Set, Data(path, _, _, lease, value), _, None)), events) =>
+              case (Activity.Ok(NodeOp(NodeOp.Action.Set, Node.Data(path, _, _, lease, value), _, None)), events) =>
                 assert(path == created.node.key)
                 assert(lease.isDefined)
                 assert(lease.map(_.expiration) == created.node.lease.map(_.expiration))
@@ -235,8 +235,8 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
                 Thread.sleep((ttl + 1.second).inMillis)
 
                 await { events.next() } match {
-                  case (Activity.Ok(NodeOp(act, node: Data, _, Some(prior: Data))), _) =>
-                    assert(act == Action.Expire)
+                  case (Activity.Ok(NodeOp(act, node: Node.Data, _, Some(prior: Node.Data))), _) =>
+                    assert(act == NodeOp.Action.Expire)
                     assert(node.key == created.node.key)
                     assert(prior.key == node.key)
                     assert(prior.value == bowwow)

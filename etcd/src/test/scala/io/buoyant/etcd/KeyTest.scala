@@ -1,8 +1,5 @@
 package io.buoyant.etcd
 
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.conversions.time._
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Path, Filter, Service}
@@ -21,10 +18,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   private[this] def getParam(params: Params, param: String): Option[String] =
     params.get(param).flatMap(_.headOption)
 
-  private[etcd] val mapper = new ObjectMapper with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-  def writeJson[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
+  def writeJson[T](t: T): Buf = Buf.ByteArray.Owned(Etcd.mapper.writeValueAsBytes(t))
 
   /*
    * Mock the etcd server using the provided (simplified) request handler.
@@ -53,21 +47,20 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
       val k = (req.method, path, params)
       if (handle.isDefinedAt(k)) {
-        val v = Try(handle(k))
-        Future.const(v).flatMap(serve(req.method, rsp, _)) handle {
+        Future(handle(k)).flatMap(serve(req.method, rsp, _)) handle {
           case e@ApiError(code, _, _, index) =>
             rsp.status = code match {
               case ApiError.KeyNotFound => Status.NotFound
               case ApiError.NodeExist => Status.Forbidden
               case _ => Status.BadRequest
             }
-            addState(EtcdState(index), rsp)
+            addState(Etcd.State(index), rsp)
             rsp.content = writeJson(e)
             rsp
         }
       } else {
         rsp.status = Status.InternalServerError
-        rsp.contentString = s"handler not defined at $k"
+        info(s"method=${req.method} path=$path params=$params")
         Future.value(rsp)
       }
     }
@@ -83,7 +76,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   )(handle: PartialFunction[(Method, Params), Any]): Key = {
     val uri = Path.Utf8("v2", "keys") ++ key
     val etcd = mkEtcd(filter) {
-      case (method, `uri`, params) if handle isDefinedAt (method, params) =>
+      case (method, `uri`, params) if handle.isDefinedAt(method, params) =>
         handle((method, params))
     }
     etcd.key(key)
@@ -98,7 +91,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
         serve(method, rsp, v)
 
       case op: NodeOp =>
-        rsp.content = writeJson(NodeOpRsp(op))
+        rsp.content = writeJson(NodeOp.Rsp(op))
         addState(op.etcd, rsp)
         rsp.status = (rsp.status, method) match {
           case (Status.Ok, Method.Put | Method.Post) => Status.Created
@@ -116,18 +109,18 @@ class KeyTest extends FunSuite with ParallelTestExecution {
         Future.value(rsp)
     }
 
-  private[this] def addState(etcd: EtcdState, msg: Message): Unit = {
+  private[this] def addState(etcd: Etcd.State, msg: Message): Unit = {
     msg.headerMap("X-Etcd-Index") = etcd.index.toString
     msg.headerMap("X-Etcd-Cluster-Id") = etcd.clusterId
   }
 
   private[this] object Recursive {
     def unapply(params: Params): Option[Boolean] =
-      Some(getParam(params, "recursive") exists (_ == "true"))
+      Some(getParam(params, "recursive").exists(_ == "true"))
   }
   private[this] object DirParam {
     def unapply(params: Params): Option[Boolean] =
-      Some(getParam(params, "dir") exists (_ == "true"))
+      Some(getParam(params, "dir").exists(_ == "true"))
   }
   private[this] object DirRecursive {
     def unapply(params: Params): Option[(Boolean, Boolean)] = {
@@ -160,10 +153,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.delete") {
     val path = Path.read("/some/test/path")
     val op = NodeOp(
-      Action.Delete,
-      Data(path, 124, 100),
-      EtcdState(124),
-      Some(Data(path, 123, 100, value = Buf.Utf8("I like dogs")))
+      NodeOp.Action.Delete,
+      Node.Data(path, 124, 100),
+      Etcd.State(124),
+      Some(Node.Data(path, 123, 100, value = Buf.Utf8("I like dogs")))
     )
     val key = mkKey(path) { case (Method.Delete, _) => op }
     val del = key.delete()
@@ -173,10 +166,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.delete: dir") {
     val path = Path.read("/some/test/path")
     val op = NodeOp(
-      Action.Delete,
-      Dir(path, 124, 100),
-      EtcdState(124),
-      Some(Dir(path, 123, 100))
+      NodeOp.Action.Delete,
+      Node.Dir(path, 124, 100),
+      Etcd.State(124),
+      Some(Node.Dir(path, 123, 100))
     )
 
     val key = mkKey(path) { case (Method.Delete, DirParam(true)) => op }
@@ -187,11 +180,11 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.delete: tree") {
     val path = Path.read("/some/test/path")
     val op = NodeOp(
-      Action.Delete,
-      Dir(path, 124, 100),
-      EtcdState(124),
-      Some(Dir(path, 123, 100, nodes = Seq(
-        Data(path ++ Path.Utf8("child"), 123, 123)
+      NodeOp.Action.Delete,
+      Node.Dir(path, 124, 100),
+      Etcd.State(124),
+      Some(Node.Dir(path, 123, 100, nodes = Seq(
+        Node.Data(path ++ Path.Utf8("child"), 123, 123)
       )))
     )
 
@@ -201,15 +194,15 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   }
 
   test("Key.get: data") {
-    val data = Data(Path.read("/some/test/path"), 123, 100, value = Buf.Utf8("I like dogs"))
-    val op = NodeOp(Action.Get, data, EtcdState(123))
+    val data = Node.Data(Path.read("/some/test/path"), 123, 100, value = Buf.Utf8("I like dogs"))
+    val op = NodeOp(NodeOp.Action.Get, data, Etcd.State(123))
     val key = mkKey(op.node.key) { case (Method.Get, _) => op }
     assert(Await.result(key.get(), 250.millis) == op)
   }
 
   test("Key.get: quorum") {
-    val data = Data(Path.read("/some/test/path"), 123, 100, value = Buf.Utf8("I like dogs"))
-    val op = NodeOp(Action.Get, data, EtcdState(123))
+    val data = Node.Data(Path.read("/some/test/path"), 123, 100, value = Buf.Utf8("I like dogs"))
+    val op = NodeOp(NodeOp.Action.Get, data, Etcd.State(123))
     val key = mkKey(op.node.key) {
       case (Method.Get, params) if getParam(params, "quorum").exists(_ == "true") => op
     }
@@ -219,12 +212,12 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
   test("Key.get: dir") {
     val op = NodeOp(
-      Action.Get,
-      Dir(Path.read("/some"), 123, 100, nodes = Seq(
-        Dir(Path.read("/some/test"), 123, 100),
-        Data(Path.read("/some/data"), 111, 111)
+      NodeOp.Action.Get,
+      Node.Dir(Path.read("/some"), 123, 100, nodes = Seq(
+        Node.Dir(Path.read("/some/test"), 123, 100),
+        Node.Data(Path.read("/some/data"), 111, 111)
       )),
-      EtcdState(123)
+      Etcd.State(123)
     )
 
     val key = mkKey(op.node.key) { case (Method.Get, _) => op }
@@ -234,14 +227,14 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
   test("Key.get: dir: recursive") {
     val op = NodeOp(
-      Action.Get,
-      Dir(Path.read("/some"), 123, 100, nodes = Seq(
-        Dir(Path.read("/some/test"), 123, 100, nodes = Seq(
-          Data(Path.read("/some/test/path"), 123, 100)
+      NodeOp.Action.Get,
+      Node.Dir(Path.read("/some"), 123, 100, nodes = Seq(
+        Node.Dir(Path.read("/some/test"), 123, 100, nodes = Seq(
+          Node.Data(Path.read("/some/test/path"), 123, 100)
         )),
-        Data(Path.read("/some/data"), 111, 111)
+        Node.Data(Path.read("/some/data"), 111, 111)
       )),
-      EtcdState(123)
+      Etcd.State(123)
     )
 
     val key = mkKey(op.node.key) {
@@ -252,7 +245,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   }
 
   test("Key.set: data") {
-    val op = NodeOp(Action.Set, Data(Path.Utf8("k"), 1, 1, value = Buf.Utf8("v")), EtcdState(1))
+    val op = NodeOp(NodeOp.Action.Set, Node.Data(Path.Utf8("k"), 1, 1, value = Buf.Utf8("v")), Etcd.State(1))
     val key = mkKey(op.node.key) {
       case (Method.Put, params) if getParam(params, "value").exists(_ == "v") => op
     }
@@ -261,7 +254,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   }
 
   test("Key.set: data ttl") {
-    val op = NodeOp(Action.Set, Data(Path.Utf8("k"), 1, 1, value = Buf.Utf8("v")), EtcdState(1))
+    val op = NodeOp(
+      NodeOp.Action.Set,
+      Node.Data(Path.Utf8("k"), 1, 1, value = Buf.Utf8("v")), Etcd.State(1)
+    )
     val ttl = 17.minutes
     val key = mkKey(op.node.key) {
       case (Method.Put, params) =>
@@ -279,9 +275,9 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   }
 
   test("Key.set: dir") {
-    val op = NodeOp(Action.Set, Dir(Path.Utf8("dir"), 1, 1), EtcdState(1))
+    val op = NodeOp(NodeOp.Action.Set, Node.Dir(Path.Utf8("dir"), 1, 1), Etcd.State(1))
     val key = mkKey(op.node.key) {
-      case (Method.Put, params) if getParam(params, "dir").exists(_ == "true") => op
+      case (Method.Put, DirParam(true)) => op
     }
     val set = key.set(None)
     assert(Await.result(set, 250.millis) == op)
@@ -300,10 +296,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.compareAndSwap: prevIndex") {
     val path = Path.Utf8("caskey")
     val op = NodeOp(
-      Action.CompareAndSwap,
-      Data(path, 124, 123, None, Buf.Utf8("newval")),
-      EtcdState(123),
-      Some(Data(path, 123, 123, None, Buf.Utf8("oldval")))
+      NodeOp.Action.CompareAndSwap,
+      Node.Data(path, 124, 123, None, Buf.Utf8("newval")),
+      Etcd.State(123),
+      Some(Node.Data(path, 123, 123, None, Buf.Utf8("oldval")))
     )
     val params = Map(
       "prevIndex" -> Seq("123"),
@@ -318,10 +314,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.compareAndSwap: prevValue") {
     val path = Path.Utf8("caskey")
     val op = NodeOp(
-      Action.CompareAndSwap,
-      Data(path, 124, 123, None, Buf.Utf8("newval")),
-      EtcdState(123),
-      Some(Data(path, 123, 123, None, Buf.Utf8("oldval")))
+      NodeOp.Action.CompareAndSwap,
+      Node.Data(path, 124, 123, None, Buf.Utf8("newval")),
+      Etcd.State(123),
+      Some(Node.Data(path, 123, 123, None, Buf.Utf8("oldval")))
     )
     val params = Map(
       "prevValue" -> Seq("oldval"),
@@ -336,10 +332,10 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   test("Key.compareAndSwap: prevExist=false") {
     val path = Path.Utf8("caskey")
     val op = NodeOp(
-      Action.CompareAndSwap,
-      Data(path, 124, 123, None, Buf.Utf8("newval")),
-      EtcdState(123),
-      Some(Data(path, 123, 123, None, Buf.Utf8("oldval")))
+      NodeOp.Action.CompareAndSwap,
+      Node.Data(path, 124, 123, None, Buf.Utf8("newval")),
+      Etcd.State(123),
+      Some(Node.Data(path, 123, 123, None, Buf.Utf8("oldval")))
     )
     val params = Map(
       "prevExist" -> Seq("false"),
@@ -353,7 +349,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
   test("Key.create: data") {
     val base = Path.Utf8("base")
-    val op = NodeOp(Action.Create, Data(Path.Utf8("base", "1"), 1, 1, None, Buf.Utf8("dogs")), EtcdState(1))
+    val op = NodeOp(NodeOp.Action.Create, Node.Data(Path.Utf8("base", "1"), 1, 1, None, Buf.Utf8("dogs")), Etcd.State(1))
     val key = mkKey(base) {
       case (Method.Post, params) if getParam(params, "value").exists(_ == "dogs") => op
     }
@@ -363,9 +359,9 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
   test("Key.create: dir") {
     val base = Path.Utf8("base")
-    val op = NodeOp(Action.Create, Dir(Path.Utf8("base", "1"), 1, 1), EtcdState(1))
+    val op = NodeOp(NodeOp.Action.Create, Node.Dir(Path.Utf8("base", "1"), 1, 1), Etcd.State(1))
     val key = mkKey(base) {
-      case (Method.Post, params) if getParam(params, "dir").exists(_ == "true") => op
+      case (Method.Post, DirParam(true)) => op
     }
     val create = key.create(None)
     assert(Await.result(create, 250.millis) == op)
@@ -375,9 +371,9 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     val base = Path.Utf8("base")
     val ttl = 10.seconds
     val op = NodeOp(
-      Action.Create,
-      Dir(Path.Utf8("base", "1"), 1, 1, Some(Lease(ttl.fromNow, ttl))),
-      EtcdState(1)
+      NodeOp.Action.Create,
+      Node.Dir(Path.Utf8("base", "1"), 1, 1, Some(Node.Lease(ttl.fromNow, ttl))),
+      Etcd.State(1)
     )
     val key = mkKey(base) {
       case (Method.Post, params) if getParam(params, "ttl").exists(_ == "10") => op
@@ -444,7 +440,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
       case state => fail(s"unexpected state $state")
     }
 
-    val op = NodeOp(Action.Get, Data(Path.Utf8("creation"), 124, 124), EtcdState(124))
+    val op = NodeOp(NodeOp.Action.Get, Node.Data(Path.Utf8("creation"), 124, 124), Etcd.State(124))
     promise.setValue(op)
     assert(state == Some(Activity.Ok(op)))
 
@@ -455,16 +451,16 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     val key = Path.read("/NYR")
     val players = Seq("fast", "stepan", "kreider", "st. louis", "nash", "lundqvist")
     val nodes = players.zipWithIndex map {
-      case (player, i) => Data(key, i, 0, value = Buf.Utf8(player))
+      case (player, i) => Node.Data(key, i, 0, value = Buf.Utf8(player))
     }
     testWatch(
       key,
-      NodeOp(Action.Get, Data(key, 0, 0, None, Buf.Utf8("fast")), EtcdState(0), None),
-      NodeOp(Action.Set, Data(key, 1, 0, None, Buf.Utf8("stepan")), EtcdState(0), None),
-      NodeOp(Action.Set, Data(key, 2, 0, Some(Lease(10.seconds.fromNow, 10.seconds)),
-        Buf.Utf8("kreider")), EtcdState(1), None),
-      NodeOp(Action.Expire, Data(key, 3, 0, None, Buf.Utf8("kreider")), EtcdState(1),
-        Some(Data(key, 2, 0, None, Buf.Utf8("kreider"))))
+      NodeOp(NodeOp.Action.Get, Node.Data(key, 0, 0, None, Buf.Utf8("fast")), Etcd.State(0), None),
+      NodeOp(NodeOp.Action.Set, Node.Data(key, 1, 0, None, Buf.Utf8("stepan")), Etcd.State(0), None),
+      NodeOp(NodeOp.Action.Set, Node.Data(key, 2, 0, Some(Node.Lease(10.seconds.fromNow, 10.seconds)),
+        Buf.Utf8("kreider")), Etcd.State(1), None),
+      NodeOp(NodeOp.Action.Expire, Node.Data(key, 3, 0, None, Buf.Utf8("kreider")), Etcd.State(1),
+        Some(Node.Data(key, 2, 0, None, Buf.Utf8("kreider"))))
     )
   }
 
@@ -472,18 +468,18 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     val key = Path.read("/base")
     testWatch(
       key,
-      NodeOp(Action.Get, Dir(key, 0, 0, None), EtcdState(0), None),
+      NodeOp(NodeOp.Action.Get, Node.Dir(key, 0, 0, None), Etcd.State(0), None),
       NodeOp(
-        Action.Update,
-        Dir(key, 1, 0, Some(Lease(30.seconds.fromNow, 30.seconds))),
-        EtcdState(0),
-        Some(Dir(key, 0, 0, None))
+        NodeOp.Action.Update,
+        Node.Dir(key, 1, 0, Some(Node.Lease(30.seconds.fromNow, 30.seconds))),
+        Etcd.State(0),
+        Some(Node.Dir(key, 0, 0, None))
       ),
       NodeOp(
-        Action.Expire,
-        Dir(key, 2, 0, None),
-        EtcdState(0),
-        Some(Dir(key, 1, 0, None))
+        NodeOp.Action.Expire,
+        Node.Dir(key, 2, 0, None),
+        Etcd.State(0),
+        Some(Node.Dir(key, 1, 0, None))
       )
     )
   }
@@ -513,7 +509,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     assert(values == Seq.empty)
     assert(promised0 == true)
 
-    val op0 = NodeOp(Action.Get, Data(path, 1, 1, None, Buf.Utf8("junkidyjunk")), EtcdState(1), None)
+    val op0 = NodeOp(NodeOp.Action.Get, Node.Data(path, 1, 1, None, Buf.Utf8("junkidyjunk")), Etcd.State(1), None)
     promise0.setValue(op0)
     assert(values == Seq(Return(op0)))
     assert(promised1 == true)
@@ -528,24 +524,24 @@ class KeyTest extends FunSuite with ParallelTestExecution {
 
     val ops = Seq(
       NodeOp(
-        Action.Get,
-        Dir(base, 0, 0, None, Seq(Data(base ++ Path.Utf8("bah"), 0, 0))),
-        EtcdState(0)
+        NodeOp.Action.Get,
+        Node.Dir(base, 0, 0, None, Seq(Node.Data(base ++ Path.Utf8("bah"), 0, 0))),
+        Etcd.State(0)
       ),
       NodeOp(
-        Action.Create,
-        Dir(newKey, 1, 0, Some(Lease(30.seconds.fromNow, 30.seconds))),
-        EtcdState(0)
+        NodeOp.Action.Create,
+        Node.Dir(newKey, 1, 0, Some(Node.Lease(30.seconds.fromNow, 30.seconds))),
+        Etcd.State(0)
       ),
       NodeOp(
-        Action.Expire,
-        Dir(newKey, 2, 0, None),
-        EtcdState(0),
-        Some(Dir(newKey, 1, 0, None))
+        NodeOp.Action.Expire,
+        Node.Dir(newKey, 2, 0, None),
+        Etcd.State(0),
+        Some(Node.Dir(newKey, 1, 0, None))
       )
     )
-    val responses = (0 to ops.size) map (_ => new Promise[NodeOp])
-    val requested = (0 until responses.size) map (_ => new Promise[Unit])
+    val responses = (0 to ops.size).map(_ => new Promise[NodeOp])
+    val requested = (0 until responses.size).map(_ => new Promise[Unit])
 
     @volatile var currentIndex = 0L
     val key = mkKey(base) {
