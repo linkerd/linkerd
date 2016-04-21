@@ -1,12 +1,19 @@
 package io.buoyant.k8s
 
+import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
 import scala.collection.mutable
 
-class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
+class EndpointsNamer(
+  idPrefix: Path,
+  mkApi: String => NsApi,
+  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   import EndpointsNamer._
 
@@ -21,9 +28,7 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       val residual = path.drop(PrefixLen)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      Activity.future(Ns.get(nsName)).flatMap { ns =>
-        ns.services
-      }.flatMap { services =>
+      Ns.get(nsName).services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
         services.get(serviceName) match {
           case None =>
@@ -52,30 +57,56 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 
   private[this] object Ns {
     private[this] var caches: Map[String, NsCache] = Map.empty
+    // XXX once a namespace is watched, it is watched forever.
+    private[this] var _watches = Map.empty[String, Activity[Closable]]
+    def watches = _watches
 
-    def get(name: String): Future[NsCache] = synchronized {
-      caches.get(name) match {
-        case Some(ns) =>
-          Future.value(ns)
-        case None =>
-          mkNs(name).onSuccess { ns =>
-            caches += (name -> ns)
+    /**
+      * Returns an Activity backed by a Future.  The resultant Activity is pending until the
+      * original future is satisfied.  When the Future is successful, the Activity becomes
+      * an Activity.Ok with a fixed value from the Future.  If the Future fails, the Activity
+      * becomes an Activity.Failed and the Future is retried with the given backoff schedule.
+      * Therefore, the legal state transitions are:
+      *
+      * Pending -> Ok
+      * Pending -> Failed
+      * Failed -> Failed
+      * Failed -> Ok
+      */
+    private[this] def retryToActivity[T](go: => Future[T]): Activity[T] = {
+      val state = Var(Activity.Pending: Activity.State[T])
+      _retryToActivity(backoff, state)(go)
+      Activity(state)
+    }
+
+    private[this] def _retryToActivity[T](
+      remainingBackoff: Stream[Duration],
+      state: Var[Activity.State[T]] with Updatable[Activity.State[T]] = Var[Activity.State[T]](Activity.Pending)
+    )(go: => Future[T]): Unit = {
+      val _ = go.respond {
+        case Return(t) =>
+          state() = Activity.Ok(t)
+        case Throw(e) =>
+          state() = Activity.Failed(e)
+          remainingBackoff match {
+            case delay #:: rest =>
+              Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
+            case Stream.Empty =>
           }
       }
     }
 
-    private[this] def mkNs(name: String): Future[NsCache] = {
-      val nsCache = new NsCache(name)
-      watch(name, nsCache).map { closable =>
-        _watches += (name -> closable)
-        nsCache
+    def get(name: String): NsCache = synchronized {
+      caches.get(name) match {
+        case Some(ns) => ns
+        case None =>
+          val ns = new NsCache(name)
+          val closable = retryToActivity(watch(name, ns))
+          _watches += (name -> closable)
+          caches += (name -> ns)
+          ns
       }
     }
-
-    // XXX once a namespace is watched, it is watched forever.  also
-    // theres probably some poor error behavior.
-    private[this] var _watches = Map.empty[String, Closable]
-    def watches = _watches
 
     private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)

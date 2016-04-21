@@ -1,9 +1,9 @@
 package io.buoyant.k8s
 
-import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.{Addr, NameTree, Name, Path, Service}
+import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.io.{Buf, Writer}
+import com.twitter.finagle.{Addr, Name, NameTree, Path, Service}
+import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -20,8 +20,8 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     val ScaleDown = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"sessions","namespace":"srv","selfLink":"/api/v1/namespaces/srv/endpoints/sessions","uid":"6a698096-525e-11e5-9859-42010af01815","resourceVersion":"5319605","creationTimestamp":"2015-09-03T17:08:37Z"},"subsets":[{"addresses":[{"ip":"10.248.4.9","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-293kc","uid":"69f5a7d2-525e-11e5-9859-42010af01815","resourceVersion":"4962471"}},{"ip":"10.248.7.11","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-mr9gb","uid":"69f5b78e-525e-11e5-9859-42010af01815","resourceVersion":"4962524"}},{"ip":"10.248.8.9","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-nicom","uid":"69f5b623-525e-11e5-9859-42010af01815","resourceVersion":"4962517"}}],"ports":[{"name":"http","port":8083,"protocol":"TCP"}]}]}}""")
   }
 
-  test("watches a namespace and receives updates") {
-    val doInit, didInit, doScaleUp, doScaleDown = new Promise[Unit]
+  trait Fixtures {
+    @volatile var doInit, didInit, doScaleUp, doScaleDown = new Promise[Unit]
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/srv/endpoints" =>
@@ -42,7 +42,8 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace(_))
+    val timer = new MockTimer
+    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace, Stream.continually(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val obs = namer.lookup(Path.read("/srv/http/sessions")).states respond { s =>
@@ -60,16 +61,40 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         case v =>
           throw new TestFailedException(s"unexpected state: $v", 1)
       }
+  }
 
-    assert(state == Activity.Pending)
-    doInit.setDone()
-    assertHas(3)
+  test("watches a namespace and receives updates") {
+    new Fixtures {
+      assert(state == Activity.Pending)
+      doInit.setDone()
+      assertHas(3)
 
-    doScaleUp.setDone()
-    assertHas(4)
+      doScaleUp.setDone()
+      assertHas(4)
 
-    doScaleDown.setDone()
-    assertHas(3)
+      doScaleDown.setDone()
+      assertHas(3)
+    }
+  }
+
+  test("retries initial failures") {
+    Time.withCurrentTimeFrozen { time =>
+      new Fixtures {
+        val e = new Exception()
+        assert(state == Activity.Pending)
+        doInit.setException(e)
+
+        time.advance(1.millis)
+        timer.tick()
+        assert(state == Activity.Pending)
+
+        doInit = new Promise[Unit]
+        doInit.setDone()
+        time.advance(1.millis)
+        timer.tick()
+        assertHas(3)
+      }
+    }
   }
 
   test("missing port names are negative") {
@@ -86,14 +111,13 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace(_))
+    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    val obs = namer.lookup(Path.read("/srv/thrift/sessions")).states respond { s =>
+    val _ = namer.lookup(Path.read("/srv/thrift/sessions")).states respond { s =>
       state = s
     }
 
     assert(state == Activity.Ok(NameTree.Neg))
   }
-
 }
