@@ -24,10 +24,8 @@ object Node {
     lease: Option[Lease] = None,
     nodes: Seq[Node] = Seq.empty
   ) extends Node {
-
     def :+(node: Node): Dir =
       copy(nodes = nodes :+ node)
-
   }
 
   case class Data(
