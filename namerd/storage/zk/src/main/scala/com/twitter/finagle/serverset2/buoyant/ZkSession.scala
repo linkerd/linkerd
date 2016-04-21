@@ -32,7 +32,7 @@ class ZkSession(
 
   @volatile private[this] var closing = false
 
-  def close(): Unit = {
+  def close(): Future[Unit] = {
     closing = true
     zk.close()
   }
@@ -60,13 +60,18 @@ class ZkSession(
     }
 
     // Kick off a delayed reconnection on session expiration.
-    newClient.state.changes.filter {
-      _ == WatchState.SessionState(SessionState.Expired)
-    }.toFuture().unit.before {
-      val jitter = reconnectBackoff.next()
-      logger.error(s"Zookeeper session ${sessionId(newClient)} has expired. Reconnecting in $jitter")
-      Future.sleep(jitter)
-    }.ensure { reconnect() }
+    fireAndForget {
+      newClient.state.changes.filter {
+        _ == WatchState.SessionState(SessionState.Expired)
+      }.toFuture().unit.before {
+        val jitter = reconnectBackoff.next()
+        logger
+          .error(s"Zookeeper session ${sessionId(newClient)} has expired. Reconnecting in $jitter")
+        Future.sleep(jitter)
+      }.ensure {
+        reconnect()
+      }
+    }
   }
 
   // If the zookeeper cluster is under duress, there can be 100's of thousands of clients
@@ -127,14 +132,14 @@ class ZkSession(
           case Throw(exc) =>
             logger.error(s"Operation failed with $exc. Session $sessionId")
             u() = Activity.Failed(exc)
-            retryWithDelay { loop() }
+            fireAndForget { retryWithDelay { loop() } }
 
           case Return(Watched(value, state)) =>
             val ok = Activity.Ok(value)
             retryBackoff.reset()
             u() = ok
 
-            state.changes.respond {
+            val _ = state.changes.respond {
               case WatchState.Pending =>
               // Ignore updates WatchState is Pending.
 
@@ -143,7 +148,7 @@ class ZkSession(
                 // that this observation will produce no more values, so there's
                 // no need to apply concurrency control to the subsequent
                 // branches.
-                loop()
+                fireAndForget { loop() }
 
               case WatchState.SessionState(sessionState) if sessionState == SessionState.ConnectedReadOnly |
                 sessionState == SessionState.SaslAuthenticated |
@@ -151,7 +156,7 @@ class ZkSession(
                 u() = ok
                 logger.info(s"Reacquiring watch on $sessionState. Session: $sessionId")
                 // We may have lost or never set our watch correctly. Retry to ensure we stay connected
-                retryWithDelay { loop() }
+                fireAndForget { retryWithDelay { loop() } }
 
               case WatchState.SessionState(SessionState.Expired) =>
                 u() = Activity.Failed(new Exception("session expired"))
@@ -170,7 +175,7 @@ class ZkSession(
                 logger.error(s"Unexpected session state $sessionState. Session: $sessionId")
                 u() = Activity.Failed(new Exception("" + sessionState))
                 // We don't know what happened. Retry.
-                retryWithDelay { loop() }
+                fireAndForget { retryWithDelay { loop() } }
             }
         }
         Future.Done
@@ -183,6 +188,10 @@ class ZkSession(
         Future.Done
       }
     })
+
+  private[this] def fireAndForget(go: => Future[Unit]): Unit = {
+    val _ = go
+  }
 
   private[this] def sessionId: String = sessionId(client.sample)
   private[this] def sessionId(wzk: Watched[ZooKeeperRW]): String =
