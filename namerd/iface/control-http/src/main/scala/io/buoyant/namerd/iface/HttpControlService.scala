@@ -190,12 +190,12 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     Future.value(resp)
   }
 
-  private[this] def streaming(req: Request): Boolean = req.getBooleanParam("watch")
+  private[this] def isStreaming(req: Request): Boolean = req.getBooleanParam("watch")
 
   private[this] def renderList(list: Set[Ns]): Buf = Json.write(list).concat(newline)
 
   private[this] def handleList(req: Request): Future[Response] =
-    if (streaming(req)) {
+    if (isStreaming(req)) {
       streamingResp(storage.list().values, Some(MediaType.Json))(renderList)
     } else {
       storage.list().toFuture.map { namespaces =>
@@ -208,7 +208,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
 
   private[this] def handleGetDtab(ns: String, req: Request): Future[Response] = {
     val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
-    if (streaming(req)) {
+    if (isStreaming(req)) {
       val dtabs: Event[Try[VersionedDtab]] = storage.observe(ns).values.collect {
         case Return(Some(dtab)) => Return(dtab)
         case Throw(e) => Throw(e)
@@ -312,7 +312,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     }
 
   private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] =
-    if (streaming(req)) {
+    if (isStreaming(req)) {
       streamingResp(getBind(ns, path).values) { tree =>
         Buf.Utf8(tree.show + "\n")
       }
@@ -358,7 +358,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
   }
 
   private[this] def handleGetAddr(ns: String, path: Path, req: Request): Future[Response] = {
-    if (streaming(req)) {
+    if (isStreaming(req)) {
       streamingResp(getAddr(ns, path).values)(renderAddr)
     } else {
       getAddr(ns, path).toFuture.map { addr =>
@@ -373,7 +373,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     DelegateApiHandler.Codec.writeBuf(tree).concat(newline)
 
   private[this] def handleGetDelegate(ns: String, path: Path, req: Request): Future[Response] = {
-    if (streaming(req)) {
+    if (isStreaming(req)) {
       val values = storage.observe(ns).collect {
         case Some(dtab) => dtab.dtab
       }.flatMap(Delegator(_, path, namers(ns))).values
