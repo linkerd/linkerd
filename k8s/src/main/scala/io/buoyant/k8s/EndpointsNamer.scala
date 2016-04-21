@@ -3,9 +3,7 @@ package io.buoyant.k8s
 import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
-import io.buoyant.k8s.Api.Closed
-import io.buoyant.k8s.v1.{Endpoints, EndpointsList, EndpointsWatch, NsApi}
-import java.util.concurrent.atomic.AtomicReference
+import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
 import scala.collection.mutable
 
 class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
@@ -23,7 +21,9 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       val residual = path.drop(PrefixLen)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      Activity(Ns.get(nsName).services).flatMap { services =>
+      Activity.future(Ns.get(nsName)).flatMap { ns =>
+        Activity(ns.services)
+      }.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
         services.get(serviceName) match {
           case None =>
@@ -53,20 +53,23 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
   private[this] object Ns {
     private[this] var caches: Map[String, NsCache] = Map.empty
 
-    def get(name: String): NsCache = synchronized {
+    def get(name: String): Future[NsCache] = synchronized {
       caches.get(name) match {
-        case Some(ns) => ns
+        case Some(ns) =>
+          Future.value(ns)
         case None =>
-          val ns = mkNs(name)
-          caches += (name -> ns)
-          ns
+          mkNs(name).onSuccess { ns =>
+            caches += (name -> ns)
+          }
       }
     }
 
-    private[this] def mkNs(name: String): NsCache = {
+    private[this] def mkNs(name: String): Future[NsCache] = {
       val nsCache = new NsCache(name, Var(Activity.Pending))
-      _watches = _watches + (name -> watch(name, nsCache))
-      nsCache
+      watch(name, nsCache).map { closable =>
+        _watches += (name -> closable)
+        nsCache
+      }
     }
 
     // XXX once a namespace is watched, it is watched forever.  also
@@ -74,38 +77,24 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
     private[this] var _watches = Map.empty[String, Closable]
     def watches = _watches
 
-    private[this] def watch(namespace: String, services: NsCache): Closable = {
+    private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)
       val endpointsApi = ns.endpoints
-      val close = new AtomicReference(Closable.nop)
 
       Trace.letClear {
-        val init = {
-          log.debug("k8s initializing %s", namespace)
-          val endpoints = endpointsApi.get()
-
-          close.set(Closable.make { _ =>
-            endpoints.raise(Closed)
-            Future.Unit
-          })
-
-          endpoints.onSuccess { list =>
-            services.initialize(list)
-          }.onFailure { e =>
-            log.error(e, "k8s failed to list endpoints")
-          }
-        }
-
-        init.foreach { init =>
+        log.debug("k8s initializing %s", namespace)
+        endpointsApi.get().map { list =>
+          services.initialize(list)
           val (updates, closable) = endpointsApi.watch(
-            resourceVersion = init.metadata.flatMap(_.resourceVersion)
+            resourceVersion = list.metadata.flatMap(_.resourceVersion)
           )
-          close.set(closable)
-          updates.foreach(services.update)
+          // fire-and-forget this traversal over an AsyncStream that updates the services state
+          val _ = updates.foreach(services.update)
+          closable
+        }.onFailure { e =>
+          log.error(e, "k8s failed to list endpoints")
         }
       }
-
-      Closable.all(ns, Closable.ref(close))
     }
   }
 }
