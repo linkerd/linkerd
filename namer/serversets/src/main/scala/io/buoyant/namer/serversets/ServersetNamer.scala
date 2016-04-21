@@ -18,15 +18,14 @@ import com.twitter.util.{Activity, Var}
  * Endpoint names are delimited by the ':' character. For example
  *
  * {{{
- * /$/io.l5d.serversets/discovery/prod/foo:http
+ * /io.l5d.serversets/discovery/prod/foo:http
  * }}}
  *
  * is the endpoint `http` of serverset `/discovery/prod/foo`
  *
  * Cribbed from https://github.com/twitter/finagle/blob/develop/finagle-serversets/src/main/scala/com/twitter/serverset.scala
  */
-class ServersetNamer(zkHost: String) extends Namer {
-  val idPrefix = Path.Utf8("$", "io.l5d.serversets")
+class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
 
   /** Resolve a resolver string to a Var[Addr]. */
   protected[this] def resolve(spec: String): Var[Addr] = Resolver.eval(spec) match {
