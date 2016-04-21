@@ -18,28 +18,42 @@ class Key(key: Path, client: Service[Request, Response]) {
   def key(path: Path): Key = new Key(key ++ path, client)
   def key(name: String): Key = key(Path.read(name))
 
+  private[this] lazy val uriPath = keysPrefixPath ++ key
+
   private[this] def boolParam(cond: Boolean) = if (cond) Some("true") else None
   private[this] def valueParams(v: Option[Buf]): Seq[(String, String)] = v match {
     case Some(Buf.Utf8(v)) => Seq("value" -> v)
     case _ => Seq("dir" -> "true")
   }
 
-  /** Get a key */
+  /**
+   * Set the contents of a key.
+   *
+   * If `recursive` is true and this key is a directory, the returned
+   * Node contains the entire tree of children.
+   *
+   * If `wait` is true and `waitIndex` is specified, a response is not
+   * received until the node (or one of its children, if `recursive`
+   * is specified) is updated. If `wait` is true and `waitIndex` is
+   * not specified, a response is not received until the next update
+   * to this node (or its children, if `recursive`).
+   *
+   * If `quorum` is specified, etcd will ensure that the etcd instance
+   * is at quorum with the cluster.
+   */
   def get(
     recursive: Boolean = false,
     wait: Boolean = false,
     waitIndex: Option[Long] = None,
     quorum: Boolean = false
   ): Future[NodeOp] = {
-    val paramOpts = Map(
-      "recursive" -> boolParam(recursive),
-      "quorum" -> boolParam(quorum),
-      "wait" -> boolParam(wait),
-      "waitIndex" -> waitIndex.map(_.toString)
-    )
-    val params = paramOpts.collect { case (k, Some(v)) => k -> v }.toSeq
-    val req = mkReq(keysPrefixPath ++ key, params = params)
-
+    val params = Seq(
+      boolParam(recursive).map("recursive" -> _),
+      boolParam(quorum).map("quorum" -> _),
+      boolParam(wait).map("wait" -> _),
+      waitIndex.map("waitIndex" -> _.toString)
+    ).flatten
+    val req = mkReq(uriPath, params = params)
     req.headerMap("accept") = MediaType.Json
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
@@ -54,8 +68,8 @@ class Key(key: Path, client: Service[Request, Response]) {
    * node after some time period (only second-granularity is supported
    * by etcd).
    *
-   * If the `prevExist` flag is set to true, the node operation will
-   * fail if the node does not already exist.
+   * If `prevExist` is true, the node operation will fail if the node
+   * does not already exist.
    */
   def set(
     value: Option[Buf],
@@ -70,24 +84,46 @@ class Key(key: Path, client: Service[Request, Response]) {
         params = params :+ "prevExist" -> "true"
       }
     }
-
-    val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
+    val req = mkReq(uriPath, Method.Put, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
+  /**
+   * Create a new key.
+   *
+   * If the key exists, an error is returned.
+   *
+   * If value is None, the key is treated as a directory.  In order to
+   * create an empty data node, use `Some(Buf.Empty)`.
+   *
+   * Optionally, a `ttl` may be specified to inform etcd to remove the
+   * node after some time period (only second-granularity is supported
+   * by etcd).
+   */
   def create(
     value: Option[Buf],
     ttl: Option[Duration] = None
   ): Future[NodeOp] = {
-    var params = valueParams(value)
-    for (ttl <- ttl) {
-      params = params :+ ("ttl" -> ttl.inSeconds.toString)
-    }
+    val vp = valueParams(value)
+    val tp = ttl.map("ttl" -> _.inSeconds.toString)
+    val params = vp ++ Seq(tp).flatten
 
-    val req = mkReq(keysPrefixPath ++ key, Method.Post, params)
+    val req = mkReq(uriPath, Method.Post, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
+  /**
+   * Set the node's data if the provided preconditions apply to the
+   * existing state of the node.
+   *
+   * If `prevIndex` is specified, the current node must have the
+   * provided `index` value.
+   *
+   * If `prevValue` is specified, the current node must have the
+   * provided value.
+   *
+   * If `prevExist` is specified, the node must already exist.
+   */
   def compareAndSwap(
     value: Buf,
     prevIndex: Option[Long] = None,
@@ -109,31 +145,56 @@ class Key(key: Path, client: Service[Request, Response]) {
     val Buf.Utf8(v) = value
     params = params :+ "value" -> v
 
-    val req = mkReq(keysPrefixPath ++ key, Method.Put, params)
+    val req = mkReq(uriPath, Method.Put, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
+  /**
+   * Delete a node.
+   *
+   * If `dir` is not true and the key is a directory, this will
+   * operation fail.
+   *
+   * If `dir` and `recursive` are true, the entire tree is deleted.
+   */
   def delete(
     dir: Boolean = false,
     recursive: Boolean = false
   ): Future[NodeOp] = {
     var params = Seq.empty[(String, String)]
+    params +:= "foo" -> "bar"
     if (dir) {
       params = params :+ ("dir" -> "true")
       if (recursive) {
         params = params :+ ("recursive" -> "true")
       }
     }
-
-    val req = mkReq(keysPrefixPath ++ key, Method.Delete, params)
+    val req = mkReq(uriPath, Method.Delete, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
+  /** Find the greatest index referenced in a tree of nodes. */
   private[this] def getIndex(node: Node): Long = node match {
     case Node.Data(_, idx, _, _, _) => idx
     case Node.Dir(_, idx, _, _, nodes) => nodes.foldLeft(idx)(_ max getIndex(_))
   }
 
+  /**
+   * An Event that reflects
+   *
+   * If `recursive` is true, the key's subtree is observed for
+   * changes.
+   *
+   * When an unexpected error is encountered communicating with the
+   * API, the failure is published on the Event and the `backoff`
+   * stream is used to compute the time to wait before retrying. If
+   * the `backoff` stream is exhausted or a fatal error is
+   * encountered, it is reported and polling stops.
+   *
+   * The Event is not reference-counted, so each observer initiates
+   * its own polling loop. This ensures, for instance, that the
+   * initial state of a tree is reported properly.
+   */
   def events(
     recursive: Boolean = false,
     backoff: Stream[Duration] = Stream.empty
@@ -141,14 +202,14 @@ class Key(key: Path, client: Service[Request, Response]) {
     private[this] val origBackoff = backoff
 
     def register(witness: Witness[Try[NodeOp]]) = {
-      @volatile var closing = false
+      @volatile var closed = false
       @volatile var currentOp: Future[NodeOp] = Future.never
 
       def loop(idx: Option[Long], backoff: Stream[Duration]): Unit =
-        if (!closing) {
+        if (!closed) {
           val op = get(recursive, wait = idx.isDefined, waitIndex = idx)
           currentOp = op
-          op respond {
+          op.respond {
             case note@Return(op) =>
               witness.notify(note)
               loop(Some(getIndex(op.node) + 1), origBackoff)
@@ -178,7 +239,7 @@ class Key(key: Path, client: Service[Request, Response]) {
       loop(None, origBackoff)
 
       Closable.make { _ =>
-        closing = true
+        closed = true
         currentOp.raise(new FutureCancelledException)
         Future.Unit
       }
@@ -186,14 +247,32 @@ class Key(key: Path, client: Service[Request, Response]) {
 
   }
 
-  def watch(backoff: Stream[Duration] = Stream.empty): Activity[NodeOp] =
-    Activity(Var.async[Activity.State[NodeOp]](Activity.Pending) { state =>
-      events(false, backoff) respond { op =>
-        state() = op match {
-          case Throw(e) => Activity.Failed(e)
-          case Return(op) => Activity.Ok(op)
-        }
-      }
-    })
+  // TODO: removed until a concrete use for this has been identified
+  // to determine whether this makes sense.
+  /*
+   * Watch a single node for updates.
+   *
+   * Observation of the returned Activity is reference-counted so that
+   * multiple concurrent observers will not incur unnecessary requests
+   * against the API.
+   */
+  // def watch(backoff: Stream[Duration] = Stream.empty): Activity[NodeOp] = {
+  //   val event = events(false, backoff)
+  //   val states = Var.async[Activity.State[NodeOp]](Activity.Pending) { state =>
+  //     event.respond { op =>
+  //       state() = op match {
+  //         case Return(op) => Activity.Ok(op)
+  //         case Throw(e) => Activity.Failed(e)
+  //       }
+  //     }
+  //   }
+  //   Activity(states)
+  // }
 
+  // TODO
+  //
+  // Slightly more complicated since it requires aggregating/updating
+  // state across updates.
+  //
+  // def watchTree(backoff: Stream[Duration] = Stream.empty)
 }

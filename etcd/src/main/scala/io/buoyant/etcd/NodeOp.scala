@@ -47,8 +47,8 @@ object NodeOp {
     case class Invalid(name: String)
       extends Exception(s"Invalid action: $name")
 
-    def apply(name: String): Try[Action] =
-      ByName.get(name).map(Return(_)) getOrElse Throw(Invalid(name))
+    def mk(name: String): Try[Action] =
+      Try.orThrow(ByName.get(name)) { () => Invalid(name) }
   }
 
   private[etcd] def mk(
@@ -60,10 +60,10 @@ object NodeOp {
     val state = Etcd.State.mk(rsp)
     (req.method, rsp.status) match {
       case (Method.Get | Method.Head | Method.Delete, Status.Ok) =>
-        Etcd.readJson[Rsp](rsp.content).flatMap(_.toNodeOp(state))
+        Etcd.readJson[Repr](rsp.content).flatMap(_.toNodeOp(state))
 
       case (Method.Put | Method.Post, Status.Created) =>
-        Etcd.readJson[Rsp](rsp.content).flatMap(_.toNodeOp(state))
+        Etcd.readJson[Repr](rsp.content).flatMap(_.toNodeOp(state))
 
       case (method, status) =>
         Etcd.readJson[ApiError](rsp.content).transform {
@@ -74,16 +74,16 @@ object NodeOp {
   }
 
   /**
-   * Wire representation
+   * Representation of a Node operation, as returned from etcd.
    */
-  private[etcd] case class Rsp(
+  private[etcd] case class Repr(
     action: String,
-    node: Option[Node.Rsp] = None,
-    prevNode: Option[Node.Rsp] = None
+    node: Option[Node.Repr] = None,
+    prevNode: Option[Node.Repr] = None
   ) {
 
     def toNodeOp(etcd: Etcd.State): Try[NodeOp] =
-      Action(action).flatMap { action =>
+      Action.mk(action).flatMap { action =>
         node match {
           case None =>
             Throw(new Exception("node not specified"))
@@ -103,9 +103,9 @@ object NodeOp {
       }
   }
 
-  private[etcd] object Rsp {
-    def apply(op: NodeOp): Rsp =
-      Rsp(op.action.name, Some(Node.Rsp(op.node)), op.prevNode.map(Node.Rsp(_)))
+  private[etcd] object Repr {
+    def apply(op: NodeOp): Repr =
+      Repr(op.action.name, Some(Node.Repr(op.node)), op.prevNode.map(Node.Repr(_)))
   }
 
 }

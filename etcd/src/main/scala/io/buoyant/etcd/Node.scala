@@ -39,15 +39,15 @@ object Node {
   ) extends Node
 
   /**
-   * Wire representation
+   * Representation of a Node, as returned from etcd.
    */
-  private[etcd] case class Rsp(
+  private[etcd] case class Repr(
     key: String,
     modifiedIndex: Long,
     createdIndex: Long,
     dir: Boolean = false,
     value: Option[String] = None,
-    nodes: Option[Seq[Rsp]] = None,
+    nodes: Option[Seq[Repr]] = None,
     expiration: Option[String] = None,
     ttl: Option[Int] = None
   ) {
@@ -86,19 +86,19 @@ object Node {
 
   }
 
-  private[etcd] object Rsp {
+  private[etcd] object Repr {
 
     private[this] def toIsoDate(t: Time): String =
       ISODateTimeFormat.dateTime.print(t.inMillis)
 
-    def apply(node: Node): Rsp = node match {
+    def apply(node: Node): Repr = node match {
       case Data(key, modified, created, lease, Buf.Utf8(value)) =>
-        Rsp(key.show, modified, created, false, Some(value), None,
+        Repr(key.show, modified, created, false, Some(value), None,
           lease.map { l => toIsoDate(l.expiration) },
           lease.map(_.ttl.inSeconds))
 
       case Dir(key, modified, created, lease, nodes) =>
-        Rsp(key.show, modified, created, true, None, Some(nodes.map(Rsp(_))),
+        Repr(key.show, modified, created, true, None, Some(nodes.map(Repr(_))),
           lease.map { l => toIsoDate(l.expiration) },
           lease.map(_.ttl.inSeconds))
 
