@@ -27,6 +27,28 @@ centrally managing routing policy and fronting service discovery.
 * [linkerd](linkerd/README.md)
 * [namerd](namerd/README.md)
 
+## Quickstart ##
+
+### Boot linkerd ###
+
+```
+$ ./sbt linkerd-examples/http:run # build and run linkerd
+$ open http://localhost:9990      # open linkerd's admin interface in a browser
+```
+
+More details at [linkerd's quickstart](linkerd/README.md#quickstart)
+
+
+### Boot namerd ###
+
+```
+$ ./sbt namerd-examples/basic:run # build and run namerd
+$ open http://localhost:9991      # open namerd's admin interface in a browser
+$ curl :4180/api/1/dtabs          # test namerd's http interface
+```
+
+More details at [namerd's quickstart](namerd/README.md#quickstart)
+
 ## Working in this repository ##
 
 [sbt][sbt] is used to build and test linkerd. Developers should not
@@ -42,57 +64,10 @@ $ ./sbt
 >
 ```
 
-The sbt project consists of many sub-projects:
+The sbt project consists of many sub-projects. To list all projects run:
 
 ```
 > projects
-[info] In file:.../linkerd/
-[info]     admin
-[info]   * all
-[info]     config
-[info]     consul
-[info]     interpreter-namerd
-[info]     k8s
-[info]     linkerd
-[info]     linkerd-admin
-[info]     linkerd-core
-[info]     linkerd-examples
-[info]     linkerd-identifier
-[info]     linkerd-identifier-http
-[info]     linkerd-main
-[info]     linkerd-protocol
-[info]     linkerd-protocol-benchmark
-[info]     linkerd-protocol-http
-[info]     linkerd-protocol-mux
-[info]     linkerd-protocol-thrift
-[info]     linkerd-tls
-[info]     marathon
-[info]     namer
-[info]     namer-consul
-[info]     namer-core
-[info]     namer-fs
-[info]     namer-k8s
-[info]     namer-marathon
-[info]     namer-serversets
-[info]     namerd
-[info]     namerd-core
-[info]     namerd-examples
-[info]     namerd-iface
-[info]     namerd-iface-control-http
-[info]     namerd-iface-interpreter-thrift
-[info]     namerd-iface-interpreter-thrift-idl
-[info]     namerd-main
-[info]     namerd-storage
-[info]     namerd-storage-in-memory
-[info]     namerd-storage-zk
-[info]     router
-[info]     router-core
-[info]     router-http
-[info]     router-mux
-[info]     router-thrift
-[info]     router-thrift-idl
-[info]     test-util
-[info]     validator
 ```
 
 These projects are configured in

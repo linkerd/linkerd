@@ -35,7 +35,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   test("/delegate response") {
     val web = new DelegateApiHandler(linker.namers)
     val req = Request()
-    req.uri = s"/delegate?n=/boo/humbug&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    req.uri = s"/delegate?path=/boo/humbug&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
@@ -60,7 +60,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   test("invalid path results in 400") {
     val web = new DelegateApiHandler(linker.namers)
     val req = Request()
-    req.uri = s"/delegate?n=invalid-param&d=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    req.uri = s"/delegate?path=invalid-param&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
   }
@@ -68,7 +68,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   test("invalid dtab results in 400") {
     val web = new DelegateApiHandler(linker.namers)
     val req = Request()
-    req.uri = s"/delegate?n=/boo/humbug&d=invalid-param"
+    req.uri = s"/delegate?path=/boo/humbug&dtab=invalid-param"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
   }

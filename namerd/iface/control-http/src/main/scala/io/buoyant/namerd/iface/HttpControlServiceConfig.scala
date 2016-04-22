@@ -11,7 +11,7 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
     delegate: Ns => NameInterpreter,
     namers: Map[Path, Namer],
     store: DtabStore
-  ): Servable = HttpControlServable(addr, store, delegate)
+  ): Servable = HttpControlServable(addr, store, delegate, namers)
 
   @JsonIgnore
   def defaultAddr = HttpControlServiceConfig.defaultAddr
@@ -25,10 +25,11 @@ object HttpControlServiceConfig {
 case class HttpControlServable(
   addr: InetSocketAddress,
   store: DtabStore,
-  delegate: Ns => NameInterpreter
+  delegate: Ns => NameInterpreter,
+  namers: Map[Path, Namer]
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
-  def serve(): ListeningServer = Http.serve(addr, new HttpControlService(store, delegate))
+  def serve(): ListeningServer = Http.serve(addr, new HttpControlService(store, delegate, namers))
 }
 
 class HttpControlServiceInitializer extends InterfaceInitializer {
