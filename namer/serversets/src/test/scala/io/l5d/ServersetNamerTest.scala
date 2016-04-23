@@ -8,11 +8,12 @@ import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
 class ServersetNamerTest extends FunSuite with NamerTestUtil {
+  val prefix = Path.read("/some/prefix")
 
   test("falls back to path prefixes") {
     namer("/foo/bar").lookup(Path.read("/foo/bar/x/y/z")).sample() match {
       case NameTree.Leaf(name: Name.Bound) =>
-        assert(name.id == Path.read("/$/io.l5d.serversets/foo/bar"))
+        assert(name.id == prefix ++ Path.read("/foo/bar"))
         assert(name.path == Path.read("/x/y/z"))
       case _ => fail("failed to bind")
     }
@@ -27,7 +28,7 @@ class ServersetNamerTest extends FunSuite with NamerTestUtil {
   test("exact match") {
     namer("/foo/bar").lookup(Path.read("/foo/bar")).sample() match {
       case NameTree.Leaf(name: Name.Bound) =>
-        assert(name.id == Path.read("/$/io.l5d.serversets/foo/bar"))
+        assert(name.id == prefix ++ Path.read("/foo/bar"))
         assert(name.path == Path.empty)
       case _ => fail("failed to bind")
     }
@@ -36,7 +37,7 @@ class ServersetNamerTest extends FunSuite with NamerTestUtil {
   test("empty path") {
     namer("/").lookup(Path.read("/x/y/z")).sample() match {
       case NameTree.Leaf(name: Name.Bound) =>
-        assert(name.id == Path.read("/$/io.l5d.serversets"))
+        assert(name.id == prefix)
         assert(name.path == Path.read("/x/y/z"))
       case _ => fail("failed to bind")
     }
@@ -44,10 +45,10 @@ class ServersetNamerTest extends FunSuite with NamerTestUtil {
 
   test("id is bound name") {
     val testNamer = namer("/test")
-    assertBoundIdAutobinds(testNamer, Path.read("/$/io.l5d.serversets/test"), testNamer.idPrefix)
+    assertBoundIdAutobinds(testNamer, prefix ++ Path.read("/test"), prefix)
   }
 
-  def namer(path: String) = new ServersetNamer("host") {
+  def namer(path: String) = new ServersetNamer("host", prefix) {
     val loopback = Address(new InetSocketAddress(InetAddress.getLoopbackAddress, 1))
     /** Resolve a resolver string to a Var[Addr]. */
     override protected[this] def resolve(spec: String): Var[Addr] =
