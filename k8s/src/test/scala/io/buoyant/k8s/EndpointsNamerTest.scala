@@ -46,7 +46,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace, Stream.continually(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    val obs = namer.lookup(Path.read("/srv/http/sessions")).states respond { s =>
+    val _ = namer.lookup(Path.read("/srv/http/sessions")).states.respond { s =>
       state = s
     }
     def assertHas(n: Int): Unit =

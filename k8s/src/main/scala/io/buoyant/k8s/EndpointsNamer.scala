@@ -62,19 +62,19 @@ class EndpointsNamer(
     def watches = _watches
 
     /**
-      * Returns an Activity backed by a Future.  The resultant Activity is pending until the
-      * original future is satisfied.  When the Future is successful, the Activity becomes
-      * an Activity.Ok with a fixed value from the Future.  If the Future fails, the Activity
-      * becomes an Activity.Failed and the Future is retried with the given backoff schedule.
-      * Therefore, the legal state transitions are:
-      *
-      * Pending -> Ok
-      * Pending -> Failed
-      * Failed -> Failed
-      * Failed -> Ok
-      */
+     * Returns an Activity backed by a Future.  The resultant Activity is pending until the
+     * original future is satisfied.  When the Future is successful, the Activity becomes
+     * an Activity.Ok with a fixed value from the Future.  If the Future fails, the Activity
+     * becomes an Activity.Failed and the Future is retried with the given backoff schedule.
+     * Therefore, the legal state transitions are:
+     *
+     * Pending -> Ok
+     * Pending -> Failed
+     * Failed -> Failed
+     * Failed -> Ok
+     */
     private[this] def retryToActivity[T](go: => Future[T]): Activity[T] = {
-      val state = Var(Activity.Pending: Activity.State[T])
+      val state = Var[Activity.State[T]](Activity.Pending)
       _retryToActivity(backoff, state)(go)
       Activity(state)
     }
@@ -101,7 +101,7 @@ class EndpointsNamer(
         case Some(ns) => ns
         case None =>
           val ns = new NsCache(name)
-          val closable = retryToActivity(watch(name, ns))
+          val closable = retryToActivity { watch(name, ns) }
           _watches += (name -> closable)
           caches += (name -> ns)
           ns
