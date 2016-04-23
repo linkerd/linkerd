@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
 import io.buoyant.k8s.Api.Closed
-import io.buoyant.k8s.v1.{Endpoints, EndpointsList, EndpointsWatch, NsApi}
+import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
@@ -38,9 +38,9 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
                   log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
                   NameTree.Neg
 
-                case Some(Port(_, addr)) =>
+                case Some(port) =>
                   log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
-                  NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual))
+                  NameTree.Leaf(Name.Bound(port.addr, idPrefix ++ id, residual))
               }
             }
         }
@@ -113,11 +113,9 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 private object EndpointsNamer {
   val PrefixLen = 3
 
-  type VarUp[T] = Var[T] with Updatable[T]
-  type ActUp[T] = VarUp[Activity.State[T]]
+  case class Port(name: String, init: Addr) {
 
-  case class Port(name: String, addr: VarUp[Addr])
-    extends Updatable[Addr] {
+    val addr = Var(init)
 
     def update(a: Addr) = addr.update(a)
     def sample() = addr.sample()
@@ -152,7 +150,7 @@ private object EndpointsNamer {
 
   private[this] def mkPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Port] =
     getAddrs(subsets).map {
-      case (name, addrs) => name -> Port(name, Var(Addr.Bound(addrs)))
+      case (name, addrs) => name -> Port(name, Addr.Bound(addrs))
     }
 
   case class SvcCache(name: String, init: Map[String, Port]) {
@@ -215,7 +213,7 @@ private object EndpointsNamer {
                     base
 
                   case None =>
-                    val port = Port(name, Var(addr))
+                    val port = Port(name, addr)
                     base + (name -> port)
 
                   case state =>
