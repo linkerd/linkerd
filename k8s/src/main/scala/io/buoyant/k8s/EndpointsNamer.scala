@@ -70,24 +70,31 @@ class EndpointsNamer(
      * Failed -> Ok
      */
     private[this] def retryToActivity[T](go: => Future[T]): Activity[T] = {
-      val state = Var[Activity.State[T]](Activity.Pending)
-      _retryToActivity(backoff, state)(go)
+      val state = Var.async[Activity.State[T]](Activity.Pending) { updates =>
+        val t = _retryToActivity(backoff, updates)(go)
+        Closable.make { _ =>
+          t.raise(new InterruptedException)
+          Future.Unit
+        }
+      }
       Activity(state)
     }
 
     private[this] def _retryToActivity[T](
       remainingBackoff: Stream[Duration],
-      state: Var[Activity.State[T]] with Updatable[Activity.State[T]] = Var[Activity.State[T]](Activity.Pending)
-    )(go: => Future[T]): Unit = {
-      val _ = go.respond {
+      updates: Updatable[Activity.State[T]]
+    )(go: => Future[T]): Future[T] = {
+      go.transform {
         case Return(t) =>
-          state() = Activity.Ok(t)
+          updates() = Activity.Ok(t)
+          Future.value(t)
         case Throw(e) =>
-          state() = Activity.Failed(e)
+          updates() = Activity.Failed(e)
           remainingBackoff match {
             case delay #:: rest =>
-              Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
+              Future.sleep(delay).before { _retryToActivity(rest, updates)(go) }
             case Stream.Empty =>
+              Future.exception(e)
           }
       }
     }
