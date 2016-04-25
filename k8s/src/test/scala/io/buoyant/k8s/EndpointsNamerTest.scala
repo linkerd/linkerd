@@ -86,7 +86,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
         time.advance(1.millis)
         timer.tick()
-        assert(state == Activity.Pending)
+        assert(state == Activity.Failed(e))
 
         doInit = new Promise[Unit]
         doInit.setDone()
