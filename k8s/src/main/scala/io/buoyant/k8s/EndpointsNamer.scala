@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
 import io.buoyant.k8s.Api.Closed
-import io.buoyant.k8s.v1.{Endpoints, EndpointsList, EndpointsWatch, NsApi}
+import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
@@ -23,7 +23,7 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       val residual = path.drop(PrefixLen)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      Activity(Ns.get(nsName).services).flatMap { services =>
+      Ns.get(nsName).services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
         services.get(serviceName) match {
           case None =>
@@ -32,15 +32,15 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 
           case Some(services) =>
             log.debug("k8s ns %s service %s found", nsName, serviceName)
-            Activity(services.ports).map { ports =>
+            services.ports.map { ports =>
               ports.get(portName) match {
                 case None =>
                   log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
                   NameTree.Neg
 
-                case Some(Port(_, addr)) =>
+                case Some(port) =>
                   log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
-                  NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual))
+                  NameTree.Leaf(Name.Bound(port.addr, idPrefix ++ id, residual))
               }
             }
         }
@@ -64,7 +64,7 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
     }
 
     private[this] def mkNs(name: String): NsCache = {
-      val nsCache = new NsCache(name, Var(Activity.Pending))
+      val nsCache = new NsCache(name)
       _watches = _watches + (name -> watch(name, nsCache))
       nsCache
     }
@@ -113,11 +113,9 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 private object EndpointsNamer {
   val PrefixLen = 3
 
-  type VarUp[T] = Var[T] with Updatable[T]
-  type ActUp[T] = VarUp[Activity.State[T]]
+  case class Port(name: String, init: Addr) {
 
-  case class Port(name: String, addr: VarUp[Addr])
-    extends Updatable[Addr] {
+    val addr = Var(init)
 
     def update(a: Addr) = addr.update(a)
     def sample() = addr.sample()
@@ -152,29 +150,33 @@ private object EndpointsNamer {
 
   private[this] def mkPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Port] =
     getAddrs(subsets).map {
-      case (name, addrs) => name -> Port(name, Var(Addr.Bound(addrs)))
+      case (name, addrs) => name -> Port(name, Addr.Bound(addrs))
     }
 
-  case class SvcCache(name: String, ports: ActUp[Map[String, Port]]) {
+  case class SvcCache(name: String, init: Map[String, Port]) {
+
+    private[this] val state = Var[Activity.State[Map[String, Port]]](Activity.Ok(init))
+
+    val ports = Activity(state)
 
     def clear(): Unit = synchronized {
-      ports.sample() match {
+      state.sample() match {
         case Activity.Ok(snap) =>
           for (port <- snap.values) {
             port() = Addr.Neg
           }
-          ports() = Activity.Pending
+          state() = Activity.Pending
 
         case _ =>
       }
     }
 
     def delete(name: String): Unit = synchronized {
-      ports.sample() match {
+      state.sample() match {
         case Activity.Ok(snap) =>
           for (port <- snap.get(name)) {
             port() = Addr.Neg
-            ports() = Activity.Ok(snap - name)
+            state() = Activity.Ok(snap - name)
           }
 
         case _ =>
@@ -185,7 +187,7 @@ private object EndpointsNamer {
       getAddrs(subsets) match {
         case addrs if addrs.isEmpty =>
           synchronized {
-            ports.sample() match {
+            state.sample() match {
               case Activity.Ok(ps) =>
                 for (port <- ps.values) {
                   port() = Addr.Neg
@@ -197,7 +199,7 @@ private object EndpointsNamer {
 
         case addrs =>
           synchronized {
-            val base = ports.sample() match {
+            val base = state.sample() match {
               case Activity.Ok(base) => base
               case _ => Map.empty[String, Port]
             }
@@ -211,7 +213,7 @@ private object EndpointsNamer {
                     base
 
                   case None =>
-                    val port = Port(name, Var(addr))
+                    val port = Port(name, addr)
                     base + (name -> port)
 
                   case state =>
@@ -221,25 +223,27 @@ private object EndpointsNamer {
             }
 
             if (updated.size > base.size) {
-              ports() = Activity.Ok(updated)
+              state() = Activity.Ok(updated)
             }
           }
       }
   }
 
-  class NsCache(name: String, activity: ActUp[Map[String, SvcCache]]) {
+  class NsCache(name: String) {
 
-    def services: Var[Activity.State[Map[String, SvcCache]]] = activity
+    private[this] val state = Var[Activity.State[Map[String, SvcCache]]](Activity.Pending)
+
+    val services: Activity[Map[String, SvcCache]] = Activity(state)
 
     def clear(): Unit = synchronized {
-      activity.sample() match {
+      state.sample() match {
         case Activity.Ok(snap) =>
           for (svc <- snap.values) {
             svc.clear()
           }
         case _ =>
       }
-      activity() = Activity.Pending
+      state() = Activity.Pending
     }
 
     /**
@@ -253,7 +257,7 @@ private object EndpointsNamer {
       }
 
       synchronized {
-        activity() = Activity.Ok(initSvcs.toMap)
+        state() = Activity.Ok(initSvcs.toMap)
       }
     }
 
@@ -270,23 +274,23 @@ private object EndpointsNamer {
     private[this] def mkSvc(endpoints: v1.Endpoints): Option[SvcCache] =
       getName(endpoints).map { name =>
         val ports = mkPorts(endpoints.subsets)
-        SvcCache(name, Var(Activity.Ok(ports)))
+        SvcCache(name, ports)
       }
 
     private[this] def add(endpoints: v1.Endpoints): Unit =
       for (svc <- mkSvc(endpoints)) synchronized {
         log.debug("k8s added: %s", svc.name)
-        val svcs = services.sample() match {
+        val svcs = state.sample() match {
           case Activity.Ok(svcs) => svcs
           case _ => Map.empty[String, SvcCache]
         }
-        activity() = Activity.Ok(svcs + (svc.name -> svc))
+        state() = Activity.Ok(svcs + (svc.name -> svc))
       }
 
     private[this] def modify(endpoints: v1.Endpoints): Unit =
       for (name <- getName(endpoints)) synchronized {
         log.debug("k8s modified: %s", name)
-        services.sample() match {
+        state.sample() match {
           case Activity.Ok(snap) =>
             snap.get(name) match {
               case None =>
@@ -301,17 +305,15 @@ private object EndpointsNamer {
     private[this] def delete(endpoints: v1.Endpoints): Unit =
       for (name <- getName(endpoints)) synchronized {
         log.debug("k8s deleted: %s", name)
-        services.sample() match {
+        state.sample() match {
           case Activity.Ok(snap) =>
             for (svc <- snap.get(name)) {
               svc.clear()
-              activity() = Activity.Ok(snap - name)
+              state() = Activity.Ok(snap - name)
             }
 
           case _ =>
         }
       }
-
   }
-
 }

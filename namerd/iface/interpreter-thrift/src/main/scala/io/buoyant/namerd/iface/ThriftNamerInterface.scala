@@ -272,6 +272,7 @@ class ThriftNamerInterface(
 
           case Throw(e) =>
             Trace.recordBinary("namerd.srv/bind.fail", e.toString)
+            log.error(e, "binding name %s", path.show)
             val failure = thrift.BindFailure(e.getMessage, retryIn().inSeconds, ref, ns)
             Future.exception(failure)
         }
@@ -315,12 +316,13 @@ class ThriftNamerInterface(
       case path =>
         Trace.recordBinary("namerd.srv/addr.path", path.show)
         val addrObserver = observeAddr(path)
-        addrObserver(reqStamp).map {
-          case (newStamp, None) =>
+        addrObserver(reqStamp).transform {
+          case Return((newStamp, None)) =>
             Trace.recordBinary("namerd.srv/addr.result", "neg")
-            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
+            val addr = thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
+            Future.value(addr)
 
-          case (newStamp, Some(bound@Addr.Bound(addrs, meta))) =>
+          case Return((newStamp, Some(bound@Addr.Bound(addrs, meta)))) =>
             Trace.recordBinary("namerd.srv/addr.result", bound.toString)
             val taddrs = addrs.collect {
               case Address.Inet(isa, _) =>
@@ -328,7 +330,19 @@ class ThriftNamerInterface(
                 val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
                 thrift.TransportAddress(ip, isa.getPort)
             }
-            thrift.Addr(TStamp(newStamp), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+            val addr = thrift.Addr(TStamp(newStamp), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+            Future.value(addr)
+
+          case Throw(NonFatal(e)) =>
+            Trace.recordBinary("namerd.srv/addr.fail", e.toString)
+            log.error(e, "resolving addr %s", path.show)
+            val failure = thrift.AddrFailure(e.getMessage, Int.MaxValue, ref)
+            Future.exception(failure)
+
+          case Throw(e) =>
+            Trace.recordBinary("namerd.srv/addr.fail", e.toString)
+            log.error(e, "resolving addr %s", path.show)
+            Future.exception(e)
         }
     }
   }

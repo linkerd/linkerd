@@ -8,7 +8,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.linkerd.admin.names.{DelegateTree, DelegateApiHandler, Delegator}
+import io.buoyant.linkerd.admin.names.DelegateApiHandler
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
 
@@ -86,10 +86,15 @@ object HttpControlService {
 
   trait NsPathUri {
     val prefix: String
+    lazy val prefixSlash = s"$prefix/"
 
-    def unapply(request: Request): Option[(Ns, Path)] = {
+    def unapply(request: Request): Option[(Option[Ns], Path)] = {
       if (request.path.startsWith(prefix)) {
-        val ns = request.path.stripPrefix(prefix)
+        val ns = if (request.path.startsWith(prefixSlash)) {
+          Some(request.path.stripPrefix(prefixSlash))
+        } else {
+          None
+        }
         val path = try {
           Path.read(request.getParam("path"))
         } catch {
@@ -104,15 +109,15 @@ object HttpControlService {
   }
 
   object BindUri extends NsPathUri {
-    val prefix = s"$apiPrefix/bind/"
+    val prefix = s"$apiPrefix/bind"
   }
 
   object AddrUri extends NsPathUri {
-    val prefix = s"$apiPrefix/addr/"
+    val prefix = s"$apiPrefix/addr"
   }
 
   object DelegateUri extends NsPathUri {
-    val prefix = s"$apiPrefix/delegate/"
+    val prefix = s"$apiPrefix/delegate"
   }
 
   def versionString(buf: Buf): String = {
@@ -124,13 +129,15 @@ object HttpControlService {
   private[iface] val newline = Buf.Utf8("\n")
 }
 
-class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
+class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, namers: Map[Path, Namer])
   extends Service[Request, Response] {
   import HttpControlService._
 
   /** Get the dtab, if it exists. */
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
+
+  private[this] val delegateApiHander = new DelegateApiHandler(namers.toSeq)
 
   def apply(req: Request): Future[Response] = Future(req match {
     case DtabUri(_, None) =>
@@ -145,14 +152,17 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
       handlePostDtab(ns, req)
     case DtabUri(Method.Delete, Some(ns)) =>
       handleDeleteDtab(ns)
-    case BindUri(ns, path) =>
+    case BindUri(Some(ns), path) =>
       handleGetBind(ns, path, req)
-    case AddrUri(ns, path) =>
+    case AddrUri(Some(ns), path) =>
       handleGetAddr(ns, path, req)
-    case DelegateUri(ns, path) =>
-      handleGetDelegate(ns, path, req)
+    case DelegateUri(Some(ns), path) =>
+      handleGetDelegate(ns, path)
+    case DelegateUri(None, path) =>
+      delegateApiHander(req)
     // invalid uri/method
-    case _ =>
+    case x =>
+      println("got " + x)
       Future.value(Response(Status.NotFound))
   }).flatten.handle {
     case Forbidden => Response(Status.Forbidden)
@@ -305,7 +315,7 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
       bindingCache.get(key) match {
         case Some(act) => act
         case None =>
-          val act = namers(ns).bind(Dtab.empty, path)
+          val act = delegate(ns).bind(Dtab.empty, path)
           bindingCache += (key -> act)
           act
       }
@@ -369,28 +379,11 @@ class HttpControlService(storage: DtabStore, namers: Ns => NameInterpreter)
     }
   }
 
-  private[this] def renderDelegate(tree: DelegateTree[Name.Bound]): Buf =
-    DelegateApiHandler.Codec.writeBuf(tree).concat(newline)
-
-  private[this] def handleGetDelegate(ns: String, path: Path, req: Request): Future[Response] = {
-    if (isStreaming(req)) {
-      val values = storage.observe(ns).collect {
-        case Some(dtab) => dtab.dtab
-      }.flatMap(Delegator(_, path, namers(ns))).values
-
-      streamingResp(values)(renderDelegate)
-    } else {
-      storage.observe(ns).toFuture.flatMap {
-        case Some(dtab) =>
-          Delegator(dtab.dtab, path, namers(ns)).toFuture.map { delegateTree =>
-            val rsp = Response()
-            rsp.content = renderDelegate(delegateTree)
-            rsp.contentType = MediaType.Json
-            rsp
-          }
-        case None =>
-          Future.value(Response(Status.NotFound))
-      }
+  private[this] def handleGetDelegate(ns: String, path: Path): Future[Response] = {
+    getDtab(ns).flatMap {
+      case Some(dtab) =>
+        DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegate(ns))
+      case None => Future.value(Response(Status.NotFound))
     }
   }
 }

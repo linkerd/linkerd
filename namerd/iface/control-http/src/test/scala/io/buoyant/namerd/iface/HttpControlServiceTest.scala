@@ -28,7 +28,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     new InMemoryDtabStore(dtabs)
 
   def newService(store: DtabStore = newDtabStore()): Service[Request, Response] =
-    new HttpControlService(store, _ => ConfiguredNamersInterpreter(Nil))
+    new HttpControlService(store, _ => ConfiguredNamersInterpreter(Nil), Map.empty)
 
   def readAndAssert(reader: Reader, value: String): Unit = {
     val buf = Buf.Utf8(value)
@@ -246,7 +246,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       assert(ns == "default")
       ni
     }
-    val service = new HttpControlService(NullDtabStore, delegate)
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
     val bound = "/io.l5d.namer/foo"
     witness.notify(Return(NameTree.Leaf(Name.Bound(Var(null), bound))))
 
@@ -261,7 +261,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       assert(ns == "default")
       ni
     }
-    val service = new HttpControlService(NullDtabStore, delegate)
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
     val resp = await(service(Request("/api/1/bind/default?path=/foo&watch=true")))
 
     val bound = "/io.l5d.namer/foo"
@@ -291,7 +291,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       assert(ns == "default")
       ni
     }
-    val service = new HttpControlService(NullDtabStore, delegate)
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
     val id = "/io.l5d.namer/foo"
     val addr = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
@@ -308,7 +308,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       assert(ns == "default")
       ni
     }
-    val service = new HttpControlService(NullDtabStore, delegate)
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
     val id = "/io.l5d.namer/foo"
     val resp = await(service(Request(s"/api/1/addr/default?path=$id&watch=true")))
     val addr = Var[Addr](Addr.Pending)
@@ -341,5 +341,45 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val service = newService(NullDtabStore)
     val resp = await(service(Request("/api/1/delegate/default?path=invalid")))
     assert(resp.status == Status.BadRequest)
+  }
+
+  test("delegate a path given a namespace") {
+    val service = newService()
+    val resp = await(service(Request("/api/1/delegate/yeezus?path=/yeezy")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == """
+      |{
+      |  "type":"delegate",
+      |  "path":"/yeezy",
+      |  "dentry":null,
+      |  "delegate":{
+      |    "type":"neg",
+      |    "path":"/yeezus",
+      |    "dentry":{
+      |      "prefix":"/yeezy",
+      |      "dst":"/yeezus"
+      |    }
+      |  }
+      |}""".stripMargin.replaceAll("\\s", ""))
+  }
+
+  test("delegate a path given a dtab") {
+    val service = newService()
+    val resp = await(service(Request("/api/1/delegate?dtab=/foo=>/bar&path=/foo")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == """
+      |{
+      |  "type":"delegate",
+      |  "path":"/foo",
+      |  "dentry":null,
+      |  "delegate":{
+      |    "type":"neg",
+      |    "path":"/bar",
+      |    "dentry":{
+      |      "prefix":"/foo",
+      |      "dst":"/bar"
+      |    }
+      |  }
+      |}""".stripMargin.replaceAll("\\s", ""))
   }
 }

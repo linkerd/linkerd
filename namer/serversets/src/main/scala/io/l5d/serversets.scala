@@ -22,7 +22,7 @@ case class serversets(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
   /**
    * Construct a namer.
    */
-  def newNamer(params: Stack.Params) = new ServersetNamer(connectString)
+  def newNamer(params: Stack.Params) = new ServersetNamer(connectString, prefix)
 }
 
 case class ZkAddr(host: String, port: Option[Port]) {
