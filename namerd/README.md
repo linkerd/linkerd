@@ -39,3 +39,47 @@ or
 ```
 ./sbt 'namerd-main:run path/to/config.yml'
 ```
+
+## Http Control Interface ##
+
+namerd provides an http interface to create, update and retrieve Dtabs, as
+defined in `HttpControlService`.
+
+For a command-line tool which wraps this interface, try
+[namerctl](https://github.com/BuoyantIO/namerctl)
+
+Primary interface endpoints:
+
+```
+$ export NAMERD_URL=http://localhost:4180
+```
+
+Get all dtab namespaces:
+
+```
+$ curl $NAMERD_URL/api/1/dtabs
+```
+
+Get a dtab for the `default` namespace:
+
+```
+$ curl $NAMERD_URL/api/1/dtabs/default
+```
+
+Create or update a dtab namespace:
+
+```
+$ curl -v -X PUT -d"/foo => /bar" -H "Content-Type: application/dtab" $NAMERD_URL/api/1/dtabs/baz
+```
+
+Evaluate a path against a known dtab namespace:
+
+```
+$ curl -v $NAMERD_URL/api/1/delegate/baz?path=/foo
+```
+
+Evaluate a path against an arbitrary dtab:
+
+```
+$ curl -v "$NAMERD_URL/api/1/delegate?dtab=/foo=>/bar&path=/foo"
+```

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.http._
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -158,29 +159,29 @@ object DelegateApiHandler {
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
   }
 
-}
-
-class DelegateApiHandler(
-  namers: Seq[(Path, Namer)],
-  delegate: Delegator = Delegator
-) extends Service[Request, Response] {
-
-  import DelegateApiHandler._
-
-  def apply(req: Request): Future[Response] = req.method match {
-    case Method.Get => (req.params.get("d"), req.params.get("n")) match {
-      case (Some(DtabStr(dtab)), Some(PathStr(path))) =>
-        // XXX this should change to be per-router
-        val interpreter = ConfiguredNamersInterpreter(namers)
-        delegate(dtab, path, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
+  def getDelegateRsp(dtab: String, path: String, interpreter: NameInterpreter): Future[Response] =
+    (dtab, path) match {
+      case (DtabStr(d), PathStr(p)) =>
+        Delegator(d, p, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)
           rsp.contentType = MediaType.Json
           rsp
         }
-
       case _ => err(Status.BadRequest)
     }
+}
+
+class DelegateApiHandler(
+  namers: Seq[(Path, Namer)]
+) extends Service[Request, Response] {
+
+  import DelegateApiHandler._
+
+  def apply(req: Request): Future[Response] = req.method match {
+    case Method.Get =>
+      // XXX this should change to be per-router
+      getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(namers))
     case _ => err(Status.MethodNotAllowed)
   }
 }
