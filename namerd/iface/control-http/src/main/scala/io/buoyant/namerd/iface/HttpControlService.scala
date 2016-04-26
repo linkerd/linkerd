@@ -161,8 +161,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     case DelegateUri(None, path) =>
       delegateApiHander(req)
     // invalid uri/method
-    case x =>
-      println("got " + x)
+    case _ =>
       Future.value(Response(Status.NotFound))
   }).flatten.handle {
     case Forbidden => Response(Status.Forbidden)
@@ -195,7 +194,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
           else
             writer.write(buf).onFailure { _ => closable.close() }
         }
-      case Throw(e) => closable.close()
+      case Throw(e) =>
+        val _ = writer.write(Buf.Utf8(e.getMessage).concat(newline)).before(writer.close())
+        val __ = closable.close() // https://issues.scala-lang.org/browse/SI-7691
     }
     Future.value(resp)
   }

@@ -285,6 +285,24 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(resp.status == Status.BadRequest)
   }
 
+  test("errors are printed") {
+    val (ni, witness) = interpreter
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
+    val resp = await(service(Request("/api/1/bind/default?path=/foo&watch=true")))
+
+    val bound = "/io.l5d.namer/foo"
+    witness.notify(Throw(new Exception("error")))
+    readAndAssert(resp.reader, "error")
+
+    assert(await(resp.reader.read(0)) == None)
+
+    resp.reader.discard()
+  }
+
   test("addr") {
     val (ni, witness) = interpreter
     def delegate(ns: Ns): NameInterpreter = {
