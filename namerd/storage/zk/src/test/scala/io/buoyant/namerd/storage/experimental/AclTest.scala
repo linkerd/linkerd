@@ -3,11 +3,16 @@ package io.buoyant.namerd.storage.experimental
 import org.scalatest.FunSuite
 
 class AclTest extends FunSuite {
+
+  def assertThrows[T <: AnyRef: Manifest](f: => Any): Unit = {
+    val _ = intercept[T](f)
+  }
+
   test("unrecognized perm") {
-    intercept[IllegalArgumentException](Acl("scheme", "id", "crwdaz"))
+    assertThrows[IllegalArgumentException](Acl("scheme", "id", "crwdaz"))
   }
 
   test("duplicate perm") {
-    intercept[IllegalArgumentException](Acl("scheme", "id", "cc"))
+    assertThrows[IllegalArgumentException](Acl("scheme", "id", "cc"))
   }
 }
