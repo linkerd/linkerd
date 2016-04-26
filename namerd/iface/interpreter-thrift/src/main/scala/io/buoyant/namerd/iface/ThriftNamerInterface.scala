@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
+import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -14,13 +14,6 @@ import java.util.concurrent.atomic.AtomicLong
 object ThriftNamerInterface {
 
   val TVoid = thrift.Void()
-
-  type TDtab = Seq[thrift.Dentry]
-  object TDtab {
-    val empty: TDtab = Seq.empty
-    def apply(dtab: Seq[Dentry]): TDtab =
-      dtab.map { case Dentry(pfx, dst) => thrift.Dentry(TPath(pfx), dst.show) }
-  }
 
   // Utilities for converting between thrift & finagle Paths
   type TPath = Seq[ByteBuffer]
@@ -39,13 +32,6 @@ object ThriftNamerInterface {
 
   def mkPath(tpath: TPath): Path =
     Path(tpath.map(Buf.ByteBuffer.Owned(_)): _*)
-
-  def mkDtab(tdentries: Seq[thrift.Dentry]): Dtab = {
-    val dentries = tdentries.toIndexedSeq.map { tdentry =>
-      Dentry(mkPath(tdentry.prefix), NameTree.read(tdentry.dst))
-    }
-    Dtab(dentries)
-  }
 
   // Utilities for converting between thrift & finagle Stamps
   type Stamp = Buf
@@ -251,8 +237,8 @@ class ThriftNamerInterface(
    * debugging, rate limiting, etc.
    */
   def bind(req: thrift.BindReq): Future[thrift.Bound] = {
-    val thrift.BindReq(tdentries, ref@thrift.NameRef(reqStamp, reqName, ns), _) = req
-    val dtab = mkDtab(tdentries)
+    val thrift.BindReq(dtabstr, ref@thrift.NameRef(reqStamp, reqName, ns), _) = req
+    val dtab = Dtab.read(dtabstr)
     mkPath(reqName) match {
       case Path.empty =>
         Trace.recordBinary("namerd.srv/bind.err", "empty path")

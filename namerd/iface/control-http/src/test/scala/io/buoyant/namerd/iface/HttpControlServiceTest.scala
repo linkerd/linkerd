@@ -304,31 +304,33 @@ class HttpControlServiceTest extends FunSuite with Awaits {
   }
 
   test("addr") {
-    val (ni, witness) = interpreter
-    def delegate(ns: Ns): NameInterpreter = {
-      assert(ns == "default")
-      ni
+    val (nameTree, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      override def lookup(path: Path): Activity[NameTree[Name]] = nameTree
     }
-    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
-    val id = "/io.l5d.namer/foo"
+    val prefix = Path.read("/io.l5d.namer")
+    val service = new HttpControlService(NullDtabStore, _ => null, Map(prefix -> namer))
+    val id = "/foo"
+
     val addr = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
     addr() = Addr.Bound(Address(1))
 
-    val resp = await(service(Request(s"/api/1/addr/default?path=$id")))
+    val resp = await(service(Request(s"/api/1/addr/default?path=${prefix.show}$id")))
+
     assert(resp.status == Status.Ok)
     assert(resp.contentString == "Bound(0.0.0.0/0.0.0.0:1)\n")
   }
 
   test("addr watch") {
-    val (ni, witness) = interpreter
-    def delegate(ns: Ns): NameInterpreter = {
-      assert(ns == "default")
-      ni
+    val (nameTree, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      override def lookup(path: Path): Activity[NameTree[Name]] = nameTree
     }
-    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
-    val id = "/io.l5d.namer/foo"
-    val resp = await(service(Request(s"/api/1/addr/default?path=$id&watch=true")))
+    val prefix = Path.read("/io.l5d.namer")
+    val service = new HttpControlService(NullDtabStore, _ => null, Map(prefix -> namer))
+    val id = "/foo"
+    val resp = await(service(Request(s"/api/1/addr/default?path=${prefix.show}$id&watch=true")))
     val addr = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
 

@@ -28,7 +28,7 @@ class ThriftNamerInterfaceTest extends FunSuite {
 
     // The first request before the tree has been refined -- no value initially
     val initName = thrift.NameRef(TStamp.empty, TPath("ysl", "thugger"), ns)
-    val initF = service.bind(thrift.BindReq(TDtab.empty, initName, clientId))
+    val initF = service.bind(thrift.BindReq("", initName, clientId))
     assert(!initF.isDefined)
 
     val ss2Addr, imupAddr, ss3Addr = Var[Addr](Addr.Pending)

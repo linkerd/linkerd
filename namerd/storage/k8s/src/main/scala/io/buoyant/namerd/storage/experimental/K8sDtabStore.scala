@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.collection.breakOut
 
 /**
- * A [[DtabStore]] using the
+ * A DtabStore using the
  * [[https://github.com/kubernetes/kubernetes/blob/master/docs/design/extending-api.md Kubernetes third-party API]]
  * (in beta as of Kubernetes 1.2) to store Dtabs. Note that usage of this store will require some
  * setup:

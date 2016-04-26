@@ -25,7 +25,7 @@ class ThriftNamerClientTest extends FunSuite {
 
     def bind(req: thrift.BindReq): Future[thrift.Bound] = {
       val thrift.BindReq(tdtab, thrift.NameRef(stamp, name, ns), cid) = req
-      val dtab = mkDtab(tdtab)
+      val dtab = Dtab.read(tdtab)
       assert(mkPath(cid) == clientId)
       bindingsMu.synchronized {
         val k = (ns, mkPath(name), dtab, stamp)

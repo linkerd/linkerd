@@ -4,6 +4,8 @@
   time to spend binding a path.
 * Add experimental support for storing dtabs in Kubernetes via the
   ThirdPartyResource API (which must be enabled in your cluster).
+* **Breaking api change** in namerd: dtabs are now string-encoded
+  rather than thrift-encoded.
 
 ## 0.3.1
 
