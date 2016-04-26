@@ -52,7 +52,7 @@ class ThriftNamerClient(
   }
 
   private[this] def watchName(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
-    val tdtab = TDtab(dtab)
+    val tdtab = dtab.show
     val tpath = TPath(path)
 
     val states = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { states =>
