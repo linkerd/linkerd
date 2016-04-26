@@ -79,9 +79,17 @@ build ostrich publishLocal
 cd $TMP_DIR/scrooge
 build scrooge-core scrooge-core/publishLocal
 
+# building an sbt plugin requiressome special magic
+ORIG_SCALA_VERSION=$SCALA_VERSION
+SCALA_VERSION=2.10.6
+build scrooge-sbt-plugin scrooge-generator/publishLocal scrooge-sbt-plugin/publishLocal
+SCALA_VERSION=$ORIG_SCALA_VERSION
+
 cd $TMP_DIR/finagle
 build finagle \
       finagle-core/publishLocal \
+      finagle-netty4/publishLocal \
+      finagle-netty4-http/publishLocal \
       finagle-http/publishLocal \
       finagle-http2/publishLocal \
       finagle-mux/publishLocal \
