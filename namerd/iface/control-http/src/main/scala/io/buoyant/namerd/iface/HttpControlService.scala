@@ -126,6 +126,8 @@ object HttpControlService {
     buf.write(versionBytes, 0)
     Base64StringEncoder.encode(versionBytes)
   }
+
+  private val DefaultNamer: (Path, Namer) = Path.empty -> Namer.global
 }
 
 class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, namers: Map[Path, Namer])
@@ -314,7 +316,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     addrCache.get(key) match {
       case Some(addr) => addr
       case None =>
-        val addr = getBind(ns, path).run.flatMap {
+        val addr = bindAddrId(path).run.flatMap {
           case Activity.Pending => Var.value(Addr.Pending)
           case Activity.Failed(e) => Var.value(Addr.Failed(e))
           case Activity.Ok(tree) => tree match {
@@ -329,6 +331,11 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
         addrCache += (key -> addr)
         addr
     }
+  }
+
+  private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
+    val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
+    namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 
   private[this] val renderAddr = (addr: Addr, _: Closable) => addr match {

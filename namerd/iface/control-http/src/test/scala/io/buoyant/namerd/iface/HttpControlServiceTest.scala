@@ -226,9 +226,13 @@ class HttpControlServiceTest extends FunSuite with Awaits {
   }
 
   test("addr") {
-    val (ni, witness) = interpreter
-    val service = new HttpControlService(NullDtabStore, _ => ni, Map.empty)
-    val id = "/io.l5d.namer/foo"
+    val (nameTree, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      override def lookup(path: Path): Activity[NameTree[Name]] = nameTree
+    }
+    val prefix = Path.read("/io.l5d.namer")
+    val service = new HttpControlService(NullDtabStore, _ => null, Map(prefix -> namer))
+    val id = s"${prefix.show}/foo"
     val resp = await(service(Request(s"/api/1/addr/default?path=$id")))
     val addr = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
