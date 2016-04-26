@@ -33,7 +33,9 @@ private[fs] object Watcher {
     }
   }
 
-  private[this] val pool = FuturePool.unboundedPool
+  private[this] def pool(go: => Unit): Unit = {
+    val _ = FuturePool.unboundedPool(go)
+  }
 
   val MaxFileSize = 500.kilobytes
 

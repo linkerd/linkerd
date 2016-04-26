@@ -51,11 +51,11 @@ class CatalogNamer(
     def get(name: String): DcCache = synchronized {
       activity.sample() match {
         case Activity.Ok(snap) =>
-          snap.get(name).getOrElse {
+          snap.getOrElse(name, {
             val dc = new DcCache(name, Var(Activity.Pending))
             activity() = Activity.Ok(snap + (name -> dc))
             dc
-          }
+          })
 
         case _ =>
           val dc = new DcCache(name, Var(Activity.Pending))
@@ -74,7 +74,7 @@ class CatalogNamer(
 
     var index = "0"
     val api = mkApi(name)
-    init()
+    val _ = init()
 
     def setIndex(idx: String) = {
       index = idx
@@ -92,7 +92,7 @@ class CatalogNamer(
       updateableAddr() = Addr.Pending
     }
 
-    def init(): Unit = mkRequest().map(update).handle(handleUnexpected)
+    def init(): Future[Unit] = mkRequest().flatMap(update).handle(handleUnexpected)
 
     def serviceNodeToAddr(node: ServiceNode): Option[Address] = {
       (node.Address, node.ServiceAddress, node.ServicePort) match {
@@ -104,7 +104,7 @@ class CatalogNamer(
       }
     }
 
-    def update(nodes: Seq[ServiceNode]): Unit = {
+    def update(nodes: Seq[ServiceNode]): Future[Unit] = {
       synchronized {
         try {
           val socketAddrs = nodes.flatMap(serviceNodeToAddr).toSet
@@ -115,7 +115,7 @@ class CatalogNamer(
             updateableAddr() = Addr.Failed(e)
         }
       }
-      mkRequest().map(update).handle(handleUnexpected)
+      mkRequest().flatMap(update).handle(handleUnexpected)
     }
 
     val handleUnexpected: PartialFunction[Throwable, Unit] = {
@@ -136,7 +136,7 @@ class CatalogNamer(
 
     var index = "0"
     val api = mkApi(name)
-    init()
+    val _ = init()
 
     def setIndex(idx: String) = {
       index = idx
@@ -161,8 +161,8 @@ class CatalogNamer(
       activity() = Activity.Pending
     }
 
-    def init(): Unit =
-      mkRequest().map { serviceNames =>
+    def init(): Future[Unit] =
+      mkRequest().flatMap { serviceNames =>
 
         val services = Map(serviceNames.map { serviceName =>
           serviceName -> mkSvc(serviceName)
@@ -172,13 +172,13 @@ class CatalogNamer(
           activity() = Activity.Ok(services)
         }
 
-        mkRequest().map(update)
+        mkRequest().flatMap(update)
       }.handle {
         case e: UnexpectedResponse => activity() = Activity.Ok(Map.empty)
         case e: Throwable => activity() = Activity.Failed(e)
       }
 
-    def update(serviceNames: Seq[String]): Unit = {
+    def update(serviceNames: Seq[String]): Future[Unit] = {
       synchronized {
         val svcs = services.sample() match {
           case Activity.Ok(svcs) => svcs
@@ -197,7 +197,7 @@ class CatalogNamer(
         }
       }
 
-      mkRequest().map(update)
+      mkRequest().flatMap(update)
     }
 
     private[this] def mkSvc(serviceName: String): SvcCache = SvcCache(name, serviceName, Var(Addr.Pending))
