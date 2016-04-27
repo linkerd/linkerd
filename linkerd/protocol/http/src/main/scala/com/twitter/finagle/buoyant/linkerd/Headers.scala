@@ -33,14 +33,14 @@ object Headers {
         traceId <- get(header).toOption
       } yield traceId
 
-    def set(headers: HeaderMap, id: TraceId): HeaderMap = {
+    def set(headers: HeaderMap, id: TraceId): Unit = {
       val bytes = TraceId.serialize(id)
       val b64 = Base64.getEncoder().encodeToString(bytes)
-      headers.set(Key, b64)
+      val _ = headers.set(Key, b64)
     }
 
-    def clear(headers: HeaderMap): Option[String] = {
-      headers.remove(Key)
+    def clear(headers: HeaderMap): Unit = {
+      val _ = headers.remove(Key)
     }
   }
 
