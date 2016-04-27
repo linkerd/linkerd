@@ -185,7 +185,7 @@ class Key(key: Path, client: Service[Request, Response]) {
   }
 
   /**
-   * An Event that reflects
+   * An Event constructed by watching an etcd key.
    *
    * If `recursive` is true, the key's subtree is observed for
    * changes.
