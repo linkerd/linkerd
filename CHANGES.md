@@ -6,6 +6,9 @@
   ThirdPartyResource API (which must be enabled in your cluster).
 * **Breaking api change** in namerd: dtabs are now string-encoded
   rather than thrift-encoded.
+* Add `/api/1/bind`, `/api/1/addr`, and `/api/1/delegate` HTTP APIs to namerd
+  * Most HTTP APIs now support `?watch=true` for returning updates via a
+    streaming response.
 
 ## 0.3.1
 
