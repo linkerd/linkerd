@@ -58,7 +58,7 @@ object Node {
             Time.fromMilliseconds(ms)
           }
         }
-        ttl <- Try(ttl.map(_.toInt.seconds))
+        ttl <- Try(ttl.map(_.seconds))
       } yield for {
         e <- expiration
         t <- ttl
