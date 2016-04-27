@@ -32,4 +32,7 @@ object Deps {
 
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
+
+  // guava
+  val guava = "com.google.guava" % "guava" % "19.0"
 }

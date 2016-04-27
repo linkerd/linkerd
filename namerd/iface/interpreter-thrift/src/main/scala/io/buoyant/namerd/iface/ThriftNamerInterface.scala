@@ -116,6 +116,8 @@ object ThriftNamerInterface {
     final def apply(tstamp: TStamp): Future[(Stamp, T)] =
       apply(Stamp(tstamp))
 
+    final def nextValue(): Future[(Stamp, T)] = pending.flatMap(_.future)
+
     final def close(t: Time): Future[Unit] =
       synchronized {
         current = None
