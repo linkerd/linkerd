@@ -8,7 +8,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.{VersionedDtab, DtabStore, RichActivity}
+import io.buoyant.namerd.{Ns, VersionedDtab, DtabStore, RichActivity}
 import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException, DtabNamespaceAlreadyExistsException, Forbidden}
 import io.buoyant.namerd.storage.experimental.{AuthInfo, Acl}
 import java.nio.ByteBuffer
@@ -47,8 +47,9 @@ class ZkDtabStore(
 
   private[this] val actNs = actOf(_.getChildrenWatch(zkPrefix)).map(_.children.toSet)
 
-  def list(): Future[Set[String]] = actNs.toFuture.rescue {
-    case KeeperException.NoAuth(_) => Future.exception(Forbidden)
+  def list(): Activity[Set[Ns]] = actNs.transform {
+    case Activity.Failed(KeeperException.NoAuth(_)) => Activity.exception(Forbidden)
+    case state => Activity(Var(state))
   }
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {

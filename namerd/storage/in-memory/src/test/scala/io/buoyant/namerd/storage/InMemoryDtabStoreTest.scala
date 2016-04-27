@@ -4,7 +4,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.Dtab
 import com.twitter.util.{Await, Activity}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
-import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, VersionedDtab}
+import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, RichActivity, VersionedDtab}
 import org.scalatest.FunSuite
 
 class InMemoryDtabStoreTest extends FunSuite {
@@ -93,6 +93,6 @@ class InMemoryDtabStoreTest extends FunSuite {
     assert(obs.sample.isDefined)
     Await.result(store.delete("test"))
     assert(obs.sample.isEmpty)
-    assert(!Await.result(store.list()).contains("test"))
+    assert(!Await.result(store.list().toFuture).contains("test"))
   }
 }

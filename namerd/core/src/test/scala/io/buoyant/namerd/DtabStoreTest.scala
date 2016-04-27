@@ -1,6 +1,5 @@
 package io.buoyant.namerd
 
-import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -21,7 +20,7 @@ class DtabStoreTest extends FunSuite {
     def put(ns: Ns, dtab: Dtab) =
       fail("unexpected put")
 
-    def list() =
+    def list(): Activity[Set[Ns]] =
       fail("unexpected list")
 
     def observe(ns: Ns) =
@@ -33,7 +32,7 @@ class DtabStoreTest extends FunSuite {
     def delete(ns: Ns) = Future.Unit
     def update(ns: Ns, dtab: Dtab, v: DtabStore.Version) = Future.Unit
     def put(ns: Ns, dtab: Dtab) = Future.Unit
-    def list() = Future.value(Set.empty)
+    def list(): Activity[Set[Ns]] = Activity.pending
     def observe(ns: Ns) = Activity.pending
   }
 

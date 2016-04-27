@@ -10,7 +10,7 @@ trait DtabStore {
   import DtabStore.Version
 
   /** List all namespaces */
-  def list(): Future[Set[Ns]]
+  def list(): Activity[Set[Ns]]
 
   /**
    * Create a new dtab.  Returns a DtabNamespaceAlreadyExistsException if a
@@ -57,7 +57,7 @@ object DtabStore {
   class Proxy(underlying: DtabStore) extends DtabStore {
     protected[this] val self = underlying
 
-    def list(): Future[Set[String]] = self.list()
+    def list(): Activity[Set[Ns]] = self.list()
     def create(ns: Ns, dtab: Dtab): Future[Unit] = self.create(ns, dtab)
     def delete(ns: Ns): Future[Unit] = self.delete(ns)
     def update(ns: Ns, dtab: Dtab, version: Buf): Future[Unit] = self.update(ns, dtab, version)

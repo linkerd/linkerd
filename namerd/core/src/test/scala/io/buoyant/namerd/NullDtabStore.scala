@@ -5,7 +5,7 @@ import com.twitter.util.{Activity, Future}
 import io.buoyant.namerd.DtabStore.Version
 
 object NullDtabStore extends DtabStore {
-  override def list(): Future[Set[Ns]] = Future.never
+  override def list(): Activity[Set[Ns]] = Activity.pending
   override def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = Future.never
   override def put(ns: Ns, dtab: Dtab): Future[Unit] = Future.never
   override def observe(ns: Ns): Activity[Option[VersionedDtab]] = Activity.pending
