@@ -440,5 +440,4 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     Await.result(after.close(), 250.millis)
     assert(responses.last.isInterrupted != None)
   }
-
 }

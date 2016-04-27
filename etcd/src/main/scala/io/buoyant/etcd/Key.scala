@@ -206,13 +206,10 @@ class Key(key: Path, client: Service[Request, Response]) {
 
     def register(witness: Witness[Try[NodeOp]]) = {
       @volatile var closed = false
-      @volatile var currentOp: Future[NodeOp] = Future.never
 
-      def loop(idx: Option[Long], backoff: Stream[Duration]): Unit =
+      def loop(idx: Option[Long], backoff: Stream[Duration]): Future[Unit] =
         if (!closed) {
-          val op = get(recursive, wait = idx.isDefined, waitIndex = idx)
-          currentOp = op
-          op.respond {
+          get(recursive, wait = idx.isDefined, waitIndex = idx).transform {
             case note@Return(op) =>
               witness.notify(note)
               loop(Some(getIndex(op.node) + 1), origBackoff)
@@ -232,18 +229,20 @@ class Key(key: Path, client: Service[Request, Response]) {
 
                 case _ =>
                   witness.notify(Throw(BackoffsExhausted(key, e)))
+                  Future.Unit
               }
 
             case note@Throw(_) =>
               witness.notify(note)
+              Future.Unit
           }
-        }
+        } else Future.Unit
 
-      loop(None, origBackoff)
+      val pending = loop(None, origBackoff)
 
       Closable.make { _ =>
         closed = true
-        currentOp.raise(new FutureCancelledException)
+        pending.raise(new FutureCancelledException)
         Future.Unit
       }
     }
