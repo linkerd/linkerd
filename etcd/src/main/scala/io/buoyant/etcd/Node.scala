@@ -39,13 +39,13 @@ object Node {
   /**
    * Representation of a Node, as returned from etcd.
    */
-  private[etcd] case class Repr(
+  private[etcd] case class Json(
     key: String,
     modifiedIndex: Long,
     createdIndex: Long,
     dir: Boolean = false,
     value: Option[String] = None,
-    nodes: Option[Seq[Repr]] = None,
+    nodes: Option[Seq[Json]] = None,
     expiration: Option[String] = None,
     ttl: Option[Int] = None
   ) {
@@ -84,22 +84,21 @@ object Node {
 
   }
 
-  private[etcd] object Repr {
+  private[etcd] object Json {
 
     private[this] def toIsoDate(t: Time): String =
       ISODateTimeFormat.dateTime.print(t.inMillis)
 
-    def apply(node: Node): Repr = node match {
+    def apply(node: Node): Json = node match {
       case Data(key, modified, created, lease, Buf.Utf8(value)) =>
-        Repr(key.show, modified, created, false, Some(value), None,
+        Json(key.show, modified, created, false, Some(value), None,
           lease.map { l => toIsoDate(l.expiration) },
           lease.map(_.ttl.inSeconds))
 
       case Dir(key, modified, created, lease, nodes) =>
-        Repr(key.show, modified, created, true, None, Some(nodes.map(Repr(_))),
+        Json(key.show, modified, created, true, None, Some(nodes.map(Json(_))),
           lease.map { l => toIsoDate(l.expiration) },
           lease.map(_.ttl.inSeconds))
-
     }
   }
 }

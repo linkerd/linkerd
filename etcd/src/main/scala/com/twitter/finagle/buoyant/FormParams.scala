@@ -1,7 +1,6 @@
-// We need to access the netty-specific httpRequest type,
-// which is private[finagle].
-package com.twitter.finagle.http
+package com.twitter.finagle.buoyant
 
+import com.twitter.finagle.http.Request
 import org.jboss.netty.handler.codec.http.multipart._
 import scala.collection.JavaConverters._
 
@@ -12,7 +11,7 @@ import scala.collection.JavaConverters._
  * finagle. SO, we just shove this into the finagle package so that we
  * can do this.  This should be fed back upstream and then removed.
  */
-object EtcdFormParams {
+object FormParams {
   type Params = Map[String, Seq[String]]
 
   def set(req: Request, params: Seq[(String, String)]): Unit = {

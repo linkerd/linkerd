@@ -60,10 +60,10 @@ object NodeOp {
     val state = Etcd.State.mk(rsp)
     (req.method, rsp.status) match {
       case (Method.Get | Method.Head | Method.Delete, Status.Ok) =>
-        Etcd.readJson[Repr](rsp.content).flatMap(_.toNodeOp(state))
+        Etcd.readJson[Json](rsp.content).flatMap(_.toNodeOp(state))
 
       case (Method.Put | Method.Post, Status.Created) =>
-        Etcd.readJson[Repr](rsp.content).flatMap(_.toNodeOp(state))
+        Etcd.readJson[Json](rsp.content).flatMap(_.toNodeOp(state))
 
       case (method, status) =>
         Etcd.readJson[ApiError](rsp.content).transform {
@@ -76,10 +76,10 @@ object NodeOp {
   /**
    * Representation of a Node operation, as returned from etcd.
    */
-  private[etcd] case class Repr(
+  private[etcd] case class Json(
     action: String,
-    node: Option[Node.Repr] = None,
-    prevNode: Option[Node.Repr] = None
+    node: Option[Node.Json] = None,
+    prevNode: Option[Node.Json] = None
   ) {
 
     def toNodeOp(etcd: Etcd.State): Try[NodeOp] =
@@ -103,9 +103,9 @@ object NodeOp {
       }
   }
 
-  private[etcd] object Repr {
-    def apply(op: NodeOp): Repr =
-      Repr(op.action.name, Some(Node.Repr(op.node)), op.prevNode.map(Node.Repr(_)))
+  private[etcd] object Json {
+    def apply(op: NodeOp): Json =
+      Json(op.action.name, Some(Node.Json(op.node)), op.prevNode.map(Node.Json(_)))
   }
 
 }

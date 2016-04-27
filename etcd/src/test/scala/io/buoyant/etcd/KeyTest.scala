@@ -1,15 +1,13 @@
 package io.buoyant.etcd
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.http._
-import com.twitter.finagle.{Path, Filter, Service}
+import com.twitter.finagle.{Filter, Path, Service}
+import com.twitter.finagle.buoyant.FormParams
+import com.twitter.finagle.http.{Message, Method, Request, Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util.{Events => _, _}
 import io.buoyant.test.Events
-import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicLong
 import org.scalatest._
-import scala.collection.JavaConverters._
 
 class KeyTest extends FunSuite with ParallelTestExecution {
 
@@ -31,7 +29,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
       val (path, params) = req.method match {
         case Method.Post | Method.Put =>
           val path = Path.read(req.uri)
-          val params = EtcdFormParams.get(req)
+          val params = FormParams.get(req)
           (path, params)
 
         case _ =>
@@ -91,7 +89,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
         serve(method, rsp, v)
 
       case op: NodeOp =>
-        rsp.content = writeJson(NodeOp.Repr(op))
+        rsp.content = writeJson(NodeOp.Json(op))
         addState(op.etcd, rsp)
         rsp.status = (rsp.status, method) match {
           case (Status.Ok, Method.Put | Method.Post) => Status.Created

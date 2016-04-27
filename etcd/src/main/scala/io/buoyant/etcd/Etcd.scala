@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.{Path, Service}
-import com.twitter.finagle.http._
+import com.twitter.finagle.buoyant.FormParams
+import com.twitter.finagle.http.{MediaType, Message, Method, Request, Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util._
-import scala.collection.JavaConverters._
 
 case class Version(etcdserver: String, etcdcluster: String)
 
@@ -36,7 +36,7 @@ object Etcd {
       case Method.Post | Method.Put =>
         val req = Request(method, path.show)
         req.contentType = MediaType.WwwForm
-        EtcdFormParams.set(req, params)
+        FormParams.set(req, params)
         req
 
       case _ =>
