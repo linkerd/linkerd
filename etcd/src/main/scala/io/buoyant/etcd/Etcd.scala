@@ -54,6 +54,12 @@ object Etcd {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
+  /**
+   * An Etcd cluster's state as described in response headers.
+   *
+   * `index` reflects the X-Etcd-Index value as described at
+   * https://coreos.com/etcd/docs/latest/api.html.
+   */
   case class State(
     index: Long,
     clusterId: String = ""

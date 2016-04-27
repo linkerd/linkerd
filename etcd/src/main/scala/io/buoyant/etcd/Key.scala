@@ -4,14 +4,43 @@ import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
-import scala.collection.JavaConverters._
 
 case class BackoffsExhausted(key: Path, throwable: Throwable)
   extends Exception(key.show, throwable)
 
+object Key {
+
+  /*
+   * Helpers for building request params
+   */
+
+  private val Params = Seq.empty[(String, String)]
+
+  private def trueParam(name: String, cond: Boolean): Option[(String, String)] =
+    if (cond) Some(name -> "true") else None
+
+  private def falseParam(name: String, cond: Boolean): Option[(String, String)] =
+    if (!cond) Some(name -> "false") else None
+
+  private[this] val dirParam = Some("dir" -> "true")
+  private def dirOrValueParam(v: Option[Buf]): Option[(String, String)] = v match {
+    case None => dirParam
+    case Some(buf) =>
+      val Buf.Utf8(v) = buf
+      Some("value" -> v)
+  }
+
+  private def ttlParam(ttl: Option[Duration]): Option[(String, String)] = ttl.map {
+    case Duration.Zero => "ttl" -> ""
+    case ttl => "ttl" -> ttl.inSeconds.toString
+  }
+
+}
+
 class Key(key: Path, client: Service[Request, Response]) {
 
   import Etcd._
+  import Key._
 
   def path: Path = key
 
@@ -19,12 +48,6 @@ class Key(key: Path, client: Service[Request, Response]) {
   def key(name: String): Key = key(Path.read(name))
 
   private[this] lazy val uriPath = keysPrefixPath ++ key
-
-  private[this] def boolParam(cond: Boolean) = if (cond) Some("true") else None
-  private[this] def valueParams(v: Option[Buf]): Seq[(String, String)] = v match {
-    case Some(Buf.Utf8(v)) => Seq("value" -> v)
-    case _ => Seq("dir" -> "true")
-  }
 
   /**
    * Set the contents of a key.
@@ -47,12 +70,11 @@ class Key(key: Path, client: Service[Request, Response]) {
     waitIndex: Option[Long] = None,
     quorum: Boolean = false
   ): Future[NodeOp] = {
-    val params = Seq(
-      boolParam(recursive).map("recursive" -> _),
-      boolParam(quorum).map("quorum" -> _),
-      boolParam(wait).map("wait" -> _),
+    val params = Params ++
+      trueParam("recursive", recursive) ++
+      trueParam("quorum", quorum) ++
+      trueParam("wait", wait) ++
       waitIndex.map("waitIndex" -> _.toString)
-    ).flatten
     val req = mkReq(uriPath, params = params)
     req.headerMap("accept") = MediaType.Json
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
@@ -76,14 +98,10 @@ class Key(key: Path, client: Service[Request, Response]) {
     ttl: Option[Duration] = None,
     prevExist: Boolean = false
   ): Future[NodeOp] = {
-    var params = valueParams(value)
-    for (ttl <- ttl) {
-      val v = if (ttl == Duration.Zero) "" else ttl.inSeconds.toString
-      params = params :+ "ttl" -> v
-      if (prevExist) {
-        params = params :+ "prevExist" -> "true"
-      }
-    }
+    val params = Params ++
+      dirOrValueParam(value) ++
+      ttlParam(ttl) ++
+      trueParam("prevExist", prevExist)
     val req = mkReq(uriPath, Method.Put, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
@@ -104,10 +122,7 @@ class Key(key: Path, client: Service[Request, Response]) {
     value: Option[Buf],
     ttl: Option[Duration] = None
   ): Future[NodeOp] = {
-    val vp = valueParams(value)
-    val tp = ttl.map("ttl" -> _.inSeconds.toString)
-    val params = vp ++ Seq(tp).flatten
-
+    val params = Params ++ dirOrValueParam(value) ++ ttlParam(ttl)
     val req = mkReq(uriPath, Method.Post, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
@@ -122,7 +137,7 @@ class Key(key: Path, client: Service[Request, Response]) {
    * If `prevValue` is specified, the current node must have the
    * provided value.
    *
-   * If `prevExist` is specified, the node must already exist.
+   * If `prevExist` is false, the node is not required to exist.
    */
   def compareAndSwap(
     value: Buf,
@@ -132,18 +147,11 @@ class Key(key: Path, client: Service[Request, Response]) {
   ): Future[NodeOp] = {
     require(prevIndex.isDefined || prevValue.isDefined || !prevExist)
 
-    var params = Seq.empty[(String, String)]
-    for (i <- prevIndex) {
-      params = params :+ "prevIndex" -> i.toString
-    }
-    for (Buf.Utf8(v) <- prevValue) {
-      params = params :+ "prevValue" -> v
-    }
-    if (!prevExist) {
-      params = params :+ "prevExist" -> "false"
-    }
-    val Buf.Utf8(v) = value
-    params = params :+ "value" -> v
+    val Buf.Utf8(vstr) = value
+    val params = Seq("value" -> vstr) ++
+      prevIndex.map("prevIndex" -> _.toString) ++
+      prevValue.map { case Buf.Utf8(v) => "prevValue" -> v } ++
+      falseParam("prevExist", prevExist)
 
     val req = mkReq(uriPath, Method.Put, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
@@ -161,14 +169,9 @@ class Key(key: Path, client: Service[Request, Response]) {
     dir: Boolean = false,
     recursive: Boolean = false
   ): Future[NodeOp] = {
-    var params = Seq.empty[(String, String)]
-    params +:= "foo" -> "bar"
-    if (dir) {
-      params = params :+ ("dir" -> "true")
-      if (recursive) {
-        params = params :+ ("recursive" -> "true")
-      }
-    }
+    val params = Params ++
+      trueParam("dir", dir) ++
+      trueParam("recursive", recursive)
     val req = mkReq(uriPath, Method.Delete, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
@@ -192,8 +195,8 @@ class Key(key: Path, client: Service[Request, Response]) {
    * encountered, it is reported and polling stops.
    *
    * The Event is not reference-counted, so each observer initiates
-   * its own polling loop. This ensures, for instance, that the
-   * initial state of a tree is reported properly.
+   * its own polling loop. This ensures that the initial state of a
+   * tree is reported properly.
    */
   def events(
     recursive: Boolean = false,
