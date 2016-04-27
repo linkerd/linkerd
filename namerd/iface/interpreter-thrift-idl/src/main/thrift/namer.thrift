@@ -22,11 +22,7 @@ struct NameRef {
  * Produces a NameTree[Name.Bound]
  */
 
-struct Dentry {
-  1: Path prefix
-  2: string dst
-}
-typedef list<Dentry> Dtab
+typedef string Dtab
 
 struct BindReq {
   1: Dtab dtab

@@ -9,7 +9,7 @@ class DtabListHandler(
 ) extends Service[Request, Response] {
 
   override def apply(req: Request): Future[Response] =
-    store.list().map { list =>
+    store.list().toFuture.map { list =>
       val response = Response()
       response.contentType = MediaType.Html + ";charset=UTF-8"
       response.contentString = render(list)

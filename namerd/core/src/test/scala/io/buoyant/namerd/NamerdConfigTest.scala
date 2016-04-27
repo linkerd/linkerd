@@ -14,18 +14,7 @@ object TestDtabStoreInitializer extends DtabStoreInitializer {
 
 class TestDtabStore extends DtabStoreConfig {
   @JsonIgnore
-  override def mkDtabStore = new DtabStore {
-    override def list(): Future[Set[String]] = Future.value(Set.empty)
-    override def update(
-      ns: String,
-      dtab: Dtab,
-      version: Buf
-    ): Future[Unit] = Future.Unit
-    override def put(ns: String, dtab: Dtab): Future[Unit] = Future.Unit
-    override def observe(ns: String): Activity[Option[VersionedDtab]] = Activity.pending
-    override def create(ns: String, dtab: Dtab): Future[Unit] = Future.Unit
-    override def delete(ns: String): Future[Unit] = Future.Unit
-  }
+  override def mkDtabStore = NullDtabStore
 }
 
 class NamerdConfigTest extends FunSuite {
