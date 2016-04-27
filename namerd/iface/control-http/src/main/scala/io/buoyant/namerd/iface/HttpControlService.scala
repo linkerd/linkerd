@@ -187,7 +187,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
     // writeFuture is an accumulator of those flatMapped Futures
     @volatile var writeFuture: Future[Unit] = Future.Unit
-    closable = values.respond {
+    closable = values.dedup.respond {
       case Return(t) =>
         writeFuture = writeFuture.before {
           val buf = render(t)
