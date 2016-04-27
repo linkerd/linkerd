@@ -47,6 +47,8 @@ routers:
   identifier:
     kind: default
     httpUriInDst: true
+  responseClassifier:
+    kind: retryableIdempotent5XX
   client:
     loadBalancer:
       kind: p2c

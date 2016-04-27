@@ -4,7 +4,7 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Request, Response, Status}
-import com.twitter.finagle.stats.NullStatsReceiver
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
@@ -16,7 +16,7 @@ import org.scalatest.FunSuite
 
 class HttpEndToEndTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
+  override val defaultWait = 5.seconds
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -37,9 +37,10 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       Downstream(name, server)
     }
 
-    def const(name: String, value: String): Downstream =
+    def const(name: String, value: String, status: Status = Status.Ok): Downstream =
       mk(name) { _ =>
         val rsp = Response()
+        rsp.status = status
         rsp.contentString = value
         rsp
       }
@@ -54,7 +55,15 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       .newClient(name, "upstream").toService
   }
 
-  test("end-to-end linking") {
+  def basicConfig(dtab: Dtab) = 
+    s"""|routers:
+        |- protocol: http
+        |  baseDtab: ${dtab.show}
+        |  servers:
+        |  - port: 0
+        |""".stripMargin
+
+  test("linking") {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
     def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
@@ -71,15 +80,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       /http/1.1/GET/clifford => /p/dog ;
     """)
 
-    val yaml = s"""
-routers:
-- protocol: http
-  baseDtab: ${dtab.show}
-  servers:
-  - port: 0
-"""
-
-    val linker = Linker.Initializers(Seq(HttpInitializer)).load(yaml)
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
       .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
@@ -141,8 +142,112 @@ routers:
 
       // todo check stats
     } finally {
+      await(client.close())
       await(cat.server.close())
       await(dog.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+
+  test("marks 5XX as failure by default") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    val downstream = Downstream.mk("dog") {
+      case req if req.path == "/woof" =>
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp.contentString = "woof"
+        rsp
+      case _ =>
+        val rsp = Response()
+        rsp.status = Status.InternalServerError
+        rsp
+    }
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/http/1.1/GET/dog => /$label;")
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+    try {
+      val okreq = Request()
+      okreq.host = "dog"
+      okreq.uri = "/woof"
+      val okrsp = await(client(okreq))
+      assert(okrsp.status == Status.Ok)
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == None)
+
+      val errreq = Request()
+      errreq.host = "dog"
+      val errrsp = await(client(errreq))
+      assert(errrsp.status == Status.InternalServerError)
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(2))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  // TODO once repsonse classifiers are wired into requeues #361
+  ignore("retries retryableIdempotent5XX") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    @volatile var downstreamReqs = 0
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.status = if (downstreamReqs == 0) Status.InternalServerError else Status.Ok
+      downstreamReqs += 1
+      rsp
+    }
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/http/1.1/GET/dog => /$label;")
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+    try {
+      val okreq = Request()
+      okreq.host = "dog"
+      okreq.uri = "/woof"
+      val okrsp = await(client(okreq))
+      println(stats.counters.keys)
+      assert(okrsp.status == Status.Ok)
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
       await(server.close())
       await(router.close())
     }
