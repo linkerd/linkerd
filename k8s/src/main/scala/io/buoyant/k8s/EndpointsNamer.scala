@@ -1,14 +1,19 @@
 package io.buoyant.k8s
 
+import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
-import io.buoyant.k8s.Api.Closed
 import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
-import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
-class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
+class EndpointsNamer(
+  idPrefix: Path,
+  mkApi: String => NsApi,
+  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   import EndpointsNamer._
 
@@ -52,60 +57,75 @@ class EndpointsNamer(idPrefix: Path, mkApi: String => NsApi) extends Namer {
 
   private[this] object Ns {
     private[this] var caches: Map[String, NsCache] = Map.empty
+    // XXX once a namespace is watched, it is watched forever.
+    private[this] var _watches = Map.empty[String, Activity[Closable]]
+    def watches = _watches
+
+    /**
+     * Returns an Activity backed by a Future.  The resultant Activity is pending until the
+     * original future is satisfied.  When the Future is successful, the Activity becomes
+     * an Activity.Ok with a fixed value from the Future.  If the Future fails, the Activity
+     * becomes an Activity.Failed and the Future is retried with the given backoff schedule.
+     * Therefore, the legal state transitions are:
+     *
+     * Pending -> Ok
+     * Pending -> Failed
+     * Failed -> Failed
+     * Failed -> Ok
+     */
+    private[this] def retryToActivity[T](go: => Future[T]): Activity[T] = {
+      val state = Var[Activity.State[T]](Activity.Pending)
+      _retryToActivity(backoff, state)(go)
+      Activity(state)
+    }
+
+    private[this] def _retryToActivity[T](
+      remainingBackoff: Stream[Duration],
+      state: Var[Activity.State[T]] with Updatable[Activity.State[T]] = Var[Activity.State[T]](Activity.Pending)
+    )(go: => Future[T]): Unit = {
+      val _ = go.respond {
+        case Return(t) =>
+          state() = Activity.Ok(t)
+        case Throw(e) =>
+          state() = Activity.Failed(e)
+          remainingBackoff match {
+            case delay #:: rest =>
+              Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
+            case Stream.Empty =>
+          }
+      }
+    }
 
     def get(name: String): NsCache = synchronized {
       caches.get(name) match {
         case Some(ns) => ns
         case None =>
-          val ns = mkNs(name)
+          val ns = new NsCache(name)
+          val closable = retryToActivity { watch(name, ns) }
+          _watches += (name -> closable)
           caches += (name -> ns)
           ns
       }
     }
 
-    private[this] def mkNs(name: String): NsCache = {
-      val nsCache = new NsCache(name)
-      _watches = _watches + (name -> watch(name, nsCache))
-      nsCache
-    }
-
-    // XXX once a namespace is watched, it is watched forever.  also
-    // theres probably some poor error behavior.
-    private[this] var _watches = Map.empty[String, Closable]
-    def watches = _watches
-
-    private[this] def watch(namespace: String, services: NsCache): Closable = {
+    private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)
       val endpointsApi = ns.endpoints
-      val close = new AtomicReference(Closable.nop)
 
       Trace.letClear {
-        val init = {
-          log.debug("k8s initializing %s", namespace)
-          val endpoints = endpointsApi.get()
-
-          close.set(Closable.make { _ =>
-            endpoints.raise(Closed)
-            Future.Unit
-          })
-
-          endpoints.onSuccess { list =>
-            services.initialize(list)
-          }.onFailure { e =>
-            log.error(e, "k8s failed to list endpoints")
-          }
-        }
-
-        init.foreach { init =>
+        log.debug("k8s initializing %s", namespace)
+        endpointsApi.get().map { list =>
+          services.initialize(list)
           val (updates, closable) = endpointsApi.watch(
-            resourceVersion = init.metadata.flatMap(_.resourceVersion)
+            resourceVersion = list.metadata.flatMap(_.resourceVersion)
           )
-          close.set(closable)
-          updates.foreach(services.update)
+          // fire-and-forget this traversal over an AsyncStream that updates the services state
+          val _ = updates.foreach(services.update)
+          closable
+        }.onFailure { e =>
+          log.error(e, "k8s failed to list endpoints")
         }
       }
-
-      Closable.all(ns, Closable.ref(close))
     }
   }
 }
