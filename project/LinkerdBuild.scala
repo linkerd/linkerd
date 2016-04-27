@@ -534,8 +534,8 @@ object LinkerdBuild extends Base {
       configCore,
       consul,
       k8s,
-      testUtil
       marathon,
+      testUtil
       Interpreter.all,
       Linkerd.all,
       Namer.all,
