@@ -16,7 +16,7 @@ import scala.util.Random
 /**
  * Etcd client integration tests.
  *
- * Boots an etcd instance on localhost:4001.
+ * Boots an etcd instance on a random local port.
  */
 class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
 
