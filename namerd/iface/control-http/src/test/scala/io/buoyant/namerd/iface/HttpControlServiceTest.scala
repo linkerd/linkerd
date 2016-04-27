@@ -9,7 +9,7 @@ import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.namer.ConfiguredNamersInterpreter
 import io.buoyant.namerd.storage.InMemoryDtabStore
-import io.buoyant.namerd.{Ns, DtabStore, NullDtabStore}
+import io.buoyant.namerd._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -71,6 +71,36 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
     await(store.create("graduation", Dtab.empty))
     readAndAssert(rsp.reader, """["yeezus","tlop","graduation"]""")
+
+    rsp.reader.discard()
+  }
+
+  test("streaming response is de-duplicated") {
+    val req = Request("/api/1/dtabs?watch=true")
+    val (dtabs, witness) = Activity[Set[Ns]]()
+    val store = new DtabStore {
+      def update(ns: Ns, dtab: Dtab, version: DtabStore.Version): Future[Unit] = ???
+      def put(ns: Ns, dtab: Dtab): Future[Unit] = ???
+      def observe(ns: Ns): Activity[Option[VersionedDtab]] = ???
+      def delete(ns: Ns): Future[Unit] = ???
+      def list(): Activity[Set[Ns]] = dtabs
+      def create(ns: Ns, dtab: Dtab): Future[Unit] = ???
+    }
+    val service = newService(store)
+    witness.notify(Return(Set.empty))
+    val rsp = Await.result(service(req), 1.second)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentType == Some(MediaType.Json))
+
+    readAndAssert(rsp.reader, """[]""")
+
+    witness.notify(Return(Set("hello")))
+    witness.notify(Return(Set("hello")))
+    witness.notify(Return(Set("hello")))
+    witness.notify(Return(Set("goodbye")))
+
+    readAndAssert(rsp.reader, """["hello"]""")
+    readAndAssert(rsp.reader, """["goodbye"]""")
 
     rsp.reader.discard()
   }
