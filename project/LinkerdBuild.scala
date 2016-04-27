@@ -535,12 +535,12 @@ object LinkerdBuild extends Base {
       consul,
       k8s,
       marathon,
-      testUtil
+      testUtil,
       Interpreter.all,
       Linkerd.all,
       Namer.all,
       Namerd.all,
-      Router.all,
+      Router.all
     )
     .settings(unidocSettings)
 }
