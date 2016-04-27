@@ -5,10 +5,11 @@ import com.twitter.finagle.{Dtab, Stack}
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
 import io.buoyant.router.RoutingFactory
+import io.buoyant.test.Exceptions
 import java.net.InetAddress
 import org.scalatest.FunSuite
 
-class RouterTest extends FunSuite {
+class RouterTest extends FunSuite with Exceptions {
 
   def parse(
     yaml: String,
@@ -58,7 +59,7 @@ label: yoghurt
 servers:
 - port: 1234
 """
-    intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
+    assertThrows[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("unknown protocol") {
@@ -68,7 +69,7 @@ label: hummus
 servers:
 - port: 1234
 """
-    intercept[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
+    assertThrows[com.fasterxml.jackson.databind.JsonMappingException] { parse(yaml) }
   }
 
   test("router overrides global params") {

@@ -5,10 +5,11 @@ import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.AttemptTTwitterUpgrade
 import io.buoyant.linkerd.Linker
 import io.buoyant.router.Thrift.param.MethodInDst
+import io.buoyant.test.Exceptions
 import org.apache.thrift.protocol.TCompactProtocol
 import org.scalatest.FunSuite
 
-class ThriftInitializerTest extends FunSuite {
+class ThriftInitializerTest extends FunSuite with Exceptions {
 
   test("valid thrift config") {
     val config = """
@@ -42,7 +43,7 @@ class ThriftInitializerTest extends FunSuite {
       |    thriftProtocol: magic
     """.stripMargin
 
-    intercept[JsonMappingException] {
+    assertThrows[JsonMappingException] {
       Linker.Initializers(Seq(ThriftInitializer)).load(config)
     }
   }

@@ -9,7 +9,7 @@ class ZipkinTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    zipkin(None, None, None).newTracer()
+    val _ = zipkin(None, None, None).newTracer()
   }
 
   test("service registration") {

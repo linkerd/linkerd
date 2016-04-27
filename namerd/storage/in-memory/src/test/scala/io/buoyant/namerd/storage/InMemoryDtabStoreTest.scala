@@ -5,9 +5,10 @@ import com.twitter.finagle.Dtab
 import com.twitter.util.{Await, Activity}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, RichActivity, VersionedDtab}
+import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite
 
-class InMemoryDtabStoreTest extends FunSuite {
+class InMemoryDtabStoreTest extends FunSuite with Exceptions {
 
   def extractDtab(obs: Activity[Option[VersionedDtab]]): Dtab =
     Await.result(obs.values.map(_.get.get.dtab).toFuture)
@@ -52,21 +53,21 @@ class InMemoryDtabStoreTest extends FunSuite {
     assert(
       Await.result(store.create("hello", Dtab.read("/hello => /world"))).equals(())
     )
-    intercept[DtabNamespaceAlreadyExistsException] {
+    assertThrows[DtabNamespaceAlreadyExistsException] {
       Await.result(store.create("hello", Dtab.read("/hello => /world")))
     }
   }
 
   test("fail to update with incorrect version") {
     val store = mkStore
-    intercept[DtabVersionMismatchException] {
+    assertThrows[DtabVersionMismatchException] {
       Await.result(store.update("test", Dtab.read("/hello => /world"), InMemoryDtabStore.version(0)))
     }
   }
 
   test("fail to update non-existent namespace") {
     val store = mkStore
-    intercept[DtabNamespaceDoesNotExistException] {
+    assertThrows[DtabNamespaceDoesNotExistException] {
       Await.result(store.update("nothing", Dtab.read("/hello => /world"), InMemoryDtabStore.version(1)))
     }
   }

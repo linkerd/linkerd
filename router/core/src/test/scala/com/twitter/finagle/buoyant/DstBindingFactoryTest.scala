@@ -4,11 +4,11 @@ import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util._
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Exceptions, Awaits}
 import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.FunSuite
 
-class DstBindingFactoryTest extends FunSuite with Awaits {
+class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
 
   val testAddress = Address("test", 1)
 
@@ -155,7 +155,7 @@ class DstBindingFactoryTest extends FunSuite with Awaits {
       time.advance(1.second)
       timer.tick()
       assert(result.isDefined)
-      intercept[RequestTimeoutException](await(0.seconds)(result))
+      assertThrows[RequestTimeoutException](await(0.seconds)(result))
     }
   }
 }

@@ -5,10 +5,10 @@ import com.twitter.finagle.Service
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.k8s.{ObjectMeta, ObjectReference}
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Exceptions, Awaits}
 import org.scalatest.FunSuite
 
-class ApiTest extends FunSuite with Awaits {
+class ApiTest extends FunSuite with Awaits with Exceptions {
 
   val modified0 = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4502708","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"addresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
   val added0 = Buf.Utf8("""{"type":"ADDED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"kubernetes","namespace":"default","selfLink":"/api/v1/namespaces/default/endpoints/kubernetes","uid":"9f84ade1-242a-11e5-a145-42010af0faf2","resourceVersion":"7","creationTimestamp":"2015-07-06T22:01:58Z"},"subsets":[{"addresses":[{"ip":"104.154.78.240"}],"ports":[{"port":443,"protocol":"TCP"}]}]}}""")
@@ -164,7 +164,9 @@ class ApiTest extends FunSuite with Awaits {
           val rsp = Response()
           rsp.version = req.version
           val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
-          rsp.writer.write(msg) ensure rsp.writer.close()
+          rsp.writer.write(msg).ensure {
+            val _ = rsp.writer.close()
+          }
           Future.value(rsp)
         case 2 =>
           assert(req.uri == "/api/v1/endpoints")
@@ -204,7 +206,7 @@ class ApiTest extends FunSuite with Awaits {
                 assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                 val next = stream().uncons
                 await(closable.close())
-                intercept[Reader.ReaderDiscarded] {
+                assertThrows[Reader.ReaderDiscarded] {
                   await(next)
                 }
 
@@ -243,10 +245,10 @@ class ApiTest extends FunSuite with Awaits {
       closer.close()
     }
     assert(uncons.isDefined)
-    intercept[Reader.ReaderDiscarded] {
+    assertThrows[Reader.ReaderDiscarded] {
       await(uncons)
     }
-    intercept[Reader.ReaderDiscarded] {
+    assertThrows[Reader.ReaderDiscarded] {
       await {
         rsp.writer.write(added0)
       }

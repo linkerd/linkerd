@@ -11,7 +11,7 @@ class MarathonTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    marathon(None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = marathon(None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
