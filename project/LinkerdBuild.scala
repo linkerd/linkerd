@@ -260,7 +260,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("namerd")
-      .aggregate(core, Storage.all, Iface.all, main)
+      .aggregate(core, dcosBootstrap, Storage.all, Iface.all, main)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -529,6 +529,18 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Namerd.dcosBootstrap, Router.all, Namer.all, Interpreter.all, configCore, admin, testUtil)
+    .aggregate(
+      admin,
+      configCore,
+      consul,
+      k8s,
+      testUtil
+      marathon,
+      Interpreter.all,
+      Linkerd.all,
+      Namer.all,
+      Namerd.all,
+      Router.all,
+    )
     .settings(unidocSettings)
 }
