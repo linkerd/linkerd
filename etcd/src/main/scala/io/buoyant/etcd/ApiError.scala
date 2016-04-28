@@ -7,7 +7,7 @@ case class ApiError(
   index: Int
 ) extends Exception(message)
 
-// see: https://github.com/coreos/etcd/blob/master/Documentation/errorcode.md
+// see: https://github.com/coreos/etcd/blob/master/Documentation/v2/errorcode.md
 object ApiError {
 
   class ErrorGroup(val codes: Int*) {

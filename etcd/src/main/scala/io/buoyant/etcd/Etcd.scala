@@ -18,7 +18,7 @@ case class UnexpectedResponse(
   status: Status,
   state: Etcd.State
 ) extends Exception({
-  val ps = params.map { case (k, v) => s"$k -> $v" }.mkString("(", "), (", ")")
+  val ps = params.map { case (k, v) => s"($k -> $v)" }.mkString(", ")
   s"""$method $uri [$ps] $status"""
 })
 
