@@ -1,5 +1,6 @@
 body {
   font-family: "Source Sans Pro","Helvetica Neue",sans-serif;
+  font-weight: 400;
   background-image: radial-gradient(54% 23%, #161963 0%, #090B34 97%);
   background-size: cover;
   background-repeat: no-repeat;
@@ -36,18 +37,17 @@ body {
 
 nav {
   font-size: 18px;
-  font-weight: 100;
+  font-weight: 300;
   line-height: 1.1;
 }
 
 .navbar-container {
-  padding: 9px 27px;
+  padding: 20px 27px 9px 27px;
   width: 1215px; /*1161 + 27 + 27 (padding)*/
 }
 
-
 .nav {
-  margin-top: 4px;
+  margin-top: -11px;
 }
 
 .navbar-brand-img img {
@@ -56,6 +56,10 @@ nav {
 
 nav ul.navbar-nav {
   margin-left: 10px;
+}
+
+.navbar-right {
+  margin-top: 3px;
 }
 
 .modal-content {

@@ -20,8 +20,8 @@ class SummaryHandlerTest extends FunSuite with Awaits {
   val linker = Linker.Initializers(Seq(TestProtocol.Fancy, TestProtocol.Plain)).load(yaml)
   val handler = new SummaryHandler(linker)
 
-  test("serves ok on /") {
-    val rsp = await(handler(Request("/")))
+  test("serves ok on /legacy-dashboard") {
+    val rsp = await(handler(Request("/legacy-dashboard")))
     assert(rsp.status == Status.Ok)
   }
 
@@ -31,7 +31,7 @@ class SummaryHandlerTest extends FunSuite with Awaits {
   }
 
   test("serves linkerd admin and version") {
-    val rsp = await(handler(Request("/")))
+    val rsp = await(handler(Request("/legacy-dashboard")))
     assert(rsp.contentString.contains("linkerd admin"))
     assert(rsp.contentString.contains(Build.load().version))
   }

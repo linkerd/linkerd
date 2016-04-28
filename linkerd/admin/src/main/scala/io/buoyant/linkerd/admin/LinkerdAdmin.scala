@@ -24,8 +24,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
 
-    "/" -> new SummaryHandler(linker),
-    "/dashboard" -> new DashboardHandler,
+    "/" -> new DashboardHandler,
+    "/legacy-dashboard" -> new SummaryHandler(linker),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/admin",

@@ -11,7 +11,7 @@ private[admin] class SummaryHandler(linker: Linker) extends Service[Request, Res
   lazy val html = summaryHtml(linker.routers.length)
 
   override def apply(req: Request): Future[Response] = req.path match {
-    case "/" =>
+    case "/legacy-dashboard" =>
       AdminHandler.mkResponse(html)
     case _ =>
       Future.value(Response(Status.NotFound))
