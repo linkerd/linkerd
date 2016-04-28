@@ -23,9 +23,8 @@ routers:
 - protocol: http
   label: int-http
   baseDtab: |
-    /host     => /io.l5d.fs;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /host       => /io.l5d.fs;
+    /http/1.1/* => /host;
   identifier:
     kind: default
     httpUriInDst: true
@@ -37,9 +36,7 @@ routers:
   label: ext-http
   dstPrefix: /ext/http
   baseDtab: |
-    /host         => /$/io.buoyant.http.anyHostPfx/io.l5d.fs/web;
-    /method       => /$/io.buoyant.http.anyMethodPfx/host;
-    /ext/http/1.1 => /method;
+    /ext/http/1.1/*/* => /io.l5d.fs/web;
   servers:
   - port: 8080
     ip: 0.0.0.0
@@ -288,17 +285,17 @@ default)
 The default _dstPrefix_ is `/http`
 The default server _port_ is 4140
 
-As an example, here's an http router config that routes all `GET` requests to
-8081 and all `POST` requests to 8091
+As an example, here's an http router config that routes all `POST`
+requests to 8091 and all other requests to 8081:
 
 ```yaml
 routers:
 - protocol: http
   label: split-get-and-post
   baseDtab: |
-    /http/1.1 => /method;
-    /method/GET => /$/io.buoyant.http.anyHost/$/inet/127.1/8081;
-    /method/POST => /$/io.buoyant.http.anyHost/$/inet/127.1/8091;
+    /method/*    => /$/inet/127.1/8081;
+    /method/POST => /$/inet/127.1/8091;
+    /http/1.1    => /method;
   servers:
     port: 5000
 ```
@@ -376,7 +373,7 @@ routers:
 - protocol: thrift
   label: port-shifter
   baseDtab: |
-    /thrift   => /$/inet/127.1/5005;
+    /thrift => /$/inet/127.1/5005;
   servers:
   - port: 4004
     ip: 0.0.0.0
@@ -521,7 +518,7 @@ Once configured, to use the file-based namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/GET => /io.l5d.fs
+  /http/1.1/* => /io.l5d.fs
 ```
 
 <a name="zookeeper"></a>
@@ -551,7 +548,7 @@ Once configured, to use the ServerSets namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/GET => /io.l5d.serversets/discovery/prod;
+  /http/1.1/* => /io.l5d.serversets/discovery/prod;
 ```
 
 <a name="consul"></a>
@@ -582,7 +579,7 @@ the dtab. The Consul namer takes one parameter in its path, which is the Consul
 datacenter. For example:
 ```
 baseDtab: |
-  /http/1.1/GET =>  /io.l5d.consul/dc1;
+  /http/1.1/* => /io.l5d.consul/dc1;
 ```
 
 <a name="disco-k8s"></a>
@@ -625,7 +622,7 @@ Once configured, to use the Kubernetes namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /http/1.1/GET => /io.l5d.k8s/prod/http;
+  /http/1.1/* => /io.l5d.k8s/prod/http;
 ```
 
 <a name="marathon"></a>
@@ -672,8 +669,7 @@ the dtab.
 baseDtab: |
   /marathonId => /io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-  /method     => /$/io.buoyant.http.anyMethodPfx/host;
-  /http/1.1   => /method;
+  /http/1.1/* => /host;
 ```
 
 <a name="configuring-routing"></a>
