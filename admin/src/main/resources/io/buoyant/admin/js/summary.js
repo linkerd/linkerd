@@ -55,8 +55,8 @@ var BigBoard = (function() {
   );
   var metricsParams = [];
 
-  function url() {
-    return "/admin/metrics?" + $.param({m: metricsParams}, true);
+  function requestBody() {
+    return $.param({m: metricsParams}, true);
   }
 
   function clientToMetric(client) {
@@ -101,8 +101,10 @@ var BigBoard = (function() {
 
     function update() {
       $.ajax({
-        url: url(),
+        url: "/admin/metrics",
+        type: "POST",
         dataType: "json",
+        data: requestBody(),
         cache: false,
         success: function(data) {
           _.map(summaryKeys, function(key) {

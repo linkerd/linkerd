@@ -29,7 +29,7 @@ class Admin(app: TApp) {
     "/admin/shutdown" -> new ShutdownHandler(app),
     "/admin/tracing" -> new TracingHandler,
     "/admin/logging" -> new LoggingHandler,
-    "/admin/metrics" -> new MetricQueryHandler,
+    "/admin/metrics" -> new MetricsQueryHandler,
     Path.Clients -> new ClientRegistryHandler(Path.Clients),
     Path.Servers -> new ServerRegistryHandler(Path.Servers),
     "/admin/files/" -> ResourceHandler.fromJar(
