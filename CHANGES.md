@@ -1,5 +1,7 @@
 ## x.x.x
 
+## 0.4.0
+
 * Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
   time to spend binding a path.
 * Add experimental support for storing dtabs in Kubernetes via the
