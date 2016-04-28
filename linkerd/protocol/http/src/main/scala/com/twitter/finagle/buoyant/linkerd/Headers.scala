@@ -47,8 +47,8 @@ object Headers {
   object RequestId {
     val Key = Prefix + "reqid"
 
-    def set(headers: HeaderMap, traceId: SpanId): HeaderMap = {
-      headers.set(Key, traceId.toString)
+    def set(headers: HeaderMap, traceId: SpanId): Unit = {
+      val _ = headers.set(Key, traceId.toString)
     }
   }
 
@@ -58,8 +58,8 @@ object Headers {
     def get(headers: HeaderMap): Option[Float] =
       headers.get(Key).flatMap(s => Try(s.toFloat).toOption).filter(f => f >= 0f && f <= 1f)
 
-    def clear(headers: HeaderMap): Option[String] = {
-      headers.remove(Key)
+    def clear(headers: HeaderMap): Unit = {
+      val _ = headers.remove(Key)
     }
   }
 
