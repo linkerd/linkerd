@@ -22,12 +22,12 @@ object Key {
   private def falseParam(name: String, cond: Boolean): Option[(String, String)] =
     if (!cond) Some(name -> "false") else None
 
-  private[this] val dirParam = Some("dir" -> "true")
-  private def dirOrValueParam(v: Option[Buf]): Option[(String, String)] = v match {
+  private[this] val dirParam = ("dir" -> "true")
+  private def dirOrValueParam(v: Option[Buf]): (String, String) = v match {
     case None => dirParam
     case Some(buf) =>
       val Buf.Utf8(v) = buf
-      Some("value" -> v)
+      ("value" -> v)
   }
 
   private def ttlParam(ttl: Option[Duration]): Option[(String, String)] = ttl.map {
@@ -99,9 +99,9 @@ class Key(key: Path, client: Service[Request, Response]) {
     prevExist: Boolean = false
   ): Future[NodeOp] = {
     val params = Params ++
-      dirOrValueParam(value) ++
       ttlParam(ttl) ++
-      trueParam("prevExist", prevExist)
+      trueParam("prevExist", prevExist) :+
+      dirOrValueParam(value)
     val req = mkReq(uriPath, Method.Put, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
@@ -123,8 +123,8 @@ class Key(key: Path, client: Service[Request, Response]) {
     ttl: Option[Duration] = None
   ): Future[NodeOp] = {
     val params = Params ++
-      dirOrValueParam(value) ++
-      ttlParam(ttl)
+      ttlParam(ttl) :+
+      dirOrValueParam(value)
     val req = mkReq(uriPath, Method.Post, params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
