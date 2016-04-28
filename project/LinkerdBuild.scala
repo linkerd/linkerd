@@ -526,6 +526,7 @@ object LinkerdBuild extends Base {
       admin,
       configCore,
       consul,
+      etcd,
       k8s,
       marathon,
       testUtil,
