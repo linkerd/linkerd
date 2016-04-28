@@ -8,10 +8,11 @@ import java.util.concurrent.ConcurrentHashMap
 class MaximumObservationsReached(maxObservations: Int)
   extends Exception(s"The maximum number of concurrent observations has been reached ($maxObservations)")
 
-class ObserverCache[K, T](activeCapacity: Int, inactiveCapacity: Int)(mkObserver: K => Observer[T]) {
+class ObserverCache[K <: AnyRef, T](activeCapacity: Int, inactiveCapacity: Int)(mkObserver: K => Observer[T]) {
 
   def get(key: K): Try[Observer[T]] = {
-    Option(Return(activeCache.get(key))).getOrElse {
+    println(s"get $key")
+    Option(activeCache.get(key)).map(Return(_)).getOrElse {
       synchronized {
         Option(activeCache.get(key))
           .map(Return(_))
