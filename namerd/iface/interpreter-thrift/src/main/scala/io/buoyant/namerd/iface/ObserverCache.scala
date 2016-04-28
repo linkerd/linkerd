@@ -8,7 +8,32 @@ import java.util.concurrent.ConcurrentHashMap
 class MaximumObservationsReached(maxObservations: Int)
   extends Exception(s"The maximum number of concurrent observations has been reached ($maxObservations)")
 
-class ObserverCache[K <: AnyRef, T](activeCapacity: Int, inactiveCapacity: Int)(mkObserver: K => Observer[T]) {
+/**
+ * A cache for Observer[T].  ObserverCache contains two levels of caching: active and inactive.
+ *
+ * The active cache is for Observers that have current outstanding requests against them.
+ * Therefore, any Observer in the active cache must not be closed as this would cause the
+ * outstanding requests to hang.
+ *
+ * The inactive cache is for Observers without outstanding requests against them.  These Observers
+ * are kept open while in the inactive cache in case they receive a request and need to be moved
+ * to the active cache.  The inactive cache has LRU eviction and Observers are closed upon
+ * eviction.  Since Observers in the inactive cache have no outstanding requests against them,
+ * this is safe to do.
+ *
+ * When get is called, the Observer for that key is moved to the active cache if it exists or
+ * created and placed in the active cache if it does not exist.  When the value of an Observer
+ * in the active cache changes, the Observer is moved to the inactive cache.  If the inactive
+ * cache is full at that time, an older inactive Observer will be evicted.
+ *
+ * @param activeCapacity The maximum size of the active cache.  If get would cause the active cache
+ *                       to exceed this size, a MaximumObservationsReached exception is returned
+ *                       instead.
+ * @param inactiveCapacity The maximum size of the inactive cache.  LRU eviction is used to
+ *                         maintain this constraint.
+ * @param mkObserver The function to use to create new Observers if they are not in either cache.
+ */
+class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 10)(mkObserver: K => Observer[T]) {
 
   def get(key: K): Try[Observer[T]] = {
     println(s"get $key")
