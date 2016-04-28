@@ -29,7 +29,7 @@ object AdminHandler extends HtmlView {
             <li><a href="/metrics">metrics</a></li>
             <li><a href="/admin/logging">logging</a></li>
             <li><a href="https://linkerd.io/help/">help</a></li>
-            <!-- <li><a href="/dashboard">Beta</a></li> -->
+            <li><a href="/legacy-dashboard">legacy dashboard</a></li>
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
@@ -55,7 +55,11 @@ object AdminHandler extends HtmlView {
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li>router overview</li>
+            <li><a href="/delegator">dtab</a></li>
+            <li><a href="/metrics">metrics</a></li>
+            <li><a href="/admin/logging">logging</a></li>
+            <li><a href="https://linkerd.io/help/">help</a></li>
+            <li><a href="/legacy-dashboard">legacy dashboard</a></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li>version ${Build.load().version}</li>

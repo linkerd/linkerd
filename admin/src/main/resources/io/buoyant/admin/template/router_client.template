@@ -1,5 +1,5 @@
 <div class="router-header-large">
-  {{client}}
+  /{{client}}
 </div>
 
 <div class="client-metrics row">

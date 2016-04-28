@@ -17,10 +17,6 @@
   line-height: 12px;
 }
 
-.metric-large, .metric-small {
-  font-weight: 600;
-}
-
 .success-metric-container {
   border-left: 1px solid #4AD8AC;
 }
