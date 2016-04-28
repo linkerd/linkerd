@@ -15,8 +15,7 @@ routers:
     /host => /io.l5d.fs;
     /host/127.0.0.1:4140 => /host/default;
     /host/localhost:4140 => /host/default;
-    /method => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /http/1.1/* => /host;
   servers:
   - port: 4140
     ip: 0.0.0.0

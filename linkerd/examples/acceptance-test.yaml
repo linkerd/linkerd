@@ -128,9 +128,8 @@ routers:
 - protocol: http
   label: tlsStatic
   baseDtab: |
-    /host     => /io.l5d.fs;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /host       => /io.l5d.fs;
+    /http/1.1/* => /host;
   client:
     tls:
       kind: io.l5d.clientTls.static
@@ -146,9 +145,8 @@ routers:
 - protocol: http
   label: tlsBoundPath
   baseDtab: |
-    /host     => /io.l5d.fs;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /host       => /io.l5d.fs;
+    /http/1.1/* => /host;
   client:
     tls:
       kind: io.l5d.clientTls.boundPath

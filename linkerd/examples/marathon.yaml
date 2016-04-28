@@ -14,8 +14,7 @@ routers:
   baseDtab: |
     /marathonId => /io.l5d.marathon;
     /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-    /method     => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1   => /method;
+    /http/1.1/* => /host;
   servers:
   - port: 4140
     ip: 0.0.0.0
