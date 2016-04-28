@@ -175,8 +175,10 @@ UpdateableChart.prototype._resize = function() {
 UpdateableChart.prototype._getMetrics = function() {
   if (this.metrics.length) {
     $.ajax({
-      url: "/admin/metrics?" + $.param({m: this.metrics}, true), //use shallow/traditional encoding
+      url: "/admin/metrics",
+      type: "POST",
       dataType: "json",
+      data: $.param({m: this.metrics}, true), //use shallow/traditional encoding
       cache: false,
       success: (function(data) {
         this.updateMetrics(data);
