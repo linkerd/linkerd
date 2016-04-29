@@ -14,6 +14,7 @@ class BuoyantMainTest extends TwitterServer {
   def main() {}
 }
 
+// TODO: these tests are not getting run
 class LinkerdAdminTest extends FunSuite with Awaits {
 
   test("serves buoyant admin at /") {

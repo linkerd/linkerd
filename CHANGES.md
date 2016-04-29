@@ -1,5 +1,7 @@
 ## x.x.x
 
+## 0.4.0
+
 * Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
   time to spend binding a path.
 * Add experimental support for storing dtabs in Kubernetes via the
@@ -9,6 +11,9 @@
 * Add `/api/1/bind`, `/api/1/addr`, and `/api/1/delegate` HTTP APIs to namerd
   * Most HTTP APIs now support `?watch=true` for returning updates via a
     streaming response.
+* Add ACL and authentication support to the ZooKeeper DtabStore.
+* Support wildcards in dtabs!
+* New linkerd dashboard is now enabled by default!! :chart_with_upwards_trend:
 
 ## 0.3.1
 

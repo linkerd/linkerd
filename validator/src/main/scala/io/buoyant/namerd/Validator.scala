@@ -20,10 +20,7 @@ object Validator extends TwitterServer {
 
   val namerdNs = "validation"
   val hostName = "skrrt"
-  val baseDtab = Dtab.read("""
-    /method => /$/io.buoyant.http.anyMethodPfx/host ;
-    /http/1.1 => /method ;
-  """)
+  val baseDtab = Dtab.read("/http/1.1/* => /host ;")
 
   def await[T](a: Awaitable[T], d: Duration = 10.seconds): T = Await.result(a, d)
 

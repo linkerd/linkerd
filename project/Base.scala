@@ -14,7 +14,7 @@ import scalariform.formatter.preferences._
  * Base project configuration.
  */
 class Base extends Build {
-  val headVersion = "0.3.1"
+  val headVersion = "0.4.0"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)

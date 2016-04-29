@@ -6,8 +6,7 @@ routers:
 - protocol: http
   baseDtab: |
     /host     => /consul/dc1;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /http/1.1/* => /host;
   identifier:
     kind: default
     httpUriInDst: true

@@ -14,9 +14,8 @@ storage:
   kind: io.buoyant.namerd.storage.inMemory
   namespaces:
     galaxyquest: |
-      /host     => /io.l5d.fs;
-      /method   => /$/io.buoyant.http.anyMethodPfx/host;
-      /http/1.1 => /method;
+      /host       => /io.l5d.fs;
+      /http/1.1/* => /host;
 namers:
 - kind: io.l5d.fs
   rootDir: examples/disco

@@ -44,17 +44,19 @@ var ProcInfo = (function() {
   return function(metricsCollector, $root, t, buildVersion) {
     template = t
     stats[0].value = buildVersion;
-    var url = refreshUri + "?";
 
+    var requestBody = "";
     _.map(stats, function(stat) {
       if (stat.dataKey)
-        url += "&m="+stat.dataKey;
+        requestBody += "&m="+stat.dataKey;
     });
 
     function update() {
       $.ajax({
-        url: url,
+        url: refreshUri,
+        type: "POST",
         dataType: "json",
+        data: requestBody,
         cache: false,
         success: function(data) {
           render($root, data);
