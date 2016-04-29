@@ -1,7 +1,9 @@
 package io.buoyant.etcd
 
+import com.twitter.converisons.time._
 import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.http._
+import com.twitter.finagle.service.Backoff
 import com.twitter.io.Buf
 import com.twitter.util._
 
@@ -76,7 +78,7 @@ class Key(key: Path, client: Service[Request, Response]) {
       trueParam("wait", wait) ++
       waitIndex.map("waitIndex" -> _.toString)
     val req = mkReq(uriPath, params = params)
-    req.headerMap("accept") = MediaType.Json
+    req.accept = MediaType.Json
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
@@ -202,7 +204,7 @@ class Key(key: Path, client: Service[Request, Response]) {
    */
   def events(
     recursive: Boolean = false,
-    backoff: Stream[Duration] = Stream.empty
+    backoff: Stream[Duration] = Backoff.exponentialJittered(10.millis, 10.minutes)
   ): Event[Try[NodeOp]] = new Event[Try[NodeOp]] {
     private[this] val origBackoff = backoff
 
