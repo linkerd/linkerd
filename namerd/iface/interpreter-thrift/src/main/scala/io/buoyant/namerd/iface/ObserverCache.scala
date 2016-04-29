@@ -3,7 +3,7 @@ package io.buoyant.namerd.iface
 import com.google.common.cache.{CacheBuilder, RemovalListener, RemovalNotification}
 import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.namerd.iface.ThriftNamerInterface.Observer
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{Callable, ConcurrentHashMap}
 
 class MaximumObservationsReached(maxObservations: Int)
   extends Exception(s"The maximum number of concurrent observations has been reached ($maxObservations)")
@@ -33,10 +33,9 @@ class MaximumObservationsReached(maxObservations: Int)
  *                         maintain this constraint.
  * @param mkObserver The function to use to create new Observers if they are not in either cache.
  */
-class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 10)(mkObserver: K => Observer[T]) {
+class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 110)(mkObserver: K => Observer[T]) {
 
-  def get(key: K): Try[Observer[T]] = {
-    println(s"get $key")
+  def get(key: K): Try[Observer[T]] =
     Option(activeCache.get(key)).map(Return(_)).getOrElse {
       synchronized {
         Option(activeCache.get(key))
@@ -44,7 +43,6 @@ class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity:
           .getOrElse(makeActive(key))
       }
     }
-  }
 
   private[this] val activeCache = new ConcurrentHashMap[K, Observer[T]]
   private[this] val inactiveCache = CacheBuilder.newBuilder()
@@ -60,7 +58,6 @@ class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity:
       val obs = Option(inactiveCache.getIfPresent(key)).getOrElse {
         mkObserver(key)
       }
-      inactiveCache.invalidate(key)
       activeCache.put(key, obs)
       obs.nextValue().ensure {
         makeInactive(key, obs)
@@ -73,7 +70,10 @@ class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity:
   private[this] def makeInactive(key: K, obs: Observer[T]): Unit = {
     synchronized {
       activeCache.remove(key)
-      inactiveCache.put(key, obs)
+      // insert obs into the inactive cache if it's not present
+      val _ = inactiveCache.get(key, new Callable[Observer[T]] {
+        def call = obs
+      })
     }
   }
 }
