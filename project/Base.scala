@@ -178,7 +178,8 @@ class Base extends Build {
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
-      .configs(EndToEndTest).settings(inConfig(EndToEndTest)(Defaults.testSettings))
+      .configs(EndToEndTest)
+      .settings(inConfig(EndToEndTest)(Defaults.testSettings))
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {
@@ -193,9 +194,7 @@ class Base extends Build {
 
     def withIntegration(): Project = project
       .configs(IntegrationTest)
-      .settings(inConfig(IntegrationTest)(
-        Defaults.testSettings :+ (parallelExecution := false)
-      ))
+      .settings(inConfig(IntegrationTest)(Defaults.testSettings :+ (parallelExecution := false)))
       .dependsOn(testUtil % IntegrationTest)
 
     /** Writes build metadata into the projects resources */

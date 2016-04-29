@@ -30,6 +30,12 @@ object Deps {
   val jacksonYaml =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
+  // parses a variety of timestamp formats (like RFC3339)
+  val jodaTime = Seq(
+    "joda-time" % "joda-time"    % "2.7",
+    "org.joda"  % "joda-convert" % "1.7"
+  )
+
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
 }
