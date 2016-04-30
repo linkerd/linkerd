@@ -1,11 +1,12 @@
-package io.buoyant.namerd.storage.etcd
+package io.buoyant.namerd
+package storage.etcd
 
-import com.twitter.finagle.Path
-import com.twitter.util._
-import io.buoyant.namerd.{Ns, DtabStore}
-import io.buoyant.etcd.{Node, NodeOp, Key}
+import com.twitter.finagle.{Dtab, Path}
+import com.twitter.util.{Activity, Future, _}
+import io.buoyant.etcd.{Key, Node, NodeOp}
 
 class EtcdDtabStore(key: Key) extends DtabStore {
+  import DtabStore.Version
 
   /** List all namespaces */
   override def list(): Activity[Set[Ns]] = {
@@ -24,17 +25,21 @@ class EtcdDtabStore(key: Key) extends DtabStore {
                   val namespaces = nodes.map(_.key).map(namespace).toSet
                   state = Activity.Ok(namespaces)
                 case data: Node.Data =>
-                  // ERROR
+                // ERROR
               }
 
             case NodeOp.Action.Create =>
-              for(Activity.Ok(namespaces: Set[Ns]) <- state) {
-                state = Activity.Ok(namespaces + namespace(nodeOp.node.key))
+              state match {
+                case Activity.Ok(namespaces) =>
+                  state = Activity.Ok(namespaces + namespace(nodeOp.node.key))
+                case _ =>
               }
 
             case NodeOp.Action.Delete =>
-              for(Activity.Ok(namespaces: Set[Ns]) <- state) {
-                state = Activity.Ok(namespaces - namespace(nodeOp.node.key))
+              state match {
+                case Activity.Ok(namespaces) =>
+                  state = Activity.Ok(namespaces - namespace(nodeOp.node.key))
+                case _ =>
               }
 
             case action =>
@@ -46,4 +51,14 @@ class EtcdDtabStore(key: Key) extends DtabStore {
     }
     Activity(run)
   }
+
+  def create(ns: Ns, dtab: Dtab): Future[Unit] = ???
+
+  def delete(ns: Ns): Future[Unit] = ???
+
+  def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = ???
+
+  def put(ns: Ns, dtab: Dtab): Future[Unit] = ???
+
+  def observe(ns: Ns): Activity[Option[VersionedDtab]] = ???
 }
