@@ -4,10 +4,10 @@ package storage.etcd
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
-import io.buoyant.etcd.Key
+import io.buoyant.etcd.{ApiError, Key}
 
 class EtcdDtabStore(root: Key) extends DtabStore {
-  import DtabStore.Version
+  import DtabStore.{DtabVersionMismatchException, Version}
 
   def list(): Activity[Set[Ns]] = ???
 
@@ -18,7 +18,12 @@ class EtcdDtabStore(root: Key) extends DtabStore {
   def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = {
     val Buf.Utf8(vstr) = version
     val index = vstr.toLong
-    root.key(Path.Utf8(ns)).compareAndSwap(Buf.Utf8(dtab.show), prevIndex = Some(index)).unit
+    val buf = Buf.Utf8(dtab.show)
+    val key = root.key(Path.Utf8(ns))
+    key.compareAndSwap(buf, prevIndex = Some(index)).unit.rescue {
+      case ApiError(ApiError.TestFailed, _, _, _) =>
+        Future.exception(new DtabVersionMismatchException)
+    }
   }
 
   def put(ns: Ns, dtab: Dtab): Future[Unit] =
