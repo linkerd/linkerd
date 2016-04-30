@@ -180,12 +180,6 @@ class Key(key: Path, client: Service[Request, Response]) {
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
-  /** Find the greatest index referenced in a tree of nodes. */
-  private[this] def getIndex(node: Node): Long = node match {
-    case Node.Data(_, idx, _, _, _) => idx
-    case Node.Dir(_, idx, _, _, nodes) => nodes.foldLeft(idx)(_ max getIndex(_))
-  }
-
   /**
    * An Event constructed by watching an etcd key.
    *
@@ -216,13 +210,14 @@ class Key(key: Path, client: Service[Request, Response]) {
           get(recursive, wait = idx.isDefined, waitIndex = idx).transform {
             case note@Return(op) =>
               witness.notify(note)
-              loop(Some(getIndex(op.node) + 1), origBackoff)
+              loop(Some(op.etcd.index + 1), origBackoff)
 
             case note@Throw(ApiError(ApiError.KeyNotFound, _, _, idx)) =>
               witness.notify(note)
               loop(Some(idx + 1), origBackoff)
 
-            case note@Throw(ApiError(ApiError.EventIndexCleared, _, _, idx)) =>
+            case Throw(ApiError(ApiError.EventIndexCleared, _, _, idx)) =>
+              // no need to notify on this, the we'll catch up on the next read.
               loop(Some(idx + 1), origBackoff)
 
             case note@Throw(NonFatal(e)) =>

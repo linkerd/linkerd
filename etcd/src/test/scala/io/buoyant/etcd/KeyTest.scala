@@ -129,11 +129,11 @@ class KeyTest extends FunSuite with ParallelTestExecution {
   }
 
   private[this] object Watch {
-    def unapply(params: Params): Option[(Boolean, Option[Int])] = {
+    def unapply(params: Params): Option[(Boolean, Option[Long])] = {
       val Recursive(recursive) = params
-      val idx = getParam(params, "wait").find(_ == "true") flatMap { _ =>
+      val idx = getParam(params, "wait").find(_ == "true").flatMap { _ =>
         getParam(params, "waitIndex") flatMap { waitIndex =>
-          Try(waitIndex.toInt).toOption
+          Try(waitIndex.toLong).toOption
         }
       }
       Some((recursive, idx))
@@ -393,12 +393,12 @@ class KeyTest extends FunSuite with ParallelTestExecution {
       NodeOp(
         NodeOp.Action.Create,
         Node.Dir(newKey, 1, 0, Some(Node.Lease(30.seconds.fromNow, 30.seconds))),
-        Etcd.State(0)
+        Etcd.State(1)
       ),
       NodeOp(
         NodeOp.Action.Expire,
         Node.Dir(newKey, 2, 0, None),
-        Etcd.State(0),
+        Etcd.State(2),
         Some(Node.Dir(newKey, 1, 0, None))
       )
     )
@@ -409,12 +409,12 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     val key = mkKey(base) {
       case (Method.Get, Watch(true, None)) if currentIndex < responses.length =>
         val idx = currentIndex.toInt
-        requested(idx).setDone()
-        responses(idx)
+        requested(idx.toInt).setDone()
+        responses(idx.toInt)
 
       case (Method.Get, Watch(true, Some(idx))) if idx < responses.length =>
-        requested(idx).setDone()
-        responses(idx)
+        requested(idx.toInt).setDone()
+        responses(idx.toInt)
     }
 
     val before = Events.take(4, key.events(recursive = true))
@@ -437,5 +437,36 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     assert(!responses.last.isDefined)
     Await.result(after.close(), 250.millis)
     assert(responses.last.isInterrupted != None)
+  }
+
+  test("Key.events: old modifiedIndex") {
+    val base = Path.read("/base")
+    val newKey = base ++ Path.Utf8("keyed")
+
+    val createdIndex, modifiedIndex = 123L
+    val liveState = 234L
+
+    val init, watch = new Promise[NodeOp]
+    @volatile var waitingIndex: Option[Long] = None
+    val key = mkKey(base) {
+      case (Method.Get, Watch(false, None)) =>
+        init
+
+      case (Method.Get, Watch(false, Some(idx))) =>
+        waitingIndex = Some(idx)
+        watch
+    }
+
+    val events = key.events()
+    val closable = events.respond(_ => ())
+    assert(waitingIndex == None)
+    init.setValue(NodeOp(
+      NodeOp.Action.Get,
+      Node.Data(newKey, modifiedIndex, createdIndex, None, Buf.Empty),
+      Etcd.State(liveState)
+    ))
+    assert(waitingIndex == Some(liveState + 1))
+    Await.result(closable.close(), 1.second)
+    assert(watch.isInterrupted.isDefined)
   }
 }
