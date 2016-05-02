@@ -6,12 +6,13 @@ import com.twitter.finagle.tracing.DefaultTracer
 import io.buoyant.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer.{NamerInitializer, ConflictingNamerInitializer, TestNamerInitializer, TestNamer}
+import io.buoyant.test.Exceptions
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
 import com.twitter.finagle.tracing.{debugTrace => fDebugTrace}
 
-class LinkerTest extends FunSuite {
+class LinkerTest extends FunSuite with Exceptions {
 
   def initializer(
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
@@ -85,7 +86,7 @@ class LinkerTest extends FunSuite {
          |  servers:
          |  - port: 2
          |""".stripMargin
-    intercept[com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException] { parse(yaml) }
+    assertThrows[com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException] { parse(yaml) }
   }
 
   test("router labels conflict") {
@@ -98,7 +99,7 @@ class LinkerTest extends FunSuite {
          |  servers:
          |  - port: 2
          |""".stripMargin
-    intercept[ConflictingLabels] { parse(yaml) }
+    assertThrows[ConflictingLabels] { parse(yaml) }
   }
 
   test("router labels don't conflict") {
@@ -129,7 +130,7 @@ class LinkerTest extends FunSuite {
          |  - port: 2
          |  - port: 3
          |""".stripMargin
-    intercept[ConflictingPorts] { parse(yaml) }
+    assertThrows[ConflictingPorts] { parse(yaml) }
   }
 
   test("servers conflict within a router") {
@@ -140,7 +141,7 @@ class LinkerTest extends FunSuite {
          |  - port: 1234
          |  - port: 1234
          |""".stripMargin
-    intercept[ConflictingPorts] { parse(yaml) }
+    assertThrows[ConflictingPorts] { parse(yaml) }
   }
 
   test("servers don't conflict on different ips") {
@@ -243,7 +244,7 @@ class LinkerTest extends FunSuite {
          |  servers:
          |  - port: 1
          |""".stripMargin
-    intercept[ConflictingSubtypes] {
+    assertThrows[ConflictingSubtypes] {
       initializer(namers = Seq(TestNamerInitializer, ConflictingNamerInitializer)).load(yaml)
     }
   }

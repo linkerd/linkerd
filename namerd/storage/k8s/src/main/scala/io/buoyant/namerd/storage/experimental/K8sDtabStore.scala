@@ -70,7 +70,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
         state.update(Activity.Ok(initState))
         val (stream, close) = watchApi.dtabs.watch(None, None, dtabList.apiVersion)
         closeRef.set(close)
-        stream.foldLeft(initState) { (nsMap, watchEvent) =>
+        val _ = stream.foldLeft(initState) { (nsMap, watchEvent) =>
           val newState: NsMap = watchEvent match {
             case DtabAdded(a) => nsMap + toDtabMap(a)
             case DtabModified(m) => nsMap + toDtabMap(m)
@@ -117,7 +117,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     }
 
     api.dtabs.named(ns).put(namedDtab(ns, dtab, Some(versionStr))).unit.rescue {
-      case io.buoyant.k8s.Api.Conflict(_) => Future.value(new DtabVersionMismatchException())
+      case io.buoyant.k8s.Api.Conflict(_) => Future.exception(new DtabVersionMismatchException())
     }
   }
 

@@ -6,10 +6,10 @@ import com.twitter.finagle.buoyant.FormParams
 import com.twitter.finagle.http.{Message, Method, Request, Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util.{Events => _, _}
-import io.buoyant.test.Events
+import io.buoyant.test.{Exceptions, Events}
 import org.scalatest._
 
-class KeyTest extends FunSuite with ParallelTestExecution {
+class KeyTest extends FunSuite with ParallelTestExecution with Exceptions {
 
   private[this]type Params = Map[String, Seq[String]]
 
@@ -286,7 +286,7 @@ class KeyTest extends FunSuite with ParallelTestExecution {
       case (_, _) =>
         Future(fail("should not have called the web service"))
     }
-    intercept[IllegalArgumentException] {
+    assertThrows[IllegalArgumentException] {
       key.compareAndSwap(Buf.Utf8("newval"))
     }
   }

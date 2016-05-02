@@ -19,7 +19,7 @@ object FormParams {
     for ((k, v) <- params) {
       enc.addBodyAttribute(k, v)
     }
-    enc.finalizeRequest()
+    val _ = enc.finalizeRequest()
   }
 
   def get(req: Request): Params = {

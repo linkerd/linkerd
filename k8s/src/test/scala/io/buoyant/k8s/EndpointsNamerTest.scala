@@ -64,7 +64,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
   }
 
   test("watches a namespace and receives updates") {
-    new Fixtures {
+    val _ = new Fixtures {
       assert(state == Activity.Pending)
       doInit.setDone()
       assertHas(3)
@@ -79,7 +79,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   test("retries initial failures") {
     Time.withCurrentTimeFrozen { time =>
-      new Fixtures {
+      val _ = new Fixtures {
         val e = new Exception()
         assert(state == Activity.Pending)
         doInit.setException(e)

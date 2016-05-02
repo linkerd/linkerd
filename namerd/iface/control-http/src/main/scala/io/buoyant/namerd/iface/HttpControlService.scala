@@ -194,7 +194,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
           if (buf == Buf.Empty)
             Future.Unit
           else
-            writer.write(buf).onFailure { _ => closable.close() }
+            writer.write(buf).onFailure { _ =>
+              val _ = closable.close()
+            }
         }
       case Throw(e) =>
         val _ = writer.write(Buf.Utf8(e.getMessage).concat(newline)).before(writer.close())

@@ -59,7 +59,7 @@ class EtcdIntegrationTest extends FunSuite with Awaits with BeforeAndAfterAll {
     if (process != null) {
       process.destroy()
     }
-    Process(Seq("rm", "-rf", etcdDir)).!
+    val _ = Process(Seq("rm", "-rf", etcdDir)).!
   }
 
   def serverName = s"/$$/inet/127.1/$etcdPort"

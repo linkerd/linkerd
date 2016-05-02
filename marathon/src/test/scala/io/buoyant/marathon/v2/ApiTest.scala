@@ -4,11 +4,11 @@ import com.twitter.finagle.http.{Response, Request}
 import com.twitter.finagle.{Address, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Exceptions, Awaits}
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
 
-class ApiTest extends FunSuite with Awaits {
+class ApiTest extends FunSuite with Awaits with Exceptions {
   val appsBuf = Buf.Utf8("""
     {
       "apps": [
@@ -103,7 +103,7 @@ class ApiTest extends FunSuite with Awaits {
     val failureService = Service.mk[Request, Response] { req =>
       Future.exception(new ClientFailure)
     }
-    intercept[ClientFailure] {
+    assertThrows[ClientFailure] {
       await(Api(failureService, "host", "prefix").getAppIds())
     }
   }

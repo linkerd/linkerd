@@ -4,9 +4,10 @@ import com.twitter.finagle.{Addr, Stack}
 import com.twitter.finagle.client.AddrMetadataExtraction.AddrMetadata
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.TlsClientInitializer
+import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite
 
-class boundPathTest extends FunSuite {
+class boundPathTest extends FunSuite with Exceptions {
   test("sanity") {
     val meta = AddrMetadata(Addr.Metadata("id" -> "/foo/bar"))
     val params = Stack.Params.empty + meta
@@ -21,7 +22,7 @@ class boundPathTest extends FunSuite {
   test("boundPath throws MatcherError on failed match in strict mode") {
     val meta = AddrMetadata(Addr.Metadata("id" -> "/foo/bar"))
     val params = Stack.Params.empty + meta
-    intercept[MatcherError] {
+    assertThrows[MatcherError] {
       boundPath(None, Seq(), Some(true)).tlsClientPrep.peerCommonName(params)
     }
   }

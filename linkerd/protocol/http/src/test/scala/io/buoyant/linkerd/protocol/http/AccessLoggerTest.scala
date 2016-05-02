@@ -15,7 +15,7 @@ class AccessLoggerTest extends FunSuite with Awaits {
     val logged = new JStringBuilder(2048)
 
     override def info(msg: String, items: Any*) {
-      logged.append(msg)
+      val _ = logged.append(msg)
     }
 
     def getLoggedLines(): String = logged.toString()
