@@ -9,6 +9,8 @@ import io.buoyant.namer.{NamerInitializer, ConflictingNamerInitializer, TestName
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
+import com.twitter.finagle.tracing.{debugTrace => fDebugTrace}
+
 class LinkerTest extends FunSuite {
 
   def initializer(
@@ -179,6 +181,7 @@ class LinkerTest extends FunSuite {
     val yaml =
       """|tracers:
          |- kind: test
+         |  debugTrace: true
          |routers:
          |- protocol: plain
          |  servers:
@@ -188,12 +191,14 @@ class LinkerTest extends FunSuite {
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
     assert(tracer != DefaultTracer)
     assert(linker.tracer != DefaultTracer)
+    assert(fDebugTrace())
   }
 
   test("with namers & tracers") {
     val yaml =
       """|tracers:
          |- kind: test
+         |  debugTrace: true
          |namers:
          |- kind: test
          |routers:
@@ -213,6 +218,7 @@ class LinkerTest extends FunSuite {
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
     assert(tracer.isInstanceOf[TestTracer])
     assert(linker.tracer.isInstanceOf[TestTracer])
+    assert(fDebugTrace())
   }
 
   test("with admin") {
