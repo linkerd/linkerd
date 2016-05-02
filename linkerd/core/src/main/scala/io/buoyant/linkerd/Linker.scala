@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{param, Path, Namer, Stack}
-import com.twitter.finagle.tracing.{NullTracer, DefaultTracer, BroadcastTracer, Tracer}
+import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
@@ -78,7 +78,11 @@ object Linker {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val tracer: Tracer = tracers.map(_.map(_.newTracer())) match {
+      val tracer: Tracer = tracers.map(_.map { t =>
+        // override the global {com.twitter.finagle.tracing.debugTrace} flag
+        fDebugTrace.parse(t.debugTrace.toString)
+        t.newTracer()
+      }) match {
         case Some(Nil) => NullTracer
         case Some(Seq(tracer)) => tracer
         case Some(tracers) => BroadcastTracer(tracers)

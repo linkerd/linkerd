@@ -10,6 +10,8 @@ import io.buoyant.test.Exceptions
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
+import com.twitter.finagle.tracing.{debugTrace => fDebugTrace}
+
 class LinkerTest extends FunSuite with Exceptions {
 
   def initializer(
@@ -180,6 +182,7 @@ class LinkerTest extends FunSuite with Exceptions {
     val yaml =
       """|tracers:
          |- kind: test
+         |  debugTrace: true
          |routers:
          |- protocol: plain
          |  servers:
@@ -189,12 +192,14 @@ class LinkerTest extends FunSuite with Exceptions {
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
     assert(tracer != DefaultTracer)
     assert(linker.tracer != DefaultTracer)
+    assert(fDebugTrace())
   }
 
   test("with namers & tracers") {
     val yaml =
       """|tracers:
          |- kind: test
+         |  debugTrace: true
          |namers:
          |- kind: test
          |routers:
@@ -214,6 +219,7 @@ class LinkerTest extends FunSuite with Exceptions {
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
     assert(tracer.isInstanceOf[TestTracer])
     assert(linker.tracer.isInstanceOf[TestTracer])
+    assert(fDebugTrace())
   }
 
   test("with admin") {

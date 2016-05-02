@@ -414,6 +414,9 @@ configuring tracers via a top-level `tracers` section:
 
 * *tracers* --
   * *kind* -- One of the supported tracers, by fully-qualified class name.
+  * *debugTrace* -- Print all traces to the console. Note this overrides the
+    global `-com.twitter.finagle.tracing.debugTrace` flag, and will default to
+    that flag if not set here.
   * Any options specific to the tracer
 
 Current tracers include:
@@ -434,6 +437,7 @@ tracers:
   host: localhost
   port: 9410
   sampleRate: 0.02
+  debugTrace: true
 ```
 
 <a name="naming"></a>

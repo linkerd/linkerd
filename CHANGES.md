@@ -1,5 +1,8 @@
 ## x.x.x
 
+* Add a `debugTrace` parameter to the `tracers` config section, which enables
+  printing all traces to the console.
+
 ## 0.4.0
 
 * Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
