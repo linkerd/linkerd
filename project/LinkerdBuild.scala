@@ -140,6 +140,10 @@ object LinkerdBuild extends Base {
         .dependsOn(core % "test->test;compile->compile")
         .withTests()
 
+      val etcd = projectDir("namerd/storage/etcd")
+        .dependsOn(core, LinkerdBuild.etcd)
+        .withTests()
+
       val zk = projectDir("namerd/storage/zk")
         .dependsOn(core)
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
@@ -492,6 +496,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
   val namerdStorageZk = Namerd.Storage.zk
