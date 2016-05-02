@@ -4,7 +4,7 @@ namerd is a service for managing linkerd (and finagle) name delegation
 (i.e. routing).
 
 ```
-Applicaion
+Application
   |
 Request
   |
@@ -18,7 +18,7 @@ Request
 Destination
 ```
 
-namerd is a service that resovles logical names to concrete addresses.  By
+namerd is a service that resolves logical names to concrete addresses.  By
 having linkerd use namerd for name delegation, we reduce the load on service
 discovery backends and can use namerd as a central place to control routing
 across a fleet of linkers.
