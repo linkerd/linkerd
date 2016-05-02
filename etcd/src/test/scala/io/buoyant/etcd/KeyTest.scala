@@ -409,8 +409,8 @@ class KeyTest extends FunSuite with ParallelTestExecution {
     val key = mkKey(base) {
       case (Method.Get, Watch(true, None)) if currentIndex < responses.length =>
         val idx = currentIndex.toInt
-        requested(idx.toInt).setDone()
-        responses(idx.toInt)
+        requested(idx).setDone()
+        responses(idx)
 
       case (Method.Get, Watch(true, Some(idx))) if idx < responses.length =>
         requested(idx.toInt).setDone()
