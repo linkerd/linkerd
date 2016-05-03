@@ -33,7 +33,7 @@ class MaximumObservationsReached(maxObservations: Int)
  *                         maintain this constraint.
  * @param mkObserver The function to use to create new Observers if they are not in either cache.
  */
-class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 110)(mkObserver: K => Observer[T]) {
+class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 10)(mkObserver: K => Observer[T]) {
 
   def get(key: K): Try[Observer[T]] =
     Option(activeCache.get(key)).map(Return(_)).getOrElse {
@@ -49,7 +49,7 @@ class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity:
     .maximumSize(inactiveCapacity)
     .removalListener(new RemovalListener[K, Observer[T]] {
       override def onRemoval(notification: RemovalNotification[K, Observer[T]]): Unit =
-        notification.getValue.close()
+        if (notification.wasEvicted()) notification.getValue.close()
     })
     .build[K, Observer[T]]()
 
@@ -59,6 +59,7 @@ class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity:
         mkObserver(key)
       }
       activeCache.put(key, obs)
+      inactiveCache.invalidate(key)
       obs.nextValue().ensure {
         makeInactive(key, obs)
       }

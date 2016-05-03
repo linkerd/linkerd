@@ -93,6 +93,7 @@ class ObserverCacheTest extends FunSuite {
     assert(one.closed.sample == false)
     // reactivate "one"
     assert(cache.get("one").get eq one.obs)
+    assert(one.closed.sample == false)
     // active cache is full
     assert(cache.get("two").isThrow)
   }

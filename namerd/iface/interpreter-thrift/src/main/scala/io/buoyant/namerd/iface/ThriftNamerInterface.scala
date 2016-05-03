@@ -259,7 +259,7 @@ class ThriftNamerInterface(
 
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
     activeCapacity = 100,
-    inactiveCapacity = 110
+    inactiveCapacity = 10
   )({
     case (ns, dtab, path) =>
       BindingObserver(interpreters(ns).bind(dtab, path), stamper)
