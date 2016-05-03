@@ -16,7 +16,7 @@ case class EtcdConfig(
   @JsonIgnore
   override def mkDtabStore: DtabStore = {
     new EtcdDtabStore(new Key(
-      pathPrefix.getOrElse(Path.read("/dtabs")),
+      pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
       Http.newService(s"${host getOrElse DefaultHost}:${port getOrElse DefaultPort}")
     ))
   }
