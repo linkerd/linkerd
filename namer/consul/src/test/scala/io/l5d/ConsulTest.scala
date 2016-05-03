@@ -11,7 +11,7 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    consul(None, None).newNamer(Stack.Params.empty)
+    val _ = consul(None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {

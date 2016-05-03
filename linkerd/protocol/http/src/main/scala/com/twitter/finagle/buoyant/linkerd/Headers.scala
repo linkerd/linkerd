@@ -36,11 +36,11 @@ object Headers {
     def set(headers: HeaderMap, id: TraceId): Unit = {
       val bytes = TraceId.serialize(id)
       val b64 = Base64.getEncoder().encodeToString(bytes)
-      headers.set(Key, b64)
+      val _ = headers.set(Key, b64)
     }
 
     def clear(headers: HeaderMap): Unit = {
-      headers.remove(Key)
+      val _ = headers.remove(Key)
     }
   }
 
@@ -48,7 +48,7 @@ object Headers {
     val Key = Prefix + "reqid"
 
     def set(headers: HeaderMap, traceId: SpanId): Unit = {
-      headers.set(Key, traceId.toString)
+      val _ = headers.set(Key, traceId.toString)
     }
   }
 
@@ -59,7 +59,7 @@ object Headers {
       headers.get(Key).flatMap(s => Try(s.toFloat).toOption).filter(f => f >= 0f && f <= 1f)
 
     def clear(headers: HeaderMap): Unit = {
-      headers.remove(Key)
+      val _ = headers.remove(Key)
     }
   }
 

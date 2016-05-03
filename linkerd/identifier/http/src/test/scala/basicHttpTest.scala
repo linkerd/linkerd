@@ -6,7 +6,7 @@ import org.scalatest.FunSuite
 
 class basicHttpTest extends FunSuite {
   test("sanity") {
-    new DefaultHttpIdentifierConfig().newIdentifier(Path.empty)
+    val _ = new DefaultHttpIdentifierConfig().newIdentifier(Path.empty)
   }
 
   test("service registration") {

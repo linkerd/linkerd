@@ -14,7 +14,7 @@ class FsTest extends FunSuite with NamerTestUtil {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    fs(Directory(Paths.get("."))).newNamer(Stack.Params.empty)
+    val _ = fs(Directory(Paths.get("."))).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -33,7 +33,9 @@ class FsTest extends FunSuite with NamerTestUtil {
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(FsInitializer)))
       val fs = mapper.readValue[NamerConfig](yaml).asInstanceOf[fs]
       assert(fs.rootDir.path == dir.toPath)
-    } finally (Seq("rm", "-rf", dir.getPath).!)
+    } finally {
+      val _ = Seq("rm", "-rf", dir.getPath).!
+    }
   }
 
   test("id is bound name") {
@@ -58,7 +60,9 @@ class FsTest extends FunSuite with NamerTestUtil {
 
       assertBoundIdAutobinds(namer, path, fs.prefix)
 
-    } finally (Seq("rm", "-rf", dir.getPath).!)
+    } finally {
+      val _ = Seq("rm", "-rf", dir.getPath).!
+    }
 
   }
 }

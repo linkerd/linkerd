@@ -90,7 +90,7 @@ class EndpointsNamer(
           state() = Activity.Failed(e)
           remainingBackoff match {
             case delay #:: rest =>
-              Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
+              val _ = Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
             case Stream.Empty =>
           }
       }

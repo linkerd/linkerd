@@ -74,7 +74,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             assert(tedRsp.contentString == "dude")
           }
         }
-      } finally (await(bill.server.close().join(ted.server.close())))
+      } finally {
+        await(bill.server.close().join(ted.server.close()).unit)
+      }
     }
   }
 
@@ -133,7 +135,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             assert(tedRsp.contentString == "dude")
           }
         }
-      } finally (await(bill.server.close().join(ted.server.close())))
+      } finally {
+        await(bill.server.close().join(ted.server.close()).unit)
+      }
     }
   }
 
@@ -199,7 +203,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
 
           }
         }
-      } finally (await(bill.server.close().join(ted.server.close())))
+      } finally {
+        await(bill.server.close().join(ted.server.close()).unit)
+      }
     }
   }
 
@@ -259,7 +265,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             }
           }
         }
-      } finally (await(bill.server.close().join(ted.server.close())))
+      } finally {
+        await(bill.server.close().join(ted.server.close()).unit)
+      }
     }
   }
 
@@ -272,7 +280,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
         w.close()
       }
       f(disco)
-    } finally (Seq("echo", "rm", "-rf", disco.getPath).!)
+    } finally {
+      val _ = Seq("echo", "rm", "-rf", disco.getPath).!
+    }
   }
 
   private[this] def withLinkerdClient(config: String)(f: Service[Request, Response] => Unit): Unit = {

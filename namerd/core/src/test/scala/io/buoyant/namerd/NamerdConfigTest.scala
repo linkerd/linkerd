@@ -38,7 +38,7 @@ class NamerdConfigTest extends FunSuite {
     assert(config.interfaces.head.addr.getAddress.isLoopbackAddress)
     assert(config.interfaces.head.addr.getPort == 1)
     // just check that this don't blow up
-    config.mk
+    val _ = config.mk
   }
 
   test("missing namers validation") {

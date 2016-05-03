@@ -95,7 +95,9 @@ class RoutingFactory[Req, Rsp](
 
         rsp <- service(req)
           .onFailure(_ => record(Annotations.Failure.Service))
-          .ensure(service.close())
+          .ensure {
+            val _ = service.close()
+          }
       } yield rsp
     }
 

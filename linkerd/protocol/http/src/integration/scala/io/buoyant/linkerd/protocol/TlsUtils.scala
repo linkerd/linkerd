@@ -66,7 +66,9 @@ object TlsUtils {
       }.toMap
 
       f(Certs (caCert, svcCerts) )
-    } finally(Seq("rm", "-rf", tmpdir.getPath).!)
+    } finally{
+      val _ = Seq("rm", "-rf", tmpdir.getPath).!
+    }
   }
 
   def upstreamTls(server: ListeningServer, tlsName: String, caCert: File) = {

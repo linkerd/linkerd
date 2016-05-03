@@ -4,17 +4,17 @@ import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Method, Request, Version}
 import com.twitter.util._
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Exceptions, Awaits}
 import java.net.SocketAddress
 import org.scalatest.FunSuite
 
-class IdentifierTest extends FunSuite with Awaits {
+class IdentifierTest extends FunSuite with Awaits with Exceptions {
 
   test("http/1.1 request without a host header") {
     val identifier = DefaultIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
-    intercept[IllegalArgumentException] {
+    assertThrows[IllegalArgumentException] {
       await(identifier(req))
     }
   }
