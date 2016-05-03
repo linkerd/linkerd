@@ -127,7 +127,9 @@ class Key(key: Path, client: Service[Request, Response]) {
     val params = Params ++
       ttlParam(ttl) :+
       dirOrValueParam(value)
-    val req = mkReq(uriPath, Method.Post, params)
+    val req = mkReq(uriPath, Method.Put, params)
+    println(req)
+    println(params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 

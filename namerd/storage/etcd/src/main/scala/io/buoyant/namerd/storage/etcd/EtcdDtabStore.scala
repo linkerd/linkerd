@@ -4,8 +4,9 @@ package storage.etcd
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.etcd.{Node, NodeOp, ApiError, Key}
-import io.buoyant.namerd.DtabStore.DtabNamespaceDoesNotExistException
+import io.buoyant.etcd.NodeOp.Action
+import io.buoyant.etcd.{ApiError, Key, Node, NodeOp}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException}
 
 class EtcdDtabStore(root: Key) extends DtabStore {
   import DtabStore.{DtabVersionMismatchException, Version}
@@ -53,16 +54,27 @@ class EtcdDtabStore(root: Key) extends DtabStore {
     Activity(run)
   }
 
-  def create(ns: Ns, dtab: Dtab): Future[Unit] = ???
+  def create(ns: Ns, dtab: Dtab): Future[Unit] = {
+    val buf = Buf.Utf8(dtab.show)
+    root.key(Path.Utf8(ns)).create(Some(buf)).rescue {
+      case ApiError(ApiError.NodeExist, _, _, _) =>
+        Future.exception(new DtabNamespaceAlreadyExistsException(ns))
+    }.unit
+  }
 
-  def delete(ns: Ns): Future[Unit] = ???
+  def delete(ns: Ns): Future[Unit] = {
+    root.key(Path.Utf8(ns)).delete().rescue {
+      case ApiError(ApiError.KeyNotFound, _, _, _) =>
+        Future.exception(new DtabNamespaceDoesNotExistException(ns))
+    }.unit
+  }
 
   def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = {
     val Buf.Utf8(vstr) = version
     val buf = Buf.Utf8(dtab.show)
     val key = root.key(Path.Utf8(ns))
     Future(vstr.toLong).rescue {
-      case NumberFormatException =>
+      case e: NumberFormatException =>
         Future.exception(new DtabVersionMismatchException)
     }.flatMap { index =>
       key.compareAndSwap(buf, prevIndex = Some(index))
@@ -71,11 +83,41 @@ class EtcdDtabStore(root: Key) extends DtabStore {
         Future.exception(new DtabVersionMismatchException)
       case ApiError(ApiError.KeyNotFound, _, _, _) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
+    }.onFailure {
+      case ApiError(code, message, cause, index) =>
+        println(code)
+        println(message)
     }.unit
   }
 
   def put(ns: Ns, dtab: Dtab): Future[Unit] =
     root.key(Path.Utf8(ns)).set(Some(Buf.Utf8(dtab.show))).unit
 
-  def observe(ns: Ns): Activity[Option[VersionedDtab]] = ???
+  def observe(ns: Ns): Activity[Option[VersionedDtab]] = {
+    val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
+
+      val key = root.key(Path.Utf8(ns))
+      key.events().respond {
+        case Return(nodeOp) => nodeOp.action match {
+          case Action.CompareAndDelete | Action.Delete | Action.Expire =>
+            updates.update(Activity.Ok(None))
+          case Action.CompareAndSwap | Action.Create | Action.Get | Action.Set | Action.Update =>
+            nodeOp.node match {
+              case Node.Data(_, _, _, _, Buf.Utf8(dtabStr)) =>
+                val version = Buf.Utf8(nodeOp.node.modifiedIndex.toString)
+                val dtab = Dtab.read(dtabStr)
+                updates.update(Activity.Ok(Some(VersionedDtab(dtab, version))))
+              case dir: Node.Dir =>
+                updates.update(Activity.Failed(new IllegalStateException(s"${key.path.show} is not a data node")))
+
+            }
+          case _ =>
+        }
+
+        case Throw(e) =>
+          updates.update(Activity.Failed(e))
+      }
+    }
+    Activity(run)
+  }
 }
