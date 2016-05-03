@@ -14,7 +14,7 @@ class EtcdConfigTest extends FunSuite with OptionValues {
   test("parse config") {
     val yaml =
       """|kind: io.buoyant.namerd.storage.experimental.etcd
-         |key: /foo/bar
+         |pathPrefix: /foo/bar
          |host: etcd.dentist
          |port: 80
       """.stripMargin
