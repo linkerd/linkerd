@@ -176,6 +176,7 @@ nav ul.navbar-nav {
 .router-latencies > div{
   font-size:12px;
   line-height: 32px;
+  font-weight: 300;
 }
 
 .router-latencies > div:not(:last-child) {

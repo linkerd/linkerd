@@ -10,15 +10,18 @@ var RouterClients = (function() {
 
   return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, clientContainerTemplate, colors) {
     var clientToColor = assignColorsToClients(colors, routers.clients(routerName));
-
-    var routerClients = [];
     var combinedClientGraph = CombinedClientGraph(metricsCollector, routerName, $clientEl.find(".router-graph"), clientToColor);
+    var clients = routers.clients(routerName);
+
+    var routerClients = _.map(clients, initializeClient);
+    if (routerClients.length == 0) {
+      $clientEl.hide();
+    }
 
     routers.onAddedClients(addClients);
 
-    _.map(routers.clients(routerName), initializeClient);
-
     function initializeClient(client) {
+      $clientEl.show();
       var colorsForClient = clientToColor[client.label];
       var $container = $(clientContainerTemplate({
         clientColor: colorsForClient.color
@@ -26,7 +29,7 @@ var RouterClients = (function() {
       var $metrics = $container.find(".metrics-container");
       var $chart = $container.find(".chart-container");
 
-      routerClients.push(RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, $chart, colorsForClient));
+      return RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, $chart, colorsForClient);
     }
 
     function addClients(addedClients) {
@@ -43,7 +46,9 @@ var RouterClients = (function() {
       // add new clients
       _.chain(addedClients)
         .filter(function(client) { return client.router === routerName })
-        .each(initializeClient)
+        .each(function(clientForRouter) {
+          routerClients.push(initializeClient(clientForRouter));
+        })
         .value();
     }
   }

@@ -1,7 +1,7 @@
 
 <div class="router-summary router-{{router}} row">
   <div class="router-header col-md-4 metric-large">
-    <div class="metric-header">Router</div>
+    <div class="router-subsection-title">Router</div>
     <div>
       {{#if router}}
         {{router}}
