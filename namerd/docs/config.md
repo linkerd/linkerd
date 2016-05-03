@@ -87,6 +87,17 @@ containing:
   * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
   The characters represent create, read, write, delete, and admin, respectively.
 
+### EtcdDtabStore
+*experimental*
+
+`io.buoyant.namerd.storage.experimental.etcd`
+
+Stores the dtab in Etcd.  Supports the following options
+
+* *host* -- Optional. The location of the etcd API.  (default: localhost)
+* *port* -- Optional. The port used to connect to the etcd API.  (default: 2379)
+* *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/dtabs")
+
 ## Namers
 
 Naming and service discovery are configured via the `namers` section of the

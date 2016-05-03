@@ -46,9 +46,9 @@ class EtcdDtabStore(root: Key) extends DtabStore {
 
             case action =>
           }
-          updates.update(state)
+          updates() = state
         case Throw(e) =>
-          updates.update(Activity.Failed(e))
+          updates() = Activity.Failed(e)
       }
     }
     Activity(run)
@@ -96,24 +96,24 @@ class EtcdDtabStore(root: Key) extends DtabStore {
       key.events().respond {
         case Return(nodeOp) => nodeOp.action match {
           case Action.CompareAndDelete | Action.Delete | Action.Expire =>
-            updates.update(Activity.Ok(None))
+            updates() = Activity.Ok(None)
           case Action.CompareAndSwap | Action.Create | Action.Get | Action.Set | Action.Update =>
             nodeOp.node match {
               case Node.Data(_, _, _, _, Buf.Utf8(dtabStr)) =>
                 val version = Buf.Utf8(nodeOp.node.modifiedIndex.toString)
                 val dtab = Dtab.read(dtabStr)
-                updates.update(Activity.Ok(Some(VersionedDtab(dtab, version))))
+                updates() = Activity.Ok(Some(VersionedDtab(dtab, version)))
               case dir: Node.Dir =>
-                updates.update(Activity.Failed(new IllegalStateException(s"${key.path.show} is not a data node")))
+                updates() = Activity.Failed(new IllegalStateException(s"${key.path.show} is not a data node"))
 
             }
           case _ =>
         }
 
         case Throw(ApiError(ApiError.KeyNotFound, _, _, _)) =>
-          updates.update(Activity.Ok(None))
+          updates() = Activity.Ok(None)
         case Throw(e) =>
-          updates.update(Activity.Failed(e))
+          updates() = Activity.Failed(e)
       }
     }
     Activity(run)

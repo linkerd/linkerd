@@ -2,6 +2,7 @@
 
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
   printing all traces to the console.
+* Add etcd backed dtab storage.
 
 ## 0.4.0
 

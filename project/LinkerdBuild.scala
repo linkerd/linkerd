@@ -270,7 +270,7 @@ object LinkerdBuild extends Base {
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.k8s, Storage.zk, Storage.etcd, Storage.inMemory
+        Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)

@@ -10,14 +10,13 @@ import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 case class EtcdConfig(
   host: Option[String],
   port: Option[Port],
-  key: Path
+  pathPrefix: Option[Path]
 ) extends DtabStoreConfig {
   import EtcdConfig._
-  require(key != null, "'key' field is required")
   @JsonIgnore
   override def mkDtabStore: DtabStore = {
     new EtcdDtabStore(new Key(
-      key,
+      pathPrefix.getOrElse(Path.read("/dtabs")),
       Http.newService(s"${host getOrElse DefaultHost}:${port getOrElse DefaultPort}")
     ))
   }

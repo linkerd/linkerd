@@ -8,7 +8,7 @@ import org.scalatest.{FunSuite, OptionValues}
 
 class EtcdConfigTest extends FunSuite with OptionValues {
   test("sanity") {
-    val store = EtcdConfig(None, None, Path.read("/foo/bar")).mkDtabStore
+    val store = EtcdConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore
   }
 
   test("parse config") {
@@ -22,7 +22,7 @@ class EtcdConfigTest extends FunSuite with OptionValues {
     val etcd = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[EtcdConfig]
     assert(etcd.host.value == "etcd.dentist")
     assert(etcd.port.value == Port(80))
-    assert(etcd.key == Path.read("/foo/bar"))
+    assert(etcd.pathPrefix == Some(Path.read("/foo/bar")))
   }
 
 }
