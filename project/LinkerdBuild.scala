@@ -141,8 +141,9 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val etcd = projectDir("namerd/storage/etcd")
-        .dependsOn(core, LinkerdBuild.etcd)
+        .dependsOn(core, LinkerdBuild.etcd % "integration->integration;compile->compile")
         .withTests()
+        .withIntegration()
 
       val zk = projectDir("namerd/storage/zk")
         .dependsOn(core)

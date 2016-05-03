@@ -66,7 +66,6 @@ object NodeOp {
         Etcd.readJson[Json](rsp.content).flatMap(_.toNodeOp(state))
 
       case (method, status) =>
-        println(s"Got method $method and status $status")
         Etcd.readJson[ApiError](rsp.content).transform {
           case Return(ae) => Throw(ae)
           case Throw(_) => Throw(UnexpectedResponse(method, req.uri, params, status, state))

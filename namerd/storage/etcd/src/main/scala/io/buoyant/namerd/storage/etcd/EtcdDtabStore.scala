@@ -37,7 +37,7 @@ class EtcdDtabStore(root: Key) extends DtabStore {
                 case _ =>
               }
 
-            case NodeOp.Action.Delete =>
+            case Action.CompareAndDelete | Action.Delete | Action.Expire =>
               state match {
                 case Activity.Ok(namespaces) =>
                   state = Activity.Ok(namespaces - namespace(nodeOp.node.key))
@@ -83,10 +83,6 @@ class EtcdDtabStore(root: Key) extends DtabStore {
         Future.exception(new DtabVersionMismatchException)
       case ApiError(ApiError.KeyNotFound, _, _, _) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
-    }.onFailure {
-      case ApiError(code, message, cause, index) =>
-        println(code)
-        println(message)
     }.unit
   }
 
@@ -114,6 +110,8 @@ class EtcdDtabStore(root: Key) extends DtabStore {
           case _ =>
         }
 
+        case Throw(ApiError(ApiError.KeyNotFound, _, _, _)) =>
+          updates.update(Activity.Ok(None))
         case Throw(e) =>
           updates.update(Activity.Failed(e))
       }

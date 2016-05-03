@@ -126,10 +126,9 @@ class Key(key: Path, client: Service[Request, Response]) {
   ): Future[NodeOp] = {
     val params = Params ++
       ttlParam(ttl) :+
-      dirOrValueParam(value)
+      dirOrValueParam(value) :+
+      ("prevExist" -> "false")
     val req = mkReq(uriPath, Method.Put, params)
-    println(req)
-    println(params)
     client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
   }
 
