@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{Dtab, Stack}
+import com.twitter.finagle.buoyant.DstBindingFactory
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
 import io.buoyant.router.RoutingFactory
@@ -95,5 +95,22 @@ servers:
     val router = parse(yaml, Stack.Params.empty)
     val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
     assert(interpreter.isInstanceOf[TestInterpreter])
+  }
+
+  test("with retries") {
+    val yaml =
+      """|protocol: plain
+         |client:
+         |  retries:
+         |    backoff:
+         |      kind: jittered
+         |      minMs: 100
+         |      maxMs: 10000
+         |    budget:
+         |      ttlSecs: 30
+         |      minRetriesPerSec: 3
+         |      percentCanRetry: 0.33
+         |""".stripMargin
+    assert(parse(yaml, Stack.Params.empty) != null)
   }
 }
