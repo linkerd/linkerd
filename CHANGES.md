@@ -3,6 +3,8 @@
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
   printing all traces to the console.
 * Add etcd backed dtab storage.
+* Add announcer support!  linkerd can now announce to service discovery backends!
+  * Add zk announcer.
 
 ## 0.4.0
 

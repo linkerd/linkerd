@@ -127,6 +127,20 @@ Each router must be configured as an object with the following params:
   configured [`namers`](#naming), with a fallback to the default Finagle `Namer.Global` that
   handles paths of the form `/$/`.
   * protocol-specific module params, if any (the _default_ module has none)
+* *announcers* (optional) -- a list of service discovery announcers that servers can announce to.
+  Each announcer is an object with the following params:
+  * *kind* -- the name of the announcer module
+  * announcer specific params, if any
+  
+### Announcers
+
+#### zk
+
+Announce to ZooKeeper using the serverset format.
+
+* *hosts* -- a list of hosts where ZooKeeper can be reached
+* *pathPrefix* -- (optional) the ZooKeeper path under which services should be registered. (default:
+  /discovery)
 
 <a name="basic-router-params"></a>
 ### Basic router parameters

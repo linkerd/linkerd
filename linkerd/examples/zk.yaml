@@ -8,11 +8,14 @@ routers:
 - protocol: http
   announcers:
   - kind: zk
+    hosts:
+    - 127.0.0.1:2181
+    pathPrefix: /discovery/prod
   baseDtab: |
     /host => /io.l5d.serversets;
     /http/1.1/* => /host;
   servers:
   - port: 4140
     ip: 0.0.0.0
-    label: 127.0.0.1:2181!/foobar!0
+    label: foobar
     announce: true

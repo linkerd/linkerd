@@ -49,6 +49,9 @@ routers:
     httpUriInDst: true
   announcers:
   - kind: zk
+    hosts:
+    - 127.0.0.1:2181
+    pathPrefix: /discovery/prod
   client:
     loadBalancer:
       kind: p2c
@@ -61,7 +64,8 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-    label: localhost:2180!/foo/bar!0
+    label: foo/bar
+    announce: true
     maxConcurrentRequests: 1000
 
 # TODO: test thrift traffic

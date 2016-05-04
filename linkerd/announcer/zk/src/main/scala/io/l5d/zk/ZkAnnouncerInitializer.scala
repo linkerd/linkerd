@@ -9,6 +9,6 @@ class ZkAnnouncerInitializer extends AnnouncerInitializer {
   override def configId = "zk"
 }
 
-case class ZkAnnouncerConfig() extends AnnouncerConfig {
-  override def mk(): Announcer = new ZkAnnouncer
+case class ZkAnnouncerConfig(hosts: Seq[String], pathPrefix: Option[String]) extends AnnouncerConfig {
+  override def mk(): Announcer = new ZkAnnouncer(hosts.mkString(","), pathPrefix.getOrElse("/discovery"))
 }
