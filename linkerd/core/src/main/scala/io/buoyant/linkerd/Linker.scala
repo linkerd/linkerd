@@ -30,10 +30,11 @@ object Linker {
     interpreter: Seq[InterpreterInitializer] = Nil,
     tlsClient: Seq[TlsClientInitializer] = Nil,
     tracer: Seq[TracerInitializer] = Nil,
-    identifier: Seq[IdentifierInitializer] = Nil
+    identifier: Seq[IdentifierInitializer] = Nil,
+    announcer: Seq[AnnouncerInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, announcer)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -50,7 +51,8 @@ object Linker {
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
     LoadService[TlsClientInitializer],
     LoadService[TracerInitializer],
-    LoadService[IdentifierInitializer]
+    LoadService[IdentifierInitializer],
+    LoadService[AnnouncerInitializer]
   )
 
   def parse(

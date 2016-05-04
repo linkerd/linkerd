@@ -63,6 +63,8 @@ trait Router {
   /** Return a router with TLS configuration read from the provided config. */
   def withTls(tls: TlsClientConfig): Router
 
+  def withAnnouncers(announcers: Seq[Announcer]): Router
+
   /**
    * Initialize a router by instantiating a downstream router client
    * so that its upstream `servers` may be bound.
@@ -80,6 +82,7 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
+    def announcers: Seq[Announcer]
   }
 
   private def configureServer(router: Router, server: Server): Server = {
@@ -106,6 +109,9 @@ trait RouterConfig {
   var failFast: Option[Boolean] = None
   var timeoutMs: Option[Int] = None
   var dstPrefix: Option[String] = None
+
+  @JsonProperty("announcers")
+  var _announcers: Option[Seq[AnnouncerConfig]] = None
 
   @JsonProperty("label")
   var _label: Option[String] = None
@@ -143,8 +149,10 @@ trait RouterConfig {
   def router(params: Stack.Params): Router = {
     val prms = params ++ routerParams
     val param.Label(label) = prms[param.Label]
+    val announcers = _announcers.toSeq.flatten.map(_.mk)
     protocol.router.configured(prms)
       .serving(servers.map(_.mk(protocol, label)))
+      .withAnnouncers(announcers)
       .maybeTransform(client.flatMap(_.tls).map(tls => _.withTls(tls)))
   }
 

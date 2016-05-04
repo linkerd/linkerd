@@ -47,6 +47,8 @@ routers:
   identifier:
     kind: default
     httpUriInDst: true
+  announcers:
+  - kind: zk
   client:
     loadBalancer:
       kind: p2c
@@ -59,6 +61,7 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
+    label: localhost:2180!/foo/bar!0
     maxConcurrentRequests: 1000
 
 # TODO: test thrift traffic

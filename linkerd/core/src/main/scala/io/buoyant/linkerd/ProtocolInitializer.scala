@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
-import com.twitter.util.Time
+import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
 import java.net.InetSocketAddress
@@ -40,7 +40,8 @@ trait ProtocolInitializer extends ConfigInitializer {
    */
   private case class ProtocolRouter(
     router: StackRouter[RouterReq, RouterRsp],
-    servers: Seq[Server] = Nil
+    servers: Seq[Server] = Nil,
+    announcers: Seq[Announcer] = Nil
   ) extends Router {
     def params = router.params
     def protocol = ProtocolInitializer.this
@@ -49,6 +50,8 @@ trait ProtocolInitializer extends ConfigInitializer {
       copy(router = router.withParams(ps))
 
     protected def withServers(ss: Seq[Server]): Router = copy(servers = ss)
+
+    def withAnnouncers(ann: Seq[Announcer]): Router = copy(announcers = ann)
 
     def initialize(): Router.Initialized = {
       if (servers.isEmpty) {
@@ -60,9 +63,9 @@ trait ProtocolInitializer extends ConfigInitializer {
       val adapted = adapter.andThen(factory)
       val servable = servers.map { server =>
         val stackServer = defaultServer.withParams(server.params)
-        ServerInitializer(protocol, server.addr, stackServer, adapted)
+        ServerInitializer(protocol, server.addr, stackServer, adapted, server.label, server.announce)
       }
-      InitializedRouter(protocol, params, factory, servable)
+      InitializedRouter(protocol, params, factory, servable, announcers)
     }
 
     private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
@@ -113,7 +116,8 @@ object ProtocolInitializer {
     protocol: ProtocolInitializer,
     params: Stack.Params,
     factory: ServiceFactory[Req, Rsp],
-    servers: Seq[Server.Initializer]
+    servers: Seq[Server.Initializer],
+    announcers: Seq[Announcer]
   ) extends Router.Initialized {
     def name: String = params[Label].label
     def close(t: Time) = factory.close(t)
@@ -124,7 +128,9 @@ object ProtocolInitializer {
     protocol: ProtocolInitializer,
     addr: InetSocketAddress,
     server: StackServer[Req, Rsp],
-    factory: ServiceFactory[Req, Rsp]
+    factory: ServiceFactory[Req, Rsp],
+    label: String,
+    announce: Boolean
   ) extends Server.Initializer {
     def params = server.params
     def router: String = server.params[Server.RouterLabel].label

@@ -15,9 +15,10 @@ class RouterTest extends FunSuite with Exceptions {
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
-    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
+    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer),
+    announcers: Seq[AnnouncerInitializer] = Seq(TestAnnouncerInitializer)
   ): Router = {
-    val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters))
+    val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters, announcers))
     val cfg = mapper.readValue[RouterConfig](yaml)
     val interpreter = cfg.interpreter.newInterpreter(cfg.routerParams)
     cfg.router(params + DstBindingFactory.Namer(interpreter))
@@ -95,5 +96,19 @@ servers:
     val router = parse(yaml, Stack.Params.empty)
     val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
     assert(interpreter.isInstanceOf[TestInterpreter])
+  }
+
+  test("announcer") {
+    val yaml =
+      """
+        |protocol: plain
+        |announcers:
+        |- kind: test
+        |servers:
+        |- label: foo
+        |  announce: true
+      """.stripMargin
+    val router = parse(yaml, Stack.Params.empty)
+    assert(router.initialize().announcers.head.isInstanceOf[TestAnnouncer])
   }
 }

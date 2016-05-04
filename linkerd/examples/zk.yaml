@@ -1,0 +1,18 @@
+namers:
+- kind: io.l5d.serversets
+  zkAddrs:
+    - host: 127.0.0.1
+      port: 2181
+
+routers:
+- protocol: http
+  announcers:
+  - kind: zk
+  baseDtab: |
+    /host => /io.l5d.serversets;
+    /http/1.1/* => /host;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+    label: 127.0.0.1:2181!/foobar!0
+    announce: true
