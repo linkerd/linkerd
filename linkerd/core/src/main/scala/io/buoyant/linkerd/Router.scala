@@ -156,9 +156,7 @@ trait RouterConfig {
 
   @JsonIgnore
   def responseClassifier: ResponseClassifier =
-    _responseClassifier.foldLeft(baseResponseClassifier) {
-      case (base, config) => config.mk orElse base
-    }
+    _responseClassifier.map(_.mk).getOrElse(PartialFunction.empty) orElse baseResponseClassifier
 
   @JsonIgnore
   def routerParams = Stack.Params.empty

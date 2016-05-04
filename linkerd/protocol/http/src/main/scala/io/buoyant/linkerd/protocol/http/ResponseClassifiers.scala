@@ -1,6 +1,7 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.twitter.finagle.http.{Method, Request, Response}
+import com.twitter.finagle.http.{Method, Request, Response, Status}
+import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.util.{NonFatal, Return, Throw}
 import io.buoyant.config.ConfigInitializer
@@ -11,6 +12,7 @@ object ResponseClassifiers {
   object Requests {
 
     case class ByMethod(methods: Set[Method]) {
+      def withMethods(other: Set[Method]): ByMethod = copy(methods ++ other)
       def unapply(req: Request): Boolean = methods.contains(req.method)
     }
 
@@ -34,27 +36,25 @@ object ResponseClassifiers {
      *   the methods OPTIONS and TRACE SHOULD NOT have side effects, and
      *   so are inherently idempotent.
      */
-    val Idempotent = ByMethod(Set(
-      Method.Get,
-      Method.Head,
+    val Idempotent = ReadOnly.withMethods(Set(
       Method.Put,
-      Method.Delete,
-      Method.Options,
-      Method.Trace
+      Method.Delete
     ))
   }
 
   object Responses {
 
     object Failure {
-      def unapply(rsp: Response): Boolean =
-        rsp.statusCode >= 500 && rsp.statusCode <= 599
-    }
+      def unapply(rsp: Response): Boolean = rsp.status match {
+        case Status.ServerError(_) => true
+        case _ => false
+      }
 
-    object Retryable {
-      // There are porbably some (linkerd-generated) failures that aren't
+      // There are probably some (linkerd-generated) failures that aren't
       // really retryable... For now just check if it's a failure.
-      def unapply(rsp: Response): Boolean = Failure.unapply(rsp)
+      object Retryable {
+        def unapply(rsp: Response): Boolean = Failure.unapply(rsp)
+      }
     }
   }
 
@@ -64,7 +64,7 @@ object ResponseClassifiers {
    */
   val RetryableIdempotentFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableIdempotentFailures") {
-      case ReqRep(Requests.Idempotent(), Return(Responses.Retryable()) | Throw(NonFatal(_))) =>
+      case ReqRep(Requests.Idempotent(), Return(Responses.Failure.Retryable()) | Throw(NonFatal(_))) =>
         ResponseClass.RetryableFailure
     }
 
@@ -74,7 +74,7 @@ object ResponseClassifiers {
    */
   val RetryableReadFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableReadFailures") {
-      case ReqRep(Requests.ReadOnly(), Return(Responses.Retryable()) | Throw(NonFatal(_))) =>
+      case ReqRep(Requests.ReadOnly(), Return(Responses.Failure.Retryable()) | Throw(NonFatal(_))) =>
         ResponseClass.RetryableFailure
     }
 
@@ -82,12 +82,8 @@ object ResponseClassifiers {
    * Classifies 5XX responses and all exceptions as non-retryable
    * failures.
    */
-  val NonRetryableFailures: ResponseClassifier =
-    ResponseClassifier.named("NonRetryableFailures") {
-      case ReqRep(_, Return(Responses.Failure()) | Throw(NonFatal(_))) =>
-        ResponseClass.NonRetryableFailure
-    }
-
+  val NonRetryableServerFailures: ResponseClassifier =
+    HttpResponseClassifier.ServerErrorsAsFailures
 }
 
 class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
@@ -113,7 +109,7 @@ class RetryableRead5XXInitializer extends ResponseClassifierInitializer {
 object RetryableRead5XXInitializer extends RetryableRead5XXInitializer
 
 class NonRetryable5XXConfig extends ResponseClassifierConfig {
-  def mk: ResponseClassifier = ResponseClassifiers.NonRetryableFailures
+  def mk: ResponseClassifier = ResponseClassifiers.NonRetryableServerFailures
 }
 
 class NonRetryable5XXInitializer extends ResponseClassifierInitializer {

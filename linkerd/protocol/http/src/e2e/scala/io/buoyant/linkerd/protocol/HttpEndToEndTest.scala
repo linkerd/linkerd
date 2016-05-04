@@ -209,7 +209,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
   }
 
-  // TODO once repsonse classifiers are wired into requeues #361
+  // TODO once response classifiers are wired into requeues #361
   ignore("retries retryableIdempotent5XX") {
     val stats = new InMemoryStatsReceiver
     val tracer = NullTracer
