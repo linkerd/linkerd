@@ -7,6 +7,8 @@
   are marked as failures.
 * Add a `retries` client config section supporting configurable retry
   budgets and backoffs.
+* Automatically retry certain types of failures, as determined by
+  response classifiers.
 
 ## 0.4.0
 
