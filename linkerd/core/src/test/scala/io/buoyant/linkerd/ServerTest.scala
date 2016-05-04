@@ -101,4 +101,13 @@ fancyRouter: true
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.params[RequestSemaphoreFilter.Param].sem.get.numInitialPermits == 1000)
   }
+
+  test("announce") {
+    val yaml =
+      """
+        |announce:
+        |- foobar
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq("foobar"))
+  }
 }

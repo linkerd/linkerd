@@ -7,8 +7,12 @@
   * Add auth `token` parameter to Consul Namer & Dtab Store
   * Add `datacenter` parameter to Consul Dtab Store
 * Add file-system based name interpreter.
+* Add auth `token` parameter to Consul Namer & Dtab Store
+* Add `datacenter` parameter to Consul Dtab Store
 * Introduce the _telemetry_ plugin subsystem to support arbitrary stats
   exporters and to eventually supplant the `tracers` subsystem.
+* Add announcer support! linkerd can now announce to service discovery backends!
+  * Add zk announcer.
 
 ## 0.7.3
 

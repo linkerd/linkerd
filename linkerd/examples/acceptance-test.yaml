@@ -51,6 +51,12 @@ routers:
     httpUriInDst: true
   responseClassifier:
     kind: io.l5d.retryableIdempotent5XX
+  announcers:
+  - kind: io.l5d.serversets
+    zkAddrs:
+    - host: 127.0.0.1
+      port: 2181
+    pathPrefix: /discovery/prod
   client:
     engine:
       kind: netty4
@@ -65,6 +71,9 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
+    label: foo/bar
+    announce:
+    - foo/bar
     maxConcurrentRequests: 1000
     engine:
       kind: netty3
