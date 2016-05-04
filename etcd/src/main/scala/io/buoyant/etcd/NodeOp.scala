@@ -62,7 +62,7 @@ object NodeOp {
       case (Method.Get | Method.Head | Method.Delete, Status.Ok) =>
         Etcd.readJson[Json](rsp.content).flatMap(_.toNodeOp(state))
 
-      case (Method.Put | Method.Post, Status.Created) =>
+      case (Method.Put | Method.Post, Status.Created | Status.Ok) =>
         Etcd.readJson[Json](rsp.content).flatMap(_.toNodeOp(state))
 
       case (method, status) =>
