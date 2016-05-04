@@ -23,10 +23,12 @@ class EtcdDtabStoreIntegrationTest extends EtcdFixture with Exceptions {
     val obs = store.observe("hello")
     assert(await(obs.toFuture).isEmpty)
     await(store.create("hello", Dtab.read("/hello => /world")))
-    assert(await(obs.toFuture).get.dtab == Dtab.read("/hello => /world"))
-    val version = await(obs.toFuture).get.version
-    await(store.update("hello", Dtab.read("/goodbye => /world"), version))
-    assert(await(obs.toFuture).get.dtab == Dtab.read("/goodbye => /world"))
+    val dtab = await(obs.toFuture).get
+    assert(dtab.dtab == Dtab.read("/hello => /world"))
+    await(store.update("hello", Dtab.read("/goodbye => /world"), dtab.version))
+    val updatedDtab = await(obs.toFuture).get
+    assert(updatedDtab.dtab == Dtab.read("/goodbye => /world"))
+    assert(updatedDtab.version != dtab.version)
   }
 
   test("fail to create duplicate namespace") { etcd =>
