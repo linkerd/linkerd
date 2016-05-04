@@ -2,11 +2,13 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.http.{Method, Request, Response, Status}
+import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
+import com.twitter.finagle.util.LoadService
 import com.twitter.util._
 import io.buoyant.router.Http
 import io.buoyant.router.http.DefaultIdentifier
@@ -209,23 +211,34 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
   }
 
-  // TODO once response classifiers are wired into requeues #361
-  ignore("retries retryableIdempotent5XX") {
+  val allMethods = Set[Method](Connect, Delete, Get, Head, Patch, Post, Put, Options, Trace)
+  val readMethods = Set[Method](Get, Head, Options, Trace)
+  val idempotentMethods = readMethods ++ Set[Method](Delete, Put)
+
+  def retryTest(kind: String, methods: Set[Method]): Unit = {
     val stats = new InMemoryStatsReceiver
     val tracer = NullTracer
 
-    @volatile var downstreamReqs = 0
+    @volatile var failNext = false
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
-      rsp.status = if (downstreamReqs == 0) Status.InternalServerError else Status.Ok
-      downstreamReqs += 1
+      rsp.status = if (failNext) Status.InternalServerError else Status.Ok
+      failNext = false
       rsp
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/http/1.1/GET/dog => /$label;")
-
-    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val dtab = Dtab.read(s"/http/1.1/*/dog => /$label;")
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  baseDtab: ${dtab.show}
+          |  responseClassifier:
+          |    kind: $kind
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
       .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
@@ -233,23 +246,58 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val server = router.servers.head.serve()
     val client = upstream(server)
     try {
-      val okreq = Request()
-      okreq.host = "dog"
-      okreq.uri = "/woof"
-      val okrsp = await(client(okreq))
-      println(stats.counters.keys)
-      assert(okrsp.status == Status.Ok)
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+      // retryable request, fails and is retried
+      for (method <- methods) {
+        val req = Request()
+        req.method = method
+        req.host = "dog"
+        failNext = true
+        stats.clear()
+        val rsp = await(client(req))
+        assert(rsp.status == Status.Ok)
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "retries", "requeues")) == Some(1))
+      }
+
+      // non-retryable request, fails and is not retried
+      for (method <- allMethods -- methods) {
+        val req = Request()
+        req.method = method
+        req.host = "dog"
+        failNext = true
+        stats.clear()
+        val rsp = await(client(req))
+        assert(rsp.status == Status.InternalServerError)
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == None)
+        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == None)
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "id", label, "retries", "requeues")) == None)
+      }
     } finally {
       await(client.close())
       await(downstream.server.close())
       await(server.close())
       await(router.close())
     }
+  }
+
+  test("retries retryableIdempotent5XX") {
+    retryTest("retryableIdempotent5XX", idempotentMethods)
+  }
+
+  test("retries retryablRead5XX") {
+    retryTest("retryableRead5XX", readMethods)
+  }
+
+  test("retries nonRetryable5XX") {
+    retryTest("nonRetryable5XX", Set.empty)
   }
 }
