@@ -243,7 +243,7 @@ _path/to/myapp/linkerd.yml_, you could start linkerd in docker with
 the following command:
 
 ```
-$ docker run -p 4140:4140 -v /absolute/path/to/myapp:/myapp -w /myapp buoyantio/linkerd:0.0.10-SNAPSHOT linkerd.yml
+$ docker run -p 4140:4140 -v /absolute/path/to/myapp:/myapp buoyantio/linkerd:0.0.10-SNAPSHOT /myapp/linkerd.yml
 ```
 
 The list of image names may be changed with a command like:
