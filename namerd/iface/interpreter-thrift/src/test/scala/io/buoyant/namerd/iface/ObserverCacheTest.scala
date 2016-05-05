@@ -1,5 +1,6 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namerd.iface.ThriftNamerInterface.{Stamp, Observer}
@@ -32,11 +33,17 @@ class ObserverCacheTest extends FunSuite {
     TestObserver(obs, event, closed)
   }
 
+  private[this] def activeSize(stats: InMemoryStatsReceiver): Int =
+    stats.gauges(Seq("observer-cache", "active-size"))().toInt
+  private[this] def inactiveSize(stats: InMemoryStatsReceiver): Int =
+    stats.gauges(Seq("observer-cache", "inactive-size"))().toInt
+
   test("observer cache caches") {
 
     var count = 0
 
-    val cache = new ObserverCache[String, String](1, 0)({ _ =>
+    val stats = new InMemoryStatsReceiver
+    val cache = new ObserverCache[String, String](1, 0, stats, { _: String =>
       count += 1
       testObserver[String]().obs
     })
@@ -46,17 +53,23 @@ class ObserverCacheTest extends FunSuite {
     assert(cache.get("one").isReturn)
     assert(cache.get("one").isReturn)
     assert(count == 1)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
   }
 
   test("observer cache limits active observations") {
 
-    val cache = new ObserverCache[String, String](2, 0)(_ => testObserver().obs)
+    val stats = new InMemoryStatsReceiver
+    val cache = new ObserverCache[String, String](2, 0, stats, _ => testObserver().obs)
 
     // insert "one" and "two" into the active cache
     assert(cache.get("one").isReturn)
     assert(cache.get("two").isReturn)
+    assert(activeSize(stats) == 2)
     // active cache is full
     assert(cache.get("three").isThrow)
+    assert(activeSize(stats) == 2)
+    assert(inactiveSize(stats) == 0)
   }
 
   test("observer cache deactivates observations") {
@@ -64,38 +77,54 @@ class ObserverCacheTest extends FunSuite {
     val one = testObserver[String]()
     val two = testObserver[String]()
 
-    val cache = new ObserverCache[String, String](1, 1)({
+    val stats = new InMemoryStatsReceiver
+    val cache = new ObserverCache[String, String](1, 1, stats, {
       case "one" => one.obs
       case "two" => two.obs
     })
 
     // insert "one" into the active cache
     assert(cache.get("one").get eq one.obs)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
     // update deactivates "one"
     one.event.notify(Return("foo"))
     assert(one.closed.sample == false)
+    assert(activeSize(stats) == 0)
+    assert(inactiveSize(stats) == 1)
     // with "one" removed from the active cache, there is room to insert "two"
     assert(cache.get("two").get eq two.obs)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 1)
   }
 
   test("observer cache reactivates observations") {
 
     val one = testObserver[String]()
 
-    val cache = new ObserverCache[String, String](1, 1)({
+    val stats = new InMemoryStatsReceiver
+    val cache = new ObserverCache[String, String](1, 1, stats, {
       case "one" => one.obs
     })
 
     // insert "one" into the active cache
     assert(cache.get("one").get eq one.obs)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
     // update deactivates "one"
     one.event.notify(Return("foo"))
     assert(one.closed.sample == false)
+    assert(activeSize(stats) == 0)
+    assert(inactiveSize(stats) == 1)
     // reactivate "one"
     assert(cache.get("one").get eq one.obs)
     assert(one.closed.sample == false)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
     // active cache is full
     assert(cache.get("two").isThrow)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
   }
 
   test("observer cache tears down inactive observations") {
@@ -103,22 +132,31 @@ class ObserverCacheTest extends FunSuite {
     val one = testObserver[String]()
     val two = testObserver[String]()
 
-    val cache = new ObserverCache[String, String](2, 1)({
+    val stats = new InMemoryStatsReceiver
+    val cache = new ObserverCache[String, String](2, 1, stats, {
       case "one" => one.obs
       case "two" => two.obs
     })
 
     // insert "one" into the active cache
     assert(cache.get("one").get eq one.obs)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 0)
     // insert "two" into the active cache
     assert(cache.get("two").get eq two.obs)
+    assert(activeSize(stats) == 2)
+    assert(inactiveSize(stats) == 0)
     // update deactivates "one"
     one.event.notify(Return("foo"))
     assert(one.closed.sample == false)
+    assert(activeSize(stats) == 1)
+    assert(inactiveSize(stats) == 1)
     // update deactivates "two"
     two.event.notify(Return("foo"))
     assert(two.closed.sample == false)
     // "one" is evicted from inactive cache and torn down
     assert(one.closed.sample == true)
+    assert(activeSize(stats) == 0)
+    assert(inactiveSize(stats) == 1)
   }
 }

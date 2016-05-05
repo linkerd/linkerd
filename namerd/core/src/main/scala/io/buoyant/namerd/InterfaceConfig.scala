@@ -1,6 +1,7 @@
 package io.buoyant.namerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.config.types.Port
@@ -23,7 +24,7 @@ trait InterfaceConfig {
   @JsonIgnore
   protected def defaultAddr: InetSocketAddress
 
-  def mk(store: DtabStore, namers: Map[Path, Namer]): Servable
+  def mk(store: DtabStore, namers: Map[Path, Namer], stats: StatsReceiver): Servable
 }
 
 trait InterfaceInitializer extends ConfigInitializer

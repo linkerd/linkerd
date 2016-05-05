@@ -1,6 +1,7 @@
 package io.buoyant.namerd.iface
 
 import com.google.common.cache.{CacheBuilder, RemovalListener, RemovalNotification}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.namerd.iface.ThriftNamerInterface.Observer
 import java.util.concurrent.{Callable, ConcurrentHashMap}
@@ -33,48 +34,61 @@ class MaximumObservationsReached(maxObservations: Int)
  *                         maintain this constraint.
  * @param mkObserver The function to use to create new Observers if they are not in either cache.
  */
-class ObserverCache[K <: AnyRef, T](activeCapacity: Int = 100, inactiveCapacity: Int = 10)(mkObserver: K => Observer[T]) {
+class ObserverCache[K <: AnyRef, T](
+  activeCapacity: Int,
+  inactiveCapacity: Int,
+  stats: StatsReceiver,
+  mkObserver: K => Observer[T]
+) {
 
   def get(key: K): Try[Observer[T]] =
     Option(activeCache.get(key)).map(Return(_)).getOrElse {
       synchronized {
+        // now that we have entered the synchronized block we again check that key hasn't entered
+        // the active cache
         Option(activeCache.get(key))
           .map(Return(_))
           .getOrElse(makeActive(key))
       }
     }
 
+  // ConcurrentHashMap is used to make reads lockless, but all updates are explicitly synchronized
   private[this] val activeCache = new ConcurrentHashMap[K, Observer[T]]
   private[this] val inactiveCache = CacheBuilder.newBuilder()
     .maximumSize(inactiveCapacity)
     .removalListener(new RemovalListener[K, Observer[T]] {
       override def onRemoval(notification: RemovalNotification[K, Observer[T]]): Unit =
-        if (notification.wasEvicted()) notification.getValue.close()
+        if (notification.wasEvicted) notification.getValue.close()
     })
     .build[K, Observer[T]]()
 
-  private[this] def makeActive(key: K): Try[Observer[T]] =
+  private[this] val scope = "observer-cache"
+  private[this] val activeSize = stats.scope(scope).addGauge("active-size")(activeCache.size)
+  private[this] val inactiveSize = stats.scope(scope).addGauge("inactive-size")(inactiveCache.size)
+
+  private[this] def makeActive(key: K): Try[Observer[T]] = synchronized {
     if (activeCache.size < activeCapacity) {
       val obs = Option(inactiveCache.getIfPresent(key)).getOrElse {
         mkObserver(key)
       }
       activeCache.put(key, obs)
       inactiveCache.invalidate(key)
-      obs.nextValue().ensure {
+      obs.nextValue.ensure {
         makeInactive(key, obs)
       }
       Return(obs)
     } else {
       Throw(new MaximumObservationsReached(activeCapacity))
     }
+  }
 
-  private[this] def makeInactive(key: K, obs: Observer[T]): Unit = {
-    synchronized {
-      activeCache.remove(key)
-      // insert obs into the inactive cache if it's not present
-      val _ = inactiveCache.get(key, new Callable[Observer[T]] {
-        def call = obs
-      })
+  private[this] def makeInactive(key: K, obs: Observer[T]): Unit = synchronized {
+    activeCache.remove(key)
+    // insert obs into the inactive cache if it's not present
+    val _ = inactiveCache.get(
+      key, new Callable[Observer[T]] {
+      def call = obs
     }
+    )
   }
 }

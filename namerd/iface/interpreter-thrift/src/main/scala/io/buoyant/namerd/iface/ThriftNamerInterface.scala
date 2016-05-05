@@ -1,6 +1,7 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
@@ -116,7 +117,7 @@ object ThriftNamerInterface {
     final def apply(tstamp: TStamp): Future[(Stamp, T)] =
       apply(Stamp(tstamp))
 
-    final def nextValue(): Future[(Stamp, T)] = pending.flatMap(_.future)
+    final def nextValue: Future[(Stamp, T)] = pending.flatMap(_.future)
 
     final def close(t: Time): Future[Unit] =
       synchronized {
@@ -214,7 +215,8 @@ class ThriftNamerInterface(
   interpreters: Ns => NameInterpreter,
   namers: Map[Path, Namer],
   stamper: ThriftNamerInterface.Stamper,
-  retryIn: () => Duration
+  retryIn: () => Duration,
+  stats: StatsReceiver
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
 
@@ -257,13 +259,14 @@ class ThriftNamerInterface(
     }
   }
 
+  private[this] def observeBind(ns: Ns, dtab: Dtab, path: Path) =
+    BindingObserver(interpreters(ns).bind(dtab, path), stamper)
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
     activeCapacity = 100,
-    inactiveCapacity = 10
-  )({
-    case (ns, dtab, path) =>
-      BindingObserver(interpreters(ns).bind(dtab, path), stamper)
-  })
+    inactiveCapacity = 10,
+    stats = stats,
+    mkObserver = (observeBind _).tupled
+  )
 
   /**
    * Observe a bound address pool.
@@ -317,10 +320,7 @@ class ThriftNamerInterface(
     }
   }
 
-  private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
-    activeCapacity = 100,
-    inactiveCapacity = 110
-  )({ id =>
+  private[this] def observeAddr(id: Path) = {
     Trace.recordBinary("namerd.srv/addr.cached", false)
     val resolution = bindAddrId(id).run.flatMap {
       case Activity.Pending => Var.value(Addr.Pending)
@@ -335,11 +335,16 @@ class ThriftNamerInterface(
       }
     }
     AddrObserver(resolution, stamper)
-  })
+  }
+  private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
+    activeCapacity = 100,
+    inactiveCapacity = 10,
+    stats = stats,
+    mkObserver = observeAddr
+  )
 
   private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
     val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 }
-
