@@ -117,7 +117,7 @@ servers:
          |      percentCanRetry: 0.33
          |""".stripMargin
     assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
-      Some(JitteredBackoffConfig(0, 10000)),
+      Some(JitteredBackoffConfig(None, Some(10000))),
       Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
     )))
   }

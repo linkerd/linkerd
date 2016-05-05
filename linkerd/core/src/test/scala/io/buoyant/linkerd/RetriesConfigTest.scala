@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.service.Retries
+import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import org.scalatest.FunSuite
 
@@ -21,7 +22,9 @@ class RetriesConfigTest extends FunSuite {
           |  kind: constant
           |  ms: 30
           |""".stripMargin
-    assert(parse(yaml) == RetriesConfig(Some(ConstantBackoffConfig(30)), None))
+    val config = ConstantBackoffConfig(30)
+    assert(parse(yaml) == RetriesConfig(Some(config), None))
+    assert(config.mk.isInstanceOf[Stream[Duration]])
   }
 
   test("jittered backoff") {
@@ -31,7 +34,9 @@ class RetriesConfigTest extends FunSuite {
           |  minMs: 30
           |  maxMs: 6000
           |""".stripMargin
-    assert(parse(yaml) == RetriesConfig(Some(JitteredBackoffConfig(30, 6000)), None))
+    val config = JitteredBackoffConfig(Some(30), Some(6000))
+    assert(parse(yaml) == RetriesConfig(Some(config), None))
+    assert(config.mk.isInstanceOf[Stream[Duration]])
   }
 
   test("jittered backoff: no min") {
@@ -40,7 +45,12 @@ class RetriesConfigTest extends FunSuite {
           |  kind: jittered
           |  maxMs: 6000
           |""".stripMargin
-    assert(parse(yaml) == RetriesConfig(Some(JitteredBackoffConfig(0, 6000)), None))
+    val config = JitteredBackoffConfig(None, Some(6000))
+    assert(parse(yaml) == RetriesConfig(Some(config), None))
+    val e = intercept[IllegalArgumentException] {
+      assert(config.mk.isInstanceOf[Stream[Duration]])
+    }
+    assert(e.getMessage == "'minMs' must be specified")
   }
 
   test("budget") {
