@@ -292,8 +292,8 @@ example, connection errors).
       be retried. This is in addition to any retries allowed for via
       `minRetriesPerSec`.  Must be >= 0 and <= 1000. As an example, if
       `0.1` is used, then for every 10 non-retry calls , 1 retry will
-      be allowed. If `2.0` is used then every non-retry call, 2
-      retries. (Default: 0.2)
+      be allowed. If `2.0` is used then every non-retry call will
+      allow 2 retries. (Default: 0.2)
     * *ttlSecs* -- Optional. The amount of time in seconds that
       successful calls are considered when calculating retry budgets
       (Default: 10)
@@ -307,7 +307,7 @@ The _constant_ backoff policy takes a single configuration parameter:
 
 The _jittered_ backoff policy uses a
 [decorrelated jitter](http://www.awsarchitectureblog.com/2015/03/backoff.html)
-backoff algorithm and requires takes two configuration parameters:
+backoff algorithm and takes two configuration parameters:
 * _minMs_ -- Optional. The minimum number of milliseconds to wait
   before each retry.
 * _maxMs_ -- The maximum number of milliseconds to wait before each
