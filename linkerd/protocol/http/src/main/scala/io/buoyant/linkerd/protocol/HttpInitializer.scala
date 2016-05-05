@@ -53,7 +53,7 @@ case class HttpConfig(
 
   @JsonIgnore
   override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableFailures orElse super.baseResponseClassifier
+    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer

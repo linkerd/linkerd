@@ -85,7 +85,7 @@ class ResponseClassifiersTest extends FunSuite {
   }
 
   {
-    val classifier = ResponseClassifiers.NonRetryableFailures
+    val classifier = ResponseClassifiers.NonRetryableServerFailures
     for (method <- allMethods) {
       test(s"$classifier: ignores $method 1XX-4XX") {
         for (code <- 100 to 499)
@@ -100,15 +100,6 @@ class ResponseClassifiersTest extends FunSuite {
             Return(Status(code)),
             Some(ResponseClass.NonRetryableFailure)
           )
-      }
-
-      test(s"$classifier: fails $method error") {
-        testClassifier(
-          classifier,
-          method,
-          Throw(new Exception),
-          Some(ResponseClass.NonRetryableFailure)
-        )
       }
     }
   }
