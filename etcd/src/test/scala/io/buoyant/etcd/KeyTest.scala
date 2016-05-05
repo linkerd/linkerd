@@ -9,7 +9,7 @@ import com.twitter.util.{Events => _, _}
 import io.buoyant.test.{Exceptions, Events}
 import org.scalatest._
 
-class KeyTest extends FunSuite with ParallelTestExecution with Exceptions {
+class KeyTest extends FunSuite with Exceptions {
 
   private[this]type Params = Map[String, Seq[String]]
 
@@ -349,7 +349,7 @@ class KeyTest extends FunSuite with ParallelTestExecution with Exceptions {
     val base = Path.Utf8("base")
     val op = NodeOp(NodeOp.Action.Create, Node.Data(Path.Utf8("base", "1"), 1, 1, None, Buf.Utf8("dogs")), Etcd.State(1))
     val key = mkKey(base) {
-      case (Method.Post, params) if getParam(params, "value").exists(_ == "dogs") => op
+      case (Method.Put, params) if getParam(params, "value").exists(_ == "dogs") => op
     }
     val create = key.create(Some(Buf.Utf8("dogs")))
     assert(Await.result(create, 250.millis) == op)
@@ -359,7 +359,7 @@ class KeyTest extends FunSuite with ParallelTestExecution with Exceptions {
     val base = Path.Utf8("base")
     val op = NodeOp(NodeOp.Action.Create, Node.Dir(Path.Utf8("base", "1"), 1, 1), Etcd.State(1))
     val key = mkKey(base) {
-      case (Method.Post, DirParam(true)) => op
+      case (Method.Put, DirParam(true)) => op
     }
     val create = key.create(None)
     assert(Await.result(create, 250.millis) == op)
@@ -374,7 +374,7 @@ class KeyTest extends FunSuite with ParallelTestExecution with Exceptions {
       Etcd.State(1)
     )
     val key = mkKey(base) {
-      case (Method.Post, params) if getParam(params, "ttl").exists(_ == "10") => op
+      case (Method.Put, params) if getParam(params, "ttl").exists(_ == "10") => op
     }
     val create = key.create(None, Some(10.seconds))
     assert(Await.result(create, 250.millis) == op)
