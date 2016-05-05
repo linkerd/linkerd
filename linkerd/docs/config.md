@@ -291,8 +291,8 @@ example, connection errors).
     * *percentCanRetry* -- Optional. The percentage of calls that can
       be retried. This is in addition to any retries allowed for via
       `minRetriesPerSec`.  Must be >= 0 and <= 1000. As an example, if
-      `0.1` is used, then for every 10 successful calls , 1 retry will
-      be allowed. If `2.0` is used then every success, 2
+      `0.1` is used, then for every 10 non-retry calls , 1 retry will
+      be allowed. If `2.0` is used then every non-retry call, 2
       retries. (Default: 0.2)
     * *ttlSecs* -- Optional. The amount of time in seconds that
       successful calls are considered when calculating retry budgets
