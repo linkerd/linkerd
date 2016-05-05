@@ -31,10 +31,11 @@ object Linker {
     tlsClient: Seq[TlsClientInitializer] = Nil,
     tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
+    classifier: Seq[ResponseClassifierInitializer] = Nil,
     announcer: Seq[AnnouncerInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, announcer)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, announcer)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -52,6 +53,7 @@ object Linker {
     LoadService[TlsClientInitializer],
     LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
+    LoadService[ResponseClassifierInitializer],
     LoadService[AnnouncerInitializer]
   )
 

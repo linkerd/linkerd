@@ -47,6 +47,8 @@ routers:
   identifier:
     kind: default
     httpUriInDst: true
+  responseClassifier:
+    kind: retryableIdempotent5XX
   announcers:
   - kind: zk
     hosts:
