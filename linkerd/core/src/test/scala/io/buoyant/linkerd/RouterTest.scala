@@ -11,14 +11,20 @@ import org.scalatest.FunSuite
 
 class RouterTest extends FunSuite with Exceptions {
 
+  def parseConfig(
+    yaml: String,
+    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
+    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
+  ): RouterConfig =
+    Parser.objectMapper(yaml, Iterable(protos, interpreters)).readValue[RouterConfig](yaml)
+
   def parse(
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
     interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
   ): Router = {
-    val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters))
-    val cfg = mapper.readValue[RouterConfig](yaml)
+    val cfg = parseConfig(yaml, protos, interpreters)
     val interpreter = cfg.interpreter.newInterpreter(cfg.routerParams)
     cfg.router(params + DstBindingFactory.Namer(interpreter))
   }
@@ -104,13 +110,15 @@ servers:
          |  retries:
          |    backoff:
          |      kind: jittered
-         |      minMs: 100
          |      maxMs: 10000
          |    budget:
          |      ttlSecs: 30
          |      minRetriesPerSec: 3
          |      percentCanRetry: 0.33
          |""".stripMargin
-    assert(parse(yaml, Stack.Params.empty) != null)
+    assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
+      Some(JitteredBackoffConfig(0, 10000)),
+      Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
+    )))
   }
 }
