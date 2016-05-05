@@ -307,9 +307,9 @@ The _constant_ backoff policy takes a single configuration parameter:
 
 The _jittered_ backoff policy uses a
 [decorrelated jitter](http://www.awsarchitectureblog.com/2015/03/backoff.html)
-backoff algorithm and takes two configuration parameters:
+backoff algorithm and accepts two configuration parameters:
 * _minMs_ -- Optional. The minimum number of milliseconds to wait
-  before each retry.
+  before each retry. (Default: 0)
 * _maxMs_ -- The maximum number of milliseconds to wait before each
   retry.
 
