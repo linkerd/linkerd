@@ -6,7 +6,7 @@ import com.twitter.util.Future
 import java.net.InetSocketAddress
 
 class ZkAnnouncer(hosts: String, pathPrefix: String) extends Announcer {
-  override val scheme: String = "zk"
+  override val scheme: String = "zk-serversets"
 
   val underlying = new FZkAnnouncer(DefaultZkClientFactory)
 

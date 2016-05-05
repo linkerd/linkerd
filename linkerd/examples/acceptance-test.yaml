@@ -50,7 +50,7 @@ routers:
   responseClassifier:
     kind: retryableIdempotent5XX
   announcers:
-  - kind: zk
+  - kind: serversets
     hosts:
     - 127.0.0.1:2181
     pathPrefix: /discovery/prod
