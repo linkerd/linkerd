@@ -3,6 +3,8 @@
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
   printing all traces to the console.
 * Add etcd backed dtab storage.
+* Introduce a default HTTP response classifier so that 5XX responses
+  are marked as failures.
 
 ## 0.4.0
 
