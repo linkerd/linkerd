@@ -34,6 +34,15 @@ class RetriesConfigTest extends FunSuite {
     assert(parse(yaml) == RetriesConfig(Some(JitteredBackoffConfig(30, 6000)), None))
   }
 
+  test("jittered backoff: no min") {
+    val yaml =
+      s"""|backoff:
+          |  kind: jittered
+          |  maxMs: 6000
+          |""".stripMargin
+    assert(parse(yaml) == RetriesConfig(Some(JitteredBackoffConfig(0, 6000)), None))
+  }
+
   test("budget") {
     val yaml =
       s"""|budget:
