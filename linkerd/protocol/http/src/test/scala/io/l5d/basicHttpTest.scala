@@ -1,3 +1,5 @@
+package io.l5d
+
 import com.twitter.finagle.Path
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.IdentifierInitializer
