@@ -261,9 +261,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "retries", "requeues")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        val name = s"http/1.1/$method/dog"
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries", "requeues")) == Some(1))
       }
 
       // non-retryable request, fails and is not retried
@@ -283,6 +287,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        val name = s"http/1.1/$method/dog"
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries", "requeues")) == None)
       }
     } finally {
       await(client.close())
