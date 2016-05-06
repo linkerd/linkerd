@@ -133,6 +133,35 @@ class Key(key: Path, client: Service[Request, Response]) {
   }
 
   /**
+    * Create a key in the current directory with an in-order name.
+    *
+    * If value is None, the key is treated as a directory.  In order to
+    * create an empty data node, use `Some(Buf.Empty)`.
+    *
+    * Optionally, a `ttl` may be specified to inform etcd to remove the
+    * node after some time period (only second-granularity is supported
+    * by etcd).
+    */
+  def createInOrderKey(
+    value: Option[Buf],
+    ttl: Option[Duration] = None
+  ): Future[NodeOp] = {
+    val params = Params ++
+      ttlParam(ttl) :+
+      dirOrValueParam(value)
+    val req = mkReq(uriPath, Method.Post, params)
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
+  }
+
+  def refresh(ttl: Option[Duration]): Future[NodeOp] = {
+    val params = Params ++
+      ttlParam(ttl) :+
+      "refresh" -> "true"
+    val req = mkReq(uriPath, Method.Put, params)
+    client(req).flatMap { rsp => Future.const(NodeOp.mk(req, rsp, key, params)) }
+  }
+
+  /**
    * Set the node's data if the provided preconditions apply to the
    * existing state of the node.
    *
