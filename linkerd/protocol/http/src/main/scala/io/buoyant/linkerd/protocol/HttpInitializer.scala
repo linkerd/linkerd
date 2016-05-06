@@ -4,7 +4,7 @@ package protocol
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.{Path, Stack, StackBuilder}
-import io.buoyant.linkerd.protocol.http.AccessLogger
+import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
 import io.l5d.HttpIdentifierConfig
 
@@ -52,7 +52,11 @@ case class HttpConfig(
   var servers: Seq[ServerConfig] = Nil
 
   @JsonIgnore
-  override def protocol: ProtocolInitializer = HttpInitializer
+  override def baseResponseClassifier =
+    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
+
+  @JsonIgnore
+  override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams

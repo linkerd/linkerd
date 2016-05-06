@@ -119,6 +119,16 @@ object DelegateApiHandler {
           Path.read(json.getValueAsString)
       })
 
+      module.addSerializer(classOf[Dentry.Prefix], new JsonSerializer[Dentry.Prefix] {
+        override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider) {
+          json.writeString(pfx.show)
+        }
+      })
+      module.addDeserializer(classOf[Dentry.Prefix], new JsonDeserializer[Dentry.Prefix] {
+        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
+          Dentry.Prefix.read(json.getValueAsString)
+      })
+
       module.addSerializer(classOf[NameTree[Path]], new JsonSerializer[NameTree[Path]] {
         override def serialize(
           nameTree: NameTree[Path],

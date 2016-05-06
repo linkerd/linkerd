@@ -9,7 +9,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
   lazy val html = dashboardHtml
 
   override def apply(req: Request): Future[Response] = req.path match {
-    case "/dashboard" =>
+    case "/" =>
       AdminHandler.mkResponse(html)
     case _ =>
       Future.value(Response(Status.NotFound))

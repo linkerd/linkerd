@@ -75,75 +75,79 @@ class ThriftNamerInterfaceTest extends FunSuite {
     val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, NullStatsReceiver)
   }
 
-  test("addr")(new AddrCtx {
-    val initRef = thrift.NameRef(TStamp.empty, TPath("atl", "slime", "season"), ns)
-    val initF = service.addr(thrift.AddrReq(initRef, clientId))
-    assert(!initF.isDefined)
+  test("addr") {
+    val _ = new AddrCtx {
+      val initRef = thrift.NameRef(TStamp.empty, TPath("atl", "slime", "season"), ns)
+      val initF = service.addr(thrift.AddrReq(initRef, clientId))
+      assert(!initF.isDefined)
 
-    val addrs = Var[Addr](Addr.Pending)
-    val leaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("atl", "slime", "season")))
-    states() = Activity.Ok(leaf)
-    assert(!initF.isDefined) // addrs still pending
+      val addrs = Var[Addr](Addr.Pending)
+      val leaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("atl", "slime", "season")))
+      states() = Activity.Ok(leaf)
+      assert(!initF.isDefined) // addrs still pending
 
-    val isa = new InetSocketAddress("8.8.8.8", 4949)
-    addrs() = Addr.Bound(Address(isa))
-    assert(initF.isDefined)
-    val init = Await.result(initF, 1.second)
+      val isa = new InetSocketAddress("8.8.8.8", 4949)
+      addrs() = Addr.Bound(Address(isa))
+      assert(initF.isDefined)
+      val init = Await.result(initF, 1.second)
 
-    val boundAddr = {
-      val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-      val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-      thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+      val boundAddr = {
+        val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
+        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+      }
+      assert(Await.result(initF, 1.second) == boundAddr)
     }
-    assert(Await.result(initF, 1.second) == boundAddr)
-  })
+  }
 
-  test("addr: deleted and re-created")(new AddrCtx {
-    val id = TPath("atl", "slime", "season")
-    val rsp0 = service.addr(thrift.AddrReq(thrift.NameRef(TStamp.empty, id, ns), clientId))
-    assert(!rsp0.isDefined)
+  test("addr: deleted and re-created") {
+    val _ = new AddrCtx {
+      val id = TPath("atl", "slime", "season")
+      val rsp0 = service.addr(thrift.AddrReq(thrift.NameRef(TStamp.empty, id, ns), clientId))
+      assert(!rsp0.isDefined)
 
-    val addrs0 = Var[Addr](Addr.Pending)
-    val leaf = NameTree.Leaf(Name.Bound(addrs0, ThriftNamerInterface.mkPath(id)))
-    states() = Activity.Ok(leaf)
-    assert(!rsp0.isDefined) // addrs still pending
+      val addrs0 = Var[Addr](Addr.Pending)
+      val leaf = NameTree.Leaf(Name.Bound(addrs0, ThriftNamerInterface.mkPath(id)))
+      states() = Activity.Ok(leaf)
+      assert(!rsp0.isDefined) // addrs still pending
 
-    val isa = new InetSocketAddress("8.8.8.8", 4949)
-    addrs0() = Addr.Bound(Address(isa))
-    assert(rsp0.isDefined)
+      val isa = new InetSocketAddress("8.8.8.8", 4949)
+      addrs0() = Addr.Bound(Address(isa))
+      assert(rsp0.isDefined)
 
-    val boundAddr0 = {
-      val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-      val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-      thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+      val boundAddr0 = {
+        val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
+        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+      }
+      assert(Await.result(rsp0, 1.second) == boundAddr0)
+
+      val ref1 = thrift.NameRef(TStamp.mk(1), id, ns)
+      val rsp1 = service.addr(thrift.AddrReq(ref1, clientId))
+      assert(!rsp1.isDefined)
+
+      addrs0() = Addr.Neg
+      states() = Activity.Ok(NameTree.Neg)
+      assert(rsp1.isDefined)
+      assert(Await.result(rsp1, 1.second) ==
+        thrift.Addr(TStamp.mk(2), thrift.AddrVal.Neg(thrift.Void())))
+
+      val rsp2 = service.addr(thrift.AddrReq(thrift.NameRef(TStamp.mk(2), id, ns), clientId))
+      assert(!rsp2.isDefined)
+
+      val addrs1 = Var[Addr](Addr.Pending)
+      states() = Activity.Ok(NameTree.Leaf(Name.Bound(addrs1, ThriftNamerInterface.mkPath(id))))
+      assert(!rsp2.isDefined)
+      addrs1() = Addr.Bound(Address(isa))
+      assert(rsp2.isDefined)
+
+      val boundAddr1 = {
+        val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
+        thrift.Addr(TStamp.mk(3), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+      }
+      assert(Await.result(rsp2, 1.second) == boundAddr1)
     }
-    assert(Await.result(rsp0, 1.second) == boundAddr0)
-
-    val ref1 = thrift.NameRef(TStamp.mk(1), id, ns)
-    val rsp1 = service.addr(thrift.AddrReq(ref1, clientId))
-    assert(!rsp1.isDefined)
-
-    addrs0() = Addr.Neg
-    states() = Activity.Ok(NameTree.Neg)
-    assert(rsp1.isDefined)
-    assert(Await.result(rsp1, 1.second) ==
-      thrift.Addr(TStamp.mk(2), thrift.AddrVal.Neg(thrift.Void())))
-
-    val rsp2 = service.addr(thrift.AddrReq(thrift.NameRef(TStamp.mk(2), id, ns), clientId))
-    assert(!rsp2.isDefined)
-
-    val addrs1 = Var[Addr](Addr.Pending)
-    states() = Activity.Ok(NameTree.Leaf(Name.Bound(addrs1, ThriftNamerInterface.mkPath(id))))
-    assert(!rsp2.isDefined)
-    addrs1() = Addr.Bound(Address(isa))
-    assert(rsp2.isDefined)
-
-    val boundAddr1 = {
-      val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-      val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-      thrift.Addr(TStamp.mk(3), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
-    }
-    assert(Await.result(rsp2, 1.second) == boundAddr1)
-  })
+  }
 
 }

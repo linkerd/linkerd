@@ -14,7 +14,7 @@ import scalariform.formatter.preferences._
  * Base project configuration.
  */
 class Base extends Build {
-  val headVersion = "0.3.1"
+  val headVersion = "0.4.0"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
@@ -33,7 +33,7 @@ class Base extends Build {
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.11.7",
-    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation"),
+    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard"),
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
@@ -178,7 +178,8 @@ class Base extends Build {
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
-      .configs(EndToEndTest).settings(inConfig(EndToEndTest)(Defaults.testSettings))
+      .configs(EndToEndTest)
+      .settings(inConfig(EndToEndTest)(Defaults.testSettings))
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {
@@ -193,9 +194,7 @@ class Base extends Build {
 
     def withIntegration(): Project = project
       .configs(IntegrationTest)
-      .settings(inConfig(IntegrationTest)(
-        Defaults.testSettings :+ (parallelExecution := false)
-      ))
+      .settings(inConfig(IntegrationTest)(Defaults.testSettings :+ (parallelExecution := false)))
       .dependsOn(testUtil % IntegrationTest)
 
     /** Writes build metadata into the projects resources */

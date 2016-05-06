@@ -8,8 +8,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.linkerd.admin.names.{DelegateApiHandler, Delegator}
-import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.linkerd.admin.names.DelegateApiHandler
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
 
@@ -127,6 +126,8 @@ object HttpControlService {
     Base64StringEncoder.encode(versionBytes)
   }
 
+  private[iface] val newline = Buf.Utf8("\n")
+
   private val DefaultNamer: (Path, Namer) = Path.empty -> Namer.global
 }
 
@@ -142,7 +143,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   def apply(req: Request): Future[Response] = Future(req match {
     case DtabUri(_, None) =>
-      handleList()
+      handleList(req)
     case DtabUri(Method.Head, Some(ns)) =>
       handleHeadDtab(ns, req)
     case DtabUri(Method.Get, Some(ns)) =>
@@ -154,9 +155,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     case DtabUri(Method.Delete, Some(ns)) =>
       handleDeleteDtab(ns)
     case BindUri(Some(ns), path) =>
-      handleGetBind(ns, path)
+      handleGetBind(ns, path, req)
     case AddrUri(Some(ns), path) =>
-      handleGetAddr(ns, path)
+      handleGetAddr(ns, path, req)
     case DelegateUri(Some(ns), path) =>
       handleGetDelegate(ns, path)
     case DelegateUri(None, path) =>
@@ -172,26 +173,77 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       resp
   }
 
-  private[this] def handleList(): Future[Response] =
-    storage.list().map { namespaces =>
-      val rsp = Response()
-      rsp.contentType = MediaType.Json
-      rsp.content = Json.write(namespaces)
-      rsp
+  private[this] def streamingResp[T](
+    values: Event[Try[T]],
+    contentType: Option[String] = None
+  )(render: T => Buf): Future[Response] = {
+    val resp = Response()
+    for (ct <- contentType) resp.contentType = ct
+    resp.setChunked(true)
+    val writer = resp.writer
+    // closable is a handle to the values observation so that we can close the observation when the
+    // streaming connection is terminated
+    @volatile var closable: Closable = Closable.nop
+    // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
+    // writeFuture is an accumulator of those flatMapped Futures
+    @volatile var writeFuture: Future[Unit] = Future.Unit
+    closable = values.dedup.respond {
+      case Return(t) =>
+        writeFuture = writeFuture.before {
+          val buf = render(t)
+          if (buf == Buf.Empty)
+            Future.Unit
+          else
+            writer.write(buf).onFailure { _ =>
+              val _ = closable.close()
+            }
+        }
+      case Throw(e) =>
+        val _ = writer.write(Buf.Utf8(e.getMessage).concat(newline)).before(writer.close())
+        val __ = closable.close() // https://issues.scala-lang.org/browse/SI-7691
     }
+    Future.value(resp)
+  }
 
-  private[this] def handleGetDtab(ns: String, req: Request): Future[Response] =
-    getDtab(ns).map {
-      case Some(dtab) =>
+  private[this] def isStreaming(req: Request): Boolean = req.getBooleanParam("watch")
+
+  private[this] def renderList(list: Set[Ns]): Buf = Json.write(list).concat(newline)
+
+  private[this] def handleList(req: Request): Future[Response] =
+    if (isStreaming(req)) {
+      streamingResp(storage.list().values, Some(MediaType.Json))(renderList)
+    } else {
+      storage.list().toFuture.map { namespaces =>
         val rsp = Response()
-        val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
-        rsp.contentType = contentType
-        rsp.headerMap.add(Fields.Etag, versionString(dtab.version))
-        rsp.content = codec.write(dtab.dtab)
+        rsp.contentType = MediaType.Json
+        rsp.content = renderList(namespaces)
         rsp
-
-      case None => Response(Status.NotFound)
+      }
     }
+
+  private[this] def handleGetDtab(ns: String, req: Request): Future[Response] = {
+    val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
+    if (isStreaming(req)) {
+      val dtabs: Event[Try[VersionedDtab]] = storage.observe(ns).values.collect {
+        case Return(Some(dtab)) => Return(dtab)
+        case Throw(e) => Throw(e)
+      }
+      streamingResp(dtabs, Some(contentType)) { dtab =>
+        codec.write(dtab.dtab).concat(newline)
+      }
+    } else {
+      storage.observe(ns).toFuture.map {
+        case Some(dtab) =>
+          val rsp = Response()
+          rsp.contentType = contentType
+          rsp.headerMap.add(Fields.Etag, versionString(dtab.version))
+          rsp.content = codec.write(dtab.dtab).concat(newline)
+          rsp
+
+        case None => Response(Status.NotFound)
+      }
+    }
+  }
 
   private[this] def handleHeadDtab(ns: String, req: Request): Future[Response] =
     getDtab(ns).map {
@@ -260,28 +312,6 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       case Throw(_) => Future.value(Response(Status.InternalServerError))
     }
 
-  private[this] def streamingResp[T](values: Event[T], render: (T, Closable) => Buf): Future[Response] = {
-    val resp = Response()
-    resp.setChunked(true)
-    val writer = resp.writer
-    // closable is a handle to the values observation so that we can close the observation when the
-    // streaming connection is terminated
-    @volatile var closable: Closable = Closable.nop
-    // calls to writer.write must be flatMapped together to ensure proper ordering and backpressure
-    // writeFuture is an accumulator of those flatMapped Futures
-    @volatile var writeFuture: Future[Unit] = Future.Unit
-    closable = values.respond { t =>
-      writeFuture = writeFuture.before {
-        val buf = render(t, closable)
-        if (buf == Buf.Empty)
-          Future.Unit
-        else
-          writer.write(buf).onFailure { _ => closable.close() }
-      }
-    }
-    Future.value(resp)
-  }
-
   private[this] val bindingCacheMu = new {}
   private[this] var bindingCache: Map[(String, Path), Activity[NameTree[Name.Bound]]] = Map.empty
   private[this] def getBind(ns: String, path: Path): Activity[NameTree[Name.Bound]] =
@@ -296,37 +326,33 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       }
     }
 
-  private[this] def renderTryTree(tryTree: Try[NameTree[Name.Bound]], closable: Closable) = tryTree match {
-    case Return(tree) =>
-      Buf.Utf8(tree.show + "\n")
-    case Throw(e) =>
-      closable.close()
-      Buf.Empty
-  }
-
-  private[this] def handleGetBind(ns: String, path: Path): Future[Response] = {
-    val act = getBind(ns, path)
-    streamingResp(act.values, renderTryTree)
-  }
+  private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] =
+    if (isStreaming(req)) {
+      streamingResp(getBind(ns, path).values) { tree =>
+        Buf.Utf8(tree.show + "\n")
+      }
+    } else {
+      getBind(ns, path).toFuture.map { tree =>
+        val rsp = Response()
+        rsp.content = Buf.Utf8(tree.show + "\n")
+        rsp
+      }
+    }
 
   private[this] val addrCacheMu = new {}
-  private[this] var addrCache: Map[(String, Path), Var[Addr]] = Map.empty
-  private[this] def getAddr(ns: String, path: Path): Var[Addr] = addrCacheMu.synchronized {
+  private[this] var addrCache: Map[(String, Path), Activity[Addr]] = Map.empty
+  private[this] def getAddr(ns: String, path: Path): Activity[Addr] = addrCacheMu.synchronized {
     val key = (ns, path)
     addrCache.get(key) match {
       case Some(addr) => addr
       case None =>
-        val addr = bindAddrId(path).run.flatMap {
-          case Activity.Pending => Var.value(Addr.Pending)
-          case Activity.Failed(e) => Var.value(Addr.Failed(e))
-          case Activity.Ok(tree) => tree match {
-            case NameTree.Leaf(bound) => bound.addr
-            case NameTree.Empty => Var.value(Addr.Bound())
-            case NameTree.Fail => Var.value(Addr.Failed("name tree failed"))
-            case NameTree.Neg => Var.value(Addr.Neg)
-            case NameTree.Alt(_) | NameTree.Union(_) =>
-              Var.value(Addr.Failed(s"${path.show} is not a concrete bound id"))
-          }
+        val addr = bindAddrId(path).flatMap {
+          case NameTree.Leaf(bound) => Activity(bound.addr.map(Activity.Ok(_)))
+          case NameTree.Empty => Activity.value(Addr.Bound())
+          case NameTree.Fail => Activity.exception(new Exception("name tree failed"))
+          case NameTree.Neg => Activity.value(Addr.Neg)
+          case NameTree.Alt(_) | NameTree.Union(_) =>
+            Activity.exception(new Exception(s"${path.show} is not a concrete bound id"))
         }
         addrCache += (key -> addr)
         addr
@@ -338,7 +364,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 
-  private[this] val renderAddr = (addr: Addr, _: Closable) => addr match {
+  private[this] def renderAddr(addr: Addr): Buf = addr match {
     case Addr.Bound(addrs, metadata) =>
       val bound = addrs.map {
         case Address.Inet(isa, meta) => isa.toString
@@ -351,9 +377,16 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       Buf.Utf8(addr.toString + "\n")
   }
 
-  private[this] def handleGetAddr(ns: String, path: Path): Future[Response] = {
-    val addr = getAddr(ns, path)
-    streamingResp(addr.changes, renderAddr)
+  private[this] def handleGetAddr(ns: String, path: Path, req: Request): Future[Response] = {
+    if (isStreaming(req)) {
+      streamingResp(getAddr(ns, path).values)(renderAddr)
+    } else {
+      getAddr(ns, path).toFuture.map { addr =>
+        val rsp = Response()
+        rsp.content = renderAddr(addr)
+        rsp
+      }
+    }
   }
 
   private[this] def handleGetDelegate(ns: String, path: Path): Future[Response] = {

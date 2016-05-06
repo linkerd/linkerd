@@ -1,10 +1,12 @@
 package io.buoyant.namerd.storage
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Dtab
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
-import io.buoyant.namerd.{VersionedDtab, DtabStore}
+import io.buoyant.namerd.{Ns, VersionedDtab, DtabStore}
 import java.nio.ByteBuffer
 
 /**
@@ -31,11 +33,31 @@ class InMemoryDtabStore(namespaces: Map[String, Dtab]) extends DtabStore {
       }
     }
 
-  def list(): Future[Set[String]] = Future.value {
-    dtabStatesMu.synchronized(dtabStates).filter {
-      case (key, value) => value.sample.isDefined
-    }.keySet
+  private[this] lazy val keys = Var.async[Set[Ns]](Set.empty) { update =>
+    @volatile var stopping = false
+
+    def loop(): Future[Unit] = {
+      if (stopping) Future.Unit
+      else {
+        dtabStatesMu.synchronized {
+          val keySet = dtabStates.filter {
+            case (key, value) => value.sample.isDefined
+          }.keySet
+          update.update(keySet)
+        }
+        Future.sleep(1.second)(DefaultTimer.twitter).before(loop())
+      }
+    }
+
+    loop()
+
+    Closable.make { _ =>
+      stopping = true
+      Future.Unit
+    }
   }
+
+  def list(): Activity[Set[Ns]] = Activity(keys.map(Activity.Ok(_)))
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val state = get(ns)

@@ -12,13 +12,13 @@
   line-height: 21px;
 }
 
+.metric-header {
+  font-weight: 300;
+}
+
 .metric-small {
   font-size: 12px;
   line-height: 12px;
-}
-
-.metric-large, .metric-small {
-  font-weight: 600;
 }
 
 .success-metric-container {

@@ -1,11 +1,25 @@
 ## x.x.x
 
+* Add a `debugTrace` parameter to the `tracers` config section, which enables
+  printing all traces to the console.
+* Add etcd backed dtab storage.
+* Introduce a default HTTP response classifier so that 5XX responses
+  are marked as failures.
+
+## 0.4.0
+
 * Add a `bindingTimeoutMs` router parameter to configure the maximum amount of
   time to spend binding a path.
 * Add experimental support for storing dtabs in Kubernetes via the
   ThirdPartyResource API (which must be enabled in your cluster).
 * **Breaking api change** in namerd: dtabs are now string-encoded
   rather than thrift-encoded.
+* Add `/api/1/bind`, `/api/1/addr`, and `/api/1/delegate` HTTP APIs to namerd
+  * Most HTTP APIs now support `?watch=true` for returning updates via a
+    streaming response.
+* Add ACL and authentication support to the ZooKeeper DtabStore.
+* Support wildcards in dtabs!
+* New linkerd dashboard is now enabled by default!! :chart_with_upwards_trend:
 
 ## 0.3.1
 

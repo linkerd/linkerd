@@ -9,7 +9,7 @@ class ZipkinTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    zipkin(None, None, None).newTracer()
+    val _ = zipkin(None, None, None).newTracer()
   }
 
   test("service registration") {
@@ -22,6 +22,7 @@ class ZipkinTest extends FunSuite {
                   |host: foo
                   |port: 1234
                   |sampleRate: 0.5
+                  |debugTrace: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ZipkinTracerInitializer)))
@@ -29,5 +30,6 @@ class ZipkinTest extends FunSuite {
     assert(zipkin.host == Some("foo"))
     assert(zipkin.port == Some(1234))
     assert(zipkin.sampleRate == Some(0.5))
+    assert(zipkin.debugTrace == true)
   }
 }

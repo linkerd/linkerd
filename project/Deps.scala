@@ -4,15 +4,15 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.19.0")
+    ("com.twitter" %% "twitter-server" % "1.20.0")
       .exclude("com.twitter", "finagle-zipkin_2.11")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "6.33.0"
+    "com.twitter" %% s"util-$mod" % "6.34.0"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.34.0"
+    "com.twitter" %% s"finagle-$mod" % "6.35.0"
 
   // Jackson (parsing)
   val jacksonVersion = "2.4.4"
@@ -29,6 +29,12 @@ object Deps {
 
   val jacksonYaml =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+
+  // parses a variety of timestamp formats (like RFC3339)
+  val jodaTime = Seq(
+    "joda-time" % "joda-time"    % "2.7",
+    "org.joda"  % "joda-convert" % "1.7"
+  )
 
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"

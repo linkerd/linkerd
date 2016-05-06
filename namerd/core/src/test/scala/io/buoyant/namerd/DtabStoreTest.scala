@@ -1,12 +1,12 @@
 package io.buoyant.namerd
 
-import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite
 
-class DtabStoreTest extends FunSuite {
+class DtabStoreTest extends FunSuite with Exceptions {
 
   object FailStore extends DtabStore {
     def create(ns: Ns, dtab: Dtab) =
@@ -21,7 +21,7 @@ class DtabStoreTest extends FunSuite {
     def put(ns: Ns, dtab: Dtab) =
       fail("unexpected put")
 
-    def list() =
+    def list(): Activity[Set[Ns]] =
       fail("unexpected list")
 
     def observe(ns: Ns) =
@@ -33,7 +33,7 @@ class DtabStoreTest extends FunSuite {
     def delete(ns: Ns) = Future.Unit
     def update(ns: Ns, dtab: Dtab, v: DtabStore.Version) = Future.Unit
     def put(ns: Ns, dtab: Dtab) = Future.Unit
-    def list() = Future.value(Set.empty)
+    def list(): Activity[Set[Ns]] = Activity.pending
     def observe(ns: Ns) = Activity.pending
   }
 
@@ -51,7 +51,7 @@ class DtabStoreTest extends FunSuite {
   }
 
   test("validates create: invalid") {
-    intercept[Invalid] {
+    assertThrows[Invalid] {
       Await.result(validate(FailStore).create("bad", Dtab.empty))
     }
   }
@@ -61,7 +61,7 @@ class DtabStoreTest extends FunSuite {
   }
 
   test("validates update: invalid") {
-    intercept[Invalid] {
+    assertThrows[Invalid] {
       Await.result(validate(FailStore).update("bad", Dtab.empty, Buf.Empty))
     }
   }
@@ -71,7 +71,7 @@ class DtabStoreTest extends FunSuite {
   }
 
   test("validates put: invalid") {
-    intercept[Invalid] {
+    assertThrows[Invalid] {
       Await.result(validate(FailStore).put("bad", Dtab.empty))
     }
   }

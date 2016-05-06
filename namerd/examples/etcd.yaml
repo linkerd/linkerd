@@ -1,0 +1,9 @@
+admin:
+  port: 9991
+storage:
+  kind: io.buoyant.namerd.storage.experimental.etcd
+  key: /dtabs
+namers: []
+interfaces:
+- kind: thriftNameInterpreter
+- kind: httpController

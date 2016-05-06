@@ -58,7 +58,9 @@ class ObserverCache[K <: AnyRef, T](
     .maximumSize(inactiveCapacity)
     .removalListener(new RemovalListener[K, Observer[T]] {
       override def onRemoval(notification: RemovalNotification[K, Observer[T]]): Unit =
-        if (notification.wasEvicted) notification.getValue.close()
+        if (notification.wasEvicted) {
+          val _ = notification.getValue.close()
+        }
     })
     .build[K, Observer[T]]()
 

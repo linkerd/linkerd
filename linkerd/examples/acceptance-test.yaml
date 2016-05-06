@@ -8,6 +8,7 @@ tracers:
   host: zipkincollector
   port: 9410
   sampleRate: 0.02
+  debugTrace: true
 
 namers:
 - kind: io.l5d.fs
@@ -41,11 +42,13 @@ routers:
     /http/1.1 => /$/inet/127.1/9999;
   dstPrefix: /http
   failFast: false
-  timeoutMs: 100
+  timeoutMs: 1000
   httpAccessLog: logs/access.log
   identifier:
     kind: default
     httpUriInDst: true
+  responseClassifier:
+    kind: retryableIdempotent5XX
   client:
     loadBalancer:
       kind: p2c
@@ -68,7 +71,7 @@ routers:
     /thrift/echo => /host/thrift-framed;
   dstPrefix: /thrift
   failFast: true
-  timeoutMs: 200
+  timeoutMs: 1000
   thriftMethodInDst: true
   client:
     thriftFramed: true
@@ -90,7 +93,7 @@ routers:
     /thrift => /host/thrift-buffered;
   dstPrefix: /thrift
   failFast: false
-  timeoutMs: 300
+  timeoutMs: 1000
   thriftMethodInDst: true
   client:
     thriftFramed: false
@@ -111,7 +114,7 @@ routers:
     /mux    => /host/mux;
   dstPrefix: /mux
   failFast: true
-  timeoutMs: 400
+  timeoutMs: 1000
   client:
     loadBalancer:
       kind: aperture
@@ -128,9 +131,9 @@ routers:
 - protocol: http
   label: tlsStatic
   baseDtab: |
-    /host     => /io.l5d.fs;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /host       => /io.l5d.fs;
+    /http/1.1/* => /host;
+  timeoutMs: 1000
   client:
     tls:
       kind: io.l5d.clientTls.static
@@ -146,9 +149,9 @@ routers:
 - protocol: http
   label: tlsBoundPath
   baseDtab: |
-    /host     => /io.l5d.fs;
-    /method   => /$/io.buoyant.http.anyMethodPfx/host;
-    /http/1.1 => /method;
+    /host       => /io.l5d.fs;
+    /http/1.1/* => /host;
+  timeoutMs: 1000
   client:
     tls:
       kind: io.l5d.clientTls.boundPath

@@ -48,5 +48,5 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
 
 case class ThriftServable(addr: InetSocketAddress, iface: ThriftService) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
-  def serve() = ThriftMux.serveIface(addr, iface)
+  def serve() = ThriftMux.server.serveIface(addr, iface)
 }

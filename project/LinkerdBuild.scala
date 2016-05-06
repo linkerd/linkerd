@@ -5,30 +5,22 @@ import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
 import pl.project13.scala.sbt.JmhPlugin
 
-/**
- * Project layout.
- *
- * - consul/ -- consul client
- * - k8s/ -- finagle kubernetes client
- * - marathon/ -- marathon client
- * - router/ -- finagle router libraries
- * - namer/ -- name resolution
- * - config/ -- configuration utilities
- * - linkerd/ -- linkerd runtime and modules
- * - namerd/ -- namerd runtime and modules
- * - test-util/ -- async test helpers; provided by [[Base]]
- */
 object LinkerdBuild extends Base {
 
   val Minimal = config("minimal")
   val Bundle = config("bundle") extend Minimal
 
-  val k8s = projectDir("k8s")
+  val consul = projectDir("consul")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
 
-  val consul = projectDir("consul")
+  val etcd = projectDir("etcd")
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson ++ Deps.jodaTime)
+    .withTests().withIntegration()
+
+  val k8s = projectDir("k8s")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -148,6 +140,11 @@ object LinkerdBuild extends Base {
         .dependsOn(core % "test->test;compile->compile")
         .withTests()
 
+      val etcd = projectDir("namerd/storage/etcd")
+        .dependsOn(core, LinkerdBuild.etcd % "integration->integration;compile->compile")
+        .withTests()
+        .withIntegration()
+
       val zk = projectDir("namerd/storage/zk")
         .dependsOn(core)
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
@@ -159,7 +156,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("namerd/storage")
-        .aggregate(inMemory, zk, k8s)
+        .aggregate(inMemory, zk, k8s, etcd)
     }
 
     object Iface {
@@ -261,7 +258,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("namerd")
-      .aggregate(core, Storage.all, Iface.all, main)
+      .aggregate(core, dcosBootstrap, Storage.all, Iface.all, main)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -274,7 +271,7 @@ object LinkerdBuild extends Base {
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.k8s, Storage.zk
+        Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk
       )
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
@@ -326,15 +323,6 @@ object LinkerdBuild extends Base {
       .dependsOn(core)
       .withTests()
 
-    object Identifier {
-      val http = projectDir("linkerd/identifier/http")
-        .dependsOn(core, Router.http)
-        .withTests()
-
-      val all = projectDir("linkerd/identifier")
-        .aggregate(http)
-    }
-
     object Protocol {
       val http = projectDir("linkerd/protocol/http")
         .withTests().withE2e().withIntegration()
@@ -342,7 +330,6 @@ object LinkerdBuild extends Base {
           core % "compile->compile;e2e->test;integration->test",
           tls % "integration",
           Namer.fs % "integration",
-          Identifier.http,
           Router.http)
 
       val mux = projectDir("linkerd/protocol/mux")
@@ -425,7 +412,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("linkerd")
-      .aggregate(admin, core, main, configCore, Identifier.all, Namer.all, Protocol.all, Tracer.all, tls)
+      .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -434,7 +421,6 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
-        Identifier.http,
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
         Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
@@ -501,6 +487,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
   val namerdStorageZk = Namerd.Storage.zk
@@ -517,8 +504,6 @@ object LinkerdBuild extends Base {
   val linkerdAdmin = Linkerd.admin
   val linkerdConfig = configCore
   val linkerdCore = Linkerd.core
-  val linkerdIdentifier = Linkerd.Identifier.all
-  val linkerdIdentifierHttp = Linkerd.Identifier.http
   val linkerdMain = Linkerd.main
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
@@ -530,6 +515,19 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .aggregate(k8s, consul, marathon, Linkerd.all, Namerd.all, Namerd.dcosBootstrap, Router.all, Namer.all, Interpreter.all, configCore, admin, testUtil)
     .settings(unidocSettings)
+    .aggregate(
+      admin,
+      configCore,
+      consul,
+      etcd,
+      k8s,
+      marathon,
+      testUtil,
+      Interpreter.all,
+      Linkerd.all,
+      Namer.all,
+      Namerd.all,
+      Router.all
+    )
 }

@@ -5,16 +5,16 @@
 */
 var MetricsCollector = (function() {
   var generalUpdateUri = "/admin/metrics.json";
-  var metricsUpdateUri = "/admin/metrics?";
+  var metricsUpdateUri = "/admin/metrics";
   var listeners = [];
 
-  function url(listeners, defaultMetrics) {
+  function requestBody(listeners, defaultMetrics) {
     var params = _(listeners)
       .map(function(listener){ return listener.metrics(defaultMetrics); })
       .flatten()
       .uniq()
       .value();
-    return metricsUpdateUri + $.param({ m: params }, true);
+    return $.param({ m: params }, true);
   }
 
   /**
@@ -46,7 +46,9 @@ var MetricsCollector = (function() {
       });
 
       var metricSpecific = $.ajax({
-        url: url(listeners, defaultMetrics),
+        url: metricsUpdateUri,
+        type: "POST",
+        data: requestBody(listeners, defaultMetrics),
         dataType: "json",
         cache: false
       });

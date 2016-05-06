@@ -1,12 +1,9 @@
 package io.buoyant.namerd.storage.experimental
 
+import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite
 
-class AclTest extends FunSuite {
-
-  def assertThrows[T <: AnyRef: Manifest](f: => Any): Unit = {
-    val _ = intercept[T](f)
-  }
+class AclTest extends FunSuite with Exceptions {
 
   test("unrecognized perm") {
     assertThrows[IllegalArgumentException](Acl("scheme", "id", "crwdaz"))

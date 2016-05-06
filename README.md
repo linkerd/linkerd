@@ -243,7 +243,7 @@ _path/to/myapp/linkerd.yml_, you could start linkerd in docker with
 the following command:
 
 ```
-$ docker run -p 4140:4140 -v path/to/myapp:/myapp -w /myapp buoyantio/linkerd:0.0.10-SNAPSHOT linkerd.yml
+$ docker run -p 4140:4140 -p 9990:9990 -v /absolute/path/to/myapp:/myapp buoyantio/linkerd:0.0.10-SNAPSHOT /myapp/linkerd.yml
 ```
 
 The list of image names may be changed with a command like:
@@ -278,14 +278,14 @@ The assembly script executes two commands serially:
 
 ```bash
 $ ./sbt namerd/dcos:assembly
-$ namerd/target/scala-2.11/namerd-0.3.1-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+$ namerd/target/scala-2.11/namerd-0.4.0-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
 ```
 
 ##### Run assembly script in docker #####
 
 ```bash
 $ ./sbt namerd/dcos:docker
-$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.3.1-SNAPSHOT-dcos namerd/examples/zk.yaml
+$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.4.0-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```
 
 ### Contributing ###

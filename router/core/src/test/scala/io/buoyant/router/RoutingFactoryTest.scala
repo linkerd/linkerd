@@ -5,10 +5,10 @@ import com.twitter.finagle.buoyant._
 import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Time}
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Exceptions, Awaits}
 import org.scalatest.FunSuite
 
-class RoutingFactoryTest extends FunSuite with Awaits {
+class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
   case class Request()
   case class Response()
 
@@ -54,7 +54,7 @@ class RoutingFactoryTest extends FunSuite with Awaits {
     val tracer = new TestTracer()
     Trace.letTracer(tracer) {
       val service = mkService(pathMk = (_: Request) => Future.exception(Thrown))
-      intercept[RoutingFactory.UnknownDst[Request]] {
+      assertThrows[RoutingFactory.UnknownDst[Request]] {
         await(service(Request()))
       }
     }

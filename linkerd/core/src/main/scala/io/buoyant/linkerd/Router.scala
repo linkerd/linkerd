@@ -6,7 +6,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
-import com.twitter.finagle.service.{FailFastFactory, TimeoutFilter}
+import com.twitter.finagle.service.{FailFastFactory, ResponseClassifier, TimeoutFilter}
 import com.twitter.util.Closable
 import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
 import io.buoyant.router.RoutingFactory
@@ -38,11 +38,15 @@ trait Router {
 
   def withParams(ps: Stack.Params): Router = {
     val r = _withParams(ps)
-    // Copy stats and tracing params from router to servers
+
+    // Copy selected params from router to servers
     val param.Stats(stats) = r.params[param.Stats]
-    val srvStats = param.Stats(stats.scope(label, "srv"))
-    val tracer = r.params[param.Tracer]
-    r.withServers(servers.map(_.configured(srvStats).configured(tracer)))
+    def configure(s: Server) = s
+      .configured(param.Stats(stats.scope(label, "srv")))
+      .configured(r.params[param.ResponseClassifier])
+      .configured(r.params[param.Tracer])
+
+    r.withServers(servers.map(configure(_)))
   }
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
@@ -90,6 +94,7 @@ object Router {
     server.configured(param.Label(s"$ip/$port"))
       .configured(Server.RouterLabel(routerLabel))
       .configured(param.Stats(stats.scope(routerLabel, "srv")))
+      .configured(router.params[param.ResponseClassifier])
       .configured(router.params[param.Tracer])
   }
 }
@@ -113,6 +118,10 @@ trait RouterConfig {
   @JsonIgnore
   def label = _label.getOrElse(protocol.name)
 
+  /*
+   * interpreter controls how names are bound.
+   */
+
   @JsonProperty("interpreter")
   var _interpreter: Option[InterpreterConfig] = None
 
@@ -123,11 +132,31 @@ trait RouterConfig {
   def interpreter: InterpreterConfig =
     _interpreter.getOrElse(defaultInterpreter)
 
+  /*
+   * bindingTimeoutMs limits name resolution.
+   */
+
   @JsonProperty("bindingTimeoutMs")
   var _bindingTimeoutMs: Option[Int] = None
 
   @JsonIgnore
   def bindingTimeout = _bindingTimeoutMs.map(_.millis).getOrElse(10.seconds)
+
+  /*
+   * responseClassifier categorizes responses to determine whether
+   * they are failures and if they are retryable.
+   */
+
+  @JsonProperty("responseClassifier")
+  var _responseClassifier: Option[ResponseClassifierConfig] = None
+
+  @JsonIgnore
+  def baseResponseClassifier: ResponseClassifier =
+    ResponseClassifier.Default
+
+  @JsonIgnore
+  def responseClassifier: ResponseClassifier =
+    _responseClassifier.map(_.mk).getOrElse(PartialFunction.empty) orElse baseResponseClassifier
 
   @JsonIgnore
   def routerParams = Stack.Params.empty
@@ -136,6 +165,7 @@ trait RouterConfig {
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(client.map(_.clientParams)) +
+    param.ResponseClassifier(responseClassifier) +
     param.Label(label) +
     DstBindingFactory.BindingTimeout(bindingTimeout)
 
