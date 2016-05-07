@@ -5,6 +5,8 @@
 * Add etcd backed dtab storage.
 * Introduce a default HTTP response classifier so that 5XX responses
   are marked as failures.
+* Add a `retries` client config section supporting configurable retry
+  budgets and backoffs.
 
 ## 0.4.0
 

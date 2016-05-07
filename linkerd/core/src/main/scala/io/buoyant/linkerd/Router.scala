@@ -1,13 +1,13 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo, JsonSubTypes}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
-import com.twitter.finagle.service.{FailFastFactory, ResponseClassifier, TimeoutFilter}
-import com.twitter.util.Closable
+import com.twitter.finagle.service._
+import com.twitter.util.{Closable, Duration}
 import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
 import io.buoyant.router.RoutingFactory
 
@@ -187,11 +187,70 @@ class ClientConfig {
   var tls: Option[TlsClientConfig] = None
   var loadBalancer: Option[LoadBalancerConfig] = None
   var hostConnectionPool: Option[HostConnectionPool] = None
+  var retries: Option[RetriesConfig] = None
 
   @JsonIgnore
   def clientParams: Stack.Params = Stack.Params.empty
     .maybeWith(loadBalancer.map(_.clientParams))
     .maybeWith(hostConnectionPool.map(_.param))
+    .maybeWith(retries.map(_.mk))
+}
+
+case class RetriesConfig(
+  backoff: Option[BackoffConfig] = None,
+  budget: Option[RetryBudgetConfig] = None
+) {
+
+  @JsonIgnore
+  def mk: Retries.Budget = Retries.Budget(
+    budget.map(_.mk).getOrElse(RetryBudget()),
+    backoff.map(_.mk).getOrElse(Backoff.const(Duration.Zero))
+  )
+}
+
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY, property = "kind"
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
+  new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
+))
+trait BackoffConfig {
+  @JsonIgnore
+  def mk: Stream[Duration]
+}
+
+case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {
+  // ms defaults to 0 when not specified
+  def mk = Backoff.constant(ms.millis)
+}
+
+/** See http://www.awsarchitectureblog.com/2015/03/backoff.html */
+case class JitteredBackoffConfig(minMs: Option[Int], maxMs: Option[Int]) extends BackoffConfig {
+  def mk = {
+    val min = minMs match {
+      case Some(ms) => ms.millis
+      case None => throw new IllegalArgumentException("'minMs' must be specified")
+    }
+    val max = maxMs match {
+      case Some(ms) => ms.millis
+      case None => throw new IllegalArgumentException("'maxMs' must be specified")
+    }
+    Backoff.decorrelatedJittered(min, max)
+  }
+}
+
+case class RetryBudgetConfig(
+  ttlSecs: Option[Int],
+  minRetriesPerSec: Option[Int],
+  percentCanRetry: Option[Double]
+) {
+  @JsonIgnore
+  def mk: RetryBudget = {
+    val ttl = ttlSecs.map(_.seconds).getOrElse(10.seconds)
+    RetryBudget(ttl, minRetriesPerSec.getOrElse(10), percentCanRetry.getOrElse(0.2))
+  }
 }
 
 case class HostConnectionPool(
