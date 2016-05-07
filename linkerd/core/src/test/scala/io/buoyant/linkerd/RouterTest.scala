@@ -110,14 +110,15 @@ servers:
          |  retries:
          |    backoff:
          |      kind: jittered
-         |      maxMs: 10000
+         |      minMs: 1
+         |      maxMs: 1000
          |    budget:
          |      ttlSecs: 30
          |      minRetriesPerSec: 3
          |      percentCanRetry: 0.33
          |""".stripMargin
     assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
-      Some(JitteredBackoffConfig(None, Some(10000))),
+      Some(JitteredBackoffConfig(Some(1), Some(1000))),
       Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
     )))
   }
