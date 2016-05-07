@@ -174,6 +174,12 @@ maintain to each destination host.  It must be an object containing keys:
   * *maxWaiters* -- Optional.  The maximum number of connection requests that
   are queued when the connection concurrency exceeds maxSize.  (default:
   Int.MaxValue)
+* *responseClassifier* -- Optional. A (sometimes protocol-specific)
+  module that determines which responses should be considered failures
+  and, of those, which should be considered [retryable](#retries). By
+  default, connection-level errors are considered failures and those
+  where the request has not been written are considered retryable.
+  * *kind* -- Indicates the response classifier moduel
 
 #### TLS
 
@@ -273,7 +279,7 @@ aperture supports the following options (see [here][aperture] for option semanti
 
 heap does not support any options.
 
-
+<a name="retries"></a>
 #### Retries
 
 linkerd can automatically retry requests on certain failures (for
@@ -364,6 +370,29 @@ and HTTP/1.1 logical names are of the form:
 
 In both cases, `uri` is only considered a part
 of the logical name if the config option `httpUriInDst` is true.
+
+
+#### HTTP Response Classifiers
+
+Response classifiers determine which HTTP responses are considered to
+be failures (for the purposes of success rate calculation) and which
+of these responses may be [retried](#retries). By default, the
+_nonRetryable5XX_ classifier is used.
+
+##### nonRetryable5XX
+
+All 5XX responses are considered to be failures and none of these
+requests are considered to be retryable.
+
+##### retryableRead5XX
+
+All 5XX responses are considered to be failures. However, `GET`,
+`HEAD`, `OPTIONS`, and `TRACE` requests may be retried automatically.
+
+##### retryableIdempotent5XX
+
+Like _retryableRead5XX_, but `PUT` and `DELETE` requests may also be
+retried.
 
 <a name="protocol-thrift"></a>
 ### Thrift protocol parameters
