@@ -9,6 +9,8 @@ import sbtdocker.DockerKeys._
 import sbtdocker.DockerSettings.baseDockerSettings
 import scala.language.implicitConversions
 import scalariform.formatter.preferences._
+import scoverage.ScoverageKeys._
+import scoverage.ScoverageSbtPlugin
 
 /**
  * Base project configuration.
@@ -132,6 +134,7 @@ class Base extends Build {
    * Test utilities (mostly for dealing with async APIs)
    */
   val testUtil = projectDir("test-util")
+    .settings(coverageExcludedPackages := "io.buoyant.test.*")
     .settings(libraryDependencies += Deps.scalatest)
     .settings(libraryDependencies += {
       val dep = Deps.twitterUtil("core")
@@ -179,7 +182,8 @@ class Base extends Build {
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
       .configs(EndToEndTest)
-      .settings(inConfig(EndToEndTest)(Defaults.testSettings))
+      .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings))
+      .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.1.1" % EndToEndTest)
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {

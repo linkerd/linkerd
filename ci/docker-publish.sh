@@ -1,9 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
 # Publish docker images from circleci
-
-# Usage:
-# ./project/ci-publish-docker.sh
 
 set -eu
 
@@ -17,6 +14,9 @@ if [ -z "$DOCKER_CREDENTIALS" ]; then
   exit 1
 fi
 
-mkdir -p ~/.docker && echo $DOCKER_CREDENTIALS > ~/.docker/config.json
+mkdir -p ~/.docker
+echo "$DOCKER_CREDENTIALS" > ~/.docker/config.json
 
-./sbt linkerd/dockerBuildAndPush namerd/dockerBuildAndPush namerd/dcos:dockerBuildAndPush
+./sbt linkerd/dockerBuildAndPush \
+      namerd/dockerBuildAndPush \
+      namerd/dcos:dockerBuildAndPush
