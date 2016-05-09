@@ -1,10 +1,10 @@
-package io.l5d.etcd
+package io.l5d.announcer
 
 import com.twitter.finagle.{Announcement, Announcer, Service}
 import com.twitter.finagle.http.{Response, Request}
 import com.twitter.io.Buf
 import com.twitter.util.{Timer, Duration, Future}
-import io.buoyant.etcd.Etcd
+import io.buoyant.etcd.{Etcd => EtcdClient}
 import java.net.InetSocketAddress
 
 class EtcdAnnouncer(
@@ -15,15 +15,16 @@ class EtcdAnnouncer(
 )(implicit timer: Timer) extends Announcer {
   override val scheme: String = "etcd"
 
-  val etcd = new Etcd(client)
+  val etcd = new EtcdClient(client)
   val root = etcd.key(pathPrefix)
 
   override def announce(addr: InetSocketAddress, name: String): Future[Announcement] = {
     val buf = Buf.Utf8(addr.toString)
-    root.createInOrderKey(Some(buf), Some(ttl)).map { nodeOp =>
+    val key = root.key(s"/$name")
+    key.createInOrderKey(Some(buf), Some(ttl)).map { nodeOp =>
       val key = etcd.key(nodeOp.node.key)
       val task = timer.schedule(refresh) {
-        key.refresh(Some(ttl))
+        val _ = key.refresh(Some(ttl))
       }
       new Announcement {
         override def unannounce(): Future[Unit] = {
