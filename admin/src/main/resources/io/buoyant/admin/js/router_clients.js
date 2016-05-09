@@ -8,7 +8,7 @@ var RouterClients = (function() {
     }, {});
   }
 
-  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, clientContainerTemplate, colors) {
+  return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, metricPartial, clientContainerTemplate, colors) {
     var clientToColor = assignColorsToClients(colors, routers.clients(routerName));
     var combinedClientGraph = CombinedClientGraph(metricsCollector, routerName, $clientEl.find(".router-graph"), clientToColor);
     var clients = routers.clients(routerName);
@@ -29,7 +29,7 @@ var RouterClients = (function() {
       var $metrics = $container.find(".metrics-container");
       var $chart = $container.find(".chart-container");
 
-      return RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, $chart, colorsForClient);
+      return RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, metricPartial, $chart, colorsForClient);
     }
 
     function addClients(addedClients) {

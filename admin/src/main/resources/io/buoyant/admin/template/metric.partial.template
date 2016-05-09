@@ -1,0 +1,16 @@
+<div class="{{containerClass}}" style={{#if borderColor}}"border-left: 1px solid {{borderColor}}"{{/if}}>
+  <div class="metric-header">
+    {{#if description}}
+      {{description}}
+    {{else}}
+      metric
+    {{/if}}
+  </div>
+  <div class="{{metricClass}}">
+    {{#if value}}
+      {{value}}
+    {{else}}
+      0
+    {{/if}}
+  </div>
+</div>

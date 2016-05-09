@@ -92,7 +92,7 @@ var RouterController = (function () {
 
       RouterSummary(metricsCollector, templates.summary, $summaryEl, router);
       RouterServers(metricsCollector, routers, $serversEl, router, templates.server, templates.serverMetric);
-      RouterClients(metricsCollector, routers, $clientsEl, router , templates.client, templates.clientContainer, colorOrder);
+      RouterClients(metricsCollector, routers, $clientsEl, router , templates.client, templates.metric, templates.clientContainer, colorOrder);
     });
 
     return {};
