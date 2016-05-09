@@ -3,6 +3,7 @@ import sbt.Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
+import scoverage.ScoverageKeys._
 import pl.project13.scala.sbt.JmhPlugin
 
 object LinkerdBuild extends Base {
@@ -35,6 +36,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("core"))
       .withTests()
       .withE2e()
+      .settings(coverageExcludedPackages := ".*XXX_.*")
 
     val http = projectDir("router/http")
       .dependsOn(core)
@@ -49,6 +51,7 @@ object LinkerdBuild extends Base {
 
     val thriftIdl = projectDir("router/thrift-idl")
       .withTwitterLib(Deps.finagle("thrift"))
+      .settings(coverageExcludedPackages := ".*thriftscala.*")
 
     val thrift = projectDir("router/thrift")
       .withTwitterLib(Deps.finagle("thrift"))
@@ -170,6 +173,7 @@ object LinkerdBuild extends Base {
 
       val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
         .withTwitterLib(Deps.finagle("thrift"))
+        .settings(coverageExcludedPackages := ".*thriftscala.*")
 
       val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
         .dependsOn(core)
@@ -184,6 +188,7 @@ object LinkerdBuild extends Base {
     val main = projectDir("namerd/main")
       .dependsOn(core, admin, configCore)
       .withBuildProperties()
+      .settings(coverageExcludedPackages := ".*")
 
     /**
      * An assembly-running script that adds the namerd plugin directory
@@ -343,7 +348,7 @@ object LinkerdBuild extends Base {
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, Protocol.http)
-        .dependsOn(testUtil)
+        .withTests()
         .withTwitterLib(Deps.twitterUtil("benchmark"))
         .enablePlugins(JmhPlugin)
     }
@@ -370,6 +375,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
+      .settings(coverageExcludedPackages := ".*")
 
     /*
      * linkerd packaging configurations.
@@ -457,12 +463,12 @@ object LinkerdBuild extends Base {
         Def.task {
           (run in Compile).toTask(s" -linkerd.exec=$linkerd -namerd.exec=$namerd").value
         }
-      }).value
+      }).value,
+      coverageExcludedPackages := ".*"
     )
 
   // All projects must be exposed at the root of the object in
   // dependency-order:
-
 
   val router = Router.all
   val routerCore = Router.core

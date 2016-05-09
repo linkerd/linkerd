@@ -4,36 +4,25 @@ machine:
   services:
     - docker
 
-general:
-  artifacts:
-  - "target/scala-2.10/scoverage-report"
-
 dependencies:
   cache_directories:
-  - ~/.gitshas
-  - .sbt-launch.jar
+    - ~/.gitshas
+    - .sbt-launch.jar
 
   override:
-  - |
-    mkdir -p ~/.gitshas
-    if [ -n "${TWITTER_DEVELOP}" ]; then
-      export GIT_SHA_DIR=~/.gitshas
-      ./project/install-twitter-develop-deps.sh
-    fi
-    ./sbt update
+    - ci/update.sh
 
 test:
   override:
-  - ./sbt coverage test
-  - ./sbt integration:compile e2e:test
-  - ./sbt linkerd/assembly && ./test-config.sh
+    - ci/test.sh:
+        parallel: true
 
   post:
-  - ./sbt coverageAggregate
-  - mkdir -p $CIRCLE_TEST_REPORTS/junit && find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;
+    - ci/coverage-publish.sh
+    - mkdir -p "$CIRCLE_TEST_REPORTS/junit" && find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} "$CIRCLE_TEST_REPORTS/junit/" \;
 
 deployment:
   master:
     branch: master
     commands:
-    - ./project/ci-publish-docker.sh
+      - ci/docker-publish.sh
