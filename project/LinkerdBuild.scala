@@ -190,7 +190,6 @@ object LinkerdBuild extends Base {
       .withBuildProperties()
       .settings(coverageExcludedPackages := ".*")
 
-
     /**
      * An assembly-running script that adds the namerd plugin directory
      * to the classpath if it exists.
