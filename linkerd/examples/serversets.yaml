@@ -7,7 +7,7 @@ namers:
 routers:
 - protocol: http
   announcers:
-  - kind: serversets
+  - kind: io.l5d.announcer.Serversets
     hosts:
     - 127.0.0.1:2181
     pathPrefix: /discovery/prod

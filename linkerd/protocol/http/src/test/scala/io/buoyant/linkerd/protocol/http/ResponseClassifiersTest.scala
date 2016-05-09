@@ -5,7 +5,8 @@ import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
+import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer, RouterConfig}
+import io.buoyant.linkerd.protocol.HttpInitializer
 import org.scalatest.FunSuite
 
 class ResponseClassifiersTest extends FunSuite {
@@ -32,6 +33,7 @@ class ResponseClassifiersTest extends FunSuite {
     Method.Get,
     Method.Head,
     Method.Patch,
+    Method.Post,
     Method.Put,
     Method.Options,
     Method.Trace
@@ -105,20 +107,28 @@ class ResponseClassifiersTest extends FunSuite {
   }
 
   for (
-    (kind, init) <- Map(
-      "nonRetryable5XX" -> NonRetryable5XXInitializer,
-      "retryableIdempotent5XX" -> RetryableIdempotent5XXInitializer,
-      "retryableRead5XX" -> RetryableRead5XXInitializer
+    init <- Seq(
+      NonRetryable5XXInitializer,
+      RetryableIdempotent5XXInitializer,
+      RetryableRead5XXInitializer
     )
   ) {
+    val kind = init.configId
+
     test(s"loads $kind") {
       assert(LoadService[ResponseClassifierInitializer]().exists(_.configId == kind))
     }
 
-    test(s"parse $kind") {
-      val yaml = s"kind: $kind"
-      val mapper = Parser.objectMapper(yaml, Iterable(Seq(init)))
-      assert(mapper.readValue[ResponseClassifierConfig](yaml) != null)
+    test(s"parse router with $kind") {
+      val yaml =
+        s"""|protocol: http
+            |responseClassifier:
+            |  kind: $kind
+            |servers:
+            |- port: 0
+            |""".stripMargin
+      val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(init)))
+      assert(mapper.readValue[RouterConfig](yaml)._responseClassifier.isDefined)
     }
   }
 }

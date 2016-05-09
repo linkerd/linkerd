@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{Dtab, Stack}
+import com.twitter.finagle.buoyant.DstBindingFactory
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
 import io.buoyant.router.RoutingFactory
@@ -10,6 +10,13 @@ import java.net.InetAddress
 import org.scalatest.FunSuite
 
 class RouterTest extends FunSuite with Exceptions {
+
+  def parseConfig(
+    yaml: String,
+    protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
+    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
+  ): RouterConfig =
+    Parser.objectMapper(yaml, Iterable(protos, interpreters)).readValue[RouterConfig](yaml)
 
   def parse(
     yaml: String,
@@ -99,16 +106,36 @@ servers:
   }
 
   test("announcer") {
-    val yaml =
-      """
+    val yaml = """
         |protocol: plain
         |announcers:
         |- kind: test
         |servers:
         |- label: foo
         |  announce: true
-      """.stripMargin
+      """.
+      stripMargin
     val router = parse(yaml, Stack.Params.empty)
     assert(router.initialize().announcers.head.isInstanceOf[TestAnnouncer])
+  }
+
+  test("with retries") {
+    val yaml =
+      """|protocol: plain
+         |client:
+         |  retries:
+         |    backoff:
+         |      kind: jittered
+         |      minMs: 1
+         |      maxMs: 1000
+         |    budget:
+         |      ttlSecs: 30
+         |      minRetriesPerSec: 3
+         |      percentCanRetry: 0.33
+         |""".stripMargin
+    assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
+      Some(JitteredBackoffConfig(Some(1), Some(1000))),
+      Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
+    )))
   }
 }
