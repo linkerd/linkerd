@@ -32,6 +32,9 @@ object TracingFilter extends SimpleFilter[Request, Response] {
     Trace.recordBinary("http.rsp.status", rsp.status.code)
     Trace.recordBinary("http.rsp.version", rsp.version.toString)
     rsp.contentLength.foreach(Trace.recordBinary("http.rsp.content-length", _))
+    if (rsp.status.code >= 500 && rsp.status.code < 600) {
+      Trace.recordBinary("http.rsp.body", rsp.content.slice(0, 64 * 1000 /*64kb*/))
+    }
     rsp.contentType.foreach(Trace.recordBinary("http.rsp.content-type", _))
     rsp.headerMap.get("transfer-encoding").foreach { te =>
       Trace.recordBinary("http.rsp.transfer-encoding", te)
