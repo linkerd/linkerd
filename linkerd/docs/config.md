@@ -134,13 +134,27 @@ Each router must be configured as an object with the following params:
   
 ### Announcers
 
-#### zk
+#### Serversets
 
 Announce to ZooKeeper using the serverset format.
 
 * *hosts* -- a list of hosts where ZooKeeper can be reached
 * *pathPrefix* -- (optional) the ZooKeeper path under which services should be registered. (default:
   /discovery)
+
+#### Etcd
+
+Announce to Etcd using TTLs.
+
+* *host* -- (optional) the etcd API host.  (default: localhost)
+* *port* -- (optional) the etcd API port.  (default: 2379)
+* *pathPrefix* -- (optional) the etcd path under which services should be registered. (default:
+  /discovery)
+* *ttlSecs* -- (optional) the TTL in seconds for announcements to live in etcd.  Announcements will
+  disappear from etcd after this amount of time if not refreshed.  (default: 2 minutes)
+* *refreshSecs* -- (optional) the frequency in seconds to refresh the TTL.  This value should be set
+  smaller than the TTL to ensure that the announcement does not disappear from etcd. (default: 1
+  minute)
 
 <a name="basic-router-params"></a>
 ### Basic router parameters

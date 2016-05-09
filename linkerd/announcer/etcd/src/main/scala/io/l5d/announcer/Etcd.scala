@@ -4,7 +4,6 @@ import com.twitter.conversions.time._
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Http, Announcer}
-import com.twitter.util.Duration
 import io.buoyant.linkerd.{AnnouncerConfig, AnnouncerInitializer}
 
 class EtcdAnnouncerInitializer extends AnnouncerInitializer {
@@ -15,8 +14,8 @@ case class Etcd(
   host: Option[String],
   port: Option[Int],
   pathPrefix: Option[String],
-  ttl: Option[Duration],
-  refresh: Option[Duration]
+  ttlSecs: Option[Int],
+  refreshSecs: Option[Int]
 ) extends AnnouncerConfig {
 
   @JsonIgnore
@@ -27,7 +26,7 @@ case class Etcd(
   override def mk(): Announcer = new EtcdAnnouncer(
     Http.newService(s"/$$/inet/$getHost/$getPort"),
     pathPrefix.getOrElse("/discovery"),
-    ttl.getOrElse(2.minutes),
-    refresh.getOrElse(1.minute)
+    ttlSecs.map(_.seconds).getOrElse(2.minutes),
+    refreshSecs.map(_.seconds).getOrElse(1.minute)
   )(DefaultTimer.twitter)
 }
