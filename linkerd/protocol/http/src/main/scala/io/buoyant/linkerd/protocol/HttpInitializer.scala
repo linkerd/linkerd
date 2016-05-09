@@ -2,8 +2,9 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.{Path, Stack, StackBuilder}
+import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
+import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
 import io.l5d.HttpIdentifierConfig
@@ -17,12 +18,10 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultRouter = {
     val pathStack = Headers.Dst.PathFilter +: Http.router.pathStack
     val boundStack = Headers.Dst.BoundFilter +: Http.router.boundStack
-    val clientStack = {
-      val stk = new StackBuilder(Http.router.clientStack)
-      stk.push(http.AccessLogger.module)
-      stk.push(http.StatusCodeStatsFilter.module)
-      stk.result.replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
-    }
+    val clientStack = (http.AccessLogger.module +: Http.router.clientStack)
+      .replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
+      .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+
     Http.router
       .withPathStack(pathStack)
       .withBoundStack(boundStack)

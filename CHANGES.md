@@ -5,6 +5,10 @@
 * Add etcd backed dtab storage.
 * Introduce a default HTTP response classifier so that 5XX responses
   are marked as failures.
+* Add a `retries` client config section supporting configurable retry
+  budgets and backoffs.
+* Automatically retry certain types of failures, as determined by
+  response classifiers.
 * Add announcer support!  linkerd can now announce to service discovery backends!
   * Add zk announcer.
 

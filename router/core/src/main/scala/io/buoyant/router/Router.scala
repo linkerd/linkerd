@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.service.FailFastFactory
+import com.twitter.finagle.service.{FailFastFactory, Retries}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 
@@ -254,7 +254,8 @@ object StackRouter {
      * may avail itself of any and all params to set TLS params.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack)
+      (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
+        .replace(Retries.Role, XXX_ClassifierRequeueFilter.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
