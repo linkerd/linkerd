@@ -1,3 +1,5 @@
+## x.x.x
+
 ## 0.5.0
 
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
