@@ -134,7 +134,7 @@ Each router must be configured as an object with the following params:
   
 ### Announcers
 
-#### zk
+#### io.l5d.announcer.Serversets
 
 Announce to ZooKeeper using the serverset format.
 
