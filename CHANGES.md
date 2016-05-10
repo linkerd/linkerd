@@ -7,6 +7,7 @@
   are marked as failures.
 * Add a `retries` client config section supporting configurable retry
   budgets and backoffs.
+* Add an `/admin/metrics/prometheus` stats endpoint.
 * Automatically retry certain types of failures, as determined by
   response classifiers.
 * Remove TLS support from the k8s namer in favor of using `kubectl proxy` for

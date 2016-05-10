@@ -3,6 +3,7 @@ package io.buoyant.admin
 import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
 import com.twitter.finagle.http.{HttpMuxer, Request, Response}
+import com.twitter.finagle.stats.MetricsStatsReceiver
 import com.twitter.logging.Logger
 import com.twitter.server.Admin.Path
 import com.twitter.server.handler.{SummaryHandler => TSummaryHandler, _}
@@ -30,6 +31,7 @@ class Admin(app: TApp) {
     "/admin/tracing" -> new TracingHandler,
     "/admin/logging" -> new LoggingHandler,
     "/admin/metrics" -> new MetricsQueryHandler,
+    "/admin/metrics/prometheus" -> new PrometheusStatsHandler(MetricsStatsReceiver.defaultRegistry),
     Path.Clients -> new ClientRegistryHandler(Path.Clients),
     Path.Servers -> new ServerRegistryHandler(Path.Servers),
     "/admin/files/" -> ResourceHandler.fromJar(
