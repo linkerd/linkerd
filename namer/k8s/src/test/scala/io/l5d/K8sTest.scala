@@ -11,7 +11,7 @@ class K8sTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = k8s(None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = k8s(None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -23,15 +23,11 @@ class K8sTest extends FunSuite {
                   |kind: io.l5d.experimental.k8s
                   |host: k8s-master.site.biz
                   |port: 80
-                  |tls: false
-                  |authTokenFile: ../auth.token
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(K8sInitializer)))
     val k8s = mapper.readValue[NamerConfig](yaml).asInstanceOf[k8s]
     assert(k8s.host == Some("k8s-master.site.biz"))
     assert(k8s.port == Some(Port(80)))
-    assert(k8s.tls == Some(false))
-    assert(k8s.authTokenFile == Some("../auth.token"))
   }
 }

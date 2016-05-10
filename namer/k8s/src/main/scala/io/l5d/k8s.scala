@@ -15,10 +15,8 @@ import scala.io.Source
  * <pre>
  * namers:
  * - kind: io.l5d.experimental.k8s
- *   host: k8s-master.site.biz
- *   port: 80
- *   tls: false
- *   authTokenFile: ../auth.token
+ *   host: localhost
+ *   port: 8001
  * </pre>
  */
 class K8sInitializer extends NamerInitializer {
@@ -29,10 +27,7 @@ object K8sInitializer extends K8sInitializer
 
 case class k8s(
   host: Option[String],
-  port: Option[Port],
-  tls: Option[Boolean],
-  tlsWithoutValidation: Option[Boolean],
-  authTokenFile: Option[String]
+  port: Option[Port]
 ) extends NamerConfig with ClientConfig {
 
   @JsonIgnore

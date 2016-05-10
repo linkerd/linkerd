@@ -662,12 +662,8 @@ experimental.
 
 The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and these parameters:
 
-* *host* -- the Kubernetes master host. (default: kubernetes.default.svc.cluster.local)
-* *port* -- the Kubernetes master port. (default: 443)
-* *tls* -- Whether TLS should be used in communicating with the Kubernetes master. (default: true)
-* *tlsWithoutValidation* -- Whether certificate-checking should be disabled. (default: false)
-* *authTokenFile* -- Path to a file containing the Kubernetes master's authorization token.
-  (default: /var/run/secrets/kubernetes.io/serviceaccount/token)
+* *host* -- the Kubernetes master host. (default: localhost)
+* *port* -- the Kubernetes master port. (default: 8001)
 
 For example:
 ```yaml
@@ -675,9 +671,10 @@ namers:
 - kind: io.l5d.experimental.k8s
   host: kubernetes.default.svc.cluster.local
   port: 443
-  tls: true
-  authTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
+
+The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API.
 
 The default _prefix_ is `io.l5d.k8s`. (Note that this is *different* from
 the name in the configuration block.)

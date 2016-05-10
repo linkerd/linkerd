@@ -4,10 +4,7 @@ admin:
 namers:
 - kind: io.l5d.experimental.k8s
   host: localhost
-  port: 443
-  tls: true
-  tlsWithoutValidation: true
-  authTokenFile: linkerd/examples/io.l5d.k8s/kube_token
+  port: 8001
 
 routers:
 - protocol: http

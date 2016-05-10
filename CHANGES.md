@@ -9,6 +9,8 @@
   budgets and backoffs.
 * Automatically retry certain types of failures, as determined by
   response classifiers.
+* Remove TLS support from the k8s namer in favor of using `kubectl proxy` for
+  securely communicating with the k8s cluster API.
 
 ## 0.4.0
 
