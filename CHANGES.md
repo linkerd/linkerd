@@ -11,6 +11,7 @@
   response classifiers.
 * Add announcer support!  linkerd can now announce to service discovery backends!
   * Add zk announcer.
+  * ADD etcd announcer.
 
 ## 0.4.0
 

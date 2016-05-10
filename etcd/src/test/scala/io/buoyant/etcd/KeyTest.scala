@@ -347,7 +347,7 @@ class KeyTest extends FunSuite with Exceptions {
 
   test("Key.create: data") {
     val base = Path.Utf8("base")
-    val op = NodeOp(NodeOp.Action.Create, Node.Data(Path.Utf8("base", "1"), 1, 1, None, Buf.Utf8("dogs")), Etcd.State(1))
+    val op = NodeOp(NodeOp.Action.Create, Node.Data(Path.Utf8("base"), 1, 1, None, Buf.Utf8("dogs")), Etcd.State(1))
     val key = mkKey(base) {
       case (Method.Put, params) if getParam(params, "value").exists(_ == "dogs") => op
     }
@@ -357,7 +357,7 @@ class KeyTest extends FunSuite with Exceptions {
 
   test("Key.create: dir") {
     val base = Path.Utf8("base")
-    val op = NodeOp(NodeOp.Action.Create, Node.Dir(Path.Utf8("base", "1"), 1, 1), Etcd.State(1))
+    val op = NodeOp(NodeOp.Action.Create, Node.Dir(Path.Utf8("base"), 1, 1), Etcd.State(1))
     val key = mkKey(base) {
       case (Method.Put, DirParam(true)) => op
     }
@@ -370,7 +370,7 @@ class KeyTest extends FunSuite with Exceptions {
     val ttl = 10.seconds
     val op = NodeOp(
       NodeOp.Action.Create,
-      Node.Dir(Path.Utf8("base", "1"), 1, 1, Some(Node.Lease(ttl.fromNow, ttl))),
+      Node.Dir(Path.Utf8("base"), 1, 1, Some(Node.Lease(ttl.fromNow, ttl))),
       Etcd.State(1)
     )
     val key = mkKey(base) {
@@ -378,6 +378,36 @@ class KeyTest extends FunSuite with Exceptions {
     }
     val create = key.create(None, Some(10.seconds))
     assert(Await.result(create, 250.millis) == op)
+  }
+
+  test("Key.createInOrderKey") {
+    val base = Path.Utf8("base")
+    val op = NodeOp(
+      NodeOp.Action.Create,
+      Node.Data(Path.Utf8("base", "1"), 1, 1, None, Buf.Utf8("dogs")),
+      Etcd.State(1)
+    )
+    val key = mkKey(base) {
+      case (Method.Post, params) if getParam(params, "value").exists(_ == "dogs") => op
+    }
+    val createInOrderKey = key.createInOrderKey(Some(Buf.Utf8("dogs")))
+    assert(Await.result(createInOrderKey, 250.millis) == op)
+  }
+
+  test("Key.refresh") {
+    val base = Path.Utf8("base")
+    val op = NodeOp(
+      NodeOp.Action.Update,
+      Node.Data(Path.Utf8("base"), 1, 1),
+      Etcd.State(1)
+    )
+    val key = mkKey(base) {
+      case (Method.Put, params) if getParam(params, "refresh").exists(_ == "true") &&
+        getParam(params, "ttl").exists(_ == "60") =>
+        op
+    }
+    val refresh = key.refresh(Some(1.minute))
+    assert(Await.result(refresh, 250.millis) == op)
   }
 
   test("Key.events: recursively") {

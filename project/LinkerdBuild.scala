@@ -359,12 +359,15 @@ object LinkerdBuild extends Base {
     }
 
     object Announcer {
+      val etcd = projectDir("linkerd/announcer/etcd")
+        .dependsOn(core, LinkerdBuild.etcd)
+
       val serversets = projectDir("linkerd/announcer/serversets")
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .dependsOn(core)
 
       val all = projectDir("linkerd/announcer")
-        .aggregate(serversets)
+        .aggregate(etcd, serversets)
     }
 
     val admin = projectDir("linkerd/admin")
@@ -433,7 +436,7 @@ object LinkerdBuild extends Base {
         Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
         Tracer.zipkin,
-        Announcer.serversets,
+        Announcer.etcd, Announcer.serversets,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
@@ -521,6 +524,7 @@ object LinkerdBuild extends Base {
   val linkerdTracer = Linkerd.Tracer.all
   val linkerdTracerZipkin = Linkerd.Tracer.zipkin
   val linkerdAnnouncer = Linkerd.Announcer.all
+  val linkerdAnnouncerEtcd = Linkerd.Announcer.etcd
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls
 

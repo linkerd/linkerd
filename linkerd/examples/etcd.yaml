@@ -1,0 +1,15 @@
+namers: []
+
+routers:
+- protocol: http
+  announcers:
+  - kind: io.l5d.announcer.Etcd
+    host: localhost
+    port: 2379
+    pathPrefix: /discovery/prod
+  baseDtab: ""
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+    label: foobar
+    announce: true
