@@ -669,8 +669,8 @@ For example:
 ```yaml
 namers:
 - kind: io.l5d.experimental.k8s
-  host: kubernetes.default.svc.cluster.local
-  port: 443
+  host: localhost
+  port: 8001
 ```
 
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
