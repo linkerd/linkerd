@@ -1,4 +1,4 @@
-## x.x.x
+## 0.5.0
 
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
   printing all traces to the console.
@@ -7,11 +7,11 @@
   are marked as failures.
 * Add a `retries` client config section supporting configurable retry
   budgets and backoffs.
-* Add an `/admin/metrics/prometheus` stats endpoint.
 * Automatically retry certain types of failures, as determined by
   response classifiers.
 * Remove TLS support from the k8s namer in favor of using `kubectl proxy` for
   securely communicating with the k8s cluster API.
+* Add an `/admin/metrics/prometheus` stats endpoint.
 
 ## 0.4.0
 
