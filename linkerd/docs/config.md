@@ -134,7 +134,7 @@ Each router must be configured as an object with the following params:
   
 ### Announcers
 
-#### Serversets
+#### io.l5d.announcer.Serversets
 
 Announce to ZooKeeper using the serverset format.
 
@@ -142,7 +142,7 @@ Announce to ZooKeeper using the serverset format.
 * *pathPrefix* -- (optional) the ZooKeeper path under which services should be registered. (default:
   /discovery)
 
-#### Etcd
+#### io.l5d.announcer.Etcd
 
 Announce to Etcd using TTLs.
 
