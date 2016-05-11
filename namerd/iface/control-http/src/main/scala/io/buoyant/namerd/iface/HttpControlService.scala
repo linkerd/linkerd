@@ -82,7 +82,7 @@ object HttpControlService {
   }
 
   case class InvalidPathException(path: String, underlying: Exception)
-    extends Exception(s"Invalid path: $path\n${underlying.getMessage}", underlying)
+    extends Exception(s"Invalid path: $path / ${underlying.getMessage}", underlying)
 
   trait NsPathUri {
     val prefix: String

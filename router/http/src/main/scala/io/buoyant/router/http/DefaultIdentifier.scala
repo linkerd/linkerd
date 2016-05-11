@@ -33,7 +33,7 @@ case class DefaultIdentifier(
         case Some(host) if host.nonEmpty =>
           Future.value(mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)))
         case _ =>
-          Future.exception(new IllegalArgumentException("invalid http request"))
+          Future.exception(new IllegalArgumentException(s"${http.Version.Http11} request missing hostname: $req"))
       }
   }
 
