@@ -429,7 +429,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
         Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
         Tracer.zipkin,

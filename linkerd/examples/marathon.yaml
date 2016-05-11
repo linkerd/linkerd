@@ -5,6 +5,8 @@ namers:
   port:      80
   uriPrefix: /marathon
   ttlMs:     300
+- kind: io.l5d.zkLeader
+  hosts: localhost:2181
 
 routers:
 - protocol: http
