@@ -109,6 +109,7 @@ object LinkerdBuild extends Base {
   val admin = projectDir("admin")
     .dependsOn(configCore, Namer.core)
     .withTwitterLib(Deps.twitterServer)
+    .withTwitterLib(Deps.finagle("stats"))
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
