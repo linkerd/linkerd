@@ -22,21 +22,17 @@ private[admin] object PrometheusStatsHandler {
   private[this] case class Escape(regex: Regex, replace: String) {
     private[admin] def replaceAllIn(str: String) = regex.replaceAllIn(str, replace)
   }
-  private[this] val escape1 = Escape("[!,]".r, "-")
-  private[this] val escape2 = Escape("[/]".r, ":")
+  private[this] val delimiter = Escape("[/]".r, ":")
   private[this] val statPattern = """(.*)\.(count|sum|avg|min|max|stddev|p50|p90|p95|p99|p9990)$""".r
+  private[this] val disallowedChars = Escape("[^a-zA-Z0-9:]".r, "_")
 
-  private[this] val escape3 = Escape("[.\\-$]".r, "_")
+  private[this] def escapeKey(key: String) = {
+    disallowedChars.replaceAllIn(delimiter.replaceAllIn(key))
+  }
 
-  private[admin] def formatKey(key: String) = {
-    val escapedKey = escape2.replaceAllIn(escape1.replaceAllIn(key))
-
-    val parsedKey = escapedKey match {
-      case statPattern(label, stat) => s"""$label{stat="$stat"}"""
-      case _ => escapedKey
-    }
-
-    escape3.replaceAllIn(parsedKey)
+  private[admin] def formatKey(key: String) = key match {
+    case statPattern(label, stat) => s"""${escapeKey(label)}{stat="$stat"}"""
+    case _ => escapeKey(key)
   }
 }
 
