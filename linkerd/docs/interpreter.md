@@ -6,7 +6,7 @@ must contain a `kind` parameter which indicates which interpreter plugin to use.
 ## default
 
 The default interpreter resolves names via the configured
-[`namers`](config.md#naming), with a fallback to the default Finagle
+[`namers`](config.md#namers), with a fallback to the default Finagle
 `Namer.Global` that handles paths of the form `/$/`.
 
 ## io.l5d.namerd
