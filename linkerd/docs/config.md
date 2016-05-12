@@ -23,7 +23,7 @@ routers:
 - protocol: http
   label: int-http
   baseDtab: |
-    /host       => /io.l5d.fs;
+    /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   identifier:
     kind: default
@@ -36,7 +36,7 @@ routers:
   label: ext-http
   dstPrefix: /ext/http
   baseDtab: |
-    /ext/http/1.1/*/* => /io.l5d.fs/web;
+    /ext/http/1.1/*/* => /#/io.l5d.fs/web;
   servers:
   - port: 8080
     ip: 0.0.0.0
@@ -62,7 +62,7 @@ routers:
     thriftFramed: true
   thriftMethodInDst: false
   baseDtab: |
-    /thrift => /io.l5d.fs/thrift;
+    /thrift => /#/io.l5d.fs/thrift;
 ```
 
 There are no requirements on field ordering, though it's generally
@@ -517,7 +517,8 @@ and for precedence and failover rules to be expressed between them. This logic
 is governed by the [routing](#basic-router-params) configuration.
 
 Naming and service discovery are configured via the `namers` section of the
-configuration file. In this file, `namers` is an array of objects, consisting
+configuration file.  A namer acts on paths that start with `/#` followed by the
+namer's prefix.  In this file, `namers` is an array of objects, consisting
 of the following parameters:
 
 * *kind* -- One of the supported namer plugins, by fully-qualified class name.
@@ -527,7 +528,7 @@ of the following parameters:
   * *io.l5d.experimental.consul*: [Consul service discovery](#consul) (**experimental**)
   * *io.l5d.experimental.k8s*: [Kubernetes service discovery](#disco-k8s) (**experimental**)
   * *io.l5d.experimental.marathon*: [Marathon service discovery](#marathon) (**experimental**)
-* *prefix* -- This namer will resolve names beginning with this prefix. See
+* *prefix* -- This namer will resolve names beginning with `/#/<prefix>`. See
   [Configuring routing](#configuring-routing) for more on names. Some namers may
   configure a default prefix; see the specific namer section for details.
 * *namer-specific parameters*.
@@ -589,7 +590,7 @@ Once configured, to use the file-based namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.fs
+  /http/1.1/* => /#/io.l5d.fs
 ```
 
 <a name="zookeeper"></a>
@@ -619,7 +620,7 @@ Once configured, to use the ServerSets namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.serversets/discovery/prod;
+  /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
 ```
 
 <a name="consul"></a>
@@ -650,7 +651,7 @@ the dtab. The Consul namer takes one parameter in its path, which is the Consul
 datacenter. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.consul/dc1;
+  /http/1.1/* => /#/io.l5d.consul/dc1;
 ```
 
 <a name="disco-k8s"></a>
@@ -690,7 +691,7 @@ Once configured, to use the Kubernetes namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.k8s/prod/http;
+  /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
 <a name="marathon"></a>
@@ -735,7 +736,7 @@ Once configured, to use the Marathon namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /marathonId => /io.l5d.marathon;
+  /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
 ```

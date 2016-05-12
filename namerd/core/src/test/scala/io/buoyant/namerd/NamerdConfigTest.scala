@@ -34,7 +34,7 @@ class NamerdConfigTest extends FunSuite {
     """.stripMargin
 
     val config = NamerdConfig.loadNamerd(yaml, initializers)
-    assert(config.namers.head.prefix == Path.read("/io.l5d.fs"))
+    assert(config.namers.head.prefix == Path.read("/#/io.l5d.fs"))
     assert(config.interfaces.head.addr.getAddress.isLoopbackAddress)
     assert(config.interfaces.head.addr.getPort == 1)
     // just check that this don't blow up

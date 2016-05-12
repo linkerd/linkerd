@@ -1,5 +1,8 @@
 ## x.x.x
 
+* The path prefix `/#` now indicates that the path should be processed by a
+  namer.  A namer matches a path starting with `/#/<prefix>`.
+
 ## 0.5.0
 
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
