@@ -1,8 +1,8 @@
 namers:
 - kind:      io.l5d.experimental.marathon
   prefix:    /io.l5d.marathon
-  host:      marathon.mesos
-  port:      80
+  # Discover the marathon master by leader election
+  dst:       /$/io.buoyant.namer.zkLeader/localhost:2181/marathon/leader
   uriPrefix: /marathon
   ttlMs:     300
 
