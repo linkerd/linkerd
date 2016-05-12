@@ -11,16 +11,8 @@ import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.namerd.iface.{ThriftNamerClient, thriftscala => thrift}
 
 /**
- * Supports namer configurations in the form:
- *
- * <pre>
- * namers:
- * - kind: io.l5d.namerd
- *   host: k8s-master.site.biz
- *   port: 80
- *   tls: false
- *   authTokenFile: ../auth.token
- * </pre>
+ * The namerd interpreter offloads the responsibilities of name resolution to
+ * the namerd service.  Any namers configured in this linkerd are not used.
  */
 class NamerdInterpreterInitializer extends InterpreterInitializer {
   val configClass = classOf[namerd]
