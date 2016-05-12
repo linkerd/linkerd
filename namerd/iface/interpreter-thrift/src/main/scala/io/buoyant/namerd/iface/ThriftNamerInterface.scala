@@ -264,7 +264,7 @@ class ThriftNamerInterface(
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
     activeCapacity = 100,
     inactiveCapacity = 10,
-    stats = stats.scope("binding-cache"),
+    stats = stats.scope("bindindcache"),
     mkObserver = (observeBind _).tupled
   )
 
@@ -339,7 +339,7 @@ class ThriftNamerInterface(
   private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
     activeCapacity = 100,
     inactiveCapacity = 10,
-    stats = stats.scope("addr-cache"),
+    stats = stats.scope("addrcache"),
     mkObserver = observeAddr
   )
 

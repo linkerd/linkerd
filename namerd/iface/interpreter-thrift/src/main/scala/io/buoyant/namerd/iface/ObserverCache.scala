@@ -64,9 +64,8 @@ class ObserverCache[K <: AnyRef, T](
     })
     .build[K, Observer[T]]()
 
-  private[this] val scope = "observer-cache"
-  private[this] val activeSize = stats.scope(scope).addGauge("active-size")(activeCache.size)
-  private[this] val inactiveSize = stats.scope(scope).addGauge("inactive-size")(inactiveCache.size)
+  private[this] val activeSize = stats.addGauge("active")(activeCache.size)
+  private[this] val inactiveSize = stats.addGauge("inactive")(inactiveCache.size)
 
   private[this] def makeActive(key: K): Try[Observer[T]] = synchronized {
     if (activeCache.size < activeCapacity) {

@@ -34,9 +34,9 @@ class ObserverCacheTest extends FunSuite {
   }
 
   private[this] def activeSize(stats: InMemoryStatsReceiver): Int =
-    stats.gauges(Seq("observer-cache", "active-size"))().toInt
+    stats.gauges(Seq("active"))().toInt
   private[this] def inactiveSize(stats: InMemoryStatsReceiver): Int =
-    stats.gauges(Seq("observer-cache", "inactive-size"))().toInt
+    stats.gauges(Seq("inactive"))().toInt
 
   test("observer cache caches") {
 
