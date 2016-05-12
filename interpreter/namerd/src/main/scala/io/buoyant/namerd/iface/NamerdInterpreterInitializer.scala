@@ -1,4 +1,4 @@
-package io.l5d
+package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
@@ -8,7 +8,7 @@ import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.util._
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
-import io.buoyant.namerd.iface.{ThriftNamerClient, thriftscala => thrift}
+import io.buoyant.namerd.iface.{thriftscala => thrift}
 
 /**
  * Supports namer configurations in the form:
@@ -23,7 +23,8 @@ import io.buoyant.namerd.iface.{ThriftNamerClient, thriftscala => thrift}
  * </pre>
  */
 class NamerdInterpreterInitializer extends InterpreterInitializer {
-  val configClass = classOf[namerd]
+  val configClass = classOf[NamerdInterpreterConfig]
+  override def configId: String = "io.l5d.namerd"
 }
 
 object NamerdInterpreterInitializer extends NamerdInterpreterInitializer
@@ -38,7 +39,7 @@ case class Retry(
   }
 }
 
-case class namerd(
+case class NamerdInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
   retry: Option[Retry]
@@ -56,7 +57,7 @@ case class namerd(
       case None => throw new IllegalArgumentException("`dst` is a required field")
       case Some(dst) => Name.Path(dst)
     }
-    val label = s"namer/${namerd.kind}"
+    val label = s"namer/${NamerdInterpreterConfig.kind}"
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
@@ -94,6 +95,6 @@ case class namerd(
   }
 }
 
-object namerd {
-  def kind = classOf[namerd].getCanonicalName
+object NamerdInterpreterConfig {
+  def kind = classOf[NamerdInterpreterConfig].getCanonicalName
 }
