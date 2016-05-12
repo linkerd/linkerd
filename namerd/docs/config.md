@@ -29,106 +29,21 @@ interfaces:
   port: 4321
 ```
 
+<a name="storage"></a>
 ## Storage
 
-All configurations must define a **storage** key which must be an object
-configuring the namerd dtabStore which stores and retrieves dtabs. This object
-supports the following params:
+All configurations must define a **storage** key which must be a
+[storage](storage.md) object.
 
-* *kind* -- Required.  One of the supported storage plugins, by
-fully-qualified class name.
-
-### InMemoryDtabStore
-
-`io.buoyant.namerd.storage.inMemory`
-
-Stores the dtab in memory.  Not suitable for production use.
-
-* *namespaces* -- Optional.  A map of namespaces to corresponding dtabs.
-
-### K8sDtabStore
-*experimental*
-
-`io.buoyant.namerd.storage.experimental.k8s`
-
-Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs. Requires a cluster
-running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
-
-* *host* -- Optional. The location of the Kubernetes API. (default: "kubernetes.default.svc.cluster.local")
-* *port* -- Optional. The port used to connect to the Kubernetes API. (default: 443)
-* *tls*  -- Optional. Whether to connect to the Kubernetes API using TLS. (default: true)
-* *tlsWithoutValidation* -- Optional. Whether to disable certificate checking against the Kubernetes
-  API. Meaningless if *tls* is false. (default: false)
-* *authTokenFile* -- Optional. The location of the token used to authenticate against the Kubernetes
-  API, if any. (default: no authentication)
-* *namespace* The Kubernetes namespace in which dtabs will be stored. This should usually be the
-  same namespace in which namerd is running. (default: "default")
-
-### ZkDtabStore
-*experimental*
-
-`io.buoyant.namerd.storage.experimental.zk`
-
-Stores the dtab in ZooKeeper.  Supports the following options
-
-* *hosts* -- Required.  A list of hosts where ZooKeeper is running.
-* *pathPrefix* -- Optional.  The ZooKeeper path under which dtabs should be stored.  (default:
-"/dtabs")
-* *sessionTimeoutMs* -- Optional.  ZooKeeper session timeout in milliseconds.
-(default: 10000)
-* *authInfo* -- Optional.  An object containing the authentication information to use when logging
-in ZooKeeper:
-  * *scheme* -- Required.  The ZooKeeper auth scheme to use.
-  * *auth* -- Required.  The ZooKeeper auth value to use.
-* *acls* -- Optional.  A list of ACLs to set on each dtab znode created.  Each ACL is an object
-containing:
-  * *scheme* -- Required.  The ACL auth scheme to use.
-  * *id* -- Required.  The ACL id to use.
-  * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
-  The characters represent create, read, write, delete, and admin, respectively.
-
-### EtcdDtabStore
-*experimental*
-
-`io.buoyant.namerd.storage.experimental.etcd`
-
-Stores the dtab in Etcd.  Supports the following options
-
-* *host* -- Optional. The location of the etcd API.  (default: localhost)
-* *port* -- Optional. The port used to connect to the etcd API.  (default: 2379)
-* *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/namerd/dtabs")
-
+<a name="namers"></a>
 ## Namers
 
 Naming and service discovery are configured via the `namers` section of the
 configuration file. In this file, `namers` is an array of objects each of which
-must be a namer as defined [here](https://linkerd.io/doc/0.2.0/config/#service-discovery-and-naming).
+must be a [namer](../../linkerd/docs/namer.md).
 
+<a name="interfaces"></a>
 ## Interfaces
 
-A top-level `interfaces` section controls the published network interfaces to namerd. It is a collection of
-`interface` objects supporting the following params:
-
-* *kind* -- Required. One of the supported interface plugins.
-* *ip* -- Optional.  The local IP address on which to serve the namer interface
-(defaults may be provided by plugins)
-* *port* -- Optional.  The port number on which to server the namer interface.
-(defaults may be provided by plugins)
-
-### thriftInterpreterInterface
-
-A read-only interface providing `NameInterpreter` functionality over the ThriftMux protocol.
-
-* default *ip*: 0.0.0.0 (wildcard)
-* default *port*: 4100
-* *retryBaseSecs* -- Optional. Base number of seconds to tell clients to wait
-before retrying after an error.  (default: 600)
-* *retryJitterSecs* -- Optional.  Maximum number of seconds to jitter retry
-time by.  (default: 60)
-
-### httpControllerInterface
-
-A read-write HTTP interface to the `storage`.
-
-* default *ip*: loopback
-* default *port*: 4180
+A top-level `interfaces` section controls the published network interfaces to
+namerd. It is an array of [interface](interface.md) objects.

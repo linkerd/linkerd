@@ -140,8 +140,8 @@ Each router must be configured as an object with the following params:
 
 * *label* -- The name of the router (in stats and the admin ui). (default: the
   protocol name)
-* *baseDtab* -- Sets the base delegation table. See [Routing](#configuring-routing) for
-  more. (default: an empty dtab)
+* *baseDtab* -- Sets the base delegation table. See
+  [dtabs](https://linkerd.io/doc/dtabs/) for more. (default: an empty dtab)
 * *dstPrefix* -- A path prefix to be used on request destinations.
   (default is protocol dependent)
 * *failFast* -- If `true`, connection failures are punished more aggressively.
