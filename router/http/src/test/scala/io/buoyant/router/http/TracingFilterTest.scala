@@ -3,6 +3,7 @@ package io.buoyant.router.http
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace}
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -51,4 +52,28 @@ class TracingFilterTest extends FunSuite with Awaits {
       assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.content-length", 304374)))
     }
   }
+
+  test("error message annotations") {
+    val tracer = new BufferingTracer
+
+    val service = TracingFilter andThen Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.status = Status.InternalServerError
+      rsp.contentType = "application/json"
+      rsp.content = Buf.Utf8("There was an error processing your request")
+      Future.value(rsp)
+    }
+
+    val req = Request()
+    req.method = Method.Head
+    req.uri = ""
+
+    Trace.letTracer(tracer) {
+      await(service(req))
+      val rspEvents = tracer.iterator.toSeq
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.status", Status.InternalServerError.code)))
+      assert(rspEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.rsp.body", Buf.Utf8("There was an error processing your request"))))
+    }
+  }
+
 }

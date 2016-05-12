@@ -2,20 +2,27 @@ var RouterClient = (function() {
   var template;
 
   function getMetricDefinitions(routerName, clientName) {
-    return _.map(["requests", "connections", "success", "failures"], function(metric) {
+    return _.map([
+        {suffix: "requests", label: "Requests"},
+        {suffix: "connections", label: "Connections"},
+        {suffix: "success", label: "Successes"},
+        {suffix: "failures", label: "Failures"}
+      ], function(metric) {
       return {
-        metricSuffix: metric,
-        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric).build()
+        metricSuffix: metric.suffix,
+        label: metric.label,
+        query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
       }
     });
   }
 
   function renderMetrics($container, client, summaryData, latencyData, clientColor) {
-    var clientHtml = template($.extend({
+    var clientHtml = template({
       clientColor: clientColor,
       client: client.label,
-      latencies: latencyData
-    }, summaryData));
+      latencies: latencyData,
+      data: summaryData
+    });
     var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
     $container.html($clientHtml);
@@ -45,7 +52,10 @@ var RouterClient = (function() {
   function getSummaryData(data, metricDefinitions) {
     var summary = _.reduce(metricDefinitions, function(mem, defn) {
       var clientData = Query.filter(defn.query, data);
-      mem[defn.metricSuffix] = _.isEmpty(clientData) ? null : clientData[0].delta;
+      mem[defn.metricSuffix] = {
+        description: defn.label,
+        value: _.isEmpty(clientData) ? null : clientData[0].delta
+      };
 
       return mem;
     }, {});
@@ -56,8 +66,9 @@ var RouterClient = (function() {
     return summary;
   }
 
-  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, $chartEl, colors) {
+  return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, metricPartial, $chartEl, colors) {
     template = clientTemplate;
+    Handlebars.registerPartial('metricPartial', metricPartial);
     var clientColor = colors.color;
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
 
