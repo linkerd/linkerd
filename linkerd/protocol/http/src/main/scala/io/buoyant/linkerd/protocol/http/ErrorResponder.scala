@@ -6,6 +6,7 @@ import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.logging.Logger
 import com.twitter.util.NonFatal
 import io.buoyant.router.RoutingFactory
+import java.net.URLEncoder
 
 object ErrorResponder extends Stack.Module0[ServiceFactory[Request, Response]] {
   val role = Stack.Role("ErrorResponder")
@@ -30,7 +31,7 @@ object ErrorResponder extends Stack.Module0[ServiceFactory[Request, Response]] {
         }
 
         val rsp = Response(status)
-        rsp.headerMap(Headers.Err) = e.getMessage
+        rsp.headerMap(Headers.Err) = URLEncoder.encode(e.getMessage, "ISO-8859-1")
         rsp.contentType = MediaType.Txt
         rsp.contentString = e.getMessage
         rsp
