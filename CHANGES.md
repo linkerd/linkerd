@@ -1,5 +1,8 @@
 ## x.x.x
 
+* Add zkLeader namer to allow discovery of services through ZooKeeper leader
+  election.
+
 ## 0.5.0
 
 * Add a `debugTrace` parameter to the `tracers` config section, which enables
