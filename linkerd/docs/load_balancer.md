@@ -1,6 +1,7 @@
 # Load Balancer
 
 Specifies a load balancer to use.  It must be an object containing keys:
+
   * *kind* -- One of the supported load balancers.
   * *enableProbation* -- Optional.  Controls whether endpoints are eagerly evicted from
     service discovery. (default: true)

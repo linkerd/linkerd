@@ -1,6 +1,7 @@
 # HTTP/1.1 protocol
 
 Router configuration options include:
+
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
