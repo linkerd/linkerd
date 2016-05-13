@@ -10,6 +10,7 @@ the `config/` directory.
 
 The configuration may be specified as a JSON or YAML object, as described
 below.  Four top level keys are supported:
+
 * [admin](#admin)
 * [routers](#routers)
 * [namers](#namers)
