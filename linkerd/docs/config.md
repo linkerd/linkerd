@@ -527,6 +527,7 @@ of the following parameters:
   * *io.l5d.experimental.consul*: [Consul service discovery](#consul) (**experimental**)
   * *io.l5d.experimental.k8s*: [Kubernetes service discovery](#disco-k8s) (**experimental**)
   * *io.l5d.experimental.marathon*: [Marathon service discovery](#marathon) (**experimental**)
+  * *io.l5d.zkLeader*: [ZooKeeper Leader](#zk-leader)
 * *prefix* -- This namer will resolve names beginning with this prefix. See
   [Configuring routing](#configuring-routing) for more on names. Some namers may
   configure a default prefix; see the specific namer section for details.
@@ -704,6 +705,8 @@ The Marathon namer is configured with kind `io.l5d.experimental.marathon`, and t
 
 * *host* -- the Marathon master host. (default: marathon.mesos)
 * *port* -- the Marathon master port. (default: 80)
+* *dst* -- the finagle path for the Marathon master.  If this is specified, it supersedes the
+  host and port parameters.
 * *uriPrefix* -- the Marathon API prefix. (default: empty string). This prefix
   depends on your Marathon configuration. For example, running Marathon
   locally, the API is avaiable at `localhost:8080/v2/`, while the default setup
@@ -739,6 +742,17 @@ baseDtab: |
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
 ```
+
+<a name="zk-leader"></a>
+### ZooKeeper Leader
+
+A namer backed by ZooKeeper leader election. The path processed by this namer is treated as the
+ZooKeeper path of a leader group. The namer resolves to the address stored in the data of the
+leader.
+
+The ZooKeeper Leader namer is configured with kind `io.l5d.zkLeader` and these parameters:
+
+* *hosts* -- A comma delimited list of ZooKeeper hosts
 
 <a name="configuring-routing"></a>
 ## Configuring routing

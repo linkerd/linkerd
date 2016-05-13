@@ -91,7 +91,6 @@ object LinkerdBuild extends Base {
 
     val marathon = projectDir("namer/marathon")
       .dependsOn(LinkerdBuild.marathon, core)
-      .dependsOn(core)
       .withTests()
 
     val serversets = projectDir("namer/serversets")
@@ -99,8 +98,12 @@ object LinkerdBuild extends Base {
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
 
+    val zkLeader = projectDir("namer/zk-leader")
+      .dependsOn(core)
+      .withTwitterLib(Deps.zkCandidate)
+
     val all = projectDir("namer")
-      .aggregate(core, consul, fs, k8s, marathon, serversets)
+      .aggregate(core, consul, fs, k8s, marathon, serversets, zkLeader)
   }
 
   val admin = projectDir("admin")
@@ -428,7 +431,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
         Interpreter.namerd,
         Protocol.mux, Protocol.thrift,
         Tracer.zipkin,
@@ -486,6 +489,7 @@ object LinkerdBuild extends Base {
   val namerK8s = Namer.k8s
   val namerMarathon = Namer.marathon
   val namerServersets = Namer.serversets
+  val namerZkLeader = Namer.zkLeader
 
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
