@@ -2,7 +2,7 @@ package io.buoyant.router.http
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
-import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace}
+import com.twitter.finagle.tracing.{Annotation, BufferingTracer, SpanId, Trace, TraceId}
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise}
 import io.buoyant.test.Awaits
@@ -14,7 +14,7 @@ class TracingFilterTest extends FunSuite with Awaits {
     val tracer = new BufferingTracer
 
     val done = new Promise[Unit]
-    val service = TracingFilter andThen Service.mk[Request, Response] { req =>
+    val service = new TracingFilter andThen Service.mk[Request, Response] { req =>
       val rsp = Response()
       rsp.status = Status.PaymentRequired
       rsp.contentType = "application/json"
@@ -53,10 +53,39 @@ class TracingFilterTest extends FunSuite with Awaits {
     }
   }
 
+  test("tracing filter only applies when tracing is not disabled") {
+    val tracer = new BufferingTracer
+
+    val service = new TracingFilter andThen Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.status = Status.Ok
+      Future.value(rsp)
+    }
+
+    def req = Request(Method.Head, "")
+
+    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(100L), Some(false))) {
+      await(service(req))
+      assert(tracer.iterator.isEmpty)
+    }
+
+    tracer.clear()
+    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(101L), Some(true))) {
+      await(service(req))
+      assert(tracer.iterator.size == 6)
+    }
+
+    tracer.clear()
+    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(102L), None)) {
+      await(service(req))
+      assert(tracer.iterator.size == 6)
+    }
+  }
+
   test("error message annotations") {
     val tracer = new BufferingTracer
 
-    val service = TracingFilter andThen Service.mk[Request, Response] { req =>
+    val service = new TracingFilter andThen Service.mk[Request, Response] { req =>
       val rsp = Response()
       rsp.status = Status.InternalServerError
       rsp.contentType = "application/json"
