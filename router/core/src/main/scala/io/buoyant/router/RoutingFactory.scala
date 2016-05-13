@@ -10,7 +10,7 @@ object RoutingFactory {
   val description = "Performs per-request name binding"
 
   case class UnknownDst[Req](request: Req, cause: Throwable)
-    extends Exception(s"Unknown destination: ${cause.getMessage}", cause)
+    extends Exception(s"Unknown destination: $request / ${cause.getMessage}", cause)
     with NoStacktrace
 
   /**
