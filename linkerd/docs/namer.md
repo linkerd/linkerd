@@ -213,3 +213,13 @@ baseDtab: |
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
 ```
+
+## ZooKeeper Leader
+
+A namer backed by ZooKeeper leader election. The path processed by this namer is treated as the
+ZooKeeper path of a leader group. The namer resolves to the address stored in the data of the
+leader.
+
+The ZooKeeper Leader namer is configured with kind `io.l5d.zkLeader` and these parameters:
+
+* *hosts* -- A comma delimited list of ZooKeeper hosts
