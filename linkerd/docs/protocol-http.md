@@ -5,7 +5,7 @@ Router configuration options include:
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-default)
+io.l5d.default)
 
 The default _dstPrefix_ is `/http`
 The default server _port_ is 4140
@@ -37,7 +37,7 @@ request with the following parameters:
  path-prefix routing. (default: false)
 * any other identifier-specific parameters
 
-### default
+### io.l5d.default
 
 HTTP requests are routed by a combination of Host header, method, and URI.
 Specifically, HTTP/1.0 logical names are of the form:

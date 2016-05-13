@@ -1,10 +1,9 @@
-package io.l5d.identifier
+package io.buoyant.linkerd.protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.router.http.DefaultIdentifier
-import io.l5d.HttpIdentifierConfig
 
 class DefaultHttpIdentifierInitializer extends IdentifierInitializer {
   val configClass = classOf[DefaultHttpIdentifierConfig]
@@ -14,7 +13,7 @@ class DefaultHttpIdentifierInitializer extends IdentifierInitializer {
 object DefaultHttpIdentifierInitializer extends DefaultHttpIdentifierInitializer
 
 object DefaultHttpIdentifierConfig {
-  val kind = "default"
+  val kind = "io.l5d.default"
 }
 
 class DefaultHttpIdentifierConfig extends HttpIdentifierConfig {

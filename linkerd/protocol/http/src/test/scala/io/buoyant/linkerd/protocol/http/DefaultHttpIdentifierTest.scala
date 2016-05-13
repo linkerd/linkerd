@@ -1,12 +1,12 @@
-package io.l5d
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.Path
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.IdentifierInitializer
-import io.l5d.identifier.{DefaultHttpIdentifierInitializer, DefaultHttpIdentifierConfig}
+import io.buoyant.linkerd.protocol.{DefaultHttpIdentifierConfig, DefaultHttpIdentifierInitializer}
 import org.scalatest.FunSuite
 
-class basicHttpTest extends FunSuite {
+class DefaultHttpIdentifierTest extends FunSuite {
   test("sanity") {
     val _ = new DefaultHttpIdentifierConfig().newIdentifier(Path.empty)
   }

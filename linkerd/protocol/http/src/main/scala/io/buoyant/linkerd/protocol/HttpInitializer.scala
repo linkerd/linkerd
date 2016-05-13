@@ -7,7 +7,6 @@ import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
-import io.l5d.HttpIdentifierConfig
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
