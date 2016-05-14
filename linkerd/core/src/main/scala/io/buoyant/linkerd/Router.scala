@@ -9,7 +9,7 @@ import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
 import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
-import io.buoyant.router.RoutingFactory
+import io.buoyant.router.{ClassifiedRetries, RoutingFactory}
 
 /**
  * A router configuration builder api.
@@ -158,8 +158,18 @@ trait RouterConfig {
   def responseClassifier: ResponseClassifier =
     _responseClassifier.map(_.mk).getOrElse(PartialFunction.empty) orElse baseResponseClassifier
 
+  /**
+   * Budgets are mutable and intended to be shared across clients.
+   * However, we want to ensure that budgets are not shared across
+   * routers, so we install a default default budget in each router's
+   * routerParams.  It may be overridden by clientParams.
+   */
   @JsonIgnore
-  def routerParams = Stack.Params.empty
+  private def defaultBudget: Retries.Budget =
+    Retries.Budget(RetryBudget(), Backoff.const(Duration.Zero))
+
+  @JsonIgnore
+  def routerParams = (Stack.Params.empty + defaultBudget)
     .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
@@ -193,7 +203,8 @@ class ClientConfig {
   def clientParams: Stack.Params = Stack.Params.empty
     .maybeWith(loadBalancer.map(_.clientParams))
     .maybeWith(hostConnectionPool.map(_.param))
-    .maybeWith(retries.map(_.mk))
+    .maybeWith(retries.flatMap(_.mkBackoff))
+    .maybeWith(retries.flatMap(_.mkBudget))
 }
 
 case class RetriesConfig(
@@ -202,10 +213,16 @@ case class RetriesConfig(
 ) {
 
   @JsonIgnore
-  def mk: Retries.Budget = Retries.Budget(
-    budget.map(_.mk).getOrElse(RetryBudget()),
-    backoff.map(_.mk).getOrElse(Backoff.const(Duration.Zero))
-  )
+  def mkBackoff: Option[ClassifiedRetries.Backoffs] =
+    backoff.map(_.mk).map(ClassifiedRetries.Backoffs(_))
+
+  // We use an empty backoff for Retries.Budget, since this informs
+  // _requeue_ delay. Requeues are explicitly for Nacks and
+  // non-application-level failures, and so we want to reenqueue
+  // these as quickly as possible.
+  @JsonIgnore
+  def mkBudget: Option[Retries.Budget] =
+    budget.map { b => Retries.Budget(b.mk, Backoff.const(Duration.Zero)) }
 }
 
 @JsonTypeInfo(
