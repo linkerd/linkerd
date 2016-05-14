@@ -19,7 +19,7 @@ class PathIdentifierConfigTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""
-                  |kind: path
+                  |kind: io.l5d.path
                   |segments: 2
       """.stripMargin
 

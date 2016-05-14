@@ -14,7 +14,7 @@ class PathIdentifierInitializer extends IdentifierInitializer {
 object PathIdentifierInitializer extends PathIdentifierInitializer
 
 object PathIdentifierConfig {
-  val kind = "path"
+  val kind = "io.l5d.path"
 }
 
 class PathIdentifierConfig extends HttpIdentifierConfig {

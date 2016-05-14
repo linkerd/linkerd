@@ -34,7 +34,7 @@ request with the following parameters:
 * *kind* -- One of the supported identifier plugins, by fully-qualified class
  name. Current plugins include:
   * *default*
-  * *path*
+  * *io.l5d.path*
 * any other identifier-specific parameters
 
 ### default
@@ -56,7 +56,7 @@ and HTTP/1.1 logical names are of the form:
 In both cases, `uri` is only considered a part
 of the logical name if the config option `httpUriInDst` is true.
 
-### path
+### io.l5d.path
 
 HTTP requests are routed based on a configurable number of "/" separated
 segments from the start of their HTTP path.
@@ -71,7 +71,7 @@ routers:
 - protocol: http
   dstPrefix: /custom/prefix
   identifier:
-    kind: path
+    kind: io.l5d.path
     segments: 2
   servers:
     port: 5000

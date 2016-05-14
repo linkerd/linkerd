@@ -133,7 +133,7 @@ routers:
     /http/1.1/* => /host;
   timeoutMs: 1000
   identifier:
-    kind: path
+    kind: io.l5d.path
     segments: 1
   client:
     tls:
