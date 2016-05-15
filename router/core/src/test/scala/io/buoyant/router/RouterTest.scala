@@ -32,7 +32,7 @@ class RouterTest extends FunSuite with Awaits with Exceptions {
 
     def newClient(name: Name, label: String) = {
       val stk = stack ++ Stack.Leaf(Endpoint, strToIntFactory)
-      stk.make(params)
+      stk.make(params + param.Label(label))
     }
 
     def newService(name: Name, label: String) = ???
@@ -99,5 +99,52 @@ class RouterTest extends FunSuite with Awaits with Exceptions {
     assert(deposits.get() == 0)
     assert(await(svc("12")) == 12)
     assert(deposits.get() == 1)
+  }
+
+  test("client labeling") {
+    @volatile var label: Option[String] = None
+    val labelModule: Stackable[ServiceFactory[String, Int]] =
+      new Stack.Module1[param.Label, ServiceFactory[String, Int]] {
+        def role = Stack.Role("Label")
+        def description = "captures a client's label"
+        def make(_label: param.Label, next: ServiceFactory[String, Int]) = {
+          label = Some(_label.label)
+          next
+        }
+      }
+
+    val namer = new NameInterpreter {
+      def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
+        val id: Any = path match {
+          case Path.Utf8("0") => Path.Utf8("some", "path")
+          case Path.Utf8("1") => "string"
+          case Path.Utf8("2") => null
+          case _ => new {}
+        }
+        Activity.value(NameTree.Leaf(Name.Bound(Var.value(Addr.Pending), id)))
+      }
+    }
+
+    val factory = TestRouter()
+      .configured(DstBindingFactory.Namer(namer))
+      .withClientStack(labelModule +: nilStack)
+      .factory()
+    val service = await(factory())
+
+    label = None
+    assert(await(service("0")) == 0)
+    assert(label == Some("some/path"))
+
+    label = None
+    assert(await(service("1")) == 1)
+    assert(label == Some("string"))
+
+    label = None
+    assert(await(service("2")) == 2)
+    assert(label == Some("null"))
+
+    label = None
+    assert(await(service("3")) == 3)
+    assert(label == Some("unknown"))
   }
 }
