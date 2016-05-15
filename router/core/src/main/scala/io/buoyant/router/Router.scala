@@ -209,14 +209,6 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           Retries.Budget(new StackRouter.WithdrawOnlyRetryBudget(budget), requeueBackoffs)
         }
 
-        val param.Label(routerLabel) = params[param.Label]
-        def mkClientLabel(bound: Name.Bound): String = bound.id match {
-          case null => "null"
-          case path: Path => path.show.stripPrefix("/")
-          case id: String => id.stripPrefix("/")
-          case _ => "unknown"
-        }
-
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
           val sr = stats.scope("dst", "path", dst.path.show.stripPrefix("/"))
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
@@ -225,14 +217,20 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
           val stk = (boundStack ++ Stack.Leaf(Endpoint, sf))
-          stk.make(params + bound)
+          stk.make(params + withdrawOnlyBudget + bound)
+        }
+
+        val param.Label(routerLabel) = params[param.Label]
+        def mkClientLabel(bound: Name.Bound): String = bound.id match {
+          case null => "null"
+          case path: Path => path.show.stripPrefix("/")
+          case id: String => id.stripPrefix("/")
+          case _ => "unknown"
         }
 
         // client stats are scoped by label within .newClient
         def clientMk(bound: Name.Bound) =
-          client.withParams(params)
-            .configured(clientStats)
-            .configured(withdrawOnlyBudget)
+          client.withParams(params + clientStats + withdrawOnlyBudget)
             .newClient(bound, mkClientLabel(bound))
 
         val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
