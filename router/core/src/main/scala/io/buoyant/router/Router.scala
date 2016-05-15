@@ -287,8 +287,8 @@ object StackRouter {
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
-    stk.push(StatsFilter.module)
     stk.push(ClassifiedRetries.module)
+    stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.result
   }

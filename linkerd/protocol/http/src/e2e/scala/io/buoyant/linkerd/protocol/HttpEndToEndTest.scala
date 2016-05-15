@@ -255,9 +255,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         stats.clear()
         val rsp = await(client(req))
         assert(rsp.status == Status.Ok)
-        for ((k, v) <- stats.stats.toSeq.sortBy(_._1.mkString("/"))) {
-          note(s"""${k.mkString("/")} => $v""")
-        }
         assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
@@ -267,9 +264,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
         val name = s"http/1.1/$method/dog"
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
         assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
       }
 
