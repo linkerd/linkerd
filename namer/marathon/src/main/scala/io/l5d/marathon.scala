@@ -30,6 +30,7 @@ object MarathonInitializer extends MarathonInitializer
 case class marathon(
   host: Option[String],
   port: Option[Port],
+  dst: Option[String],
   uriPrefix: Option[String],
   ttlMs: Option[Int]
 ) extends NamerConfig {
@@ -44,6 +45,8 @@ case class marathon(
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
   private[this] def getTtl = ttlMs.getOrElse(5000).millis
 
+  private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")
+
   /**
    * Construct a namer.
    */
@@ -51,7 +54,7 @@ case class marathon(
     val service = Http.client
       .withParams(params)
       .configured(Label("namer" + prefix.show))
-      .newService(s"/$$/inet/$getHost/$getPort")
+      .newService(getDst)
 
     new AppIdNamer(Api(service, getHost, getUriPrefix), prefix, getTtl)
   }

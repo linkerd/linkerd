@@ -54,8 +54,14 @@ class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
     val tracer = new TestTracer()
     Trace.letTracer(tracer) {
       val service = mkService(pathMk = (_: Request) => Future.exception(Thrown))
-      assertThrows[RoutingFactory.UnknownDst[Request]] {
-        await(service(Request()))
+
+      val req = Request()
+      try {
+        await(service(req))
+        assert(false)
+      } catch {
+        case e: Exception => assert(e.getMessage.contains(req.toString))
+        case _: Throwable => assert(false)
       }
     }
   }

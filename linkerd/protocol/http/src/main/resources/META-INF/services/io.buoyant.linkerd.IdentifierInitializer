@@ -1,1 +1,2 @@
-io.l5d.identifier.DefaultHttpIdentifierInitializer
+io.buoyant.linkerd.protocol.http.DefaultIdentifierInitializer
+io.buoyant.linkerd.protocol.http.PathIdentifierInitializer

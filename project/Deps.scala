@@ -14,6 +14,8 @@ object Deps {
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "6.35.0"
 
+  def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
+
   // Jackson (parsing)
   val jacksonVersion = "2.4.4"
   val jacksonCore =
@@ -38,4 +40,7 @@ object Deps {
 
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
+
+  // guava
+  val guava = "com.google.guava" % "guava" % "19.0"
 }
