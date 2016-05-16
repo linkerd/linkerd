@@ -33,38 +33,43 @@ class TracingFilter extends SimpleFilter[Request, Response] {
     service(req).onSuccess(recordResponse)
   }
 
-  private[this] def recordRequest(req: Request): Unit = if (Trace.isActivelyTracing) {
-    Trace.recordRpc(req.method.toString)
-    // http.uri is used here for consistency with finagle-http's tracing filter
-    Trace.recordBinary("http.uri", req.uri)
-    Trace.recordBinary("http.req.method", req.method.toString)
-    req.host match {
-      case Some(h) => Trace.recordBinary("http.req.host", h)
-      case None =>
-    }
-    Trace.recordBinary("http.req.version", req.version.toString)
-    req.contentLength match {
-      case Some(l) => Trace.recordBinary("http.req.content-length", l)
-      case None =>
-    }
-    req.contentType match {
-      case Some(t) => Trace.recordBinary("http.req.content-type", t)
-      case None =>
-    }
-    req.headerMap.get(TransferEncoding) match {
-      case Some(te) => Trace.recordBinary("http.req.transfer-encoding", te)
-      case None =>
+  private[this] def recordRequest: Request => Unit = (req: Request) => {
+    if (Trace.isActivelyTracing) {
+      Trace.recordRpc(req.method.toString)
+      // http.uri is used here for consistency with finagle-http's tracing filter
+      Trace.recordBinary("http.uri", req.uri)
+      Trace.recordBinary("http.req.method", req.method.toString)
+      req.host match {
+        case Some(h) => Trace.recordBinary("http.req.host", h)
+        case None =>
+      }
+      Trace.recordBinary("http.req.version", req.version.toString)
+      req.contentLength match {
+        case Some(l) => Trace.recordBinary("http.req.content-length", l)
+        case None =>
+      }
+      req.contentType match {
+        case Some(t) => Trace.recordBinary("http.req.content-type", t)
+        case None =>
+      }
+      req.headerMap.get(TransferEncoding) match {
+        case Some(te) => Trace.recordBinary("http.req.transfer-encoding", te)
+        case None =>
+      }
     }
   }
+
+  private[this] val MaxBodySize = 64 * 1000 // 64KB-ish
 
   private[this] val recordResponse: Response => Unit = (rsp: Response) => {
     if (Trace.isActivelyTracing) {
       Trace.recordBinary("http.rsp.status", rsp.status.code)
       Trace.recordBinary("http.rsp.version", rsp.version.toString)
-      rsp.status match {
-        case Status.ServerError(_) =>
-          Trace.recordBinary("http.rsp.body", rsp.content.slice(0, 64 * 1000))
-        case _ =>
+      if (500 <= rsp.statusCode && rsp.statusCode < 600) {
+        // XXX this doesn't work with zipkin, which will just ignore
+        // this annotation since it has a Buf body. We should revisit
+        // this later...
+        Trace.recordBinary("http.rsp.body", rsp.content.slice(0, MaxBodySize))
       }
       rsp.contentLength match {
         case Some(l) => Trace.recordBinary("http.rsp.content-length", l)

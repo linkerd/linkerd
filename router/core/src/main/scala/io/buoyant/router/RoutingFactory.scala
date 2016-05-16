@@ -89,13 +89,16 @@ class RoutingFactory[Req, Rsp](
     override def close(d: Time) = conn.close(d)
 
     def apply(req: Req): Future[Rsp] = {
-      // we treat the router label as the rpc name for this span
-      Trace.recordRpc(label)
-      Trace.recordBinary("router.label", label)
+      if (Trace.isActivelyTracing) {
+        // we treat the router label as the rpc name for this span
+        Trace.recordRpc(label)
+        Trace.recordBinary("router.label", label)
+      }
+
       for {
         dst <- getDst(req).rescue {
           case e: Throwable =>
-            Trace.recordBinary(Annotations.Failure.key, Annotations.Failure.Identification)
+            Annotations.Failure.Identification.record(e)
             Future.exception(UnknownDst(req, e))
         }
 
