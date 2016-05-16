@@ -4,7 +4,7 @@ storage:
   kind: io.buoyant.namerd.storage.inMemory
   namespaces:
     pandoracorn: |
-      /http/1.1/GET => /io.l5d.fs;
+      /http/1.1/GET => /#/io.l5d.fs;
 namers:
 - kind: io.l5d.fs
   rootDir: namerd/examples/disco
