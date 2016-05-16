@@ -5,11 +5,11 @@ to destination services.  A client TLS config block must contain a `kind`
 parameter which indicates which client TLS plugin to use as well as any
 parameters specific to the plugin.
 
-## io.l5d.clientTls.noValidation
+## io.l5d.noValidation
 
 Skip hostname validation.  This is unsafe.
 
-## io.l5d.clientTls.static
+## io.l5d.static
 
 Use a single common name for all TLS requests.  This assumes that all servers
 that the router connects to all use the same TLS cert (or all use certs
@@ -19,7 +19,7 @@ options:
 * *commonName* -- Required.  The common name to use for all TLS requests.
 * *caCertPath* -- Optional.  Use the given CA cert for common name validation.
 
-## io.l5d.clientTls.boundPath
+## io.l5d.boundPath
 
 Determine the common name based on the destination bound path.  This plugin
 supports the following options:
@@ -39,7 +39,7 @@ supports the following options:
 For example,
 
 ```yaml
-kind: io.l5d.clientTls.boundPath
+kind: io.l5d.boundPath
 caCertPath: /foo/cacert.pem
 names:
 - prefix: "/io.l5d.fs/{host}"
