@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.{ChannelClosedException, Failure, TimeoutException, WriteException}
-import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
+import com.twitter.finagle.service.RetryPolicy.{TimeoutAndWriteExceptionsOnly, ChannelClosedExceptionsOnly}
 import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
@@ -60,21 +60,13 @@ object ResponseClassifiers {
     }
   }
 
-  object RetryableException {
-    def unapply(e: Throwable): Boolean = e match {
-      case RetryableWriteException(_) => true
-      case Failure(Some(_: TimeoutException)) => true
-      case Failure(Some(_: UtilTimeoutException)) => true
-      case _: TimeoutException => true
-      case _: UtilTimeoutException => true
-      case _: ChannelClosedException => true
-      case _ => false
-    }
-  }
-
   object RetryableResult {
+    private[this] val retryableThrow: PartialFunction[Try[Nothing], Boolean] =
+      TimeoutAndWriteExceptionsOnly.orElse(ChannelClosedExceptionsOnly).orElse { case _ => false }
+
     def unapply(rsp: Try[Any]): Boolean = rsp match {
-      case Return(Responses.Failure.Retryable()) | Throw(RetryableException()) => true
+      case Return(Responses.Failure.Retryable()) => true
+      case Throw(e) => retryableThrow(Throw(e))
       case _ => false
     }
   }
