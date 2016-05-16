@@ -1,6 +1,7 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util._
@@ -46,7 +47,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
         else Activity.exception(new Exception)
     }
     val namers = Map(Path.read("/io.l5d.w00t") -> namer)
-    val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn)
+    val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, NullStatsReceiver)
     val client = new ThriftNamerClient(service, ns, clientId)
 
     val act = client.bind(reqDtab, reqPath)

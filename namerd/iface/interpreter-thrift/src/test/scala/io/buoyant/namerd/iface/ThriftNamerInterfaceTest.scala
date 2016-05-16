@@ -2,6 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.util.{Activity, Await, Var}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -24,7 +25,7 @@ class ThriftNamerInterfaceTest extends FunSuite {
     }
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
     val initName = thrift.NameRef(TStamp.empty, TPath("ysl", "thugger"), ns)
@@ -71,7 +72,7 @@ class ThriftNamerInterfaceTest extends FunSuite {
     val namers = Map(pfx -> new Namer { def lookup(path: Path) = Activity(states) })
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn)
+    val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, NullStatsReceiver)
   }
 
   test("addr") {

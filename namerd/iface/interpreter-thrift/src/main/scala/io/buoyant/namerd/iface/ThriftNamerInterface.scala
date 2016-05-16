@@ -1,6 +1,7 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
@@ -116,6 +117,8 @@ object ThriftNamerInterface {
     final def apply(tstamp: TStamp): Future[(Stamp, T)] =
       apply(Stamp(tstamp))
 
+    final def nextValue: Future[(Stamp, T)] = pending.flatMap(_.future)
+
     final def close(t: Time): Future[Unit] =
       synchronized {
         current = None
@@ -212,22 +215,12 @@ class ThriftNamerInterface(
   interpreters: Ns => NameInterpreter,
   namers: Map[Path, Namer],
   stamper: ThriftNamerInterface.Stamper,
-  retryIn: () => Duration
+  retryIn: () => Duration,
+  stats: StatsReceiver
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
 
   private[this] val log = Logger.get(getClass.getName)
-
-  /*
-   * We keep a cache of observations.  Each observer keeps track of
-   * the most recently observed state, and provides a Future that will
-   * be satisfied when the next update occurs.
-   *
-   * XXX we need a mechanism to evict observers that haven't been
-   * observed in $period or at least limit the size of these caches.
-   *
-   * XXX I expect this could be more efficient, even lockless.
-   */
 
   /**
    * Refine a Name (Path) to a NameTree[Path] in a given (Dtab)
@@ -249,8 +242,9 @@ class ThriftNamerInterface(
         Trace.recordBinary("namerd.srv/bind.ns", ns)
         Trace.recordBinary("namerd.srv/bind.path", path.show)
 
-        val bindingObserver = observeBind(ns, dtab, path)
-        bindingObserver(reqStamp).transform {
+        Future.const(bindingCache.get(ns, dtab, path)).flatMap { bindingObserver =>
+          bindingObserver(reqStamp)
+        }.transform {
           case Return((TStamp(tstamp), nameTree)) =>
             Trace.recordBinary("namerd.srv/bind.tree", nameTree.show)
             val (root, nodes, _) = mkTree(nameTree)
@@ -265,22 +259,14 @@ class ThriftNamerInterface(
     }
   }
 
-  private[this] val bindingCacheMu = new {}
-  private[this] var bindingCache: Map[(Ns, Dtab, Path), BindingObserver] = Map.empty
-  private[this] def observeBind(ns: String, dtab: Dtab, path: Path): BindingObserver =
-    bindingCacheMu.synchronized {
-      val key = (ns, dtab, path)
-      bindingCache.get(key) match {
-        case Some(obs) =>
-          Trace.recordBinary("namerd.srv/bind.cached", true)
-          obs
-        case None =>
-          Trace.recordBinary("namerd.srv/bind.cached", false)
-          val obs = BindingObserver(interpreters(ns).bind(dtab, path), stamper)
-          bindingCache += (key -> obs)
-          obs
-      }
-    }
+  private[this] def observeBind(ns: Ns, dtab: Dtab, path: Path) =
+    BindingObserver(interpreters(ns).bind(dtab, path), stamper)
+  private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
+    activeCapacity = 100,
+    inactiveCapacity = 10,
+    stats = stats.scope("bindindcache"),
+    mkObserver = (observeBind _).tupled
+  )
 
   /**
    * Observe a bound address pool.
@@ -301,8 +287,9 @@ class ThriftNamerInterface(
 
       case path =>
         Trace.recordBinary("namerd.srv/addr.path", path.show)
-        val addrObserver = observeAddr(path)
-        addrObserver(reqStamp).transform {
+        Future.const(addrCache.get(path)).flatMap { addrObserver =>
+          addrObserver(reqStamp)
+        }.transform {
           case Return((newStamp, None)) =>
             Trace.recordBinary("namerd.srv/addr.result", "neg")
             val addr = thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
@@ -333,38 +320,31 @@ class ThriftNamerInterface(
     }
   }
 
-  private[this] val addrCacheMu = new {}
-  private[this] var addrCache: Map[Path, AddrObserver] = Map.empty
-  private[this] def observeAddr(id: Path): AddrObserver =
-    addrCacheMu.synchronized {
-      addrCache.get(id) match {
-        case Some(obs) =>
-          Trace.recordBinary("namerd.srv/addr.cached", true)
-          obs
-
-        case None =>
-          Trace.recordBinary("namerd.srv/addr.cached", false)
-          val resolution = bindAddrId(id).run.flatMap {
-            case Activity.Pending => Var.value(Addr.Pending)
-            case Activity.Failed(e) => Var.value(Addr.Failed(e))
-            case Activity.Ok(tree) => tree match {
-              case NameTree.Leaf(bound) => bound.addr
-              case NameTree.Empty => Var.value(Addr.Bound())
-              case NameTree.Fail => Var.value(Addr.Failed("name tree failed"))
-              case NameTree.Neg => Var.value(Addr.Neg)
-              case NameTree.Alt(_) | NameTree.Union(_) =>
-                Var.value(Addr.Failed(s"${id.show} is not a concrete bound id"))
-            }
-          }
-          val obs = AddrObserver(resolution, stamper)
-          addrCache += (id -> obs)
-          obs
+  private[this] def observeAddr(id: Path) = {
+    Trace.recordBinary("namerd.srv/addr.cached", false)
+    val resolution = bindAddrId(id).run.flatMap {
+      case Activity.Pending => Var.value(Addr.Pending)
+      case Activity.Failed(e) => Var.value(Addr.Failed(e))
+      case Activity.Ok(tree) => tree match {
+        case NameTree.Leaf(bound) => bound.addr
+        case NameTree.Empty => Var.value(Addr.Bound())
+        case NameTree.Fail => Var.value(Addr.Failed("name tree failed"))
+        case NameTree.Neg => Var.value(Addr.Neg)
+        case NameTree.Alt(_) | NameTree.Union(_) =>
+          Var.value(Addr.Failed(s"${id.show} is not a concrete bound id"))
       }
     }
+    AddrObserver(resolution, stamper)
+  }
+  private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
+    activeCapacity = 100,
+    inactiveCapacity = 10,
+    stats = stats.scope("addrcache"),
+    mkObserver = observeAddr
+  )
 
   private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
     val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 }
-
