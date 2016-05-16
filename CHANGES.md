@@ -2,6 +2,8 @@
 
 * Add zkLeader namer to allow discovery of services through ZooKeeper leader
   election.
+* Add HTTP path request identifier, which builds destinations from a
+  configurable number of HTTP URI path segments.
 
 ## 0.5.0
 

@@ -8,7 +8,7 @@ import io.buoyant.test.{Exceptions, Awaits}
 import java.net.SocketAddress
 import org.scalatest.FunSuite
 
-class IdentifierTest extends FunSuite with Awaits with Exceptions {
+class DefaultIdentifierTest extends FunSuite with Awaits with Exceptions {
 
   test("http/1.1 request without a host header") {
     val identifier = DefaultIdentifier(Path.Utf8("https"), false)
