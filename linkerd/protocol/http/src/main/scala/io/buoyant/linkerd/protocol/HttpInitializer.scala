@@ -18,9 +18,12 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultRouter = {
     val pathStack = Headers.Dst.PathFilter +: Http.router.pathStack
     val boundStack = Headers.Dst.BoundFilter +: Http.router.boundStack
-    val clientStack = (http.AccessLogger.module +: Http.router.clientStack)
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
-      .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+    val clientStack = {
+      val stk = new StackBuilder(Http.router.clientStack)
+      stk.push(http.StatusCodeStatsFilter.module)
+      stk.push(http.AccessLogger.module)
+      stk.result.replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
+    }
 
     Http.router
       .withPathStack(pathStack)
