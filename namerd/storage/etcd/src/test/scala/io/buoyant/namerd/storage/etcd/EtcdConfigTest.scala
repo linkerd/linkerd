@@ -1,4 +1,4 @@
-package io.buoyant.namerd.storage
+package io.buoyant.namerd.storage.etcd
 
 import com.twitter.finagle.Path
 import io.buoyant.config.Parser
@@ -13,7 +13,7 @@ class EtcdConfigTest extends FunSuite with OptionValues {
 
   test("parse config") {
     val yaml =
-      """|kind: io.buoyant.namerd.storage.experimental.etcd
+      """|kind: io.l5d.etcd
          |pathPrefix: /foo/bar
          |host: etcd.dentist
          |port: 80

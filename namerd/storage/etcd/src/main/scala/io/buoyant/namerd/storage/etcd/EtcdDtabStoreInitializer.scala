@@ -1,10 +1,9 @@
-package io.buoyant.namerd.storage
+package io.buoyant.namerd.storage.etcd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.etcd.Key
-import io.buoyant.namerd.storage.etcd.EtcdDtabStore
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class EtcdConfig(
@@ -29,7 +28,8 @@ object EtcdConfig {
 
 class EtcdDtabStoreInitializer extends DtabStoreInitializer {
   override def configClass = classOf[EtcdConfig]
-  override def configId = "io.buoyant.namerd.storage.experimental.etcd"
+  override def configId = "io.l5d.etcd"
+  override def experimental = true
 }
 
 object EtcdDtabStoreInitializer extends EtcdDtabStoreInitializer

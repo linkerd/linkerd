@@ -1,4 +1,4 @@
-package io.buoyant.namerd.storage.experimental
+package io.buoyant.namerd.storage
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
@@ -6,10 +6,12 @@ import com.twitter.finagle.serverset2.buoyant.ZkDtabStore
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 class ZkDtabStoreInitializer extends DtabStoreInitializer {
-  override def configClass = classOf[zk]
+  override def configClass = classOf[ZkConfig]
+  override def configId = "io.l5d.zk"
+  override def experimental = true
 }
 
-case class zk(
+case class ZkConfig(
   hosts: Seq[String],
   pathPrefix: Option[String],
   sessionTimeoutMs: Option[Int],

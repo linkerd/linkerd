@@ -1,11 +1,11 @@
-package io.buoyant.namerd.storage.experimental
+package io.buoyant.namerd.storage
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.ClientConfig
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
-case class k8s(
+case class K8sConfig(
   host: Option[String],
   port: Option[Port],
   tls: Option[Boolean],
@@ -25,5 +25,7 @@ case class k8s(
 }
 
 class K8sDtabStoreInitializer extends DtabStoreInitializer {
-  override def configClass = classOf[k8s]
+  override def configClass = classOf[K8sConfig]
+  override def configId = "io.l5d.k8s"
+  override def experimental = true
 }
