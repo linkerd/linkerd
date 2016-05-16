@@ -1,9 +1,11 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle.{ChannelClosedException, Failure, TimeoutException, WriteException}
+import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
-import com.twitter.util.{NonFatal, Return, Throw}
+import com.twitter.util.{NonFatal, Return, Throw, Try, TimeoutException => UtilTimeoutException}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
 
@@ -58,14 +60,32 @@ object ResponseClassifiers {
     }
   }
 
+  object RetryableException {
+    def unapply(e: Throwable): Boolean = e match {
+      case RetryableWriteException(_) => true
+      case Failure(Some(_: TimeoutException)) => true
+      case Failure(Some(_: UtilTimeoutException)) => true
+      case _: TimeoutException => true
+      case _: UtilTimeoutException => true
+      case _: ChannelClosedException => true
+      case _ => false
+    }
+  }
+
+  object RetryableResult {
+    def unapply(rsp: Try[Any]): Boolean = rsp match {
+      case Return(Responses.Failure.Retryable()) | Throw(RetryableException()) => true
+      case _ => false
+    }
+  }
+
   /**
    * Classifies 5XX responses as failures. If the method is idempotent
    * (as described by RFC2616), it is classified as retryable.
    */
   val RetryableIdempotentFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableIdempotentFailures") {
-      case ReqRep(Requests.Idempotent(), Return(Responses.Failure.Retryable()) | Throw(NonFatal(_))) =>
-        ResponseClass.RetryableFailure
+      case ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -74,8 +94,7 @@ object ResponseClassifiers {
    */
   val RetryableReadFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableReadFailures") {
-      case ReqRep(Requests.ReadOnly(), Return(Responses.Failure.Retryable()) | Throw(NonFatal(_))) =>
-        ResponseClass.RetryableFailure
+      case ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**

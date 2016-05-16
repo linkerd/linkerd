@@ -1,9 +1,10 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle.{ChannelClosedException, Failure, RequestTimeoutException}
 import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.finagle.util.LoadService
-import com.twitter.util.{Return, Throw, Try}
+import com.twitter.util.{Duration, Return, Throw, Try, TimeoutException}
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.HttpInitializer
@@ -64,12 +65,39 @@ class ResponseClassifiersTest extends FunSuite {
           )
       }
 
+      test(s"$classifier: retries $method timeout") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new TimeoutException("timeout")),
+          Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: retries $method request timeout") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new RequestTimeoutException(Duration.Zero, "timeout")),
+          Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: retries $method channel closed") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new ChannelClosedException),
+          Some(ResponseClass.RetryableFailure)
+        )
+      }
+
       test(s"$classifier: retries $method errors") {
         testClassifier(
           classifier,
           method,
           Throw(new Exception),
-          Some(ResponseClass.RetryableFailure)
+          None
         )
       }
     }
