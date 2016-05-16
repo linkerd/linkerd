@@ -8,6 +8,7 @@ import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
 class StaticInitializer extends TlsClientInitializer {
   val configClass = classOf[StaticConfig]
+  override def configId = "io.l5d.static"
 }
 
 object StaticInitializer extends StaticInitializer

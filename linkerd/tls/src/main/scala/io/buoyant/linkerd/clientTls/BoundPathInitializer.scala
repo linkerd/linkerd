@@ -15,6 +15,7 @@ import java.net.SocketAddress
 
 class BoundPathInitializer extends TlsClientInitializer {
   val configClass = classOf[BoundPathConfig]
+  override def configId = "io.l5d.boundPath"
 }
 
 object BoundPathInitializer extends BoundPathInitializer
