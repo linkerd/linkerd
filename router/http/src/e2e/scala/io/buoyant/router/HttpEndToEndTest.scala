@@ -104,8 +104,40 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       // todo check tracer
       //tracer.clear()
     } finally {
+      await(client.close())
       await(cat.server.close())
       await(dog.server.close())
+      await(router.close())
+    }
+  }
+
+  test("strips connection header") {
+    @volatile var connection: Option[Option[String]] = None
+    val srv = Downstream.mk("srv") { req =>
+      connection = Some(req.headerMap.get("Connection"))
+      Response()
+    }
+
+    val router = {
+      val dtab = Dtab.read(s"/http/1.1 => /$$/inet/127.1/${srv.port};")
+      val factory = Http.router
+        .configured(RoutingFactory.BaseDtab(() => dtab))
+        .configured(RoutingFactory.DstPrefix(Path.Utf8("http")))
+        .factory()
+      Http.serve(new InetSocketAddress(0), factory)
+    }
+    val client = upstream(router)
+
+    try {
+      val req = Request()
+      req.host = "host"
+      req.headerMap.set("Connection", "close")
+      val _ = await(client(req))
+      assert(connection == Some(None))
+
+    } finally {
+      await(client.close())
+      await(srv.server.close())
       await(router.close())
     }
   }

@@ -101,6 +101,7 @@ object LinkerdBuild extends Base {
     val zkLeader = projectDir("namer/zk-leader")
       .dependsOn(core)
       .withTwitterLib(Deps.zkCandidate)
+      .withTests()
 
     val all = projectDir("namer")
       .aggregate(core, consul, fs, k8s, marathon, serversets, zkLeader)
