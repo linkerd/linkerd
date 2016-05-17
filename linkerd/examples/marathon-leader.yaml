@@ -2,7 +2,7 @@ namers:
 - kind:      io.l5d.experimental.marathon
   prefix:    /io.l5d.marathon
   # Discover the marathon master by leader election
-  dst:       /$/io.buoyant.namer.ZkLeader/localhost:2181/marathon/leader
+  dst:       /$/io.buoyant.namer.zk.leader/localhost:2181/marathon/leader
   uriPrefix: /marathon
   ttlMs:     300
 

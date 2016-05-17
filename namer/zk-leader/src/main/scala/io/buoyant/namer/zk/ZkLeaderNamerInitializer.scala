@@ -1,4 +1,4 @@
-package io.buoyant.namer.zkLeader
+package io.buoyant.namer.zk
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
