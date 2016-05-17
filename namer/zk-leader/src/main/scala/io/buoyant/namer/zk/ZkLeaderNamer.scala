@@ -1,4 +1,4 @@
-package io.buoyant.namer.zkLeader
+package io.buoyant.namer.zk
 
 import com.twitter.common.zookeeper.Group.GroupChangeListener
 import com.twitter.common.zookeeper._

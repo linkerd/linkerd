@@ -16,7 +16,7 @@ class NamerInitializersTest extends FunSuite {
   }
 
   test("namers evaluated bottom-up") {
-    val path = Path.read("/boo/urns")
+    val path = Path.read("/#/boo/urns")
 
     val booYaml =
       """|- kind: io.buoyant.namer.booUrnsNamer
@@ -24,7 +24,7 @@ class NamerInitializersTest extends FunSuite {
          |""".stripMargin
     interpreter(booYaml).bind(Dtab.empty, path).sample() match {
       case NameTree.Leaf(bound) =>
-        assert(bound.id == Path.read("/boo"))
+        assert(bound.id == Path.read("/#/boo"))
         assert(bound.path == Path.read("/urns"))
       case tree => fail(s"unexpected result: $tree")
     }
@@ -36,7 +36,7 @@ class NamerInitializersTest extends FunSuite {
 
     interpreter(booUrnsYaml).bind(Dtab.empty, path).sample() match {
       case NameTree.Leaf(bound: Name.Bound) =>
-        assert(bound.id == Path.read("/boo/urns"))
+        assert(bound.id == Path.read("/#/boo/urns"))
         assert(bound.path == Path.empty)
       case tree => fail(s"unexpected result: $tree")
     }
