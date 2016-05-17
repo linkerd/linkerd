@@ -1,9 +1,8 @@
-package io.l5d
+package io.buoyant.namer.serversets
 
 import com.twitter.finagle._
 import com.twitter.util.Var
 import io.buoyant.namer.NamerTestUtil
-import io.buoyant.namer.serversets.ServersetNamer
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 

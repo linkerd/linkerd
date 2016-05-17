@@ -18,13 +18,22 @@ import io.buoyant.config.ConfigInitializer
  * In this example _io.l5d.izzle_ must be the _kind_ of a
  * [[NamerInitializer]] in `namers`.  _frizzle_ and _swizzle_ are
  * namer-specific options.  This namer refines names beginning with
- * `/i` (after this prefix has been stripped).
+ * `/#/i` (after this prefix has been stripped).
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 @JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 trait NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
+
+  @JsonProperty("experimental")
+  var _experimentalEnabled: Option[Boolean] = None
+
+  @JsonIgnore
+  def experimental = false
+
+  @JsonIgnore
+  def disabled = experimental && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
   def defaultPrefix: Path

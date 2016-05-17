@@ -1,4 +1,4 @@
-package io.l5d.experimental
+package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.param.Label
@@ -12,21 +12,25 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *
  * <pre>
  * namers:
- * - kind: io.l5d.experimental.consul
+ * - kind: io.l5d.consul
  *   host: consul.site.biz
  *   port: 8600
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
-  val configClass = classOf[consul]
+  val configClass = classOf[ConsulConfig]
+  override def configId = "io.l5d.consul"
 }
 
 object ConsulInitializer extends ConsulInitializer
 
-case class consul(
+case class ConsulConfig(
   host: Option[String],
   port: Option[Port]
 ) extends NamerConfig {
+
+  @JsonIgnore
+  override val experimental = true
 
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.consul")

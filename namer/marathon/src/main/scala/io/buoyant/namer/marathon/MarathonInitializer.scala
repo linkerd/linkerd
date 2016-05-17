@@ -1,4 +1,4 @@
-package io.l5d.experimental
+package io.buoyant.namer.marathon
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
@@ -13,7 +13,7 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  *
  * <pre>
  * namers:
- * - kind:      io.l5d.experimental.marathon
+ * - kind:      io.l5d.marathon
  *   prefix:    /io.l5d.marathon
  *   host:      marathon.mesos
  *   port:      80
@@ -22,18 +22,22 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  * </pre>
  */
 class MarathonInitializer extends NamerInitializer {
-  val configClass = classOf[marathon]
+  val configClass = classOf[MarathonConfig]
+  override def configId = "io.l5d.marathon"
 }
 
 object MarathonInitializer extends MarathonInitializer
 
-case class marathon(
+case class MarathonConfig(
   host: Option[String],
   port: Option[Port],
   dst: Option[String],
   uriPrefix: Option[String],
   ttlMs: Option[Int]
 ) extends NamerConfig {
+  @JsonIgnore
+  override val experimental = true
+
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.marathon")
 

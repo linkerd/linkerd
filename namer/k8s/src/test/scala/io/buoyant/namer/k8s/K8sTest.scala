@@ -1,17 +1,17 @@
-package io.l5d.experimental
+package io.buoyant.namer.k8s
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.util.LoadService
+import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import io.buoyant.config.Parser
 import org.scalatest.FunSuite
 
 class K8sTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = k8s(None, None).newNamer(Stack.Params.empty)
+    val _ = K8sConfig(None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -20,13 +20,13 @@ class K8sTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""
-                  |kind: io.l5d.experimental.k8s
+                  |kind: io.l5d.k8s
                   |host: k8s-master.site.biz
                   |port: 80
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(K8sInitializer)))
-    val k8s = mapper.readValue[NamerConfig](yaml).asInstanceOf[k8s]
+    val k8s = mapper.readValue[NamerConfig](yaml).asInstanceOf[K8sConfig]
     assert(k8s.host == Some("k8s-master.site.biz"))
     assert(k8s.port == Some(Port(80)))
   }

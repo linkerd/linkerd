@@ -1,4 +1,4 @@
-package io.l5d.experimental
+package io.buoyant.namer.marathon
 
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Path, Stack}
@@ -11,7 +11,7 @@ class MarathonTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = marathon(None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = MarathonConfig(None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -20,7 +20,7 @@ class MarathonTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""
-                  |kind:      io.l5d.experimental.marathon
+                  |kind:      io.l5d.marathon
                   |prefix:    /io.l5d.marathon
                   |host:      marathon.mesos
                   |port:      80
@@ -29,7 +29,7 @@ class MarathonTest extends FunSuite {
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
-    val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[marathon]
+    val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
     assert(marathon.host.contains("marathon.mesos"))
     assert(marathon.port.contains(Port(80)))
     assert(marathon.uriPrefix.contains("/marathon"))

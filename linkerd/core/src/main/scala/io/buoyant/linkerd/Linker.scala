@@ -95,6 +95,9 @@ object Linker {
 
       val namerParams = Stack.Params.empty + param.Tracer(tracer)
       val namersByPrefix = namers.getOrElse(Nil).reverse.map { namer =>
+        if (namer.disabled) throw new IllegalArgumentException(
+          s"""The ${namer.prefix.show} namer is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
+        )
         namer.prefix -> namer.newNamer(namerParams)
       }
 

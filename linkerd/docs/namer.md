@@ -9,6 +9,7 @@ A namer config block has the following parameters:
 * *prefix* -- This namer will resolve names beginning with `/#/<prefix>`.  Some
   namers may configure a default prefix; see the specific namer section for
   details.
+* *experimental* -- Set this to `true` to enable the namer if it is experimental.
 * *namer-specific parameters*.
 
 ## File-based service discovery
@@ -105,7 +106,7 @@ linkerd provides support for service discovery via
 [Consul](https://www.consul.io/). Note that this support is still considered
 experimental.
 
-The Consul namer is configured with kind `io.l5d.experimental.consul`, and these parameters:
+The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 
 * *host* --  the Consul host. (default: localhost)
 * *port* --  the Consul port. (default: 8500)
@@ -113,13 +114,13 @@ The Consul namer is configured with kind `io.l5d.experimental.consul`, and these
 For example:
 ```yaml
 namers:
-- kind: io.l5d.experimental.consul
+- kind: io.l5d.consul
+  experimental: true
   host: 127.0.0.1
   port: 2181
 ```
 
-The default _prefix_ is `io.l5d.consul`. (Note that this is *different* from
-the name in the configuration block.)
+The default _prefix_ is `io.l5d.consul`.
 
 Once configured, to use the Consul namer, you must reference it in
 the dtab. The Consul namer takes one parameter in its path, which is the Consul
@@ -135,7 +136,7 @@ linkerd provides support for service discovery via
 [Kubernetes](https://k8s.io/). Note that this support is still considered
 experimental.
 
-The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and these parameters:
+The Kubernetes namer is configured with kind `io.l5d.k8s`, and these parameters:
 
 * *host* -- the Kubernetes master host. (default: localhost)
 * *port* -- the Kubernetes master port. (default: 8001)
@@ -143,7 +144,8 @@ The Kubernetes namer is configured with kind `io.l5d.experimental.k8s`, and thes
 For example:
 ```yaml
 namers:
-- kind: io.l5d.experimental.k8s
+- kind: io.l5d.k8s
+  experimental: true
   host: localhost
   port: 8001
 ```
@@ -151,8 +153,7 @@ namers:
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
 which will create a local proxy for securely talking to the Kubernetes cluster API.
 
-The default _prefix_ is `io.l5d.k8s`. (Note that this is *different* from
-the name in the configuration block.)
+The default _prefix_ is `io.l5d.k8s`.
 
 The Kubernetes namer takes three path components: `namespace`, `port-name` and
 `svc-name`:
@@ -174,7 +175,7 @@ linkerd provides support for service discovery via
 [Marathon](https://mesosphere.github.io/marathon/). Note that this support is still considered
 experimental.
 
-The Marathon namer is configured with kind `io.l5d.experimental.marathon`, and these parameters:
+The Marathon namer is configured with kind `io.l5d.marathon`, and these parameters:
 
 * *host* -- the Marathon master host. (default: marathon.mesos)
 * *port* -- the Marathon master port. (default: 80)
@@ -188,16 +189,16 @@ The Marathon namer is configured with kind `io.l5d.experimental.marathon`, and t
 For example:
 ```yaml
 namers:
-- kind:      io.l5d.experimental.marathon
-  prefix:    /#/io.l5d.marathon
-  host:      marathon.mesos
-  port:      80
-  uriPrefix: /marathon
-  ttlMs:     500
+- kind:         io.l5d.marathon
+  experimental: true
+  prefix:       /#/io.l5d.marathon
+  host:         marathon.mesos
+  port:         80
+  uriPrefix:    /marathon
+  ttlMs:        500
 ```
 
-The default _prefix_ is `io.l5d.marathon`. (Note that this is *different* from
-the name in the configuration block.)
+The default _prefix_ is `io.l5d.marathon`.
 
 The Marathon namer takes any number of path components. The path should
 correspond to the app id of a marathon application. For example, the app with

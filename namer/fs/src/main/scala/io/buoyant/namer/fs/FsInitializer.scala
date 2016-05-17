@@ -1,18 +1,18 @@
-package io.l5d
+package io.buoyant.namer.fs
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Stack, Path}
 import io.buoyant.config.types.Directory
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import io.buoyant.namer.fs.WatchingNamer
 
 class FsInitializer extends NamerInitializer {
-  val configClass = classOf[fs]
+  val configClass = classOf[FsConfig]
+  override def configId = "io.l5d.fs"
 }
 
 object FsInitializer extends FsInitializer
 
-case class fs(rootDir: Directory) extends NamerConfig {
+case class FsConfig(rootDir: Directory) extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.fs")
 

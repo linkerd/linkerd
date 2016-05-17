@@ -1,16 +1,16 @@
-package io.l5d
+package io.buoyant.namer.serversets
 
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.twitter.finagle.util.LoadService
-import io.buoyant.namer.{NamerInitializer, NamerConfig}
 import io.buoyant.config.Parser
+import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import org.scalatest.FunSuite
 
 class ServersetsTest extends FunSuite {
 
-  def parse(yaml: String): serversets = {
+  def parse(yaml: String): ServersetsConfig = {
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ServersetsInitializer)))
-    mapper.readValue[NamerConfig](yaml).asInstanceOf[serversets]
+    mapper.readValue[NamerConfig](yaml).asInstanceOf[ServersetsConfig]
   }
 
   test("zkHost list") {

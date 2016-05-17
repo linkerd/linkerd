@@ -1,34 +1,36 @@
-package io.l5d.experimental
+package io.buoyant.namer.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response}
-import io.buoyant.k8s.v1.Api
-import io.buoyant.k8s._
 import io.buoyant.config.types.Port
+import io.buoyant.k8s._
+import io.buoyant.k8s.v1.Api
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import scala.io.Source
 
 /**
  * Supports namer configurations in the form:
  *
  * <pre>
  * namers:
- * - kind: io.l5d.experimental.k8s
+ * - kind: io.l5d.k8s
  *   host: localhost
  *   port: 8001
  * </pre>
  */
 class K8sInitializer extends NamerInitializer {
-  val configClass = classOf[k8s]
+  val configClass = classOf[K8sConfig]
+  override def configId = "io.l5d.k8s"
 }
 
 object K8sInitializer extends K8sInitializer
 
-case class k8s(
+case class K8sConfig(
   host: Option[String],
   port: Option[Port]
 ) extends NamerConfig with ClientConfig {
+
+  @JsonIgnore
+  override val experimental = true
 
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.k8s")

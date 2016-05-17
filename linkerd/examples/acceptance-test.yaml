@@ -19,15 +19,18 @@ namers:
   - host: 127.0.0.1
     port: 2181
 
-- kind: io.l5d.experimental.consul
+- kind: io.l5d.consul
+  experimental: true
   host: 127.0.0.1
   port: 2181
 
-- kind: io.l5d.experimental.k8s
+- kind: io.l5d.k8s
+  experimental: true
   host: localhost
   port: 8001
 
-- kind: io.l5d.experimental.marathon
+- kind: io.l5d.marathon
+  experimental: true
   prefix: /io.l5d.marathon
   host: marathon.mesos
   port: 80
