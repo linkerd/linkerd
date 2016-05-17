@@ -7,13 +7,19 @@ import com.twitter.util.{Duration, Try}
 object ClassifiedRetries {
   val role = Stack.Role("ClassifiedRetries")
 
+  /**
+   * A backoff policy to be used when retrying application-level
+   * failures.
+   *
+   * @see com.twitter.finagle.service.Backoff
+   */
   case class Backoffs(backoff: Stream[Duration])
   implicit object Backoffs extends Stack.Param[Backoffs] {
     val default = Backoffs(Backoff.const(Duration.Zero))
   }
 
   /**
-   * A retry policy that uses a response classifier to compute
+   * A RetryPolicy that uses a ResponseClassifier.
    */
   private class ClassifiedPolicy[Req, Rsp](backoff: Stream[Duration], classifier: ResponseClassifier)
     extends RetryPolicy[(Req, Try[Rsp])] {
@@ -31,6 +37,10 @@ object ClassifiedRetries {
     }
   }
 
+  /**
+   * A stack module that installs a RetryFilter that uses the stack's
+   * ResponseClassifier.
+   */
   def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
     new Stack.Module5[Backoffs, param.ResponseClassifier, Retries.Budget, param.HighResTimer, param.Stats, ServiceFactory[Req, Rsp]] {
       val role = ClassifiedRetries.role
