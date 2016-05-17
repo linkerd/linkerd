@@ -7,7 +7,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
-import com.twitter.util.Duration
+import com.twitter.util.{Duration, Future, Time}
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -284,7 +284,22 @@ object StackRouter {
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
+    /*
+     * The ordering here is very important:
+     *
+     * - At the top of the path stack, we measure tracing and stats so
+     *   that we have a logical view of the request.  Success rate as
+     *   computed from the stats.
+     *
+     * - Application-level retries are controlled by [[ClassifiedRetries]].
+     *
+     * - Then, factoryToService is used to manage properly manage
+     *   sessions. We need to ensure that the underlying factory
+     *   (provided by the lower stacks) is provisioned for each
+     *   request to accomdate terminated requests (e.g. HTTP/1.0)
+     */
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
+    stk.push(factoryToService)
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
@@ -302,4 +317,30 @@ object StackRouter {
     StackClient.defaultParams +
       FailFastFactory.FailFast(false) +
       param.Stats(DefaultStatsReceiver.scope("rt"))
+
+  /**
+   * Analagous to c.t.f.FactoryToService.module, but is applied
+   * unconditionally.
+   *
+   * Finagle's FactoryToService is not directly used because we don't
+   * want the conditional behavior and we don't want to enable other
+   * factory to service modules in i.e. the client stack.
+   *
+   * We effectively treat the path stack as application-level and the
+   * bound and client stacks as session-level.
+   */
+  private def factoryToService[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
+    new Stack.Module0[ServiceFactory[Req, Rep]] {
+      val role = FactoryToService.role
+      val description = "Ensures that underlying service factory is properly provisioned for each request"
+      def make(next: ServiceFactory[Req, Rep]) = {
+        // To reiterate the comment in finagle: this is too complicated.
+        val service = Future.value(new ServiceProxy[Req, Rep](new FactoryToService(next)) {
+          override def close(deadline: Time): Future[Unit] = Future.Done
+        })
+        new ServiceFactoryProxy(next) {
+          override def apply(conn: ClientConnection): Future[ServiceProxy[Req, Rep]] = service
+        }
+      }
+    }
 }
