@@ -5,7 +5,7 @@ Router configuration options include:
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-io.l5d.verbAndHost)
+io.l5d.methodAndHost)
 
 The default _dstPrefix_ is `/http`
 The default server _port_ is 4140
