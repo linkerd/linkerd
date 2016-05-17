@@ -30,10 +30,14 @@ trait NamerConfig {
   def defaultPrefix: Path
 
   @JsonIgnore
-  def prefix = _prefix.getOrElse(defaultPrefix)
+  def prefix = NamerConfig.hash ++ _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer
+}
+
+object NamerConfig {
+  val hash = Path.Utf8("#")
 }
 
 trait NamerInitializer extends ConfigInitializer

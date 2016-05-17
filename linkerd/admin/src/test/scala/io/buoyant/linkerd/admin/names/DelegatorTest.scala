@@ -26,7 +26,7 @@ class DelegatorTest extends FunSuite with Awaits {
 
   val dtab = Dtab.read("""
     /bah/humbug => /$/inet/127.1/8080 ;
-    /beh => /error ;
+    /beh => /#/error ;
     /foo => /bah | /$/fail ;
     /foo => /bar ;
     /boo => /foo ;
@@ -37,12 +37,12 @@ class DelegatorTest extends FunSuite with Awaits {
 
   test("uses NamerInterpreter to resolve names") {
     val path = Path.read("/nah/bro")
-    val dtab = Dtab.read("""/nah=>/namer;""")
+    val dtab = Dtab.read("""/nah=>/#/namer;""")
     assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
       Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Leaf(
-        Path.read("/namer/bro"),
-        Dentry.read("/nah=>/namer"),
-        Name.Bound(Var.value(Addr.Pending), Path.read("/namer"), Path.Utf8("bro"))
+        Path.read("/#/namer/bro"),
+        Dentry.read("/nah=>/#/namer"),
+        Name.Bound(Var.value(Addr.Pending), Path.read("/#/namer"), Path.Utf8("bro"))
       ))))
   }
 
@@ -101,9 +101,9 @@ class DelegatorTest extends FunSuite with Awaits {
         path,
         Dentry.nop,
         DelegateTree.Exception(
-          Path.read("/error/humbug"),
-          Dentry.read("/beh=>/error"),
-          TestNamingError(Path.read("/error/humbug"))
+          Path.read("/#/error/humbug"),
+          Dentry.read("/beh=>/#/error"),
+          TestNamingError(Path.read("/#/error/humbug"))
         )
       )))
   }
