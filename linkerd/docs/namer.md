@@ -6,7 +6,7 @@ http://twitter.github.io/finagle/guide/Names.html
 A namer config block has the following parameters:
 
 * *kind* -- The name of the namer plugin
-* *prefix* -- This namer will resolve names beginning with this prefix.  Some
+* *prefix* -- This namer will resolve names beginning with `/#/<prefix>`.  Some
   namers may configure a default prefix; see the specific namer section for
   details.
 * *namer-specific parameters*.
@@ -67,7 +67,7 @@ Once configured, to use the file-based namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.fs
+  /http/1.1/* => /#/io.l5d.fs
 ```
 
 ## ZooKeeper ServerSets service discovery
@@ -96,7 +96,7 @@ Once configured, to use the ServerSets namer, you must reference it in
 the dtab. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.serversets/discovery/prod;
+  /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
 ```
 
 ## Consul service discovery (experimental)
@@ -126,7 +126,7 @@ the dtab. The Consul namer takes one parameter in its path, which is the Consul
 datacenter. For example:
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.consul/dc1;
+  /http/1.1/* => /#/io.l5d.consul/dc1;
 ```
 
 ## Kubernetes service discovery (experimental)
@@ -165,7 +165,7 @@ Once configured, to use the Kubernetes namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /http/1.1/* => /io.l5d.k8s/prod/http;
+  /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
 ## Marathon service discovery (experimental)
@@ -189,7 +189,7 @@ For example:
 ```yaml
 namers:
 - kind:      io.l5d.experimental.marathon
-  prefix:    /io.l5d.marathon
+  prefix:    /#/io.l5d.marathon
   host:      marathon.mesos
   port:      80
   uriPrefix: /marathon
@@ -201,15 +201,15 @@ the name in the configuration block.)
 
 The Marathon namer takes any number of path components. The path should
 correspond to the app id of a marathon application. For example, the app with
-id "/users" can be reached with `/io.l5d.marathon/users`. Likewise, the app
+id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app
 with id "/appgroup/usergroup/users" can be reached with
-`/io.l5d.marathon/appgroup/usergroup/users`.
+`/#/io.l5d.marathon/appgroup/usergroup/users`.
 
 Once configured, to use the Marathon namer, you must reference it in
 the dtab.
 ```
 baseDtab: |
-  /marathonId => /io.l5d.marathon;
+  /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
 ```
