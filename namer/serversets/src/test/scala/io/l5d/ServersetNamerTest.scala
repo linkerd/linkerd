@@ -8,7 +8,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
 class ServersetNamerTest extends FunSuite with NamerTestUtil {
-  val prefix = Path.read("/some/prefix")
+  val prefix = Path.read("/#/some/prefix")
 
   test("falls back to path prefixes") {
     namer("/foo/bar").lookup(Path.read("/foo/bar/x/y/z")).sample() match {

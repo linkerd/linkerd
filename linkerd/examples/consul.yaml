@@ -5,10 +5,10 @@ namers:
 routers:
 - protocol: http
   baseDtab: |
-    /host     => /consul/dc1;
+    /host     => /#/consul/dc1;
     /http/1.1/* => /host;
   identifier:
-    kind: io.l5d.default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   servers:
   - port: 4140

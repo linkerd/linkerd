@@ -33,10 +33,10 @@ routers:
 - protocol: http
   label: int-http
   baseDtab: |
-    /host       => /io.l5d.fs;
+    /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   identifier:
-    kind: io.l5d.default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   servers:
   - port: 4140
@@ -46,7 +46,7 @@ routers:
   label: ext-http
   dstPrefix: /ext/http
   baseDtab: |
-    /ext/http/1.1/*/* => /io.l5d.fs/web;
+    /ext/http/1.1/*/* => /#/io.l5d.fs/web;
   servers:
   - port: 8080
     ip: 0.0.0.0
@@ -74,7 +74,7 @@ routers:
     thriftFramed: true
   thriftMethodInDst: false
   baseDtab: |
-    /thrift => /io.l5d.fs/thrift;
+    /thrift => /#/io.l5d.fs/thrift;
 ```
 
 The most minimal configuration looks something like the following,
@@ -201,7 +201,8 @@ and for precedence and failover rules to be expressed between them. This logic
 is governed by the [routing](#basic-router-params) configuration.
 
 Naming and service discovery are configured via the `namers` section of the
-configuration file.
+configuration file.  A namer acts on paths that start with `/#` followed by the
+namer's prefix.
 
 * *namers* -- An array of [namer](namer.md) objects.
 

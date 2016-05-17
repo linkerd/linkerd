@@ -183,6 +183,7 @@ object LinkerdBuild extends Base {
       val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
         .dependsOn(core)
         .dependsOn(interpreterThriftIdl)
+        .withLib(Deps.guava)
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
         .withTests()
 

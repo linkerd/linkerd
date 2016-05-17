@@ -24,7 +24,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   val linker = Linker.Initializers(Seq(TestProtocol.Plain), namers).load(yaml)
 
   val dtab = Dtab.read("""
-    /beh => /error ;
+    /beh => /#/error ;
     /bah/humbug => /$/inet/127.1/8080 ;
     /foo => /bah | /beh | /$/fail ;
     /foo => /bar ;
@@ -50,8 +50,8 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
               |"id":"/$/inet/127.1/8080","path":"/"}}},
           |{"type":"delegate","path":"/beh/humbug",
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
-              |"type":"exception","path":"/error/humbug","dentry":{"prefix":"/beh","dst":"/error"},
-                |"message":"error naming /error/humbug"}},
+              |"type":"exception","path":"/#/error/humbug","dentry":{"prefix":"/beh","dst":"/#/error"},
+                |"message":"error naming /#/error/humbug"}},
           |{"type":"fail","path":"/$/fail/humbug",
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
       |""".stripMargin.replaceAllLiterally("\n", ""))

@@ -1,6 +1,5 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle._
 import com.twitter.util.Await
 import io.buoyant.config.types.Port
 import java.io.File
@@ -13,7 +12,7 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
-        val namerd = config.mk
+        val namerd = config.mk(statsReceiver)
 
         val admin = new NamerdAdmin(this, config, namerd)
         val adminInitializer = new AdminInitializer(

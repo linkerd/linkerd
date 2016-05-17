@@ -43,7 +43,7 @@ routers:
   timeoutMs: 1000
   httpAccessLog: logs/access.log
   identifier:
-    kind: io.l5d.default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   responseClassifier:
     kind: retryableIdempotent5XX
@@ -65,7 +65,7 @@ routers:
 - protocol: thrift
   label: /host/thrift-framed
   baseDtab: |
-    /host        => /io.l5d.fs;
+    /host        => /#/io.l5d.fs;
     /thrift/echo => /host/thrift-framed;
   dstPrefix: /thrift
   failFast: true
@@ -87,7 +87,7 @@ routers:
 - protocol: thrift
   label: /host/thrift-buffered
   baseDtab: |
-    /host   => /io.l5d.fs;
+    /host   => /#/io.l5d.fs;
     /thrift => /host/thrift-buffered;
   dstPrefix: /thrift
   failFast: false
@@ -108,7 +108,7 @@ routers:
 - protocol: mux
   label: /host/mux
   baseDtab: |
-    /host   => /io.l5d.fs;
+    /host   => /#/io.l5d.fs;
     /mux    => /host/mux;
   dstPrefix: /mux
   failFast: true
@@ -129,9 +129,12 @@ routers:
 - protocol: http
   label: tlsStatic
   baseDtab: |
-    /host       => /io.l5d.fs;
+    /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   timeoutMs: 1000
+  identifier:
+    kind: io.l5d.path
+    segments: 1
   client:
     tls:
       kind: io.l5d.clientTls.static
@@ -147,7 +150,7 @@ routers:
 - protocol: http
   label: tlsBoundPath
   baseDtab: |
-    /host       => /io.l5d.fs;
+    /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   timeoutMs: 1000
   client:
@@ -156,7 +159,7 @@ routers:
       caCertPath: /foo/caCert.pem
       strict: false
       names:
-      - prefix: "/io.l5d.fs/{service}"
+      - prefix: "/#/io.l5d.fs/{service}"
         commonNamePattern: "{service}"
   servers:
   - port: 4145

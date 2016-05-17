@@ -19,8 +19,8 @@ class NamerInitializerTest extends FunSuite {
   test(s"parse: $kind") {
     val yaml = s"- kind: $kind"
     val parsed = parse(yaml)
-    val NameTree.Leaf(foo) = parsed.bind(Dtab.empty, Path.read("/foo/bar")).sample()
-    assert(foo.id == Path.read("/foo"))
+    val NameTree.Leaf(foo) = parsed.bind(Dtab.empty, Path.read("/#/foo/bar")).sample()
+    assert(foo.id == Path.read("/#/foo"))
     assert(foo.path == Path.read("/bar"))
 
     assert(parsed.bind(Dtab.empty, Path.read("/foo/buh")).sample() == NameTree.Neg)
@@ -33,8 +33,8 @@ class NamerInitializerTest extends FunSuite {
          |  buh: true
          |""".stripMargin
     val parsed = parse(yaml)
-    val NameTree.Leaf(buh) = parsed.bind(Dtab.empty, Path.read("/fuh/buh")).sample()
-    assert(buh.id == Path.read("/fuh"))
+    val NameTree.Leaf(buh) = parsed.bind(Dtab.empty, Path.read("/#/fuh/buh")).sample()
+    assert(buh.id == Path.read("/#/fuh"))
     assert(buh.path == Path.read("/buh"))
   }
 
@@ -45,8 +45,8 @@ class NamerInitializerTest extends FunSuite {
          |  buh: true
          |""".stripMargin
     val parsed = parse(yaml)
-    val NameTree.Leaf(buh) = parsed.bind(Dtab.empty, Path.read("/foo/buh")).sample()
-    assert(buh.id == Path.read("/foo"))
+    val NameTree.Leaf(buh) = parsed.bind(Dtab.empty, Path.read("/#/foo/buh")).sample()
+    assert(buh.id == Path.read("/#/foo"))
     assert(buh.path == Path.read("/buh"))
   }
 

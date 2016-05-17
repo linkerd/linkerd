@@ -9,7 +9,7 @@ namers:
 routers:
 - protocol: http
   identifier:
-    kind: io.l5d.default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   baseDtab: |
     /marathonId => /io.l5d.marathon;

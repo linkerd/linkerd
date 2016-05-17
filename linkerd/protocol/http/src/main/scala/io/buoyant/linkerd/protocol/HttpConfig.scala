@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Path, Stack, StackBuilder}
+import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
