@@ -5,8 +5,8 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Failure, Service}
 import io.buoyant.linkerd.protocol.TlsUtils._
+import io.buoyant.namer.fs.FsInitializer
 import io.buoyant.test.Awaits
-import io.l5d.FsInitializer
 import io.l5d.clientTls.BoundPathInitializer
 import java.io.File
 import org.scalatest.FunSuite
@@ -54,7 +54,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.boundPath
              |      caCertPath: ${certs.caCert.getPath}
              |      names:
-             |      - prefix: "/io.l5d.fs/{host}"
+             |      - prefix: "/#/io.l5d.fs/{host}"
              |        commonNamePattern: "{host}.buoyant.io"
              |""".
               stripMargin
@@ -115,7 +115,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |      caCertPath: ${certs.caCert.getPath}
             |      strict: false
             |      names:
-            |      - prefix: "/io.l5d.fs/bill"
+            |      - prefix: "/#/io.l5d.fs/bill"
             |        commonNamePattern: "bill.buoyant.io"
             |""".
             stripMargin
@@ -180,9 +180,9 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |      kind: io.l5d.clientTls.boundPath
             |      caCertPath: ${certs.caCert.getPath}
             |      names:
-            |      - prefix: "/io.l5d.fs/bill"
+            |      - prefix: "/#/io.l5d.fs/bill"
             |        commonNamePattern: excellent
-            |      - prefix: "/io.l5d.fs/ted"
+            |      - prefix: "/#/io.l5d.fs/ted"
             |        commonNamePattern: righteous
             |""".
             stripMargin
@@ -248,7 +248,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |      kind: io.l5d.clientTls.boundPath
              |      caCertPath: ${certs.caCert.getPath}
              |      names:
-             |      - prefix: "/io.l5d.fs/{host}"
+             |      - prefix: "/#/io.l5d.fs/{host}"
              |        commonNamePattern: "{host}.buoyant.io"
              |""".stripMargin
           withLinkerdClient(linkerConfig) { client =>
