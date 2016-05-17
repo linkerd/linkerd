@@ -1,5 +1,6 @@
 package io.buoyant.namerd
 
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Path, Namer, Stack}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
@@ -17,10 +18,10 @@ case class NamerdConfig(
   require(interfaces != null, "'interfaces' field is required")
   require(interfaces.nonEmpty, "One or more interfaces must be specified")
 
-  def mk: Namerd = {
+  def mk(stats: StatsReceiver): Namerd = {
     val dtabStore = storage.mkDtabStore
     val namersByPfx = mkNamers
-    Namerd(mkInterfaces(dtabStore, namersByPfx), dtabStore, namersByPfx)
+    Namerd(mkInterfaces(dtabStore, namersByPfx, stats), dtabStore, namersByPfx)
   }
 
   private[this] def mkNamers: Map[Path, Namer] =
@@ -36,8 +37,12 @@ case class NamerdConfig(
         namers + (config.prefix -> config.newNamer(Stack.Params.empty))
     }
 
-  private[this] def mkInterfaces(dtabStore: DtabStore, namersByPfx: Map[Path, Namer]): Seq[Servable] =
-    interfaces.map(_.mk(dtabStore, namersByPfx))
+  private[this] def mkInterfaces(
+    dtabStore: DtabStore,
+    namersByPfx: Map[Path, Namer],
+    stats: StatsReceiver
+  ): Seq[Servable] =
+    interfaces.map(_.mk(dtabStore, namersByPfx, stats))
 }
 
 object NamerdConfig {

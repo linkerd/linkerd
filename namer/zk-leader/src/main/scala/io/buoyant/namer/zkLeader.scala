@@ -9,7 +9,7 @@ import io.buoyant.namer.zkLeader.ZkLeaderNamer
  * in ZooKeeper of a leader group.  This namer resolves to the addresses stored in the data of
  * the leader of the group.
  */
-class zkLeader extends Namer {
+class ZkLeader extends Namer {
   override def lookup(path: Path): Activity[NameTree[Name]] = {
     val Path.Utf8(hosts) = path.take(1)
     val namer = new ZkLeaderNamer(Path.empty, hosts)

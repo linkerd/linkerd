@@ -5,7 +5,7 @@ namers:
 routers:
 - protocol: http
   baseDtab: |
-    /host     => /consul/dc1;
+    /host     => /#/consul/dc1;
     /http/1.1/* => /host;
   identifier:
     kind: default

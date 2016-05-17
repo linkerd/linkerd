@@ -42,7 +42,7 @@ For example,
 kind: io.l5d.clientTls.boundPath
 caCertPath: /foo/cacert.pem
 names:
-- prefix: "/io.l5d.fs/{host}"
+- prefix: "/#/io.l5d.fs/{host}"
   commonNamePattern: "{host}.buoyant.io"
  strict: false
 ```

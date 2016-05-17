@@ -2,6 +2,10 @@
 
 * Add zkLeader namer to allow discovery of services through ZooKeeper leader
   election.
+* Add HTTP path request identifier, which builds destinations from a
+  configurable number of HTTP URI path segments.
+* The path prefix `/#` now indicates that the path should be processed by a
+  namer.  A namer matches a path starting with `/#/<prefix>`.
 
 ## 0.5.0
 
