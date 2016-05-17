@@ -12,7 +12,7 @@ routers:
     kind: default
     httpUriInDst: true
   baseDtab: |
-    /marathonId => /io.l5d.marathon;
+    /marathonId => /#/io.l5d.marathon;
     /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
     /http/1.1/* => /host;
   servers:

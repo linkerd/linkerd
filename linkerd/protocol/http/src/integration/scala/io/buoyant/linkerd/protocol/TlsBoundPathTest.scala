@@ -45,7 +45,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |- protocol: http
              |  baseDtab: |
              |    /http/1.1/GET => /srv ;
-             |    /srv => /io.l5d.fs
+             |    /srv => /#/io.l5d.fs
              |
              |  servers:
              |  - port: 0
@@ -105,7 +105,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |- protocol: http
             |  baseDtab: |
             |    /http/1.1/GET => /srv ;
-            |    /srv => /io.l5d.fs
+            |    /srv => /#/io.l5d.fs
             |
             |  servers:
             |  - port: 0
@@ -171,7 +171,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |- protocol: http
             |  baseDtab: |
             |    /http/1.1/GET => /srv ;
-            |    /srv => /io.l5d.fs
+            |    /srv => /#/io.l5d.fs
             |
             |  servers:
             |  - port: 0
@@ -239,7 +239,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |- protocol: http
              |  baseDtab: |
              |    /http/1.1/GET => /srv ;
-             |    /srv => /io.l5d.fs
+             |    /srv => /#/io.l5d.fs
              |
              |  servers:
              |  - port: 0

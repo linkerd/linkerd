@@ -39,7 +39,7 @@ class FsTest extends FunSuite with NamerTestUtil {
   }
 
   test("id is bound name") {
-    val path = Path.read("/io.l5d.fs/default")
+    val path = Path.read("/#/io.l5d.fs/default")
 
     val dir = new File("mktemp -d -t disco.XXX".!!.stripLineEnd)
     try {
