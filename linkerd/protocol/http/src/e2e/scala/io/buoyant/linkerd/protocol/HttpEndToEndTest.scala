@@ -11,7 +11,7 @@ import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util._
 import io.buoyant.router.Http
-import io.buoyant.router.http.MethodAndHostIdentifier$
+import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
