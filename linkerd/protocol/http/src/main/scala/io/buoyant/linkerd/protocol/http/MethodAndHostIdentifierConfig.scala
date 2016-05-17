@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
-import io.buoyant.router.http.DefaultIdentifier
+import io.buoyant.router.http.MethodAndHostIdentifier
 
 class MethodAndHostIdentifierInitializer extends IdentifierInitializer {
   val configClass = classOf[MethodAndHostIdentifierConfig]
@@ -24,5 +24,5 @@ class MethodAndHostIdentifierConfig extends HttpIdentifierConfig {
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
-  ) = DefaultIdentifier(prefix, httpUriInDst.getOrElse(false), baseDtab)
+  ) = MethodAndHostIdentifier(prefix, httpUriInDst.getOrElse(false), baseDtab)
 }

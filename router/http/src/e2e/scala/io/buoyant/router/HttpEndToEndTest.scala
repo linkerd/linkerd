@@ -72,7 +72,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       val factory = Http.router
         .configured(RoutingFactory.BaseDtab(() => dtab))
         .configured(RoutingFactory.DstPrefix(Path.Utf8("http")))
-        .configured(Http.param.HttpIdentifier((path, dtab) => http.DefaultIdentifier(path, true, dtab)))
+        .configured(Http.param.HttpIdentifier((path, dtab) => http.MethodAndHostIdentifier(path, true, dtab)))
         .factory()
 
       Http.server

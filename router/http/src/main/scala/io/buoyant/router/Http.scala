@@ -6,7 +6,7 @@ import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => fhttp, _}
 import io.buoyant.router.Http.param.HttpIdentifier
-import io.buoyant.router.http.{DefaultIdentifier, ForwardedFilter}
+import io.buoyant.router.http.{MethodAndHostIdentifier, ForwardedFilter}
 import java.net.SocketAddress
 
 object Http extends Router[Request, Response] with FinagleServer[Request, Response] {
@@ -14,7 +14,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
   object param {
     case class HttpIdentifier(id: (Path, () => Dtab) => RoutingFactory.Identifier[fhttp.Request])
     implicit object HttpIdentifier extends Stack.Param[HttpIdentifier] {
-      val default = HttpIdentifier(DefaultIdentifier.mk)
+      val default = HttpIdentifier(MethodAndHostIdentifier.mk)
     }
   }
 
