@@ -11,7 +11,7 @@ below.
 
 ```yaml
 storage:
-  kind: io.buoyant.namerd.storage.inMemory
+  kind: io.l5d.inMemory
   namespaces:
     galaxyquest: |
       /host       => /#/io.l5d.fs;

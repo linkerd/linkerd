@@ -4,15 +4,17 @@ A storage object configures the namerd dtabStore which stores and retrieves
 dtabs. This object supports the following params:
 
 * *kind* -- The name of the storage plugin.
+* *experimental* -- Set this to `true` to enable the storage if it is experimental.
 * *sotrage-specific parameters*.
 
-## io.buoyant.namerd.storage.inMemory
+## io.l5d.inMemory
 
 Stores the dtab in memory.  Not suitable for production use.
 
 * *namespaces* -- Optional.  A map of namespaces to corresponding dtabs.
 
-## io.buoyant.namerd.storage.experimental.k8s
+## io.l5d.k8s
+
 *experimental*
 
 Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs. Requires a cluster
@@ -28,7 +30,9 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 * *namespace* The Kubernetes namespace in which dtabs will be stored. This should usually be the
   same namespace in which namerd is running. (default: "default")
 
-## io.buoyant.namerd.storage.experimental.zk
+## io.l5d.zk
+
+*experimental*
 
 Stores the dtab in ZooKeeper.  Supports the following options
 
@@ -48,7 +52,9 @@ containing:
   * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
   The characters represent create, read, write, delete, and admin, respectively.
 
-## io.buoyant.namerd.storage.experimental.etcd
+## io.l5d.etcd
+
+*experimental*
 
 Stores the dtab in Etcd.  Supports the following options
 

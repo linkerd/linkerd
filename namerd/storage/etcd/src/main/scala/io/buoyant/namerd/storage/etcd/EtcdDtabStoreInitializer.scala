@@ -12,6 +12,10 @@ case class EtcdConfig(
   pathPrefix: Option[Path]
 ) extends DtabStoreConfig {
   import EtcdConfig._
+
+  @JsonIgnore
+  override val experimental = true
+
   @JsonIgnore
   override def mkDtabStore: DtabStore = {
     new EtcdDtabStore(new Key(
@@ -29,7 +33,6 @@ object EtcdConfig {
 class EtcdDtabStoreInitializer extends DtabStoreInitializer {
   override def configClass = classOf[EtcdConfig]
   override def configId = "io.l5d.etcd"
-  override def experimental = true
 }
 
 object EtcdDtabStoreInitializer extends EtcdDtabStoreInitializer

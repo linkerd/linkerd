@@ -1,7 +1,7 @@
 admin:
   port: 9991
 storage:
-  kind: io.buoyant.namerd.storage.experimental.etcd
+  kind: io.l5d.etcd
   key: /dtabs
 namers: []
 interfaces:

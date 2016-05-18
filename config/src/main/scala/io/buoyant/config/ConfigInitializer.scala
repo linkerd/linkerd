@@ -7,7 +7,6 @@ trait ConfigInitializer {
 
   def configClass: Class[_]
   def configId: String = configClass.getName
-  def experimental: Boolean = false
 
   lazy val namedType = new NamedType(configClass, configId)
 

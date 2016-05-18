@@ -8,7 +8,6 @@ import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 class ZkDtabStoreInitializer extends DtabStoreInitializer {
   override def configClass = classOf[ZkConfig]
   override def configId = "io.l5d.zk"
-  override def experimental = true
 }
 
 case class ZkConfig(
@@ -18,6 +17,9 @@ case class ZkConfig(
   authInfo: Option[AuthInfo],
   acls: Option[Seq[Acl]]
 ) extends DtabStoreConfig {
+
+  @JsonIgnore
+  override val experimental = true
 
   @JsonIgnore val sessionTimeout = sessionTimeoutMs.map(_.millis)
 

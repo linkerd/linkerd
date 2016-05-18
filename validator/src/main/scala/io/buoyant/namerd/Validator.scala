@@ -252,7 +252,7 @@ object Validator extends TwitterServer {
 
   def mkNamerdConfig(controllerPort: Int, serverPort: Int, adminPort: Int): String =
     s"""storage:
-       |  kind: io.buoyant.namerd.storage.inMemory
+       |  kind: io.l5d.inMemory
        |namers:
        |- kind: io.l5d.fs
        |  rootDir: namerd/examples/disco

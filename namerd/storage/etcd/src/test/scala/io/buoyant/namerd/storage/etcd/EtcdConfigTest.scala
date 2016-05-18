@@ -14,6 +14,7 @@ class EtcdConfigTest extends FunSuite with OptionValues {
   test("parse config") {
     val yaml =
       """|kind: io.l5d.etcd
+         |experimental: true
          |pathPrefix: /foo/bar
          |host: etcd.dentist
          |port: 80

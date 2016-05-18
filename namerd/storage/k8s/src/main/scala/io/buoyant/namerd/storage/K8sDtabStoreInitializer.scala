@@ -13,6 +13,10 @@ case class K8sConfig(
   authTokenFile: Option[String],
   namespace: Option[String]
 ) extends DtabStoreConfig with ClientConfig {
+
+  @JsonIgnore
+  override val experimental = true
+
   @JsonIgnore
   def portNum = port.map(_.port)
 
@@ -27,5 +31,4 @@ case class K8sConfig(
 class K8sDtabStoreInitializer extends DtabStoreInitializer {
   override def configClass = classOf[K8sConfig]
   override def configId = "io.l5d.k8s"
-  override def experimental = true
 }
