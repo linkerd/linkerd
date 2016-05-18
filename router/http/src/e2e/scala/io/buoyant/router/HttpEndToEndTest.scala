@@ -221,7 +221,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       assert(err == None)
       assert(rsp1.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(1))
-      assert(downstreamCounter("closed") == Some(1))
 
       retriesToDo = 1
       val rsp2 = get()
@@ -231,7 +230,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       assert(err == None)
       assert(rsp2.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(2))
-      assert(downstreamCounter("closed") == Some(2))
 
     } finally {
       await(client.close())
@@ -298,20 +296,17 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       assert(err == None)
       assert(rsp0.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(1))
-      assert(downstreamCounter("closed") == Some(1))
 
       val rsp1 = get()
       assert(err == None)
       assert(rsp1.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(2))
-      assert(downstreamCounter("closed") == Some(2))
 
       retriesToDo = 1
       val rsp2 = get()
       assert(err == None)
       assert(rsp2.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(4))
-      assert(downstreamCounter("closed") == Some(4))
 
     } finally {
       await(client.close())
