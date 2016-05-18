@@ -289,8 +289,9 @@ object StackRouter {
      * The ordering here is very important:
      *
      * - At the top of the path stack, we measure tracing and stats so
-     *   that we have a logical view of the request.  Success rate as
-     *   computed from the stats.
+     *   that we have a logical view of the request.  Success rate may
+     *   be computed from these stats to reflect the upstream client's
+     *   view of this endpoint.
      *
      * - Application-level retries are controlled by [[ClassifiedRetries]].
      *
@@ -301,7 +302,7 @@ object StackRouter {
      *
      * - The failureRecording module records errors encountered when
      *   acquiring a service from the underlying service factory. This
-     *   must be installed below factory to service in order to catch
+     *   must be installed below factoryToService in order to catch
      *   errors from the lower stacks (notably NoBrokersAvailable,
      *   etc).
      */
