@@ -149,17 +149,24 @@ object DstBindingFactory {
     // logical rpc name.  It resolves the name with the Dtab and
     // dispatches connections through the tree cache.
     private[this] val pathCache: Cache[Dst.Path] = {
-      def mk(path: Dst.Path): ServiceFactory[Req, Rsp] = {
-        val dyn = new DynBoundFactory(path.bind(namer), treeCache)
+      def mk(dst: Dst.Path): ServiceFactory[Req, Rsp] = {
         // dtabs aren't available when NoBrokers is thrown so we add them here
-        new ServiceFactoryProxy(pathMk(path, dyn)) {
+        val dyn = new ServiceFactoryProxy(new DynBoundFactory(dst.bind(namer), treeCache)) {
           override def apply(conn: ClientConnection) =
-            super.apply(conn).rescue {
-              case e: NoBrokersAvailableException =>
-                val nb = new NoBrokersAvailableException(path.path.show, path.baseDtab, path.localDtab)
-                Future.exception(nb)
-            }
+            self(conn).rescue(handleNoBrokers)
+
+          private val handleNoBrokers: PartialFunction[Throwable, Future[Service[Req, Rsp]]] = {
+            case e: NoBrokersAvailableException => nbae
+          }
+
+          private lazy val nbae = Future.exception(new NoBrokersAvailableException(
+            dst.path.show,
+            dst.baseDtab,
+            dst.localDtab
+          ))
         }
+
+        pathMk(dst, dyn)
       }
 
       new ServiceFactoryCache(mk, statsReceiver.scope("path"), capacity.paths)

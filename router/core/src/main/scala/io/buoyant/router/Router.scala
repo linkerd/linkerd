@@ -7,7 +7,8 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
-import com.twitter.util.Duration
+import com.twitter.finagle.tracing.Trace
+import com.twitter.util.{Duration, Future, Time}
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -284,7 +285,30 @@ object StackRouter {
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
+    /*
+     * The ordering here is very important:
+     *
+     * - At the top of the path stack, we measure tracing and stats so
+     *   that we have a logical view of the request.  Success rate may
+     *   be computed from these stats to reflect the upstream client's
+     *   view of this endpoint.
+     *
+     * - Application-level retries are controlled by [[ClassifiedRetries]].
+     *
+     * - Then, factoryToService is used to manage properly manage
+     *   sessions. We need to ensure that the underlying factory
+     *   (provided by the lower stacks) is provisioned for each
+     *   request to accomdate terminated requests (e.g. HTTP/1.0)
+     *
+     * - The failureRecording module records errors encountered when
+     *   acquiring a service from the underlying service factory. This
+     *   must be installed below factoryToService in order to catch
+     *   errors from the lower stacks (notably NoBrokersAvailable,
+     *   etc).
+     */
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
+    stk.push(failureRecording)
+    stk.push(factoryToService)
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
@@ -302,4 +326,52 @@ object StackRouter {
     StackClient.defaultParams +
       FailFastFactory.FailFast(false) +
       param.Stats(DefaultStatsReceiver.scope("rt"))
+
+  /**
+   * Analagous to c.t.f.FactoryToService.module, but is applied
+   * unconditionally.
+   *
+   * Finagle's FactoryToService is not directly used because we don't
+   * want the conditional behavior and we don't want to enable other
+   * factory to service modules in i.e. the client stack.
+   *
+   * We effectively treat the path stack as application-level and the
+   * bound and client stacks as session-level.
+   */
+  private def factoryToService[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    new Stack.Module0[ServiceFactory[Req, Rsp]] {
+      val role = FactoryToService.role
+      val description = "Ensures that underlying service factory is properly provisioned for each request"
+      def make(next: ServiceFactory[Req, Rsp]) = {
+        // To reiterate the comment in finagle's FactoryToService:
+        // this is too complicated.
+        val service = Future.value(new FactoryToService(next) {
+          override def close(deadline: Time) = Future.Unit
+        })
+        new ServiceFactoryProxy(next) {
+          override def apply(conn: ClientConnection) = service
+        }
+      }
+    }
+
+  private def failureRecording[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    new Stack.Module0[ServiceFactory[Req, Rsp]] {
+      import RoutingFactory.Annotations._
+
+      val role = Stack.Role("AcquisitionFailure")
+      val description = "Record failures encountered when issuing downstream requests"
+
+      def make(next: ServiceFactory[Req, Rsp]) =
+        new ServiceFactoryProxy(next) {
+          override def apply(conn: ClientConnection) =
+            self(conn).onFailure(Failure.ClientAcquisition.record).map(mkService)
+        }
+
+      val mkService: Service[Req, Rsp] => Service[Req, Rsp] =
+        (service: Service[Req, Rsp]) =>
+          new ServiceProxy(service) {
+            override def apply(req: Req) =
+              self(req).onFailure(Failure.Service.record)
+          }
+    }
 }
