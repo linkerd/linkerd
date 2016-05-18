@@ -21,6 +21,7 @@ class ConsulTest extends FunSuite {
   test("parse config") {
     val yaml = s"""
                     |kind: io.l5d.consul
+                    |experimental: true
                     |host: consul.site.biz
                     |port: 8600
       """.stripMargin
@@ -29,5 +30,20 @@ class ConsulTest extends FunSuite {
     val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))
+    assert(!consul.disabled)
+  }
+
+  test("parse config without experimental param") {
+    val yaml = s"""
+                  |kind: io.l5d.consul
+                  |host: consul.site.biz
+                  |port: 8600
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
+    val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
+    assert(consul.host == Some("consul.site.biz"))
+    assert(consul.port == Some(Port(8600)))
+    assert(consul.disabled)
   }
 }

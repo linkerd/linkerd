@@ -13,6 +13,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  * <pre>
  * namers:
  * - kind: io.l5d.consul
+ *   experimental: true
  *   host: consul.site.biz
  *   port: 8600
  * </pre>

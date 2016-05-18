@@ -104,7 +104,7 @@ baseDtab: |
 
 linkerd provides support for service discovery via
 [Consul](https://www.consul.io/). Note that this support is still considered
-experimental.
+experimental so you must set `experimental: true` to use this namer.
 
 The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 
@@ -134,7 +134,7 @@ baseDtab: |
 
 linkerd provides support for service discovery via
 [Kubernetes](https://k8s.io/). Note that this support is still considered
-experimental.
+experimental so you must set `experimental: true` to use this namer.
 
 The Kubernetes namer is configured with kind `io.l5d.k8s`, and these parameters:
 
@@ -173,7 +173,7 @@ baseDtab: |
 
 linkerd provides support for service discovery via
 [Marathon](https://mesosphere.github.io/marathon/). Note that this support is still considered
-experimental.
+experimental so you must set `experimental: true` to use this namer.
 
 The Marathon namer is configured with kind `io.l5d.marathon`, and these parameters:
 

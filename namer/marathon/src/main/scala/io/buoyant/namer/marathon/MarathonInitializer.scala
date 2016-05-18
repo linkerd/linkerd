@@ -14,6 +14,7 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  * <pre>
  * namers:
  * - kind:      io.l5d.marathon
+ *   experimental: true
  *   prefix:    /io.l5d.marathon
  *   host:      marathon.mesos
  *   port:      80
