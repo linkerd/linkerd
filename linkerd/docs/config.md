@@ -55,7 +55,7 @@ routers:
       keyPath: /foo/key.pem
   client:
     tls:
-      kind: io.l5d.clientTls.static
+      kind: io.l5d.static
       commonName: foo
       caCertPath: /foo/caCert.pem
     loadBalancer:

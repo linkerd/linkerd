@@ -1,3 +1,3 @@
-io.l5d.clientTls.BoundPathInitializer
-io.l5d.clientTls.NoValidationInitializer
-io.l5d.clientTls.StaticInitializer
+io.buoyant.linkerd.clientTls.BoundPathInitializer
+io.buoyant.linkerd.clientTls.NoValidationInitializer
+io.buoyant.linkerd.clientTls.StaticInitializer

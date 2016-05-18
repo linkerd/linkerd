@@ -1,4 +1,4 @@
-package io.l5d.clientTls
+package io.buoyant.linkerd.clientTls
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Path
@@ -14,12 +14,13 @@ import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 import java.net.SocketAddress
 
 class BoundPathInitializer extends TlsClientInitializer {
-  val configClass = classOf[boundPath]
+  val configClass = classOf[BoundPathConfig]
+  override def configId = "io.l5d.boundPath"
 }
 
 object BoundPathInitializer extends BoundPathInitializer
 
-case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig], strict: Option[Boolean])
+case class BoundPathConfig(caCertPath: Option[String], names: Seq[NameMatcherConfig], strict: Option[Boolean])
   extends TlsClientConfig {
   @JsonIgnore
   override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] = {
@@ -30,8 +31,8 @@ case class boundPath(caCertPath: Option[String], names: Seq[NameMatcherConfig], 
       }.collectFirst {
         case Some(result) => result
       } match {
-        case None if (strict.getOrElse(true)) =>
-          throw new MatcherError(s"Unable to match ${path.show} with available names: ${(names.map(_.prefix)).mkString(",")}")
+        case None if strict.getOrElse(true) =>
+          throw new MatcherError(s"Unable to match ${path.show} with available names: ${names.map(_.prefix).mkString(",")}")
         case default => default
       }
 
