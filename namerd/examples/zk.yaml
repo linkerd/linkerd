@@ -1,5 +1,5 @@
 storage:
-  kind: io.buoyant.namerd.storage.experimental.zk
+  kind: io.l5d.zk
   pathPrefix: /dtabs
   zkAddrs:
   - host: localhost

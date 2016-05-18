@@ -1,7 +1,7 @@
 admin:
   port: 9991
 storage:
-  kind: io.buoyant.namerd.storage.inMemory
+  kind: io.l5d.inMemory
   namespaces:
     pandoracorn: |
       /http/1.1/GET => /#/io.l5d.fs;

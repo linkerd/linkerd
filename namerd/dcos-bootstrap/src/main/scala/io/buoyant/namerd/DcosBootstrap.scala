@@ -5,7 +5,7 @@ import com.twitter.finagle.serverset2.ZkClient
 import com.twitter.io.Buf
 import com.twitter.util.Await
 import io.buoyant.admin.App
-import io.buoyant.namerd.storage.experimental.zk
+import io.buoyant.namerd.storage.ZkConfig
 import java.io.File
 import scala.io.Source
 
@@ -26,7 +26,7 @@ object DcosBootstrap extends App {
       case Array(path) =>
         val config = loadNamerd(path)
         config.storage match {
-          case zkStorage: zk => {
+          case zkStorage: ZkConfig => {
             // TODO: consider sharing with ZkDtabStoreInitializer
             val zkClient = new ZkClient(
               zkStorage.zkAddrs.map(_.toString).mkString(","),

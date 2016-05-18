@@ -1,5 +1,6 @@
 namers:
-- kind: io.l5d.experimental.consul
+- kind: io.l5d.consul
+  experimental: true
   prefix: /consul
 
 routers:

@@ -259,7 +259,7 @@ The list of image names may be changed with a command like:
 #### DCOS ####
 
 Namerd supports a DCOS-specific configuration. When used in conjunction with
-namerd's `io.buoyant.namerd.storage.experimental.zk` dtab storage, this
+namerd's `io.l5d.zk` dtab storage, this
 configuration provides bootstrapping of the ZooKeeper `pathPrefix`, along with
 a default dtab.
 

@@ -6,7 +6,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.{Path, Dtab}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
-import io.l5d.FsInitializer
+import io.buoyant.namer.fs.FsInitializer
 import org.scalatest.FunSuite
 
 object TestDtabStoreInitializer extends DtabStoreInitializer {
