@@ -5,7 +5,7 @@ Router configuration options include:
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
 * *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-default)
+io.l5d.methodAndHost)
 
 The default _dstPrefix_ is `/http`
 The default server _port_ is 4140
@@ -33,11 +33,11 @@ request with the following parameters:
 
 * *kind* -- One of the supported identifier plugins, by fully-qualified class
  name. Current plugins include:
-  * *default*
+  * *io.l5d.methodAndHost*
   * *io.l5d.path*
 * any other identifier-specific parameters
 
-### default
+### io.l5d.methodAndHost
 
 HTTP requests are routed by a combination of Host header, method, and URI.
 

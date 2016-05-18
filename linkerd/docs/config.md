@@ -36,7 +36,7 @@ routers:
     /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   identifier:
-    kind: default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   servers:
   - port: 4140
