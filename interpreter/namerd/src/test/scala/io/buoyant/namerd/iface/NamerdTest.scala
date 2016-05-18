@@ -1,4 +1,4 @@
-package io.l5d
+package io.buoyant.namerd.iface
 
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Path, Stack}
@@ -9,7 +9,8 @@ import org.scalatest.FunSuite
 class NamerdTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = namerd(Some(Path.read("/whats/in/a")), Some("name"), None).newInterpreter(Stack.Params.empty)
+    val _ = NamerdInterpreterConfig(Some(Path.read("/whats/in/a")), Some("name"), None)
+      .newInterpreter(Stack.Params.empty)
   }
 
   test("interpreter registration") {
@@ -23,7 +24,7 @@ class NamerdTest extends FunSuite {
                    |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(NamerdInterpreterInitializer)))
-    val namerd = mapper.readValue[InterpreterConfig](yaml).asInstanceOf[namerd]
+    val namerd = mapper.readValue[InterpreterConfig](yaml).asInstanceOf[NamerdInterpreterConfig]
     assert(namerd.dst == Some(Path.read("/$/inet/127.1/4100")))
     assert(namerd.namespace == Some("name"))
   }
