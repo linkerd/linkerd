@@ -37,7 +37,7 @@ case class ThriftInterpreterInterfaceConfig(
 }
 
 object ThriftInterpreterInterfaceConfig {
-  val kind = "thriftNameInterpreter"
+  val kind = "io.l5d.thriftNameInterpreter"
   val defaultAddr = new InetSocketAddress(4100)
 }
 

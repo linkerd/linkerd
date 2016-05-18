@@ -49,7 +49,7 @@ routers:
     kind: io.l5d.methodAndHost
     httpUriInDst: true
   responseClassifier:
-    kind: retryableIdempotent5XX
+    kind: io.l5d.retryableIdempotent5XX
   client:
     loadBalancer:
       kind: p2c
@@ -140,7 +140,7 @@ routers:
     segments: 1
   client:
     tls:
-      kind: io.l5d.clientTls.static
+      kind: io.l5d.static
       commonName: foo
       caCertPath: /foo/caCert.pem
   servers:
@@ -158,7 +158,7 @@ routers:
   timeoutMs: 1000
   client:
     tls:
-      kind: io.l5d.clientTls.boundPath
+      kind: io.l5d.boundPath
       caCertPath: /foo/caCert.pem
       strict: false
       names:

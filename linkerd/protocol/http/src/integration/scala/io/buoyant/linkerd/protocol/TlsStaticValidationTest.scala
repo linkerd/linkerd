@@ -4,9 +4,9 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.Failure
 import com.twitter.finagle.http.Request
+import io.buoyant.linkerd.clientTls.StaticInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
-import io.l5d.clientTls.StaticInitializer
 import org.scalatest.FunSuite
 
 class TlsStaticValidationTest extends FunSuite with Awaits {
@@ -34,7 +34,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |  - port: 0
              |  client:
              |    tls:
-             |      kind: io.l5d.clientTls.static
+             |      kind: io.l5d.static
              |      commonName: linkerd
              |      caCertPath: ${certs.caCert.getPath}
              |""".stripMargin
@@ -75,7 +75,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |  - port: 0
              |  client:
              |    tls:
-             |      kind: io.l5d.clientTls.static
+             |      kind: io.l5d.static
              |      commonName: wrong
              |      caCertPath: ${certs.caCert.getPath}
              |""".stripMargin

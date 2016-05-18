@@ -3,9 +3,9 @@ package protocol
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
+import io.buoyant.linkerd.clientTls.NoValidationInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
-import io.l5d.clientTls.NoValidationInitializer
 import org.scalatest.FunSuite
 
 class TlsNoValidationTest extends FunSuite with Awaits {
@@ -28,7 +28,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
              |  - port: 0
              |  client:
              |    tls:
-             |      kind: io.l5d.clientTls.noValidation
+             |      kind: io.buoyant.linkerd.clientTls.noValidation
              |""".stripMargin
         val init = Linker.Initializers(
           protocol = Seq(HttpInitializer),

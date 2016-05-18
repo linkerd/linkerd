@@ -20,12 +20,12 @@ namers:
 - kind: io.l5d.fs
   rootDir: examples/disco
 interfaces:
-- kind: thriftNameInterpreter
+- kind: io.l5d.thriftNameInterpreter
   port: 4100
   ip: 0.0.0.0
   retryBaseSecs:  600
   retryJitterSecs: 60
-- kind: httpController
+- kind: io.l5d.httpController
   port: 4321
 ```
 

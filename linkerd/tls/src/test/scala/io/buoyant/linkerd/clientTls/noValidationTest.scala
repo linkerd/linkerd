@@ -1,12 +1,12 @@
-package io.l5d.clientTls
+package io.buoyant.linkerd.clientTls
 
 import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.TlsClientInitializer
 import org.scalatest.FunSuite
 
-class noValidationTest extends FunSuite {
+class NoValidationTest extends FunSuite {
   test("sanity") {
-    new noValidation().tlsClientPrep
+    new NoValidationConfig().tlsClientPrep
   }
 
   test("service registration") {

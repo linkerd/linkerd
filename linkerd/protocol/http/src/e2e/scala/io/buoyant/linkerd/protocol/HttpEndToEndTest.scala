@@ -302,14 +302,14 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   }
 
   test("retries retryableIdempotent5XX") {
-    retryTest("retryableIdempotent5XX", idempotentMethods)
+    retryTest("io.l5d.retryableIdempotent5XX", idempotentMethods)
   }
 
   test("retries retryablRead5XX") {
-    retryTest("retryableRead5XX", readMethods)
+    retryTest("io.l5d.retryableRead5XX", readMethods)
   }
 
   test("retries nonRetryable5XX") {
-    retryTest("nonRetryable5XX", Set.empty)
+    retryTest("io.l5d.nonRetryable5XX", Set.empty)
   }
 }
