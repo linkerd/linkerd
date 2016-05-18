@@ -11,7 +11,7 @@ import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util._
 import io.buoyant.router.Http
-import io.buoyant.router.http.DefaultIdentifier
+import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -85,7 +85,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
+      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
@@ -175,7 +175,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
+      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -241,7 +241,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => DefaultIdentifier(path, true, dtab)))
+      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -261,9 +261,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "retries", "requeues")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        val name = s"http/1.1/$method/dog"
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
+        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
       }
 
       // non-retryable request, fails and is not retried
@@ -283,6 +287,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        val name = s"http/1.1/$method/dog"
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
+        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(0.0)))
       }
     } finally {
       await(client.close())
