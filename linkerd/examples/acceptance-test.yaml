@@ -46,7 +46,7 @@ routers:
     kind: io.l5d.methodAndHost
     httpUriInDst: true
   responseClassifier:
-    kind: retryableIdempotent5XX
+    kind: io.l5d.retryableIdempotent5XX
   client:
     loadBalancer:
       kind: p2c

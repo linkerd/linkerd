@@ -62,7 +62,7 @@ routers:
       kind: ewma
       enableProbation: false
     responseClassifier:
-      kind: retryableRead5XX
+      kind: io.l5d.retryableRead5XX
   timeoutMs: 1000
 
 - protocol: thrift
@@ -183,7 +183,7 @@ maintain to each destination host.  It must be an object containing keys:
 * *responseClassifier* -- Optional. A (sometimes protocol-specific)
   [response classifier](response_classifier.md) that determines which responses
   should be considered failures and, of those, which should be considered
-  [retryable](retries.md).  (default: _nonRetryable5XX_)
+  [retryable](retries.md).  (default: _io.l5d.nonRetryable5XX_)
 * *tls* -- Optional.  The router will make requests using TLS if this parameter
   is provided.  It must be a [client TLS](client_tls.md) object.
 * *loadBalancer* -- Optional.  A [load balancer](load_balancer.md) object.
