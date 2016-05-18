@@ -11,7 +11,9 @@ that flag if not set here.
 
 Current tracers include:
 
-## io.l5d.zipkin
+## Zipkin
+
+`io.l5d.zipkin`
 
 Finagle's [zipkin-tracer](https://github.com/twitter/finagle/tree/develop/finagle-zipkin).
 

@@ -37,7 +37,9 @@ request with the following parameters:
   * *io.l5d.path*
 * any other identifier-specific parameters
 
-### io.l5d.methodAndHost
+### Method and Host
+
+`io.l5d.methodAndHost`
 
 HTTP requests are routed by a combination of Host header, method, and URI.
 
@@ -56,7 +58,9 @@ and HTTP/1.1 logical names are of the form:
 In both cases, `uri` is only considered a part
 of the logical name if the config option `httpUriInDst` is true.
 
-### io.l5d.path
+### Path
+
+`io.l5d.path`
 
 HTTP requests are routed based on a configurable number of "/" separated
 segments from the start of their HTTP path.

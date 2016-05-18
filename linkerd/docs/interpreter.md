@@ -3,13 +3,15 @@
 An interpreter determines how names are resolved.  An interpreter config block
 must contain a `kind` parameter which indicates which interpreter plugin to use.
 
-## default
+## Default
 
 The default interpreter resolves names via the configured
 [`namers`](config.md#namers), with a fallback to the default Finagle
 `Namer.Global` that handles paths of the form `/$/`.
 
-## io.l5d.namerd
+## namerd
+
+`io.l5d.namerd`
 
 The namerd interpreter offloads the responsibilities of name resolution to the
 namerd service.  Any namers configured in this linkerd are not used.  This

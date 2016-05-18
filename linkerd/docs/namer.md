@@ -14,6 +14,8 @@ A namer config block has the following parameters:
 
 ## File-based service discovery
 
+`io.l5d.fs`
+
 linkerd ships with a simple file-based service discovery mechanism, called the
 *file-based namer*. This system is intended to act as a structured form of
 basic host lists.
@@ -73,6 +75,8 @@ baseDtab: |
 
 ## ZooKeeper ServerSets service discovery
 
+`io.l5d.serversets`
+
 linkerd provides support for [ZooKeeper
 ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
@@ -101,6 +105,8 @@ baseDtab: |
 ```
 
 ## Consul service discovery (experimental)
+
+`io.l5d.consul`
 
 linkerd provides support for service discovery via
 [Consul](https://www.consul.io/). Note that this support is still considered
@@ -131,6 +137,8 @@ baseDtab: |
 ```
 
 ## Kubernetes service discovery (experimental)
+
+`io.l5d.k8s`
 
 linkerd provides support for service discovery via
 [Kubernetes](https://k8s.io/). Note that this support is still considered
@@ -170,6 +178,8 @@ baseDtab: |
 ```
 
 ## Marathon service discovery (experimental)
+
+`io.l5d.marathon`
 
 linkerd provides support for service discovery via
 [Marathon](https://mesosphere.github.io/marathon/). Note that this support is still considered
@@ -216,6 +226,8 @@ baseDtab: |
 ```
 
 ## ZooKeeper Leader
+
+`io.l5d.zkLeader`
 
 A namer backed by ZooKeeper leader election. The path processed by this namer is treated as the
 ZooKeeper path of a leader group. The namer resolves to the address stored in the data of the
