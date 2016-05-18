@@ -9,7 +9,7 @@ block supports the following params:
 * *port* -- Optional.  The port number on which to server the namer interface.
 (defaults may be provided by plugins)
 
-## thriftInterpreterInterface
+## io.l5d.thriftInterpreterInterface
 
 A read-only interface providing `NameInterpreter` functionality over the ThriftMux protocol.
 
@@ -20,7 +20,7 @@ before retrying after an error.  (default: 600)
 * *retryJitterSecs* -- Optional.  Maximum number of seconds to jitter retry
 time by.  (default: 60)
 
-## httpControllerInterface
+## io.l5d.httpControllerInterface
 
 A read-write HTTP interface to the `storage`.
 
