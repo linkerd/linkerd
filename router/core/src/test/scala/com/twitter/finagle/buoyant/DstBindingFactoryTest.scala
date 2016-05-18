@@ -109,6 +109,17 @@ class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
       def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = Activity.value(NameTree.Neg)
     }
 
+    def factoryToService(d: Dst.Path, next: ServiceFactory[String, String]) =
+      ServiceFactory { () =>
+        Future.value(Service.mk[String, String] { req =>
+          next().flatMap { svc =>
+            svc(req).ensure {
+              val _ = next.close()
+            }
+          }
+        })
+      }
+
     // copy-pasted from NameTreeFactory
     case class Failed(exn: Throwable) extends ServiceFactory[String, String] {
       val service: Future[Service[String, String]] = Future.exception(exn)
@@ -119,20 +130,29 @@ class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
 
     val cache = new DstBindingFactory.Cached[String, String](
       mkClient,
+      pathMk = (d: Dst.Path, f: ServiceFactory[String, String]) => factoryToService(d, f),
       boundMk = (d: Dst.Bound, f: ServiceFactory[String, String]) => Failed(new NoBrokersAvailableException("")),
       namer = namer
     )
 
-    val path1exception = intercept[NoBrokersAvailableException] {
-      await(cache(Dst.Path(Path.read("/usa/ca/la"), Dtab.empty, Dtab.empty)))
-    }
+    val baseDtab = Dtab.read("/usa => /people")
+    val localDtab = Dtab.read("/usa => /money")
 
-    val path2exception = intercept[NoBrokersAvailableException] {
-      await(cache(Dst.Path(Path.read("/usa/ca/sf"), Dtab.empty, Dtab.empty)))
+    val e0 = intercept[NoBrokersAvailableException] {
+      val svc = await(cache(Dst.Path(Path.read("/usa/ca/la"), baseDtab, localDtab)))
+      val _ = await(svc("the 101"))
     }
+    assert(e0.name == "/usa/ca/la")
+    assert(e0.baseDtab == baseDtab)
+    assert(e0.localDtab == localDtab)
 
-    assert(path1exception.name == "/usa/ca/la")
-    assert(path2exception.name == "/usa/ca/sf")
+    val e1 = intercept[NoBrokersAvailableException] {
+      val svc = await(cache(Dst.Path(Path.read("/usa/ca/sf"), baseDtab, localDtab)))
+      val _ = await(svc("101"))
+    }
+    assert(e1.name == "/usa/ca/sf")
+    assert(e1.baseDtab == baseDtab)
+    assert(e1.localDtab == localDtab)
   }
 
   test("Binding timeout is respected") {
