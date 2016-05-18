@@ -20,21 +20,23 @@ object TracingFilter {
     }
 
   val TransferEncoding = "transfer-encoding"
+
+  val MaxBodySize = 64 * 1000 // 64KB-ish
 }
 
 /**
  * Annotates HTTP method, uri, and status code, content-type, and content-length.
  */
 class TracingFilter extends SimpleFilter[Request, Response] {
-  import TracingFilter.TransferEncoding
+  import TracingFilter.{TransferEncoding, MaxBodySize}
 
   def apply(req: Request, service: Service[Request, Response]) = {
     recordRequest(req)
     service(req).onSuccess(recordResponse)
   }
 
-  private[this] def recordRequest: Request => Unit = (req: Request) => {
-    if (Trace.isActivelyTracing) {
+  private[this] def recordRequest: Request => Unit =
+    (req: Request) => if (Trace.isActivelyTracing) {
       Trace.recordRpc(req.method.toString)
       // http.uri is used here for consistency with finagle-http's tracing filter
       Trace.recordBinary("http.uri", req.uri)
@@ -57,12 +59,9 @@ class TracingFilter extends SimpleFilter[Request, Response] {
         case None =>
       }
     }
-  }
 
-  private[this] val MaxBodySize = 64 * 1000 // 64KB-ish
-
-  private[this] val recordResponse: Response => Unit = (rsp: Response) => {
-    if (Trace.isActivelyTracing) {
+  private[this] val recordResponse: Response => Unit =
+    (rsp: Response) => if (Trace.isActivelyTracing) {
       Trace.recordBinary("http.rsp.status", rsp.status.code)
       Trace.recordBinary("http.rsp.version", rsp.version.toString)
       if (500 <= rsp.statusCode && rsp.statusCode < 600) {
@@ -84,5 +83,4 @@ class TracingFilter extends SimpleFilter[Request, Response] {
         case None =>
       }
     }
-  }
 }
