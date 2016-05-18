@@ -1,10 +1,11 @@
 namers:
-- kind:      io.l5d.experimental.marathon
-  prefix:    /io.l5d.marathon
-  host:      marathon.mesos
-  port:      80
-  uriPrefix: /marathon
-  ttlMs:     300
+- kind:         io.l5d.marathon
+  experimental: true
+  prefix:       /io.l5d.marathon
+  host:         marathon.mesos
+  port:         80
+  uriPrefix:    /marathon
+  ttlMs:        300
 
 routers:
 - protocol: http

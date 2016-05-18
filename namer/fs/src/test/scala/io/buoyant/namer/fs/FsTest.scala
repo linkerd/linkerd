@@ -1,4 +1,4 @@
-package io.l5d
+package io.buoyant.namer.fs
 
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Path, Stack}
@@ -14,7 +14,7 @@ class FsTest extends FunSuite with NamerTestUtil {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = fs(Directory(Paths.get("."))).newNamer(Stack.Params.empty)
+    val _ = FsConfig(Directory(Paths.get("."))).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -31,7 +31,7 @@ class FsTest extends FunSuite with NamerTestUtil {
       """.stripMargin
 
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(FsInitializer)))
-      val fs = mapper.readValue[NamerConfig](yaml).asInstanceOf[fs]
+      val fs = mapper.readValue[NamerConfig](yaml).asInstanceOf[FsConfig]
       assert(fs.rootDir.path == dir.toPath)
     } finally {
       val _ = Seq("rm", "-rf", dir.getPath).!

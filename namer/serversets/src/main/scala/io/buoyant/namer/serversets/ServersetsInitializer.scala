@@ -1,18 +1,18 @@
-package io.l5d
+package io.buoyant.namer.serversets
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Stack, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import io.buoyant.namer.serversets.ServersetNamer
 
 class ServersetsInitializer extends NamerInitializer {
-  val configClass = classOf[serversets]
+  val configClass = classOf[ServersetsConfig]
+  override def configId = "io.l5d.serversets"
 }
 
 object ServersetsInitializer extends ServersetsInitializer
 
-case class serversets(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
+case class ServersetsConfig(zkAddrs: Seq[ZkAddr]) extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.serversets")
 
