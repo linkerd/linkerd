@@ -18,7 +18,7 @@ import com.twitter.util.{Activity, Var}
  * Endpoint names are delimited by the ':' character. For example
  *
  * {{{
- * /io.l5d.serversets/discovery/prod/foo:http
+ * /#/io.l5d.serversets/discovery/prod/foo:http
  * }}}
  *
  * is the endpoint `http` of serverset `/discovery/prod/foo`

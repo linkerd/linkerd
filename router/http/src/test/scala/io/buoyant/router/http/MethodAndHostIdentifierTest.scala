@@ -8,10 +8,10 @@ import io.buoyant.test.{Exceptions, Awaits}
 import java.net.SocketAddress
 import org.scalatest.FunSuite
 
-class DefaultIdentifierTest extends FunSuite with Awaits with Exceptions {
+class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
 
   test("http/1.1 request without a host header") {
-    val identifier = DefaultIdentifier(Path.Utf8("https"), false)
+    val identifier = MethodAndHostIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     assertThrows[IllegalArgumentException] {
@@ -20,7 +20,7 @@ class DefaultIdentifierTest extends FunSuite with Awaits with Exceptions {
   }
 
   test("http/1.1 request with a host header") {
-    val identifier = DefaultIdentifier(Path.Utf8("https"), false)
+    val identifier = MethodAndHostIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
@@ -28,7 +28,7 @@ class DefaultIdentifierTest extends FunSuite with Awaits with Exceptions {
   }
 
   test("http/1.1 with URIs") {
-    val identifier = DefaultIdentifier(Path.Utf8("https"), true)
+    val identifier = MethodAndHostIdentifier(Path.Utf8("https"), true)
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
@@ -36,14 +36,14 @@ class DefaultIdentifierTest extends FunSuite with Awaits with Exceptions {
   }
 
   test("http/1.0") {
-    val identifier = DefaultIdentifier(Path.Utf8("prefix"), false)
+    val identifier = MethodAndHostIdentifier(Path.Utf8("prefix"), false)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
     assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST")))
   }
 
   test("http/1.0 with uri") {
-    val identifier = DefaultIdentifier(Path.Utf8("prefix"), true)
+    val identifier = MethodAndHostIdentifier(Path.Utf8("prefix"), true)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
     assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST/drum/bass")))
