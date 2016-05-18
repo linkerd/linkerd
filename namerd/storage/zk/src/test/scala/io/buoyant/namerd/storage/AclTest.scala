@@ -1,4 +1,4 @@
-package io.buoyant.namerd.storage.experimental
+package io.buoyant.namerd.storage
 
 import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite

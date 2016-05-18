@@ -8,7 +8,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.storage.experimental.AuthInfo
+import io.buoyant.namerd.storage.AuthInfo
 
 /**
  * ZkSession wraps a ZooKeeper client which automatically reconnects upon session expiry.

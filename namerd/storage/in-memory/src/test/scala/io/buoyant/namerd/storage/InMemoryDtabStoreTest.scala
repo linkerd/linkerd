@@ -17,7 +17,7 @@ class InMemoryDtabStoreTest extends FunSuite with Exceptions {
   def mkStore = {
     val yaml = """
                  |storage:
-                 |  kind: io.buoyant.namerd.storage.inMemory
+                 |  kind: io.l5d.inMemory
                  |  namespaces:
                  |    test: |
                  |      /foo => /bar;

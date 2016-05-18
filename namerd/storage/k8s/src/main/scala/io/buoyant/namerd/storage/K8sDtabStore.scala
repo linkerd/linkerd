@@ -1,4 +1,4 @@
-package io.buoyant.namerd.storage.experimental
+package io.buoyant.namerd.storage
 
 import com.twitter.finagle.{Http, Dtab => FDtab}
 import com.twitter.io.Buf
@@ -6,7 +6,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.k8s.ObjectMeta
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
-import io.buoyant.namerd.storage.experimental.kubernetes._
+import io.buoyant.namerd.storage.kubernetes._
 import io.buoyant.namerd.{Ns, DtabStore, VersionedDtab}
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.breakOut

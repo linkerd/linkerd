@@ -19,6 +19,9 @@ case class NamerdConfig(
   require(interfaces.nonEmpty, "One or more interfaces must be specified")
 
   def mk(stats: StatsReceiver): Namerd = {
+    if (storage.disabled) throw new IllegalArgumentException(
+      s"""The ${storage.getClass.getName} storage is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
+    )
     val dtabStore = storage.mkDtabStore
     val namersByPfx = mkNamers
     Namerd(mkInterfaces(dtabStore, namersByPfx, stats), dtabStore, namersByPfx)

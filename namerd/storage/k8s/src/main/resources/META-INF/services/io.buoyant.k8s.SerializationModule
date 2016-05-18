@@ -1,1 +1,1 @@
-io.buoyant.namerd.storage.experimental.kubernetes.DtabSerializationModule
+io.buoyant.namerd.storage.kubernetes.DtabSerializationModule

@@ -10,7 +10,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namerd.{Ns, VersionedDtab, DtabStore, RichActivity}
 import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException, DtabNamespaceAlreadyExistsException, Forbidden}
-import io.buoyant.namerd.storage.experimental.{AuthInfo, Acl}
+import io.buoyant.namerd.storage.{AuthInfo, Acl}
 import java.nio.ByteBuffer
 
 /**

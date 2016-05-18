@@ -1,4 +1,4 @@
-package io.buoyant.namerd.storage.experimental.kubernetes
+package io.buoyant.namerd.storage.kubernetes
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
 import io.buoyant.k8s.{Status, Watch}
