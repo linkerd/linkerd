@@ -7,6 +7,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
+import com.twitter.finagle.tracing.Trace
 import com.twitter.util.{Duration, Future, Time}
 
 /**
@@ -297,8 +298,15 @@ object StackRouter {
      *   sessions. We need to ensure that the underlying factory
      *   (provided by the lower stacks) is provisioned for each
      *   request to accomdate terminated requests (e.g. HTTP/1.0)
+     *
+     * - The failureRecording module records errors encountered when
+     *   acquiring a service from the underlying service factory. This
+     *   must be installed below factory to service in order to catch
+     *   errors from the lower stacks (notably NoBrokersAvailable,
+     *   etc).
      */
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
+    stk.push(failureRecording)
     stk.push(factoryToService)
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
@@ -329,18 +337,40 @@ object StackRouter {
    * We effectively treat the path stack as application-level and the
    * bound and client stacks as session-level.
    */
-  private def factoryToService[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
-    new Stack.Module0[ServiceFactory[Req, Rep]] {
+  private def factoryToService[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    new Stack.Module0[ServiceFactory[Req, Rsp]] {
       val role = FactoryToService.role
       val description = "Ensures that underlying service factory is properly provisioned for each request"
-      def make(next: ServiceFactory[Req, Rep]) = {
-        // To reiterate the comment in finagle: this is too complicated.
-        val service = Future.value(new ServiceProxy[Req, Rep](new FactoryToService(next)) {
-          override def close(deadline: Time): Future[Unit] = Future.Done
+      def make(next: ServiceFactory[Req, Rsp]) = {
+        // To reiterate the comment in finagle's FactoryToService:
+        // this is too complicated.
+        val service = Future.value(new FactoryToService(next) {
+          override def close(deadline: Time) = Future.Unit
         })
         new ServiceFactoryProxy(next) {
-          override def apply(conn: ClientConnection): Future[ServiceProxy[Req, Rep]] = service
+          override def apply(conn: ClientConnection) = service
         }
       }
+    }
+
+  private def failureRecording[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    new Stack.Module0[ServiceFactory[Req, Rsp]] {
+      import RoutingFactory.Annotations._
+
+      val role = Stack.Role("AcquisitionFailure")
+      val description = "Record failures encountered when issuing downstream requests"
+
+      def make(next: ServiceFactory[Req, Rsp]) =
+        new ServiceFactoryProxy(next) {
+          override def apply(conn: ClientConnection) =
+            self(conn).onFailure(Failure.ClientAcquisition.record).map(mkService)
+        }
+
+      val mkService: Service[Req, Rsp] => Service[Req, Rsp] =
+        (service: Service[Req, Rsp]) =>
+          new ServiceProxy(service) {
+            override def apply(req: Req) =
+              self(req).onFailure(Failure.Service.record)
+          }
     }
 }

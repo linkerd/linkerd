@@ -37,15 +37,16 @@ object RoutingFactory {
     val default = BaseDtab(() => Dtab.base)
   }
 
-  object Annotations {
+  private[buoyant] object Annotations {
     sealed abstract class Failure(val name: String) {
       override def toString = name
+      val record: Any => Unit = (_: Any) => Trace.recordBinary(Failure.key, name)
     }
     object Failure {
       val key = "io.buoyant.router.Failure"
-      object Identification extends Failure("Identification")
-      object ClientAcquisition extends Failure("ClientAcquisition")
-      object Service extends Failure("Service")
+      case object Identification extends Failure("Identification")
+      case object ClientAcquisition extends Failure("ClientAcquisition")
+      case object Service extends Failure("Service")
       def unapply(f: Failure): Option[String] = Some(f.name)
     }
   }
@@ -86,23 +87,20 @@ class RoutingFactory[Req, Rsp](
       for {
         dst <- getDst(req).rescue {
           case e: Throwable =>
-            record(Annotations.Failure.Identification)
+            Trace.recordBinary(Annotations.Failure.key, Annotations.Failure.Identification)
             Future.exception(UnknownDst(req, e))
         }
 
-        service <- clientFactory(dst, conn)
-          .onFailure(_ => record(Annotations.Failure.ClientAcquisition))
+        // Client acquisition failures are recorded within the
+        // clientFactory's path stack.
+        service <- clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
 
-        rsp <- service(req)
-          .onFailure(_ => record(Annotations.Failure.Service))
-          .ensure {
-            val _ = service.close()
-          }
+        // Service failures are recorded within the clientFactory's
+        // path stack, too.
+        rsp <- service(req).ensure {
+          val _ = service.close()
+        }
       } yield rsp
     }
-
-    private[this] def record(ann: Annotations.Failure): Unit =
-      Trace.recordBinary(Annotations.Failure.key, ann)
-
   }
 }

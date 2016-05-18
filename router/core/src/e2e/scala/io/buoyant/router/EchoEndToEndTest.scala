@@ -6,6 +6,7 @@ import com.twitter.finagle.buoyant.{Echo => FinagleEcho, _}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
 import com.twitter.util._
@@ -103,7 +104,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
       assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/idk")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
-        RoutingFactory.Annotations.Failure.ClientAcquisition
+        RoutingFactory.Annotations.Failure.ClientAcquisition.name
       )))
     }
 
@@ -112,7 +113,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
       assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
-        RoutingFactory.Annotations.Failure.Service
+        RoutingFactory.Annotations.Failure.Service.name
       )))
     }
 
@@ -180,7 +181,7 @@ object Echo extends Router[String, String] with Server[String, String] {
     }
 
     val pathStack: Stack[ServiceFactory[String, String]] =
-      ErrorFilter +: StackRouter.newPathStack[String, String]
+      StackRouter.newPathStack[String, String] ++ (ErrorFilter +: nilStack)
 
     val boundStack: Stack[ServiceFactory[String, String]] =
       StackRouter.newBoundStack[String, String]
