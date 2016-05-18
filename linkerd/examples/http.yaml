@@ -9,7 +9,7 @@ namers:
 routers:
 - protocol: http
   identifier:
-    kind: default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   baseDtab: |
     /host => /#/io.l5d.fs;
