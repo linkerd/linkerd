@@ -19,7 +19,7 @@ case class ZkConfig(
 ) extends DtabStoreConfig {
 
   @JsonIgnore
-  override val experimental = true
+  override val experimentalRequired = true
 
   @JsonIgnore val sessionTimeout = sessionTimeoutMs.map(_.millis)
 

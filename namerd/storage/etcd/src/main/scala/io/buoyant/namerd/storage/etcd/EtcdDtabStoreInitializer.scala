@@ -14,7 +14,7 @@ case class EtcdConfig(
   import EtcdConfig._
 
   @JsonIgnore
-  override val experimental = true
+  override val experimentalRequired = true
 
   @JsonIgnore
   override def mkDtabStore: DtabStore = {
