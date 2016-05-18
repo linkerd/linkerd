@@ -259,10 +259,10 @@ object Validator extends TwitterServer {
        |admin:
        |  port: $adminPort
        |interfaces:
-       |- kind: thriftNameInterpreter
+       |- kind: io.l5d.thriftNameInterpreter
        |  ip: 0.0.0.0
        |  port: $serverPort
-       |- kind: httpController
+       |- kind: io.l5d.httpController
        |  ip: 0.0.0.0
        |  port: $controllerPort
        |""".stripMargin

@@ -4,7 +4,7 @@ Response classifiers determine which HTTP responses are considered to
 be failures (for the purposes of success rate calculation) and which
 of these responses may be [retried](retries.md). A response classifier
 config block must contain a `kind` parameter which indicates which classifier
-plugin to use.  By default, the_io.l5d.nonRetryable5XX_ classifier is used.
+plugin to use.  By default, the _io.l5d.nonRetryable5XX_ classifier is used.
 
 ## io.l5d.nonRetryable5XX
 

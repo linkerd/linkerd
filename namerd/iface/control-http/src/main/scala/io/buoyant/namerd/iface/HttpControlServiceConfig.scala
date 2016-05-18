@@ -20,7 +20,7 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
 }
 
 object HttpControlServiceConfig {
-  val kind = "httpController"
+  val kind = "io.l5d.httpController"
   val defaultAddr = new InetSocketAddress(InetAddress.getLoopbackAddress, 4180)
 }
 

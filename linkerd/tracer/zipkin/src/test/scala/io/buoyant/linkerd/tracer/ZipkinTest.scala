@@ -1,4 +1,4 @@
-package io.l5d
+package io.buoyant.linkerd.tracer
 
 import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
@@ -9,7 +9,7 @@ class ZipkinTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = zipkin(None, None, None).newTracer()
+    val _ = ZipkinConfig(None, None, None).newTracer()
   }
 
   test("service registration") {
@@ -26,7 +26,7 @@ class ZipkinTest extends FunSuite {
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ZipkinTracerInitializer)))
-    val zipkin = mapper.readValue[TracerConfig](yaml).asInstanceOf[zipkin]
+    val zipkin = mapper.readValue[TracerConfig](yaml).asInstanceOf[ZipkinConfig]
     assert(zipkin.host == Some("foo"))
     assert(zipkin.port == Some(1234))
     assert(zipkin.sampleRate == Some(0.5))

@@ -5,5 +5,5 @@ storage:
   key: /dtabs
 namers: []
 interfaces:
-- kind: thriftNameInterpreter
-- kind: httpController
+- kind: io.l5d.thriftNameInterpreter
+- kind: io.l5d.httpController

@@ -1,1 +1,1 @@
-io.l5d.ZipkinTracerInitializer
+io.buoyant.linkerd.tracer.ZipkinTracerInitializer
