@@ -31,7 +31,7 @@ namers:
 
 - kind: io.l5d.marathon
   experimental: true
-  prefix: /io.l5d.marathon
+  prefix: /#/io.l5d.marathon
   host: marathon.mesos
   port: 80
   uriPrefix: /marathon
@@ -46,7 +46,7 @@ routers:
   timeoutMs: 1000
   httpAccessLog: logs/access.log
   identifier:
-    kind: default
+    kind: io.l5d.methodAndHost
     httpUriInDst: true
   responseClassifier:
     kind: retryableIdempotent5XX

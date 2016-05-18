@@ -4,9 +4,10 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.service.{FailFastFactory, Retries}
+import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
+import com.twitter.util.Duration
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -181,7 +182,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
       val parameters = Seq(
         implicitly[Stack.Param[DstBindingFactory.Capacity]],
         implicitly[Stack.Param[DstBindingFactory.Namer]],
-        implicitly[Stack.Param[param.Stats]]
+        implicitly[Stack.Param[param.Stats]],
+        implicitly[Stack.Param[Retries.Budget]]
       )
 
       def make(
@@ -196,13 +198,15 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         }
         val param.Stats(stats0) = params[param.Stats]
         val stats = stats0.scope(label)
+        val clientStats = param.Stats(stats.scope("dst", "id"))
 
-        val param.Label(routerLabel) = params[param.Label]
-        def mkClientLabel(bound: Name.Bound): String = bound.id match {
-          case null => "null"
-          case path: Path => path.show.stripPrefix("/")
-          case id: String => id.stripPrefix("/")
-          case _ => "unknown"
+        // Since the retry budget is shared across the path stack
+        // (RetryFilter) and client stack (RequeueFilter), the lower
+        // filter must not deposit into the budget. So, we wrap it in
+        // a WithdrawOnlyRetryBudget.
+        val withdrawOnlyBudget = {
+          val Retries.Budget(budget, requeueBackoffs) = params[Retries.Budget]
+          Retries.Budget(new StackRouter.WithdrawOnlyRetryBudget(budget), requeueBackoffs)
         }
 
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
@@ -213,17 +217,25 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
           val stk = (boundStack ++ Stack.Leaf(Endpoint, sf))
-          stk.make(params + bound)
+          stk.make(params + withdrawOnlyBudget + bound)
         }
 
-        def newClient(bound: Name.Bound) =
-          client.withParams(params)
-            .configured(param.Stats(stats.scope("dst", "id")))
-            .newClient(bound, mkClientLabel(bound)) // stats will get scoped by label here
+        val param.Label(routerLabel) = params[param.Label]
+        def mkClientLabel(bound: Name.Bound): String = bound.id match {
+          case null => "null"
+          case path: Path => path.show.stripPrefix("/")
+          case id: String => id.stripPrefix("/")
+          case _ => "unknown"
+        }
+
+        // client stats are scoped by label within .newClient
+        def clientMk(bound: Name.Bound) =
+          client.withParams(params + clientStats + withdrawOnlyBudget)
+            .newClient(bound, mkClientLabel(bound))
 
         val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
         val cache = new DstBindingFactory.Cached[Req, Rsp](
-          newClient _,
+          clientMk _,
           pathMk _,
           boundMk _,
           namer,
@@ -242,6 +254,20 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
 object StackRouter {
 
+  /**
+   * A single budget needs to be shared across a [[RequeueFilter]] and
+   * a [[RetryFilter]] for debiting purposes, but we only want one of
+   * the calls to `RetryBudget.request()` to count. This allows for
+   * swallowing the call to `request` in the second filter.
+   *
+   * Copied from com.twitter.finagle.service.Retries.
+   */
+  class WithdrawOnlyRetryBudget(underlying: RetryBudget) extends RetryBudget {
+    def deposit(): Unit = ()
+    def tryWithdraw(): Boolean = underlying.tryWithdraw()
+    def balance: Long = underlying.balance
+  }
+
   object Server {
     def newStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] =
       StackServer.newStack[Req, Rsp]
@@ -255,11 +281,12 @@ object StackRouter {
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
       (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
-        .replace(Retries.Role, XXX_ClassifierRequeueFilter.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
+    stk.push(ClassifiedRetries.module)
+    stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.result
   }
