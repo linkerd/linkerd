@@ -28,6 +28,7 @@
   * Added server success rate graphs to the dashboard, improved responsiveness
   * Added the ability to navigate to a specific router's dashboard
   * Standardized the look and feel of the admin pages
+* Introduce a configurable Netty4 http implementation.
 
 ## 0.6.0
 

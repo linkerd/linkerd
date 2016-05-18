@@ -3,9 +3,9 @@ package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
-import com.twitter.finagle.buoyant.linkerd.DelayedRelease
+import com.twitter.finagle.Http.param.HttpImpl
+import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
 import com.twitter.finagle.client.StackClient
-import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
@@ -52,13 +52,27 @@ class HttpInitializer extends ProtocolInitializer.Simple {
 
 object HttpInitializer extends HttpInitializer
 
+case class HttpClientConfig(
+  engine: Option[HttpEngine]
+) extends ClientConfig {
+  override def clientParams =
+    engine.foldLeft(super.clientParams) { (params, engine) => engine.mk(params) }
+}
+
+case class HttpServerConfig(
+  engine: Option[HttpEngine]
+) extends ServerConfig {
+  override def serverParams =
+    engine.foldLeft(super.serverParams) { (params, engine) => engine.mk(params) }
+}
+
 case class HttpConfig(
   httpAccessLog: Option[String],
   identifier: Option[HttpIdentifierConfig]
 ) extends RouterConfig {
 
-  var client: Option[ClientConfig] = None
-  var servers: Seq[ServerConfig] = Nil
+  var client: Option[HttpClientConfig] = None
+  var servers: Seq[HttpServerConfig] = Nil
 
   @JsonIgnore
   override def baseResponseClassifier =
