@@ -29,7 +29,7 @@ object DcosBootstrap extends App {
           case zkStorage: zk => {
             // TODO: consider sharing with ZkDtabStoreInitializer
             val zkClient = new ZkClient(
-              zkStorage.hosts.mkString(","),
+              zkStorage.zkAddrs.map(_.toString).mkString(","),
               zkStorage.pathPrefix.getOrElse("/dtabs")
             )
             closeOnExit(zkClient)
