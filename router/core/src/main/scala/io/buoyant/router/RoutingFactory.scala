@@ -73,8 +73,16 @@ class RoutingFactory[Req, Rsp](
   override def close(deadline: Time): Future[Unit] = clientFactory.close(deadline)
   override def status: Status = clientFactory.status
 
-  def apply(conn: ClientConnection): Future[Service[Req, Rsp]] =
-    Future.value(new RoutingService(conn))
+  def apply(conn: ClientConnection): Future[Service[Req, Rsp]] = service
+
+  /**
+   * The router doesn't actually need a reference to the client
+   * connection, so we can use a nil client connection (as would be
+   * the case when manually constructing a Finagle Client
+   * ServiceFactory). This has a notable impact on performance,
+   * especially in the face of server connection churn.
+   */
+  private val service = Future.value(new RoutingService(ClientConnection.nil))
 
   // TODO move trace recording into a separate stack module?
   private class RoutingService(conn: ClientConnection) extends Service[Req, Rsp] {
