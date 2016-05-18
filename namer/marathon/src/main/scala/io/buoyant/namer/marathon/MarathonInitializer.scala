@@ -37,7 +37,7 @@ case class MarathonConfig(
   ttlMs: Option[Int]
 ) extends NamerConfig {
   @JsonIgnore
-  override val experimental = true
+  override val experimentalRequired = true
 
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.marathon")

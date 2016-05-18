@@ -26,14 +26,20 @@ trait NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
+  /** This property must be set to true in order to use this namer if it is experimental */
   @JsonProperty("experimental")
   var _experimentalEnabled: Option[Boolean] = None
 
+  /**
+   * Indicates whether this is an experimental namer.  Experimental namers must have the
+   * `experimental` property set to true to be used
+   */
   @JsonIgnore
-  def experimental = false
+  def experimentalRequired = false
 
+  /** If this namer is experimental but has not set the `experimental` property. */
   @JsonIgnore
-  def disabled = experimental && !_experimentalEnabled.contains(true)
+  def disabled = experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
   def defaultPrefix: Path
