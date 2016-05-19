@@ -3,6 +3,7 @@ package io.buoyant.namerd.storage
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.serverset2.buoyant.ZkDtabStore
+import io.buoyant.config.types.HostAndPort
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 class ZkDtabStoreInitializer extends DtabStoreInitializer {
@@ -11,7 +12,7 @@ class ZkDtabStoreInitializer extends DtabStoreInitializer {
 }
 
 case class ZkConfig(
-  hosts: Seq[String],
+  zkAddrs: Seq[HostAndPort],
   pathPrefix: Option[String],
   sessionTimeoutMs: Option[Int],
   authInfo: Option[AuthInfo],
@@ -25,7 +26,7 @@ case class ZkConfig(
 
   @JsonIgnore
   override def mkDtabStore: DtabStore = new ZkDtabStore(
-    hosts.mkString(","),
+    zkAddrs.map(_.toString).mkString(","),
     pathPrefix.getOrElse("/dtabs"),
     sessionTimeout,
     authInfo,

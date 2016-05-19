@@ -36,7 +36,9 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 
 Stores the dtab in ZooKeeper.  Supports the following options
 
-* *hosts* -- Required.  A list of hosts where ZooKeeper is running.
+* *zkAddrs* -- list of ZooKeeper addresses:
+  * *host* --  the ZooKeeper host.
+  * *port* --  the ZooKeeper port.
 * *pathPrefix* -- Optional.  The ZooKeeper path under which dtabs should be stored.  (default:
 "/dtabs")
 * *sessionTimeoutMs* -- Optional.  ZooKeeper session timeout in milliseconds.

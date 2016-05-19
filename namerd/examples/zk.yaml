@@ -1,8 +1,9 @@
 storage:
   kind: io.l5d.zk
   pathPrefix: /dtabs
-  hosts:
-  - localhost:2181
+  zkAddrs:
+  - host: localhost
+    port: 2181
   authInfo:
     scheme: digest
     auth: user_123:password_123

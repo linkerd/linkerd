@@ -78,9 +78,9 @@ ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeep
 
 The ServerSets namer is configured with kind `io.l5d.serversets`, and these parameters:
 
-* *zkAddrs* -- list of ZooKeeper hosts.
-* *host* --  the ZooKeeper host.
-* *port* --  the ZooKeeper port.
+* *zkAddrs* -- list of ZooKeeper addresses:
+  * *host* --  the ZooKeeper host.
+  * *port* --  the ZooKeeper port.
 
 For example:
 ```yaml
@@ -223,4 +223,6 @@ leader.
 
 The ZooKeeper Leader namer is configured with kind `io.l5d.zkLeader` and these parameters:
 
-* *hosts* -- A comma delimited list of ZooKeeper hosts
+* *zkAddrs* -- list of ZooKeeper addresses:
+  * *host* --  the ZooKeeper host.
+  * *port* --  the ZooKeeper port.

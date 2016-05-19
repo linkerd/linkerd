@@ -5,6 +5,7 @@ import com.twitter.common.zookeeper._
 import com.twitter.finagle.util.InetSocketAddressUtil
 import com.twitter.finagle.{Group => _, _}
 import com.twitter.util._
+import io.buoyant.config.types.HostAndPort
 import java.net.InetSocketAddress
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.data.ACL
@@ -17,19 +18,19 @@ import scala.collection.JavaConverters._
  */
 class ZkLeaderNamer(
   prefix: Path,
-  hosts: String,
+  zkAddrs: Seq[HostAndPort],
   factory: Iterable[InetSocketAddress] => ZooKeeperClient
 ) extends Namer {
 
-  def this(prefix: Path, hosts: String) = this(
+  def this(prefix: Path, zkAddrs: Seq[HostAndPort]) = this(
     prefix,
-    hosts,
+    zkAddrs,
     h => new ZooKeeperClient(ZooKeeperUtils.DEFAULT_ZK_SESSION_TIMEOUT, h.asJava)
   )
 
   override def lookup(path: Path): Activity[NameTree[Name]] = bind(path)
 
-  private[this] val client = factory(InetSocketAddressUtil.parseHosts(hosts).toSet)
+  private[this] val client = factory(zkAddrs.map(_.toInetSocketAddress))
 
   private[this] def bind(path: Path, residual: Path = Path.empty): Activity[NameTree[Name]] = {
     val id = prefix ++ path
