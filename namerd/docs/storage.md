@@ -7,13 +7,17 @@ dtabs. This object supports the following params:
 * *experimental* -- Set this to `true` to enable the storage if it is experimental.
 * *sotrage-specific parameters*.
 
-## io.l5d.inMemory
+## In Memory
+
+`io.l5d.inMemory`
 
 Stores the dtab in memory.  Not suitable for production use.
 
 * *namespaces* -- Optional.  A map of namespaces to corresponding dtabs.
 
-## io.l5d.k8s
+## Kubernetes
+
+`io.l5d.k8s`
 
 *experimental*
 
@@ -30,7 +34,9 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 * *namespace* The Kubernetes namespace in which dtabs will be stored. This should usually be the
   same namespace in which namerd is running. (default: "default")
 
-## io.l5d.zk
+## ZooKeeper
+
+`io.l5d.zk`
 
 *experimental*
 
@@ -54,7 +60,9 @@ containing:
   * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
   The characters represent create, read, write, delete, and admin, respectively.
 
-## io.l5d.etcd
+## Etcd
+
+`io.l5d.etcd`
 
 *experimental*
 
