@@ -4,8 +4,13 @@
   election.
 * Add HTTP path request identifier, which builds destinations from a
   configurable number of HTTP URI path segments.
-* The path prefix `/#` now indicates that the path should be processed by a
-  namer.  A namer matches a path starting with `/#/<prefix>`.
+* **Breaking Change!** The path prefix `/#` now indicates that the path should
+  be processed by a namer.  A namer matches a path starting with `/#/<prefix>`.
+* **Breaking Change!** Rename many plugin kind names.
+* **Breaking Change!** Experimental plugins now require the `experimental: true`
+  property to be set.
+* **Breaking Change!** Change the format for ZooKeeper hosts in the ZK storage
+  config.
 
 ## 0.5.0
 
