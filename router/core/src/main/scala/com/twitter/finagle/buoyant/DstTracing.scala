@@ -21,9 +21,11 @@ object DstTracing {
       private[this] val localDtabShow = dst.localDtab.show
       private[this] val pathShow = dst.path.show
       override def apply(conn: ClientConnection) = {
-        Trace.recordBinary("namer.dtab.base", baseDtabShow)
-        Trace.recordBinary("namer.dtab.local", localDtabShow)
-        Trace.recordBinary("namer.path", pathShow)
+        if (Trace.isActivelyTracing) {
+          Trace.recordBinary("namer.dtab.base", baseDtabShow)
+          Trace.recordBinary("namer.dtab.local", localDtabShow)
+          Trace.recordBinary("namer.path", pathShow)
+        }
         self(conn)
       }
     }
@@ -44,8 +46,10 @@ object DstTracing {
       private[this] val idStr = dst.idStr
       private[this] val path = dst.path.show
       override def apply(conn: ClientConnection) = {
-        Trace.recordBinary("dst.id", idStr)
-        Trace.recordBinary("dst.path", path)
+        if (Trace.isActivelyTracing) {
+          Trace.recordBinary("dst.id", idStr)
+          Trace.recordBinary("dst.path", path)
+        }
         self(conn)
       }
     }

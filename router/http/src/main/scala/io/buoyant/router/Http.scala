@@ -31,7 +31,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
      */
     val client: StackClient[Request, Response] = FinagleHttp.client
       .transformed(StackRouter.Client.mkStack(_))
-      .transformed(_.replace(StackClient.Role.protoTracing, http.TracingFilter))
+      .transformed(_.replace(http.TracingFilter.role, http.TracingFilter.module))
       .transformed(_.remove(TlsFilter.role))
 
     val defaultParams: Stack.Params =
