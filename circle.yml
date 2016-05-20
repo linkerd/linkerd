@@ -18,7 +18,7 @@ test:
         parallel: true
 
   post:
-    - ci/coverage-publish.sh
+    - ci/coverage-publish.sh || true # We don't want to block the build on a failure to publish coverage results
     - mkdir -p "$CIRCLE_TEST_REPORTS/junit" && find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} "$CIRCLE_TEST_REPORTS/junit/" \;
 
 deployment:
