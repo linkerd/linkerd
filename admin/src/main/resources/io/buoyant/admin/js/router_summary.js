@@ -1,3 +1,5 @@
+/* globals Query, RouterSummary, SuccessRate */
+/* exported RouterSummary */
 var RouterSummary = (function() {
   function processResponses(data, routerName) {
     var process = function(metricName) { return processResponse(data, routerName, metricName); };

@@ -1,4 +1,5 @@
 "use strict";
+/* globals getSelectedRouter, MetricsCollector, ProcInfo, Routers, RouterController */
 
 /**
  * Number of millis to wait between data updates.
@@ -42,9 +43,9 @@ $.when(
   var routers = Routers(metricsJson[0], metricsCollector);
 
   var buildVersion = $(".server-data").data("linkerd-version");
-  var procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-  var requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
-  var routerDisplays = RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
+  var _procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
+  // var requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+  var _routerDisplays = RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   $(function() {
     metricsCollector.start(UPDATE_INTERVAL);

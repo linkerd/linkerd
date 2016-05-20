@@ -1,3 +1,5 @@
+/* globals DtabViewer */
+/* exported Delegator */
 var Delegator = (function() {
   var templates;
 
@@ -8,7 +10,7 @@ var Delegator = (function() {
   function renderNode(obj){
     switch(obj.type) {
       case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate); break;
-      case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,i){ return renderNode(e); }).join(""); break;
+      case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,_i){ return renderNode(e); }).join(""); break;
       case "neg": obj.isNeg = true; break;
       case "fail": obj.isFail = true; break;
       case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound); break;

@@ -10,6 +10,8 @@
  * }
  */
 
+/* exported Namers */
+
 var Namers = (function() {
 
   var clientRE = /^clnt\/namer\/(.+)\/requests$/;
@@ -63,7 +65,7 @@ var Namers = (function() {
       data: namers,
 
       /** Updates namer metrics (and clients) */
-      update: function(metrics) { update(this.data, metrics); },
+      update: function(metrics) { update(this.data, metrics); }
     };
   };
 })();

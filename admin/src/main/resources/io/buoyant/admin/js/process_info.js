@@ -1,3 +1,6 @@
+/* globals BytesToStringConverter, MsToStringConverter */
+/* exported ProcInfo */
+
 /**
  * Process info for topline summary
  */

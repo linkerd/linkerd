@@ -1,3 +1,5 @@
+/* globals ClientLatencyGraph, Query, SuccessRate */
+/* exported RouterClient */
 var RouterClient = (function() {
   var template;
 

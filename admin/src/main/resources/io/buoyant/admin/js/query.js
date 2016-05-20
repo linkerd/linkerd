@@ -1,9 +1,10 @@
+/* exported Query */
+
 /**
  * Util for building regexes that map over specifically formatted metric names.
  * `Query.clientQuery().build()` matches all possible client metrics.
  *  Use defined helpers to make the query more specific.
  */
-
 var Query = function() {
   function escape(string) {
     return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');

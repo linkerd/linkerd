@@ -1,3 +1,5 @@
+/* globals CombinedClientGraph, RouterClient */
+/* exported RouterClients */
 var RouterClients = (function() {
   function assignColorsToClients(colors, clients) {
     var colorIdx = 0;

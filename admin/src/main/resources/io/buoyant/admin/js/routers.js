@@ -1,5 +1,8 @@
 "use strict";
 
+/* globals Query */
+/* exported Routers */
+
 /**
  * Utilities for building and updating router information from raw
  * key-val metrics.
@@ -46,7 +49,7 @@ var Routers = (function() {
       "43,140,190",
       "204,235,197",
       "78,179,211",
-      "224,243,219",
+      "224,243,219"
     ];
 
     //returns the next available color
@@ -122,7 +125,6 @@ var Routers = (function() {
     // color assignment to ensure client => color mapping is deterministic.
 
     // then, attach metrics to each appropriate scope
-    var routerNames = Object.keys(routers);
 
     _.each(metrics, function(metric, key){
       var scope = findByMetricKey(routers, key);
@@ -183,7 +185,7 @@ var Routers = (function() {
 
     if (!_.isEmpty(metricsCollector)) {
       var metricsHandler = function(data) { update(routers, data.general); }
-      metricsCollector.registerListener(metricsHandler, function(metrics) {});
+      metricsCollector.registerListener(metricsHandler, function(_metrics) {});
     }
 
     return {

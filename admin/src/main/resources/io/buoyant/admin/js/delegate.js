@@ -1,5 +1,7 @@
 "use strict";
 
+/* globals Delegator, getSelectedRouter, selectRouter */
+/* exported SINGLE_ROUTER_PAGES_ONLY */
 var templates = {};
 var SINGLE_ROUTER_PAGES_ONLY = true;
 
