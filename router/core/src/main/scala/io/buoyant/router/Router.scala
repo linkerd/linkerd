@@ -277,11 +277,13 @@ object StackRouter {
   object Client {
 
     /**
+     * Install ClassifiedTracing to
+     *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
+      ClassifiedTracing.module[Req, Rsp] +: (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
