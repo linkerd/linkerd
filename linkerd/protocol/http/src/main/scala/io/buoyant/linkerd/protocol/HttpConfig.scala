@@ -4,6 +4,7 @@ package protocol
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
+import com.twitter.finagle.netty4.http.exp.Netty4Impl
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
@@ -41,13 +42,27 @@ class HttpInitializer extends ProtocolInitializer.Simple {
 
 object HttpInitializer extends HttpInitializer
 
+case class HttpClientConfig(
+  netty4: Option[Boolean]
+) extends ClientConfig {
+  override def clientParams = super.clientParams
+    .maybeWith(netty4.collect { case true => Netty4Impl })
+}
+
+case class HttpServerConfig(
+  netty4: Option[Boolean]
+) extends ServerConfig {
+  override def serverParams = super.serverParams
+    .maybeWith(netty4.collect { case true => Netty4Impl })
+}
+
 case class HttpConfig(
   httpAccessLog: Option[String],
   identifier: Option[HttpIdentifierConfig]
 ) extends RouterConfig {
 
-  var client: Option[ClientConfig] = None
-  var servers: Seq[ServerConfig] = Nil
+  var client: Option[HttpClientConfig] = None
+  var servers: Seq[HttpServerConfig] = Nil
 
   @JsonIgnore
   override def baseResponseClassifier =
