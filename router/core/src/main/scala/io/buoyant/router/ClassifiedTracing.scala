@@ -12,19 +12,21 @@ object ClassifiedTracing {
    * A RetryPolicy that uses a ResponseClassifier.
    */
   private class Filter[Req, Rsp](classifier: ResponseClassifier) extends SimpleFilter[Req, Rsp] {
-    def apply(req: Req, service: Service[Req, Rsp]): Future[Rsp] =
-      service(req).respond { rsp =>
-        if (Trace.isActivelyTracing) {
+    def apply(req: Req, service: Service[Req, Rsp]): Future[Rsp] = {
+      val f = service(req)
+      if (Trace.isActivelyTracing) {
+        f.respond { rsp =>
           classifier.applyOrElse(ReqRep(req, rsp), ResponseClassifier.Default) match {
             case ResponseClass.Successful(fraction) =>
               Trace.recordBinary("l5d.success", fraction)
-            case ResponseClass.Failed(true) =>
-              Trace.record("l5d.retryable")
-            case ResponseClass.Failed(false) =>
-              Trace.record("l5d.failed")
+            case ResponseClass.Failed(retryable) =>
+              if (retryable) Trace.record("l5d.retryable")
+              else Trace.record("l5d.failure")
           }
         }
       }
+      f
+    }
   }
 
   /**
