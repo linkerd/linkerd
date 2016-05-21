@@ -44,7 +44,7 @@ $.when(
 
   var buildVersion = $(".server-data").data("linkerd-version");
   var _procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-  // var requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+  var _requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
   var _routerDisplays = RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   $(function() {
