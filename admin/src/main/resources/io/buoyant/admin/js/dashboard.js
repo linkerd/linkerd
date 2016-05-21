@@ -43,9 +43,10 @@ $.when(
   var routers = Routers(metricsJson[0], metricsCollector);
 
   var buildVersion = $(".server-data").data("linkerd-version");
-  var _procInfo = ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-  var _requestTotals = RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
-  var _routerDisplays = RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
+
+  ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
+  RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+  RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   $(function() {
     metricsCollector.start(UPDATE_INTERVAL);
