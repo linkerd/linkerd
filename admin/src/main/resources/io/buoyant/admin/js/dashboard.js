@@ -1,5 +1,5 @@
 "use strict";
-/* globals getSelectedRouter, MetricsCollector, ProcInfo, Routers, RouterController */
+/* globals getSelectedRouter, MetricsCollector, ProcInfo, RequestTotals, Routers, RouterController */
 
 /**
  * Number of millis to wait between data updates.
