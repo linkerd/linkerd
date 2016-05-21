@@ -23,7 +23,12 @@ trait ClientConfig {
 
   protected def mkClient(
     params: Stack.Params = Stack.Params.empty
-  ) = Http.client.withParams(Http.client.params ++ params).withStreaming(true)
+  ) = {
+    val setHost = new SetHostFilter(getHost, getPort)
+    Http.client.withParams(Http.client.params ++ params)
+      .withStreaming(true)
+      .filtered(setHost)
+  }
 }
 
 object ClientConfig {
