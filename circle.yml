@@ -22,7 +22,7 @@ test:
     - mkdir -p "$CIRCLE_TEST_REPORTS/junit" && find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} "$CIRCLE_TEST_REPORTS/junit/" \;
 
 deployment:
-  master:
+  nightly:
     branch: master
     commands:
       - if [ "$NIGHTLY" = "1" ]; then ci/docker-publish.sh ; fi
