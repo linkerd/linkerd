@@ -8,12 +8,8 @@ if [ -n "${DOCKER_CREDENTIALS:-}" ]; then
 fi
 
 set_tag=""
-if [ "${NIGHTLY:-}" = "1" ]; then
-  if [ "${TWITTER_DEVELOP:-}" = "1" ]; then
-    set_tag='set dockerTag in Global := "unstable"'
-  else 
-    set_tag='set dockerTag in Global := "nightly"'
-  fi
+if [ "${NIGHTLY:-}" = "1" ] && [ ! "${TWITTER_DEVELOP:-}" = "1" ]; then
+  set_tag='set dockerTag in Global := "nightly"'
 fi
 
 docker_target="dockerBuildAndPush"
