@@ -1,22 +1,27 @@
 #!/bin/sh
 
-# Publish docker images from circleci
-
 set -eu
 
-if [ -z "$CIRCLECI" ]; then
-  echo "For use in circleci only!">&2
-  exit 1
+if [ -n "${DOCKER_CREDENTIALS:-}" ]; then
+  mkdir -p ~/.docker
+  echo "$DOCKER_CREDENTIALS" > ~/.docker/config.json
 fi
 
-if [ -z "$DOCKER_CREDENTIALS" ]; then
-  echo "DOCKER_CREDENTIALS not found!">&2
-  exit 1
+set_tag=""
+if [ "${NIGHTLY:-}" = "1" ]; then
+  if [ "${TWITTER_DEVELOP:-}" = "1" ]; then
+    set_tag='set dockerTag in Global := "unstable"'
+  else 
+    set_tag='set dockerTag in Global := "nightly"'
+  fi
 fi
 
-mkdir -p ~/.docker
-echo "$DOCKER_CREDENTIALS" > ~/.docker/config.json
+docker_target="dockerBuildAndPush"
+if [ "${NO_PUSH:-}" = "1" ]; then
+  docker_target="docker"
+fi
 
-./sbt linkerd/dockerBuildAndPush \
-      namerd/dockerBuildAndPush \
-      namerd/dcos:dockerBuildAndPush
+./sbt "$set_tag" \
+      "linkerd/bundle:${docker_target}" \
+      "namerd/bundle:${docker_target}" \
+      "namerd/dcos:${docker_target}"

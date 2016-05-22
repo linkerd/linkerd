@@ -2,7 +2,7 @@
 
 set -eu
 
-if [ -n "${TWITTER_DEVELOP:-}" ]; then
+if [ "${TWITTER_DEVELOP:-}" = "1" ]; then
   mkdir -p ~/.gitshas
   export GIT_SHA_DIR=~/.gitshas
   ./ci/twitter-develop.sh

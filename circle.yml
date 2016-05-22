@@ -25,4 +25,4 @@ deployment:
   master:
     branch: master
     commands:
-      - ci/docker-publish.sh
+      - if [ "$NIGHTLY" = "1" ]; then ci/docker-publish.sh ; fi

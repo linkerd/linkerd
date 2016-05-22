@@ -44,7 +44,7 @@ class Base extends Build {
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
     aggregate in assembly := false,
-    developTwitterDeps := sys.env.contains("TWITTER_DEVELOP")
+    developTwitterDeps := { sys.env.get("TWITTER_DEVELOP") == Some("1") }
   )
 
   val scalariformSettings = baseScalariformSettings ++ Seq(
@@ -68,6 +68,7 @@ class Base extends Build {
 
   val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
   val dockerJavaImage = settingKey[String]("base docker image, providing java")
+  val dockerTag = settingKey[String]("docker image tag")
   val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
 
   val appPackagingSettings = assemblySettings ++ baseDockerSettings ++ Seq(
@@ -98,10 +99,11 @@ class Base extends Build {
       copy((assemblyOutputPath in assembly).value, exec)
       entryPoint(exec)
     },
+    dockerTag <<= (dockerTag in Global).or((version, configuration) { (v, c) => s"${v}-${c}" }),
     imageName in docker := ImageName(
       namespace = Some("buoyantio"),
       repository = name.value,
-      tag = Some(s"${version.value}-${configuration.value}")
+      tag = Some(dockerTag.value)
     )
   )
 
