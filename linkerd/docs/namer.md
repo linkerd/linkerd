@@ -12,6 +12,7 @@ A namer config block has the following parameters:
 * *experimental* -- Set this to `true` to enable the namer if it is experimental.
 * *namer-specific parameters*.
 
+<a name="fs"></a>
 ## File-based service discovery
 
 `io.l5d.fs`
@@ -73,6 +74,7 @@ baseDtab: |
   /http/1.1/* => /#/io.l5d.fs
 ```
 
+<a name="serversets"></a>
 ## ZooKeeper ServerSets service discovery
 
 `io.l5d.serversets`
@@ -104,6 +106,7 @@ baseDtab: |
   /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
 ```
 
+<a name="consul"></a>
 ## Consul service discovery (experimental)
 
 `io.l5d.consul`
@@ -136,6 +139,7 @@ baseDtab: |
   /http/1.1/* => /#/io.l5d.consul/dc1;
 ```
 
+<a name="k8s"></a>
 ## Kubernetes service discovery (experimental)
 
 `io.l5d.k8s`
@@ -177,6 +181,7 @@ baseDtab: |
   /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
+<a name="marathon"></a>
 ## Marathon service discovery (experimental)
 
 `io.l5d.marathon`
@@ -225,6 +230,7 @@ baseDtab: |
   /http/1.1/* => /host;
 ```
 
+<a name="zkLeader"></a>
 ## ZooKeeper Leader
 
 `io.l5d.zkLeader`
