@@ -3,8 +3,8 @@ package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
-import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
-import com.twitter.finagle.netty4.http.exp.Netty4Impl
+import com.twitter.finagle.Http.param.HttpImpl
+import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer, HttpEngine}
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
@@ -43,17 +43,17 @@ class HttpInitializer extends ProtocolInitializer.Simple {
 object HttpInitializer extends HttpInitializer
 
 case class HttpClientConfig(
-  netty4: Option[Boolean]
+  engine: Option[HttpEngine]
 ) extends ClientConfig {
   override def clientParams = super.clientParams
-    .maybeWith(netty4.collect { case true => Netty4Impl })
+    .maybeWith(engine.map(_.mk))
 }
 
 case class HttpServerConfig(
-  netty4: Option[Boolean]
+  engine: Option[HttpEngine]
 ) extends ServerConfig {
   override def serverParams = super.serverParams
-    .maybeWith(netty4.collect { case true => Netty4Impl })
+    .maybeWith(engine.map(_.mk))
 }
 
 case class HttpConfig(
