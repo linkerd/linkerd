@@ -9,23 +9,24 @@ object ClassifiedTracing {
   val role = Stack.Role("ClassifiedTracing")
 
   /**
-   * A RetryPolicy that uses a ResponseClassifier.
+   * Traces response classifications as one of the following:
+   * - l5d.success
+   * - l5d.retryable
+   * - l5d.failure
    */
   private class Filter[Req, Rsp](classifier: ResponseClassifier) extends SimpleFilter[Req, Rsp] {
     def apply(req: Req, service: Service[Req, Rsp]): Future[Rsp] = {
       val f = service(req)
-      if (Trace.isActivelyTracing) {
-        f.respond { rsp =>
-          classifier.applyOrElse(ReqRep(req, rsp), ResponseClassifier.Default) match {
-            case ResponseClass.Successful(fraction) =>
-              Trace.recordBinary("l5d.success", fraction)
-            case ResponseClass.Failed(retryable) =>
-              if (retryable) Trace.record("l5d.retryable")
-              else Trace.record("l5d.failure")
-          }
+      if (!Trace.isActivelyTracing) f
+      else f.respond { rsp =>
+        classifier.applyOrElse(ReqRep(req, rsp), ResponseClassifier.Default) match {
+          case ResponseClass.Successful(fraction) =>
+            Trace.recordBinary("l5d.success", fraction)
+          case ResponseClass.Failed(retryable) =>
+            if (retryable) Trace.record("l5d.retryable")
+            else Trace.record("l5d.failure")
         }
       }
-      f
     }
   }
 
