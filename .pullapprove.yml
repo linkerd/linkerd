@@ -3,14 +3,22 @@ approve_regex: '^(Approved|lgtm|LGTM|:shipit:|:star:|:\+1:|:ship:)'
 reject_regex: ^Rejected
 reset_on_push: false
 reviewers:
-  members:
-  - adleong
-  - esbie
-  - gtcampbell
-  - klingerf
-  - olix0r
-  - rmars
-  - siggy
-  - stevej
-  name: default
-  required: 2
+  - name: readability
+    members:
+    - adleong
+    - olix0r
+    required: 1
+    conditions:
+      branches:
+      - master
+  - name: js-readability
+    members:
+    - esbie
+    - rmars
+    required: 1
+    conditions:
+      branches:
+      - master
+      files:
+      - "*.js"
+      - "admin/*"
