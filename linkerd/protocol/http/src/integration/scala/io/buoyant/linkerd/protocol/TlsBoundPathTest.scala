@@ -244,6 +244,10 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |  servers:
              |  - port: 0
              |  client:
+             |    retries:
+             |      budget:
+             |        minRetriesPerSec: 0
+             |        percentCanRetry: 0.0
              |    tls:
              |      kind: io.l5d.boundPath
              |      caCertPath: ${certs.caCert.getPath}

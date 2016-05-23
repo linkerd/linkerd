@@ -28,7 +28,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
              |  - port: 0
              |  client:
              |    tls:
-             |      kind: io.buoyant.linkerd.clientTls.noValidation
+             |      kind: io.l5d.noValidation
              |""".stripMargin
         val init = Linker.Initializers(
           protocol = Seq(HttpInitializer),
