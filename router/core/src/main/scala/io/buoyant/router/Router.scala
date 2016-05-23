@@ -277,7 +277,8 @@ object StackRouter {
   object Client {
 
     /**
-     * Install ClassifiedTracing to
+     * Install ClassifiedTracing to mark each request-response's
+     * classification (success, failure, or retryable).
      *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
