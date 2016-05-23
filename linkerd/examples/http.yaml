@@ -19,3 +19,8 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
+  - port: 4142
+    ip: 0.0.0.0
+    engine:
+      kind: netty4
+      http2: true
