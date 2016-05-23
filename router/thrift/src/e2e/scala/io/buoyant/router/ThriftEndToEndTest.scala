@@ -13,7 +13,7 @@ import org.scalatest.FunSuite
 
 class ThriftEndToEndTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
+  override val defaultWait = 5.seconds
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]

@@ -14,7 +14,7 @@ class MuxEndToEndTest extends FunSuite with Awaits {
 
   // since this is dealing with open sockets we need to be somewhat
   // tolerant to slow test environments (cough circleci).
-  override val defaultWait = 2.seconds
+  override val defaultWait = 5.seconds
 
   /*
    * A bunch of utility/setup.  The test is configured as follows:
