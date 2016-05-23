@@ -50,6 +50,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |  servers:
              |  - port: 0
              |  client:
+             |    engine:
+             |      kind: netty4
              |    tls:
              |      kind: io.l5d.boundPath
              |      caCertPath: ${certs.caCert.getPath}
@@ -110,6 +112,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |  servers:
             |  - port: 0
             |  client:
+            |    engine:
+            |      kind: netty4
             |    tls:
             |      kind: io.l5d.boundPath
             |      caCertPath: ${certs.caCert.getPath}
@@ -176,6 +180,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |  servers:
             |  - port: 0
             |  client:
+            |    engine:
+            |      kind: netty4
             |    tls:
             |      kind: io.l5d.boundPath
             |      caCertPath: ${certs.caCert.getPath}
@@ -244,6 +250,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |  servers:
              |  - port: 0
              |  client:
+             |    engine:
+             |      kind: netty4
              |    retries:
              |      budget:
              |        minRetriesPerSec: 0

@@ -8,9 +8,6 @@ namers:
 # A simple HTTP router that looks up host header values in io.l5d.fs.
 routers:
 - protocol: http
-  identifier:
-    kind: io.l5d.methodAndHost
-    httpUriInDst: true
   baseDtab: |
     /host => /#/io.l5d.fs;
     /host/127.0.0.1:4140 => /host/default;
@@ -19,8 +16,8 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-  - port: 4142
-    ip: 0.0.0.0
     engine:
       kind: netty4
-      http2: true
+  client:
+    engine:
+      kind: netty4

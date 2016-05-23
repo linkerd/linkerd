@@ -5,7 +5,7 @@ import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.factory.BindingFactory
 import com.twitter.finagle.netty3._
 import com.twitter.finagle.ssl.{Ssl, Engine}
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{TlsConfig, Transport}
 import java.io.FileInputStream
 import java.net.{InetSocketAddress, SocketAddress}
 import java.security.KeyStore
@@ -48,6 +48,11 @@ object TlsClientPrep {
     case _ => Ssl.client()
   }
 
+  def mkTlsConfig(commonName: String, caCert: Option[String]): TlsConfig = caCert match {
+    case Some(cert) => TlsConfig.ClientSslContextAndHostname(sslContext(cert), commonName)
+    case None => TlsConfig.ClientHostname(commonName)
+  }
+
   /**
    * May be extended to implement a TlsClientPrep module. Supports
    * Params-driven TLS configuration.
@@ -60,19 +65,22 @@ object TlsClientPrep {
      * May return a function that builds an SSL engine.  If None is
      * returned, TLS is disabled.
      */
-    def newEngine(params: Stack.Params): Option[SocketAddress => Engine]
+    def newEngine(cn: Option[String]): Option[SocketAddress => Engine]
+    def tlsConfig(cn: Option[String]): TlsConfig
 
     /** May return a TLS commonName to identify the remote server. */
     def peerCommonName(params: Stack.Params): Option[String]
 
     def make(params: Stack.Params, next: Stack[ServiceFactory[Req, Rsp]]) = {
-      val tlsParams = newEngine(params) match {
+      val cn = peerCommonName(params)
+      val tlsParams = newEngine(cn) match {
         case None =>
           // remove TLS from this connection.
-          params + Transport.TLSClientEngine(None)
+          params + Transport.TLSClientEngine(None) + Transport.Tls(tlsConfig(cn))
         case Some(mkEngine) =>
-          val cfg = new Netty3TransporterTLSConfig(mkEngine, peerCommonName(params))
+          val cfg = new Netty3TransporterTLSConfig(mkEngine, cn)
           params +
+            Transport.Tls(tlsConfig(cn)) +
             Transport.TLSClientEngine(Some(cfg.newEngine)) +
             Transporter.TLSHostname(cfg.verifyHost)
       }
@@ -84,7 +92,8 @@ object TlsClientPrep {
   def disable[Req, Rsp]: Module[Req, Rsp] =
     new Module[Req, Rsp] {
       val parameters = Seq.empty
-      def newEngine(params: Stack.Params) = None
+      def newEngine(_cn: Option[String]) = None
+      def tlsConfig(_cn: Option[String]) = TlsConfig.Disabled
       def peerCommonName(params: Stack.Params) = None
     }
 
@@ -92,7 +101,8 @@ object TlsClientPrep {
   def static[Req, Rsp](commonName: String, caCert: Option[String]): Module[Req, Rsp] =
     new Module[Req, Rsp] {
       val parameters = Seq.empty
-      def newEngine(params: Stack.Params) = Some(addrEngine(commonName, caCert))
+      def newEngine(_cn: Option[String]) = Some(addrEngine(commonName, caCert))
+      def tlsConfig(_cn: Option[String]) = mkTlsConfig(commonName, caCert)
       def peerCommonName(params: Stack.Params) = Some(commonName)
     }
 
@@ -100,7 +110,8 @@ object TlsClientPrep {
   def withoutCertificateValidation[Req, Rsp]: Module[Req, Rsp] =
     new Module[Req, Rsp] {
       val parameters = Seq.empty
-      def newEngine(params: Stack.Params) = Some(addrEngine)
+      def newEngine(_cn: Option[String]) = Some(addrEngine)
+      def tlsConfig(_cn: Option[String]) = TlsConfig.ClientNoValidation
       def peerCommonName(params: Stack.Params) = None
       private[this] def addrEngine(addr: SocketAddress) = addr match {
         case addr: InetSocketAddress =>
