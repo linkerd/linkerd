@@ -1,7 +1,20 @@
-/* globals ClientLatencyGraph, Query, SuccessRate */
+/* globals ClientSuccessRateGraph, Query, SuccessRate */
 /* exported RouterClient */
 var RouterClient = (function() {
   var template;
+  var metricToColorShade = {
+    "max": "light",
+    "p9990": "tint",
+    "p99": "neutral",
+    "p95": "shade",
+    "p50": "dark"
+  }
+  var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
+  function createLatencyLegend(colorLookup) {
+    return _.mapValues(metricToColorShade, function(shade) {
+      return colorLookup[shade];
+    });
+  }
 
   function getMetricDefinitions(routerName, clientName) {
     return _.map([
@@ -32,23 +45,28 @@ var RouterClient = (function() {
 
   function getLatencyData(client, latencyKeys, chartLegend) {
     var latencyData = _.pick(client.metrics, latencyKeys);
-    var tableData = [];
-    var chartData = [];
 
-    _.each(latencyData, function(latencyValue, metricName) {
+    return _.map(latencyData, function(latencyValue, metricName) {
       var key = metricName.split(".")[1];
-      tableData.push({
+      return {
         latencyLabel: key,
         latencyValue: latencyValue,
         latencyColor: chartLegend[key]
-      });
-      chartData.push({
-        name: metricName,
-        delta: latencyValue
-      });
+      };
     });
+  }
 
-    return { tableData: tableData, chartData: chartData };
+  function getSuccessRate(summaryData) {
+    var successRate = summaryData.successRateRaw === -1 ? 1 : summaryData.successRateRaw;
+
+    // draw a 100 % Success Rate reference line.  Hack it so that SmoothieCharts plots 100%
+    // at the top rather than at the bottom
+    var referenceLine = successRate === 1 ? 99.999 : 100;
+
+    return [
+      { name: "successRate", delta: successRate * 100 },
+      { name: "referenceLine", delta: referenceLine }
+    ];
   }
 
   function getSummaryData(data, metricDefinitions) {
@@ -62,8 +80,13 @@ var RouterClient = (function() {
       return mem;
     }, {});
 
-    var successRate = new SuccessRate(summary.success || 0, summary.failures || 0);
-    summary.successRate = successRate.prettyRate();
+    var successRate = new SuccessRate(summary.success.value || 0, summary.failures.value || 0);
+    summary.successRate = {
+      description: "Success Rate",
+      value: successRate.prettyRate(),
+      style: successRate.rateStyle()
+    };
+    summary.successRateRaw = successRate.successRate;
 
     return summary;
   }
@@ -72,18 +95,19 @@ var RouterClient = (function() {
     template = clientTemplate;
     Handlebars.registerPartial('metricPartial', metricPartial);
     var clientColor = colors.color;
+    var latencyLegend = createLatencyLegend(colors.colorFamily);
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
 
     renderMetrics($metricsEl, client, [], [], clientColor);
-    var chart = ClientLatencyGraph($chartEl, colors.colorFamily);
+    var chart = ClientSuccessRateGraph($chartEl, colors.color);
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
       var summaryData = getSummaryData(filteredData, metricDefinitions);
-      var latencies = getLatencyData(client, chart.getLatencyKeys(), chart.getChartLegend());
+      var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
-      chart.updateMetrics(latencies.chartData);
-      renderMetrics($metricsEl, client, summaryData, latencies.tableData, clientColor);
+      chart.updateMetrics(getSuccessRate(summaryData));
+      renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
     }
 
     var getDesiredMetrics = function(metrics) {
@@ -96,7 +120,7 @@ var RouterClient = (function() {
 
     return {
       updateColors: function(clientToColor) {
-        chart.updateColors(clientToColor[client.label].colorFamily);
+        chart.updateColors(clientToColor[client.label].color);
       }
     };
   };

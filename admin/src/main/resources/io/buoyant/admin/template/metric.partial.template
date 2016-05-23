@@ -6,7 +6,7 @@
       metric
     {{/if}}
   </div>
-  <div class="{{metricClass}}">
+  <div class="{{metricClass}} {{style}}">
     {{#if value}}
       {{value}}
     {{else}}

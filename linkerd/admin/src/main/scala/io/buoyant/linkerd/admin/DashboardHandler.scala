@@ -33,7 +33,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         "router_summary.js",
         "combined_client_graph.js",
         "router_server.js",
-        "client_latency_graph.js",
+        "client_success_graph.js",
         "router_client.js",
         "router_clients.js",
         "router_controller.js",

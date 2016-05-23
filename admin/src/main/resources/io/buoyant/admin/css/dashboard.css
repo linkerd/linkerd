@@ -169,12 +169,20 @@ nav ul.navbar-nav {
   margin-bottom: 10px;
 }
 
+.client-container .router-header-large {
+  padding: 8px 0;
+}
+
 .chart-container {
   padding-top: 40px;
 }
 
-.router-latencies > div{
-  font-size:12px;
+.router-latencies-container {
+  padding-top: 18px;
+}
+
+.router-latencies > div {
+  font-size: 12px;
   line-height: 32px;
   font-weight: 300;
 }
