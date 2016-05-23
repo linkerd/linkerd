@@ -5,8 +5,8 @@ reset_on_push: false
 reviewers:
   - name: readability
     members:
-    - olix0r
     - adleong
+    - olix0r
     required: 1
     conditions:
       branches:
