@@ -1,5 +1,4 @@
 "use strict";
-
 var SINGLE_ROUTER_PAGES_ONLY = SINGLE_ROUTER_PAGES_ONLY || false;
 
 $(function() {
@@ -57,6 +56,7 @@ function unselectRouter() {
   window.location.search = window.location.search.replace(re, "");
 }
 
+/* exported getSelectedRouter */
 function getSelectedRouter() {
   return $(".dropdown-toggle .router-label").text();
 }

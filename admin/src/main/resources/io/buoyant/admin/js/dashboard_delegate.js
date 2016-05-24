@@ -1,5 +1,7 @@
 "use strict";
 
+/* globals Delegator */
+
 $.when(
   $.get("/files/template/dentry.template"),
   $.get("/files/template/delegatenode.template"),

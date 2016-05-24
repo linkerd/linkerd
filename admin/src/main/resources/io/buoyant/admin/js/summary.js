@@ -1,6 +1,8 @@
 /*! modified from twitter-server | (c) 2015 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
 "use strict";
 
+/* globals getSelectedRouter, Namers, ProcInfo, Routers, SuccessRate, UpdateableChart */
+
 /**
  * Number of millis to wait between data updates.
  */
@@ -90,7 +92,7 @@ var BigBoard = (function() {
 
     // store metric dom elements
     var metrics = {};
-    $("#request-stats dd").each(function(i) {
+    $("#request-stats dd").each(function() {
       var key = $(this).data("key");
       if (key) {
         metrics[key] = $(this);
@@ -113,7 +115,7 @@ var BigBoard = (function() {
           });
         }
       });
-    };
+    }
     update();
 
     return {
@@ -233,7 +235,7 @@ var Interfaces = (function() {
           renderInterfaces(selectedRouter, routers, namerData, template);
         }
       });
-    };
+    }
 
     return {
       start: function(interval) { setInterval(update, interval) }

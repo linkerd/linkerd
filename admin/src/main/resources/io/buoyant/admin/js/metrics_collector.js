@@ -1,3 +1,4 @@
+/* exported MetricsCollector */
 /**
   A module to consolidate our backend metric requests. Collects all metrics that
   we need and gets them in two requests - one to metrics.json and one to metrics

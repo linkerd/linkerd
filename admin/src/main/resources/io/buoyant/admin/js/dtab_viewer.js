@@ -8,13 +8,13 @@ function DtabViewer(initialDtab, dentryTemplate) {
 
   $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
 
-  $('#save-dtab-btn').click(function(e){
+  $('#save-dtab-btn').click(function(_e){
     var text = $("#dtab-input").val().replace(/\s+/g, '');
     var dentries = text.split(";");
     if (dentries[dentries.length - 1] === "") {
       dentries = dentries.slice(0, -1);
     }
-    this.dtab = dentries.map(function(e,i){
+    this.dtab = dentries.map(function(e,_i){
       var tuple = e.split("=>");
       return { prefix: tuple[0], dst: tuple[1] };
     });
@@ -58,7 +58,7 @@ DtabViewer.prototype.render = function() {
 }
 
 DtabViewer.prototype._renderDtabHtml = function() {
-  $("#dtab").html(this.dtab.map(function(e,i) {
+  $("#dtab").html(this.dtab.map(function(e,_i) {
     return this.template(e);
   }.bind(this)).join(""));
 }

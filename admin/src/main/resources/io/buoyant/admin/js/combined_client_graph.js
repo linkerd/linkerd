@@ -1,3 +1,5 @@
+/* globals Query, UpdateableChart */
+/* exported CombinedClientGraph */
 var CombinedClientGraph = (function() {
   function clientToMetric(client) {
     return {name: client, color: ""}; //TODO: move to clientName only after v2 migration
@@ -12,7 +14,7 @@ var CombinedClientGraph = (function() {
         strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
         lineWidth: 2
       };
-    };
+    }
 
     var chart = new UpdateableChart(
       {

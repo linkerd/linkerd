@@ -1,6 +1,8 @@
 /*! modified from twitter-server | (c) 2015 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
 "use strict";
 
+/* globals getSelectedRouter, Routers, UpdateableChart */
+
 $.when(
   $.get("/files/template/metrics.template"),
   $.get("/admin/metrics.json")

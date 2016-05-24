@@ -1,3 +1,5 @@
+/* globals RouterClients, RouterServers, RouterSummary */
+/* exported RouterController */
 var RouterController = (function () {
   // Contains all the router components, e.g. summaries, graphs, etc
 

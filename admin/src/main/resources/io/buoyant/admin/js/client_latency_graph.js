@@ -1,5 +1,7 @@
+/* globals UpdateableChart */
+/* exported ClientLatencyGraph */
 var ClientLatencyGraph = (function() {
-  const metricToColorShade = {
+  var metricToColorShade = {
     "max": "light",
     "p9990": "tint",
     "p99": "neutral",
@@ -60,7 +62,7 @@ var ClientLatencyGraph = (function() {
         strokeStyle: chartLegend[name.replace("request_latency_ms.", "")],
         lineWidth: 2
       };
-    };
+    }
 
     return {
       updateColors: function(colors) {

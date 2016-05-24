@@ -1,6 +1,8 @@
 machine:
   java:
     version: oraclejdk8
+  node:
+    version: 6.1.0
   services:
     - docker
 
@@ -8,11 +10,14 @@ dependencies:
   cache_directories:
     - ~/.gitshas
     - .sbt-launch.jar
-
+    - admin/src/main/resources/io/buoyant/admin/node_modules
   override:
     - ci/update.sh
+    - cd admin/src/main/resources/io/buoyant/admin && npm install
 
 test:
+  pre:
+    - cd admin/src/main/resources/io/buoyant/admin && npm run eslint
   override:
     - ci/test.sh:
         parallel: true

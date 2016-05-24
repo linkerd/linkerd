@@ -1,3 +1,5 @@
+/* globals Query, SuccessRate */
+/* exported RouterServers */
 var RouterServer = (function() {
   var template;
 

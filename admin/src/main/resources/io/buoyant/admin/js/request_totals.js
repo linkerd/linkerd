@@ -1,4 +1,6 @@
 "use strict";
+/* globals Query */
+/* exported RequestTotals */
 
 var RequestTotals = (function() {
   var metricDefinitions = [
@@ -17,7 +19,7 @@ var RequestTotals = (function() {
     {
       description: "Outgoing Connections",
       query: Query.clientQuery().allRouters().allClients().withMetric("connections").build()
-    },
+    }
   ];
 
   function desiredMetrics(possibleMetrics) {
