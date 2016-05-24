@@ -1,4 +1,4 @@
-## x.x.x
+## 0.6.0
 
 * Add zkLeader namer to allow discovery of services through ZooKeeper leader
   election.

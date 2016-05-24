@@ -279,14 +279,14 @@ The assembly script executes two commands serially:
 
 ```bash
 $ ./sbt namerd/dcos:assembly
-$ namerd/target/scala-2.11/namerd-0.5.0-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+$ namerd/target/scala-2.11/namerd-0.6.0-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
 ```
 
 ##### Run assembly script in docker #####
 
 ```bash
 $ ./sbt namerd/dcos:docker
-$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.5.0-SNAPSHOT-dcos namerd/examples/zk.yaml
+$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.6.0-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```
 
 ### Contributing ###
