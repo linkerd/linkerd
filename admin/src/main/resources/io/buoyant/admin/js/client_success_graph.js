@@ -1,6 +1,7 @@
 /* globals UpdateableChart */
 /* exported ClientSuccessRateGraph */
 var ClientSuccessRateGraph = (function() {
+  var columnGridPadding = 27; // from our css grid setup
   var neutralLineColor = "#878787"; // greys.neutral
 
   function createChartLegend(successLineColor) {
@@ -32,7 +33,10 @@ var ClientSuccessRateGraph = (function() {
       },
       $canvas[0],
       function() {
-        return $chartEl.width();
+        var containerWidth = $(".router-clients").first().width();
+        var metricsWidth = $(".metrics-container").first().width();
+
+        return containerWidth - metricsWidth - columnGridPadding; // get this to display nicely on wide screens
       },
       timeseriesParamsFn
     );
