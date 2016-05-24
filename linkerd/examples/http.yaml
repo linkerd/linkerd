@@ -9,15 +9,17 @@ namers:
 routers:
 - protocol: http
   baseDtab: |
-    /host => /#/io.l5d.fs;
-    /host/127.0.0.1:4140 => /host/default;
-    /host/localhost:4140 => /host/default;
-    /http/1.1/* => /host;
+    /srv => /#/io.l5d.fs;
+    /host/gen => /srv;
+    /host/word => /host/default;
+    /http/*/*/* => /host;
   servers:
-  - port: 4140
+  - port: 4142
     ip: 0.0.0.0
     engine:
       kind: netty4
+      http2: true
   client:
     engine:
       kind: netty4
+      http2: true

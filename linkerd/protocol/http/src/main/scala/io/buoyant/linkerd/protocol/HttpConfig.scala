@@ -45,15 +45,15 @@ object HttpInitializer extends HttpInitializer
 case class HttpClientConfig(
   engine: Option[HttpEngine]
 ) extends ClientConfig {
-  override def clientParams = super.clientParams
-    .maybeWith(engine.map(_.mk))
+  override def clientParams =
+    engine.foldLeft(super.clientParams) { (params, engine) => engine.mk(params) }
 }
 
 case class HttpServerConfig(
   engine: Option[HttpEngine]
 ) extends ServerConfig {
-  override def serverParams = super.serverParams
-    .maybeWith(engine.map(_.mk))
+  override def serverParams =
+    engine.foldLeft(super.serverParams) { (params, engine) => engine.mk(params) }
 }
 
 case class HttpConfig(
