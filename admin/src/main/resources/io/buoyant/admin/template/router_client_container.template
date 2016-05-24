@@ -1,4 +1,7 @@
 <div class="client-container clearfix">
+  <div class="router-header-large"style="border-bottom: 2px solid {{clientColor}};">
+    /{{client}}
+  </div>
   <div class="metrics-container col-md-6"></div>
   <div class="chart-container col-md-6"></div>
 </div>
