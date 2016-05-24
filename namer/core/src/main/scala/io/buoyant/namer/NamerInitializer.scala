@@ -2,7 +2,8 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
-import com.twitter.finagle.{Path, Namer, Stack}
+import com.twitter.finagle._
+import com.twitter.util.{Future, Activity}
 import io.buoyant.config.ConfigInitializer
 
 /**
@@ -49,6 +50,10 @@ trait NamerConfig {
 
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer
+
+  @JsonIgnore
+  def newEnumeratingNamer(params: Stack.Params): EnumeratingNamer =
+    EnumeratingNamer(newNamer(params))
 }
 
 object NamerConfig {

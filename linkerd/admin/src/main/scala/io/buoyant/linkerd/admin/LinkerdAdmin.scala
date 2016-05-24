@@ -23,7 +23,6 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     )
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
-
     "/" -> new DashboardHandler,
     "/legacy-dashboard" -> new SummaryHandler(linker),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
@@ -35,7 +34,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     "/delegator.json" -> new DelegateApiHandler(linker.namers),
     "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
-    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
+    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
+    "/bound-names.json" -> new BoundNamesHandler(linker.namers.map(_._2))
   )
 
   override def allRoutes = super.allRoutes ++ linkerdAdminRoutes

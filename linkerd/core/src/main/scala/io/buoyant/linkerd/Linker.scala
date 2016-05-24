@@ -8,14 +8,14 @@ import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
-import io.buoyant.namer.{DefaultInterpreterInitializer, InterpreterInitializer, NamerConfig, NamerInitializer}
+import io.buoyant.namer._
 
 /**
  * Represents the total configuration of a Linkerd process.
  */
 trait Linker {
   def routers: Seq[Router]
-  def namers: Seq[(Path, Namer)]
+  def namers: Seq[(Path, EnumeratingNamer)]
   def admin: AdminConfig
   def tracer: Tracer
   def configured[T: Stack.Param](t: T): Linker
@@ -98,7 +98,7 @@ object Linker {
         if (namer.disabled) throw new IllegalArgumentException(
           s"""The ${namer.prefix.show} namer is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
         )
-        namer.prefix -> namer.newNamer(namerParams)
+        namer.prefix -> namer.newEnumeratingNamer(namerParams)
       }
 
       // Router labels must not conflict
@@ -128,7 +128,7 @@ object Linker {
    */
   private case class Impl(
     routers: Seq[Router],
-    namers: Seq[(Path, Namer)],
+    namers: Seq[(Path, EnumeratingNamer)],
     tracer: Tracer,
     admin: AdminConfig
   ) extends Linker {
