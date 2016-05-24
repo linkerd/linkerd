@@ -5,6 +5,8 @@ machine:
     version: 6.1.0
   services:
     - docker
+  environment:
+    TWITTER_DEVELOP: 1
 
 dependencies:
   cache_directories:
