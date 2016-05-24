@@ -10,6 +10,7 @@ object LinkerdBuild extends Base {
 
   val Minimal = config("minimal")
   val Bundle = config("bundle") extend Minimal
+  val Dcos = config("dcos") extend Bundle
 
   val consul = projectDir("consul")
     .withTwitterLib(Deps.finagle("http"))
@@ -228,7 +229,7 @@ object LinkerdBuild extends Base {
     val Bundle = config("bundle") extend Minimal
     val BundleSettings = MinimalSettings ++ Seq(
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
-      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
+      dockerTag := version.value
     )
 
     /**
@@ -263,7 +264,6 @@ object LinkerdBuild extends Base {
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
       .dependsOn(core, admin, configCore, Storage.zk)
 
-    val Dcos = config("dcos") extend Bundle
     val DcosSettings = MinimalSettings ++ Seq(
       assemblyExecScript := dcosExecScript.split("\n").toSeq
     )
@@ -420,7 +420,7 @@ object LinkerdBuild extends Base {
 
     val BundleSettings = MinimalSettings ++ Seq(
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
-      imageName in docker := (imageName in docker).value.copy(tag = Some(version.value))
+      dockerTag := version.value
     )
 
     val all = projectDir("linkerd")
