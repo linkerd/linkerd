@@ -36,3 +36,22 @@
 .failure-metric {
   color: #D84A4A;
 }
+
+/*
+* Success rates
+*/
+.sr-good {
+  color: #4AD8AC;
+}
+
+.sr-poor {
+  color: #F28E1D;
+}
+
+.sr-bad {
+  color: #D84A4A;
+}
+
+.sr-undefined {
+  color: #FFFFFF;
+}

@@ -1,6 +1,8 @@
 /* globals Query, UpdateableChart */
 /* exported CombinedClientGraph */
 var CombinedClientGraph = (function() {
+  var defaultWidth = 1181;
+
   function clientToMetric(client) {
     return {name: client, color: ""}; //TODO: move to clientName only after v2 migration
   }
@@ -34,7 +36,8 @@ var CombinedClientGraph = (function() {
       },
       $root[0],
       function() {
-        return 1161;
+        var containerWidth = $(".router-clients").first().width(); // get this to display nicely on wide screens
+        return containerWidth || defaultWidth;
       },
       timeseriesParams
     );

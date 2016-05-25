@@ -169,12 +169,20 @@ nav ul.navbar-nav {
   margin-bottom: 10px;
 }
 
+.client-container .router-header-large {
+  padding: 8px 0;
+}
+
 .chart-container {
   padding-top: 40px;
 }
 
-.router-latencies > div{
-  font-size:12px;
+.router-latencies-container {
+  padding-top: 18px;
+}
+
+.router-latencies > div {
+  font-size: 12px;
   line-height: 32px;
   font-weight: 300;
 }
@@ -196,4 +204,27 @@ nav ul.navbar-nav {
 .metric-container {
   padding-left: 15px;
   margin: 20px 0 30px 0;
+}
+
+/*
+* For wider screens
+*/
+
+@media (min-width: 1400px) {
+  .navbar-container {
+    width: 100vw;
+  }
+
+  .dashboard-container {
+    margin: 0 1.5vw 0;
+    min-width: 96vw;
+  }
+
+  .row.proc-info, .router, .clients .router-graph {
+    min-width: 96vw;
+  }
+
+  .router > div {
+    width: 100%;
+  }
 }

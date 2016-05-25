@@ -26,7 +26,8 @@ var RouterClients = (function() {
       $clientEl.show();
       var colorsForClient = clientToColor[client.label];
       var $container = $(clientContainerTemplate({
-        clientColor: colorsForClient.color
+        clientColor: colorsForClient.color,
+        client: client.label
       })).appendTo($clientEl);
       var $metrics = $container.find(".metrics-container");
       var $chart = $container.find(".chart-container");
