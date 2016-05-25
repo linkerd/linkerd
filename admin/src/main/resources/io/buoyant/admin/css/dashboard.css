@@ -205,3 +205,26 @@ nav ul.navbar-nav {
   padding-left: 15px;
   margin: 20px 0 30px 0;
 }
+
+/*
+* For wider screens
+*/
+
+@media (min-width: 1400px) {
+  .navbar-container {
+    width: 100vw;
+  }
+
+  .dashboard-container {
+    margin: 0 1.5vw 0;
+    min-width: 96vw;
+  }
+
+  .row.proc-info, .router, .clients .router-graph {
+    min-width: 96vw;
+  }
+
+  .router > div {
+    width: 100%;
+  }
+}
