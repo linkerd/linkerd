@@ -245,7 +245,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           params[DstBindingFactory.BindingTimeout]
         )
 
-        Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
+        Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label, stats))
       }
     }
 

@@ -2,8 +2,10 @@ package io.buoyant.router
 
 import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util.{Future, Time}
+import java.util.concurrent.atomic.AtomicInteger
 
 object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
@@ -66,9 +68,13 @@ object RoutingFactory {
 class RoutingFactory[Req, Rsp](
   getDst: RoutingFactory.Identifier[Req],
   clientFactory: DstBindingFactory[Req, Rsp],
-  label: String
+  label: String,
+  statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends ServiceFactory[Req, Rsp] {
   import RoutingFactory._
+
+  private[this] val pending = new AtomicInteger(0)
+  private[this] val pendingGauge = statsReceiver.addGauge("pending") { pending.get.toFloat }
 
   override def close(deadline: Time): Future[Unit] = clientFactory.close(deadline)
   override def status: Status = clientFactory.status
@@ -82,36 +88,45 @@ class RoutingFactory[Req, Rsp](
    * ServiceFactory). This has a notable impact on performance,
    * especially in the face of server connection churn.
    */
-  private val service = Future.value(new RoutingService(ClientConnection.nil))
+  private[this] val service = Future.value(new RoutingService)
 
-  // TODO move trace recording into a separate stack module?
-  private class RoutingService(conn: ClientConnection) extends Service[Req, Rsp] {
-    override def close(d: Time) = conn.close(d)
-
+  private class RoutingService extends Service[Req, Rsp] {
     def apply(req: Req): Future[Rsp] = {
       if (Trace.isActivelyTracing) {
         // we treat the router label as the rpc name for this span
         Trace.recordRpc(label)
         Trace.recordBinary("router.label", label)
       }
-
-      for {
-        dst <- getDst(req).rescue {
-          case e: Throwable =>
-            Annotations.Failure.Identification.record(e)
-            Future.exception(UnknownDst(req, e))
-        }
-
-        // Client acquisition failures are recorded within the
-        // clientFactory's path stack.
-        service <- clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
-
-        // Service failures are recorded within the clientFactory's
-        // path stack, too.
-        rsp <- service(req).ensure {
-          val _ = service.close()
-        }
-      } yield rsp
+      val recorder = mkIdErrRecorder(req)
+      val requester = mkRequester(req)
+      getDst(req).rescue(recorder).flatMap(getClient).flatMap(requester)
     }
+
+    private[this] def mkIdErrRecorder(req: Req): PartialFunction[Throwable, Future[Dst]] = {
+      case e: Throwable =>
+        Annotations.Failure.Identification.record(e)
+        Future.exception(UnknownDst(req, e))
+    }
+
+    private[this] val getClient: Dst => Future[Service[Req, Rsp]] =
+      (dst: Dst) => {
+        clientFactory(dst, ClientConnection.nil)
+          .onSuccess(markPending)
+          .onFailure(Annotations.Failure.ClientAcquisition.record)
+      }
+
+    private[this] val markPending: Any => Unit =
+      _ => {
+        val _ = pending.incrementAndGet()
+      }
+
+    private[this] def mkRequester(req: Req): Service[Req, Rsp] => Future[Rsp] =
+      (service: Service[Req, Rsp]) => {
+        service(req).ensure {
+          val _p = pending.decrementAndGet()
+          val _c = service.close()
+        }
+      }
+
   }
 }
