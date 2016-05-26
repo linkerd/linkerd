@@ -15,7 +15,7 @@ import io.buoyant.namer._
  */
 trait Linker {
   def routers: Seq[Router]
-  def namers: Seq[(Path, EnumeratingNamer)]
+  def namers: Seq[(Path, Namer)]
   def admin: AdminConfig
   def tracer: Tracer
   def configured[T: Stack.Param](t: T): Linker
@@ -98,7 +98,7 @@ object Linker {
         if (namer.disabled) throw new IllegalArgumentException(
           s"""The ${namer.prefix.show} namer is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
         )
-        namer.prefix -> namer.newEnumeratingNamer(namerParams)
+        namer.prefix -> namer.newNamer(namerParams)
       }
 
       // Router labels must not conflict
@@ -128,7 +128,7 @@ object Linker {
    */
   private case class Impl(
     routers: Seq[Router],
-    namers: Seq[(Path, EnumeratingNamer)],
+    namers: Seq[(Path, Namer)],
     tracer: Tracer,
     admin: AdminConfig
   ) extends Linker {

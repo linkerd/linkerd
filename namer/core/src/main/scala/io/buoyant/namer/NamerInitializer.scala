@@ -50,10 +50,6 @@ trait NamerConfig {
 
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer
-
-  @JsonIgnore
-  def newEnumeratingNamer(params: Stack.Params): EnumeratingNamer =
-    EnumeratingNamer(newNamer(params))
 }
 
 object NamerConfig {

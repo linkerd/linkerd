@@ -10,6 +10,7 @@ import io.buoyant.admin.{StaticFilter, ConfigHandler, Admin}
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
 
 class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
@@ -21,6 +22,10 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
       router.label -> dtab()
     }.toMap
     )
+
+  private[this] val enumeratingNamers = linker.namers.collect {
+    case (_, namer: EnumeratingNamer) => namer
+  }
 
   private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
     "/" -> new DashboardHandler,
@@ -35,7 +40,7 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
-    "/bound-names.json" -> new BoundNamesHandler(linker.namers.map(_._2))
+    "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
   )
 
   override def allRoutes = super.allRoutes ++ linkerdAdminRoutes

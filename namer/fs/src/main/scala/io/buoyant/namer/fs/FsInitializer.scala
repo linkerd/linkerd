@@ -22,8 +22,4 @@ case class FsConfig(rootDir: Directory) extends NamerConfig {
    */
   @JsonIgnore
   def newNamer(params: Stack.Params) = new WatchingNamer(rootDir.path, prefix)
-
-  @JsonIgnore
-  override def newEnumeratingNamer(params: Params) =
-    new WatchingNamer(rootDir.path, prefix)
 }
