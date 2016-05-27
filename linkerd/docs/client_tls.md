@@ -1,5 +1,7 @@
 # Client TLS
 
+*(for the [tls](config.md#client_tls) key)*
+
 A client TLS object describes how linkerd should use TLS when sending requests
 to destination services.  A client TLS config block must contain a `kind`
 parameter which indicates which client TLS plugin to use as well as any

@@ -184,8 +184,9 @@ maintain to each destination host.  It must be an object containing keys:
   [response classifier](response_classifier.md) that determines which responses
   should be considered failures and, of those, which should be considered
   [retryable](retries.md).  (default: _io.l5d.nonRetryable5XX_)
-* *tls* -- Optional.  The router will make requests using TLS if this parameter
-  is provided.  It must be a [client TLS](client_tls.md) object.
+* <a name="client_tls">*tls*</a> -- Optional.  The router will make requests
+  using TLS if this parameter is provided.  It must be a
+  [client TLS](client_tls.md) object.
 * *loadBalancer* -- Optional.  A [load balancer](load_balancer.md) object.
   (default: p2c)
 * *retries* -- Optional. A [retry policy](retries.md) for all clients created by

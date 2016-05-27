@@ -92,44 +92,4 @@ trait ProtocolInitializer extends ConfigInitializer {
   def defaultServerPort: Int
 }
 
-object ProtocolInitializer {
 
-  /**
-   * A [[ProtocolInitializer]] whose Server and Router have identical
-   * request and response types.
-   */
-  trait Simple extends ProtocolInitializer {
-    protected type Req
-    protected type Rsp
-    protected final type RouterReq = Req
-    protected final type RouterRsp = Rsp
-    protected final type ServerReq = Req
-    protected final type ServerRsp = Rsp
-    protected val adapter = Filter.identity[Req, Rsp]
-  }
-
-  /** Protocol-aware implementation of [[Router.Initialized]]. */
-  private case class InitializedRouter[Req, Rsp](
-    protocol: ProtocolInitializer,
-    params: Stack.Params,
-    factory: ServiceFactory[Req, Rsp],
-    servers: Seq[Server.Initializer]
-  ) extends Router.Initialized {
-    def name: String = params[Label].label
-    def close(t: Time) = factory.close(t)
-  }
-
-  /** Protocol-aware implementation of [[Server.Initializer]]. */
-  private case class ServerInitializer[Req, Rsp](
-    protocol: ProtocolInitializer,
-    addr: InetSocketAddress,
-    server: StackServer[Req, Rsp],
-    factory: ServiceFactory[Req, Rsp]
-  ) extends Server.Initializer {
-    def params = server.params
-    def router: String = server.params[Server.RouterLabel].label
-    def ip = addr.getAddress
-    def port = addr.getPort
-    def serve() = server.serve(addr, factory)
-  }
-}
