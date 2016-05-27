@@ -1,5 +1,7 @@
 # Retries
 
+*(for the [retries](config.md#retries) key)*
+
 linkerd can automatically retry requests on certain failures (for example,
 connection errors).  A retries config block is an object with the following
 parameters:

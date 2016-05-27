@@ -1,5 +1,7 @@
 # HTTP Response Classifiers
 
+*(for the [responseClassifier](config.md#response_classifier) key)*
+
 Response classifiers determine which HTTP responses are considered to
 be failures (for the purposes of success rate calculation) and which
 of these responses may be [retried](retries.md). A response classifier

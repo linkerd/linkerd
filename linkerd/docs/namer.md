@@ -1,5 +1,7 @@
 # Namers
 
+*(for the [namers](config.md#namers) key)*
+
 A namer binds a concrete name to a physical address.
 http://twitter.github.io/finagle/guide/Names.html
 

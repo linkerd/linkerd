@@ -1,5 +1,7 @@
 # Mux Protocol (experimental)
 
+*(for the [routers](config.md#routers) key)*
+
 linkerd experimentally supports the [mux
 protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
 

@@ -1,5 +1,7 @@
 # Load Balancer
 
+*(for the [loadBalancer](config.md#load_balancer) key)*
+
 Specifies a load balancer to use.  It must be an object containing keys:
 
   * *kind* -- One of the supported load balancers.

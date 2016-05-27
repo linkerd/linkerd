@@ -1,5 +1,7 @@
 # Interpreter
 
+*(for the [interpreter](config.md#interpreter) key)*
+
 An interpreter determines how names are resolved.  An interpreter config block
 must contain a `kind` parameter which indicates which interpreter plugin to use.
 
