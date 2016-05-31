@@ -12,6 +12,18 @@ Specifies a load balancer to use.  It must be an object containing keys:
 
 If unspecified, p2c is used.
 
+### Example
+
+```yaml
+routers:
+- ...
+  client:
+    loadBalancer:
+      kind: ewma
+      maxEffort: 10
+      decayTimeMs: 15000
+```
+
 Current load balancers include:
 
 [p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded

@@ -14,6 +14,15 @@ A namer config block has the following parameters:
 * *experimental* -- Set this to `true` to enable the namer if it is experimental.
 * *namer-specific parameters*.
 
+### Example
+
+```yaml
+namers:
+- kind: io.l5d.fs
+  prefix: /disco
+  rootDir: disco
+```
+
 <a name="fs"></a>
 ## File-based service discovery
 

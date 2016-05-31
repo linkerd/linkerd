@@ -8,6 +8,16 @@ of these responses may be [retried](retries.md). A response classifier
 config block must contain a `kind` parameter which indicates which classifier
 plugin to use.  By default, the _io.l5d.nonRetryable5XX_ classifier is used.
 
+### Example
+
+```yaml
+routers:
+- ...
+  client:
+    responseClassifier:
+      kind: io.l5d.retryableRead5XX
+```
+
 ## Non-Retryable 5XX
 
 `io.l5d.nonRetryable5XX`
