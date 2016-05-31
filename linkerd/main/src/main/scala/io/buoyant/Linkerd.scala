@@ -1,11 +1,13 @@
 package io.buoyant
 
 import com.twitter.util.Await
-import io.buoyant.admin.{App, AdminInitializer}
+import io.buoyant.admin.{AdminInitializer, App}
 import io.buoyant.linkerd.Linker.LinkerConfig
+import io.buoyant.linkerd.ProtocolInitializer.AdminServer
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
+import java.net.InetSocketAddress
 import scala.io.Source
 
 /**
@@ -35,7 +37,10 @@ object Linkerd extends App {
         // - namers
         // - tracers
         val routers = linker.routers.flatMap { router =>
-          val running = router.initialize()
+          val adminAddress = adminInitializer.adminHttpServer.boundAddress.asInstanceOf[InetSocketAddress]
+          val running = router
+            .configured(AdminServer(Some(adminAddress)))
+            .initialize()
           closeOnExit(running)
           running.servers.map { server =>
             log.info("serving %s on %s:%d", server.router, server.ip, server.port)

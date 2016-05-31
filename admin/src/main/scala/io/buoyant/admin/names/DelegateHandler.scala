@@ -12,8 +12,15 @@ class DelegateHandler(
   namers: Seq[(Path, Namer)]
 ) extends Service[Request, Response] {
 
-  def apply(req: Request): Future[Response] =
-    dtabs().map(render).flatMap(view.mkResponse(_))
+  def apply(req: Request): Future[Response] = {
+    val dtabLocal = req.params.get("dtab.local") match {
+      case Some(dtabStr) => Dtab.read(dtabStr)
+      case None => Dtab.empty
+    }
+    dtabs().map { dtabs =>
+      render(dtabs.mapValues(_ ++ dtabLocal))
+    }.flatMap(view.mkResponse(_))
+  }
 
   def render(dtab: Map[String, Dtab]) =
     view.html(

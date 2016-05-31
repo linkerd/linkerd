@@ -3,10 +3,10 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
-import com.twitter.util.Time
+import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
-import java.net.InetSocketAddress
+import java.net.{URLEncoder, InetSocketAddress}
 
 /**
  * Provides a protocol-agnostic interface for protocol-specific
@@ -57,7 +57,7 @@ trait ProtocolInitializer extends ConfigInitializer {
       }
 
       val factory = router.factory()
-      val adapted = adapter.andThen(factory)
+      val adapted = adapter.andThen(exceptionMapper).andThen(factory)
       val servable = servers.map { server =>
         val stackServer = defaultServer.withParams(server.params)
         ServerInitializer(protocol, server.addr, stackServer, adapted)
@@ -72,6 +72,44 @@ trait ProtocolInitializer extends ConfigInitializer {
       val clientStack = router.clientStack.replace(tlsPrepRole, tlsPrep)
       copy(router = router.withClientStack(clientStack))
     }
+
+    protected def exceptionMapper: Filter[RouterReq, RouterRsp, RouterReq, RouterRsp] =
+      Filter.mk { (req, svc) =>
+        svc(req).rescue {
+          case e: NoBrokersAvailableException =>
+            Future.exception(new DelegationException(
+              params[AdminServer].address,
+              params[Label].label,
+              e.name,
+              e.localDtab
+            ))
+        }
+      }
+  }
+
+  class DelegationException(
+    adminServer: Option[InetSocketAddress],
+    routerName: String,
+    path: String,
+    dtabLocal: Dtab
+  ) extends RequestException {
+    def encode(s: String) = URLEncoder.encode(s, "UTF-8")
+
+    val dtabLocalStr = if (dtabLocal.nonEmpty)
+      s"dtab.local=${encode(dtabLocal.show)}&"
+    else
+      ""
+
+    def delegator(address: InetSocketAddress) =
+      s"${address.getHostString}:${address.getPort}/delegator?" +
+        dtabLocalStr + s"router=${encode(routerName)}" + s"#${encode(path)}"
+
+    val details = adminServer match {
+      case Some(address) => s"See ${delegator(address)} for details"
+      case None => ""
+    }
+
+    override val exceptionMessage = s"Error resolving $path.  " + details
   }
 
   def router: Router = ProtocolRouter(defaultRouter)
@@ -131,5 +169,10 @@ object ProtocolInitializer {
     def ip = addr.getAddress
     def port = addr.getPort
     def serve() = server.serve(addr, factory)
+  }
+
+  case class AdminServer(address: Option[InetSocketAddress])
+  implicit object AdminServer extends Stack.Param[AdminServer] {
+    override def default: AdminServer = AdminServer(None)
   }
 }
