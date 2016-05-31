@@ -256,8 +256,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 object StackRouter {
 
   /**
-   * A single budget needs to be shared across a [[RequeueFilter]] and
-   * a [[RetryFilter]] for debiting purposes, but we only want one of
+   * A single budget needs to be shared across a `RequeueFilter` and
+   * a `RetryFilter` for debiting purposes, but we only want one of
    * the calls to `RetryBudget.request()` to count. This allows for
    * swallowing the call to `request` in the second filter.
    *
