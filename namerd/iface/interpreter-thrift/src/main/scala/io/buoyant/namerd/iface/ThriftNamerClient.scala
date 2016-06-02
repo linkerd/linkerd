@@ -46,6 +46,8 @@ class ThriftNamerClient(
           Trace.recordBinary("namerd.client/bind.cached", false)
           val act = watchName(dtab, path)
           bindCache += (key -> act)
+          // hold the cached activity open forever
+          val _ = act.run.changes.respond(_ => ())
           act
       }
     }
@@ -117,6 +119,8 @@ class ThriftNamerClient(
             case None =>
               val addr = watchAddr(tid)
               addrCache += (id -> addr)
+              // hold the cached var open forever
+              val _ = addr.changes.respond(_ => ())
               addr
           }
         }
