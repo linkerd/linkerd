@@ -1,5 +1,7 @@
 # Interfaces
 
+*(for the [interfaces](config.md#interfaces) key)*
+
 An interface is a published network interface to namerd.  An interface config
 block supports the following params:
 

@@ -1,5 +1,7 @@
 # Tracers
 
+*(for the [tracers](config.md#tracers) key)*
+
 Requests that are routed by linkerd are also traceable using Finagle's built-in
 tracing instrumentation.  A tracer config object has the following parameters:
 
