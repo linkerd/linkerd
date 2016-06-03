@@ -1,10 +1,10 @@
 package io.buoyant.config
 
 import com.fasterxml.jackson.databind.jsontype.NamedType
-import com.twitter.finagle.NoStacktrace
 import java.net.InetSocketAddress
+import scala.util.control.NoStackTrace
 
-trait ConfigError extends NoStacktrace
+trait ConfigError extends NoStackTrace
 
 object NoRoutersSpecified extends ConfigError {
   def message = "At least one router must be specified in the configuration."
