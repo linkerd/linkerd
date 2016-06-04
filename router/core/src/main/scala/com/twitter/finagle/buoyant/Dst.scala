@@ -44,7 +44,7 @@ object Dst {
     def apply(name: Name.Bound): Bound =
       new Bound(name)
 
-    def apply(addr: Var[Addr], id: Any, path: FPath = FPath.empty): Bound =
+    def apply(addr: Var[Addr], id: FPath, path: FPath = FPath.empty): Bound =
       new Bound(Name.Bound(addr, id, path))
 
     def unapply(bound: Name.Bound): Option[(Var[Addr], String, FPath)] =

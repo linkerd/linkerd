@@ -6,11 +6,8 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
 
 /**
- * Typically, finagle clients initialize trace ids to capture a
- * request-response flow.  This doesn't really fit with what we want
- * to capture in the router.  Specifically, we want to capture the
- * 'request' and 'response' portions of a trace individually--ingress
- * to egress in each direction.
+ * Uses [[Headers.Ctx.Trace]] and [[Headers.Sample]] headers
+ * propagate/control tracing.
  */
 object HttpTraceInitializer {
   val role = TraceInitializerFilter.role
@@ -33,8 +30,8 @@ object HttpTraceInitializer {
        */
       def apply(req: Request, service: Service[Request, Response]) = {
         val headers = req.headerMap
-        val ctx = Headers.Ctx.get(headers)
-        Headers.Ctx.clear(headers)
+        val ctx = Headers.Ctx.Trace.get(headers)
+        Headers.Ctx.Trace.clear(headers)
         val sampler = Headers.Sample.get(headers).map(Sampler(_))
         Headers.Sample.clear(headers)
 
@@ -55,11 +52,11 @@ object HttpTraceInitializer {
        */
       def sample[T](sampler: Option[Sampler])(f: => T) =
         sampler match {
+          case None => f
           case Some(sampler) =>
             val id = Trace.id
             val sampled = id.copy(_sampled = Some(sampler(id.traceId.toLong)))
             Trace.letId(sampled)(f)
-          case _ => f
         }
     }
 
@@ -79,7 +76,7 @@ object HttpTraceInitializer {
     class Filter(tracer: Tracer) extends SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) =
         Trace.letTracerAndNextId(tracer) {
-          Headers.Ctx.set(req.headerMap, Trace.id)
+          Headers.Ctx.Trace.set(req.headerMap, Trace.id)
           Headers.RequestId.set(req.headerMap, Trace.id.traceId)
           service(req)
         }
