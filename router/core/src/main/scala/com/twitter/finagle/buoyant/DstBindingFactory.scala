@@ -1,6 +1,6 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.finagle.{NoStacktrace => _, _}
+import com.twitter.finagle._
 import com.twitter.finagle.factory.{NameTreeFactory, ServiceFactoryCache}
 import com.twitter.finagle.naming._
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
