@@ -8,8 +8,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.admin.names.BoundNamesHandler
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
@@ -141,7 +140,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  private[this] val delegateApiHander = new DelegateApiHandler(namers.toSeq)
+  private[this] val delegateApiHander = new DelegateApiHandler(delegate)
 
   def apply(req: Request): Future[Response] = Future(req match {
     case DtabUri(_, None) =>
@@ -396,7 +395,14 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] def handleGetDelegate(ns: String, path: Path): Future[Response] = {
     getDtab(ns).flatMap {
       case Some(dtab) =>
-        DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegate(ns))
+        delegate(ns) match {
+          case delegator: DelegatingNameInterpreter =>
+            DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegator)
+          case _ =>
+            val rsp = Response(Status.NotImplemented)
+            rsp.contentString = s"Name Interpreter for $ns cannot show delegations"
+            Future.value(rsp)
+        }
       case None => Future.value(Response(Status.NotFound))
     }
   }

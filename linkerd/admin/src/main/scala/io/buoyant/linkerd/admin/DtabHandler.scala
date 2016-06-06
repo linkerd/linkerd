@@ -3,7 +3,7 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.Future
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.admin.names.DelegateApiHandler
 
 private[admin] class DtabHandler(
   dtabs: () => Future[Map[String, Dtab]]

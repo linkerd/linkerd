@@ -31,7 +31,7 @@ var Delegator = (function() {
       var path = $('#path-input').val();
       window.location.hash = encodeURIComponent(path);
       var request = $.get(
-        "/delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr() }),
+        "/delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr(), namespace: getSelectedRouter() }),
         renderAll.bind(this));
       request.fail(function( jqXHR ) {
         $(".error-modal").html(templates.errorModal(jqXHR.statusText));

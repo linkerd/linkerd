@@ -4,7 +4,6 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Dtab, Namer, Path, Service}
 import com.twitter.util.Future
 import io.buoyant.admin.HtmlView
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
 
 class DelegateHandler(
   view: HtmlView,

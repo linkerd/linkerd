@@ -1,4 +1,4 @@
-package io.buoyant.linkerd
+package io.buoyant
 package admin.names
 
 import com.fasterxml.jackson.annotation._
@@ -13,6 +13,12 @@ import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => 
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.namer.DelegateTree
+import io.buoyant.namer.DelegatingNameInterpreter
+import io.buoyant.namer.DelegatingNameInterpreter
+import io.buoyant.namer.DelegatingNameInterpreter
 
 object DelegateApiHandler {
 
@@ -21,10 +27,19 @@ object DelegateApiHandler {
   }
 
   private object DtabStr {
-    def unapply(d: String) = Try(Dtab.read(d)).toOption
+    def unapply(d: String) = if (d == null)
+      Some(Dtab.empty)
+    else
+      Try(Dtab.read(d)).toOption
   }
 
   private def err(status: Status) = Future.value(Response(status))
+
+  private def err(status: Status, content: String) = {
+    val resp = Response(status)
+    resp.contentString = content
+    Future.value(resp)
+  }
 
   case class Address(ip: String, port: Int)
   object Address {
@@ -169,10 +184,10 @@ object DelegateApiHandler {
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
   }
 
-  def getDelegateRsp(dtab: String, path: String, interpreter: NameInterpreter): Future[Response] =
+  def getDelegateRsp(dtab: String, path: String, interpreter: DelegatingNameInterpreter): Future[Response] =
     (dtab, path) match {
       case (DtabStr(d), PathStr(p)) =>
-        Delegator(d, p, interpreter).values.toFuture().flatMap(Future.const).map { tree =>
+        interpreter.delegate(d, p).values.toFuture().flatMap(Future.const).map { tree =>
           val rsp = Response()
           rsp.content = Codec.writeBuf(tree)
           rsp.contentType = MediaType.Json
@@ -183,15 +198,24 @@ object DelegateApiHandler {
 }
 
 class DelegateApiHandler(
-  namers: Seq[(Path, Namer)]
+  interpreters: String => NameInterpreter
 ) extends Service[Request, Response] {
 
   import DelegateApiHandler._
 
   def apply(req: Request): Future[Response] = req.method match {
     case Method.Get =>
-      // XXX this should change to be per-router
-      getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(namers))
+      req.params.get("namespace") match {
+        case Some(ns) =>
+          interpreters(ns) match {
+            case delegator: DelegatingNameInterpreter =>
+              getDelegateRsp(req.getParam("dtab"), req.getParam("path"), delegator)
+            case _ =>
+              err(Status.NotImplemented, s"Name Interpreter for $ns cannot show delegations")
+          }
+        case None =>
+          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(Nil))
+      }
     case _ => err(Status.MethodNotAllowed)
   }
 }

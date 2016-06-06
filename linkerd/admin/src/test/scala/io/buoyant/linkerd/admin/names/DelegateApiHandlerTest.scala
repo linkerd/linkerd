@@ -2,8 +2,9 @@ package io.buoyant.linkerd.admin.names
 
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Status => _, _}
+import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.linkerd._
-import io.buoyant.namer._
+import io.buoyant.namer.{ErrorNamerInitializer, TestNamerInitializer}
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import org.scalatest.FunSuite
@@ -33,9 +34,9 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   """)
 
   test("/delegate response") {
-    val web = new DelegateApiHandler(linker.namers)
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
     val req = Request()
-    req.uri = s"/delegate?path=/boo/humbug&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    req.uri = s"/delegate?namespace=plain&path=/boo/humbug&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
@@ -58,15 +59,15 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
   }
 
   test("invalid path results in 400") {
-    val web = new DelegateApiHandler(linker.namers)
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
     val req = Request()
-    req.uri = s"/delegate?path=invalid-param&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    req.uri = s"/delegate?path=invalid-param&namespace=label"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
   }
 
   test("invalid dtab results in 400") {
-    val web = new DelegateApiHandler(linker.namers)
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
     val req = Request()
     req.uri = s"/delegate?path=/boo/humbug&dtab=invalid-param"
     val rsp = await(web(req))

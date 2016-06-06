@@ -2,14 +2,15 @@ package io.buoyant.linkerd.admin
 
 import com.twitter.app.App
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.util.Future
-import io.buoyant.admin.names.{BoundNamesHandler, DelegateHandler}
-import io.buoyant.admin.{StaticFilter, ConfigHandler, Admin}
+import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
+import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter}
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
 
@@ -36,12 +37,17 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/delegator" -> new DelegateHandler(AdminHandler, () => dtabs, linker.namers),
-    "/delegator.json" -> new DelegateApiHandler(linker.namers),
+    "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
     "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
     "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
   )
+
+  private[this] def interpreterForRouter(label: String): NameInterpreter =
+    linker.routers.find(_.label == label).map { router =>
+      router.params[DstBindingFactory.Namer].interpreter
+    }.getOrElse(NameInterpreter)
 
   override def allRoutes = super.allRoutes ++ linkerdAdminRoutes
 }

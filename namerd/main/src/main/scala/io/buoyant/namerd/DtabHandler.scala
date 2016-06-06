@@ -3,7 +3,7 @@ package io.buoyant.namerd
 import com.twitter.finagle.http.{MediaType, Status, Response, Request}
 import com.twitter.finagle.{Service, Dtab}
 import com.twitter.util.Future
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.admin.names.DelegateApiHandler
 
 class DtabHandler(
   store: DtabStore
