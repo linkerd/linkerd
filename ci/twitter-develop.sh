@@ -71,7 +71,7 @@ git clone --depth=1 --branch=develop https://github.com/twitter/scrooge.git
 git clone --depth=1 --branch=develop https://github.com/twitter/twitter-server.git
 
 cd $TMP_DIR/util
-build util publishLocal
+build util coverageOff publishLocal
 
 cd $TMP_DIR/ostrich
 build ostrich publishLocal
