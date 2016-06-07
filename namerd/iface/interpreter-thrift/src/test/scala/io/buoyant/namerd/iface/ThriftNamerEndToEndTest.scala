@@ -47,7 +47,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
         else Activity.exception(new Exception)
     }
     val namers = Map(Path.read("/io.l5d.w00t") -> namer)
-    val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, Capacity.default, NullStatsReceiver)
     val client = new ThriftNamerClient(service, ns, clientId)
 
     val act = client.bind(reqDtab, reqPath)

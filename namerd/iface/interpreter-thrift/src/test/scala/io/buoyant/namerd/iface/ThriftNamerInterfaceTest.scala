@@ -25,7 +25,7 @@ class ThriftNamerInterfaceTest extends FunSuite {
     }
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
     val initName = thrift.NameRef(TStamp.empty, TPath("ysl", "thugger"), ns)
@@ -72,7 +72,7 @@ class ThriftNamerInterfaceTest extends FunSuite {
     val namers = Map(pfx -> new Namer { def lookup(path: Path) = Activity(states) })
     val stampCounter = new AtomicLong(1)
     def stamper() = Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, Capacity.default, NullStatsReceiver)
   }
 
   test("addr") {

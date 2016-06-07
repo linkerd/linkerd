@@ -143,6 +143,12 @@ trait RouterConfig {
   def bindingTimeout = _bindingTimeoutMs.map(_.millis).getOrElse(10.seconds)
 
   /*
+   * binding cache size
+   */
+
+  var bindingCache: Option[BindingCacheConfig] = None
+
+  /*
    * responseClassifier categorizes responses to determine whether
    * they are failures and if they are retryable.
    */
@@ -174,6 +180,7 @@ trait RouterConfig {
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
+    .maybeWith(bindingCache.map(_.capacity))
     .maybeWith(client.map(_.clientParams)) +
     param.ResponseClassifier(responseClassifier) +
     param.Label(label) +
@@ -286,5 +293,21 @@ case class HostConnectionPool(
     bufferSize = 0,
     idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime),
     maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
+  )
+}
+
+case class BindingCacheConfig(
+  paths: Option[Int],
+  trees: Option[Int],
+  bounds: Option[Int],
+  clients: Option[Int]
+) {
+  private[this] val default = DstBindingFactory.Capacity.default
+
+  def capacity = DstBindingFactory.Capacity(
+    paths = paths.getOrElse(default.paths),
+    trees = trees.getOrElse(default.trees),
+    bounds = bounds.getOrElse(default.bounds),
+    clients = clients.getOrElse(default.clients)
   )
 }

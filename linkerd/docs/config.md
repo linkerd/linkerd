@@ -151,6 +151,12 @@ Each router must be configured as an object with the following params:
 * *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
 * *bindingTimeoutMs* -- Optional.  The maximum amount of time in milliseconds to
   spend binding a path.  (default: 10 seconds)
+* *bindingCache* -- Optional.  Configure the size of binding cache.  It must be
+  an object containing keys:
+  * *paths* -- Optional.  Size of the path cache.  (default: 100)
+  * *trees* -- Optional.  Size of the tree cache.  (default: 100)
+  * *bounds* -- Optional.  Size of the bound cache.  (default: 100)
+  * *clients* -- Optional.  Size of the client cache.  (default: 10)
 
 <a name="basic-server-params"></a>
 ### Basic server parameters
