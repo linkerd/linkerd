@@ -1,5 +1,7 @@
 # Load Balancer
 
+*(for the [loadBalancer](config.md#load_balancer) key)*
+
 Specifies a load balancer to use.  It must be an object containing keys:
 
   * *kind* -- One of the supported load balancers.
@@ -9,6 +11,18 @@ Specifies a load balancer to use.  It must be an object containing keys:
   * Any options specific to the load balancer.
 
 If unspecified, p2c is used.
+
+### Example
+
+```yaml
+routers:
+- ...
+  client:
+    loadBalancer:
+      kind: ewma
+      maxEffort: 10
+      decayTimeMs: 15000
+```
 
 Current load balancers include:
 
