@@ -47,8 +47,8 @@ class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer {
   def lookup(path: Path): Activity[NameTree[Name]] =
     root.children.flatMap(lookup(prefix, path, _))
 
-  override def getAllNames: Future[Set[Path]] =
-    root.children.values.toFuture.flatMap(Future.const).map { children =>
+  override def getAllNames: Activity[Set[Path]] =
+    root.children.map { children =>
       children.keySet.map { child =>
         prefix ++ Path.Utf8(child)
       }
