@@ -23,6 +23,16 @@ A read-only interface providing `NameInterpreter` functionality over the ThriftM
 before retrying after an error.  (default: 600)
 * *retryJitterSecs* -- Optional.  Maximum number of seconds to jitter retry
 time by.  (default: 60)
+* *cache* -- Optional.  Configure the size of the binding and address caches.
+It must be an object containing keys:
+  * *bindingCacheActive* -- Optional.  The size of the binding active cache.
+  (default: 1000)
+  * *bindingCacheInactive* -- Optional.  The size of the binding inactive cache.
+  (default: 100)
+  * *addrCacheActive* -- Optional.  The size of the address active cache.
+  (default: 1000)
+  * *addrCacheInactive* -- Optional.  The size of the address inactive cache.
+  (default: 100)
 
 ## Http Controller
 

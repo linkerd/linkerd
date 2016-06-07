@@ -122,4 +122,19 @@ servers:
       Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
     )))
   }
+
+  test("with binding cache") {
+    val yaml =
+      """|protocol: plain
+         |bindingCache:
+         |  paths: 1000
+         |  trees: 999
+         |  bounds: 998
+         |""".stripMargin
+    val capacity = parseConfig(yaml).routerParams[DstBindingFactory.Capacity]
+    assert(capacity.paths == 1000)
+    assert(capacity.trees == 999)
+    assert(capacity.bounds == 998)
+    assert(capacity.clients == DstBindingFactory.Capacity.default.clients)
+  }
 }

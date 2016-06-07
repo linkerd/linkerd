@@ -14,7 +14,8 @@ import scala.util.Random
 
 case class ThriftInterpreterInterfaceConfig(
   retryBaseSecs: Option[Int] = None,
-  retryJitterSecs: Option[Int] = None
+  retryJitterSecs: Option[Int] = None,
+  cache: Option[CapacityConfig] = None
 ) extends InterpreterInterfaceConfig {
   @JsonIgnore
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
@@ -31,7 +32,14 @@ case class ThriftInterpreterInterfaceConfig(
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
       () => retry + (Random.nextGaussian() * jitter.inSeconds).toInt.seconds
     }
-    val iface = new ThriftNamerInterface(interpreters, namers, new LocalStamper, retryIn, stats)
+    val iface = new ThriftNamerInterface(
+      interpreters,
+      namers,
+      new LocalStamper,
+      retryIn,
+      cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
+      stats
+    )
     ThriftServable(addr, iface)
   }
 }
@@ -49,4 +57,20 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
 case class ThriftServable(addr: InetSocketAddress, iface: ThriftService) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
   def serve() = ThriftMux.server.serveIface(addr, iface)
+}
+
+case class CapacityConfig(
+  bindingCacheActive: Option[Int] = None,
+  bindingCacheInactive: Option[Int] = None,
+  addrCacheActive: Option[Int] = None,
+  addrCacheInactive: Option[Int] = None
+) {
+  private[this] val default = ThriftNamerInterface.Capacity.default
+
+  def capacity = ThriftNamerInterface.Capacity(
+    bindingCacheActive = bindingCacheActive.getOrElse(default.bindingCacheActive),
+    bindingCacheInactive = bindingCacheInactive.getOrElse(default.bindingCacheInactive),
+    addrCacheActive = addrCacheActive.getOrElse(default.addrCacheActive),
+    addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive)
+  )
 }

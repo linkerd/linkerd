@@ -7,6 +7,7 @@ import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.namerd.Ns
 import java.nio.ByteBuffer
@@ -206,6 +207,22 @@ object ThriftNamerInterface {
     }
 
   private val DefaultNamer: (Path, Namer) = Path.empty -> Namer.global
+
+  case class Capacity(
+    bindingCacheActive: Int,
+    bindingCacheInactive: Int,
+    addrCacheActive: Int,
+    addrCacheInactive: Int
+  )
+
+  object Capacity {
+    def default = Capacity(
+      bindingCacheActive = 1000,
+      bindingCacheInactive = 100,
+      addrCacheActive = 1000,
+      addrCacheInactive = 100
+    )
+  }
 }
 
 /**
@@ -216,6 +233,7 @@ class ThriftNamerInterface(
   namers: Map[Path, Namer],
   stamper: ThriftNamerInterface.Stamper,
   retryIn: () => Duration,
+  capacity: Capacity,
   stats: StatsReceiver
 ) extends thrift.Namer.FutureIface {
   import ThriftNamerInterface._
@@ -262,8 +280,8 @@ class ThriftNamerInterface(
   private[this] def observeBind(ns: Ns, dtab: Dtab, path: Path) =
     BindingObserver(interpreters(ns).bind(dtab, path), stamper)
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
-    activeCapacity = 100,
-    inactiveCapacity = 10,
+    activeCapacity = capacity.bindingCacheActive,
+    inactiveCapacity = capacity.bindingCacheInactive,
     stats = stats.scope("bindindcache"),
     mkObserver = (observeBind _).tupled
   )
@@ -337,8 +355,8 @@ class ThriftNamerInterface(
     AddrObserver(resolution, stamper)
   }
   private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
-    activeCapacity = 100,
-    inactiveCapacity = 10,
+    activeCapacity = capacity.addrCacheActive,
+    inactiveCapacity = capacity.addrCacheInactive,
     stats = stats.scope("addrcache"),
     mkObserver = observeAddr
   )
