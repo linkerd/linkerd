@@ -1,5 +1,7 @@
 # Storage
 
+*(for the [storage](config.md#storage) key)*
+
 A storage object configures the namerd dtabStore which stores and retrieves
 dtabs. This object supports the following params:
 

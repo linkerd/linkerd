@@ -119,7 +119,8 @@ object LinkerdBuild extends Base {
   val execScriptJvmOptions =
     """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
        |   -Dsun.net.inetaddr.ttl=60                         \
-       |   -Xms${JVM_HEAP:-40M} -Xmx${JVM_HEAP:-40M}         \
+       |   -Xms${JVM_HEAP_MIN:-32M}                          \
+       |   -Xmx${JVM_HEAP_MAX:-1024M}                        \
        |   -XX:+AggressiveOpts                               \
        |   -XX:+UseConcMarkSweepGC                           \
        |   -XX:+CMSParallelRemarkEnabled                     \
@@ -128,8 +129,7 @@ object LinkerdBuild extends Base {
        |   -XX:+CMSScavengeBeforeRemark                      \
        |   -XX:+UseCMSInitiatingOccupancyOnly                \
        |   -XX:CMSInitiatingOccupancyFraction=70             \
-       |   -XX:ReservedCodeCacheSize=32m                     \
-       |   -XX:CICompilerCount=2                             \
+       |   -XX:-TieredCompilation                            \
        |   -XX:+UseStringDeduplication                       "
        |""".stripMargin
 

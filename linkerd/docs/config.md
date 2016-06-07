@@ -131,9 +131,10 @@ Each router must be configured as an object with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
 * *client* -- an object containing [basic client params](#basic-client-params)
   or protocol-specific client params
-* *interpreter* (optional) -- an [interpreter](interpreter.md) object
-  determining what module will be used to process destinations.
-  (default: default)
+<a name="interpreter"></a>
+* *interpreter* (optional) -- an
+  [interpreter](interpreter.md) object determining what module will be used to
+  process destinations.  (default: default)
   * protocol-specific module params, if any (the _default_ module has none)
 
 <a name="basic-router-params"></a>
@@ -180,14 +181,20 @@ maintain to each destination host.  It must be an object containing keys:
   * *maxWaiters* -- Optional.  The maximum number of connection requests that
   are queued when the connection concurrency exceeds maxSize.  (default:
   Int.MaxValue)
-* *responseClassifier* -- Optional. A (sometimes protocol-specific)
-  [response classifier](response_classifier.md) that determines which responses
-  should be considered failures and, of those, which should be considered
-  [retryable](retries.md).  (default: _io.l5d.nonRetryable5XX_)
-* *tls* -- Optional.  The router will make requests using TLS if this parameter
-  is provided.  It must be a [client TLS](client_tls.md) object.
-* *loadBalancer* -- Optional.  A [load balancer](load_balancer.md) object.
-  (default: p2c)
+<a name="response_classifier"></a>
+* *responseClassifier* -- Optional. A
+  (sometimes protocol-specific) [response classifier](response_classifier.md)
+  that determines which responses should be considered failures and, of those,
+  which should be considered [retryable](retries.md).
+  (default: _io.l5d.nonRetryable5XX_)
+<a name="client_tls"></a>
+* *tls* -- Optional.  The router will make requests
+  using TLS if this parameter is provided.  It must be a
+  [client TLS](client_tls.md) object.
+<a name="load_balancer"></a>
+* *loadBalancer* -- Optional.  A
+  [load balancer](load_balancer.md) object.  (default: p2c)
+<a name="retries"></a>
 * *retries* -- Optional. A [retry policy](retries.md) for all clients created by
   this router.
 

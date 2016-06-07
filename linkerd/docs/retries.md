@@ -1,5 +1,7 @@
 # Retries
 
+*(for the [retries](config.md#retries) key)*
+
 linkerd can automatically retry requests on certain failures (for example,
 connection errors).  A retries config block is an object with the following
 parameters:
@@ -33,3 +35,20 @@ The _jittered_ backoff policy uses a
 backoff algorithm and requires two configuration parameters:
 * _minMs_ -- The minimum number of milliseconds to wait before each retry.
 * _maxMs_ -- The maximum number of milliseconds to wait before each retry.
+
+### Example
+
+```yaml
+routers:
+- ...
+  client:
+    retries:
+      budget:
+        minRetiesPerSec: 5
+        percentCanRetry: 0.5
+        ttlSecs: 15
+      backoff:
+        kind: jittered
+        minMs: 10
+        maxMs: 10000
+```

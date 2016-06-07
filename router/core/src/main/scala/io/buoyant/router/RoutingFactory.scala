@@ -4,6 +4,7 @@ import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util.{Future, Time}
+import scala.util.control.NoStackTrace
 
 object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
@@ -11,7 +12,7 @@ object RoutingFactory {
 
   case class UnknownDst[Req](request: Req, cause: Throwable)
     extends Exception(s"Unknown destination: $request / ${cause.getMessage}", cause)
-    with NoStacktrace
+    with NoStackTrace
 
   /**
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst

@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
  * in ZooKeeper of a leader group.  This namer resolves to the addresses stored in the data of
  * the leader of the group.
  */
-class ZkLeaderNamer(
+case class ZkLeaderNamer(
   prefix: Path,
   zkAddrs: Seq[HostAndPort],
   factory: Iterable[InetSocketAddress] => ZooKeeperClient

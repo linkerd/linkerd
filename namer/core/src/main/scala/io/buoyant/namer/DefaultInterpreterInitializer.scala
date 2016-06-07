@@ -3,6 +3,7 @@ package io.buoyant.namer
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Var, Activity}
+import scala.util.control.NoStackTrace
 
 object DefaultInterpreterConfig {
   val kind = "default"
@@ -24,7 +25,7 @@ object DefaultInterpreterInitializer extends DefaultInterpreterInitializer
 
 case class UnknownNamer[Req](path: Path, cause: Throwable)
   extends Exception(s"Unknown namer: ${cause.getMessage} for path: ${path.show}", cause)
-  with NoStacktrace
+  with NoStackTrace
 
 /**
  * Namers are provided in preference-order so that first-match wins.

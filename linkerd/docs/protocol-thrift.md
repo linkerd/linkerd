@@ -1,5 +1,7 @@
 # Thrift Protocol
 
+*(for the [routers](config.md#routers) key)*
+
 Since the Thrift protocol does not encode a destination name in the message
 itself, routing must be done per port. This implies one port per Thrift
 service. For out-of-the-box configuration, this means that the contents of

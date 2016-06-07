@@ -1,5 +1,7 @@
 # HTTP/1.1 protocol
 
+*(for the [routers](config.md#routers) key)*
+
 Router configuration options include:
 
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
