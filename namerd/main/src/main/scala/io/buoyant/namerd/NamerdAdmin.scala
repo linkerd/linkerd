@@ -14,10 +14,6 @@ class NamerdAdmin(app: App, config: NamerdConfig, namerd: Namerd) extends Admin(
     super.allRoutes ++ namerdAdminRoutes
   }
 
-  private[this] def enumeratingNamers = namerd.namers.collect {
-    case (_, namer: EnumeratingNamer) => namer
-  }
-
   private[this] def namerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
     "/config.json" -> new ConfigHandler(config, NamerdConfig.LoadedInitializers.iter),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
@@ -27,7 +23,6 @@ class NamerdAdmin(app: App, config: NamerdConfig, namerd: Namerd) extends Admin(
     )),
     "/" -> new DtabListHandler(namerd.dtabStore),
     "/delegator.json" -> new DelegateApiHandler(namerd.namers.toSeq),
-    "/dtab/" -> new DtabHandler(namerd.dtabStore),
-    "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers.toSeq)
+    "/dtab/" -> new DtabHandler(namerd.dtabStore)
   )
 }

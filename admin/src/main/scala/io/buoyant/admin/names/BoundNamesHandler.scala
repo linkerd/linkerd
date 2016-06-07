@@ -7,12 +7,16 @@ import io.buoyant.namer.EnumeratingNamer
 
 class BoundNamesHandler(namers: Seq[EnumeratingNamer]) extends Service[Request, Response] {
   override def apply(req: Request): Future[Response] = {
-    Activity.collect(namers.map(_.getAllNames)).map { names =>
-      val json = names.toSet.flatten.map(_.show).mkString("[\"", "\",\"", "\"]")
-      val resp = req.response
-      resp.contentString = json
-      resp.contentType = MediaType.Json
-      resp
-    }.values.toFuture.flatMap(Future.const)
+    Activity.collect(namers.map(_.getAllNames))
+      .values
+      .toFuture
+      .flatMap(Future.const)
+      .map { names =>
+        val json = names.toSet.flatten.map(_.show).mkString("[\"", "\",\"", "\"]")
+        val rsp = req.response
+        rsp.contentString = json
+        rsp.contentType = MediaType.Json
+        rsp
+      }
   }
 }
