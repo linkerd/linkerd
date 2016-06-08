@@ -15,6 +15,6 @@ $.when(
     delegator: Handlebars.compile(delegatorRsp[0])
   }
   var dtab = JSON.parse($("#data").html());
-  Delegator($(".delegator"), dtab, templates);
+  Delegator($(".delegator"), dtab.namespace, [], dtab.dtab, templates);
 
 });

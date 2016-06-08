@@ -24,7 +24,7 @@ function DtabViewer(initialDtab, dentryTemplate) {
 }
 
 DtabViewer.prototype._toggleEdit = function() {
-  $("#dtab, #dtab-edit").toggleClass("hide");
+  $("#dtab-base, #dtab-edit").toggleClass("hide");
 
   if($('#edit-dtab-btn').hasClass("active")) {
     $('#edit-dtab-btn').removeClass("active").text("Edit");
@@ -58,7 +58,7 @@ DtabViewer.prototype.render = function() {
 }
 
 DtabViewer.prototype._renderDtabHtml = function() {
-  $("#dtab").html(this.dtab.map(function(e,_i) {
+  $("#dtab-base").html(this.dtab.map(function(e,_i) {
     return this.template(e);
   }.bind(this)).join(""));
 }
@@ -73,7 +73,7 @@ DtabViewer.prototype._activateDentries = function(attributeName, e){
 
   if (!targetWasAlreadyActive) {
     var attr = $(e.target).attr(attributeName);
-    $('#dtab [data-dentry-dst="'+attr+'"]').addClass("active");
+    $('#dtab-base [data-dentry-dst="'+attr+'"]').addClass("active");
     $('[data-dentry-prefix="'+attr+'"]').addClass("active");
   }
 };

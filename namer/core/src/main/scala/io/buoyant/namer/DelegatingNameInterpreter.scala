@@ -17,4 +17,5 @@ trait DelegatingNameInterpreter extends NameInterpreter {
   ): Activity[DelegateTree[Name.Bound]] =
     delegate(dtab, DelegateTree.Leaf(path, Dentry.nop, Name.Path(path)))
 
+  def dtab: Activity[Dtab]
 }

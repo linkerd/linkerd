@@ -111,6 +111,70 @@ exception AddrFailure {
 }
 
 /*
+ * DELEGATION
+ */
+
+typedef i32 DelegateNodeId
+
+union DelegateContents {
+  1: string excpetion
+  2: Void empty
+  3: Void fail
+  4: Void neg
+  5: DelegateNodeId delegate
+  6: BoundName boundLeaf
+  7: Path pathLeaf
+  8: list<DelegateNodeId> alt
+  9: list<WeightedNodeId> weighted
+}
+
+struct DelegateNode {
+  1: Path path
+  2: string dentry
+  3: DelegateContents contents
+}
+
+struct DelegateTree {
+  1: DelegateNode root
+  2: map<DelegateNodeId, DelegateNode> nodes
+}
+
+struct Delegation {
+  1: Stamp stamp
+  2: DelegateTree tree
+  3: Ns ns
+}
+
+struct DelegateReq {
+  1: Dtab dtab
+  2: Delegation delegation
+  3: Path clientId
+}
+
+exception DelegationFailure {
+  1: string reason
+}
+
+/*
+ * DTAB
+ */
+
+struct DtabReq {
+  1: Stamp stamp
+  2: Ns ns
+  3: Path clientId
+}
+
+struct DtabRef {
+  1: Stamp stamp
+  2: Dtab dtab
+}
+
+exception DtabFailure {
+  1: string reason
+}
+
+/*
  * Namer as a service.
  *
  * Combines refinement and binding.
@@ -118,4 +182,6 @@ exception AddrFailure {
 service Namer {
   Bound bind(1: BindReq req) throws(1: BindFailure rf)
   Addr addr(1: AddrReq req) throws(1: AddrFailure af)
+  Delegation delegate(1: DelegateReq req) throws (1: DelegationFailure df)
+  DtabRef dtab(1: DtabReq req) throws (1: DtabFailure df)
 }

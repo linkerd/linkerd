@@ -12,13 +12,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namer.ConfiguredNamersInterpreter
-import io.buoyant.namer.ConfiguredNamersInterpreter
-import io.buoyant.namer.ConfiguredNamersInterpreter
-import io.buoyant.namer.DelegateTree
-import io.buoyant.namer.DelegatingNameInterpreter
-import io.buoyant.namer.DelegatingNameInterpreter
-import io.buoyant.namer.DelegatingNameInterpreter
+import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, DelegatingNameInterpreter}
 
 object DelegateApiHandler {
 
@@ -73,12 +67,14 @@ object DelegateApiHandler {
 
   case class Bound(addr: Addr, id: Path, path: Path)
   object Bound {
-    def mk(path: Path, name: Name.Bound): Bound = {
+    def mk(path: Path, name: Name.Bound): Future[Bound] = {
       val id = name.id match {
         case id: Path => id
         case _ => path
       }
-      Bound(Addr.mk(name.addr.sample()), id, name.path)
+      name.addr.changes.filter(_ != FAddr.Pending).toFuture.map { addr =>
+        Bound(Addr.mk(addr), id, name.path)
+      }
     }
   }
 
@@ -105,16 +101,24 @@ object DelegateApiHandler {
     case class Union(path: Path, dentry: Option[Dentry], union: Seq[Weighted]) extends JsonDelegateTree
     case class Weighted(weight: Double, tree: JsonDelegateTree)
 
-    def mk(d: DelegateTree[Name.Bound]): JsonDelegateTree = d match {
-      case DelegateTree.Exception(p, d, e) => JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage)
-      case DelegateTree.Empty(p, d) => JsonDelegateTree.Empty(p, mkDentry(d))
-      case DelegateTree.Fail(p, d) => JsonDelegateTree.Fail(p, mkDentry(d))
-      case DelegateTree.Neg(p, d) => JsonDelegateTree.Neg(p, mkDentry(d))
-      case DelegateTree.Delegate(p, d, t) => JsonDelegateTree.Delegate(p, mkDentry(d), mk(t))
-      case DelegateTree.Alt(p, d, ts@_*) => JsonDelegateTree.Alt(p, mkDentry(d), ts.map(mk))
+    def mk(d: DelegateTree[Name.Bound]): Future[JsonDelegateTree] = d match {
+      case DelegateTree.Exception(p, d, e) =>
+        Future.value(JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage))
+      case DelegateTree.Empty(p, d) =>
+        Future.value(JsonDelegateTree.Empty(p, mkDentry(d)))
+      case DelegateTree.Fail(p, d) =>
+        Future.value(JsonDelegateTree.Fail(p, mkDentry(d)))
+      case DelegateTree.Neg(p, d) =>
+        Future.value(JsonDelegateTree.Neg(p, mkDentry(d)))
+      case DelegateTree.Delegate(p, d, t) =>
+        mk(t).map(JsonDelegateTree.Delegate(p, mkDentry(d), _))
+      case DelegateTree.Alt(p, d, ts@_*) =>
+        Future.collect(ts.map(mk)).map(JsonDelegateTree.Alt(p, mkDentry(d), _))
       case DelegateTree.Union(p, d, ts@_*) =>
-        JsonDelegateTree.Union(p, mkDentry(d), ts.map { case DelegateTree.Weighted(w, t) => Weighted(w, mk(t)) })
-      case DelegateTree.Leaf(p, d, b) => JsonDelegateTree.Leaf(p, mkDentry(d), Bound.mk(p, b))
+        val weights = ts.map { case DelegateTree.Weighted(w, t) => mk(t).map(Weighted(w, _)) }
+        Future.collect(weights).map(JsonDelegateTree.Union(p, mkDentry(d), _))
+      case DelegateTree.Leaf(p, d, b) =>
+        Bound.mk(p, b).map(JsonDelegateTree.Leaf(p, mkDentry(d), _))
     }
 
     def mkDentry(d: Dentry): Option[Dentry] = Some(d).filterNot(Dentry.equiv.equiv(Dentry.nop, _))
@@ -159,19 +163,6 @@ object DelegateApiHandler {
           NameTree.read(json.getValueAsString)
       })
 
-      module.addSerializer(
-        classOf[DelegateTree[Name.Bound]],
-        new JsonSerializer[DelegateTree[Name.Bound]] {
-          override def serialize(
-            t: DelegateTree[Name.Bound],
-            json: JsonGenerator,
-            p: SerializerProvider
-          ) {
-            mapper.writeValue(json, JsonDelegateTree.mk(t))
-          }
-        }
-      )
-
       module
     }
 
@@ -187,12 +178,14 @@ object DelegateApiHandler {
   def getDelegateRsp(dtab: String, path: String, interpreter: DelegatingNameInterpreter): Future[Response] =
     (dtab, path) match {
       case (DtabStr(d), PathStr(p)) =>
-        interpreter.delegate(d, p).values.toFuture().flatMap(Future.const).map { tree =>
-          val rsp = Response()
-          rsp.content = Codec.writeBuf(tree)
-          rsp.contentType = MediaType.Json
-          rsp
-        }
+        interpreter.delegate(d, p).values.toFuture()
+          .flatMap(Future.const)
+          .flatMap(JsonDelegateTree.mk).map { tree =>
+            val rsp = Response()
+            rsp.content = Codec.writeBuf(tree)
+            rsp.contentType = MediaType.Json
+            rsp
+          }
       case _ => err(Status.BadRequest)
     }
 }

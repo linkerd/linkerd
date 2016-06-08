@@ -50,7 +50,7 @@ class DtabHandler(
             </div>
           </div>
 
-          <script id="data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
+          <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
 
           <script src="/files/js/lib/jquery.min.js"></script>
           <script src="/files/js/lib/bootstrap.min.js"></script>

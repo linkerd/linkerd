@@ -87,11 +87,16 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
     dentry: Dentry,
     path: Path
   ): Activity[DelegateTree[Name]] = {
+    println("delgate lookup...")
+    println(dtab)
+    println(path)
     val matches: Seq[DelegateTree[Name.Path]] = dtab.reverse.collect {
       case d@Dentry(prefix, dst) if prefix.matches(path) =>
         val suff = path.drop(prefix.size)
         fromNameTree(path, d, dst.map { pfx => Name.Path(pfx ++ suff) })
     }
+    println("matches")
+    println(matches)
 
     val result: DelegateTree[Name.Path] = matches match {
       case Nil => DelegateTree.Neg(path, dentry)
@@ -160,4 +165,6 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
         }
         Activity(stateVar)
     }
+
+  override def dtab: Activity[Dtab] = Activity.value(Dtab.empty)
 }

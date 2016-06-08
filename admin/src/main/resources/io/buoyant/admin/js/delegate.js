@@ -16,10 +16,12 @@ $.when(
   templates.errorModal = Handlebars.compile(modalRsp[0]);
   templates.delegator = Handlebars.compile(delegatorRsp[0]);
 
-  var dtabMap = JSON.parse($("#data").html());
+  var dtabMap = JSON.parse($("#dtab-data").html());
+  var dtabBaseMap = JSON.parse($("#dtab-base-data").html());
 
   var selectedRouter = getSelectedRouter();
   var dtab = dtabMap[selectedRouter];
+  var dtabBase = dtabBaseMap[selectedRouter];
 
   if (!dtab) {
     var defaultRouter = $(".router-menu-option:first").text();
@@ -31,6 +33,6 @@ $.when(
   } else {
     $(".router-label-title").text("Router \"" + selectedRouter + "\"");
 
-    Delegator($(".delegator"), dtab, templates);
+    Delegator($(".delegator"), selectedRouter, dtab, dtabBase, templates);
   }
 });

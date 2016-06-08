@@ -16,13 +16,11 @@ import io.buoyant.router.RoutingFactory
 
 class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
 
-  private[this] val dtabs: Future[Map[String, Dtab]] =
-    Future.value(
-      linker.routers.map { router =>
+  private[this] val dtabs: Map[String, Dtab] =
+    linker.routers.map { router =>
       val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
       router.label -> dtab()
     }.toMap
-    )
 
   private[this] val enumeratingNamers = linker.namers.collect {
     case (_, namer: EnumeratingNamer) => namer
@@ -36,9 +34,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
       baseResourcePath = "io/buoyant/admin",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
-    "/delegator" -> new DelegateHandler(AdminHandler, () => dtabs, linker.namers),
+    "/delegator" -> new DelegateHandler(AdminHandler, dtabs, interpreterForRouter),
     "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
-    "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
     "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)

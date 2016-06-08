@@ -1,13 +1,14 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Path}
-import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.Name.Bound
+import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
+import io.buoyant.namer.{DelegateTree, DelegatingNameInterpreter}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -16,7 +17,7 @@ class ThriftNamerClient(
   namespace: String,
   clientId: Path = Path.empty,
   _timer: Timer = DefaultTimer.twitter
-) extends NameInterpreter {
+) extends DelegatingNameInterpreter {
   import ThriftNamerInterface._
 
   private[this] implicit val log = Logger.get(getClass.getName)
@@ -197,4 +198,135 @@ class ThriftNamerClient(
     }
   }
 
+  private[this] def mkDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Bound] = {
+    def mk(node: thrift.DelegateNode): DelegateTree[Name.Bound] = {
+      node.contents match {
+        case thrift.DelegateContents.Excpetion(thrown) =>
+          DelegateTree
+            .Exception(
+              mkPath(node.path),
+              Dentry.read(node.dentry),
+              new Exception(thrown)
+            )
+        case thrift.DelegateContents.Empty(_) =>
+          DelegateTree.Empty(mkPath(node.path), Dentry.read(node.dentry))
+        case thrift.DelegateContents.Fail(_) =>
+          DelegateTree.Fail(mkPath(node.path), Dentry.read(node.dentry))
+        case thrift.DelegateContents.Neg(_) =>
+          DelegateTree.Neg(mkPath(node.path), Dentry.read(node.dentry))
+        case thrift.DelegateContents.Delegate(child) =>
+          DelegateTree.Delegate(mkPath(node.path), Dentry.read(node.dentry), mk(dt.nodes(child)))
+        case thrift.DelegateContents.BoundLeaf(thrift.BoundName(tid, tresidual)) =>
+          val residual = mkPath(tresidual)
+          val id = mkPath(tid)
+          val addr = addrCacheMu.synchronized {
+            addrCache.get(id) match {
+              case Some(addr) => addr
+              case None =>
+                val addr = watchAddr(tid)
+                addrCache += (id -> addr)
+                addr
+            }
+          }
+          val bound = Name.Bound(addr, id, residual)
+          DelegateTree.Leaf(mkPath(node.path), Dentry.read(node.dentry), bound)
+        case thrift.DelegateContents.Alt(children) =>
+          val alts = children.map(dt.nodes).map(mk)
+          DelegateTree.Alt(mkPath(node.path), Dentry.read(dt.root.dentry), alts: _*)
+        case thrift.DelegateContents.Weighted(children) =>
+          val weights = children.map { child =>
+            DelegateTree.Weighted(child.weight, mk(dt.nodes(child.id)))
+          }
+          DelegateTree.Union(mkPath(node.path), Dentry.read(dt.root.dentry), weights: _*)
+        case thrift.DelegateContents.PathLeaf(leaf) =>
+          throw new IllegalArgumentException("delegation cannot accept path names")
+      }
+    }
+    mk(dt.root)
+  }
+
+  override def delegate(
+    dtab: Dtab,
+    tree: DelegateTree[Name.Path]
+  ): Activity[DelegateTree[Bound]] = {
+    val tdtab = dtab.show
+    val (root, nodes, _) = ThriftNamerInterface.mkDelegateTree(tree)
+    val ttree = thrift.DelegateTree(root, nodes)
+
+    val states = Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { states =>
+      @volatile var stopped = false
+      @volatile var pending: Future[_] = Future.Unit
+
+      def loop(stamp0: TStamp): Unit = if (!stopped) {
+
+        val req = thrift.DelegateReq(tdtab, thrift.Delegation(stamp0, ttree, namespace), tclientId)
+        pending = Trace.letClear(client.delegate(req)).respond {
+          case Return(thrift.Delegation(stamp1, ttree, _)) =>
+            states() = Try(mkDelegateTree(ttree)) match {
+              case Return(tree) =>
+                Activity.Ok(tree)
+              case Throw(e) =>
+                Activity.Failed(e)
+            }
+            loop(stamp1)
+
+          case Throw(e@thrift.DelegationFailure(reason)) =>
+            log.error(s"delegation failed: $reason")
+            states() = Activity.Failed(e)
+
+          case Throw(e) =>
+            log.error(e, "delegation failed")
+            states() = Activity.Failed(e)
+        }
+      }
+
+      loop(TStamp.empty)
+      Closable.make { deadline =>
+        stopped = true
+        Future.Unit
+      }
+    }
+
+    Activity(states)
+  }
+
+  override def dtab: Activity[Dtab] = {
+
+    val states = Var.async[Activity.State[Dtab]](Activity.Pending) { states =>
+      @volatile var stopped = false
+      @volatile var pending: Future[_] = Future.Unit
+
+      def loop(stamp0: TStamp): Unit = if (!stopped) {
+
+        val req = thrift.DtabReq(stamp0, namespace, tclientId)
+        pending = Trace.letClear(client.dtab(req)).respond {
+          case Return(thrift.DtabRef(stamp1, dtab)) =>
+            states() = Try(Dtab.read(dtab)) match {
+              case Return(dtab) =>
+                Activity.Ok(dtab)
+              case Throw(e) =>
+                Activity.Failed(e)
+            }
+            loop(stamp1)
+
+          case Throw(e@thrift.DtabFailure(reason)) =>
+            log.error(s"dtab $namespace lookup failed: $reason")
+            states() = Activity.Failed(e)
+
+          case Throw(e) =>
+            log.error(e, s"dtab $namespace lookup failed")
+            states() = Activity.Failed(e)
+        }
+      }
+
+      loop(TStamp.empty)
+      Closable.make { deadline =>
+        log.debug(s"dtab $namespace released")
+        stopped = true
+        Future.Unit
+      }
+    }
+
+    Activity(states)
+  }
 }

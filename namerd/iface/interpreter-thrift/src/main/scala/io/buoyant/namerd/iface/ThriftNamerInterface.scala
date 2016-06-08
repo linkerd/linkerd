@@ -1,15 +1,17 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
-import io.buoyant.namerd.iface.{thriftscala => thrift}
+import io.buoyant.namer.{DelegateTree, DelegatingNameInterpreter}
 import io.buoyant.namerd.Ns
+import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
+import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
+import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
 
@@ -128,14 +130,6 @@ object ThriftNamerInterface {
 
   }
 
-  private case class BindingObserver(
-    trees: Activity[NameTree[Name.Bound]],
-    stamper: Stamper
-  ) extends Observer[NameTree[Name.Bound]] {
-    protected[this] def nextStamp() = stamper()
-    protected[this] val updater = trees.values.respond(update)
-  }
-
   private case class AddrObserver(
     addr: Var[Addr],
     stamper: Stamper
@@ -147,6 +141,11 @@ object ThriftNamerInterface {
       case Addr.Failed(e) => update(Throw(e))
       case Addr.Pending =>
     }
+  }
+
+  private def mkObserver[T](act: Activity[T], stamper: Stamper) = new Observer[T] {
+    protected[this] def nextStamp() = stamper()
+    protected[this] val updater = act.values.respond(update)
   }
 
   private[this] case class AltAgg(
@@ -205,6 +204,112 @@ object ThriftNamerInterface {
         }
         (node, Map.empty, nextId)
     }
+
+  private[this] case class DelegateAltAgg(
+    nextId: Int,
+    trees: Seq[Int] = Nil,
+    nodes: Map[Int, thrift.DelegateNode] = Map.empty
+  ) {
+    def +(tree: DelegateTree[Name]): DelegateAltAgg = {
+      val id = nextId
+      val (node, childNodes, nextNextId) = mkDelegateTree(tree, id + 1)
+      copy(
+        nextId = nextNextId,
+        trees = trees :+ id,
+        nodes = nodes ++ childNodes + (id -> node)
+      )
+    }
+  }
+
+  private[this] case class DelegateUnionAgg(
+    nextId: Int,
+    trees: Seq[thrift.WeightedNodeId] = Nil,
+    nodes: Map[Int, thrift.DelegateNode] = Map.empty
+  ) {
+    def +(wt: DelegateTree.Weighted[Name]): DelegateUnionAgg = {
+      val id = nextId
+      val (node, childNodes, nextNextId) = mkDelegateTree(wt.tree, id + 1)
+      copy(
+        nextId = nextNextId,
+        trees = trees :+ thrift.WeightedNodeId(wt.weight, id),
+        nodes = nodes ++ childNodes + (id -> node)
+      )
+    }
+  }
+
+  def mkDelegateTree(
+    dt: DelegateTree[Name],
+    nextId: Int = 0
+  ): (thrift.DelegateNode, Map[Int, thrift.DelegateNode], Int) =
+    dt match {
+      case DelegateTree.Exception(path, dentry, thrown) =>
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Excpetion(thrown.getMessage)), Map.empty, nextId)
+      case DelegateTree.Empty(path, dentry) =>
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Empty(TVoid)), Map.empty, nextId)
+      case DelegateTree.Fail(path, dentry) =>
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Fail(TVoid)), Map.empty, nextId)
+      case DelegateTree.Neg(path, dentry) =>
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Neg(TVoid)), Map.empty, nextId)
+      case DelegateTree.Delegate(path, dentry, tree) =>
+        val (node, childNodes, nextNextId) = mkDelegateTree(tree, nextId)
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Delegate(nextNextId)), childNodes + (nextNextId -> node), nextNextId + 1)
+      case DelegateTree.Leaf(path, dentry, value) =>
+        val contents = value match {
+          case bound: Name.Bound =>
+            bound.id match {
+              case id: Path =>
+                thrift.DelegateContents.BoundLeaf(thrift.BoundName(TPath(id), TPath(bound.path)))
+              case _ =>
+                thrift.DelegateContents.Neg(TVoid)
+            }
+          case path: Name.Path =>
+            thrift.DelegateContents.PathLeaf(TPath(path.path))
+        }
+        (thrift.DelegateNode(TPath(path), dentry.show, contents), Map.empty, nextId)
+      case DelegateTree.Alt(path, dentry, trees@_*) =>
+        val agg = trees.foldLeft(DelegateAltAgg(nextId))(_ + _)
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Alt(agg.trees)), agg.nodes, agg.nextId)
+      case DelegateTree.Union(path, dentry, trees@_*) =>
+        val agg = trees.foldLeft(DelegateUnionAgg(nextId))(_ + _)
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Weighted(agg.trees)), agg.nodes, agg.nextId)
+    }
+
+  def parseDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Path] = {
+    def parseDelegateNode(node: thrift.DelegateNode): DelegateTree[Name.Path] = {
+      node.contents match {
+        case thrift.DelegateContents.Excpetion(thrown) =>
+          DelegateTree
+            .Exception(
+              mkPath(node.path),
+              Dentry.read(dt.root.dentry),
+              new Exception(thrown)
+            )
+        case thrift.DelegateContents.Empty(_) =>
+          DelegateTree.Empty(mkPath(node.path), Dentry.read(dt.root.dentry))
+        case thrift.DelegateContents.Fail(_) =>
+          DelegateTree.Fail(mkPath(node.path), Dentry.read(dt.root.dentry))
+        case thrift.DelegateContents.Neg(_) =>
+          DelegateTree.Neg(mkPath(node.path), Dentry.read(dt.root.dentry))
+        case thrift.DelegateContents.Delegate(child) =>
+          DelegateTree.Delegate(mkPath(node.path), Dentry.read(dt.root.dentry), parseDelegateNode(dt.nodes(child)))
+        case thrift.DelegateContents.PathLeaf(path) =>
+          DelegateTree.Leaf(mkPath(node.path), Dentry.read(dt.root.dentry), Name.Path(mkPath(path)))
+        case thrift.DelegateContents.Alt(children) =>
+          val alts = children.map(dt.nodes).map(parseDelegateNode)
+          DelegateTree.Alt(mkPath(node.path), Dentry.read(dt.root.dentry), alts: _*)
+        case thrift.DelegateContents.Weighted(children) =>
+          val weights = children.map { child =>
+            DelegateTree.Weighted(child.weight, parseDelegateNode(dt.nodes(child.id)))
+          }
+          DelegateTree.Union(mkPath(node.path), Dentry.read(dt.root.dentry), weights: _*)
+        case thrift.DelegateContents.BoundLeaf(leaf) =>
+          throw new IllegalArgumentException("delegation cannot accept bound names")
+        case thrift.DelegateContents.UnknownUnionField(_) =>
+          throw new IllegalArgumentException("unknown union field")
+      }
+    }
+    parseDelegateNode(dt.root)
+  }
 
   private val DefaultNamer: (Path, Namer) = Path.empty -> Namer.global
 
@@ -278,7 +383,7 @@ class ThriftNamerInterface(
   }
 
   private[this] def observeBind(ns: Ns, dtab: Dtab, path: Path) =
-    BindingObserver(interpreters(ns).bind(dtab, path), stamper)
+    mkObserver(interpreters(ns).bind(dtab, path), stamper)
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
     activeCapacity = capacity.bindingCacheActive,
     inactiveCapacity = capacity.bindingCacheInactive,
@@ -364,5 +469,65 @@ class ThriftNamerInterface(
   private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
     val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
+  }
+
+  private[this] def observeDelegation(ns: Ns, dtab: Dtab, tree: DelegateTree[Name.Path]) = {
+    val act = interpreters(ns) match {
+      case interpreter: DelegatingNameInterpreter =>
+        interpreter.delegate(dtab, tree)
+      case _ =>
+        throw new UnsupportedOperationException(s"Name Interpreter for $ns cannot show delegations")
+    }
+    mkObserver(act, stamper)
+  }
+  private[this] val delegationCache = new ObserverCache[(String, Dtab, DelegateTree[Name.Path]), DelegateTree[Name.Bound]](
+    activeCapacity = 10,
+    inactiveCapacity = 1,
+    stats = stats.scope("delegationcache"),
+    mkObserver = (observeDelegation _).tupled
+  )
+
+  override def delegate(req: thrift.DelegateReq): Future[Delegation] = {
+    val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, tree, ns), _) = req
+    val dtab = Dtab.read(dtabstr)
+    Future.const(delegationCache.get(ns, dtab, parseDelegateTree(tree))).flatMap { observer =>
+      observer(reqStamp)
+    }.transform {
+      case Return((TStamp(tstamp), delegateTree)) =>
+        val (root, nodes, _) = mkDelegateTree(delegateTree)
+        Future.value(thrift.Delegation(tstamp, thrift.DelegateTree(root, nodes), ns))
+      case Throw(e) =>
+        val failure = thrift.DelegationFailure(e.getMessage)
+        Future.exception(failure)
+    }
+  }
+
+  private[this] def observeDtab(ns: Ns) = {
+    val act = interpreters(ns) match {
+      case interpreter: DelegatingNameInterpreter =>
+        interpreter.dtab
+      case _ =>
+        throw new UnsupportedOperationException(s"Name Interpreter for $ns cannot show dtab")
+    }
+    mkObserver(act, stamper)
+  }
+  private[this] val dtabCache = new ObserverCache[String, Dtab](
+    activeCapacity = 10,
+    inactiveCapacity = 1,
+    stats = stats.scope("delegationcache"),
+    mkObserver = observeDtab
+  )
+
+  override def dtab(req: DtabReq): Future[DtabRef] = {
+    val thrift.DtabReq(reqStamp, ns, _) = req
+    Future.const(dtabCache.get(ns)).flatMap { observer =>
+      observer(reqStamp)
+    }.transform {
+      case Return((TStamp(tstamp), dtab)) =>
+        Future.value(thrift.DtabRef(tstamp, dtab.show))
+      case Throw(e) =>
+        val failure = thrift.DtabFailure(e.getMessage)
+        Future.exception(failure)
+    }
   }
 }

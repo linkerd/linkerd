@@ -19,11 +19,15 @@ var Delegator = (function() {
     return templates.node(obj);
   }
 
-  return function($root, dtab, t) {
+  return function($root, namespace, dtab, dtabBase, t) {
     templates = t
     $root.html(templates.delegator({}));
 
-    var dtabViewer = new DtabViewer(dtab, templates.dentry);
+    $("#dtab").html(dtab.map(function(e,_i) {
+      return templates.dentry(e);
+    }.bind(this)).join(""));
+
+    var dtabViewer = new DtabViewer(dtabBase, templates.dentry);
     $('#path-input').val(decodeURIComponent(window.location.hash).slice(1)).focus();
 
     $('.go').click(function(e){
@@ -31,7 +35,7 @@ var Delegator = (function() {
       var path = $('#path-input').val();
       window.location.hash = encodeURIComponent(path);
       var request = $.get(
-        "/delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr(), namespace: getSelectedRouter() }),
+        "/delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr(), namespace: namespace }),
         renderAll.bind(this));
       request.fail(function( jqXHR ) {
         $(".error-modal").html(templates.errorModal(jqXHR.statusText));
