@@ -1,8 +1,8 @@
 /* globals UpdateableChart */
 /* exported SuccessRateGraph */
 var SuccessRateGraph = (function() {
-  var columnGridPadding = 27; // from our css grid setup
   var neutralLineColor = "#878787"; // greys.neutral
+  var defaultWidth = 1181;
 
   // set default y range such that a graph of purely 100% success rate doesn't
   // blend in to the very top of the graph, and doesn't center
@@ -21,9 +21,13 @@ var SuccessRateGraph = (function() {
     } else {
       return function() {
         var containerWidth = $(".client-container").first().width();
-        var metricsWidth = $(".metrics-container").first().width();
 
-        return containerWidth - metricsWidth - columnGridPadding; // get this to display nicely on wide screens
+        if (containerWidth > defaultWidth) {
+          var metricsWidth = $(".metrics-container").first().width();
+          return containerWidth - metricsWidth; // get this to display nicely on wide screens
+        } else {
+          return containerWidth;
+        }
       }
     }
   }

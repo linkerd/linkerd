@@ -24,7 +24,7 @@ body {
 }
 
 .row {
-  margin: 0 -27px 0 0;
+  margin: 0;
 }
 
 .container-fluid {
@@ -43,7 +43,6 @@ nav {
 
 .navbar-container {
   padding: 20px 27px 9px 27px;
-  width: 1215px; /*1161 + 27 + 27 (padding)*/
 }
 
 .nav {
@@ -70,7 +69,7 @@ nav ul.navbar-nav {
 /* request totals */
 
 .request-totals {
-  height: 72px;
+  min-height: 72px;
   padding: 15px 27px;
   background: #163F79; /* For browsers that do not support gradients */
   background: -webkit-linear-gradient(left top, #163F79, #4076C4);
@@ -104,7 +103,6 @@ nav ul.navbar-nav {
 
 .dashboard-container {
   margin: 0 27px 0;
-  width: 1161px;
   border-bottom: 2px solid grey;
 }
 
@@ -113,7 +111,6 @@ nav ul.navbar-nav {
   font-size: 13px;
   line-height: 16px;
   margin: 10px 27px 0;
-  width: 1161px;
 }
 
 .router:not(:last-child) {
@@ -195,6 +192,10 @@ nav ul.navbar-nav {
   border-radius: 2px;
   height: 12px;
   margin-right: 5px;
+}
+
+.metrics-container {
+  padding: 0;
 }
 
 /**
