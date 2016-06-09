@@ -1,4 +1,4 @@
-/* globals Query, SuccessRate */
+/* globals SuccessRateGraph, Query, SuccessRate */
 /* exported RouterServers */
 var RouterServer = (function() {
   var template;
@@ -21,7 +21,10 @@ var RouterServer = (function() {
         query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("success").build(),
         getRate: function(data) {
           var successRate = new SuccessRate(data.success || 0, data.failures || 0);
-          return successRate.prettyRate();
+          return {
+            prettyRate: successRate.prettyRate(),
+            rawRate: successRate.successRate
+          }
         }
       },
       {
@@ -37,7 +40,7 @@ var RouterServer = (function() {
       metrics[d.metricSuffix] = {
         description: d.description,
         value: d.value,
-        rate: d.rate
+        rate: !d.rate ? null : d.rate.prettyRate
       };
       return metrics;
     }, {});
@@ -49,31 +52,50 @@ var RouterServer = (function() {
   }
 
   function processData(data, router, server) {
-    var lookup = {}; // track # requests for SuccessRate()
+    var lookup = {}; // track success/failure # for SuccessRate() calculation
     var metricDefinitions = getMetricDefinitions(router, server);
 
-    return _.map(metricDefinitions, function(defn) {
+    var populatedMetrics = _.map(metricDefinitions, function(defn) {
       var serverData = Query.filter(defn.query, data);
 
       if (!_.isEmpty(serverData)) {
         defn.value = serverData[0].delta;
         lookup[defn.metricSuffix] = defn.value;
-
-        if(_.isFunction(defn.getRate)) {
-          defn.rate = defn.getRate(lookup);
-        }
       }
 
       return defn;
     });
+
+    // we need to have completed the first pass through the definitions to get
+    // success and failure counts
+    _.each(populatedMetrics, function(defn) {
+      if(_.isFunction(defn.getRate)) {
+        defn.rate = defn.getRate(lookup);
+      }
+    });
+
+    return populatedMetrics;
   }
+
+  function getSuccessRate(data) {
+    var suc = _.find(data, ["metricSuffix", "success"]);
+    var successRate = suc.rate.rawRate  === -1 ? 1 : suc.rate.rawRate;
+
+    return [{ name: "successRate", delta: successRate * 100 }];
+  }
+
   return function (metricsCollector, server, $serverEl, routerName, serverTemplate) {
     template = serverTemplate;
+    var $metricsEl = $serverEl.find(".server-metrics");
+    var $chartEl = $serverEl.find(".server-success-chart");
+    var chart = SuccessRateGraph($chartEl, "#4AD8AC", true);
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
       var transformedData = processData(filteredData, routerName, server.label);
-      renderServer($serverEl, server, transformedData);
+
+      renderServer($metricsEl, server, transformedData);
+      chart.updateMetrics(getSuccessRate(transformedData));
     }
 
     var getDesiredMetrics = function(metrics) {
@@ -90,12 +112,12 @@ var RouterServer = (function() {
 })();
 
 var RouterServers = (function() {
-  return function (metricsCollector, routers, $serverEl, routerName, serverTemplate, rateMetricPartial) {
+  return function (metricsCollector, routers, $serverEl, routerName, serverTemplate, rateMetricPartial, serverContainerTemplate) {
     var servers = routers.servers(routerName);
     Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
     _.map(servers, function(server) {
-      var $el = $("<div />").addClass("router-server");
+      var $el = $(serverContainerTemplate());
       $serverEl.append($el);
       RouterServer(metricsCollector, server, $el, routerName, serverTemplate);
     });
