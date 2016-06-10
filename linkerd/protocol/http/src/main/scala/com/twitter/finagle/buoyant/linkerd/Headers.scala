@@ -116,10 +116,8 @@ object Headers {
           }
         }
 
-      def write(deadline: FDeadline): String = {
-        val FDeadline(ts, d) = deadline
-        ts.inNanoseconds + " " + d.inNanoseconds
-      }
+      def write(d: FDeadline): String =
+        s"${d.timestamp.inNanoseconds} ${d.deadline.inNanoseconds}""
 
       def set(headers: HeaderMap, deadline: FDeadline): Unit = {
         val _ = headers.set(Key, write(deadline))
