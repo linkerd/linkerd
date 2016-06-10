@@ -2,11 +2,8 @@
   {{server}}
 </div>
 
-<div class="server-metrics">
-  <div class="row">
-    {{> rateMetricPartial metrics.requests containerClass="metric-container col-md-2" metricClass="metric-large"}}
-    {{> rateMetricPartial metrics.load containerClass="metric-container col-md-2" metricClass="metric-large"}}
-    {{> rateMetricPartial metrics.success containerClass="success-metric-container metric-container col-md-2" metricClass="metric-large success-metric"}}
-    {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-large failure-metric"}}
-  </div>
+<div class="container-fluid clearfix col-md-6">
+  {{> rateMetricPartial metrics.requests containerClass="metric-container col-md-2" metricClass="metric-large"}}
+  {{> rateMetricPartial metrics.success containerClass="success-metric-container metric-container col-md-2" metricClass="metric-large success-metric"}}
+  {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-large failure-metric"}}
 </div>

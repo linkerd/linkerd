@@ -1,5 +1,6 @@
 <div class="router-server">
   <div class="server-metrics"></div>
-  <div class="router-graph-header">Server success rate</div>
-  <div class="server-success-chart"></div>
+  <div class="server-success-chart col-md-6">
+    <div class="router-graph-header">Server success rate</div>
+  </div>
 </div>

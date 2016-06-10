@@ -126,7 +126,7 @@ nav ul.navbar-nav {
 }
 
 .router .summary {
-  margin-top: 9px;
+  margin: 9px 0 20px 0;
 }
 
 .router-graph-header {
@@ -150,7 +150,7 @@ nav ul.navbar-nav {
   padding-bottom: 30px;
 }
 
-.server-metric-container {
+.server-metric-container, .server-success-chart {
   margin-top: 20px; /* to match metric-container */
 }
 
