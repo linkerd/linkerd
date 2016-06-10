@@ -8,7 +8,7 @@ import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
-import io.buoyant.namer.{DefaultInterpreterInitializer, InterpreterInitializer, NamerConfig, NamerInitializer}
+import io.buoyant.namer._
 
 /**
  * Represents the total configuration of a Linkerd process.

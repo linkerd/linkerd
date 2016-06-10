@@ -1,9 +1,9 @@
 package io.buoyant.namerd
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{Response, Request}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.server.handler.ResourceHandler
-import io.buoyant.admin.{StaticFilter, ConfigHandler, Admin, App}
+import io.buoyant.admin.{Admin, App, ConfigHandler, StaticFilter}
 import io.buoyant.linkerd.admin.names.DelegateApiHandler
 
 class NamerdAdmin(app: App, config: NamerdConfig, namerd: Namerd) extends Admin(app) {

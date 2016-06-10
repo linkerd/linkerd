@@ -5,11 +5,12 @@ import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.util.Future
-import io.buoyant.admin.names.DelegateHandler
+import io.buoyant.admin.names.{BoundNamesHandler, DelegateHandler}
 import io.buoyant.admin.{StaticFilter, ConfigHandler, Admin}
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
 
 class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
@@ -22,8 +23,11 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     }.toMap
     )
 
-  private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
+  private[this] val enumeratingNamers = linker.namers.collect {
+    case (_, namer: EnumeratingNamer) => namer
+  }
 
+  private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
     "/" -> new DashboardHandler,
     "/legacy-dashboard" -> new SummaryHandler(linker),
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
@@ -35,7 +39,8 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     "/delegator.json" -> new DelegateApiHandler(linker.namers),
     "/dtab/" -> new DtabHandler(() => dtabs),
     "/metrics" -> MetricsHandler,
-    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter)
+    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
+    "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
   )
 
   override def allRoutes = super.allRoutes ++ linkerdAdminRoutes

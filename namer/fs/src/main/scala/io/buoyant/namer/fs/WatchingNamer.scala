@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.namer.EnumeratingNamer
 import java.nio.file.{Path => NioPath}
 
 object WatchingNamer {
@@ -37,7 +38,7 @@ object WatchingNamer {
   }
 }
 
-class WatchingNamer(rootDir: NioPath, prefix: Path) extends Namer {
+class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer {
   import WatchingNamer._
 
   @volatile private[this] var rootCache: Watcher.File.Children = Map.empty
@@ -45,6 +46,13 @@ class WatchingNamer(rootDir: NioPath, prefix: Path) extends Namer {
 
   def lookup(path: Path): Activity[NameTree[Name]] =
     root.children.flatMap(lookup(prefix, path, _))
+
+  override def getAllNames: Activity[Set[Path]] =
+    root.children.map { children =>
+      children.keySet.map { child =>
+        prefix ++ Path.Utf8(child)
+      }
+    }
 
   /** Recursively resolve `path` in the given directory. */
   private[this] def lookup(

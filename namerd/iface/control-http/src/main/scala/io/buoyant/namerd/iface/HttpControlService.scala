@@ -8,7 +8,9 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.admin.names.BoundNamesHandler
 import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
 
@@ -162,6 +164,8 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       handleGetDelegate(ns, path)
     case DelegateUri(None, path) =>
       delegateApiHander(req)
+    case _ if req.path == s"$apiPrefix/bound-names" && req.method == Method.Get =>
+      handleGetBoundNames(req)
     // invalid uri/method
     case _ =>
       Future.value(Response(Status.NotFound))
@@ -394,6 +398,29 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       case Some(dtab) =>
         DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegate(ns))
       case None => Future.value(Response(Status.NotFound))
+    }
+  }
+
+  private[this] val enumeratingNamers = namers.values.collect {
+    case namer: EnumeratingNamer => namer
+  }.toSeq
+  private[this] val boundNames =
+    Activity.collect(enumeratingNamers.map(_.getAllNames))
+      .map(_.toSet.flatten)
+
+  private[this] def renderBoundNames(names: Set[Path]): Buf =
+    Buf.Utf8(names.map(_.show).mkString("[\"", "\",\"", "\"]\n"))
+
+  private[this] def handleGetBoundNames(req: Request): Future[Response] = {
+    if (isStreaming(req)) {
+      streamingResp(boundNames.values, Some(MediaType.Json))(renderBoundNames)
+    } else {
+      boundNames.toFuture.map { names =>
+        val rsp = Response()
+        rsp.contentType = MediaType.Json
+        rsp.content = renderBoundNames(names)
+        rsp
+      }
     }
   }
 }
