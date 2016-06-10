@@ -42,10 +42,19 @@ var CombinedClientGraph = (function() {
     var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
 
-    metricsCollector.registerListener(function(data) {
-      var filteredData = Query.filter(query, data.specific);
-      chart.updateMetrics(filteredData);
-    }, function(metrics) { return Query.filter(query, metrics); });
+    var count = 0;
+    var metricsListener = function(data) {
+      if (count < 5) {
+        // Hacky bug fix: discard the first few data points to fix the issue
+        // where the first values from /metrics are very large [linkerd#485]
+        count++;
+      } else {
+        var filteredData = Query.filter(query, data.specific);
+        chart.updateMetrics(filteredData);
+      }
+    };
+
+    metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
     return {
       updateColors: function(newColors) {
         clientColors = newColors;
