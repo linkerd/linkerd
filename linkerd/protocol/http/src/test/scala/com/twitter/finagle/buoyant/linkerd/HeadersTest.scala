@@ -30,7 +30,7 @@ class HeadersTest extends FunSuite with Awaits {
     val headers = Request().headerMap
 
     assert(!headers.contains(Headers.RequestId.Key))
-    Headers.RequestId.set(headers, orig.traceId)
+    Headers.RequestId.set(headers, orig)
     assert(headers.contains(Headers.RequestId.Key))
     assert(headers.get(Headers.RequestId.Key) == Some(orig.traceId.toString))
   }
@@ -204,7 +204,7 @@ class HeadersTest extends FunSuite with Awaits {
         path = req.headerMap.get(Headers.Dst.Path)
         Future.value(Response())
       })
-      val stk = Headers.Dst.PathFilter +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.PathFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty + Dst.Path(Path.read("/freedom")))())
     }
     val _ = await(svc(Request()))
@@ -219,7 +219,7 @@ class HeadersTest extends FunSuite with Awaits {
         residual = req.headerMap.get(Headers.Dst.Residual)
         Future.value(Response())
       })
-      val stk = Headers.Dst.BoundFilter +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.BoundFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
       val bound = Dst.Bound(Var.value(Addr.Pending), Path.Utf8("id"), Path.Utf8("residual"))
       await(stk.make(Stack.Params.empty + bound)())
     }
@@ -236,7 +236,7 @@ class HeadersTest extends FunSuite with Awaits {
         residual = req.headerMap.get(Headers.Dst.Residual)
         Future.value(Response())
       })
-      val stk = Headers.Dst.BoundFilter +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.BoundFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
       val bound = Dst.Bound(Var.value(Addr.Pending), Path.Utf8("id"))
       await(stk.make(Stack.Params.empty + bound)())
     }

@@ -5,11 +5,39 @@ import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
+import com.twitter.io.Charsets
 import com.twitter.util.{Future, Return, Throw, Time, Try}
+import java.net.URLEncoder
 import java.util.Base64
 
-// all of this based on com.twitter.finagle.http.Codec
-
+/**
+ * The finagle http stack manages a set of context headers that are
+ * read from server requests and written to client requests. The
+ * [[Headers]] module replaces these headers with linkerd-specific
+ * headers (prefixed by l5d-).
+ *
+ * Context headers, read and written by each linkerd instance, include:
+ *   - `l5d-ctx-deadline`
+ *   - `l5d-ctx-dtab`
+ *   - `l5d-ctx-trace`
+ *
+ * Additionally, linkerd honors the following headers on incoming requests:
+ *   - `l5d-dtab`: a client-specified delegation override
+ *   - `l5d-sample`: a client-specified trace sample rate override
+ *
+ * In addition to the context headers, linkerd may emit the following
+ * headers on outgoing requests:
+ *   - `l5d-dst-path`: the logical name of the request as identified by linkerd
+ *   - `l5d-dst-bound`: the concrete client name after delegation
+ *   - `l5d-dst-residual`: an optional residual path remaining after delegation
+ *   - `l5d-reqid`: a token that may be used to correlate requests in
+ *                  a callgraph across services and linkerd instances
+ *
+ * And in addition to the context headers, lay may emit the following
+ * headers on outgoing responses:
+ *   - `l5d-err`: indicates a linkerd-generated error. Error responses
+ *                that do not have this header are application errors.
+ */
 object Headers {
   val Prefix = "l5d-"
 
@@ -27,12 +55,13 @@ object Headers {
      * `dtab-local` header should be considered deprecated in favor of
      * `l5d-dtab, and will not be supported in the future.
      *
-     * Note that trace configuration is handled by [[HttpTraceInitializer.server]].
+     * Note that trace configuration is handled by
+     * [[HttpTraceInitializer.serverModule]].
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {
-        val role = Stack.Role("DeadlineExtract")
-        val description = "Extracts deadlines from http headers"
+        val role = Stack.Role("ServerContextFilter")
+        val description = "Extracts linkerd context from http headers"
 
         val deadline = new Deadline.ServerFilter
         val dtab = new Dtab.ServerFilter
@@ -48,17 +77,19 @@ object Headers {
      *
      * Note that Dtabs are *not* encoded by this filter, since the
      * HttpClientDispatcher is currently responsible for encoding the
-     * `dtab-local` header.  In a future release, Dtabs will be
-     * encoded into the `l5d-ctx-dtab` header.
+     * `dtab-local` header. In a future release, Dtabs will be encoded
+     * into the `l5d-ctx-dtab` header.
      *
-     * Note that trace configuration is handled by [[HttpTraceInitializer.client]].
+     * Note that trace configuration is handled by
+     * [[HttpTraceInitializer.clientModule]].
      */
     val clientModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {
-        val role = Stack.Role("DeadlineInject")
-        val description = "Injects deadlines into http headers"
+        val role = Stack.Role("ClientContextFilter")
+        val description = "Injects linkerd context into http headers"
 
-        // TODO use Dtab.ClientFilter once this module can replace finagle's dtab encoding logic.
+        // TODO use Dtab.ClientFilter once this module can replace
+        //      finagle's dtab encoding logic.
         val deadline = new Deadline.ClientFilter
 
         def make(next: ServiceFactory[Request, Response]) =
@@ -67,57 +98,40 @@ object Headers {
 
     val Prefix = Headers.Prefix + "ctx-"
 
-    object Trace {
-      val Key = Prefix + "trace"
-
-      /**
-       * Get a trace id from a base64 encoded buffer.
-       *
-       * Based on com.twitter.finagle.tracing.Trace.idCtx.tryUnmarshal
-       *
-       * The wire format is (big-endian):
-       *   ''reqId:8 parentId:8 traceId:8 flags:8''
-       */
-      def read(b64: String): Try[TraceId] =
-        Try { Base64.getDecoder.decode(b64) }.flatMap(TraceId.deserialize(_))
-
-      def get(headers: HeaderMap): Option[TraceId] =
-        for {
-          header <- headers.get(Key)
-          traceId <- read(header).toOption
-        } yield traceId
-
-      def set(headers: HeaderMap, id: TraceId): Unit = {
-        val bytes = TraceId.serialize(id)
-        val b64 = Base64.getEncoder.encodeToString(bytes)
-        val _ = headers.set(Key, b64)
-      }
-
-      def clear(headers: HeaderMap): Unit = {
-        val _ = headers.remove(Key)
-      }
-    }
-
+    /**
+     * The `l5d-ctx-deadline` header propagates a request
+     * deadline. Each router server may use this deadline to cancel or
+     * reject work.
+     *
+     * Each router client sets a deadline that it is at least as
+     * strict as the deadline it received. If an incoming request has
+     * a deadline, the outgoing request MUST have a
+     * deadline. Otherwise, outgoing requests MAY have a deadline.
+     */
     object Deadline {
       val Key = Prefix + "deadline"
 
-      def read(v: String): Try[FDeadline] = Try {
+      def read(v: String): FDeadline = {
         val values = v.split(' ')
         val timestamp = Time.fromNanoseconds(values(0).toLong)
         val deadline = Time.fromNanoseconds(values(1).toLong)
         FDeadline(timestamp, deadline)
       }
 
+      /**
+       * Read all `l5d-ctx-deadline` headers and return the strictest
+       * combination.
+       */
       def get(headers: HeaderMap): Option[FDeadline] =
         headers.getAll(Key).foldLeft[Option[FDeadline]](None) { (d0, v) =>
-          (d0, read(v).toOption) match {
+          (d0, Try(read(v)).toOption) match {
             case (Some(d0), Some(d1)) => Some(FDeadline.combined(d0, d1))
             case (d0, d1) => d0.orElse(d1)
           }
         }
 
       def write(d: FDeadline): String =
-        s"${d.timestamp.inNanoseconds} ${d.deadline.inNanoseconds}""
+        s"${d.timestamp.inNanoseconds} ${d.deadline.inNanoseconds}"
 
       def set(headers: HeaderMap, deadline: FDeadline): Unit = {
         val _ = headers.set(Key, write(deadline))
@@ -129,8 +143,10 @@ object Headers {
 
       /**
        * Extract the deadline from the request and, if it exists, use
-       * either that deadline or the one already on the local context,
-       * whichever is stricter.
+       * either the strictest combination of deadlines.
+       *
+       * Clears deadline headers from the request. This means that the
+       * client is responsible for encoding outgoing deadlines.
        */
       class ServerFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) =
@@ -148,6 +164,11 @@ object Headers {
           }
       }
 
+      /**
+       * If a deadline is set, encode it on downstream requests.
+       *
+       * Clears any existing deadline headers from the request.
+       */
       class ClientFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) =
           FDeadline.current match {
@@ -159,9 +180,29 @@ object Headers {
       }
     }
 
+    /**
+     * There are two headers used to control local Dtabs in linkerd:
+     *
+     *   1. `l5d-ctx-dtab` is read and _written_ by linkerd. It is
+     *      intended to managed entirely by linked, and applications
+     *      should only forward requests prefixed by `l5d-ctx-*`.
+     *
+     *      *NOTE*: the client module does not yet encode
+     *      `l5d-ctx-dtab`. `dtab-local` is still to be relied on
+     *      until https://github.com/twitter/finagle/pull/514 is
+     *      complete.
+     *
+     *   2. `l5d-dtab` is to be provided by users. Applications are
+     *       not required to forward `l5d-dtab` when fronted by
+     *       linkerd.
+     *
+     * `l5d-dtab` is appended to `l5d-ctx-dtab`, so that user-provided
+     * delegations take precdence.
+     */
     object Dtab {
-      val UserKey = Headers.Prefix + "dtab"
       val CtxKey = Ctx.Prefix + "dtab"
+      val UserKey = Headers.Prefix + "dtab"
+
       private val EmptyReturn = Return(FDtab.empty)
 
       def get(headers: HeaderMap, key: String): Try[FDtab] =
@@ -199,21 +240,12 @@ object Headers {
         def apply(req: Request, service: Service[Request, Response]) =
           get(req.headerMap) match {
             case Throw(e) =>
-              invalidResponse(e.getMessage)
+              Future.value(Err.respond(e.getMessage, Status.BadRequest))
             case Return(dtab) =>
               clear(req.headerMap)
               FDtab.local ++= dtab
               service(req)
           }
-
-        private[this] def invalidResponse(msg: String): Future[Response] = {
-          val rspTxt = s"Invalid Dtab headers: $msg"
-          val rsp = Response(Status.BadRequest)
-          rsp.contentType = "text/plain; charset=UTF-8"
-          rsp.contentLength = rspTxt.getBytes.length
-          rsp.contentString = rspTxt
-          Future.value(rsp)
-        }
       }
 
       /**
@@ -228,18 +260,65 @@ object Headers {
         }
       }
     }
-  }
 
-  object RequestId {
-    val Key = Prefix + "reqid"
+    object Trace {
+      val Key = Prefix + "trace"
 
-    def set(headers: HeaderMap, traceId: SpanId): Unit = {
-      val _ = headers.set(Key, traceId.toString)
+      /**
+       * Get a trace id from a base64 encoded buffer.
+       *
+       * Based on com.twitter.finagle.tracing.Trace.idCtx.tryUnmarshal
+       *
+       * The wire format is (big-endian):
+       *   ''reqId:8 parentId:8 traceId:8 flags:8''
+       */
+      def read(b64: String): Try[TraceId] =
+        Try { Base64.getDecoder.decode(b64) }.flatMap(TraceId.deserialize(_))
+
+      def get(headers: HeaderMap): Option[TraceId] =
+        for {
+          header <- headers.get(Key)
+          traceId <- read(header).toOption
+        } yield traceId
+
+      def set(headers: HeaderMap, id: TraceId): Unit = {
+        val bytes = TraceId.serialize(id)
+        val b64 = Base64.getEncoder.encodeToString(bytes)
+        val _ = headers.set(Key, b64)
+      }
+
+      def clear(headers: HeaderMap): Unit = {
+        val _ = headers.remove(Key)
+      }
     }
   }
 
   /**
-   * Sets the sample rate to determine whether this span should be traced.
+   * The `l5d-reqid` header is used to provide applications with a
+   * token that can be used in logging to correlate requests. We use
+   * the _root_ span id so that this key can be used to correlate all
+   * related requests (i.e. in log messages) across services and
+   * linkerd instances.
+   */
+  object RequestId {
+    val Key = Prefix + "reqid"
+
+    def set(headers: HeaderMap, traceId: TraceId): Unit = {
+      val _ = headers.set(Key, traceId.traceId.toString)
+    }
+  }
+
+  /**
+   * The `l5d-sample` lets clients determine the sample rate of a
+   * given request. Tracers may, of course, choose to enforce
+   * additional sampling, so setting this header cannot ensure that a
+   * trace is recorded.
+   *
+   * `l5d-sample` values should be on [0.0, 1.0], however values
+   * outside of this range are rounded to the nearest valid value so
+   * that negative numbers are treated as 0 and positive numbers
+   * greater than 1 are rounded to 1. At 1.0, the trace is marked as
+   * sampled on all downstream requestes.
    */
   object Sample {
     val Key = Prefix + "sample"
@@ -258,25 +337,35 @@ object Headers {
     }
   }
 
+  /**
+   * Dst headers are encoded on outgoing requests so that downstream
+   * services are able to know how they are named by
+   * linkerd. Specifically, the `l5d-dst-residual` header may be
+   * useful to services that act as proxies and need to determine the
+   * next hop.
+   */
   object Dst {
     val Path = Prefix + "dst-path"
     val Residual = Prefix + "dst-residual"
     val Bound = Prefix + "dst-bound"
 
+    /** Encodes `l5d-dst-path` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
       private[this] val pathShow = path.show
-
       def apply(req: Request, service: Service[Request, Response]) = {
         req.headers().set(Path, pathShow)
         service(req)
       }
     }
 
-    object PathFilter extends Stack.Module1[BuoyantDst.Path, ServiceFactory[Request, Response]] {
-      val role = Stack.Role("Headers.Path")
-      val description = s"Adds the '$Path' header to requests and responses"
-      def make(dst: BuoyantDst.Path, factory: ServiceFactory[Request, Response]) =
-        new PathFilter(dst.path).andThen(factory)
+    object PathFilter {
+      val module: Stackable[ServiceFactory[Request, Response]] =
+        new Stack.Module1[BuoyantDst.Path, ServiceFactory[Request, Response]] {
+          val role = Stack.Role("Headers.Path")
+          val description = s"Adds the '$Path' header to requests and responses"
+          def make(dst: BuoyantDst.Path, factory: ServiceFactory[Request, Response]) =
+            new PathFilter(dst.path).andThen(factory)
+        }
     }
 
     /**
@@ -304,13 +393,31 @@ object Headers {
       }
     }
 
-    object BoundFilter extends Stack.Module1[BuoyantDst.Bound, ServiceFactory[Request, Response]] {
-      val role = Stack.Role("Headers.Bound")
-      val description = s"Adds the $Bound and $Residual headers to requests and responses"
-      def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
-        new BoundFilter(dst.name).andThen(factory)
+    object BoundFilter {
+      val module: Stackable[ServiceFactory[Request, Response]] =
+        new Stack.Module1[BuoyantDst.Bound, ServiceFactory[Request, Response]] {
+          val role = Stack.Role("Headers.Bound")
+          val description = s"Adds the $Bound and $Residual headers to requests and responses"
+          def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
+            new BoundFilter(dst.name).andThen(factory)
+        }
     }
   }
 
-  val Err = Prefix + "err"
+  /**
+   * The `l5d-err` header is set on all responses in which linkerd
+   * encountered an error. It can be used to distinguish linkerd
+   * responses from application responses.
+   */
+  object Err {
+    val Key = Prefix + "err"
+
+    def respond(msg: String, status: Status = Status.InternalServerError): Response = {
+      val rsp = Response(status)
+      rsp.headerMap(Key) = URLEncoder.encode(msg, Charsets.Iso8859_1.toString)
+      rsp.contentType = MediaType.Txt
+      rsp.contentString = msg
+      rsp
+    }
+  }
 }

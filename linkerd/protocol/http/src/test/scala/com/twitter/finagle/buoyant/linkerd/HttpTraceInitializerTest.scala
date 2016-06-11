@@ -1,5 +1,6 @@
 package com.twitter.finagle.buoyant.linkerd
 
+import com.twitter.finagle.Stack
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.{NullTracer, Trace}
 import com.twitter.finagle.{Service, ServiceFactory, param}
@@ -16,8 +17,9 @@ class HttpTraceInitializerTest extends FunSuite with Awaits {
       Headers.Ctx.Trace.set(rsp.headerMap, Trace.id)
       Future.value(rsp)
     }
-    val tracer = param.Tracer(NullTracer)
-    val factory = HttpTraceInitializer.server.make(tracer, ServiceFactory.const(svc))
+    val factory = HttpTraceInitializer.serverModule
+      .toStack(Stack.Leaf(Stack.Role("ep"), ServiceFactory.const(svc)))
+      .make(Stack.Params.empty + param.Tracer(NullTracer))
     Await.result(factory())
   }
 

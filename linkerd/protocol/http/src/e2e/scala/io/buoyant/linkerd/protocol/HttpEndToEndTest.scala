@@ -128,12 +128,12 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
       get("ralph-machio") { rsp =>
         assert(rsp.status == Status.BadGateway)
-        assert(rsp.headerMap.contains(Headers.Err))
+        assert(rsp.headerMap.contains(Headers.Err.Key))
       }
 
       get("") { rsp =>
         assert(rsp.status == Status.BadRequest)
-        assert(rsp.headerMap.contains(Headers.Err))
+        assert(rsp.headerMap.contains(Headers.Err.Key))
       }
 
       // todo check stats
