@@ -85,3 +85,58 @@ routers:
 
 A request to `:5000/true/love/waits.php` will be identified as
 `/custom/prefix/true/love`.
+
+## HTTP Headers
+
+linkerd reads and sets several headers prefixed by `l5d-`.
+
+### Context Headers
+
+_Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
+instances. Applications should forward all context headers in order
+for all linkerd features to work. These headers include:
+
+- `dtab-local`: Currently (until the next release of finagle), the
+  `dtab-local` header is used to propagate dtab context. In an
+  upcoming release this header will no longer be honored, in favor of
+  `l5d-ctx-dtab` and `l5d-dtab`.
+- `l5d-ctx-deadline`:
+- `l5d-ctx-trace`:
+
+Edge services should take care to ensure these headers are not set
+from untrusted sources.
+
+### User Headers
+
+_User headers_ are useful to allow user-overrides
+
+- `l5d-dtab`: a client-specified delegation override
+- `l5d-sample`: a client-specified trace sample rate override
+
+Note that if linkerd process incoming requests for applications
+(i.e. in linker-to-linker configurations), applications do not need to
+provide special treatment for these headers since linkerd does _not_
+forward these headers (and instead translates them into context
+headers).
+
+Edge services should take care to ensure these headers are not set
+from untrusted sources.
+
+### Informational Request Headers
+
+In addition to the context headers, linkerd may emit the following
+headers on outgoing requests:
+
+- `l5d-dst-path`: the logical name of the request as identified by linkerd
+- `l5d-dst-bound`: the concrete client name after delegation
+- `l5d-dst-residual`: an optional residual path remaining after delegation
+- `l5d-reqid`: a token that may be used to correlate requests in a
+               callgraph across services and linkerd instances
+
+### Informational Response Headers
+
+And in addition to the context headers, lay may emit the following
+headers on outgoing responses:
+
+- `l5d-err`: indicates a linkerd-generated error. Error responses
+             that do not have this header are application errors.

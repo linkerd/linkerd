@@ -17,16 +17,19 @@ import java.util.Base64
  * headers (prefixed by l5d-).
  *
  * Context headers, read and written by each linkerd instance, include:
+ *
  *   - `l5d-ctx-deadline`
  *   - `l5d-ctx-dtab`
  *   - `l5d-ctx-trace`
  *
  * Additionally, linkerd honors the following headers on incoming requests:
+ *
  *   - `l5d-dtab`: a client-specified delegation override
  *   - `l5d-sample`: a client-specified trace sample rate override
  *
  * In addition to the context headers, linkerd may emit the following
  * headers on outgoing requests:
+ *
  *   - `l5d-dst-path`: the logical name of the request as identified by linkerd
  *   - `l5d-dst-bound`: the concrete client name after delegation
  *   - `l5d-dst-residual`: an optional residual path remaining after delegation
@@ -35,6 +38,7 @@ import java.util.Base64
  *
  * And in addition to the context headers, lay may emit the following
  * headers on outgoing responses:
+ *
  *   - `l5d-err`: indicates a linkerd-generated error. Error responses
  *                that do not have this header are application errors.
  */
