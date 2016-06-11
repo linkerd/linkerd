@@ -113,11 +113,12 @@ _User headers_ are useful to allow user-overrides
 - `l5d-dtab`: a client-specified delegation override
 - `l5d-sample`: a client-specified trace sample rate override
 
-Note that if linkerd process incoming requests for applications
+Note that if linkerd processes incoming requests for applications
 (i.e. in linker-to-linker configurations), applications do not need to
 provide special treatment for these headers since linkerd does _not_
 forward these headers (and instead translates them into context
-headers).
+headers). If applications receive traffic directly, they _should_
+forward these headers.
 
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
@@ -127,16 +128,22 @@ from untrusted sources.
 In addition to the context headers, linkerd may emit the following
 headers on outgoing requests:
 
-- `l5d-dst-path`: the logical name of the request as identified by linkerd
-- `l5d-dst-bound`: the concrete client name after delegation
+- `l5d-dst-logical`: the logical name of the request as identified by linkerd
+- `l5d-dst-concrete`: the concrete client name after delegation
 - `l5d-dst-residual`: an optional residual path remaining after delegation
 - `l5d-reqid`: a token that may be used to correlate requests in a
                callgraph across services and linkerd instances
 
+Applications are not required to forward these headers on downstream
+requests.
+
 ### Informational Response Headers
 
-And in addition to the context headers, lay may emit the following
-headers on outgoing responses:
+linkerd may emit the following _informational_ headers on outgoing
+responses:
 
 - `l5d-err`: indicates a linkerd-generated error. Error responses
              that do not have this header are application errors.
+
+Applications are not required to forward these headers on upstream
+responses.

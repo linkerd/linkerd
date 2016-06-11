@@ -30,8 +30,8 @@ import java.util.Base64
  * In addition to the context headers, linkerd may emit the following
  * headers on outgoing requests:
  *
- *   - `l5d-dst-path`: the logical name of the request as identified by linkerd
- *   - `l5d-dst-bound`: the concrete client name after delegation
+ *   - `l5d-dst-logical`: the logical name of the request as identified by linkerd
+ *   - `l5d-dst-concrete`: the concrete client name after delegation
  *   - `l5d-dst-residual`: an optional residual path remaining after delegation
  *   - `l5d-reqid`: a token that may be used to correlate requests in
  *                  a callgraph across services and linkerd instances
@@ -349,9 +349,9 @@ object Headers {
    * next hop.
    */
   object Dst {
-    val Path = Prefix + "dst-path"
+    val Path = Prefix + "dst-logical"
+    val Bound = Prefix + "dst-concrete"
     val Residual = Prefix + "dst-residual"
-    val Bound = Prefix + "dst-bound"
 
     /** Encodes `l5d-dst-path` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
