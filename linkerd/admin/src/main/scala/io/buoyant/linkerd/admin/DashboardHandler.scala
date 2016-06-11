@@ -6,20 +6,25 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.Build
 
 private[admin] class DashboardHandler extends Service[Request, Response] {
-  lazy val html = dashboardHtml
+  import DashboardHandler._
 
   override def apply(req: Request): Future[Response] = req.path match {
-    case "/" =>
-      AdminHandler.mkResponse(html)
+    case "/" | "/routers" =>
+      AdminHandler.mkResponse(dashboardHtml())
+    case rexp(router) =>
+      AdminHandler.mkResponse(dashboardHtml(router))
     case _ =>
       Future.value(Response(Status.NotFound))
   }
 
-  def dashboardHtml = {
+  def dashboardHtml(router: String = "") = {
     AdminHandler.html(
       content = s"""
         <div class="request-totals"></div>
-        <div class="server-data" data-linkerd-version="${Build.load().version}" style="visibility:hidden"></div>
+        <div class="server-data"
+          data-linkerd-version="${Build.load().version}"
+          data-router-name="${router}"
+          style="visibility:hidden"></div>
         <div class="dashboard-container"></div>
         <div class="row proc-info">
         </div>
@@ -44,4 +49,8 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
       navbar = AdminHandler.version2NavBar
     )
   }
+}
+
+object DashboardHandler {
+  val rexp = "^/routers/(.*)/?".r
 }

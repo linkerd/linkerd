@@ -70,8 +70,19 @@ var RouterController = (function () {
     }
   });
 
+  function getSelectedRouterData(selectedRouter, routers) {
+    var routerData = {};
+
+    if (!selectedRouter || !routers.data[selectedRouter]) {
+      routerData = routers.data;
+    } else {
+      routerData[selectedRouter] = routers.data[selectedRouter];
+    }
+    return routerData;
+  }
+
   function initializeRouterContainers(selectedRouter, routers, $parentContainer, template) {
-    var routerData = !selectedRouter ? routers.data : { router: routers.data[selectedRouter] };
+    var routerData = getSelectedRouterData(selectedRouter, routers);
     var containers = template({ routers: _.keys(routerData) });
     $parentContainer.html(containers);
 

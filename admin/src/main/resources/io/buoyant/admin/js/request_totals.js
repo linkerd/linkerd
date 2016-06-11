@@ -33,7 +33,7 @@ var RequestTotals = (function() {
     }));
   }
 
-  return function(metricsCollector, $root, template) {
+  return function(metricsCollector, selectedRouter, $root, template) {
     function onMetricsUpdate(data) {
       var transformedData = _.map(metricDefinitions, function(defn) {
         var metricsByQuery = Query.filter(defn.query, data.specific);
@@ -47,8 +47,12 @@ var RequestTotals = (function() {
       render($root, template, transformedData);
     }
 
-    render($root, template, metricDefinitions);
-    metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
+    if (!selectedRouter) {
+      render($root, template, metricDefinitions);
+      metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
+    } else {
+      $root.hide();
+    }
     return {};
   }
 })();
