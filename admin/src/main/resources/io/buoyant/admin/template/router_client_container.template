@@ -3,5 +3,8 @@
     /{{client}}
   </div>
   <div class="metrics-container col-md-6"></div>
-  <div class="chart-container col-md-6"></div>
+  <div class="col-md-6">
+    <div class="router-graph-header">Client success rate</div>
+    <div class="chart-container "></div>
+  </div>
 </div>

@@ -11,6 +11,7 @@ $.when(
   $.get("/files/template/router_server.template"),
   $.get("/files/template/router_client.template"),
   $.get("/files/template/router_client_container.template"),
+  $.get("/files/template/router_server_container.template"),
   $.get("/files/template/server_rate_metric.partial.template"),
   $.get("/files/template/metric.partial.template"),
   $.get("/files/template/router_summary.template"),
@@ -22,6 +23,7 @@ $.when(
     routerServerRsp,
     routerClientRsp,
     routerClientContainerRsp,
+    routerServerContainerRsp,
     serverMetricPartialRsp,
     metricPartialRsp,
     routerSummaryRsp,
@@ -35,6 +37,7 @@ $.when(
     server: Handlebars.compile(routerServerRsp[0]),
     client: Handlebars.compile(routerClientRsp[0]),
     clientContainer: Handlebars.compile(routerClientContainerRsp[0]),
+    serverContainer: Handlebars.compile(routerServerContainerRsp[0]),
     serverMetric: Handlebars.compile(serverMetricPartialRsp[0]),
     metric: Handlebars.compile(metricPartialRsp[0])
   }

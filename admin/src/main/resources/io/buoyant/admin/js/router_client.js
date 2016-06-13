@@ -1,4 +1,4 @@
-/* globals ClientSuccessRateGraph, Query, SuccessRate */
+/* globals SuccessRateGraph, Query, SuccessRate */
 /* exported RouterClient */
 var RouterClient = (function() {
   var template;
@@ -58,15 +58,7 @@ var RouterClient = (function() {
 
   function getSuccessRate(summaryData) {
     var successRate = summaryData.successRateRaw === -1 ? 1 : summaryData.successRateRaw;
-
-    // draw a 100 % Success Rate reference line.  Hack it so that SmoothieCharts plots 100%
-    // at the top rather than at the bottom
-    var referenceLine = successRate === 1 ? 99.999 : 100;
-
-    return [
-      { name: "successRate", delta: successRate * 100 },
-      { name: "referenceLine", delta: referenceLine }
-    ];
+    return [{ name: "successRate", delta: successRate * 100 }];
   }
 
   function getSummaryData(data, metricDefinitions) {
@@ -99,7 +91,7 @@ var RouterClient = (function() {
     var metricDefinitions = getMetricDefinitions(routerName, client.label);
 
     renderMetrics($metricsEl, client, [], [], clientColor);
-    var chart = ClientSuccessRateGraph($chartEl, colors.color);
+    var chart = SuccessRateGraph($chartEl, colors.color);
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
