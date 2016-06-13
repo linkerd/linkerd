@@ -108,6 +108,22 @@ private[k8s] abstract class Watchable[O <: KubeObject: Manifest, W <: Watch[O]: 
                 }
               }.flatten
 
+          case http.Status.Gone =>
+            // Gone is returned by k8s to indicate the requested resource version is too old to watch. A common scenario
+            // that exhibits this error is:
+            //
+            // 1. Kubernetes kills a connection or the connection is lost
+            // 2. We try to re-establish the watch from the last received version, but because we are only watching a
+            //    subset of resources, that version was a while ago
+            // 3. The watch fails
+            //
+            // We need to reload the initial information to ensure we are "caught up," and then watch again.
+            AsyncStream.fromFuture {
+              restartWatches(labelSelector, fieldSelector).map {
+                case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
+              }
+            }.flatten
+
           case status =>
             close.set(Closable.nop)
             log.debug(s"k8s failed to watch resource $path: ${status.code} ${status.reason}")
