@@ -7,8 +7,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
-import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Duration, Future, Time}
+import com.twitter.util.{Future, Time}
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -278,13 +277,16 @@ object StackRouter {
 
     /**
      * Install ClassifiedTracing to mark each request-response's
-     * classification (success, failure, or retryable).
+     * classification (success, failure, or retryable), after the
+     * TraceInitializerFilter (note, TraceInitializerFilter's role
+     * is private[finagle], so instead it's hardcoded here).
      *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      ClassifiedTracing.module[Req, Rsp] +: (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
+      (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
+        .insertAfter(Stack.Role("TraceInitializerFilter"), ClassifiedTracing.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
