@@ -1,5 +1,5 @@
 "use strict";
-/* globals getSelectedRouter, MetricsCollector, ProcInfo, RequestTotals, Routers, RouterController */
+/* globals MetricsCollector, ProcInfo, RequestTotals, Routers, RouterController */
 
 /**
  * Number of millis to wait between data updates.
@@ -30,7 +30,7 @@ $.when(
     overviewStatsRsp,
     requestTotalsRsp,
     metricsJson) {
-  var selectedRouter = getSelectedRouter(); // TODO: update this to avoid passing params in urls #198
+
   var routerTemplates = {
     summary: Handlebars.compile(routerSummaryRsp[0]),
     container: Handlebars.compile(routerContainerRsp[0]),
@@ -45,10 +45,12 @@ $.when(
   var metricsCollector = MetricsCollector(metricsJson[0]);
   var routers = Routers(metricsJson[0], metricsCollector);
 
-  var buildVersion = $(".server-data").data("linkerd-version");
+  var $serverData = $(".server-data");
+  var buildVersion = $serverData.data("linkerd-version");
+  var selectedRouter = $serverData.data("router-name");
 
   ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-  RequestTotals(metricsCollector, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+  RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
   RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
   $(function() {
