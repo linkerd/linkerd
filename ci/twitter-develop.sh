@@ -98,6 +98,7 @@ build finagle \
       finagle-thriftmux/publishLocal \
       finagle-stats/publishLocal \
       finagle-serversets/publishLocal \
+      finagle-zipkin-core/publishLocal \
       finagle-zipkin/publishLocal \
       finagle-benchmark/publishLocal
 
