@@ -223,7 +223,8 @@ object LinkerdBuild extends Base {
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.namerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
-      dockerEnvPrefix := "NAMERD_"
+      dockerEnvPrefix := "NAMERD_",
+      unmanagedBase := baseDirectory.value / "plugins"
     )
 
     val Bundle = config("bundle") extend Minimal
@@ -415,7 +416,8 @@ object LinkerdBuild extends Base {
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.Linkerd"),
       assemblyExecScript := execScript.split("\n").toSeq,
-      dockerEnvPrefix := "L5D_"
+      dockerEnvPrefix := "L5D_",
+      unmanagedBase := baseDirectory.value / "plugins"
     )
 
     val BundleSettings = MinimalSettings ++ Seq(
