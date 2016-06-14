@@ -8,7 +8,6 @@ import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.finagle.util.LoadService
 import com.twitter.util._
 import io.buoyant.router.Http
 import io.buoyant.router.http.MethodAndHostIdentifier
@@ -217,7 +216,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
   def retryTest(kind: String, methods: Set[Method]): Unit = {
     val stats = new InMemoryStatsReceiver
-    val tracer = NullTracer
+    val tracer = new BufferingTracer
+    def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
+      f(tracer.iterator.map(_.annotation).toSeq)
+      tracer.clear()
+    }
 
     @volatile var failNext = false
     val downstream = Downstream.mk("dog") { req =>
@@ -268,6 +271,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
         assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
+        withAnnotations { anns =>
+          assert(anns.exists(_ == Annotation.Message("l5d.retryable")))
+        }
       }
 
       // non-retryable request, fails and is not retried
@@ -292,6 +298,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
         assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(0.0)))
+        withAnnotations { anns =>
+          assert(anns.exists(_ == Annotation.Message("l5d.failure")))
+        }
       }
     } finally {
       await(client.close())
