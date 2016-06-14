@@ -1,6 +1,7 @@
 import com.typesafe.sbt.SbtScalariform.{scalariformSettings => baseScalariformSettings, _}
 import sbt._
 import sbt.Keys._
+import complete.Parsers.spaceDelimited
 import sbtassembly.AssemblyKeys._
 import sbtassembly.AssemblyPlugin.assemblySettings
 import sbtassembly.MergeStrategy
@@ -117,10 +118,11 @@ class Base extends Build {
     // The runtime configuration may be different from the example configuration.
     runtimeConfiguration := configuration.value,
     run := // call linkerd's run command with a config file
-      Def.taskDyn {
+      Def.inputTaskDyn {
         val path = configFile.value.getPath
-        (run in runtime in runtimeConfiguration.value).toTask(s" $path")
-      }.value
+        val args = spaceDelimited("<args>").parsed.mkString(" ")
+        (run in runtime in runtimeConfiguration.value).toTask(s" $path $args")
+      }.evaluated
   )
 
   // Helper method for constructing projects from directory structure
