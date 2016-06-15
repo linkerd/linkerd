@@ -4,7 +4,7 @@ import com.twitter.util.Await
 import io.buoyant.admin.{App, AdminInitializer}
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import io.buoyant.linkerd.{Build, Linker}
+import io.buoyant.linkerd.{MetricsExport, Build, Linker}
 import java.io.File
 import scala.io.Source
 
@@ -31,9 +31,6 @@ object Linkerd extends App {
         adminInitializer.startServer()
         closeOnExit(adminInitializer.adminHttpServer)
 
-        // TODO initialize:
-        // - namers
-        // - tracers
         val routers = linker.routers.flatMap { router =>
           val running = router.initialize()
           closeOnExit(running)
@@ -44,6 +41,9 @@ object Linkerd extends App {
             listening
           }
         }
+
+        closeOnExit(new MetricsExport(linker.metricsExporters))
+
         Await.all(routers: _*)
 
       case _ => exitOnError("usage: linkerd path/to/config")
