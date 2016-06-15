@@ -34,7 +34,7 @@ case class UnknownNamer[Req](path: Path, cause: Throwable)
  * Namers are provided in preference-order so that first-match wins.
  */
 case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
-  extends DelegatingNameInterpreter {
+  extends NameInterpreter with Delegator {
 
   override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
     Namer.bind(lookup(dtab), NameTree.Leaf(path))
@@ -87,16 +87,11 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
     dentry: Dentry,
     path: Path
   ): Activity[DelegateTree[Name]] = {
-    println("delgate lookup...")
-    println(dtab)
-    println(path)
     val matches: Seq[DelegateTree[Name.Path]] = dtab.reverse.collect {
       case d@Dentry(prefix, dst) if prefix.matches(path) =>
         val suff = path.drop(prefix.size)
         fromNameTree(path, d, dst.map { pfx => Name.Path(pfx ++ suff) })
     }
-    println("matches")
-    println(matches)
 
     val result: DelegateTree[Name.Path] = matches match {
       case Nil => DelegateTree.Neg(path, dentry)

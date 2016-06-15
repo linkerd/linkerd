@@ -2,13 +2,14 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.Activity
-import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, DelegatingNameInterpreter}
+import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, Delegator}
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],
   namers: Seq[(Path, Namer)] = Nil
-) extends DelegatingNameInterpreter {
+) extends NameInterpreter with Delegator {
 
   def bind(localDtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
     configuredDtab.flatMap { configuredDtab =>
@@ -47,10 +48,7 @@ case class ConfiguredDtabNamer(
     tree: DelegateTree[Name.Path]
   ): Activity[DelegateTree[Bound]] =
     configuredDtab.flatMap { confDtab =>
-      println(s"delegating with $confDtab and $dtab")
-      val act = namersInterpreter.delegate(confDtab ++ dtab, tree)
-      act.toFuture.respond(println)
-      act
+      namersInterpreter.delegate(confDtab ++ dtab, tree)
     }
 
   override def dtab: Activity[Dtab] = configuredDtab

@@ -6,7 +6,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle._
 import com.twitter.util.{Activity, Await, Var}
-import io.buoyant.namer.{DelegatingNameInterpreter, DelegateTree}
+import io.buoyant.namer.{Delegator, DelegateTree}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -70,7 +70,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
   test("delegate") {
     val states = Var[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending)
-    def interpreter(ns: String) = new DelegatingNameInterpreter {
+    def interpreter(ns: String) = new NameInterpreter with Delegator {
       override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) =
         Activity(states)
       override def bind(dtab: Dtab, path: Path) = ???
@@ -106,7 +106,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
   test("dtab") {
     val states = Var[Activity.State[Dtab]](Activity.Pending)
-    def interpreter(ns: String) = new DelegatingNameInterpreter {
+    def interpreter(ns: String) = new NameInterpreter with Delegator {
       override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) = ???
       override def bind(dtab: Dtab, path: Path) = ???
       override def dtab: Activity[Dtab] = Activity(states)

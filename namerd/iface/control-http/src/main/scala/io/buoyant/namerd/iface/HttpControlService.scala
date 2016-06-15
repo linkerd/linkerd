@@ -9,7 +9,7 @@ import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.namer.{DelegatingNameInterpreter, EnumeratingNamer}
+import io.buoyant.namer.{Delegator, EnumeratingNamer}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
 
@@ -396,7 +396,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     getDtab(ns).flatMap {
       case Some(dtab) =>
         delegate(ns) match {
-          case delegator: DelegatingNameInterpreter =>
+          case delegator: Delegator =>
             DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegator)
           case _ =>
             val rsp = Response(Status.NotImplemented)

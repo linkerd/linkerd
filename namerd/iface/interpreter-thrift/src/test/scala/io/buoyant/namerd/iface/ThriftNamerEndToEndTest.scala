@@ -99,7 +99,6 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     val id = Path.read("/io.l5d.w00t")
     val namer = new Namer {
       def lookup(path: Path) = {
-        println(s"namer got $path")
         path match {
           case Path.Utf8("woop") => Activity.value(NameTree.Leaf(Name.Bound(
             Var(Addr.Bound(Address("localhost", 9000))),

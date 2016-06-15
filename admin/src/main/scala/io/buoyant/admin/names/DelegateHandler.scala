@@ -5,7 +5,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Dtab, Namer, Path, Service}
 import com.twitter.util.Future
 import io.buoyant.admin.HtmlView
-import io.buoyant.namer.DelegatingNameInterpreter
+import io.buoyant.namer.Delegator
 
 class DelegateHandler(
   view: HtmlView,
@@ -14,22 +14,22 @@ class DelegateHandler(
 ) extends Service[Request, Response] {
 
   def apply(req: Request): Future[Response] = {
-    Future.collect {
-      baseDtabs.map {
-        case (ns, dtab) =>
-          interpreter(ns) match {
-            case delegating: DelegatingNameInterpreter =>
-              delegating.dtab.values.toFuture.flatMap(Future.const)
-                .map { interpreterDtab =>
-                  ns -> interpreterDtab
-                }
-            case _ => Future.value(ns -> Dtab.empty)
-          }
-      }.toSeq
-    }.map(_.toMap).map { interpreterDtabs =>
+
+    val dtabs = Future.collect {
+      baseDtabs.keys.map(getInterpreterDtab).toSeq
+    }
+
+    dtabs.map(_.toMap).map { interpreterDtabs =>
       render(interpreterDtabs, baseDtabs)
     }.flatMap(view.mkResponse(_))
   }
+
+  private[this] def getInterpreterDtab(ns: String): Future[(String, Dtab)] =
+    interpreter(ns) match {
+      case delegator: Delegator =>
+        delegator.dtab.values.toFuture.flatMap(Future.const).map(ns -> _)
+      case _ => Future.value(ns -> Dtab.empty)
+    }
 
   val render = { (dtab: Map[String, Dtab], dtabBase: Map[String, Dtab]) =>
     view.html(

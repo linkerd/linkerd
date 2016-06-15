@@ -23,7 +23,7 @@ var Delegator = (function() {
     templates = t
     $root.html(templates.delegator({}));
 
-    $("#dtab").html(dtab.map(function(e,_i) {
+    $("#dtab").html(dtab.map(function(e) {
       return templates.dentry(e);
     }.bind(this)).join(""));
 

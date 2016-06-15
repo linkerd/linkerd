@@ -1,7 +1,10 @@
 package io.buoyant.linkerd.admin.names
 
+import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
+import com.twitter.util.{Var, Activity}
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.linkerd._
 import io.buoyant.namer.{ErrorNamerInitializer, TestNamerInitializer}
@@ -56,6 +59,20 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
           |{"type":"fail","path":"/$/fail/humbug",
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
       |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("non-delegating name interpreter") {
+    val interpreter = new NameInterpreter {
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] = Activity.value(
+        NameTree.Neg
+      )
+    }
+    val web = new DelegateApiHandler(_ => interpreter)
+    val req = Request()
+    req.uri = s"/delegate?namespace=plain&path=/boo/humbug&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    val rsp = await(web(req))
+    assert(rsp.status == Status.NotImplemented)
+    assert(rsp.contentString == "Name Interpreter for plain cannot show delegations")
   }
 
   test("invalid path results in 400") {

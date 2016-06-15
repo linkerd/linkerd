@@ -12,7 +12,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, DelegatingNameInterpreter}
+import io.buoyant.namer._
 
 object DelegateApiHandler {
 
@@ -175,10 +175,10 @@ object DelegateApiHandler {
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
   }
 
-  def getDelegateRsp(dtab: String, path: String, interpreter: DelegatingNameInterpreter): Future[Response] =
+  def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] =
     (dtab, path) match {
       case (DtabStr(d), PathStr(p)) =>
-        interpreter.delegate(d, p).values.toFuture()
+        delegator.delegate(d, p).values.toFuture()
           .flatMap(Future.const)
           .flatMap(JsonDelegateTree.mk).map { tree =>
             val rsp = Response()
@@ -201,7 +201,7 @@ class DelegateApiHandler(
       req.params.get("namespace") match {
         case Some(ns) =>
           interpreters(ns) match {
-            case delegator: DelegatingNameInterpreter =>
+            case delegator: Delegator =>
               getDelegateRsp(req.getParam("dtab"), req.getParam("path"), delegator)
             case _ =>
               err(Status.NotImplemented, s"Name Interpreter for $ns cannot show delegations")

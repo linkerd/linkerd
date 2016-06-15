@@ -7,7 +7,7 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namer.{DelegateTree, DelegatingNameInterpreter}
+import io.buoyant.namer.{DelegateTree, Delegator}
 import io.buoyant.namerd.Ns
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
@@ -473,7 +473,7 @@ class ThriftNamerInterface(
 
   private[this] def observeDelegation(ns: Ns, dtab: Dtab, tree: DelegateTree[Name.Path]) = {
     val act = interpreters(ns) match {
-      case interpreter: DelegatingNameInterpreter =>
+      case interpreter: Delegator =>
         interpreter.delegate(dtab, tree)
       case _ =>
         throw new UnsupportedOperationException(s"Name Interpreter for $ns cannot show delegations")
@@ -504,7 +504,7 @@ class ThriftNamerInterface(
 
   private[this] def observeDtab(ns: Ns) = {
     val act = interpreters(ns) match {
-      case interpreter: DelegatingNameInterpreter =>
+      case interpreter: Delegator =>
         interpreter.dtab
       case _ =>
         throw new UnsupportedOperationException(s"Name Interpreter for $ns cannot show dtab")

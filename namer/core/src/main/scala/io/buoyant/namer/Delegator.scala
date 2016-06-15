@@ -1,10 +1,9 @@
 package io.buoyant.namer
 
-import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle._
 import com.twitter.util.Activity
 
-trait DelegatingNameInterpreter extends NameInterpreter {
+trait Delegator {
 
   def delegate(
     dtab: Dtab,
