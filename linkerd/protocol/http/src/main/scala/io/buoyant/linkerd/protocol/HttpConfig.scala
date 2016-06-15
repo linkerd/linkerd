@@ -20,6 +20,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val pathStack = Http.router.pathStack
       .prepend(Headers.Dst.PathFilter.module)
       .replace(StackClient.Role.prepFactory, DelayedRelease.module)
+      .prepend(http.ErrorResponder.module)
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
