@@ -13,7 +13,9 @@ class MetricsExport(
 ) extends Closable {
 
   private[this] val tasks = exporters.map { exporter =>
-    timer.schedule(exporter.period)(exporter.export(metrics.sample().asScala))
+    timer.schedule(exporter.period) {
+      val _ = exporter.export(metrics.sample().asScala)
+    }
   }
 
   override def close(deadline: Time): Future[Unit] = {
