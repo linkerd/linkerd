@@ -9,6 +9,7 @@ import com.twitter.io.Charsets
 import com.twitter.util.{Future, Return, Throw, Time, Try}
 import java.net.URLEncoder
 import java.util.Base64
+import scala.collection.breakOut
 
 /**
  * The finagle http stack manages a set of context headers that are
@@ -211,7 +212,7 @@ object Headers {
 
       def get(headers: HeaderMap, key: String): Try[FDtab] =
         if (!headers.contains(key)) EmptyReturn
-        else Try { FDtab(headers.getAll(key).view.flatMap(FDtab.read(_)).toIndexedSeq) }
+        else Try { FDtab(headers.getAll(key).flatMap(FDtab.read(_))(breakOut)) }
 
       def get(headers: HeaderMap): Try[FDtab] =
         for {
