@@ -6,7 +6,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
 
 /**
- * Uses [[Headers.Ctx.Trace]] and [[Headers.Sample]] headers
+ * Uses [[Headers.Ctx.Trace]] and [[Headers.Sample]] headers to
  * propagate/control tracing.
  */
 object HttpTraceInitializer {
