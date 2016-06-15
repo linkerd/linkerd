@@ -137,6 +137,10 @@ headers on outgoing requests:
 Applications are not required to forward these headers on downstream
 requests.
 
+The value of the _dst_ headers may include service discovery
+information including host names.  Operators may opt to remove these
+headers from requests sent to the outside world.
+
 ### Informational Response Headers
 
 linkerd may emit the following _informational_ headers on outgoing
@@ -147,3 +151,7 @@ responses:
 
 Applications are not required to forward these headers on upstream
 responses.
+
+The value of this header may include service discovery information
+including host names. Operators may opt to remove this header from
+responses sent to the outside world.

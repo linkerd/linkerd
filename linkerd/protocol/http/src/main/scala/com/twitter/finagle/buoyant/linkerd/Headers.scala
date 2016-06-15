@@ -188,7 +188,7 @@ object Headers {
      * There are two headers used to control local Dtabs in linkerd:
      *
      *   1. `l5d-ctx-dtab` is read and _written_ by linkerd. It is
-     *      intended to managed entirely by linked, and applications
+     *      intended to managed entirely by linkerd, and applications
      *      should only forward requests prefixed by `l5d-ctx-*`.
      *
      *      *NOTE*: the client module does not yet encode
