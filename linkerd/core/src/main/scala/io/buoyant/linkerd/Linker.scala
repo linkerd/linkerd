@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.stats.MetricsStatsReceiver
 import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
@@ -18,7 +19,7 @@ trait Linker {
   def namers: Seq[(Path, Namer)]
   def admin: AdminConfig
   def tracer: Tracer
-  def metricsExporters: Seq[MetricsExporterConfig]
+  def metricsExporters: Seq[MetricsExporter]
   def configured[T: Stack.Param](t: T): Linker
 }
 
@@ -73,12 +74,16 @@ object Linker {
   def load(config: String): Linker =
     load(config, LoadedInitializers)
 
+  case class Metrics(
+    exporters: Option[Seq[MetricsExporterConfig]]
+  )
+
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
     tracers: Option[Seq[TracerConfig]],
     admin: Option[AdminConfig],
-    metrics: Option[Seq[MetricsExporterConfig]]
+    metrics: Option[Metrics]
   ) {
     def mk(): Linker = {
       // At least one router must be specified
@@ -122,7 +127,18 @@ object Linker {
           case _ =>
         }
 
-      new Impl(routerImpls, namersByPrefix, tracer, admin.getOrElse(AdminConfig()), metrics.toSeq.flatten)
+      val metricsExporters = metrics.flatMap(_.exporters)
+        .toSeq
+        .flatten
+        .map(_.mk(MetricsStatsReceiver.defaultRegistry))
+
+      new Impl(
+        routerImpls,
+        namersByPrefix,
+        tracer,
+        admin.getOrElse(AdminConfig()),
+        metricsExporters
+      )
     }
   }
 
@@ -135,7 +151,7 @@ object Linker {
     namers: Seq[(Path, Namer)],
     tracer: Tracer,
     admin: AdminConfig,
-    metricsExporters: Seq[MetricsExporterConfig]
+    metricsExporters: Seq[MetricsExporter]
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
       copy(routers = routers.map(_.configured(t)))

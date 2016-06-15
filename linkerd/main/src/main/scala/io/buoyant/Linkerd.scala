@@ -1,10 +1,10 @@
 package io.buoyant
 
-import com.twitter.util.Await
-import io.buoyant.admin.{App, AdminInitializer}
+import com.twitter.util.{Await, Closable}
+import io.buoyant.admin.{AdminInitializer, App}
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import io.buoyant.linkerd.{MetricsExport, Build, Linker}
+import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
 import scala.io.Source
 
@@ -42,7 +42,7 @@ object Linkerd extends App {
           }
         }
 
-        closeOnExit(new MetricsExport(linker.metricsExporters))
+        closeOnExit(Closable.all(linker.metricsExporters: _*))
 
         Await.all(routers: _*)
 
