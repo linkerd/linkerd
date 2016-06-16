@@ -58,7 +58,7 @@ object Headers {
      * Note that currently, the dtabs read by this module are
      * appeneded to that specified by the `l5d-dtab` header.  The
      * `dtab-local` header should be considered deprecated in favor of
-     * `l5d-dtab, and will not be supported in the future.
+     * `l5d-dtab`, and will not be supported in the future.
      *
      * Note that trace configuration is handled by
      * [[HttpTraceInitializer.serverModule]].

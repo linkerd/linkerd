@@ -96,12 +96,15 @@ _Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
 instances. Applications should forward all context headers in order
 for all linkerd features to work. These headers include:
 
-- `dtab-local`: Currently (until the next release of finagle), the
+- `dtab-local`: currently (until the next release of finagle), the
   `dtab-local` header is used to propagate dtab context. In an
   upcoming release this header will no longer be honored, in favor of
   `l5d-ctx-dtab` and `l5d-dtab`.
-- `l5d-ctx-deadline`:
-- `l5d-ctx-trace`:
+- `l5d-ctx-deadline`: describes time bounds within which a request is
+  expected to be satisfied. Currently deadlines are only advisory and
+  do not factor into request cancellation.
+- `l5d-ctx-trace`: encodes zipkin-style trace IDs and flags so that
+  trace annotations emitted by linkerd may be correlated.
 
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
