@@ -272,6 +272,7 @@ object StackRouter {
   object Server {
     def newStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] =
       StackServer.newStack[Req, Rsp]
+        .insertAfter(DeadlineRejectFilter.statsRole, DeadlineRejectFilter.module[Req, Rsp])
   }
 
   object Client {
