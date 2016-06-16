@@ -3,6 +3,14 @@
 * New default JVM settings scale up with traffic levels.
   * `JVM_HEAP` is now deprecated, you can now separately set `JVM_HEAP_MIN` and
     `JVM_HEAP_MAX` but you shouldn't need to adjust them thanks to the new defaults.
+* Overhaul HTTP headers:
+  * `l5d-ctx` renamed to `l5d-ctx-trace`
+  * `l5d-ctx-deadline` now propagates deadlines
+  * `l5d-ctx-dtab` is now read, to replace `dtab-local` later.
+  * `l5d-dtab` now honored as a replacement for `dtab-local` as
+    specified by users.
+  * `l5d-dst-*` no longer set on responses
+
 
 ## 0.6.0
 

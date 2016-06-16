@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
+import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.logging.Logger
@@ -8,33 +8,34 @@ import com.twitter.util.NonFatal
 import io.buoyant.router.RoutingFactory
 import java.net.URLEncoder
 
-object ErrorResponder extends Stack.Module0[ServiceFactory[Request, Response]] {
-  val role = Stack.Role("ErrorResponder")
-  val description = "Crafts HTTP responses for routing errors"
-  def make(factory: ServiceFactory[Request, Response]) = filter andThen factory
+class ErrorResponder extends SimpleFilter[Request, Response] {
+  private[this] val log = Logger.get("ErrorResponseFilter")
 
-  object filter extends SimpleFilter[Request, Response] {
-    private[this] val log = Logger.get("ErrorResponseFilter")
+  def apply(req: Request, service: Service[Request, Response]) =
+    service(req).handle(handler)
 
-    def apply(req: Request, service: Service[Request, Response]) =
-      service(req).handle(handler)
-
-    private[this] val handler: PartialFunction[Throwable, Response] = {
-      case NonFatal(e) =>
-        val status = e match {
-          case e@RoutingFactory.UnknownDst(_, _) =>
-            log.debug("%s", e.getMessage)
-            Status.BadRequest
-          case _ =>
-            log.error(e, "service failure")
-            Status.BadGateway
-        }
-
-        val rsp = Response(status)
-        rsp.headerMap(Headers.Err) = URLEncoder.encode(e.getMessage, "ISO-8859-1")
-        rsp.contentType = MediaType.Txt
-        rsp.contentString = e.getMessage
-        rsp
-    }
+  private[this] val handler: PartialFunction[Throwable, Response] = {
+    case NonFatal(e) =>
+      val status = e match {
+        case e@RoutingFactory.UnknownDst(_, _) =>
+          log.debug(e, "unknown dst")
+          Status.BadRequest
+        case _ =>
+          log.error(e, "service failure")
+          Status.BadGateway
+      }
+      Headers.Err.respond(e.getMessage, status)
   }
+}
+
+object ErrorResponder {
+  val role = Stack.Role("ErrorResponder")
+  val module: Stackable[ServiceFactory[Request, Response]] =
+    new Stack.Module0[ServiceFactory[Request, Response]] {
+      val role = ErrorResponder.role
+      val description = "Crafts HTTP responses for routing errors"
+      val filter = new ErrorResponder
+      def make(factory: ServiceFactory[Request, Response]) =
+        filter.andThen(factory)
+    }
 }

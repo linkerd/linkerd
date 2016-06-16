@@ -85,3 +85,76 @@ routers:
 
 A request to `:5000/true/love/waits.php` will be identified as
 `/custom/prefix/true/love`.
+
+## HTTP Headers
+
+linkerd reads and sets several headers prefixed by `l5d-`.
+
+### Context Headers
+
+_Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
+instances. Applications should forward all context headers in order
+for all linkerd features to work. These headers include:
+
+- `dtab-local`: currently (until the next release of finagle), the
+  `dtab-local` header is used to propagate dtab context. In an
+  upcoming release this header will no longer be honored, in favor of
+  `l5d-ctx-dtab` and `l5d-dtab`.
+- `l5d-ctx-deadline`: describes time bounds within which a request is
+  expected to be satisfied. Currently deadlines are only advisory and
+  do not factor into request cancellation.
+- `l5d-ctx-trace`: encodes zipkin-style trace IDs and flags so that
+  trace annotations emitted by linkerd may be correlated.
+
+Edge services should take care to ensure these headers are not set
+from untrusted sources.
+
+### User Headers
+
+_User headers_ are useful to allow user-overrides
+
+- `l5d-dtab`: a client-specified delegation override
+- `l5d-sample`: a client-specified trace sample rate override
+
+Note that if linkerd processes incoming requests for applications
+(i.e. in linker-to-linker configurations), applications do not need to
+provide special treatment for these headers since linkerd does _not_
+forward these headers (and instead translates them into context
+headers). If applications receive traffic directly, they _should_
+forward these headers.
+
+Edge services should take care to ensure these headers are not set
+from untrusted sources.
+
+### Informational Request Headers
+
+In addition to the context headers, linkerd may emit the following
+headers on outgoing requests:
+
+- `l5d-dst-logical`: the logical name of the request as identified by linkerd
+- `l5d-dst-concrete`: the concrete client name after delegation
+- `l5d-dst-residual`: an optional residual path remaining after delegation
+- `l5d-reqid`: a token that may be used to correlate requests in a
+               callgraph across services and linkerd instances
+
+Applications are not required to forward these headers on downstream
+requests.
+
+The value of the _dst_ headers may include service discovery
+information including host names.  Operators may opt to remove these
+headers from requests sent to the outside world.
+
+### Informational Response Headers
+
+linkerd may emit the following _informational_ headers on outgoing
+responses:
+
+- `l5d-err`: indicates a linkerd-generated error. Error responses
+             that do not have this header are application errors.
+
+Applications are not required to forward these headers on upstream
+responses.
+
+The value of this header may include service discovery information
+including host names. Operators may opt to remove this header from
+responses sent to the outside world.

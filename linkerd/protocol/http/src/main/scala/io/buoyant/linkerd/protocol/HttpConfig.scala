@@ -3,6 +3,7 @@ package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
+import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.service.Retries
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
@@ -15,11 +16,15 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected type Rsp = com.twitter.finagle.http.Response
 
   protected val defaultRouter = {
-    val pathStack = Headers.Dst.PathFilter +: Http.router.pathStack
-    val boundStack = Headers.Dst.BoundFilter +: Http.router.boundStack
-    val clientStack = (http.AccessLogger.module +: Http.router.clientStack)
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.client)
+    val pathStack = Http.router.pathStack
+      .prepend(Headers.Dst.PathFilter.module)
+    val boundStack = Http.router.boundStack
+      .prepend(Headers.Dst.BoundFilter.module)
+    val clientStack = Http.router.clientStack
+      .prepend(http.AccessLogger.module)
+      .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+      .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
     Http.router
       .withPathStack(pathStack)
@@ -29,8 +34,10 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   }
 
   protected val defaultServer = {
-    val stk = http.ErrorResponder +: Http.server.stack
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.server)
+    val stk = Http.server.stack
+      .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
+      .prepend(Headers.Ctx.serverModule)
+      .prepend(http.ErrorResponder.module)
     Http.server.withStack(stk)
   }
 

@@ -104,9 +104,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
         val path = "/http/1.1/GET/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
-        assert(rsp.headerMap.get(Headers.Dst.Path) == Some(path))
-        assert(rsp.headerMap.get(Headers.Dst.Bound) == Some(bound))
-        assert(rsp.headerMap.get(Headers.Dst.Residual) == None)
         withAnnotations { anns =>
           assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
           assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
@@ -121,9 +118,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         val path = "/http/1.1/GET/clifford/the/big/red/dog"
         val bound = s"/$$/inet/127.1/${dog.port}"
         val residual = "/the/big/red/dog"
-        assert(rsp.headerMap.get(Headers.Dst.Path) == Some(path))
-        assert(rsp.headerMap.get(Headers.Dst.Bound) == Some(bound))
-        assert(rsp.headerMap.get(Headers.Dst.Residual) == Some(residual))
         withAnnotations { anns =>
           assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
           assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
@@ -133,12 +127,12 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
       get("ralph-machio") { rsp =>
         assert(rsp.status == Status.BadGateway)
-        assert(rsp.headerMap.contains(Headers.Err))
+        assert(rsp.headerMap.contains(Headers.Err.Key))
       }
 
       get("") { rsp =>
         assert(rsp.status == Status.BadRequest)
-        assert(rsp.headerMap.contains(Headers.Err))
+        assert(rsp.headerMap.contains(Headers.Err.Key))
       }
 
       // todo check stats
