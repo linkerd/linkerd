@@ -6,6 +6,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
 import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
@@ -72,6 +73,8 @@ trait Router {
    * so that its upstream `servers` may be bound.
    */
   def initialize(): Router.Initialized
+
+  def interpreter: NameInterpreter = params[DstBindingFactory.Namer].interpreter
 }
 
 object Router {

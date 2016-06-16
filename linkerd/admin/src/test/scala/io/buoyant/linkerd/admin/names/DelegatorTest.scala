@@ -1,8 +1,8 @@
 package io.buoyant.linkerd.admin.names
 
 import com.twitter.finagle._
-import com.twitter.util._
-import io.buoyant.linkerd._
+import com.twitter.util.{Var, Return}
+import io.buoyant.linkerd.{TestProtocol, Linker}
 import io.buoyant.namer._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -38,7 +38,7 @@ class DelegatorTest extends FunSuite with Awaits {
   test("uses NamerInterpreter to resolve names") {
     val path = Path.read("/nah/bro")
     val dtab = Dtab.read("""/nah=>/#/namer;""")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Leaf(
         Path.read("/#/namer/bro"),
         Dentry.read("/nah=>/#/namer"),
@@ -48,13 +48,13 @@ class DelegatorTest extends FunSuite with Awaits {
 
   test("explain neg delegation") {
     val path = Path.Utf8("nope")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Neg(path, Dentry.nop)))
   }
 
   test("explain delegate delegation") {
     val path = Path.read("/meh/hey")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Delegate(
         path,
         Dentry.nop,
@@ -64,7 +64,7 @@ class DelegatorTest extends FunSuite with Awaits {
 
   test("explain alt delegation") {
     val path = Path.read("/boo/lol")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Alt(
         Path.read("/foo/lol"),
         Dentry.read("/boo=>/foo"),
@@ -76,7 +76,7 @@ class DelegatorTest extends FunSuite with Awaits {
 
   test("explain bound delegation") {
     val path = Path.read("/boo/humbug/ya")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Delegate(path, Dentry.nop, DelegateTree.Alt(
         Path.read("/foo/humbug/ya"),
         Dentry.read("/boo=>/foo"),
@@ -96,7 +96,7 @@ class DelegatorTest extends FunSuite with Awaits {
 
   test("explain error delegation") {
     val path = Path.read("/beh/humbug")
-    assert(await(Delegator(dtab, path, interpreter).values.toFuture()) ==
+    assert(await(interpreter.delegate(dtab, path).values.toFuture()) ==
       Return(DelegateTree.Delegate(
         path,
         Dentry.nop,

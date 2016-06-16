@@ -1,15 +1,19 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Path}
+import com.twitter.finagle._
 import com.twitter.util._
+import io.buoyant.namer.DelegateTree
 import io.buoyant.namerd.iface.{thriftscala => thrift}
+import io.buoyant.test.Awaits
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.ByteBuffer
 import org.scalatest.FunSuite
 
-class ThriftNamerClientTest extends FunSuite {
+class ThriftNamerClientTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
+
+  override def defaultWait: Duration = 2.seconds
 
   class Rsp[T] {
     val promise = new Promise[T]
@@ -22,6 +26,8 @@ class ThriftNamerClientTest extends FunSuite {
 
     val addrsMu = new {}
     var addrs = Map.empty[(Path, TStamp), Rsp[thrift.Addr]]
+
+    val delegationRsp = new Promise[thrift.Delegation]
 
     def bind(req: thrift.BindReq): Future[thrift.Bound] = {
       val thrift.BindReq(tdtab, thrift.NameRef(stamp, name, ns), cid) = req
@@ -57,6 +63,38 @@ class ThriftNamerClientTest extends FunSuite {
         }
       }
     }
+
+    override def delegate(req: thrift.DelegateReq): Future[thrift.Delegation] = {
+      val thrift.DelegateReq(dtab, thrift.Delegation(stamp, tree, ns), cid) = req
+      if (!stamp.hasRemaining) {
+        delegationRsp
+      } else {
+        Future.never
+      }
+    }
+
+    override def dtab(req: thrift.DtabReq): Future[thrift.DtabRef] = Future.never
+  }
+
+  test("delegation") {
+    val namespace = "yeezy"
+    val clientId = Path.read("/rando/x8u4i5j")
+    val service = new TestNamerService(clientId)
+    val client = new ThriftNamerClient(service, namespace, clientId)
+
+    val act = client.delegate(Dtab.empty, Path.read("/yeezy/tlop/wolves"))
+    val delegation = act.values.toFuture.flatMap(Future.const)
+    assert(!delegation.isDefined)
+
+    val tree = DelegateTree.Delegate(Path.read("/yeezus/tlop/wolves"), Dentry.read("/yeezy => /yeezus"), DelegateTree.Neg(Path.read("/yeezus/tlop/wolves"), Dentry.nop))
+
+    val (root, nodes, _) = ThriftNamerInterface.mkDelegateTree(tree)
+
+    service.delegationRsp.setValue(
+      thrift.Delegation(TStamp.mk(1), thrift.DelegateTree(root, nodes), namespace)
+    )
+
+    assert(await(delegation) == tree)
   }
 
   test("binds a logical name to a concrete address: a yeezy story") {

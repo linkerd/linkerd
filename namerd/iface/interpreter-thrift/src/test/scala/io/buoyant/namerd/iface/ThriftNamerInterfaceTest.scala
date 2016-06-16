@@ -1,17 +1,20 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
+import com.twitter.finagle._
 import com.twitter.util.{Activity, Await, Var}
+import io.buoyant.namer.{Delegator, DelegateTree}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
+import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
 import org.scalatest.FunSuite
 
-class ThriftNamerInterfaceTest extends FunSuite {
+class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
 
   def retryIn() = 1.second
@@ -63,6 +66,64 @@ class ThriftNamerInterfaceTest extends FunSuite {
 
       case node => fail(s"$node is not a BoundNode.Alt(id0, id1)")
     }
+  }
+
+  test("delegate") {
+    val states = Var[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending)
+    def interpreter(ns: String) = new NameInterpreter with Delegator {
+      override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) =
+        Activity(states)
+      override def bind(dtab: Dtab, path: Path) = ???
+      override def dtab: Activity[Dtab] = ???
+    }
+
+    val stampCounter = new AtomicLong(1)
+    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
+
+    // The first request before the tree has been refined -- no value initially
+    val path = TPath("ysl", "thugger")
+    val initTree = thrift.Delegation(
+      TStamp.empty,
+      thrift.DelegateTree(
+        thrift.DelegateNode(path, Dentry.nop.show, thrift.DelegateContents.PathLeaf(path)),
+        Map.empty
+      ),
+      ns
+    )
+    val initF = service.delegate(thrift.DelegateReq("", initTree, clientId))
+    assert(!initF.isDefined)
+
+    states() = Activity.Ok(DelegateTree.Delegate(Path.read("/ysl/thugger"), Dentry.read("/ysl => /atl"),
+      DelegateTree.Leaf(Path.read("/ysl/thugger"), Dentry.read("/ysl => /atl"), Name.Bound(null, Path.read("/atl/thugger"), Path.empty))))
+
+    val init = await(initF)
+    val delegate = init.tree.root.contents.asInstanceOf[thrift.DelegateContents.Delegate]
+    val leaf = init.tree.nodes(delegate.delegate).contents.asInstanceOf[thrift.DelegateContents.BoundLeaf]
+    assert(leaf.boundLeaf.id == TPath("atl", "thugger"))
+    assert(leaf.boundLeaf.residual == TPath())
+  }
+
+  test("dtab") {
+    val states = Var[Activity.State[Dtab]](Activity.Pending)
+    def interpreter(ns: String) = new NameInterpreter with Delegator {
+      override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) = ???
+      override def bind(dtab: Dtab, path: Path) = ???
+      override def dtab: Activity[Dtab] = Activity(states)
+    }
+
+    val stampCounter = new AtomicLong(1)
+    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
+
+    val initF = service.dtab(thrift.DtabReq(TStamp.empty, "pandoracorn", clientId))
+    assert(!initF.isDefined)
+
+    val dtab = Dtab.read("/foo => /bar")
+    states() = Activity.Ok(dtab)
+
+    val init = await(initF)
+    assert(Dtab.read(init.dtab) == dtab)
   }
 
   trait AddrCtx {

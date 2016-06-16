@@ -3,7 +3,7 @@ package io.buoyant.namerd
 import com.twitter.finagle.http.{MediaType, Status, Response, Request}
 import com.twitter.finagle.{Service, Dtab}
 import com.twitter.util.Future
-import io.buoyant.linkerd.admin.names.DelegateApiHandler
+import io.buoyant.admin.names.DelegateApiHandler
 
 class DtabHandler(
   store: DtabStore
@@ -50,7 +50,7 @@ class DtabHandler(
             </div>
           </div>
 
-          <script id="data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
+          <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
 
           <script src="/files/js/lib/jquery.min.js"></script>
           <script src="/files/js/lib/bootstrap.min.js"></script>

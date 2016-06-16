@@ -1,17 +1,19 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.NullStatsReceiver
+import com.twitter.finagle._
 import com.twitter.util._
-import java.net.{InetAddress, InetSocketAddress}
+import io.buoyant.namer.DelegateTree
+import io.buoyant.namerd.{ConfiguredDtabNamer, RichActivity}
+import io.buoyant.test.Awaits
 import java.util.concurrent.atomic.AtomicLong
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.time._
 
-class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationPatience {
+class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationPatience with Awaits {
   import ThriftNamerInterface._
 
   implicit override val patienceConfig = PatienceConfig(
@@ -91,5 +93,62 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
 
     serverAddr1() = Addr.Bound(Address("127.1", 6543))
     eventually { assert(clientAddr1 == serverAddr1.sample()) }
+  }
+
+  test("delegation") {
+    val id = Path.read("/io.l5d.w00t")
+    val namer = new Namer {
+      def lookup(path: Path) = {
+        path match {
+          case Path.Utf8("woop") => Activity.value(NameTree.Leaf(Name.Bound(
+            Var(Addr.Bound(Address("localhost", 9000))),
+            Path.read("/io.l5d.w00t/woop"),
+            Path.empty
+          )))
+          case _ => Activity.value(NameTree.Neg)
+        }
+      }
+    }
+    val namers = Seq(id -> namer)
+    def interpreter(ns: String) = new ConfiguredDtabNamer(
+      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /http/1.1/* => /host")),
+      namers
+    )
+    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
+    val client = new ThriftNamerClient(service, ns, clientId)
+
+    val tree = await(client.delegate(
+      Dtab.read("/host/poop => /srv/woop"),
+      Path.read("/http/1.1/GET/poop")
+    ).toFuture)
+
+    assert(tree ==
+      DelegateTree.Delegate(
+        Path.read("/http/1.1/GET/poop"),
+        Dentry.nop,
+        DelegateTree.Alt(
+          Path.read("/host/poop"),
+          Dentry.nop,
+          List(
+            DelegateTree.Delegate(
+              Path.read("/srv/woop"),
+              Dentry.read("/host/poop=>/srv/woop"),
+              DelegateTree.Leaf(
+                Path.read("/io.l5d.w00t/woop"),
+                Dentry.read("/srv=>/io.l5d.w00t"),
+                Path.read("/io.l5d.w00t/woop")
+              )
+            ),
+            DelegateTree.Delegate(
+              Path.read("/srv/poop"),
+              Dentry.read("/host=>/srv"),
+              DelegateTree.Neg(
+                Path.read("/io.l5d.w00t/poop"),
+                Dentry.read("/srv=>/io.l5d.w00t")
+              )
+            )
+          ): _*
+        )
+      ))
   }
 }
