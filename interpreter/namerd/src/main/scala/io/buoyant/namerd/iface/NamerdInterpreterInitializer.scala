@@ -2,6 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
+import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
@@ -9,6 +10,7 @@ import com.twitter.finagle.service._
 import com.twitter.util._
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
+import com.twitter.finagle.buoyant.TlsClientPrep
 
 /**
  * The namerd interpreter offloads the responsibilities of name resolution to
@@ -31,10 +33,13 @@ case class Retry(
   }
 }
 
+case class ClientTlsConfig(commonName: String, caCert: Option[String])
+
 case class NamerdInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
-  retry: Option[Retry]
+  retry: Option[Retry],
+  tls: Option[ClientTlsConfig]
 ) extends InterpreterConfig {
 
   @JsonIgnore
@@ -76,9 +81,20 @@ case class NamerdInterpreterConfig(
         }
     }
 
+    val tlsTransformer = new Transformer {
+      override def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]) = {
+        tls match {
+          case Some(tlsConfig) =>
+            TlsClientPrep.static[Req, Rep](tlsConfig.commonName, tlsConfig.caCert) +: stack
+          case None => stack
+        }
+      }
+    }
+
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ params)
       .transformed(retryTransformer)
+      .transformed(tlsTransformer)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
