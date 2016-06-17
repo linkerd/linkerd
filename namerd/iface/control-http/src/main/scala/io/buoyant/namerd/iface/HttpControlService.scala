@@ -3,6 +3,8 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.google.common.cache.{CacheLoader, RemovalNotification, RemovalListener, CacheBuilder}
+import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
@@ -135,6 +137,11 @@ object HttpControlService {
 class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, namers: Map[Path, Namer])
   extends Service[Request, Response] {
   import HttpControlService._
+
+  // cached activities are not held open so there is very little cost to caching
+  // them forever
+  private[this] val bindingCacheSize = 100000
+  private[this] val addrCacheSize = 100000
 
   /** Get the dtab, if it exists. */
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
@@ -315,22 +322,20 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       case Throw(_) => Future.value(Response(Status.InternalServerError))
     }
 
-  private[this] val bindingCacheMu = new {}
-  private[this] var bindingCache: Map[(String, Path), Activity[NameTree[Name.Bound]]] = Map.empty
   private[this] def getBind(ns: String, path: Path, extraDtab: Option[String]): Activity[NameTree[Name.Bound]] =
     extraDtab match {
       case Some(dtab) => delegate(ns).bind(Dtab.read(dtab), path)
-      case _ => bindingCacheMu.synchronized {
-        val key = (ns, path)
-        bindingCache.get(key) match {
-          case Some(act) => act
-          case None =>
-            val act = delegate(ns).bind(Dtab.empty, path)
-            bindingCache += (key -> act)
-            act
-        }
-      }
+      case _ => bindingCache.get((ns, path))
     }
+
+  private[this] val bindingCache = CacheBuilder.newBuilder()
+    .maximumSize(bindingCacheSize)
+    .build[(String, Path), Activity[NameTree[Name.Bound]]](
+      new CacheLoader[(String, Path), Activity[NameTree[Name.Bound]]] {
+        override def load(key: (String, Path)): Activity[NameTree[Bound]] =
+          delegate(key._1).bind(Dtab.empty, key._2)
+      }
+    )
 
   private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] = {
     val extraDtab = req.params.get("dtab")
@@ -347,25 +352,21 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     }
   }
 
-  private[this] val addrCacheMu = new {}
-  private[this] var addrCache: Map[(String, Path), Activity[Addr]] = Map.empty
-  private[this] def getAddr(ns: String, path: Path): Activity[Addr] = addrCacheMu.synchronized {
-    val key = (ns, path)
-    addrCache.get(key) match {
-      case Some(addr) => addr
-      case None =>
-        val addr = bindAddrId(path).flatMap {
-          case NameTree.Leaf(bound) => Activity(bound.addr.map(Activity.Ok(_)))
-          case NameTree.Empty => Activity.value(Addr.Bound())
-          case NameTree.Fail => Activity.exception(new Exception("name tree failed"))
-          case NameTree.Neg => Activity.value(Addr.Neg)
-          case NameTree.Alt(_) | NameTree.Union(_) =>
-            Activity.exception(new Exception(s"${path.show} is not a concrete bound id"))
-        }
-        addrCache += (key -> addr)
-        addr
-    }
-  }
+  private[this] val addrCache = CacheBuilder.newBuilder()
+    .maximumSize(addrCacheSize)
+    .build[(String, Path), Activity[Addr]](
+      new CacheLoader[(String, Path), Activity[Addr]] {
+        override def load(key: (String, Path)): Activity[Addr] =
+          bindAddrId(key._2).flatMap {
+            case NameTree.Leaf(bound) => Activity(bound.addr.map(Activity.Ok(_)))
+            case NameTree.Empty => Activity.value(Addr.Bound())
+            case NameTree.Fail => Activity.exception(new Exception("name tree failed"))
+            case NameTree.Neg => Activity.value(Addr.Neg)
+            case NameTree.Alt(_) | NameTree.Union(_) =>
+              Activity.exception(new Exception(s"${key._2.show} is not a concrete bound id"))
+          }
+      }
+    )
 
   private[this] def bindAddrId(id: Path): Activity[NameTree[Name.Bound]] = {
     val (pfx, namer) = namers.find { case (p, _) => id.startsWith(p) }.getOrElse(DefaultNamer)
@@ -387,9 +388,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] def handleGetAddr(ns: String, path: Path, req: Request): Future[Response] = {
     if (isStreaming(req)) {
-      streamingResp(getAddr(ns, path).values)(renderAddr)
+      streamingResp(addrCache.get((ns, path)).values)(renderAddr)
     } else {
-      getAddr(ns, path).toFuture.map { addr =>
+      addrCache.get((ns, path)).toFuture.map { addr =>
         val rsp = Response()
         rsp.content = renderAddr(addr)
         rsp
