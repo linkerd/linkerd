@@ -3,6 +3,7 @@
 var SuccessRateGraph = (function() {
   var neutralLineColor = "#878787"; // greys.neutral
   var defaultWidth = 1181;
+  var colMd6Width = 594; // from our css grid layout spec
 
   // set default y range such that a graph of purely 100% success rate doesn't
   // blend in to the very top of the graph, and doesn't center
@@ -15,21 +16,12 @@ var SuccessRateGraph = (function() {
     }
   }
 
-  function getChartWidthFn(isFullWidthChart, $chartEl) {
-    if (isFullWidthChart) {
-      return function() { return $chartEl.width(); }
-    } else {
-      return function() {
-        var containerWidth = $(".client-container").first().width();
-
-        if (containerWidth > defaultWidth) {
-          var metricsWidth = $(".metrics-container").first().width();
-          return containerWidth - metricsWidth; // get this to display nicely on wide screens
-        } else {
-          return containerWidth;
-        }
-      }
+  function chartWidthFn() {
+    var serverWidth = $(".router-server").width();
+    if (serverWidth < defaultWidth) {
+      return serverWidth;
     }
+    return serverWidth - colMd6Width;
   }
 
   function yRangeFunction(range) {
@@ -70,11 +62,11 @@ var SuccessRateGraph = (function() {
     return chart;
   }
 
-  return function($chartEl, clientColor, isFullWidth) {
+  return function($chartEl, clientColor) {
     var chartLegend = createChartLegend(clientColor);
-    var chart = initializeChart($chartEl, timeseriesParams, getChartWidthFn(isFullWidth, $chartEl));
+    var chart = initializeChart($chartEl, timeseriesParamsFn, chartWidthFn);
 
-    function timeseriesParams(name) {
+    function timeseriesParamsFn(name) {
       return {
         strokeStyle: chartLegend[name],
         lineWidth: 2

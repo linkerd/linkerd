@@ -88,7 +88,7 @@ var RouterServer = (function() {
     template = serverTemplate;
     var $metricsEl = $serverEl.find(".server-metrics");
     var $chartEl = $serverEl.find(".server-success-chart");
-    var chart = SuccessRateGraph($chartEl, "#4AD8AC", true);
+    var chart = SuccessRateGraph($chartEl, "#4AD8AC");
 
     var metricsHandler = function(data) {
       var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
