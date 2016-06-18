@@ -6,6 +6,7 @@ import com.twitter.finagle.http.Response
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Reader
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
@@ -70,7 +71,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: Manifest, W <: Watch[O]: 
         "fieldSelector" -> fieldSelector,
         "resourceVersion" -> resourceVersion)
       val retryingClient = infiniteRetryFilter andThen client
-      val initialState = retryingClient(req)
+      val initialState = Trace.letClear(retryingClient(req))
 
       close.set(Closable.make { _ =>
         log.trace("k8s watch cancelled")
