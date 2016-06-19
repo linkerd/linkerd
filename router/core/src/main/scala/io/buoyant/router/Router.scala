@@ -313,6 +313,7 @@ object StackRouter {
      */
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
     stk.push(failureRecording)
+    stk.push(StackClient.Role.prepFactory, identity[ServiceFactory[Req, Rsp]](_))
     stk.push(factoryToService)
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)

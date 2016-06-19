@@ -10,7 +10,7 @@
   * `l5d-dtab` now honored as a replacement for `dtab-local` as
     specified by users.
   * `l5d-dst-*` no longer set on responses
-
+* Fix graceful connection teardown on streaming HTTP responses #482.
 
 ## 0.6.0
 
