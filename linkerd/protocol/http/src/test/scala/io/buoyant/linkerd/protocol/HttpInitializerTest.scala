@@ -1,10 +1,13 @@
 package io.buoyant.linkerd.protocol
 
-import com.twitter.finagle.{Service, ServiceFactory, Stack}
+import com.twitter.conversions.time._
+import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
+import com.twitter.finagle.service.{Retries, RetryBudget}
 import com.twitter.finagle.stack.nilStack
 import com.twitter.io.Reader
-import com.twitter.util.{Future, Promise, Time}
+import com.twitter.util.{Future, MockTimer, Promise, Time}
+import io.buoyant.linkerd.protocol.http.ResponseClassifiers
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.Eventually
@@ -13,8 +16,8 @@ import scala.language.reflectiveCalls
 class HttpInitializerTest extends FunSuite with Awaits with Eventually {
 
   test("path stack: services are not closed until streams are complete") {
-    // Build a path stack that is controllable with promises (for only
-    // one request).
+    // Build a path stack that is controllable with promises. This is
+    // only really useful for a single request.
     val serviceP, responseP, bodyP, respondingP, closedP = Promise[Unit]
     val http = new HttpInitializer {
       val svc = new Service[Request, Response] {
@@ -34,7 +37,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
       val sf = ServiceFactory { () => serviceP.before(Future.value(svc)) }
 
       def make(params: Stack.Params = Stack.Params.empty) =
-        (pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
     // The factory is returned immediately because it is wrapped in a
@@ -45,7 +48,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     val svc = await(svcf)
 
     // When a request is processed, first the service must be acquired
-    // from the service factroy, and then the response must be
+    // from the service factory, and then the response must be
     // returned from the service.
     val rspf = svc(Request())
     assert(!rspf.isDefined)
@@ -72,5 +75,35 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
 
     assert(await(rsp.reader.read(1)) == None)
     eventually { assert(closedP.isDefined) }
+  }
+
+  test("path stack: retries") {
+    @volatile var requests = 0
+    val http = new HttpInitializer {
+      val sf = ServiceFactory.const(Service.mk[Request, Response] { req =>
+        requests += 1
+        Future.value(Response(req.version, Status.InternalServerError))
+      })
+
+      def make(params: Stack.Params = Stack.Params.empty) =
+        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+    }
+
+    val budget = RetryBudget(10.seconds, 0, 0.5)
+    val params = Stack.Params.empty +
+      param.ResponseClassifier(ResponseClassifiers.RetryableReadFailures) +
+      Retries.Budget(budget)
+    val factory = http.make(params)
+
+    val service = await(factory())
+
+    // First request just returns, since retry budget hasn't yet accrued.
+    val response0 = await(service(Request()))
+    assert(requests == 1)
+
+    // The second request is retryable because of the 50% retry
+    // budget.
+    val response1 = await(service(Request()))
+    assert(requests == 3)
   }
 }
