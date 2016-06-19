@@ -16,24 +16,22 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected type Req = com.twitter.finagle.http.Request
   protected type Rsp = com.twitter.finagle.http.Response
 
-  protected val defaultRouter = {
-    val pathStack = Http.router.pathStack
-      .prepend(Headers.Dst.PathFilter.module)
-      .replace(StackClient.Role.prepFactory, DelayedRelease.module)
-    val boundStack = Http.router.boundStack
-      .prepend(Headers.Dst.BoundFilter.module)
-    val clientStack = Http.router.clientStack
-      .prepend(http.AccessLogger.module)
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
-      .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
-      .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
+  protected val pathStack = Http.router.pathStack
+    .prepend(Headers.Dst.PathFilter.module)
+    .replace(StackClient.Role.prepFactory, DelayedRelease.module)
+  protected val boundStack = Http.router.boundStack
+    .prepend(Headers.Dst.BoundFilter.module)
+  protected val clientStack = Http.router.clientStack
+    .prepend(http.AccessLogger.module)
+    .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+    .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+    .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
-    Http.router
-      .withPathStack(pathStack)
-      .withBoundStack(boundStack)
-      .withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
-  }
+  protected val defaultRouter = Http.router
+    .withPathStack(pathStack)
+    .withBoundStack(boundStack)
+    .withClientStack(clientStack)
+    .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
 
   protected val defaultServer = {
     val stk = Http.server.stack
