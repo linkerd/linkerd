@@ -3,6 +3,7 @@ package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
+import com.twitter.finagle.buoyant.linkerd.DelayedRelease
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.buoyant.linkerd.{Headers, HttpTraceInitializer}
 import com.twitter.finagle.service.Retries
@@ -18,6 +19,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultRouter = {
     val pathStack = Http.router.pathStack
       .prepend(Headers.Dst.PathFilter.module)
+      .replace(StackClient.Role.prepFactory, DelayedRelease.module)
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
