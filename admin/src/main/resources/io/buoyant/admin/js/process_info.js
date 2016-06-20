@@ -8,7 +8,6 @@ var ProcInfo = (function() {
 
   var msToStr = new MsToStringConverter();
   var bytesToStr = new BytesToStringConverter();
-  var refreshUri = "/admin/metrics";
   var template;
 
   var stats = [
@@ -41,31 +40,9 @@ var ProcInfo = (function() {
     $root.html(template({stats: templateData}))
   }
 
-  /**
-   * Returns a function that may be called to trigger an update.
-   */
   return function(metricsCollector, $root, t, buildVersion) {
     template = t
     stats[0].value = buildVersion;
-
-    var requestBody = "";
-    _.map(stats, function(stat) {
-      if (stat.dataKey)
-        requestBody += "&m="+stat.dataKey;
-    });
-
-    function update() {
-      $.ajax({
-        url: refreshUri,
-        type: "POST",
-        dataType: "json",
-        data: requestBody,
-        cache: false,
-        success: function(data) {
-          render($root, data);
-        }
-      });
-    }
 
     if (metricsCollector) {
       metricsCollector.registerListener(
@@ -73,8 +50,6 @@ var ProcInfo = (function() {
         function() { return _.map(stats, "dataKey"); });
     }
 
-    return {
-      start: function(interval) { setInterval(update, interval); } // TODO: #198 remove once linkerd#183 is complete
-    };
+    return {};
   };
 })();
