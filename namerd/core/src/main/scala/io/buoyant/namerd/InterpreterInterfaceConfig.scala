@@ -29,4 +29,4 @@ trait InterpreterInterfaceConfig extends InterfaceConfig {
     versioned.map(_.dtab).getOrElse(Dtab.empty)
 }
 
-trait InterpreterInterfaceInitializer extends ConfigInitializer
+abstract class InterpreterInterfaceInitializer extends ConfigInitializer

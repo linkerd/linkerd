@@ -10,7 +10,7 @@ import io.buoyant.config.ConfigInitializer
  * Implementers may read params from the config file and must produce a
  * TlsClientPrep module which will control how this router makes TLS requests.
  */
-trait TlsClientInitializer extends ConfigInitializer
+abstract class TlsClientInitializer extends ConfigInitializer
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 trait TlsClientConfig {

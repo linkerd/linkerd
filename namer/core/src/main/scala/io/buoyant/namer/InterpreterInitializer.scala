@@ -13,4 +13,4 @@ trait InterpreterConfig {
   def newInterpreter(params: Stack.Params): NameInterpreter
 }
 
-trait InterpreterInitializer extends ConfigInitializer
+abstract class InterpreterInitializer extends ConfigInitializer

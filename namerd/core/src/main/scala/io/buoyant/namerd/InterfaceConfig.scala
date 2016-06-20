@@ -27,4 +27,4 @@ trait InterfaceConfig {
   def mk(store: DtabStore, namers: Map[Path, Namer], stats: StatsReceiver): Servable
 }
 
-trait InterfaceInitializer extends ConfigInitializer
+abstract class InterfaceInitializer extends ConfigInitializer

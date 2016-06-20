@@ -56,4 +56,4 @@ object NamerConfig {
   val hash = Path.Utf8("#")
 }
 
-trait NamerInitializer extends ConfigInitializer
+abstract class NamerInitializer extends ConfigInitializer
