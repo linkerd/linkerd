@@ -1,7 +1,9 @@
 package io.buoyant.linkerd
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.{Dtab, Stack}
 import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.service.TimeoutFilter
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
 import io.buoyant.router.RoutingFactory
@@ -45,6 +47,21 @@ servers:
     assert(router.servers.head.addr.getPort == 1234)
     val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
     assert(interpreter.isInstanceOf[ConfiguredNamersInterpreter])
+  }
+
+  test("with timeout") {
+    val yaml =
+      """|protocol: plain
+         |timeoutMs: 1234
+         |servers:
+         |- port: 4321
+         |""".stripMargin
+    val router = parse(yaml)
+    assert(router.servers.size == 1)
+    assert(router.servers.head.params[TimeoutFilter.Param] ==
+      TimeoutFilter.Param(1234.millis))
+    assert(router.params[TimeoutFilter.Param] ==
+      TimeoutFilter.Param(1234.millis))
   }
 
   test("loopback & protocol-specific default port used when no ports specified") {
