@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
 import com.twitter.finagle.service.ResponseClassifier
 import io.buoyant.config.ConfigInitializer
 
-trait ResponseClassifierInitializer extends ConfigInitializer
+abstract class ResponseClassifierInitializer extends ConfigInitializer
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,

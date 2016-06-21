@@ -5,7 +5,7 @@ import io.buoyant.config.ConfigInitializer
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
-trait DtabStoreInitializer extends ConfigInitializer
+abstract class DtabStoreInitializer extends ConfigInitializer
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 trait DtabStoreConfig {

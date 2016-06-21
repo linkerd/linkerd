@@ -18,7 +18,7 @@ import java.net.InetSocketAddress
  * configuration parameters.
  *
  */
-trait ProtocolInitializer extends ConfigInitializer {
+abstract class ProtocolInitializer extends ConfigInitializer {
   import ProtocolInitializer._
 
   /** The protocol name, as read from configuration. */
