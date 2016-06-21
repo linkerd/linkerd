@@ -4,7 +4,20 @@
  */
 
 body {
-  padding-top: 90px;
+  padding-top: 0;
+}
+
+.navbar {
+  border-radius: 0;
+}
+
+.navbar-header {
+  margin-top: -12px;
+}
+
+.navbar-right li {
+  margin-top: 2px;
+  color: #999;
 }
 
 h1 {

@@ -31,36 +31,6 @@ body {
   padding: 0;
 }
 
-.navbar {
-  margin-bottom: 0;
-}
-
-nav {
-  font-size: 18px;
-  font-weight: 300;
-  line-height: 1.1;
-}
-
-.navbar-container {
-  padding: 20px 27px 9px 27px;
-}
-
-.nav {
-  margin-top: -11px;
-}
-
-.navbar-brand-img img {
-  height: 26px;
-}
-
-nav ul.navbar-nav {
-  margin-left: 10px;
-}
-
-.navbar-right {
-  margin-top: 3px;
-}
-
 .modal-content {
   border-color: #fff;
   background-color: #999;
@@ -196,6 +166,11 @@ nav ul.navbar-nav {
 
 .metrics-container {
   padding: 0;
+}
+
+.navbar-right .dropdown {
+  margin-right: 30px;
+  margin-top: -14px;
 }
 
 /**

@@ -55,3 +55,36 @@
 .sr-undefined {
   color: #FFFFFF;
 }
+
+/*
+* Navbar styles
+*/
+.navbar {
+  margin-bottom: 0;
+}
+
+nav {
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.1;
+}
+
+.navbar-container {
+  padding: 20px 27px 9px 27px;
+}
+
+.nav {
+  margin-top: -11px;
+}
+
+.navbar-brand-img img {
+  height: 26px;
+}
+
+nav ul.navbar-nav {
+  margin-left: 10px;
+}
+
+.navbar-right {
+  margin-top: 3px;
+}
