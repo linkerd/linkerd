@@ -2,7 +2,6 @@ package io.buoyant.k8s
 
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
-import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Filter, http}
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{Closable, _}
@@ -133,7 +132,7 @@ private[k8s] class ListResource[O <: KubeObject: Manifest, W <: Watch[O]: Manife
       "resourceVersion" -> resourceVersion)
     val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
     val retryingClient = retry andThen client
-    Trace.letClear(retryingClient(req)).flatMap(Api.parse[L])
+    retryingClient(req).flatMap(Api.parse[L])
   }
 
   protected def restartWatches(
@@ -166,7 +165,7 @@ private[k8s] class NsListResource[O <: KubeObject: Manifest, W <: Watch[O]: Mani
    */
   def post(toCreate: O): Future[O] = {
     val req = Api.mkreq(http.Method.Post, path, Some(Json.writeBuf[O](toCreate)))
-    Trace.letClear(client(req)).flatMap(Api.parse[O])
+    client(req).flatMap(Api.parse[O])
   }
 }
 
@@ -188,16 +187,16 @@ private[k8s] class NsObjectResource[O <: KubeObject: Manifest, W <: Watch[O]: Ma
 
   def get: Future[O] = {
     val req = Api.mkreq(http.Method.Get, path, None)
-    Trace.letClear(client(req)).flatMap(Api.parse[O])
+    client(req).flatMap(Api.parse[O])
   }
 
   def put(obj: O): Future[O] = {
     val req = Api.mkreq(http.Method.Put, path, Some(Json.writeBuf[O](obj)))
-    Trace.letClear(client(req)).flatMap(parseResponse)
+    client(req).flatMap(parseResponse)
   }
 
   def delete: Future[O] = {
     val req = Api.mkreq(http.Method.Delete, path, None)
-    Trace.letClear(client(req)).flatMap(parseResponse)
+    client(req).flatMap(parseResponse)
   }
 }

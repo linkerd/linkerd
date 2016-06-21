@@ -3,7 +3,6 @@ package io.buoyant.marathon.v2
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Address, Path, Service, SimpleFilter, http}
 import com.twitter.io.Buf
 import com.twitter.util.{Closable, Future, Time, Try}
@@ -111,11 +110,11 @@ private class AppIdApi(client: Api.Client, apiPrefix: String)
 
   def getAppIds(): Future[Api.AppIds] = {
     val req = http.Request(s"$apiPrefix/apps")
-    Trace.letClear(client(req)).flatMap(rspToApps(_))
+    client(req).flatMap(rspToApps(_))
   }
 
   def getAddrs(app: Path): Future[Set[Address]] = {
     val req = http.Request(s"$apiPrefix/apps${app.show}")
-    Trace.letClear(client(req)).flatMap(rspToAddrs(_))
+    client(req).flatMap(rspToAddrs(_))
   }
 }
