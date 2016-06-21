@@ -11,6 +11,9 @@
     specified by users.
   * `l5d-dst-*` no longer set on responses
 * Fix graceful connection teardown on streaming HTTP responses #482.
+* linkerd routers' `timeoutMs` configuration now applies on the
+  server-side, so that the timeout acts as a global timeout rather
+  than an individual request timeout.
 
 ## 0.6.0
 
