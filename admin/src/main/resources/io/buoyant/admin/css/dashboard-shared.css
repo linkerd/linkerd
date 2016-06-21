@@ -2,6 +2,16 @@
 * Styles from the new dashboard that are general enough to share.
 */
 
+body {
+  font-family: "Source Sans Pro","Helvetica Neue",sans-serif;
+  font-weight: 400;
+  background-image: radial-gradient(54% 23%, #161963 0%, #090B34 97%);
+  background-size: cover;
+  background-repeat: no-repeat;
+  color: #FFFFFF;
+  min-height: 100vh;
+}
+
 .metric-header {
   font-size: 13px;
   letter-spacing: 1px;
@@ -87,4 +97,9 @@ nav ul.navbar-nav {
 
 .navbar-right {
   margin-top: 3px;
+}
+
+.navbar-right .dropdown {
+  margin-right: 30px;
+  margin-top: -14px;
 }

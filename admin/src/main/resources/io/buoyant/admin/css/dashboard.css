@@ -1,13 +1,3 @@
-body {
-  font-family: "Source Sans Pro","Helvetica Neue",sans-serif;
-  font-weight: 400;
-  background-image: radial-gradient(54% 23%, #161963 0%, #090B34 97%);
-  background-size: cover;
-  background-repeat: no-repeat;
-  color: #FFFFFF;
-  min-height: 100vh;
-}
-
 .col-md-2 {
   width: 198px;
   padding: 0 27px 0 0;
@@ -166,11 +156,6 @@ body {
 
 .metrics-container {
   padding: 0;
-}
-
-.navbar-right .dropdown {
-  margin-right: 30px;
-  margin-top: -14px;
 }
 
 /**
