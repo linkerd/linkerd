@@ -36,10 +36,7 @@ trait Router {
   def params: Stack.Params
 
   protected def _withParams(ps: Stack.Params): Router
-
-  def withParams(ps: Stack.Params): Router =
-    _withParams(ps)
-      .withServers(servers.map(Router.configureServer(this, _)))
+  def withParams(ps: Stack.Params): Router = _withParams(ps)
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
@@ -52,28 +49,100 @@ trait Router {
   protected def withServers(servers: Seq[Server]): Router
 
   /** Return a router with an additional server. */
-  def serving(s: Server): Router =
-    withServers(servers :+ Router.configureServer(this, s))
-
+  def serving(s: Server): Router = withServers(servers :+ s)
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
   /** Return a router with TLS configuration read from the provided config. */
   def withTls(tls: TlsClientConfig): Router
+
+  def interpreter: NameInterpreter = params[DstBindingFactory.Namer].interpreter
 
   /**
    * Initialize a router by instantiating a downstream router client
    * so that its upstream `servers` may be bound.
    */
   def initialize(): Router.Initialized
-
-  def interpreter: NameInterpreter = params[DstBindingFactory.Namer].interpreter
 }
 
 object Router {
+
+  case class RouterTimeout(timeout: Duration)
+  implicit object RouterTimeout extends Stack.Param[RouterTimeout] {
+    val default = RouterTimeout(Duration.Top)
+  }
+
+  case class ClientTimeout(timeout: Duration)
+  implicit object ClientTimeout extends Stack.Param[ClientTimeout] {
+    val default = ClientTimeout(Duration.Top)
+
+    /**
+     * Updates TimeoutFilter.Param using Router.ClientTimeout.
+     *
+     * Routers may configured with a global timeout, which can be
+     * overridden on the client. The client timeout controls the
+     * _per-request_ timeout on the client. The higher-layer router or
+     * server timeouts limits the latency of requests, including
+     * retries.
+     */
+    def module[T]: Stackable[T] =
+      new Stack.Module[T] {
+        val role = Stack.Role("TranslateClientTimeout")
+        val description = "Sets a TimeoutFilter.Param from ClientTimeout and RouterTimeout"
+        val parameters = Seq(
+          implicitly[Stack.Param[ClientTimeout]],
+          implicitly[Stack.Param[RouterTimeout]]
+        )
+
+        def make(params: Stack.Params, next: Stack[T]) =
+          Stack.Node(this, (ps, stk) => Stack.Leaf(this, stk.make(setTimeout(ps))), next)
+
+        private def setTimeout(orig: Stack.Params) = {
+          val RouterTimeout(rtimeout) = orig[RouterTimeout]
+          val ClientTimeout(ctimeout) = orig[ClientTimeout]
+          orig + TimeoutFilter.Param(rtimeout min ctimeout)
+        }
+      }
+  }
+
+  case class ServerTimeout(timeout: Duration)
+  implicit object ServerTimeout extends Stack.Param[ServerTimeout] {
+    val default = ServerTimeout(Duration.Top)
+
+    /**
+     * Updates TimeoutFilter.Param using ServerTimeout.
+     *
+     * Routers may configured with a global timeout, which can be
+     * overridden on the client. The client timeout controls the
+     * _per-request_ timeout on the client. The higher-layer router or
+     * server timeouts limits the latency of requests, including
+     * retries.
+     */
+    def module[T]: Stackable[T] =
+      new Stack.Module[T] {
+        val role = Stack.Role("TranslateServerTimeout")
+        val description = "Sets a TimeoutFilter.Param from ServerTimeout and RouterTimeout"
+        val parameters = Seq(
+          implicitly[Stack.Param[ServerTimeout]],
+          implicitly[Stack.Param[RouterTimeout]]
+        )
+
+        def make(params: Stack.Params, next: Stack[T]) =
+          Stack.Node(this, (ps, stk) => Stack.Leaf(this, stk.make(setTimeout(ps))), next)
+
+        private def setTimeout(orig: Stack.Params) = {
+          val RouterTimeout(rtimeout) = orig[RouterTimeout]
+          val ServerTimeout(stimeout) = orig[ServerTimeout]
+          val timeout = stimeout match {
+            case Duration.Finite(_) => stimeout
+            case _ => rtimeout
+          }
+          orig + TimeoutFilter.Param(timeout)
+        }
+      }
+  }
+
   /**
    * A [[Router]] that has been configured and initialized.
-   *
-   * Concrete implementations
    */
   trait Initialized extends Closable {
     def protocol: ProtocolInitializer
@@ -81,17 +150,18 @@ object Router {
     def servers: Seq[Server.Initializer]
   }
 
-  private def configureServer(router: Router, server: Server): Server = {
+  def serverParams(router: Router, server: Server): Stack.Params = {
     val ip = server.ip.getHostAddress
     val port = server.port
     val param.Stats(stats) = router.params[param.Stats]
     val routerLabel = router.label
-    server.configured(param.Label(s"$ip/$port"))
-      .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[TimeoutFilter.Param])
-      .configured(router.params[param.ResponseClassifier])
-      .configured(router.params[param.Tracer])
+    server.params +
+      param.Label(s"$ip/$port") +
+      Server.RouterLabel(routerLabel) +
+      param.Stats(stats.scope(routerLabel, "srv")) +
+      router.params[RouterTimeout] +
+      router.params[param.ResponseClassifier] +
+      router.params[param.Tracer]
   }
 }
 
@@ -174,7 +244,7 @@ trait RouterConfig {
   def routerParams = (Stack.Params.empty + defaultBudget)
     .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
-    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
+    .maybeWith(timeoutMs.map(t => Router.RouterTimeout(t.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(bindingCache.map(_.capacity))
     .maybeWith(client.map(_.clientParams)) +
@@ -201,6 +271,7 @@ class ClientConfig {
   var loadBalancer: Option[LoadBalancerConfig] = None
   var hostConnectionPool: Option[HostConnectionPool] = None
   var retries: Option[RetriesConfig] = None
+  var timeoutMs: Option[Int] = None
 
   @JsonIgnore
   def clientParams: Stack.Params = Stack.Params.empty
@@ -208,6 +279,7 @@ class ClientConfig {
     .maybeWith(hostConnectionPool.map(_.param))
     .maybeWith(retries.flatMap(_.mkBackoff))
     .maybeWith(retries.flatMap(_.mkBudget))
+    .maybeWith(timeoutMs.map(t => Router.ClientTimeout(t.millis)))
 }
 
 case class RetriesConfig(

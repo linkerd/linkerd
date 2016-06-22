@@ -148,7 +148,9 @@ Each router must be configured as an object with the following params:
   (default is protocol dependent)
 * *failFast* -- If `true`, connection failures are punished more aggressively.
   Should not be used with small destination pools. (default: false)
-* *timeoutMs* -- Per-request timeout in milliseconds. (default: no timeout)
+* *timeoutMs* -- Base timeout in milliseconds. If not overridden in
+  [_client_](#client_timeout) or [_server_](#server_timeout)
+  configurations, this base timeout is used. (default: no timeout)
 * *bindingTimeoutMs* -- Optional.  The maximum amount of time in milliseconds to
   spend binding a path.  (default: 10 seconds)
 * *bindingCache* -- Optional.  Configure the size of binding cache.  It must be
@@ -172,6 +174,9 @@ local IPv4 interfaces.
   * *keyPath* -- File path to the TLS key file
 * *maxConcurrentRequests* -- Optional.  The maximum number of concurrent
 requests the server will accept.  (default: unlimited)
+<a name="server_timeout"></a>
+* *timeoutMs* -- Global timeout for requests processed by this server,
+  encompassing all retries.
 
 <a name="basic-client-params"></a>
 ### Basic client parameters
@@ -203,6 +208,8 @@ maintain to each destination host.  It must be an object containing keys:
 <a name="retries"></a>
 * *retries* -- Optional. A [retry policy](retries.md) for all clients created by
   this router.
+<a name="client_timeout"></a>
+* *timeoutMs* -- Individual request timeout, not including retries etc.
 
 <a name="namers"></a>
 ## Service discovery and naming
