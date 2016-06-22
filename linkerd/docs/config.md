@@ -157,6 +157,12 @@ Each router must be configured as an object with the following params:
   * *trees* -- Optional.  Size of the tree cache.  (default: 100)
   * *bounds* -- Optional.  Size of the bound cache.  (default: 100)
   * *clients* -- Optional.  Size of the client cache.  (default: 10)
+<a name="response_classifier"></a>
+* *responseClassifier* -- Optional. A
+  (sometimes protocol-specific) [response classifier](response_classifier.md)
+  that determines which responses should be considered failures and, of those,
+  which should be considered [retryable](retries.md).
+  (default: _io.l5d.nonRetryable5XX_)
 
 <a name="basic-server-params"></a>
 ### Basic server parameters
@@ -187,12 +193,6 @@ maintain to each destination host.  It must be an object containing keys:
   * *maxWaiters* -- Optional.  The maximum number of connection requests that
   are queued when the connection concurrency exceeds maxSize.  (default:
   Int.MaxValue)
-<a name="response_classifier"></a>
-* *responseClassifier* -- Optional. A
-  (sometimes protocol-specific) [response classifier](response_classifier.md)
-  that determines which responses should be considered failures and, of those,
-  which should be considered [retryable](retries.md).
-  (default: _io.l5d.nonRetryable5XX_)
 <a name="client_tls"></a>
 * *tls* -- Optional.  The router will make requests
   using TLS if this parameter is provided.  It must be a
