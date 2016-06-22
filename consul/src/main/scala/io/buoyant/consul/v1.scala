@@ -7,6 +7,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy, RetryFilter}
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
+import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Filter, Service, http}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
@@ -77,7 +78,7 @@ package object v1 {
     // https://www.consul.io/docs/agent/http/catalog.html#catalog_datacenters
     def datacenters(retry: Boolean = false): Future[Seq[String]] = {
       val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters")
-      retryClient(retry)(req).flatMap {
+      Trace.letClear(retryClient(retry)(req)).flatMap {
         case rsp if rsp.status == http.Status.Ok =>
           Future.const(readJson[Seq[String]](rsp.content))
         case rsp => Future.exception(UnexpectedResponse(rsp))
@@ -96,7 +97,9 @@ package object v1 {
         "index" -> blockingIndex,
         "dc" -> datacenter
       )
-      retryClient(retry)(req).flatMap { rsp => Future.const(Indexed.mk[Map[String, Seq[String]]](rsp)) }
+      Trace.letClear(retryClient(retry)(req)).flatMap { rsp =>
+        Future.const(Indexed.mk[Map[String, Seq[String]]](rsp))
+      }
     }
 
     // https://www.consul.io/docs/agent/http/catalog.html#catalog_service
@@ -112,7 +115,9 @@ package object v1 {
         "index" -> blockingIndex,
         "dc" -> datacenter
       )
-      retryClient(retry)(req).flatMap { rsp => Future.const(Indexed.mk[Seq[ServiceNode]](rsp)) }
+      Trace.letClear(retryClient(retry)(req)).flatMap { rsp =>
+        Future.const(Indexed.mk[Seq[ServiceNode]](rsp))
+      }
     }
   }
 
