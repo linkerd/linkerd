@@ -64,6 +64,18 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         |  - port: 0
         |""".stripMargin
 
+  def annotationKeys(annotations: Seq[Annotation]): Seq[String] =
+    annotations.collect {
+      case Annotation.ClientSend() => "cs"
+      case Annotation.ClientRecv() => "cr"
+      case Annotation.ServerSend() => "ss"
+      case Annotation.ServerRecv() => "sr"
+      case Annotation.WireSend => "ws"
+      case Annotation.WireRecv => "wr"
+      case Annotation.BinaryAnnotation(k, _) if k == "l5d.success" => k
+      case Annotation.Message(m) if Seq("l5d.retryable", "l5d.failure").contains(m) => m
+    }
+
   test("linking") {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
@@ -105,9 +117,10 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         val path = "/http/1.1/GET/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
         }
       }
 
@@ -119,9 +132,10 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         val bound = s"/$$/inet/127.1/${dog.port}"
         val residual = "/the/big/red/dog"
         withAnnotations { anns =>
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", residual)))
+          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", residual)))
         }
       }
 
@@ -266,7 +280,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
         assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
         withAnnotations { anns =>
-          assert(anns.exists(_ == Annotation.Message("l5d.retryable")))
+          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
         }
       }
 
@@ -293,7 +307,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
         assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(0.0)))
         withAnnotations { anns =>
-          assert(anns.exists(_ == Annotation.Message("l5d.failure")))
+          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
         }
       }
     } finally {
