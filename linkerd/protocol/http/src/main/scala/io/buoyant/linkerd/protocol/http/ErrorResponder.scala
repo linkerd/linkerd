@@ -24,7 +24,11 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
           log.error(e, "service failure")
           Status.BadGateway
       }
-      Headers.Err.respond(e.getMessage, status)
+      val message = e.getMessage match {
+        case null => e.getClass.getName
+        case msg => msg
+      }
+      Headers.Err.respond(message, status)
   }
 }
 

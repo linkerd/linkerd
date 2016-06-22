@@ -106,4 +106,26 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     val response1 = await(service(Request()))
     assert(requests == 3)
   }
+
+  class WildErr extends Exception
+  test("path stack: error handling") {
+    @volatile var requests = 0
+    val http = new HttpInitializer {
+      val sf = ServiceFactory.const(Service.mk[Request, Response] { req =>
+        requests += 1
+        Future.exception(new WildErr)
+      })
+
+      def make(params: Stack.Params = Stack.Params.empty) =
+        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+    }
+
+    val factory = http.make(Stack.Params.empty)
+    val service = await(factory())
+
+    val response = await(service(Request()))
+    assert(requests == 1)
+    assert(response.status == Status.BadGateway)
+    assert(response.headerMap.contains("l5d-err"))
+  }
 }
