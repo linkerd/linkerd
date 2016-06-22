@@ -5,6 +5,7 @@ import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.service.{Retries, RetryBudget}
 import com.twitter.finagle.stack.nilStack
+import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Reader
 import com.twitter.util.{Future, MockTimer, Promise, Time}
 import io.buoyant.linkerd.protocol.http.ResponseClassifiers
@@ -105,5 +106,31 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     // budget.
     val response1 = await(service(Request()))
     assert(requests == 3)
+  }
+
+  class WildErr extends Exception
+  test("path stack: error handling") {
+    @volatile var requests = 0
+    val http = new HttpInitializer {
+      val sf = ServiceFactory.const(Service.mk[Request, Response] { req =>
+        requests += 1
+        Future.exception(new WildErr)
+      })
+
+      def make(params: Stack.Params = Stack.Params.empty) =
+        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val factory = http.make(Stack.Params.empty + param.Stats(stats))
+    val service = await(factory())
+
+    val response = await(service(Request()))
+    assert(requests == 1)
+    assert(response.status == Status.BadGateway)
+    assert(response.headerMap.contains("l5d-err"))
+
+    val counter = Seq("failures", "io.buoyant.linkerd.protocol.HttpInitializerTest$WildErr")
+    assert(stats.counters.get(counter) == Some(1))
   }
 }
