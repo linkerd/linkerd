@@ -36,6 +36,7 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     "/delegator" -> new DelegateHandler(AdminHandler, dtabs, interpreterForRouter),
     "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
     "/metrics" -> MetricsHandler,
+    "/help" -> new HelpPageHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
     "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
   )

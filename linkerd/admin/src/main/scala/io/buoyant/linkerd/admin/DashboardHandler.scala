@@ -28,7 +28,6 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <div class="row proc-info">
         </div>
       """,
-      csses = Seq("dashboard.css", "dashboard-shared.css"),
       javaScripts = Seq(
         "lib/smoothie.js",
         "utils.js",

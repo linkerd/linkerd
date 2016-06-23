@@ -1,3 +1,105 @@
+body {
+  font-family: "Source Sans Pro","Helvetica Neue",sans-serif;
+  font-weight: 400;
+  background-image: radial-gradient(54% 23%, #161963 0%, #090B34 97%);
+  background-size: cover;
+  background-repeat: no-repeat;
+  color: #FFFFFF;
+  min-height: 100vh;
+}
+
+.metric-header {
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.router-header-large, .metric-large {
+  font-size: 21px;
+  line-height: 21px;
+}
+
+.metric-header {
+  font-weight: 300;
+}
+
+.metric-small {
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.success-metric-container {
+  border-left: 1px solid #4AD8AC;
+}
+
+.failure-metric-container {
+  border-left: 1px solid #D84A4A;
+}
+
+.success-metric {
+  color: #4AD8AC;
+}
+
+.failure-metric {
+  color: #D84A4A;
+}
+
+/*
+* Success rates
+*/
+.sr-good {
+  color: #4AD8AC;
+}
+
+.sr-poor {
+  color: #F28E1D;
+}
+
+.sr-bad {
+  color: #D84A4A;
+}
+
+.sr-undefined {
+  color: #FFFFFF;
+}
+
+/*
+* Navbar styles
+*/
+.navbar {
+  margin-bottom: 0;
+}
+
+nav {
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.1;
+}
+
+.navbar-container {
+  padding: 20px 27px 9px 27px;
+}
+
+.nav {
+  margin-top: -11px;
+}
+
+.navbar-brand-img img {
+  height: 26px;
+}
+
+nav ul.navbar-nav {
+  margin-left: 10px;
+}
+
+.navbar-right {
+  margin-top: 3px;
+}
+
+.navbar-right .dropdown {
+  margin-right: 30px;
+  margin-top: -14px;
+}
+
 .col-md-2 {
   width: 198px;
   padding: 0 27px 0 0;
@@ -157,10 +259,6 @@
 .metrics-container {
   padding: 0;
 }
-
-/**
-* Shared but not general enough for dashboard-shared.css
-*/
 
 .metric-container {
   padding-left: 15px;

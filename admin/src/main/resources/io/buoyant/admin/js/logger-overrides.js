@@ -16,7 +16,7 @@ $(function() {
   '          <ul class="nav navbar-nav">' +
   '            <li><a href="/delegator">dtab</a></li>' +
   '            <li><a href="/admin/logging">logging</a></li>' +
-  '            <li><a href="https://linkerd.io/help/">help</a></li>' +
+  '            <li><a href="/help">help</a></li>' +
   '          </ul>' +
   '        </div>' +
   '      </div>' +
