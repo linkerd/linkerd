@@ -276,17 +276,16 @@ object StackRouter {
   object Client {
 
     /**
-     * Install ClassifiedTracing to mark each request-response's
-     * classification (success, failure, or retryable), after the
-     * TraceInitializerFilter (note, TraceInitializerFilter's role
-     * is private[finagle], so instead it's hardcoded here).
+     * Install the ClassifiedTracing filter immediately above any
+     * protocol-specific annotating tracing filters, to provide response
+     * classification annotations (success, failure, or retryable).
      *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
       (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
-        .insertAfter(Stack.Role("TraceInitializerFilter"), ClassifiedTracing.module[Req, Rsp])
+        .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
