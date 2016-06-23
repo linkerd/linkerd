@@ -3,6 +3,7 @@ package io.buoyant.namer.marathon
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.param.Label
+import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Stack, Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
@@ -59,6 +60,7 @@ case class MarathonConfig(
     val service = Http.client
       .withParams(params)
       .configured(Label("namer" + prefix.show))
+      .withTracer(NullTracer)
       .newService(getDst)
 
     new AppIdNamer(Api(service, getHost, getUriPrefix), prefix, getTtl)

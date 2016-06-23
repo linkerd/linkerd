@@ -1,9 +1,7 @@
 package io.buoyant.k8s
 
-import com.twitter.finagle.{Filter, Http, Stack}
-import com.twitter.finagle.http.{Request, Response}
-import io.buoyant.k8s
-import scala.io.Source
+import com.twitter.finagle.tracing.NullTracer
+import com.twitter.finagle.{Http, Stack}
 
 /**
  * Meant to be implemented by configuration classes that need to
@@ -26,6 +24,7 @@ trait ClientConfig {
   ) = {
     val setHost = new SetHostFilter(getHost, getPort)
     Http.client.withParams(Http.client.params ++ params)
+      .withTracer(NullTracer)
       .withStreaming(true)
       .filtered(setHost)
   }

@@ -2,6 +2,7 @@ package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.param.Label
+import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.consul.{CatalogNamer, SetHostFilter, v1}
 import io.buoyant.config.types.Port
@@ -50,6 +51,7 @@ case class ConsulConfig(
     val service = Http.client
       .withParams(Http.client.params ++ params)
       .configured(Label("namer" + prefix))
+      .withTracer(NullTracer)
       .filtered(new SetHostFilter(getHost, getPort))
       .newService(s"/$$/inet/$getHost/$getPort")
 
