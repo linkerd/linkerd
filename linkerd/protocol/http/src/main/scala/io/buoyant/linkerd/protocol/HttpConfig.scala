@@ -41,6 +41,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
       .prepend(Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
+      .prepend(http.StatusCodeStatsFilter.module)
     Http.server.withStack(stk)
   }
 
