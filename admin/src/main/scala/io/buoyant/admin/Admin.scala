@@ -29,7 +29,7 @@ class Admin(app: TApp) {
     "/admin/ping" -> new ReplyHandler("pong"),
     "/admin/shutdown" -> new ShutdownHandler(app),
     "/admin/tracing" -> new TracingHandler,
-    "/admin/logging" -> new LoggingHandler,
+    "/admin/logging" -> (new StyleOverrideFilter andThen new LoggingHandler),
     "/admin/metrics" -> new MetricsQueryHandler,
     "/admin/metrics/prometheus" -> new PrometheusStatsHandler(MetricsStatsReceiver.defaultRegistry),
     Path.Clients -> new ClientRegistryHandler(Path.Clients),

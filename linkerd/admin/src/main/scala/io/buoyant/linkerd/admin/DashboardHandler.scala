@@ -6,15 +6,14 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.Build
 
 private[admin] class DashboardHandler extends Service[Request, Response] {
-  import DashboardHandler._
 
   override def apply(req: Request): Future[Response] = req.path match {
-    case "/" | "/routers" =>
-      AdminHandler.mkResponse(dashboardHtml())
-    case rexp(router) =>
-      AdminHandler.mkResponse(dashboardHtml(router))
-    case _ =>
-      Future.value(Response(Status.NotFound))
+    case "/" =>
+      Option(req.getParam("router")) match {
+        case Some(router) => AdminHandler.mkResponse(dashboardHtml(router))
+        case None => AdminHandler.mkResponse(dashboardHtml())
+      }
+    case _ => Future.value(Response(Status.NotFound))
   }
 
   def dashboardHtml(router: String = "") = {
@@ -45,12 +44,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         "metrics_collector.js",
         "request_totals.js",
         "dashboard.js"
-      ),
-      navbar = AdminHandler.version2NavBar
+      )
     )
   }
-}
-
-object DashboardHandler {
-  val rexp = "^/routers/(.*)/?".r
 }
