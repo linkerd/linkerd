@@ -1,8 +1,10 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.Time
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
@@ -34,12 +36,15 @@ abstract class ProtocolInitializer extends ConfigInitializer {
   /** The default protocol-specific router configuration */
   protected def defaultRouter: StackRouter[RouterReq, RouterRsp]
 
+  private[this] val timeoutModule =
+    Router.ClientTimeout.module[ServiceFactory[RouterReq, RouterRsp]]
+
   /**
    * Satisfies the protocol-agnostic linkerd Router interface by
    * wrapping the protocol-specific router stack.
    */
   private case class ProtocolRouter(
-    router: StackRouter[RouterReq, RouterRsp],
+    router: StackRouter[RouterReq, RouterRsp] = defaultRouter,
     servers: Seq[Server] = Nil
   ) extends Router {
     def params = router.params
@@ -56,25 +61,32 @@ abstract class ProtocolInitializer extends ConfigInitializer {
         throw new IllegalStateException(s"router '$name' has no servers")
       }
 
-      val factory = router.factory()
-      val adapted = adapter.andThen(factory)
-      val servable = servers.map { server =>
-        val stackServer = defaultServer.withParams(server.params)
-        ServerInitializer(protocol, server.addr, stackServer, adapted)
+      val factory = router
+        .withClientStack(router.clientStack
+          .insertBefore(TimeoutFilter.role, timeoutModule))
+        .withParams(router.params)
+        .factory()
+
+      val servable = {
+        val adapted = adapter.andThen(factory)
+
+        servers.map { server =>
+          val stackServer = defaultServer.withParams(Router.serverParams(this, server))
+          ServerInitializer(protocol, server.addr, stackServer, adapted)
+        }
       }
+
       InitializedRouter(protocol, params, factory, servable)
     }
 
-    private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
-
     def withTls(tls: TlsClientConfig): Router = {
-      val tlsPrep = tls.tlsClientPrep[RouterReq, RouterRsp]
-      val clientStack = router.clientStack.replace(tlsPrepRole, tlsPrep)
+      val clientStack = router.clientStack
+        .replace(TlsClientPrep.role, tls.tlsClientPrep[RouterReq, RouterRsp])
       copy(router = router.withClientStack(clientStack))
     }
   }
 
-  def router: Router = ProtocolRouter(defaultRouter)
+  def router: Router = ProtocolRouter()
     .configured(Label(name))
 
   /*

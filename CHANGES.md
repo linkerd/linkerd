@@ -14,6 +14,10 @@
 * linkerd routers' `timeoutMs` configuration now applies on the
   server-side, so that the timeout acts as a global timeout rather
   than an individual request timeout.
+  * Added server `timeoutMs` configuration, which controls global
+    timeout.
+  * Added client `timeoutMs` configuration, which controls individual
+    request timeout.
 
 ## 0.6.0
 
