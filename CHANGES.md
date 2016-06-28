@@ -1,4 +1,4 @@
-## x.x.x
+## 0.7.0
 
 * New default JVM settings scale up with traffic levels.
   * `JVM_HEAP` is now deprecated, you can now separately set `JVM_HEAP_MIN` and
@@ -14,6 +14,13 @@
 * linkerd routers' `timeoutMs` configuration now applies on the
   server-side, so that the timeout acts as a global timeout rather
   than an individual request timeout.
+* Binding cache size is now configurable in linkerd and namerd
+* Use :: as the zk host delimiter in the zk leader namer
+* Admin site/dashboard UI improvements:
+  * The linkerd dtab UI now works correctly with the namerd interpreter
+  * Added server success rate graphs to the dashboard, improved responsiveness
+  * Added the ability to navigate to a specific router's dashboard
+  * Standardized the look and feel of the admin pages
 
 ## 0.6.0
 
