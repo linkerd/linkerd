@@ -33,11 +33,11 @@
 }
 
 .table-striped>tbody>tr>td {
-  border-top: 2px solid gray;
+  border-top: 1px solid dimgray
 }
 
 .table-striped>thead>tr {
-  border-bottom: 3px solid gray;
+  border-bottom: 1px solid dimgray
 }
 
 .table>thead>tr>th {

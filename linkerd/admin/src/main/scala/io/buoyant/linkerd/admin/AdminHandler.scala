@@ -27,7 +27,7 @@ object AdminHandler extends HtmlView {
           <ul class="nav navbar-nav">
             <li><a href="/delegator">dtab</a></li>
             <li><a href="/admin/logging">logging</a></li>
-            <li><a href="https://linkerd.io/help/">help</a></li>
+            <li><a href="/help">help</a></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -74,6 +74,7 @@ object AdminHandler extends HtmlView {
         <head>
           <title>linkerd admin</title>
           <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+          <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
           <link rel="shortcut icon" href="/files/images/favicon.png" />
           <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600' rel='stylesheet' type='text/css'>
           $cssesHtml

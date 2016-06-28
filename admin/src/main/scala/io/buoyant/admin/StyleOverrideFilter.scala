@@ -11,7 +11,6 @@ class StyleOverrideFilter extends SimpleFilter[Request, Response] {
     s"""
     <link type="text/css" href="/files/css/logger-overrides.css" rel="stylesheet"/>
     <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
-    <link type="text/css" href="/files/css/dashboard-shared.css" rel="stylesheet"/>
     <script src="/files/js/logger-overrides.js"></script>
       """
 
