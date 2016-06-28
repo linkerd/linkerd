@@ -38,8 +38,10 @@ case class ZipkinConfig(
         // using an arbitrary, but bounded number of waiters to avoid memory leaks
         .hostConnectionMaxWaiters(250)
         // somewhat arbitrary, but bounded timeouts
-        .timeout(1.second)
+        .timeout(100.millis)
         .daemon(true)
+        .noFailureAccrual
+        .failFast(false)
         .build()
 
       val client = new Scribe.FinagledClient(
