@@ -43,10 +43,10 @@ object HelpPageHandler {
             linkerd is doing. You can accomplish this by running the following script:
           </p>
           <pre><code class="language-bash">#!/bin/bash
-      while true; do
-        curl -s http://localhost:9990/admin/metrics.json &gt; l5d_metrics_`date -u +'%s'`.json
-        sleep 60;
-      done</code></pre>
+while true; do
+  curl -s http://localhost:9990/admin/metrics.json &gt; l5d_metrics_`date -u +'%s'`.json
+  sleep 60;
+done</code></pre>
           <p>This script will produce one file a minute.</p>
           <p>If these metrics are insufficient, we may also ask you to capture some network traffic. One way to do this is with tcpdump:</p>
           <pre><code class="language-bash">tcpdump -s 0 -w linkerd.pcap 'tcp port 4140 or tcp port 3591'`</code></pre>
