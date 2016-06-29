@@ -29,18 +29,21 @@ case class ZipkinConfig(
   @JsonIgnore
   override def newTracer(): Tracer = new Tracer {
     private[this] val underlying: Tracer = {
+      // Cribbed heavily from com.twitter.finagle.zipkin.thrift.RawZipkinTracer
       val transport = ClientBuilder()
         .name("zipkin-tracer")
         .hosts(new InetSocketAddress(host.getOrElse("localhost"), port.getOrElse(9410)))
         .codec(ThriftClientFramedCodec())
         .reportTo(ClientStatsReceiver)
         .hostConnectionLimit(5)
-        // using an arbitrary, but bounded number of waiters to avoid memory leaks
         .hostConnectionMaxWaiters(250)
-        // somewhat arbitrary, but bounded timeouts
+        // reduce timeouts because trace requests should be fast
         .timeout(100.millis)
         .daemon(true)
+        // disable failure accrual so that we don't evict nodes when connections
+        // are saturated
         .noFailureAccrual
+        // disable fail fast since we often be sending to a load balancer
         .failFast(false)
         .build()
 
