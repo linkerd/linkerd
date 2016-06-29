@@ -34,14 +34,8 @@ object HelpPageHandler {
           </ul>
           <p>You can also report bugs or file feature requests on the <a href="https://github.com/buoyantio/linkerd">linkerd Github repo</a>.</p>
           <h1 id="remote-diagnosis">Remote diagnosis</h1>
-          <p>
-            Diagnosing why linkerd is having trouble can be tricky. You can help us
-            by providing a few things.
-          </p>
-          <p>
-            First, a metrics dump is often critical for us to understanding what
-            linkerd is doing. You can accomplish this by running the following script:
-          </p>
+          <p>Diagnosing why linkerd is having trouble can be tricky. You can help us by providing a few things.</p>
+          <p>First, a metrics dump is often critical for us to understanding what linkerd is doing. You can accomplish this by running the following script:</p>
           <pre><code class="language-bash">#!/bin/bash
 while true; do
   curl -s http://localhost:9990/admin/metrics.json &gt; l5d_metrics_`date -u +'%s'`.json
@@ -49,14 +43,9 @@ while true; do
 done</code></pre>
           <p>This script will produce one file a minute.</p>
           <p>If these metrics are insufficient, we may also ask you to capture some network traffic. One way to do this is with tcpdump:</p>
-          <pre><code class="language-bash">tcpdump -s 0 -w linkerd.pcap 'tcp port 4140 or tcp port 3591'`</code></pre>
-          <p>or</p>
-          <pre><code class="language-bash">sudo /usr/sbin/tcpdump -A -s 65535 'tcp port 4140 and (((ip[2:2] - ((ip[0]&amp;0xf)&lt;&lt;2)) - ((tcp[12]&amp;0xf0)&gt;&gt;2)) != 0)' -w linkerd.pcap`</code></pre>
-          <p>
-            Run these commands while the problem is occurring and assemble the
-            results in a tar or zip file. You can attach these files directly to the
-            Github issue.
-          </p>
+          <pre><code class="language-bash">/usr/sbin/tcpdump -s 65535 'tcp port 4140' -w linkerd.pcap</code></pre>
+          <p>(assuming you&rsquo;re running linkerd on the default port of 4140).</p>
+          <p>Run this command while the problem is occurring and assemble the results in a tar or zip file. You can attach these files directly to the Github issue.</p>
         </div>
       </div>
     </div>
