@@ -21,3 +21,6 @@ addSbtPlugin("com.twitter" %% "scrooge-sbt-plugin" % "4.6.0")
 
 // microbenchmarking for tests.
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.6")
+
+// pgp signing for publishing to sonatype
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")

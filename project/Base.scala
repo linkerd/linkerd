@@ -45,7 +45,41 @@ class Base extends Build {
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
     aggregate in assembly := false,
-    developTwitterDeps := { sys.env.get("TWITTER_DEVELOP") == Some("1") }
+    developTwitterDeps := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
+
+    // Sonatype publishing
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ => false },
+    publishMavenStyle := true,
+    pomExtra :=
+      <licenses>
+        <license>
+          <name>Apache License, Version 2.0</name>
+          <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+      </licenses>
+      <scm>
+        <url>git@github.com:BuoyantIO/linkerd.git</url>
+        <connection>scm:git:git@github.com:BuoyantIO/linkerd.git</connection>
+      </scm>
+      <developers>
+        <developer>
+          <id>buoyant</id>
+          <name>Buoyant Inc.</name>
+          <url>https://buoyant.io/</url>
+        </developer>
+      </developers>,
+    publishTo <<= version { (v: String) =>
+      val nexus = "https://oss.sonatype.org/"
+      if (v.trim.endsWith("SNAPSHOT"))
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    }
+  )
+
+  val aggregateSettings = Seq(
+    publishArtifact := false
   )
 
   val scalariformSettings = baseScalariformSettings ++ Seq(
