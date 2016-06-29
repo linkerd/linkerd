@@ -64,6 +64,7 @@ object LinkerdBuild extends Base {
       )
 
     val all = projectDir("router")
+      .settings(aggregateSettings)
       .aggregate(core, http, mux, thrift)
   }
 
@@ -105,6 +106,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val all = projectDir("namer")
+      .settings(aggregateSettings)
       .aggregate(core, consul, fs, k8s, marathon, serversets, zkLeader)
   }
 
@@ -166,6 +168,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("namerd/storage")
+        .settings(aggregateSettings)
         .aggregate(inMemory, zk, k8s, etcd)
     }
 
@@ -190,6 +193,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("namerd/iface")
+        .settings(aggregateSettings)
         .aggregate(controlHttp, interpreterThriftIdl, interpreterThrift)
     }
 
@@ -270,6 +274,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("namerd")
+      .settings(aggregateSettings)
       .aggregate(core, dcosBootstrap, Storage.all, Iface.all, main)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
@@ -314,6 +319,7 @@ object LinkerdBuild extends Base {
       .dependsOn(Namer.core, Namerd.Iface.interpreterThrift)
 
     val all = projectDir("interpreter")
+      .settings(aggregateSettings)
       .aggregate(namerd)
   }
 
@@ -352,6 +358,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("linkerd/protocol")
+        .settings(aggregateSettings)
         .aggregate(http, mux, thrift)
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
@@ -368,6 +375,7 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = projectDir("linkerd/tracer")
+        .settings(aggregateSettings)
         .aggregate(zipkin)
     }
 
@@ -426,6 +434,7 @@ object LinkerdBuild extends Base {
     )
 
     val all = projectDir("linkerd")
+      .settings(aggregateSettings)
       .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, tls)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
@@ -531,6 +540,7 @@ object LinkerdBuild extends Base {
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
     .settings(unidocSettings)
+    .settings(aggregateSettings)
     .aggregate(
       admin,
       configCore,
