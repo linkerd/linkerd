@@ -6,14 +6,16 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
+import io.buoyant.k8s.EndpointsNamer.ActSet
 import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
+import io.buoyant.namer.EnumeratingNamer
 import scala.collection.mutable
 
 class EndpointsNamer(
   idPrefix: Path,
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
+)(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
 
   import EndpointsNamer._
 
@@ -53,6 +55,18 @@ class EndpointsNamer(
 
     case _ =>
       Activity.value(NameTree.Neg)
+  }
+
+  override def getAllNames: Activity[Set[Path]] = {
+
+    val namespaces = Activity.value(Ns.namespaces)
+    for {
+      namespace <- namespaces
+      services = Ns.get(namespace).services.map(_.values.toSet)
+      service <- services
+      ports = service.ports.map(_.values.toSet)
+      port <- ports
+    } yield idPrefix ++ Path.Utf8(namespace, port.name, service.name)
   }
 
   private[this] object Ns {
@@ -107,6 +121,8 @@ class EndpointsNamer(
           ns
       }
     }
+
+    def namespaces: Set[String] = caches.keySet
 
     private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)
@@ -334,6 +350,15 @@ private object EndpointsNamer {
 
           case _ =>
         }
+      }
+  }
+
+  implicit class ActSet[A](val actSet: Activity[Set[A]]) extends AnyVal {
+    def map[B](f: A => B): Activity[Set[B]] = actSet.map(_.map(f))
+
+    def flatMap[B](f: A => Activity[Set[B]]): Activity[Set[B]] =
+      actSet.flatMap { as =>
+        Activity.collect(as.map(f)).map(_.flatten)
       }
   }
 }
