@@ -1,12 +1,13 @@
 package io.buoyant.router
 
+import com.twitter.finagle.Http.param.Decompression
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => fhttp, _}
 import io.buoyant.router.Http.param.HttpIdentifier
-import io.buoyant.router.http.{MethodAndHostIdentifier, ForwardedFilter, StripConnectionHeader}
+import io.buoyant.router.http.{ForwardedFilter, MethodAndHostIdentifier, StripConnectionHeader}
 import java.net.SocketAddress
 
 object Http extends Router[Request, Response] with FinagleServer[Request, Response] {
@@ -37,7 +38,8 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
         FinagleHttp.param.Streaming(true) +
-        ProtocolLibrary("http")
+        ProtocolLibrary("http") +
+        Decompression(false)
   }
 
   case class Router(
