@@ -410,7 +410,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] val enumeratingNamers = namers.values.collect {
     case namer: EnumeratingNamer => namer
   }.toSeq
-  private[this] val boundNames =
+  private[this] def boundNames =
     Activity.collect(enumeratingNamers.map(_.getAllNames))
       .map(_.toSet.flatten)
 

@@ -6,7 +6,6 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
-import io.buoyant.k8s.EndpointsNamer.ActSet
 import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
 import io.buoyant.namer.EnumeratingNamer
 import scala.collection.mutable
@@ -58,15 +57,18 @@ class EndpointsNamer(
   }
 
   override def getAllNames: Activity[Set[Path]] = {
-
-    val namespaces = Activity.value(Ns.namespaces)
-    for {
-      namespace <- namespaces
-      services = Ns.get(namespace).services.map(_.values.toSet)
-      service <- services
-      ports = service.ports.map(_.values.toSet)
-      port <- ports
-    } yield idPrefix ++ Path.Utf8(namespace, port.name, service.name)
+    // explicit type annotations are required for scala to pick the right
+    // versions of flatMap and map
+    val namespaces: ActSet[String] = Activity.value(Ns.namespaces)
+    namespaces.flatMap { namespace: String =>
+      val services: ActSet[SvcCache] = Ns.get(namespace).services.map(_.values.toSet)
+      services.flatMap { service: SvcCache =>
+        val ports: ActSet[Port] = service.ports.map(_.values.toSet)
+        ports.map { port: Port =>
+          idPrefix ++ Path.Utf8(namespace, port.name, service.name)
+        }
+      }
+    }
   }
 
   private[this] object Ns {
