@@ -1,6 +1,5 @@
 package io.buoyant.router
 
-import com.twitter.finagle.Http.param.Decompression
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.param.ProtocolLibrary
@@ -38,8 +37,8 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
         FinagleHttp.param.Streaming(true) +
-        ProtocolLibrary("http") +
-        Decompression(false)
+        FinagleHttp.param.Decompression(false) +
+        ProtocolLibrary("http")
   }
 
   case class Router(
