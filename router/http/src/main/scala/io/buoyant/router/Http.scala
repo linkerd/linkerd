@@ -73,6 +73,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     val defaultParams: Stack.Params =
       StackServer.defaultParams +
         FinagleHttp.param.Streaming(true) +
+        FinagleHttp.param.Decompression(false) +
         ProtocolLibrary("http")
   }
 
