@@ -1,3 +1,8 @@
+## x.x.x
+
+* Turn off HTTP decompression so that linkerd doesn't decompress and then
+  recompress bodies.
+
 ## 0.7.0
 
 * New default JVM settings scale up with traffic levels.
