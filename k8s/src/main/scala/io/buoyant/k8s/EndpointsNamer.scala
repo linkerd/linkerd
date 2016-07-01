@@ -56,10 +56,10 @@ class EndpointsNamer(
       Activity.value(NameTree.Neg)
   }
 
-  override def getAllNames: Activity[Set[Path]] = {
+  override val getAllNames: Activity[Set[Path]] = {
     // explicit type annotations are required for scala to pick the right
     // versions of flatMap and map
-    val namespaces: ActSet[String] = Activity.value(Ns.namespaces)
+    val namespaces: ActSet[String] = Activity(Ns.namespaces.map(Activity.Ok(_)))
     namespaces.flatMap { namespace: String =>
       val services: ActSet[SvcCache] = Ns.get(namespace).services.map(_.values.toSet)
       services.flatMap { service: SvcCache =>
@@ -72,7 +72,7 @@ class EndpointsNamer(
   }
 
   private[this] object Ns {
-    private[this] var caches: Map[String, NsCache] = Map.empty
+    private[this] val caches = Var[Map[String, NsCache]](Map.empty[String, NsCache])
     // XXX once a namespace is watched, it is watched forever.
     private[this] var _watches = Map.empty[String, Activity[Closable]]
     def watches = _watches
@@ -113,18 +113,18 @@ class EndpointsNamer(
     }
 
     def get(name: String): NsCache = synchronized {
-      caches.get(name) match {
+      caches.sample.get(name) match {
         case Some(ns) => ns
         case None =>
           val ns = new NsCache(name)
           val closable = retryToActivity { watch(name, ns) }
           _watches += (name -> closable)
-          caches += (name -> ns)
+          caches() = caches.sample + (name -> ns)
           ns
       }
     }
 
-    def namespaces: Set[String] = caches.keySet
+    val namespaces: Var[Set[String]] = caches.map(_.keySet)
 
     private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)
