@@ -1,11 +1,11 @@
 package io.buoyant.k8s.v1
 
-import com.twitter.finagle.http._
 import com.twitter.finagle.Service
+import com.twitter.finagle.http._
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.k8s.{ObjectMeta, ObjectReference}
-import io.buoyant.test.{Exceptions, Awaits}
+import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
 class ApiTest extends FunSuite with Awaits with Exceptions {
@@ -252,6 +252,70 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       await {
         rsp.writer.write(added0)
       }
+    }
+  }
+
+  test("watch too old") {
+    val ver = "4659253"
+    var reqCount = 0
+    var finalResponse: Response = null
+    val service = Service.mk[Request, Response] { req =>
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          assert(req.uri == s"/api/v1/endpoints?watch=true&resourceVersion=$ver")
+          val rsp = Response()
+          rsp.version = req.version
+          rsp.status = Status.Gone
+          val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
+          rsp.writer.write(msg).ensure {
+            val _ = rsp.writer.close()
+          }
+          Future.value(rsp)
+        case 2 =>
+          assert(req.uri == "/api/v1/endpoints")
+          val rsp = Response()
+          rsp.version = req.version
+          rsp.setContentTypeJson()
+          rsp.headerMap("Transfer-Encoding") = "chunked"
+
+          rsp.writer.write(endpointsList) before rsp.writer.close()
+          Future.value(rsp)
+        case 3 =>
+          assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=17575669") // this is the top-level resource version
+          val rsp = Response()
+          rsp.version = req.version
+          rsp.setContentTypeJson()
+          rsp.headerMap("Transfer-Encoding") = "chunked"
+          finalResponse = rsp
+          Future.value(rsp)
+
+        case other =>
+          fail(s"unexpected number of requests $other")
+      }
+    }
+    val api = Api(service)
+
+    val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
+    await(stream.uncons) match {
+      case Some((EndpointsWatch.Modified(mod), stream)) =>
+        assert(mod.metadata.get.resourceVersion.get == "17147786")
+        assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+        await(stream().uncons) match {
+          case Some((EndpointsWatch.Modified(mod), stream)) =>
+            assert(mod.metadata.get.resourceVersion.get == "17147808")
+            assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+            val next = stream().uncons
+            await(closable.close())
+            assertThrows[Reader.ReaderDiscarded] {
+              await(next)
+            }
+
+          case event =>
+            fail(s"unexpected event: $event")
+        }
+      case event =>
+        fail(s"unexpected event: $event")
     }
   }
 }
