@@ -1,49 +1,57 @@
 package com.twitter.finagle.buoyant.http2
 
 import com.twitter.finagle.Stack
-import com.twitter.finagle.netty4.Netty4Listener
+import com.twitter.finagle.netty4.{Netty4Listener, Netty4Transporter}
 import com.twitter.finagle.server.Listener
+import com.twitter.logging.Logger
 import io.netty.channel._
-import io.netty.handler.codec.http2.{Http2Frame, Http2MultiplexCodec}
+import io.netty.handler.codec.http2.{Http2Frame, Http2FrameCodec, Http2MultiplexCodec}
 import io.netty.channel.socket.SocketChannel
+import scala.language.implicitConversions
 
 /**
  * Please note that the listener cannot be used for TLS yet.
  */
 object Http2Listener {
+  private[this] val log = Logger.get(getClass.getName)
 
-  def apply(params: Stack.Params): Listener[Http2Frame, Http2Frame] = Netty4Listener(
-    pipelineInit = pipelineInit,
-    // we turn off backpressure because Http2 only works with autoread on for now
-    params = params + Netty4Listener.BackPressure(false),
-    handlerDecorator = mkHttp2(params)
-  )
+  private trait ToUnit { def unit: Unit }
+  private object ToUnit extends ToUnit { val unit = () }
+  private implicit def toUnit(a: Any): ToUnit = ToUnit
 
-  private[this] def mkHttp2(params: Stack.Params): ChannelInitializer[Channel] => ChannelHandler =
-    init => new ChannelInitializer[SocketChannel] {
-      def initChannel(ch: SocketChannel): Unit = {
-        val _ = ch.pipeline.addLast(new Http2MultiplexCodec(true, init))
+  private[this] val isServer = true
+
+  def mk(params0: Stack.Params = Stack.Params.empty): Listener[Http2Frame, Http2Frame] = {
+    val mkInitializer: (ChannelInitializer[Channel] => ChannelHandler) =
+      streamHandler => new ChannelInitializer[SocketChannel] {
+        def initChannel(ch: SocketChannel): Unit = {
+          val framer = new Http2FrameCodec(isServer)
+          val mux = new Http2MultiplexCodec(isServer, null, streamHandler)
+
+          ch.pipeline.addLast("debug.socket", new DebugHandler("srv.socket")).unit
+          ch.pipeline.addLast("framer", framer).unit
+          ch.pipeline.addLast("debug.framer", new DebugHandler("srv.framer")).unit
+          ch.pipeline.addLast("mux", mux).unit
+          ch.pipeline.addLast("debug.mux", new DebugHandler("srv.mux")).unit
+
+          log.info(s"srv pipeline: ${ch} ${ch.pipeline}")
+        }
       }
-    }
 
-  private[this] val log = com.twitter.logging.Logger.get()
+    val prepareStream: (ChannelPipeline => Unit) =
+      pipeline => {
+        pipeline.addLast("debug.srv.stream", new DebugHandler("srv.stream")).unit
+        log.info(s"srv.stream pipeline: $pipeline")
+      }
 
-  private[this] val pipelineInit: ChannelPipeline => Unit = { pipeline: ChannelPipeline =>
-    pipeline.addLast(new Debug(s"Http2Listener[http2:0]"))
-    // pipeline.addLast(new Http2ServerDowngrader(false /*validateHeaders*/))
-    pipeline.addLast(new Debug(s"Http2Listener[http2:1]"))
-    log.fatal(s"Http2Listener.pipeline: $pipeline")
-  }
+    // Netty4's Http2 Codec doesn't support backpressure yet.
+    // See https://github.com/netty/netty/issues/3667#issue-69640214
+    val params = params0 + Netty4Transporter.Backpressure(false)
 
-  private[this] class Debug(prefix: String) extends SimpleChannelInboundHandler[Http2Frame] {
-    override def toString() = prefix
-    override def channelActive(ctx: ChannelHandlerContext): Unit =
-      log.info(s"$prefix.channelActive $ctx")
-    override def channelInactive(ctx: ChannelHandlerContext): Unit =
-      log.info(s"$prefix.channelInactive $ctx")
-    override def channelRead0(ctx: ChannelHandlerContext, obj: Http2Frame): Unit =
-      log.info(s"$prefix.channelRead0 $ctx $obj")
-    override def channelReadComplete(ctx: ChannelHandlerContext): Unit =
-      log.info(s"$prefix.channelReadComplete $ctx")
+    Netty4Listener[Http2Frame, Http2Frame](
+      pipelineInit = prepareStream,
+      handlerDecorator = mkInitializer,
+      params = params
+    )
   }
 }
