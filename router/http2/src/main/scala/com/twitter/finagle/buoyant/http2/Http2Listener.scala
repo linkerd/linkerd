@@ -5,7 +5,8 @@ import com.twitter.finagle.netty4.{Netty4Listener, Netty4Transporter}
 import com.twitter.finagle.server.Listener
 import com.twitter.logging.Logger
 import io.netty.channel._
-import io.netty.handler.codec.http2.{Http2Frame, Http2FrameCodec, Http2MultiplexCodec}
+import io.netty.handler.logging.LoggingHandler
+import io.netty.handler.codec.http2._
 import io.netty.channel.socket.SocketChannel
 import scala.language.implicitConversions
 
@@ -19,39 +20,36 @@ object Http2Listener {
   private object ToUnit extends ToUnit { val unit = () }
   private implicit def toUnit(a: Any): ToUnit = ToUnit
 
-  private[this] val isServer = true
+  private[this] val mkHttp2: ChannelInitializer[Channel] => ChannelHandler =
+    stream => new ChannelInitializer[SocketChannel] {
+      def initChannel(ch: SocketChannel): Unit = {
+        ch.pipeline.addLast("debug.raw", new DebugHandler("srv.raw")).unit
 
-  def mk(params0: Stack.Params = Stack.Params.empty): Listener[Http2Frame, Http2Frame] = {
-    val mkInitializer: (ChannelInitializer[Channel] => ChannelHandler) =
-      streamHandler => new ChannelInitializer[SocketChannel] {
-        def initChannel(ch: SocketChannel): Unit = {
-          val framer = new Http2FrameCodec(isServer)
-          val mux = new Http2MultiplexCodec(isServer, null, streamHandler)
+        ch.pipeline.addLast("framer", new Http2FrameCodec(true)).unit
+        ch.pipeline.addLast("debug.frame", new DebugHandler("srv.frame")).unit
 
-          ch.pipeline.addLast("debug.socket", new DebugHandler("srv.socket")).unit
-          ch.pipeline.addLast("framer", framer).unit
-          ch.pipeline.addLast("debug.framer", new DebugHandler("srv.framer")).unit
-          ch.pipeline.addLast("mux", mux).unit
-          ch.pipeline.addLast("debug.mux", new DebugHandler("srv.mux")).unit
+        // If we want to intercept things like Settings messages, this
+        // might be a good place to do that.  Eventually, we'll want
+        // to surface window settings on streams across clients/servers.
 
-          log.info(s"srv pipeline: ${ch} ${ch.pipeline}")
-        }
+        ch.pipeline.addLast("muxer", new Http2MultiplexCodec(true, null, stream)).unit
+        ch.pipeline.addLast("debug.mux", new DebugHandler("srv.mux")).unit
+
+        log.info(s"srv: ${ch} ${ch.pipeline}")
       }
+    }
 
-    val prepareStream: (ChannelPipeline => Unit) =
-      pipeline => {
-        pipeline.addLast("debug.srv.stream", new DebugHandler("srv.stream")).unit
-        log.info(s"srv.stream pipeline: $pipeline")
-      }
-
-    // Netty4's Http2 Codec doesn't support backpressure yet.
-    // See https://github.com/netty/netty/issues/3667#issue-69640214
-    val params = params0 + Netty4Transporter.Backpressure(false)
-
-    Netty4Listener[Http2Frame, Http2Frame](
-      pipelineInit = prepareStream,
-      handlerDecorator = mkInitializer,
-      params = params
-    )
+  private[this] val pipelineInit: ChannelPipeline => Unit = { pipeline =>
+    pipeline.addLast("debug.stream", new DebugHandler("srv.stream"))
+    log.info(s"srv.stream.pipeline: $pipeline")
   }
+
+  def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2Frame] =
+    Netty4Listener(
+      pipelineInit = pipelineInit,
+      // XXX Netty4's Http2 Codec doesn't support backpressure yet.
+      // See https://github.com/netty/netty/issues/3667#issue-69640214
+      params = params + Netty4Listener.BackPressure(false),
+      handlerDecorator = mkHttp2
+    )
 }

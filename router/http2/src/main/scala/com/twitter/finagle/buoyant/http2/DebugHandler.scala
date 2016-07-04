@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.http2
 
 import com.twitter.logging.Logger
-import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPromise}
+import io.netty.channel._
 
 private[http2] class DebugHandler(prefix: String)
   extends ChannelDuplexHandler {
@@ -40,11 +40,19 @@ private[http2] class DebugHandler(prefix: String)
 
   override def write(ctx: ChannelHandlerContext, obj: Any, p: ChannelPromise): Unit = {
     log.info(s"$prefix.write $ctx $obj")
+    p.addListener(new ChannelFutureListener {
+      override def operationComplete(cf: ChannelFuture): Unit =
+        log.info(s"$prefix.write.complete $ctx $cf")
+    })
     super.write(ctx, obj, p)
   }
 
-  override def close(ctx: ChannelHandlerContext, promise: ChannelPromise): Unit = {
+  override def close(ctx: ChannelHandlerContext, p: ChannelPromise): Unit = {
     log.info(s"$prefix.close $ctx")
-    super.close(ctx, promise)
+    p.addListener(new ChannelFutureListener {
+      override def operationComplete(cf: ChannelFuture): Unit =
+        log.info(s"$prefix.close.complete $ctx $cf")
+    })
+    super.close(ctx, p)
   }
 }
