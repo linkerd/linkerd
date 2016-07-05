@@ -72,6 +72,7 @@ class EndpointsNamer(
   }
 
   private[this] object Ns {
+    // note that caches must be updated with synchronized
     private[this] val caches = Var[Map[String, NsCache]](Map.empty[String, NsCache])
     // XXX once a namespace is watched, it is watched forever.
     private[this] var _watches = Map.empty[String, Activity[Closable]]
@@ -355,7 +356,7 @@ private object EndpointsNamer {
       }
   }
 
-  implicit class ActSet[A](val actSet: Activity[Set[A]]) extends AnyVal {
+  private implicit class ActSet[A](val actSet: Activity[Set[A]]) extends AnyVal {
     def map[B](f: A => B): Activity[Set[B]] = actSet.map(_.map(f))
 
     def flatMap[B](f: A => Activity[Set[B]]): Activity[Set[B]] =
