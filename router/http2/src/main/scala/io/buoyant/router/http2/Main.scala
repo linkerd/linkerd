@@ -11,21 +11,25 @@ import java.util.concurrent.ConcurrentHashMap
 
 object Main extends TwitterServer {
 
+  private type Http2Transport = Transport[Http2StreamFrame, Http2StreamFrame]
+
+  private val service = Service.mk[Request, Response] { req =>
+    log.info(s"Main: service $req")
+    Future.value(Response(ResponseHeaders(200)))
+  }
+
   def main(): Unit = {
     val addr = new InetSocketAddress("127.1", 4142)
 
     val listener = Http2Listener.mk(Stack.Params.empty)
 
-    val service = Service.mk[Request, Response] { req =>
-      Future.exception(new Exception("ughit"))
-    }
-
     log.info(s"Main: listening on $addr")
-    val listening = listener.listen(addr) { transport: Transport[Http2StreamFrame, Http2StreamFrame] =>
+    val server = listener.listen(addr) { transport: Http2Transport =>
+      log.info(s"Main: dispatch $transport")
       val _ = ServerDispatcher.dispatch(transport, service)
     }
-    closeOnExit(listening)
-    Await.result(listening)
+    closeOnExit(server)
+    Await.result(server)
   }
 
 }
