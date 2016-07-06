@@ -3,7 +3,7 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{NonFatal, Activity, Var}
+import com.twitter.util.{Activity, NonFatal, Var}
 import io.buoyant.namer.DelegateTree._
 import scala.util.control.NoStackTrace
 import scala.{Exception => ScalaException}
@@ -137,14 +137,15 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
       case Alt(path, dentry, tree) => delegateBind(dtab, depth, tree).map(Delegate(path, dentry, _))
       case Alt(path, dentry, trees@_*) =>
         // Unlike Namer.bind, we bind *all* alternate trees.
-        val vars = trees.map(delegateBind(dtab, depth, _).run)
-        val stateVar = Var.collect(vars).map { states =>
-          val oks = states.collect { case Activity.Ok(t) => t }
-          if (oks.nonEmpty) Activity.Ok(Alt(path, dentry, oks: _*))
-          else states.collectFirst { case f@Activity.Failed(_) => f }.getOrElse(Activity.Pending)
+        val acts = trees.map { tree =>
+          delegateBind(dtab, depth, tree).transform {
+            case Activity.Failed(e) => Activity.value(Exception(path, dentry, e))
+            case state => Activity(Var(state))
+          }
         }
-        Activity(stateVar)
-
+        Activity.collect(acts).map { alts =>
+          Alt(path, dentry, alts: _*)
+        }
       case Union(path, dentry) => Activity.value(Neg(path, dentry))
       case Union(path, dentry, Weighted(_, tree)) =>
         delegateBind(dtab, depth, tree).map(Delegate(path, dentry, _))
