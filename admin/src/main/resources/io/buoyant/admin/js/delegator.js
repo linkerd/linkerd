@@ -7,7 +7,7 @@ var Delegator = (function() {
     $('.result').html(renderNode(resp));
   }
 
-  function renderNode(obj, weight = 1.0){
+  function renderNode(obj, weight){
     switch(obj.type) {
       case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate); break;
       case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,_i){ return renderNode(e); }).join(""); break;
@@ -17,9 +17,7 @@ var Delegator = (function() {
       case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound); break;
       case "exception": obj.isException = true; break;
     }
-    if (weight != 1.0) {
-        obj.weight = weight;
-    }
+    obj.weight = weight;
     return templates.node(obj);
   }
 
