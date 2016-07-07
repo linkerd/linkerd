@@ -37,7 +37,7 @@ namerd can be run locally with the commands
 ```
 or
 ```
-./sbt 'namerd-main:run path/to/config.yml'
+./sbt 'namerd-main/run path/to/config.yml'
 ```
 
 ## Http Control Interface ##
