@@ -9,13 +9,19 @@ import java.net.InetSocketAddress
 
 object Main extends TwitterServer {
 
-  private val service = Service.mk[Request, Response] { req =>
-    log.info(s"Main: service $req")
-    Future.value(Response(ResponseHeaders(237)))
-  }
-
   def main(): Unit = {
     val addr = new InetSocketAddress("127.1", 4142)
+
+    val gen = Http2.newService("/$/inet/127.1/8181")
+    closeOnExit(gen)
+    val word = Http2.newService("/$/inet/127.1/8282")
+    closeOnExit(word)
+
+    val service = Service.mk[Request, Response] {
+      case req if req.headers.path.startsWith("/proto.GenSvc") => gen(req)
+      case req if req.headers.path.startsWith("/proto.WordSvc") => word(req)
+      case _ => Future.value(Response(ResponseHeaders(404)))
+    }
 
     log.info(s"Main: listening on $addr")
     val server = Http2.serve(addr, service)
