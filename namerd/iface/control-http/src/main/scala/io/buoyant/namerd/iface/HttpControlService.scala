@@ -160,7 +160,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     case AddrUri(Some(ns), path) =>
       handleGetAddr(ns, path, req)
     case DelegateUri(Some(ns), path) =>
-      handleGetDelegate(ns, path)
+      handleGetDelegate(ns, path, req.getParam("dtab", ""))
     case DelegateUri(None, path) =>
       delegateApiHander(req)
     case _ if req.path == s"$apiPrefix/bound-names" && req.method == Method.Get =>
@@ -392,12 +392,12 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     }
   }
 
-  private[this] def handleGetDelegate(ns: String, path: Path): Future[Response] = {
+  private[this] def handleGetDelegate(ns: String, path: Path, extraDtab: String): Future[Response] = {
     getDtab(ns).flatMap {
       case Some(dtab) =>
         delegate(ns) match {
           case delegator: Delegator =>
-            DelegateApiHandler.getDelegateRsp(dtab.dtab.show, path.show, delegator)
+            DelegateApiHandler.getDelegateRsp((dtab.dtab ++ Dtab.read(extraDtab)).show, path.show, delegator)
           case _ =>
             val rsp = Response(Status.NotImplemented)
             rsp.contentString = s"Name Interpreter for $ns cannot show delegations"

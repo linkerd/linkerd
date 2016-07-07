@@ -432,4 +432,34 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       |  }
       |}""".stripMargin.replaceAll("\\s", ""))
   }
+
+  test("delegate a path given a namespace and a dtab") {
+    val service = newService()
+    val resp = await(service(Request("/api/1/delegate/yeezus?path=/yeezy&dtab=/yeezy=>/bar")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == """
+      |{
+      |  "type":"alt",
+      |  "path":"/yeezy",
+      |  "dentry":null,
+      |  "alt":[
+      |    {
+      |      "type": "neg",
+      |      "path": "/bar",
+      |      "dentry":{
+      |        "prefix":"/yeezy",
+      |        "dst":"/bar"
+      |      }
+      |    },
+      |    {
+      |      "type": "neg",
+      |      "path": "/yeezus",
+      |      "dentry": {
+      |        "prefix": "/yeezy",
+      |        "dst":"/yeezus"
+      |      }
+      |    }
+      |  ]
+      |}""".stripMargin.replaceAll("\\s", ""))
+  }
 }
