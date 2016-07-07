@@ -8,6 +8,7 @@ sealed trait DelegateTree[+T] {
   def map[U](f: T => U): DelegateTree[U] = DelegateTree.map(this, f)
   def simplified: DelegateTree[T] = DelegateTree.simplify(this)
   def toNameTree: NameTree[T] = DelegateTree.toNameTree(this)
+  def withDentry(dentry: Dentry) = DelegateTree.withDentry(this, dentry)
 }
 
 object DelegateTree {
@@ -24,6 +25,17 @@ object DelegateTree {
     def map[U](f: T => U): Weighted[U] = copy(tree = tree.map(f))
   }
 
+  private def withDentry[T](orig: DelegateTree[T], dentry: Dentry): DelegateTree[T] = orig match {
+    case tree: Exception => tree.copy(dentry = dentry)
+    case tree: Empty => tree.copy(dentry = dentry)
+    case tree: Fail => tree.copy(dentry = dentry)
+    case tree: Neg => tree.copy(dentry = dentry)
+    case Delegate(path, _, tree) => Delegate(path, dentry, tree)
+    case Leaf(path, _, v) => Leaf(path, dentry, v)
+    case Alt(path, _, trees@_*) => Alt(path, dentry, trees: _*)
+    case Union(path, _, trees@_*) => Union(path, dentry, trees: _*)
+  }
+
   private def map[T, U](orig: DelegateTree[T], f: T => U): DelegateTree[U] = orig match {
     case tree: Exception => tree
     case tree: Empty => tree
@@ -38,7 +50,7 @@ object DelegateTree {
   private def simplify[T](tree: DelegateTree[T]): DelegateTree[T] = tree match {
     case Delegate(path, dentry, tree) =>
       val simplified = simplify(tree)
-      if (simplified.path == path) simplified
+      if (simplified.path == path) simplified.withDentry(dentry)
       else Delegate(path, dentry, simplified)
 
     case Alt(path, dentry) => Neg(path, dentry)
