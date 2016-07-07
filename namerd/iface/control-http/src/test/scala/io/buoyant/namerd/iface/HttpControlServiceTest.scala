@@ -285,6 +285,25 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(resp.contentString == bound + "\n")
   }
 
+  test("bind with an extra dtab") {
+    val ni = new NameInterpreter {
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] = {
+        assert(dtab.show == "/foo=>/bar")
+        Activity.value(NameTree.Leaf(Name.Bound(Var(null), s"/io.l5d.namer${dtab.lookup(path).show}")))
+      }
+    }
+
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
+
+    val resp = await(service(Request("/api/1/bind/default?path=/foo&dtab=/foo=>/bar")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString == "/io.l5d.namer/bar\n")
+  }
+
   test("bind watch") {
     val (ni, witness) = interpreter
     def delegate(ns: Ns): NameInterpreter = {

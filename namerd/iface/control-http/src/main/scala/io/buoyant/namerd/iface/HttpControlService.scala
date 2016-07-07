@@ -317,30 +317,35 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] val bindingCacheMu = new {}
   private[this] var bindingCache: Map[(String, Path), Activity[NameTree[Name.Bound]]] = Map.empty
-  private[this] def getBind(ns: String, path: Path): Activity[NameTree[Name.Bound]] =
-    bindingCacheMu.synchronized {
-      val key = (ns, path)
-      bindingCache.get(key) match {
-        case Some(act) => act
-        case None =>
-          val act = delegate(ns).bind(Dtab.empty, path)
-          bindingCache += (key -> act)
-          act
+  private[this] def getBind(ns: String, path: Path, extraDtab: Option[String]): Activity[NameTree[Name.Bound]] =
+    extraDtab match {
+      case Some(dtab) => delegate(ns).bind(Dtab.read(dtab), path)
+      case _ => bindingCacheMu.synchronized {
+        val key = (ns, path)
+        bindingCache.get(key) match {
+          case Some(act) => act
+          case None =>
+            val act = delegate(ns).bind(Dtab.empty, path)
+            bindingCache += (key -> act)
+            act
+        }
       }
     }
 
-  private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] =
+  private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] = {
+    val extraDtab = req.params.get("dtab")
     if (isStreaming(req)) {
-      streamingResp(getBind(ns, path).values) { tree =>
+      streamingResp(getBind(ns, path, extraDtab).values) { tree =>
         Buf.Utf8(tree.show + "\n")
       }
     } else {
-      getBind(ns, path).toFuture.map { tree =>
+      getBind(ns, path, extraDtab).toFuture.map { tree =>
         val rsp = Response()
         rsp.content = Buf.Utf8(tree.show + "\n")
         rsp
       }
     }
+  }
 
   private[this] val addrCacheMu = new {}
   private[this] var addrCache: Map[(String, Path), Activity[Addr]] = Map.empty
