@@ -150,11 +150,12 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
       case Union(path, dentry, Weighted(_, tree)) =>
         delegateBind(dtab, depth, tree).map(Delegate(path, dentry, _))
       case Union(path, dentry, trees@_*) =>
-        val acts = trees.map { case Weighted(w, tree) =>
-          delegateBind(dtab, depth, tree).transform {
-            case Activity.Failed(e) => Activity.value(Exception(path, dentry, e))
-            case state => Activity(Var(state))
-          }.map(Weighted(w, _))
+        val acts = trees.map {
+          case Weighted(w, tree) =>
+            delegateBind(dtab, depth, tree).transform {
+              case Activity.Failed(e) => Activity.value(Exception(path, dentry, e))
+              case state => Activity(Var(state))
+            }.map(Weighted(w, _))
         }
         Activity.collect(acts).map { branches =>
           Union(path, dentry, branches: _*)
