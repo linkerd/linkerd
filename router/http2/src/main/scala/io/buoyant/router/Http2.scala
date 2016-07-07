@@ -1,32 +1,49 @@
 package io.buoyant.router
 
-object Http2 {
+import com.twitter.finagle._
+import com.twitter.finagle.buoyant.http2._
+import com.twitter.finagle.param
+import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
+import com.twitter.finagle.transport.Transport
+import com.twitter.util.{Closable, Future}
+import io.netty.handler.codec.http2.Http2StreamFrame
+import java.net.SocketAddress
 
-  //   case class Server(
-  //       stack: Stack[ServiceFactory[Request, Response]] = Server.stack,
-  //       params: Stack.Params = StackServer.defaultParams + ProtocolLibrary("http"))
-  //     extends StdStackServer[Request, Response, Server] {
+object Http2 extends Server[Request, Response] {
 
-  //     protected type In = Any
-  //     protected type Out = Any
+  case class Server(
+    stack: Stack[ServiceFactory[Request, Response]] = StackServer.newStack,
+    params: Stack.Params = StackServer.defaultParams + param.ProtocolLibrary("h2")
+  ) extends StdStackServer[Request, Response, Server] {
 
-  //     protected def newListener(): Listener[Any, Any] =
-  //       params[param.HttpImpl].listener(params)
+    protected type In = Http2StreamFrame
+    protected type Out = Http2StreamFrame
 
-  //     protected def newDispatcher(
-  //       transport: Transport[In, Out],
-  //       service: Service[Request, Response]
-  //     ) = {
-  //       val Stats(stats) = params[Stats]
-  //       new HttpServerDispatcher(
-  //         transport,
-  //         service,
-  //         stats.scope("dispatch"))
-  //     }
+    protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
+      Http2Listener.mk(params)
 
-  //     protected def copy1(
-  //       stack: Stack[ServiceFactory[Request, Response]] = this.stack,
-  //       params: Stack.Params = this.params
-  //     ): Server = copy(stack, params)
-  //   }
+    protected def newDispatcher(
+      transport: Transport[In, Out],
+      service: Service[Request, Response]
+    ): Closable = {
+      val stream = new ServerStreamTransport(transport)
+      val pending = stream.read().flatMap { req =>
+        service(req).flatMap(stream.write(_)).flatten
+      }
+      Closable.make { deadline =>
+        pending.raise(new CancelledRequestException)
+        service.close(deadline).join(transport.close(deadline)).unit
+      }
+    }
+
+    protected def copy1(
+      stack: Stack[ServiceFactory[Request, Response]] = this.stack,
+      params: Stack.Params = this.params
+    ): Server = copy(stack, params)
+  }
+
+  val server = Server()
+
+  def serve(addr: SocketAddress, service: ServiceFactory[Request, Response]): ListeningServer =
+    server.serve(addr, service)
 }
