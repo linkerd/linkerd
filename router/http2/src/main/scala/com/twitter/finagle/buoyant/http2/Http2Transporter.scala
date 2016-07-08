@@ -8,7 +8,7 @@ import com.twitter.finagle.transport.TransportProxy
 import io.netty.channel._
 import io.netty.handler.codec.http2._
 
-private[http2] object Http2Transporter {
+object Http2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
     val initializer = { pipeline: ChannelPipeline =>

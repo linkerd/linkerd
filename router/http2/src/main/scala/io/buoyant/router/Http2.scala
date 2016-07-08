@@ -3,7 +3,7 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.http2._
 import com.twitter.finagle.param
-import com.twitter.finagle.client.{StackClient, StdStackClient}
+import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Closable, Future}
@@ -15,7 +15,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
   case class Client(
     stack: Stack[ServiceFactory[Request, Response]] = StackClient.newStack,
     params: Stack.Params = StackClient.defaultParams + param.ProtocolLibrary("h2")
-  ) extends StdStackClient[Requet, Response, Server] {
+  ) extends StdStackClient[Request, Response, Client] {
 
     protected type In = Http2StreamFrame
     protected type Out = Http2StreamFrame
@@ -28,9 +28,9 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
       params: Stack.Params = this.params
     ): Client = copy(stack, params)
 
-    protected def newDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame]): Service[Request, Response] =
-      ???
-
+    protected def newDispatcher(
+      transport: Transport[Http2StreamFrame, Http2StreamFrame]
+    ): Service[Request, Response] = new ClientDispatcher(transport)
   }
 
   val client = Client()
@@ -40,7 +40,6 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
   def newClient(dest: Name, label: String): ServiceFactory[Request, Response] =
     client.newClient(dest, label)
-
 
   case class Server(
     stack: Stack[ServiceFactory[Request, Response]] = StackServer.newStack,
