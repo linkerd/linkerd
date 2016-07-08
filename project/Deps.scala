@@ -4,7 +4,7 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.20.0")
+    ("com.twitter" %% "twitter-server" % "1.21.0")
       .exclude("com.twitter", "finagle-zipkin_2.11")
 
   def twitterUtil(mod: String) =
