@@ -2,14 +2,15 @@ package io.buoyant.linkerd.tracer
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.stats.{ClientStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.thrift.{Protocols, ThriftClientFramedCodec}
 import com.twitter.finagle.tracing.{Record, Trace, TraceId, Tracer}
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.zipkin.thrift.{RawZipkinTracer, Sampler, ZipkinTracer}
+import com.twitter.finagle.zipkin.core.Sampler
+import com.twitter.finagle.zipkin.thrift.{ScribeRawZipkinTracer, ZipkinTracer}
 import com.twitter.finagle.zipkin.thriftscala.Scribe
+import com.twitter.finagle.{Service, SimpleFilter}
 import io.buoyant.linkerd.{TracerConfig, TracerInitializer}
 import java.net.InetSocketAddress
 
@@ -52,7 +53,7 @@ case class ZipkinConfig(
         Protocols.binaryFactory()
       )
 
-      val rawTracer = RawZipkinTracer(
+      val rawTracer = ScribeRawZipkinTracer(
         client,
         NullStatsReceiver,
         DefaultTimer.twitter

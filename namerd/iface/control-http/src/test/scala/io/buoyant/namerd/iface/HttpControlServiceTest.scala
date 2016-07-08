@@ -368,7 +368,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val resp = await(service(Request(s"/api/1/addr/default?path=${prefix.show}$id")))
 
     assert(resp.status == Status.Ok)
-    assert(resp.contentString == "Bound(0.0.0.0/0.0.0.0:1)\n")
+    assert(resp.contentString == "Bound(localhost/127.0.0.1:1)\n")
   }
 
   test("addr watch") {
@@ -384,10 +384,10 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
 
     addr() = Addr.Bound(Address(1))
-    readAndAssert(resp.reader, "Bound(0.0.0.0/0.0.0.0:1)")
+    readAndAssert(resp.reader, "Bound(localhost/127.0.0.1:1)")
 
     addr() = Addr.Bound(Address(1), Address(2))
-    readAndAssert(resp.reader, "Bound(0.0.0.0/0.0.0.0:1,0.0.0.0/0.0.0.0:2)")
+    readAndAssert(resp.reader, "Bound(localhost/127.0.0.1:1,localhost/127.0.0.1:2)")
 
     witness.notify(Return(NameTree.Neg))
     readAndAssert(resp.reader, "Neg")
@@ -395,7 +395,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val addr2 = Var[Addr](Addr.Pending)
     witness.notify(Return(NameTree.Leaf(Name.Bound(addr2, id))))
     addr2() = Addr.Bound(Address(3))
-    readAndAssert(resp.reader, "Bound(0.0.0.0/0.0.0.0:3)")
+    readAndAssert(resp.reader, "Bound(localhost/127.0.0.1:3)")
 
     resp.reader.discard()
   }
