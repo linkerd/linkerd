@@ -53,35 +53,6 @@ class TracingFilterTest extends FunSuite with Awaits {
     }
   }
 
-  test("tracing filter only applies when tracing is not disabled") {
-    val tracer = new BufferingTracer
-
-    val service = new TracingFilter andThen Service.mk[Request, Response] { req =>
-      val rsp = Response()
-      rsp.status = Status.Ok
-      Future.value(rsp)
-    }
-
-    def req = Request(Method.Head, "")
-
-    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(100L), Some(false))) {
-      await(service(req))
-      assert(tracer.iterator.isEmpty)
-    }
-
-    tracer.clear()
-    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(101L), Some(true))) {
-      await(service(req))
-      assert(tracer.iterator.size == 6)
-    }
-
-    tracer.clear()
-    Trace.letTracerAndId(tracer, TraceId(None, None, SpanId(102L), None)) {
-      await(service(req))
-      assert(tracer.iterator.size == 6)
-    }
-  }
-
   test("error message annotations") {
     val tracer = new BufferingTracer
 

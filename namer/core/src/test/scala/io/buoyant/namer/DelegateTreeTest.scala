@@ -13,18 +13,13 @@ class DelegateTreeTest extends FunSuite {
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
           Alt(Path.read("/b"), Dentry.read("/b => /c|/d"),
             Leaf(Path.read("/c"), Dentry.read("/b => /c|/d"), Path.read("/c")),
-            Leaf(Path.read("/d"), Dentry.read("/b => /c|/d"), Path.read("/d"))
-          )
-        )
-      )
+            Leaf(Path.read("/d"), Dentry.read("/b => /c|/d"), Path.read("/d")))))
 
     val simplified =
       Delegate(Path.read("/a"), Dentry.nop,
         Alt(Path.read("/b"), Dentry.read("/a => /b"),
           Leaf(Path.read("/c"), Dentry.read("/b => /c|/d"), Path.read("/c")),
-          Leaf(Path.read("/d"), Dentry.read("/b => /c|/d"), Path.read("/d"))
-        )
-      )
+          Leaf(Path.read("/d"), Dentry.read("/b => /c|/d"), Path.read("/d"))))
 
     assert(orig.simplified == simplified)
   }
@@ -34,17 +29,12 @@ class DelegateTreeTest extends FunSuite {
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
           Alt(Path.read("/b"), Dentry.read("/b => /c"),
-            Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))
-          )
-        )
-      )
+            Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c")))))
 
     val simplified =
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
-          Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))
-        )
-      )
+          Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))))
 
     assert(orig.simplified == simplified)
   }
@@ -53,14 +43,11 @@ class DelegateTreeTest extends FunSuite {
     val orig =
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
-          Alt(Path.read("/b"), Dentry.read("/b => ~"))
-        )
-      )
+          Alt(Path.read("/b"), Dentry.read("/b => ~"))))
 
     val simplified =
       Delegate(Path.read("/a"), Dentry.nop,
-        Neg(Path.read("/b"), Dentry.read("/a => /b"))
-      )
+        Neg(Path.read("/b"), Dentry.read("/a => /b")))
 
     assert(orig.simplified == simplified)
   }
@@ -70,17 +57,12 @@ class DelegateTreeTest extends FunSuite {
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
           Union(Path.read("/b"), Dentry.read("/b => /c"),
-            Weighted(1.0, Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c")))
-          )
-        )
-      )
+            Weighted(1.0, Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))))))
 
     val simplified =
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
-          Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))
-        )
-      )
+          Leaf(Path.read("/c"), Dentry.read("/b => /c"), Path.read("/c"))))
 
     assert(orig.simplified == simplified)
   }
@@ -89,14 +71,11 @@ class DelegateTreeTest extends FunSuite {
     val orig =
       Delegate(Path.read("/a"), Dentry.nop,
         Delegate(Path.read("/b"), Dentry.read("/a => /b"),
-          Union(Path.read("/b"), Dentry.read("/b => ~"))
-        )
-      )
+          Union(Path.read("/b"), Dentry.read("/b => ~"))))
 
     val simplified =
       Delegate(Path.read("/a"), Dentry.nop,
-        Neg(Path.read("/b"), Dentry.read("/a => /b"))
-      )
+        Neg(Path.read("/b"), Dentry.read("/a => /b")))
 
     assert(orig.simplified == simplified)
   }

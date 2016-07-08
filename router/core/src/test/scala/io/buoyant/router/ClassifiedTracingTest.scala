@@ -104,13 +104,4 @@ class ClassifiedTracingTest extends FunSuite with Awaits {
     assert(tracer.iterator.map(_.annotation).toSeq ==
       Seq(Annotation.BinaryAnnotation("l5d.success", 0.84)))
   }
-
-  test("does not trace when is false") {
-    val ctx = new Ctx {}
-    import ctx._
-
-    sampled = Some(false)
-    call("ok")
-    assert(tracer.iterator.map(_.annotation).toSeq == Seq())
-  }
 }
