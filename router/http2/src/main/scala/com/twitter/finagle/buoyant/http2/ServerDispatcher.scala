@@ -7,7 +7,6 @@ import com.twitter.io.{Reader, Writer}
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Time}
 import io.netty.handler.codec.http2._
-import scala.collection.JavaConverters._
 
 class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFrame]) {
 
@@ -41,23 +40,31 @@ class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFr
     }
 
   private[this] def readStream(writer: Writer with Closable): Future[Option[Headers]] = {
-    def loop(): Future[Option[Headers]] =
+    def loop(): Future[Option[Headers]] = {
+      log.info(s"srv.dispatch: readStream reading")
       transport.read().flatMap { frame =>
         val (s0, s1) = manager.recv(frame)
+        log.info(s"srv.dispatch: readStream read: $s0 -> $s1")
 
         (s0, s1, frame) match {
           case (StreamState.RemoteOpen(_), StreamState.RemoteOpen(_), frame: Http2DataFrame) =>
-            val buf = ByteBufAsBuf.Owned(frame.content) // YOLO
+            val buf = ByteBufAsBuf.Owned(frame.content.retain()) // YOLO
+            log.info(s"srv.dispatch: readStream write: ${buf.length}B")
             writer.write(buf).flatMap { _ => loop() }
 
           case (StreamState.RemoteOpen(_), StreamState.RemoteOpen(_), _) =>
             loop()
 
           case (StreamState.RemoteOpen(_), StreamState.RemoteClosed(), frame: Http2DataFrame) =>
-            val buf = ByteBufAsBuf.Owned(frame.content)
-            writer.write(buf).flatMap { _ => writer.close() }.map { _ => None }
+            val buf = ByteBufAsBuf.Owned(frame.content.retain())
+            log.info(s"srv.dispatch: readStream write: ${buf.length}B")
+            writer.write(buf).before {
+              log.info(s"srv.dispatch: readStream write: eos")
+              writer.close()
+            }.map { _ => None }
 
           case (StreamState.RemoteOpen(_), StreamState.RemoteClosed(), frame: Http2HeadersFrame) =>
+            log.info(s"srv.dispatch: readStream write: trailers + eos")
             writer.close().map { _ => Some(Headers(frame.headers)) }
 
           case (state0, state1, frame) =>
@@ -65,6 +72,7 @@ class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFr
             Future.exception(e)
         }
       }
+    }
 
     loop()
   }
@@ -100,7 +108,8 @@ class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFr
     def loop(): Future[Unit] =
       reader.read(BufSize).flatMap {
         case Some(buf) =>
-          val data = new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)) // YOLO?
+          val bb = BufAsByteBuf.Owned(buf).retain()
+          val data = new DefaultHttp2DataFrame(bb) // YOLO?
           transport.write(data).flatMap { _ => loop() }
 
         case None =>

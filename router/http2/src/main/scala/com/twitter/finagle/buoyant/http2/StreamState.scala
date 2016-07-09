@@ -26,11 +26,11 @@ private[http2] object StreamState {
 
   object Closed extends StreamState
 
-  case class Invalid(state: StreamState) extends StreamState
+  case class Invalid(prior: StreamState, state: StreamState) extends StreamState
 
   object LocalClosed {
     def unapply(state: StreamState): Boolean = state match {
-      case Open(_, _) => true
+      case Closed => true
       case HalfClosedLocal(_) => true
       case _ => false
     }
@@ -38,7 +38,7 @@ private[http2] object StreamState {
 
   object RemoteClosed {
     def unapply(state: StreamState): Boolean = state match {
-      case Open(_, _) => true
+      case Closed => true
       case HalfClosedRemote(_) => true
       case _ => false
     }
@@ -88,10 +88,18 @@ private[http2] object StreamState {
         case (state@Open(_, _), _: Http2DataFrame) => state
 
         case (HalfClosedLocal(_), EndFrame()) => Closed
-        case (state@HalfClosedLocal(_), _) => state
 
+        case (Open(None, out), f: Http2HeadersFrame) =>
+          val in = Recv(Reader.writable(), Promise[Option[Headers]])
+          Open(Some(in), out)
+
+        case (HalfClosedLocal(None), f: Http2HeadersFrame) =>
+          val in = Recv(Reader.writable(), Promise[Option[Headers]])
+          HalfClosedLocal(Some(in))
+
+        case (state@RemoteOpen(_), _: Http2DataFrame) => state
         case (state, _: Http2WindowUpdateFrame) => state
-        case (state, _) => Invalid(state)
+        case (state, _) => Invalid(orig, state)
       }
       (orig, stateRef)
     }
@@ -118,7 +126,7 @@ private[http2] object StreamState {
 
         case (HalfClosedRemote(None), None) => Closed
 
-        case (state, _) => Invalid(state)
+        case (state, _) => Invalid(orig, state)
       }
       (orig, stateRef)
     }

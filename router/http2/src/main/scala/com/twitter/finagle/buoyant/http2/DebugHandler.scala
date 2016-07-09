@@ -38,11 +38,18 @@ private[http2] class DebugHandler(prefix: String)
     super.channelReadComplete(ctx)
   }
 
+  override def userEventTriggered(ctx: ChannelHandlerContext, ev: Any): Unit = {
+    log.info(s"$prefix.userEventTriggered $ctx $ev")
+    val _ = ctx.fireUserEventTriggered(ev)
+  }
+
   override def write(ctx: ChannelHandlerContext, obj: Any, p: ChannelPromise): Unit = {
     log.info(s"$prefix.write $ctx $obj")
     p.addListener(new ChannelFutureListener {
-      override def operationComplete(cf: ChannelFuture): Unit =
-        log.info(s"$prefix.write.complete $ctx $cf")
+      override def operationComplete(cf: ChannelFuture): Unit = cf.cause match {
+        case null => log.info(s"$prefix.write.complete $ctx $cf")
+        case e => log.info(e, s"$prefix.write.complete $ctx $cf")
+      }
     })
     super.write(ctx, obj, p)
   }
