@@ -12,6 +12,8 @@ import java.net.SocketAddress
 
 object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
+  private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
+
   case class Client(
     stack: Stack[ServiceFactory[Request, Response]] = StackClient.newStack,
     params: Stack.Params = StackClient.defaultParams + param.ProtocolLibrary("h2")
@@ -52,16 +54,32 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
       Http2Listener.mk(params)
 
-    // XXX this could be way cooler, but it's not
+    // XXX YOLO
     protected def newDispatcher(
       transport: Transport[In, Out],
       service: Service[Request, Response]
     ): Closable = {
       val stream = new ServerStreamTransport(transport)
+
+      log.info("h2.srv: stream read")
       val pending = stream.read().flatMap { req =>
-        service(req).flatMap(stream.write(_)).flatten
+        log.info(s"h2.srv: stream req: $req")
+
+        service(req).flatMap { rsp =>
+          log.info(s"h2.srv: stream rsp: $rsp")
+
+          stream.write(rsp).flatMap { writing =>
+            log.info(s"h2.srv: stream wrote rsp preface")
+
+            writing.respond { t =>
+              log.info(s"h2.srv: stream wrote rsp body: $t")
+            }
+          }
+        }
       }
+
       Closable.make { deadline =>
+        log.info(s"h2.srv: close")
         pending.raise(new CancelledRequestException)
         service.close(deadline).join(transport.close(deadline)).unit
       }

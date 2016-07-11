@@ -38,10 +38,7 @@ object Http2Listener {
       }
     }
 
-  private[this] val prepareStream: ChannelPipeline => Unit = { pipeline =>
-    // pipeline.addLast("debug.stream", new DebugHandler("srv.stream"))
-    log.info(s"srv.stream.pipeline: $pipeline")
-  }
+  private[this] val prepareStream: ChannelPipeline => Unit = { _ => }
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
     Netty4Listener(
