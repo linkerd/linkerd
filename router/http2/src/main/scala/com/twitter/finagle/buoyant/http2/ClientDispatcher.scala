@@ -20,14 +20,18 @@ class ClientDispatcher(
   private[this] val _id = new AtomicInteger(1)
   private[this] def nextId() = _id.getAndAdd(2)
 
-  private[this] case class Stream(manager: StreamState.Manager, response: Promise[Response])
+  private[this] case class Stream(
+    id: Int,
+    manager: StreamState.Manager,
+    response: Promise[Response]
+  )
   private[this] val streams = new ConcurrentHashMap[Int, Stream]
 
   def apply(req: Request): Future[Response] = {
     val streamId = nextId()
     val manager = new StreamState.Manager
     val rspp = Promise[Response]
-    streams.putIfAbsent(streamId, Stream(manager, rspp)) match {
+    streams.putIfAbsent(streamId, Stream(streamId, manager, rspp)) match {
       case null => // expected
       case state =>
         return Future.exception(new IllegalStateException(s"stream $streamId already exists as $state"))
@@ -78,14 +82,14 @@ class ClientDispatcher(
     def loop(): Future[Unit] = {
       // log.info(s"client.dispatch: readLoop reading")
       transport.read().flatMap { frame =>
-        log.info(s"client.dispatch: readLoop read $frame")
+        // log.info(s"client.dispatch: readLoop read $frame")
 
         streams.get(frame.streamId) match {
           case null =>
             log.error(s"no stream id on $frame")
             loop()
 
-          case Stream(manager, response) =>
+          case stream@Stream(_, manager, response) =>
             val (s0, s1) = manager.recv(frame)
             // log.info(s"client.dispatch: readLoop state0 $s0")
             // log.info(s"client.dispatch: readLoop state1 $s1")
@@ -112,14 +116,17 @@ class ClientDispatcher(
                */
 
               case (StreamState.RemoteActive(rw, _), StreamState.RemoteActive(_, _), f: Http2DataFrame) =>
-                val buf = ByteBufAsBuf.Owned(f.content.copy())
-                rw.write(buf).before {
-                  loop()
+                val sz = f.content.readableBytes + f.padding
+                rw.write(ByteBufAsBuf.Owned(f.content)).before {
+                  // TODO f.content.release()
+                  // log.info(s"client.dispatch updating window +${sz}B")
+                  updateCapacity(stream, sz).before {
+                    loop()
+                  }
                 }
 
               case (StreamState.RemoteActive(rw, trailers), StreamState.RemoteClosed(), f: Http2DataFrame) =>
-                val buf = ByteBufAsBuf.Owned(f.content)
-                rw.write(buf).before(rw.close()).transform {
+                rw.write(ByteBufAsBuf.Owned(f.content)).before(rw.close()).transform {
                   case t@Throw(e) =>
                     trailers.updateIfEmpty(Throw(e))
                     Future.const(t)
@@ -135,6 +142,7 @@ class ClientDispatcher(
 
               case (StreamState.RemoteActive(rw, trailers), StreamState.RemoteClosed(), f: Http2HeadersFrame) =>
                 log.info(s"client.dispatch [${f.name} ${f.streamId}] closing")
+                f.headers.size
                 rw.close().before {
                   log.info(s"client.dispatch [${f.name} ${f.streamId}] closed")
                   trailers.setValue(Some(Headers(f.headers)))
@@ -151,6 +159,11 @@ class ClientDispatcher(
     loop().onFailure { e =>
       log.error(e, "client.dispatch: readLoop")
     }
+  }
+
+  private[this] def updateCapacity(stream: Stream, bytes: Int): Future[Unit] = {
+    val frame = new DefaultHttp2WindowUpdateFrame(bytes).setStreamId(stream.id)
+    transport.write(frame)
   }
 
   private[this] def writeLoop(streamId: Int, reader: Reader, trailers: Future[Option[Headers]]): Future[Unit] = {

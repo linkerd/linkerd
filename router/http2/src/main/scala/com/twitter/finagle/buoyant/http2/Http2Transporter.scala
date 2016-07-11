@@ -3,7 +3,7 @@ package com.twitter.finagle.buoyant.http2
 import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
-import com.twitter.finagle.netty4.channel.BufferingChannelOutboundHandler
+import com.twitter.finagle.netty4.buoyant.Http2PriorKnowledgeInitHandler
 import com.twitter.finagle.transport.TransportProxy
 import com.twitter.io.Charsets
 import io.netty.channel._
@@ -14,34 +14,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object Http2Transporter {
 
-  private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
-
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
-    val initializer = { pipeline: ChannelPipeline =>
-      // XXX this compile setting is sort of in the way, isn't it...
-      // val _wireDebug = pipeline.addLast("wire debug", new LoggingHandler(LogLevel.INFO))
+    val initializer = { cp: ChannelPipeline =>
+      val _wireDebug = cp.addLast("wire debug", new LoggingHandler(LogLevel.INFO))
 
-      val _h2 = pipeline.addLast("h2", new Http2FrameCodec(false /*server*/ ))
-      // val _h2Debug = pipeline.addLast("h2 debug", new DebugHandler("client[h2]"))
+      // val _h2 = cp.addLast("h2", new Http2Connector)
 
-      // val _h2retainer = pipeline.addLast("retainer", new SimpleChannelInboundHandler[Http2StreamFrame] {
-      //   def channelRead0(ctx: ChannelHandlerContext, frame: Http2StreamFrame): Unit =
-      //     frame match {
-      //       case f: Http2DataFrame =>
-      //         val _ = ctx.fireChannelRead(f.retain(2))
-      //       case _ =>
-      //         val _ = ctx.fireChannelRead(frame)
-      //     }
-      // })
+      val _h2 = cp.addLast("h2", new Http2FrameCodec(false /*server*/ ))
+      val _h2FramerDebug = cp.addLast("h2 framer debug", new DebugHandler("client[framer]"))
 
       // Buffer writes until the channel is marked active (i.e. the
       // protocol has been initialized).
-      val _writeBuffer = pipeline.addLast("buffer", new BufferingChannelOutboundHandler {
-        override def channelActive(ctx: ChannelHandlerContext): Unit = {
-          ctx.pipeline.remove(this)
-          val _ = ctx.fireChannelActive()
-        }
-      })
+      val _writeBuffer = cp.addLast("buffered connect delay", new Http2PriorKnowledgeInitHandler)
+
+      val _h2Debug = cp.addLast("h2 debug", new DebugHandler("client[h2]"))
     }
 
     // Netty4's Http2 Codec doesn't support backpressure yet.
@@ -51,4 +37,17 @@ object Http2Transporter {
     Netty4Transporter(initializer, params)
   }
 
+  // def mkConnector(): Http2ConnectionHandler = new Http2Connector
+  // private class Http2Connector extends Http2ConnectionHandler {
+  //   def this(conn: Http2Connection) = {
+  //     val writer = new DefaultHttp2FrameWriter
+  //     val encoder = new DefaultHttp2ConnectionEncoder(conn, writer)
+
+  //     val reader = new DefaultHttp2FrameReader
+  //     val decoder = new DefaultHttp2ConnectionDecoder(conn, encoder, reader)
+
+  //     val settings = new Http2Settings().pushEnabled(false)
+  //     super(decoder, encoder, initialSettings)
+  //   }
+  // }
 }
