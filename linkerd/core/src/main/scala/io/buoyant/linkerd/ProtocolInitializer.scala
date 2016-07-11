@@ -59,7 +59,7 @@ abstract class ProtocolInitializer extends ConfigInitializer {
       val factory = router.factory()
       val adapted = adapter.andThen(factory)
       val servable = servers.map { server =>
-        val stackServer = defaultServer.withParams(server.params)
+        val stackServer = defaultServer.withParams(defaultServer.params ++ server.params)
         ServerInitializer(protocol, server.addr, stackServer, adapted)
       }
       InitializedRouter(protocol, params, factory, servable)
