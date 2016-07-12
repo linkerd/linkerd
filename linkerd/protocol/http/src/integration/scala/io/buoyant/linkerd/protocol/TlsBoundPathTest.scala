@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.{Status, Request, Response}
 import com.twitter.finagle.{Failure, Service}
 import io.buoyant.linkerd.clientTls.BoundPathInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
@@ -259,13 +259,13 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             val billRsp = {
               val req = Request()
               req.host = "bill"
-              intercept[Failure](await(client(req)))
+              assert(await(client(req)).status == Status.BadGateway)
             }
 
             val tedRsp = {
               val req = Request()
               req.host = "ted"
-              intercept[Failure](await(client(req)))
+              assert(await(client(req)).status == Status.BadGateway)
             }
           }
         }
