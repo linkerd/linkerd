@@ -7,13 +7,14 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
+import io.buoyant.namer.EnumeratingNamer
 import scala.collection.mutable
 
 class EndpointsNamer(
   idPrefix: Path,
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
+)(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
 
   import EndpointsNamer._
 
@@ -55,8 +56,24 @@ class EndpointsNamer(
       Activity.value(NameTree.Neg)
   }
 
+  override val getAllNames: Activity[Set[Path]] = {
+    // explicit type annotations are required for scala to pick the right
+    // versions of flatMap and map
+    val namespaces: ActSet[String] = Activity(Ns.namespaces.map(Activity.Ok(_)))
+    namespaces.flatMap { namespace: String =>
+      val services: ActSet[SvcCache] = Ns.get(namespace).services.map(_.values.toSet)
+      services.flatMap { service: SvcCache =>
+        val ports: ActSet[Port] = service.ports.map(_.values.toSet)
+        ports.map { port: Port =>
+          idPrefix ++ Path.Utf8(namespace, port.name, service.name)
+        }
+      }
+    }
+  }
+
   private[this] object Ns {
-    private[this] var caches: Map[String, NsCache] = Map.empty
+    // note that caches must be updated with synchronized
+    private[this] val caches = Var[Map[String, NsCache]](Map.empty[String, NsCache])
     // XXX once a namespace is watched, it is watched forever.
     private[this] var _watches = Map.empty[String, Activity[Closable]]
     def watches = _watches
@@ -97,16 +114,18 @@ class EndpointsNamer(
     }
 
     def get(name: String): NsCache = synchronized {
-      caches.get(name) match {
+      caches.sample.get(name) match {
         case Some(ns) => ns
         case None =>
           val ns = new NsCache(name)
           val closable = retryToActivity { watch(name, ns) }
           _watches += (name -> closable)
-          caches += (name -> ns)
+          caches() = caches.sample + (name -> ns)
           ns
       }
     }
+
+    val namespaces: Var[Set[String]] = caches.map(_.keySet)
 
     private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
       val ns = mkApi(namespace)
@@ -334,6 +353,15 @@ private object EndpointsNamer {
 
           case _ =>
         }
+      }
+  }
+
+  private implicit class ActSet[A](val actSet: Activity[Set[A]]) extends AnyVal {
+    def map[B](f: A => B): Activity[Set[B]] = actSet.map(_.map(f))
+
+    def flatMap[B](f: A => Activity[Set[B]]): Activity[Set[B]] =
+      actSet.flatMap { as =>
+        Activity.collect(as.map(f)).map(_.flatten)
       }
   }
 }

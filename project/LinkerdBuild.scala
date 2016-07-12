@@ -22,7 +22,8 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  val k8s = projectDir("k8s")
+  lazy val k8s = projectDir("k8s")
+    .dependsOn(Namer.core)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
