@@ -24,7 +24,7 @@ class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
-    assert(await(identifier(req)) == Dst.Path(Path.read("/https/1.1/GET/domain")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/https/1.1/GET/domain")))
   }
 
   test("http/1.1 with URIs") {
@@ -32,20 +32,20 @@ class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
     val req = Request()
     req.uri = "/some/path?other=stuff"
     req.host = "domain"
-    assert(await(identifier(req)) == Dst.Path(Path.read("/https/1.1/GET/domain/some/path")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/https/1.1/GET/domain/some/path")))
   }
 
   test("http/1.0") {
     val identifier = MethodAndHostIdentifier(Path.Utf8("prefix"), false)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
-    assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/prefix/1.0/POST")))
   }
 
   test("http/1.0 with uri") {
     val identifier = MethodAndHostIdentifier(Path.Utf8("prefix"), true)
     val req = Request(Method.Post, "/drum/bass")
     req.version = Version.Http10
-    assert(await(identifier(req)) == Dst.Path(Path.read("/prefix/1.0/POST/drum/bass")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/prefix/1.0/POST/drum/bass")))
   }
 }

@@ -76,7 +76,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
       val RoutingFactory.BaseDtab(dtab) = params[RoutingFactory.BaseDtab]
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val path = pfx ++ Path.read(req)
-      Future.value(Dst.Path(path, dtab(), Dtab.local))
+      Future.value((Dst.Path(path, dtab(), Dtab.local), req))
     }
   }
 

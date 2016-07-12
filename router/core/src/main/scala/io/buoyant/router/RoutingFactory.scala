@@ -18,7 +18,7 @@ object RoutingFactory {
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst
    * destination]] for `Req`-typed requests.
    */
-  type Identifier[Req] = Req => Future[Dst]
+  type Identifier[Req] = Req => Future[(Dst, Req)]
 
   /**
    * A prefix to be assigned to [[com.twitter.finagle.buoyant.Dst
@@ -89,7 +89,7 @@ class RoutingFactory[Req, Rsp](
   private class RoutingService(conn: ClientConnection) extends Service[Req, Rsp] {
     override def close(d: Time) = conn.close(d)
 
-    def apply(req: Req): Future[Rsp] = {
+    def apply(req0: Req): Future[Rsp] = {
       if (Trace.isActivelyTracing) {
         // we treat the router label as the rpc name for this span
         Trace.recordRpc(label)
@@ -97,10 +97,10 @@ class RoutingFactory[Req, Rsp](
       }
 
       for {
-        dst <- getDst(req).rescue {
+        (dst, req1) <- getDst(req0).rescue {
           case e: Throwable =>
             Annotations.Failure.Identification.record(e)
-            Future.exception(UnknownDst(req, e))
+            Future.exception(UnknownDst(req0, e))
         }
 
         // Client acquisition failures are recorded within the
@@ -109,7 +109,7 @@ class RoutingFactory[Req, Rsp](
 
         // Service failures are recorded within the clientFactory's
         // path stack, too.
-        rsp <- service(req).ensure {
+        rsp <- service(req1).ensure {
           val _ = service.close()
         }
       } yield rsp

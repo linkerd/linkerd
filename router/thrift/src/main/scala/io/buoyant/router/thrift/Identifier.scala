@@ -26,6 +26,8 @@ case class Identifier(
     }
   }
 
-  def apply(req: ThriftClientRequest): Future[Dst] =
-    Future.value(Dst.Path(name ++ suffix(req), dtab(), Dtab.local))
+  def apply(req: ThriftClientRequest): Future[(Dst, ThriftClientRequest)] =
+    Future.value(
+      (Dst.Path(name ++ suffix(req), dtab(), Dtab.local), req)
+    )
 }

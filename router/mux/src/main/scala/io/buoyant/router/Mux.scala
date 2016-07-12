@@ -31,8 +31,10 @@ object Mux extends Router[Request, Response] with Server[Request, Response] {
       prefix: Path = Path.empty,
       dtab: () => Dtab = () => Dtab.base
     ) extends RoutingFactory.Identifier[Request] {
-      def apply(req: Request): Future[Dst] =
-        Future.value(Dst.Path(prefix ++ req.destination, dtab(), Dtab.local))
+      def apply(req: Request): Future[(Dst, Request)] =
+        Future.value(
+          (Dst.Path(prefix ++ req.destination, dtab(), Dtab.local), req)
+        )
     }
 
   }
