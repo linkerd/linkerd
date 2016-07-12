@@ -12,14 +12,14 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
     val identifier = PathIdentifier(Path.Utf8("http"), 2)
     val req = Request()
     req.uri = "/mysvc/subsvc"
-    assert(await(identifier(req)) == Dst.Path(Path.read("/http/mysvc/subsvc")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/http/mysvc/subsvc")))
   }
 
   test("request with more segments than requested") {
     val identifier = PathIdentifier(Path.Utf8("http"), 2)
     val req = Request()
     req.uri = "/mysvc/subsvc/some/path?other=stuff"
-    assert(await(identifier(req)) == Dst.Path(Path.read("/http/mysvc/subsvc")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/http/mysvc/subsvc")))
   }
 
   test("request with fewer segments than requested") {

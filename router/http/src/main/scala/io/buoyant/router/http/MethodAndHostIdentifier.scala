@@ -24,14 +24,18 @@ case class MethodAndHostIdentifier(
   private[this] def mkPath(path: Path): Dst.Path =
     Dst.Path(prefix ++ path, baseDtab(), Dtab.local)
 
-  def apply(req: http.Request): Future[Dst] = req.version match {
+  def apply(req: http.Request): Future[(Dst, http.Request)] = req.version match {
     case http.Version.Http10 =>
-      Future.value(mkPath(Path.Utf8("1.0", req.method.toString) ++ suffix(req)))
+      Future.value(
+        (mkPath(Path.Utf8("1.0", req.method.toString) ++ suffix(req)), req)
+      )
 
     case http.Version.Http11 =>
       req.host match {
         case Some(host) if host.nonEmpty =>
-          Future.value(mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)))
+          Future.value(
+            (mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)), req)
+          )
         case _ =>
           Future.exception(new IllegalArgumentException(s"${http.Version.Http11} request missing hostname: $req"))
       }

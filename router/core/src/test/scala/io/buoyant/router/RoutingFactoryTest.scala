@@ -39,7 +39,7 @@ class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
     }
 
   def mkService(
-    pathMk: RoutingFactory.Identifier[Request] = (_: Request) => Future.value(Dst.Path.empty),
+    pathMk: RoutingFactory.Identifier[Request] = (req: Request) => Future.value((Dst.Path.empty, req)),
     cache: DstBindingFactory[Request, Response] = mkClientFactory(),
     label: String = ""
   ) = new RoutingFactory(pathMk, cache, label).toService

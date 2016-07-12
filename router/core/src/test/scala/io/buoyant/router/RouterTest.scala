@@ -55,7 +55,9 @@ class RouterTest extends FunSuite with Awaits with Exceptions {
     protected def newIdentifier(): RoutingFactory.Identifier[String] = {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
-      in => Future.value(Dst.Path(pfx ++ Path.Utf8(in), baseDtab(), Dtab.local))
+      in => Future.value(
+        (Dst.Path(pfx ++ Path.Utf8(in), baseDtab(), Dtab.local), in)
+      )
     }
   }
 

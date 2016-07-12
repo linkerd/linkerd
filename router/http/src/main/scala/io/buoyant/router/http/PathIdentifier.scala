@@ -11,10 +11,12 @@ case class PathIdentifier(
   baseDtab: () => Dtab = () => Dtab.base
 ) extends RoutingFactory.Identifier[http.Request] {
 
-  def apply(req: http.Request): Future[Dst] =
+  def apply(req: http.Request): Future[(Dst, http.Request)] =
     Path.read(req.path) match {
       case path if path.size >= segments =>
-        Future.value(Dst.Path(prefix ++ path.take(segments), baseDtab(), Dtab.local))
+        Future.value(
+          (Dst.Path(prefix ++ path.take(segments), baseDtab(), Dtab.local), req)
+        )
       case _ =>
         Future.exception(new IllegalArgumentException(s"not enough segments in path ${req.path}"))
     }

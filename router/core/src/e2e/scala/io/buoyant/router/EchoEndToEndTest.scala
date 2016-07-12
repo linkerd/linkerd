@@ -174,9 +174,9 @@ object Echo extends Router[String, String] with Server[String, String] {
     case class Identifier(prefix: Path = Path.empty, dtab: () => Dtab = () => Dtab.base)
         extends RoutingFactory.Identifier[String] {
 
-      def apply(req: String): Future[Dst] = {
+      def apply(req: String): Future[(Dst, String)] = {
         val path = Path.read(if (req startsWith "/") req else s"/$req")
-        Future.value(Dst.Path(prefix ++ path, dtab(), Dtab.local))
+        Future.value((Dst.Path(prefix ++ path, dtab(), Dtab.local), req))
       }
     }
 

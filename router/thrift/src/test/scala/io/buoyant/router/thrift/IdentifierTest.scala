@@ -29,12 +29,12 @@ class IdentifierTest extends FunSuite with Awaits {
   test("thrift request") {
     val identifier = Identifier(Path.Utf8("thrift"))
     val req = encodeRequest(PingService.Ping)(PingService.Ping.Args("hi"))
-    assert(await(identifier(req)) == Dst.Path(Path.read("/thrift")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/thrift")))
   }
 
   test("thrift request with method") {
     val identifier = Identifier(Path.Utf8("thrift"), methodInDst = true)
     val req = encodeRequest(PingService.Ping)(PingService.Ping.Args("hi"))
-    assert(await(identifier(req)) == Dst.Path(Path.read("/thrift/ping")))
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/thrift/ping")))
   }
 }
