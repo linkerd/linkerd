@@ -40,7 +40,7 @@ class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
     resolve(s"zk2!$hosts!$path!$endpoint")
 
   /** Bind a name. */
-  protected[this] def bind(path: Path, residual: Path = Path.empty): Option[Name.Bound] = {
+  protected[this] def bind(path: Path, residual: Path = Path.empty): Activity[NameTree[Name]] = {
     // Clients may depend on Name.Bound ids being Paths which resolve
     // back to the same Name.Bound
     val id = idPrefix ++ path
@@ -55,14 +55,21 @@ class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
           resolveServerset(zkHost, zkPath)
         }
 
-        addr.sample match {
+        val act = Activity(addr.map(Activity.Ok(_)))
+
+        act.flatMap {
           case Addr.Neg if !path.isEmpty =>
             val n = path.size
             bind(path.take(n - 1), path.drop(n - 1) ++ residual)
-          case _ => Some(Name.Bound(addr, id, residual))
+          case Addr.Neg =>
+            Activity.value(NameTree.Neg)
+          case Addr.Bound(_, _) =>
+            Activity.value(NameTree.Leaf(Name.Bound(addr, id, residual)))
+          case Addr.Pending =>
+            Activity.pending
+          case Addr.Failed(exc) =>
+            Activity.exception(exc)
         }
-
-      case _ => None
     }
   }
 
@@ -70,17 +77,5 @@ class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
   // risk of invalidating an otherwise valid tree when there is a bad serverset
   // on an Alt branch that would never be taken. A potential solution to this
   // conundrum is to introduce some form of lazy evaluation of name trees.
-  def lookup(path: Path): Activity[NameTree[Name]] = bind(path) match {
-    case Some(name) =>
-      // We have to bind the name ourselves in order to know whether
-      // it resolves negatively.
-      Activity(name.addr map {
-        case Addr.Bound(_, _) => Activity.Ok(NameTree.Leaf(name))
-        case Addr.Neg => Activity.Ok(NameTree.Neg)
-        case Addr.Pending => Activity.Pending
-        case Addr.Failed(exc) => Activity.Failed(exc)
-      })
-
-    case None => Activity.value(NameTree.Neg)
-  }
+  def lookup(path: Path): Activity[NameTree[Name]] = bind(path)
 }
