@@ -2,7 +2,7 @@ package io.buoyant.consul
 
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.consul.v1.ServiceNode
+import io.buoyant.consul.v1.{UnexpectedResponse, ServiceNode}
 
 class CatalogNamer(
   idPrefix: Path,
@@ -230,7 +230,6 @@ class CatalogNamer(
 }
 
 object CatalogNamer {
-  val log = v1.log
   val PrefixLen = 2
   type VarUp[T] = Var[T] with Updatable[T]
   type ActUp[T] = VarUp[Activity.State[T]]
