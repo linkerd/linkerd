@@ -3,7 +3,7 @@ package protocol
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.Failure
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.http.{Status, Request}
 import io.buoyant.linkerd.clientTls.StaticInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
@@ -93,7 +93,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
               val rsp = {
                 val req = Request()
                 req.host = "clifford"
-                intercept[Failure] { await(client(req)) }
+                assert(await(client(req)).status == Status.BadGateway)
               }
             } finally await(client.close())
           } finally await(server.close())
