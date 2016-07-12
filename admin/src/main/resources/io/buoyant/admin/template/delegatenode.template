@@ -8,8 +8,13 @@
           Possible Resolution Path
         {{else if isAlt}}
           Several Possible Resolution Paths
+        {{else if isUnion}}
+          Several Simultaneous Resolution Paths
         {{else if isLeaf}}
           Namer Match
+        {{/if}}
+        {{#if weight}}
+          (weight: {{weight}})
         {{/if}}
       </div>
       {{path}}
@@ -46,6 +51,9 @@
         {{/if}}
       {{else}}
         Bound Path
+      {{/if}}
+      {{#if weight}}
+        (weight: {{weight}})
       {{/if}}
     </div>
     {{#with addr}}

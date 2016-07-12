@@ -150,16 +150,16 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
       case Union(path, dentry, Weighted(_, tree)) =>
         delegateBind(dtab, depth, tree).map(Delegate(path, dentry, _))
       case Union(path, dentry, trees@_*) =>
-        val vars = trees.map {
-          case Weighted(w, t) =>
-            delegateBind(dtab, depth, t).map(Weighted(w, _)).run
+        val acts = trees.map {
+          case Weighted(w, tree) =>
+            delegateBind(dtab, depth, tree).transform {
+              case Activity.Failed(e) => Activity.value(Exception(path, dentry, e))
+              case state => Activity(Var(state))
+            }.map(Weighted(w, _))
         }
-        val stateVar = Var.collect(vars).map { states =>
-          val oks = states.collect { case Activity.Ok(t) => t }
-          if (oks.nonEmpty) Activity.Ok(Union(path, dentry, oks: _*))
-          else states.collectFirst { case f@Activity.Failed(_) => f }.getOrElse(Activity.Pending)
+        Activity.collect(acts).map { branches =>
+          Union(path, dentry, branches: _*)
         }
-        Activity(stateVar)
     }
 
   override def dtab: Activity[Dtab] = Activity.value(Dtab.empty)
