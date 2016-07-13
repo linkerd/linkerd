@@ -1,4 +1,4 @@
-## x.x.x
+## 0.7.1
 
 * Turn off HTTP decompression so that linkerd doesn't decompress and then
   recompress bodies.
