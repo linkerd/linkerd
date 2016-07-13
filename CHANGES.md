@@ -4,6 +4,7 @@
   recompress bodies.
 * Add a `consume` option to the `io.l5d.path` identifier to strip off the path
   segments that it reads from the URI.
+* Introduce a configurable Netty4 http implementation.
 
 ## 0.7.0
 
@@ -28,7 +29,6 @@
   * Added server success rate graphs to the dashboard, improved responsiveness
   * Added the ability to navigate to a specific router's dashboard
   * Standardized the look and feel of the admin pages
-* Introduce a configurable Netty4 http implementation.
 
 ## 0.6.0
 
