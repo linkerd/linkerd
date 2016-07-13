@@ -73,3 +73,15 @@ Stores the dtab in Etcd.  Supports the following options
 * *host* -- Optional. The location of the etcd API.  (default: localhost)
 * *port* -- Optional. The port used to connect to the etcd API.  (default: 2379)
 * *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/namerd/dtabs")
+
+## Consul
+
+`io.l5d.consul`
+
+*experimental*
+
+Stores the dtab in Consul KV storage.  Supports the following options
+
+* *host* -- Optional. The location of the etcd API.  (default: localhost)
+* *port* -- Optional. The port used to connect to the etcd API.  (default: 8500)
+* *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/namerd/dtabs")

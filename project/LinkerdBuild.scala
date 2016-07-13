@@ -167,9 +167,14 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s)
         .withTests()
 
+      val consul = projectDir("namerd/storage/consul")
+        .dependsOn(core)
+        .dependsOn(LinkerdBuild.consul)
+        .withTests()
+
       val all = projectDir("namerd/storage")
         .settings(aggregateSettings)
-        .aggregate(inMemory, zk, k8s, etcd)
+        .aggregate(inMemory, zk, k8s, etcd, consul)
     }
 
     object Iface {
@@ -288,7 +293,7 @@ object LinkerdBuild extends Base {
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk
+        Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
       )
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
@@ -515,6 +520,7 @@ object LinkerdBuild extends Base {
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
   val namerdStorageZk = Namerd.Storage.zk
+  val namerdStorageConsul = Namerd.Storage.consul
   val namerdStorage = Namerd.Storage.all
   val namerdIface = Namerd.Iface.all
   val namerdMain = Namerd.main
