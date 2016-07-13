@@ -8,6 +8,7 @@
 * Fix an issue with the io.l5d.serversets namer and residuals
 * Add a `consume` option to the `io.l5d.path` identifier to strip off the path
   segments that it reads from the URI.
+* Introduce a configurable Netty4 http implementation.
 
 ## 0.7.0
 

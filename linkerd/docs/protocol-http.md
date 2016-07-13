@@ -88,6 +88,31 @@ routers:
 A request to `:5000/true/love/waits.php` will be identified as
 `/custom/prefix/true/love` and will be forwarded with `/waits.php` as the URI.
 
+
+## HTTP Engines
+
+An _engine_ may be configured on HTTP clients and servers, causing an
+alternate HTTP implementation to be used. Currently there are two
+supported HTTP implementations: _netty3_ (default) and _netty4_ (will
+become default in an upcoming release).
+
+For example, the following configures an HTTP router that uses the new
+netty4 implementation on both the client and server:
+
+```yaml
+- protocol: http
+  ...
+  servers:
+  - port: 4141
+    ip: 0.0.0.0
+    engine:
+      kind: netty4
+  client:
+    engine:
+      kind: netty4
+```
+
+
 ## HTTP Headers
 
 linkerd reads and sets several headers prefixed by `l5d-`.

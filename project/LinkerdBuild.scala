@@ -42,7 +42,7 @@ object LinkerdBuild extends Base {
 
     val http = projectDir("router/http")
       .dependsOn(core)
-      .withTwitterLib(Deps.finagle("http"))
+      .withTwitterLibs(Deps.finagle("http"))
       .withTests()
       .withE2e()
 
@@ -345,6 +345,7 @@ object LinkerdBuild extends Base {
     object Protocol {
       val http = projectDir("linkerd/protocol/http")
         .withTests().withE2e().withIntegration()
+        .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           tls % "integration",
@@ -371,7 +372,7 @@ object LinkerdBuild extends Base {
 
     object Tracer {
       val zipkin = projectDir("linkerd/tracer/zipkin")
-        .withTwitterLib(Deps.finagle("zipkin"))
+        .withTwitterLibs(Deps.finagle("zipkin-core"), Deps.finagle("zipkin"))
         .dependsOn(core)
         .withTests()
 
