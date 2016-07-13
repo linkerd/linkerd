@@ -30,4 +30,22 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
       await(identifier(req))
     }
   }
+
+  test("consumes path segments") {
+    val identifier = PathIdentifier(Path.Utf8("http"), 2, consume = true)
+    val req0 = Request()
+    req0.uri = "/mysvc/subsvc/some/path?other=stuff"
+    val (dst, req1) = await(identifier(req0))
+    assert(dst == Dst.Path(Path.read("/http/mysvc/subsvc")))
+    assert(req1.uri == "/some/path?other=stuff")
+  }
+
+  test("consumes entire path") {
+    val identifier = PathIdentifier(Path.Utf8("http"), 2, consume = true)
+    val req0 = Request()
+    req0.uri = "/mysvc/subsvc"
+    val (dst, req1) = await(identifier(req0))
+    assert(dst == Dst.Path(Path.read("/http/mysvc/subsvc")))
+    assert(req1.uri == "/")
+  }
 }

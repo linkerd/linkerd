@@ -19,10 +19,11 @@ object PathIdentifierConfig {
 
 class PathIdentifierConfig extends HttpIdentifierConfig {
   var segments: Option[Int] = None
+  var consume: Option[Boolean] = None
 
   @JsonIgnore
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
-  ) = PathIdentifier(prefix, segments.getOrElse(1), baseDtab)
+  ) = PathIdentifier(prefix, segments.getOrElse(1), consume.getOrElse(false), baseDtab)
 }

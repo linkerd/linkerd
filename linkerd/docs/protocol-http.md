@@ -69,6 +69,7 @@ segments from the start of their HTTP path.
 
 * *segments* -- Number of segments from the path that are appended to
   destinations. (default: 1)
+* *consume* -- Strip the read segments from the HTTP path.  (default: false)
 
 For instance, here's a router configured with an http path identifier:
 
@@ -79,12 +80,13 @@ routers:
   identifier:
     kind: io.l5d.path
     segments: 2
+    consume: true
   servers:
     port: 5000
 ```
 
 A request to `:5000/true/love/waits.php` will be identified as
-`/custom/prefix/true/love`.
+`/custom/prefix/true/love` and will be forwarded with `/waits.php` as the URI.
 
 ## HTTP Headers
 

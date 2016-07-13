@@ -2,6 +2,8 @@
 
 * Turn off HTTP decompression so that linkerd doesn't decompress and then
   recompress bodies.
+* Add a `consume` option to the `io.l5d.path` identifier to strip off the path
+  segments that it reads from the URI.
 
 ## 0.7.0
 
