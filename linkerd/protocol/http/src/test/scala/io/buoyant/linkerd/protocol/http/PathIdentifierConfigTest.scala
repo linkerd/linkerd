@@ -21,11 +21,13 @@ class PathIdentifierConfigTest extends FunSuite {
     val yaml = s"""
                   |kind: io.l5d.path
                   |segments: 2
+                  |consume: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(PathIdentifierInitializer)))
     val config = mapper.readValue[HttpIdentifierConfig](yaml).asInstanceOf[PathIdentifierConfig]
     assert(config.segments == Some(2))
+    assert(config.consume == Some(true))
   }
 
 }
