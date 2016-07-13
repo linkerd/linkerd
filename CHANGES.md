@@ -2,8 +2,9 @@
 
 * Turn off HTTP decompression so that linkerd doesn't decompress and then
   recompress bodies.
-* Varius bug fixes in the dtab UI
+* Various bug fixes in the dtab UI
 * Optional dtab query parameter for selected Namerd HTTP Control API endpoints
+* Fix an issue where streaming was unintentionally disabled
 * Fix an issue with the io.l5d.serversets namer and residuals
 * Add a `consume` option to the `io.l5d.path` identifier to strip off the path
   segments that it reads from the URI.
