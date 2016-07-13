@@ -65,7 +65,7 @@ case class HttpServerConfig(
   engine: Option[HttpEngine]
 ) extends ServerConfig {
   override def serverParams = engine match {
-    case Seme(engine) => engine.mk(super.serverParams)
+    case Some(engine) => engine.mk(super.serverParams)
     case None => super.serverParams
   }
 }
