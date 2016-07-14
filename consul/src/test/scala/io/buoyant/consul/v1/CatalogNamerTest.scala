@@ -37,7 +37,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -53,7 +53,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -74,6 +74,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
+        tag: Option[String],
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
@@ -82,7 +83,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
@@ -103,6 +104,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
+        tag: Option[String],
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
@@ -111,7 +113,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/nosuchservice/residual")).states respond { state = _ }
@@ -137,6 +139,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
+        tag: Option[String],
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
@@ -145,7 +148,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -170,6 +173,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
+        tag: Option[String],
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
@@ -179,7 +183,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(Path.read("/test"), s => new TestApi())
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
@@ -206,6 +210,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
+        tag: Option[String],
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
@@ -216,7 +221,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(Path.read("/test"), s => new TestApi())
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 

@@ -44,6 +44,7 @@ class CatalogApi(
   def serviceNodes(
     serviceName: String,
     datacenter: Option[String] = None,
+    tag: Option[String] = None,
     blockingIndex: Option[String] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[ServiceNode]]] = {
@@ -51,7 +52,8 @@ class CatalogApi(
       http.Method.Get,
       s"$catalogPrefix/service/$serviceName",
       "index" -> blockingIndex,
-      "dc" -> datacenter
+      "dc" -> datacenter,
+      "tag" -> tag
     )
     executeJson[Seq[ServiceNode]](req, retry)
   }
