@@ -55,7 +55,7 @@ case class ConsulConfig(
       .filtered(new SetHostFilter(getHost, getPort))
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    def mkNs(ns: String) = v1.Api(service)
+    def mkNs(ns: String) = v1.CatalogApi(service)
     new CatalogNamer(prefix, mkNs)
   }
 }
