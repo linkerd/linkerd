@@ -37,31 +37,44 @@ class ClientDispatcher(
         return Future.exception(new IllegalStateException(s"stream $streamId already exists as $state"))
     }
 
-    val frame = headers(req.headers, req.data.isEmpty).setStreamId(streamId)
     manager.send(req) match {
       case (StreamState.Idle, StreamState.Open(_, Local(reader, trailers))) =>
-        // New request, with data to be sent...
-
+        // New request, with data to be sent.
+        val frame = mkHeadersFrame(streamId, req.headers, false /*eos*/ )
         transport.write(frame).before {
-          // TODO interrupts
-          val writing = writeLoop(streamId, reader, trailers)
-          val _ = writing.onFailure { e =>
+          // Read data from the local (request) `reader`, writing it
+          // on the http2 transport as data frames. These writes are
+          // subject to flow control and therefore may be delayed.
+
+          // TODO interrupt writing on rsp cancelation.
+          val writing = writeLoop(streamId, reader, trailers).onFailure { e =>
             log.error(e, s"client.dispatch: $streamId writing error")
+            // If writing fails before a response is satisified, fail
+            // the response and cancel any pending work.
+            val _ = rspp.updateIfEmpty(Throw(e))
+            rspp.raise(e)
           }
+
+          // If the response fails, try to stop writing data.
+          val _ = rspp.onFailure(writing.raise(_))
 
           rspp
         }
 
       case (StreamState.Idle, StreamState.RemoteOpen(_)) =>
-        // log.info(s"client.dispatch: $streamId writing $frame")
-        // New request, without data to send
+        // New request, sans data.
+        val frame = mkHeadersFrame(streamId, req.headers, true /*eos*/ )
         transport.write(frame).before(rspp)
 
       case (s0, s1) => Future.exception(new IllegalStateException(s"stream $streamId $s0 -> $s1"))
     }
   }
 
-  private[this] def headers(orig: Headers, eos: Boolean): Http2HeadersFrame = {
+  private[this] def mkHeadersFrame(
+    streamId: Int,
+    orig: Headers,
+    eos: Boolean
+  ): Http2HeadersFrame = {
     val headers = orig match {
       case h: Netty4Headers => h.underlying
       case hs =>
@@ -69,7 +82,7 @@ class ClientDispatcher(
         for ((k, v) <- hs.toSeq) headers.add(k, v)
         headers
     }
-    new DefaultHttp2HeadersFrame(headers, eos)
+    new DefaultHttp2HeadersFrame(headers, eos).setStreamId(streamId)
   }
 
   private[this] val reading = {
@@ -170,7 +183,7 @@ class ClientDispatcher(
               transport.write(frame)
 
             case Some(trailers) =>
-              val frame = headers(trailers, eos).setStreamId(streamId)
+              val frame = mkHeadersFrame(streamId, trailers, eos)
               transport.write(frame)
           }
 
