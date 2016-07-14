@@ -23,15 +23,15 @@ object Http2Listener {
   private[this] val mkHttp2: ChannelInitializer[Channel] => ChannelHandler =
     stream => new ChannelInitializer[SocketChannel] {
       def initChannel(ch: SocketChannel): Unit = {
-        ch.pipeline.addLast("wire debug", new LoggingHandler(LogLevel.INFO)).ignoreme
+        // ch.pipeline.addLast("wire debug", new LoggingHandler(LogLevel.INFO)).ignoreme
         ch.pipeline.addLast("framer", new Http2FrameCodec(true)).ignoreme
-        ch.pipeline.addLast("debug.frame", new DebugHandler("srv.frame")).ignoreme
+        // ch.pipeline.addLast("debug.frame", new DebugHandler("srv.frame")).ignoreme
         ch.pipeline.addLast("muxer", new Http2MultiplexCodec(true, null, stream)).ignoreme
       }
     }
 
   private[this] val prepareStream: ChannelPipeline => Unit =
-    _.addLast(new DebugHandler("srv.stream")).ignoreme
+    _ => () // _.addLast(new DebugHandler("srv.stream")).ignoreme
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
     Netty4Listener(

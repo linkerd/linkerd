@@ -42,17 +42,11 @@ class ClientDispatcher(
       case (StreamState.Idle, StreamState.Open(_, Local(reader, trailers))) =>
         // New request, with data to be sent...
 
-        log.info(s"client.dispatch: $streamId writing $frame")
         transport.write(frame).before {
-          log.info(s"client.dispatch: $streamId writing data...")
-
           // TODO interrupts
           val writing = writeLoop(streamId, reader, trailers)
-          val _ = writing.respond {
-            case Throw(e) =>
-              log.error(e, s"client.dispatch: $streamId writing error")
-            case Return(_) =>
-              log.info(s"client.dispatch: $streamId writing complete")
+          val _ = writing.onFailure { e =>
+            log.error(e, s"client.dispatch: $streamId writing error")
           }
 
           rspp
@@ -102,7 +96,7 @@ class ClientDispatcher(
 
               case (StreamState.RemoteIdle(), StreamState.RemoteActive(reader, trailers), f: Http2HeadersFrame) =>
                 val rsp = Response(ResponseHeaders(f.headers), Some(DataStream(reader, trailers)))
-                log.info(s"client.dispatch: read streaming response")
+                // log.info(s"client.dispatch: read streaming response")
                 response.setValue(rsp)
                 loop()
 
@@ -119,7 +113,6 @@ class ClientDispatcher(
                 val sz = f.content.readableBytes + f.padding
                 rw.write(ByteBufAsBuf.Owned(f.content)).before {
                   // TODO f.content.release()
-                  // log.info(s"client.dispatch updating window +${sz}B")
                   updateCapacity(stream, sz).before {
                     loop()
                   }
@@ -168,36 +161,27 @@ class ClientDispatcher(
 
   private[this] def writeLoop(streamId: Int, reader: Reader, trailers: Future[Option[Headers]]): Future[Unit] = {
     def loop(): Future[Unit] = {
-      // log.info(s"client.dispatch: $streamId writeLoop reading")
       reader.read(Int.MaxValue).flatMap {
         case None =>
-          // log.info(s"client.dispatch: $streamId writeLoop eos...")
           val eos = true
           trailers.flatMap {
             case None =>
-              // log.info(s"client.dispatch: $streamId writeLoop eos data 0B")
               val frame = new DefaultHttp2DataFrame(eos).setStreamId(streamId)
               transport.write(frame)
 
             case Some(trailers) =>
-              // log.info(s"client.dispatch: $streamId writeLoop eos trailers $trailers")
               val frame = headers(trailers, eos).setStreamId(streamId)
               transport.write(frame)
           }
 
         case Some(buf) =>
-          // log.info(s"client.dispatch: $streamId writeLoop read data ${buf.length}B")
           val bb = try BufAsByteBuf.Owned(buf).retain() catch {
             case e: Throwable =>
               log.error(e, "client.dispatch: retain")
               throw e
           }
           val frame = new DefaultHttp2DataFrame(bb, false /*eos*/ ).setStreamId(streamId)
-          // log.info(s"client.dispatch: $streamId writeLoop writing $frame")
-          transport.write(frame).before {
-            log.info(s"client.dispatch: $streamId writeLoop wrote $frame")
-            loop()
-          }
+          transport.write(frame).before(loop())
       }
     }
 

@@ -54,29 +54,19 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
       Http2Listener.mk(params)
 
-    // XXX YOLO
     protected def newDispatcher(
       transport: Transport[In, Out],
       service: Service[Request, Response]
     ): Closable = {
       val stream = new ServerStreamTransport(transport)
 
-      log.info("h2.srv: stream read")
-      val pending = stream.read().flatMap { req =>
-        log.info(s"h2.srv: stream req: $req")
-
-        service(req).flatMap { rsp =>
-          log.info(s"h2.srv: stream rsp: $rsp")
-
-          stream.write(rsp).flatMap { writing =>
-            log.info(s"h2.srv: stream wrote rsp preface")
-
-            writing.respond { t =>
-              log.info(s"h2.srv: stream wrote rsp body: $t")
-            }
-          }
-        }
-      }
+      val pending =
+        for {
+          req <- stream.read()
+          rsp <- service(req)
+          writing <- stream.write(rsp)
+          wrote <- writing
+        } yield wrote
 
       Closable.make { deadline =>
         log.info(s"h2.srv: close")

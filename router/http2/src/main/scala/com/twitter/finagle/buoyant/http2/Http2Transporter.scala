@@ -16,18 +16,18 @@ object Http2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
     val initializer = { cp: ChannelPipeline =>
-      val _wireDebug = cp.addLast("wire debug", new LoggingHandler(LogLevel.INFO))
+      // val _wireDebug = cp.addLast("wire debug", new LoggingHandler(LogLevel.INFO))
 
       // val _h2 = cp.addLast("h2", new Http2Connector)
 
       val _h2 = cp.addLast("h2", new Http2FrameCodec(false /*server*/ ))
-      val _h2FramerDebug = cp.addLast("h2 framer debug", new DebugHandler("client[framer]"))
+      // val _h2FramerDebug = cp.addLast("h2 framer debug", new DebugHandler("client[framer]"))
 
       // Buffer writes until the channel is marked active (i.e. the
       // protocol has been initialized).
       val _writeBuffer = cp.addLast("buffered connect delay", new Http2PriorKnowledgeInitHandler)
 
-      val _h2Debug = cp.addLast("h2 debug", new DebugHandler("client[h2]"))
+      // val _h2Debug = cp.addLast("h2 debug", new DebugHandler("client[h2]"))
     }
 
     // Netty4's Http2 Codec doesn't support backpressure yet.

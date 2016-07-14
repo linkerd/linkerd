@@ -8,70 +8,80 @@ import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Time}
 import io.netty.handler.codec.http2._
 
-class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFrame]) {
+object ServerStreamTransport {
 
   private[this] val log = Logger.get(getClass.getName)
 
-  private[this] val manager = new StreamState.Manager
+  private object ReadingStream {
+    def unapply(states: (StreamState, StreamState)): Option[Reader with Writer with Closable] =
+      states match {
+        case (StreamState.RemoteActive(writer, _), StreamState.RemoteActive(_, _)) => Some(writer)
+        case _ => None
+      }
+  }
+
+  private object ClosingStream {
+    def unapply(states: (StreamState, StreamState)): Option[Reader with Writer with Closable] =
+      states match {
+        case (StreamState.RemoteActive(writer, _), StreamState.RemoteClosed()) => Some(writer)
+        case _ => None
+      }
+  }
+
+}
+
+class ServerStreamTransport(
+  transport: Transport[Http2StreamFrame, Http2StreamFrame],
+  manager: StreamState.Manager = new StreamState.Manager
+) {
+
+  import ServerStreamTransport._
 
   def close(deadline: Time): Future[Unit] =
     transport.close(deadline)
 
   def read(): Future[Request] =
     transport.read().flatMap { frame =>
-      val (s0, s1) = manager.recv(frame)
+      (manager.recv(frame), frame) match {
+        case ((StreamState.Idle, StreamState.Idle), _) => read()
 
-      (s0, s1, frame) match {
-        case (StreamState.Idle, StreamState.Idle, _) => read()
-
-        // Server receipt of a complete request.
-        case (StreamState.Idle, StreamState.HalfClosedRemote(_), frame: Http2HeadersFrame) =>
-          log.info(s"srv.dispatch: ${transport.remoteAddress} read ${frame}")
+        // Server receipt of a complete request without data.
+        case ((StreamState.Idle, StreamState.HalfClosedRemote(_)), frame: Http2HeadersFrame) =>
           Future.value(Request(RequestHeaders(frame.headers)))
 
         // Server receipt of a streaming request.
-        case (StreamState.Idle, StreamState.RemoteActive(rw, trailers), frame: Http2HeadersFrame) =>
-          log.info(s"srv.dispatch: ${transport.remoteAddress} read ${frame}")
+        case ((StreamState.Idle, StreamState.RemoteActive(rw, trailers)), frame: Http2HeadersFrame) =>
           trailers.become(readStream())
           Future.value(Request(RequestHeaders(frame.headers), Some(DataStream(rw, trailers))))
 
-        case (state0, state1, frame) =>
+        case ((state0, state1), frame) =>
           val e = new IllegalStateException(s"$state0 -> $state1 with frame $frame")
           Future.exception(e)
       }
     }
 
   private[this] def readStream(): Future[Option[Headers]] = {
-    def loop(): Future[Option[Headers]] = {
-      log.info(s"srv.dispatch: readStream reading")
+    def loop(): Future[Option[Headers]] =
       transport.read().flatMap { frame =>
-        val (s0, s1) = manager.recv(frame)
-        log.info(s"srv.dispatch: readStream read: $s0 -> $s1")
-
-        (s0, s1, frame) match {
-          case (StreamState.RemoteActive(writer, _), StreamState.RemoteActive(_, _), frame: Http2DataFrame) =>
-            val buf = ByteBufAsBuf.Owned(frame.content.retain(2)) // YOLO
-            log.info(s"srv.dispatch: readStream write: ${buf.length}B")
+        (manager.recv(frame), frame) match {
+          case (ReadingStream(writer), frame: Http2DataFrame) =>
+            val buf = ByteBufAsBuf.Owned(frame.content.retain())
             writer.write(buf).flatMap { _ => loop() }
 
-          case (StreamState.RemoteActive(writer, _), StreamState.RemoteClosed(), frame: Http2DataFrame) =>
-            val buf = ByteBufAsBuf.Owned(frame.content.retain(2))
-            log.info(s"srv.dispatch: readStream write: ${buf.length}B")
-            writer.write(buf).before {
-              log.info(s"srv.dispatch: readStream write: eos")
-              writer.close()
-            }.map { _ => None }
+          case (ClosingStream(writer), frame: Http2DataFrame) =>
+            val buf = ByteBufAsBuf.Owned(frame.content.retain())
+            writer.write(buf)
+              .before(writer.close())
+              .map(_ => None)
 
-          case (StreamState.RemoteActive(writer, _), StreamState.RemoteClosed(), frame: Http2HeadersFrame) =>
-            log.info(s"srv.dispatch: readStream write: trailers + eos")
+          case (ClosingStream(writer), frame: Http2HeadersFrame) =>
             writer.close().map { _ => Some(Headers(frame.headers)) }
 
-          case (s0, s1, f) =>
+          case ((s0, s1), f) =>
             val e = new IllegalStateException(s"[${f.name} ${f.streamId}] $s0 -> $s1")
             Future.exception(e)
         }
       }
-    }
 
     loop()
   }
@@ -109,7 +119,7 @@ class ServerStreamTransport(transport: Transport[Http2StreamFrame, Http2StreamFr
         case Some(buf) =>
           val bb = BufAsByteBuf.Owned(buf).retain() // YOLO?
           val data = new DefaultHttp2DataFrame(bb)
-          transport.write(data).flatMap { _ => loop() }
+          transport.write(data).before(loop())
 
         case None =>
           trailers.flatMap {
