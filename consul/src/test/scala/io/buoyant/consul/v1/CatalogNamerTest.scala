@@ -74,8 +74,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        tag: Option[String],
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -104,8 +104,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        tag: Option[String],
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -139,8 +139,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        tag: Option[String],
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -173,8 +173,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        tag: Option[String],
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -210,8 +210,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        tag: Option[String],
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -232,6 +232,45 @@ class CatalogNamerTest extends FunSuite with Awaits {
     state match {
       case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Neg)
       case _ => assert(false)
+    }
+  }
+
+  test("Namer filters by tag") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          tag match {
+            case Some("master") => Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+            case _ => Future.value(Indexed(Nil, Some("1")))
+          }
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi(), includeTag = true)
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/master/residual")).states respond { state = _ }
+
+    assertOnAddrs(state) { addrs =>
+      assert(addrs.size == 1)
+      assert(addrs.head.toString.contains("192.168.1.35:8080"))
     }
   }
 }
