@@ -147,11 +147,11 @@ The default _prefix_ is `io.l5d.consul`.
 Once configured, to use the Consul namer, you must reference it in
 the dtab. The Consul namer takes two path components: `datacenter` and
 `serviceName`.  If `includeTag` is true, then it takes three path components:
-`datacenter`, `serviceName`, and `tag`.  For example:
+`datacenter`, `tag`, and `serviceName`.  For example:
 
 ```
 baseDtab: |
-  /http/1.1/* => /#/io.l5d.consul/dc1;
+  /http/1.1/* => /#/io.l5d.consul/dc1/prod;
 ```
 
 <a name="k8s"></a>

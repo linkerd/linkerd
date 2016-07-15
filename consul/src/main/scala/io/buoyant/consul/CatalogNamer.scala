@@ -16,7 +16,7 @@ class CatalogNamer(
    * Accepts names in the form:
    * /<datacenter>/<svc-name>/residual/path
    * or, if `includeTag` is true, in the form:
-   * /<datacenter>/<svc-name>/<tag>/residual/path
+   * /<datacenter>/<tag>/<svc-name>/residual/path
    */
   def lookup(path: Path): Activity[NameTree[Name]] =
     path match {
@@ -27,11 +27,11 @@ class CatalogNamer(
           idPrefix ++ Path.Utf8(dcName, serviceName),
           Path.Utf8(residual: _*)
         )
-      case Path.Utf8(dcName, serviceName, tag, residual@_*) if includeTag =>
+      case Path.Utf8(dcName, tag, serviceName, residual@_*) if includeTag =>
         lookup(
           dcName,
           SvcKey(serviceName, Some(tag)),
-          idPrefix ++ Path.Utf8(dcName, serviceName, tag),
+          idPrefix ++ Path.Utf8(dcName, tag, serviceName),
           Path.Utf8(residual: _*)
         )
       case _ =>

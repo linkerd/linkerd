@@ -266,7 +266,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
     val namer = new CatalogNamer(Path.read("/test"), new TestApi(), includeTag = true)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/dc1/servicename/master/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
 
     assertOnAddrs(state) { addrs =>
       assert(addrs.size == 1)
