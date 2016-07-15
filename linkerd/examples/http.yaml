@@ -36,21 +36,3 @@ routers:
   client:
     engine:
       kind: netty4
-
-- protocol: http
-  label: http2
-  identifier:
-    kind: io.l5d.path
-  baseDtab: |
-    /srv => /#/io.l5d.fs;
-    /http => /srv;
-  servers:
-  - port: 4142
-    ip: 0.0.0.0
-    engine:
-      kind: netty4
-      http2: true
-  client:
-    engine:
-      kind: netty4
-      http2: true
