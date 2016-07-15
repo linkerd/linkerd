@@ -130,6 +130,7 @@ The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 
 * *host* --  the Consul host. (default: localhost)
 * *port* --  the Consul port. (default: 8500)
+* *includeTag* -- whether to read a Consul tag from the path.  (default: false)
 
 For example:
 ```yaml
@@ -138,13 +139,16 @@ namers:
   experimental: true
   host: 127.0.0.1
   port: 2181
+  includeTag: true
 ```
 
 The default _prefix_ is `io.l5d.consul`.
 
 Once configured, to use the Consul namer, you must reference it in
-the dtab. The Consul namer takes one parameter in its path, which is the Consul
-datacenter. For example:
+the dtab. The Consul namer takes two path components: `datacenter` and
+`serviceName`.  If `includeTag` is true, then it takes three path components:
+`datacenter`, `serviceName`, and `tag`.  For example:
+
 ```
 baseDtab: |
   /http/1.1/* => /#/io.l5d.consul/dc1;
