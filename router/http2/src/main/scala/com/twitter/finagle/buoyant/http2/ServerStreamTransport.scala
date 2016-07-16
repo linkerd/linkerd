@@ -27,7 +27,6 @@ object ServerStreamTransport {
         case _ => None
       }
   }
-
 }
 
 class ServerStreamTransport(
