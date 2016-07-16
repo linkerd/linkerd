@@ -15,6 +15,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 object Http2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
+    // Each client connection pipeline is framed into HTTP/2 stream
+    // frames. The connect promise does not fire (and therefore
+    // transports are not created) until a connection is fully
+    // initialized (and protocol initialization has completed). All
+    // stream frame writes are buffered until this time.
     val initializer: ChannelPipeline => Unit = { cp =>
       val _ = cp.addLast(
         new Http2FrameCodec(false /*server*/ ),
