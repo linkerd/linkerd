@@ -1,17 +1,6 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{
-  CancelledRequestException,
-  Client,
-  Dtab,
-  ListeningServer,
-  Name,
-  Path,
-  Server,
-  Service,
-  ServiceFactory,
-  Stack
-}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.buoyant.http2._
 import com.twitter.finagle.param
@@ -25,6 +14,9 @@ import java.net.SocketAddress
 object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
   private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
+
+  type Http2StreamFrameTransporter = Transporter[Http2StreamFrame, Http2StreamFrame]
+  type Http2StreamFrameTransport = Transport[Http2StreamFrame, Http2StreamFrame]
 
   /*
    * Client
@@ -46,7 +38,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     protected type In = Http2StreamFrame
     protected type Out = Http2StreamFrame
 
-    protected def newTransporter(): Transporter[Http2StreamFrame, Http2StreamFrame] =
+    protected def newTransporter(): Http2StreamFrameTransporter =
       Http2Transporter.mk(params)
 
     protected def copy1(
@@ -54,9 +46,8 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
       params: Stack.Params = this.params
     ): Client = copy(stack, params)
 
-    protected def newDispatcher(
-      transport: Transport[Http2StreamFrame, Http2StreamFrame]
-    ): Service[Request, Response] = new ClientDispatcher(transport)
+    protected def newDispatcher(transport: Http2StreamFrameTransport): Service[Request, Response] =
+      new ClientDispatcher(transport)
   }
 
   val client = Client()
@@ -99,6 +90,10 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
       params: Stack.Params = this.params
     ): Router = copy(pathStack, boundStack, client, params)
 
+    /**
+     * For now, provide a default identifier that routes only on
+     * path. This is sufficient for gRPC (and, like, only gRPC).
+     */
     protected def newIdentifier() = new RoutingFactory.Identifier[Request] {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
@@ -124,6 +119,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
   }
 
   val router = Router()
+
   def factory(): ServiceFactory[Request, Response] =
     router.factory()
 
@@ -158,28 +154,12 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
       Http2Listener.mk(params)
 
-    /**
-     * A dispatcher is created for each outbound HTTP/2 stream.
-     */
+    /** A dispatcher is created for each outbound HTTP/2 stream. */
     protected def newDispatcher(
-      transport: Transport[Http2StreamFrame, Http2StreamFrame],
+      trans: Http2StreamFrameTransport,
       service: Service[Request, Response]
-    ): Closable = {
-      val stream = new ServerStreamTransport(transport)
-      val pending =
-        for {
-          req <- stream.read()
-          rsp <- service(req)
-          writing <- stream.write(rsp)
-          wrote <- writing
-        } yield wrote
-
-      Closable.make { deadline =>
-        log.info(s"h2.srv: close")
-        pending.raise(new CancelledRequestException)
-        service.close(deadline).join(transport.close(deadline)).unit
-      }
-    }
+    ): Closable =
+      new ServerDispatcher(new ServerStreamTransport(trans), service)
   }
 
   val server = Server()
