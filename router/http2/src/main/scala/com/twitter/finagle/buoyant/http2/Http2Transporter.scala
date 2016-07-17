@@ -1,6 +1,6 @@
 package com.twitter.finagle.buoyant.http2
 
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{Stack, param}
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 object Http2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
+    val param.Stats(stats) = params0[param.Stats]
+
     // Each client connection pipeline is framed into HTTP/2 stream
     // frames. The connect promise does not fire (and therefore
     // transports are not created) until a connection is fully
@@ -23,6 +25,7 @@ object Http2Transporter {
     val initializer: ChannelPipeline => Unit = { cp =>
       val _ = cp.addLast(
         new Http2FrameCodec(false /*server*/ ),
+        new Http2FrameStatsHandler(stats.scope("frames")),
         new BufferingConnectDelay
       )
     }

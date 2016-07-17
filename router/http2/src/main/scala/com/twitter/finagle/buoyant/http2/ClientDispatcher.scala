@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.http2
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.io.{Buf, Reader, Writer}
@@ -14,6 +15,11 @@ object ClientDispatcher {
   private val log = Logger.get(getClass.getName)
 
   private val MaxStreamId = math.pow(2, 31) - 1
+
+  type StateTransition = (StreamState, StreamState)
+  type Inbound = Reader with Writer with Closable
+  type TrailerPromise = Promise[Option[Headers]]
+  type TrailerFuture = Future[Option[Headers]]
 
   private def mkHeadersFrame(
     streamId: Int,
@@ -38,20 +44,12 @@ object ClientDispatcher {
     new DefaultHttp2DataFrame(bb, eos).setStreamId(streamId)
   }
 
-  private case class Stream(
-    id: Int,
-    manager: StreamState.Manager = new StreamState.Manager,
-    response: Promise[Response] = Promise[Response]
-  )
-
   /*
    * Helpers for matching stream state transitions.
    */
 
   private object ActiveResponseInit {
-    def unapply(
-      states: (StreamState, StreamState)
-    ): Option[(Reader with Writer with Closable, Promise[Option[Headers]])] =
+    def unapply(states: StateTransition): Option[(Inbound, TrailerPromise)] =
       states match {
         case (StreamState.RemoteIdle(), StreamState.RemoteActive(rw, t)) => Some((rw, t))
         case _ => None
@@ -59,7 +57,7 @@ object ClientDispatcher {
   }
 
   private object ActiveResponse {
-    def unapply(states: (StreamState, StreamState)): Option[Reader with Writer with Closable] =
+    def unapply(states: StateTransition): Option[Inbound] =
       states match {
         case (StreamState.RemoteActive(_, _), StreamState.RemoteActive(rw, _)) => Some(rw)
         case _ => None
@@ -67,9 +65,7 @@ object ClientDispatcher {
   }
 
   private object ActiveResponseEnd {
-    def unapply(
-      states: (StreamState, StreamState)
-    ): Option[(Reader with Writer with Closable, Promise[Option[Headers]])] =
+    def unapply(states: StateTransition): Option[(Inbound, TrailerPromise)] =
       states match {
         case (StreamState.RemoteActive(rw, t), StreamState.RemoteClosed()) => Some((rw, t))
         case _ => None
@@ -77,7 +73,7 @@ object ClientDispatcher {
   }
 
   private object FullResponse {
-    def unapply(states: (StreamState, StreamState)): Boolean = states match {
+    def unapply(states: StateTransition): Boolean = states match {
       case (StreamState.RemoteIdle(), StreamState.RemoteClosed()) => true
       case _ => false
     }
@@ -88,8 +84,10 @@ object ClientDispatcher {
  * Multiplexes HTTP/2 request/responses onto HTTP/2 streams over a
  * shared connection transport.
  */
-class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
-  extends Service[Request, Response] {
+class ClientDispatcher(
+  transport: Transport[Http2StreamFrame, Http2StreamFrame],
+  statsReceiver: StatsReceiver = NullStatsReceiver
+) extends Service[Request, Response] {
 
   import ClientDispatcher._
 
@@ -97,6 +95,16 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
   private[this] val _id = new AtomicInteger(3) // ID=1 is reserved for HTTP/1 upgrade
   private[this] def nextId() = _id.getAndAdd(2)
   private[this] val streams = new ConcurrentHashMap[Int, Stream]
+
+  private[this] val streamStats = statsReceiver.scope("streams")
+  private[this] val activeStreams = streamStats.addGauge("live") { streams.size }
+  private[this] val streamStateStats = streamStats.scope("state")
+
+  private case class Stream(
+    id: Int,
+    manager: StreamState.Manager = new StreamState.Manager(streamStateStats),
+    response: Promise[Response] = Promise[Response]
+  )
 
   /**
    * Write a request on the underlying connection and return its
@@ -134,7 +142,7 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
             val _ = stream.response.updateIfEmpty(Throw(e))
             stream.response.raise(e)
           }
-          writing.respond { _ => clearIfClosed(stream) }
+          writing.ensure(clearIfClosed(stream))
 
           // If the response fails, try to stop writing data.
           stream.response.onFailure(writing.raise(_))
@@ -150,11 +158,16 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
   }
 
   private[this] def clearIfClosed(state: StreamState, stream: Stream): Unit =
-    stream.manager.state match {
+    state match {
       case StreamState.Closed | StreamState.Invalid(_, _) =>
-        val _ = streams.remove(state, stream)
+        val _ = streams.remove(stream.id, stream)
       case _ =>
     }
+
+  private[this] def clearIfClosing(states: StateTransition, stream: Stream): Unit = {
+    val (_, state) = states
+    clearIfClosed(state, stream)
+  }
 
   private[this] def clearIfClosed(stream: Stream): Unit =
     clearIfClosed(stream.manager.state, stream)
@@ -190,22 +203,40 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
                */
 
               case (ActiveResponse(rw), f: Http2DataFrame) =>
-                val sz = f.content.readableBytes + f.padding
-                rw.write(ByteBufAsBuf.Owned(f.content)).before {
-                  // TODO f.content.release()
-                  updateCapacity(stream, sz).before {
+                // Retain the data since we're writing it as an owned
+                // buffer on the writer. The reader is responsible for
+                // releasing buffers when they are unused.
+                ByteBufAsBuf.Owned(f.content.retain()) match {
+                  case Buf.Empty =>
                     loop()
-                  }
+                  case buf =>
+                    val sz = f.content.readableBytes + f.padding
+                    rw.write(buf).before {
+                      updateCapacity(stream, sz).before {
+                        // TODO: reading should be able to continue
+                        // immediately (before the write completes, but
+                        // this causes odd behavior...
+                        loop()
+                      }
+                    }
                 }
 
-              case (ActiveResponseEnd(rw, trailers), f: Http2DataFrame) =>
-                clearIfClosed(stream)
-                rw.write(ByteBufAsBuf.Owned(f.content)).before(rw.close()).transform {
+              case (s@ActiveResponseEnd(rw, trailers), f: Http2DataFrame) =>
+                // Retain the data since we're writing it as an owned
+                // buffer on the writer. The reader is responsible for
+                // releasing buffers when they are unused.
+                val wrote = ByteBufAsBuf.Owned(f.content.retain()) match {
+                  case Buf.Empty => Future.Unit
+                  case buf => rw.write(buf)
+                }
+                wrote.before(rw.close()).transform {
                   case t@Throw(e) =>
+                    clearIfClosing(s, stream)
                     trailers.updateIfEmpty(Throw(e))
                     Future.const(t)
 
                   case Return(_) =>
+                    clearIfClosing(s, stream)
                     trailers.updateIfEmpty(Return(None))
                     loop()
                 }
@@ -214,8 +245,8 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
                * Trailers
                */
 
-              case (ActiveResponseEnd(rw, trailers), f: Http2HeadersFrame) =>
-                clearIfClosed(stream)
+              case (s@ActiveResponseEnd(rw, trailers), f: Http2HeadersFrame) =>
+                clearIfClosing(s, stream)
                 rw.close().before {
                   trailers.setValue(Some(Headers(f.headers)))
                   loop()
@@ -238,21 +269,25 @@ class ClientDispatcher(transport: Transport[Http2StreamFrame, Http2StreamFrame])
     transport.write(frame)
   }
 
-  private[this] def writeLoop(streamId: Int, reader: Reader, trailers: Future[Option[Headers]]): Future[Unit] = {
+  private[this] def writeLoop(streamId: Int, reader: Reader, trailers: TrailerFuture): Future[Unit] = {
     def loop(): Future[Unit] = {
       reader.read(Int.MaxValue).flatMap {
-        case None =>
+        case Some(buf) if !buf.isEmpty =>
+          val frame = mkDataFrame(streamId, buf, eos = false)
+          transport.write(frame).ensure {
+            val _ = frame.release()
+          }.before(loop())
+
+        case _ =>
           trailers.flatMap {
             case None =>
-              transport.write(mkDataFrameEos(streamId))
+              val frame = mkDataFrameEos(streamId)
+              transport.write(frame)
 
             case Some(trailers) =>
-              transport.write(mkHeadersFrame(streamId, trailers, true /*eos*/ ))
+              val frame = mkHeadersFrame(streamId, trailers, true /*eos*/ )
+              transport.write(frame)
           }
-
-        case Some(buf) =>
-          val frame = mkDataFrame(streamId, buf, eos = false)
-          transport.write(frame).before(loop())
       }
     }
 

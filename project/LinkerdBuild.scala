@@ -139,7 +139,8 @@ object LinkerdBuild extends Base {
        |   -XX:+UseCMSInitiatingOccupancyOnly                \
        |   -XX:CMSInitiatingOccupancyFraction=70             \
        |   -XX:-TieredCompilation                            \
-       |   -XX:+UseStringDeduplication                       "
+       |   -XX:+UseStringDeduplication                       \
+       |   ${LOCAL_JVM_OPTIONS:-}                            "
        |""".stripMargin
 
   object Namerd {

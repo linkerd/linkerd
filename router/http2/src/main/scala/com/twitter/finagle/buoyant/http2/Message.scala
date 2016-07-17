@@ -123,9 +123,15 @@ sealed trait Message {
 case class Request(
   headers: RequestHeaders,
   data: Option[DataStream] = None
-) extends Message
+) extends Message {
+  override def toString =
+    s"Request(${headers.method} ${headers.authority} ${headers.path}, eos=${data.isEmpty})"
+}
 
 case class Response(
   headers: ResponseHeaders,
   data: Option[DataStream] = None
-) extends Message
+) extends Message {
+  override def toString =
+    s"Response(${headers.status}, eos=${data.isEmpty})"
+}

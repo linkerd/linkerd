@@ -1,5 +1,6 @@
 package com.twitter.finagle.buoyant.http2
 
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.io.{Reader, Writer}
 import com.twitter.util.{Closable, Future, Promise}
 import io.netty.handler.codec.http2._
@@ -10,14 +11,20 @@ private[http2] object Socket {
   sealed trait Open[T <: Socket.Active[T]] extends Socket[T]
 
   sealed trait Idle[T <: Socket.Active[T]] extends Open[T]
-  sealed trait Active[T <: Socket.Active[T]] extends Open[T]
-  sealed trait Closed[T <: Socket.Active[T]] extends Socket[T]
+  sealed trait Active[T <: Socket.Active[T]] extends Open[T] {
+    override def toString = "Active"
+  }
+  sealed trait Closed[T <: Socket.Active[T]] extends Socket[T] {
+    override def toString = "Closed"
+  }
 }
 
 case class Remote(
   receiver: Reader with Writer with Closable,
   trailers: Promise[Option[Headers]]
-) extends Remote.Active
+) extends Remote.Active {
+  override def toString = "Remote.Active"
+}
 
 object Remote {
   sealed trait Open extends Socket.Open[Remote]
@@ -25,17 +32,23 @@ object Remote {
     def unapply(r: Open) = true
   }
 
-  object Idle extends Socket.Idle[Remote] with Open
+  object Idle extends Socket.Idle[Remote] with Open {
+    override def toString = "Remote.Idle"
+  }
 
   sealed trait Active extends Socket.Active[Remote] with Open
 
-  object Closed extends Socket.Closed[Remote]
+  object Closed extends Socket.Closed[Remote] {
+    override def toString = "Remote.Closed"
+  }
 }
 
 case class Local(
   reader: Reader,
   trailers: Future[Option[Headers]]
-) extends Local.Active
+) extends Local.Active {
+  override def toString = "Local.Active"
+}
 
 object Local {
   sealed trait Open extends Socket.Open[Local]
@@ -43,11 +56,15 @@ object Local {
     def unapply(l: Open) = true
   }
 
-  object Idle extends Socket.Idle[Local] with Open
+  object Idle extends Socket.Idle[Local] with Open {
+    override def toString = "Local.Idle"
+  }
 
   sealed trait Active extends Socket.Active[Local] with Open
 
-  object Closed extends Socket.Closed[Local]
+  object Closed extends Socket.Closed[Local] {
+    override def toString = "Local.Closed"
+  }
 }
 
 private[http2] sealed trait StreamState {
@@ -57,7 +74,11 @@ private[http2] sealed trait StreamState {
 
 private[http2] object StreamState {
 
+  private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
+
   object Idle extends StreamState {
+    override def toString = "Idle"
+
     val remote = Remote.Idle
     val local = Local.Idle
   }
@@ -84,12 +105,18 @@ private[http2] object StreamState {
   object Closed
     extends StreamState
     with LocalClosed
-    with RemoteClosed
+    with RemoteClosed {
+
+    override def toString = "Closed"
+  }
 
   case class Invalid(prior: StreamState, state: StreamState)
     extends StreamState
     with LocalClosed
-    with RemoteClosed
+    with RemoteClosed {
+
+    override def toString = s"Invalid($prior, $state)"
+  }
 
   object LocalOpen {
     def unapply(state: StreamState): Option[Local.Open] = state match {
@@ -159,9 +186,9 @@ private[http2] object StreamState {
     }
   }
 
-  class Manager {
+  class Manager(stats: StatsReceiver = NullStatsReceiver) {
     private[this] var stateRef: StreamState = Idle
-    def state: StreamState = stateRef
+    def state: StreamState = synchronized(stateRef)
 
     def recv(frame: Http2StreamFrame): (StreamState, StreamState) = synchronized {
       val orig = stateRef
@@ -207,37 +234,67 @@ private[http2] object StreamState {
       stateRef = (orig, msg.data) match {
         case (Idle, None) => HalfClosedLocal(Remote.Idle)
 
-        case (Idle, Some(data)) =>
-          val local = Local(data.reader, data.trailers)
-          closeLocalOn(data.trailers)
+        case (Idle, Some(DataStream(reader, trailers))) =>
+          val local = Local(reader, trailers)
+          trailers.ensure(closeLocal())
           Open(Remote.Idle, local)
 
-        case (Open(remote, Local.Idle), Some(data)) =>
-          closeLocalOn(data.trailers)
-          Open(remote, Local(data.reader, data.trailers))
+        case (Open(remote, Local.Idle), Some(DataStream(reader, trailers))) =>
+          trailers.ensure(closeLocal())
+          Open(remote, Local(reader, trailers))
 
-        case (Open(remote, Local.Idle), None) => HalfClosedLocal(remote)
+        case (Open(remote, Local.Idle), None) =>
+          HalfClosedLocal(remote)
 
-        case (HalfClosedRemote(Local.Idle), Some(data)) =>
-          closeLocalOn(data.trailers)
-          HalfClosedRemote(Local(data.reader, data.trailers))
+        case (HalfClosedRemote(Local.Idle), Some(DataStream(reader, trailers))) =>
+          trailers.ensure(closeLocal())
+          HalfClosedRemote(Local(reader, trailers))
 
         case (HalfClosedRemote(Local.Open()), None) => Closed
 
-        case (state, _) => Invalid(orig, state)
+        case (orig, _) => Invalid(orig, orig)
       }
       (orig, stateRef)
     }
 
-    private[this] def closeLocalOn(end: Future[_]): Unit = {
-      val _ = end.respond { _ =>
-        synchronized {
-          stateRef = stateRef match {
-            case Open(remote, Local.Open()) => HalfClosedLocal(remote)
-            case HalfClosedRemote(Local.Open()) => Closed
-            case state => state
-          }
+    private[this] def closeLocal(): Unit =
+      synchronized {
+        val orig = stateRef
+        stateRef = orig match {
+          case Open(remote, _) => HalfClosedLocal(remote)
+          case HalfClosedRemote(_) => Closed
+          case state => state
         }
+      }
+
+    private[this] val openGauge = stats.addGauge("open") {
+      state match {
+        case Open(_, _) => 1f
+        case _ => 0f
+      }
+    }
+    private[this] val halfClosedLocalGauge = stats.addGauge("half_closed_local") {
+      state match {
+        case HalfClosedLocal(_) => 1f
+        case _ => 0f
+      }
+    }
+    private[this] val halfClosedRemoteGauge = stats.addGauge("half_closed_remote") {
+      state match {
+        case HalfClosedRemote(_) => 1f
+        case _ => 0f
+      }
+    }
+    private[this] val closedGauge = stats.addGauge("closed") {
+      state match {
+        case Closed => 1f
+        case _ => 0f
+      }
+    }
+    private[this] val invalidGauge = stats.addGauge("invalid") {
+      state match {
+        case Invalid(_, _) => 1f
+        case _ => 0f
       }
     }
 

@@ -2,10 +2,11 @@ package com.twitter.finagle.buoyant.http2
 
 import com.twitter.finagle.CancelledRequestException
 import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
-import com.twitter.io.{Reader, Writer}
+import com.twitter.io.{Buf, Reader, Writer}
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Future, Promise, Time}
+import com.twitter.util.{Closable, Future, Promise, Return, Throw, Time}
 import io.netty.handler.codec.http2._
 
 object ServerStreamTransport {
@@ -63,16 +64,20 @@ object ServerStreamTransport {
  */
 class ServerStreamTransport(
   transport: Transport[Http2StreamFrame, Http2StreamFrame],
-  manager: StreamState.Manager = new StreamState.Manager
+  statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Closable {
 
   // Stream IDs are set by the underling transport
 
   import ServerStreamTransport._
 
+  private[this] val manager: StreamState.Manager =
+    new StreamState.Manager(statsReceiver.scope("state"))
+
   def close(deadline: Time): Future[Unit] =
     transport.close(deadline)
 
+  /** Read the Request from the transport. */
   def read(): Future[Request] =
     transport.read().flatMap { frame =>
       (manager.recv(frame), frame) match {
@@ -93,6 +98,9 @@ class ServerStreamTransport(
       }
     }
 
+  /**
+   * Read data (and trailer) frames from the transport until an end-of-stream frame is encountered.
+   */
   private[this] def readStream(): Future[Unit] = {
     def loop(): Future[Unit] =
       transport.read().flatMap { frame =>
@@ -102,14 +110,30 @@ class ServerStreamTransport(
             writer.write(buf).flatMap(_ => loop())
 
           case (ReadStreamClosing(writer, trailers), frame: Http2DataFrame) =>
-            val buf = ByteBufAsBuf.Owned(frame.content.retain())
-            val wrote = writer.write(buf).before(writer.close())
-            wrote.map(_ => None).proxyTo(trailers)
+            val wrote = ByteBufAsBuf.Owned(frame.content.retain()) match {
+              case Buf.Empty => Future.Unit
+              case buf => writer.write(buf)
+            }
+            wrote.ensure {
+              frame.release()
+              val closed = writer.close()
+              val _ = closed.respond {
+                case Throw(e) =>
+                  val _ = trailers.updateIfEmpty(Throw(e))
+                case Return(_) =>
+                  val _ = trailers.updateIfEmpty(Return(None))
+              }
+            }
             wrote
 
           case (ReadStreamClosing(writer, trailers), frame: Http2HeadersFrame) =>
             val closed = writer.close()
-            trailers.become(closed.map(_ => Some(Headers(frame.headers))))
+            closed.respond {
+              case Throw(e) =>
+                val _ = trailers.updateIfEmpty(Throw(e))
+              case Return(_) =>
+                val _ = trailers.updateIfEmpty(Return(Some(Headers(frame.headers))))
+            }
             closed
 
           case ((s0, s1), f) =>
@@ -142,9 +166,11 @@ class ServerStreamTransport(
     def loop(): Future[Unit] =
       reader.read(BufSize).flatMap {
         case Some(buf) =>
-          val bb = BufAsByteBuf.Owned(buf).retain() // YOLO?
-          val data = new DefaultHttp2DataFrame(bb)
-          transport.write(data).before(loop())
+          val data = new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf))
+          transport.write(data).before {
+            data.release()
+            loop()
+          }
 
         case None =>
           trailers.flatMap {
@@ -153,8 +179,8 @@ class ServerStreamTransport(
               transport.write(data)
 
             case Some(trailers) =>
-              val data = new DefaultHttp2HeadersFrame(getHeaders(trailers), true /* eos */ )
-              transport.write(data)
+              val frame = new DefaultHttp2HeadersFrame(getHeaders(trailers), true /* eos */ )
+              transport.write(frame)
           }
       }
 
