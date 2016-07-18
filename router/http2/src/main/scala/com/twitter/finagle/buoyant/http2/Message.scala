@@ -1,6 +1,5 @@
 package com.twitter.finagle.buoyant.http2
 
-import com.twitter.concurrent.AsyncQueue
 import com.twitter.io.Reader
 import com.twitter.util.Future
 import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
@@ -101,20 +100,10 @@ object ResponseHeaders {
   }
 }
 
-object DataStream {
-  sealed trait Msg { def endStream: Boolean }
-  case class Data(buf: Buf) extends Msg { val eendStream = false }
-  case class EndData(buf: Buf) extends Msg { val eendStream = true }
-  case class Trailers(headers: headers) extends Msg { val eendStream = true }
-}
-
-class DataStream {
-  import DataStream._
-
-  private[this] val queue = new AsyncQueue[DataStream.Msg]
-
-  def onEnd: Future[Unit]
-}
+case class DataStream(
+  reader: Reader,
+  trailers: Future[Option[Headers]] = Future.value(None)
+)
 
 /**
  * An HTTP2 message.
