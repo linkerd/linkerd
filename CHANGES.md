@@ -1,3 +1,7 @@
+## x.x.x
+
+* Add support for tags in the `io.l5d.consul` namer
+
 ## 0.7.1
 
 * Turn off HTTP decompression so that linkerd doesn't decompress and then

@@ -6,7 +6,8 @@ import io.buoyant.consul.v1.{UnexpectedResponse, ServiceNode}
 
 class CatalogNamer(
   idPrefix: Path,
-  mkApi: (String) => v1.CatalogApi
+  api: v1.CatalogApi,
+  includeTag: Boolean = false
 ) extends Namer {
 
   import CatalogNamer._
@@ -14,28 +15,44 @@ class CatalogNamer(
   /**
    * Accepts names in the form:
    * /<datacenter>/<svc-name>/residual/path
+   * or, if `includeTag` is true, in the form:
+   * /<datacenter>/<tag>/<svc-name>/residual/path
    */
   def lookup(path: Path): Activity[NameTree[Name]] =
-    path.take(PrefixLen) match {
-      case id@Path.Utf8(dcName, serviceName) =>
-        val residual = path.drop(PrefixLen)
-        log.debug("consul lookup: %s %s", id.show, path.show)
-        Activity(Dc.get(dcName).services).map { services =>
-          log.debug("consul dc %s initial state: %s", dcName, services.keys.mkString(", "))
-          services.get(serviceName) match {
-            case None =>
-              log.debug("consul dc %s service %s missing", dcName, serviceName)
-              NameTree.Neg
-
-            case Some(service) =>
-              log.debug("consul ns %s service %s found + %s", dcName, serviceName, residual.show)
-              NameTree.Leaf(Name.Bound(service.addrs, idPrefix ++ id, residual))
-          }
-        }
-
+    path match {
+      case Path.Utf8(dcName, serviceName, residual@_*) if !includeTag =>
+        lookup(
+          dcName,
+          SvcKey(serviceName, None),
+          idPrefix ++ Path.Utf8(dcName, serviceName),
+          Path.Utf8(residual: _*)
+        )
+      case Path.Utf8(dcName, tag, serviceName, residual@_*) if includeTag =>
+        lookup(
+          dcName,
+          SvcKey(serviceName, Some(tag)),
+          idPrefix ++ Path.Utf8(dcName, tag, serviceName),
+          Path.Utf8(residual: _*)
+        )
       case _ =>
         Activity.value(NameTree.Neg)
     }
+
+  def lookup(dcName: String, svcKey: SvcKey, id: Path, residual: Path): Activity[NameTree[Name]] = {
+    log.debug("consul lookup: %s %s", id.show)
+    Activity(Dc.get(dcName).services).map { services =>
+      log.debug("consul dc %s initial state: %s", dcName, services.keys.mkString(", "))
+      services.get(svcKey) match {
+        case None =>
+          log.debug("consul dc %s service %s missing", dcName, svcKey)
+          NameTree.Neg
+
+        case Some(service) =>
+          log.debug("consul ns %s service %s found + %s", dcName, svcKey, residual.show)
+          NameTree.Leaf(Name.Bound(service.addrs, id, residual))
+      }
+    }
+  }
 
   /**
    * Contains all cached responses from the Consul API
@@ -68,12 +85,11 @@ class CatalogNamer(
   /**
    * Contains all cached serviceNodes responses for a particular serviceName in a particular datacenter
    */
-  case class SvcCache(datacenter: String, name: String, updateableAddr: VarUp[Addr]) {
+  case class SvcCache(datacenter: String, key: SvcKey, updateableAddr: VarUp[Addr]) {
 
     def addrs: VarUp[Addr] = updateableAddr
 
     var index = "0"
-    val api = mkApi(name)
     val _ = init()
 
     def setIndex(idx: String) = {
@@ -82,7 +98,7 @@ class CatalogNamer(
 
     def mkRequest(): Future[Seq[ServiceNode]] =
       api
-        .serviceNodes(name, datacenter = Some(datacenter), blockingIndex = Some(index), retry = true)
+        .serviceNodes(key.name, datacenter = Some(datacenter), tag = key.tag, blockingIndex = Some(index), retry = true)
         .map { indexedNodes =>
           indexedNodes.index.foreach(setIndex)
           indexedNodes.value
@@ -120,9 +136,16 @@ class CatalogNamer(
 
     val handleUnexpected: PartialFunction[Throwable, Unit] = {
       case e: ChannelClosedException =>
-        log.error(s"""lost consul connection while querying for $datacenter/$name updates""")
+        log.error(s"""lost consul connection while querying for $datacenter/$key updates""")
       case e: Throwable =>
         updateableAddr() = Addr.Failed(e)
+    }
+  }
+
+  case class SvcKey(name: String, tag: Option[String]) {
+    override def toString = tag match {
+      case Some(t) => s"$name:$t"
+      case None => name
     }
   }
 
@@ -130,24 +153,26 @@ class CatalogNamer(
    * Contains all cached serviceMap responses and the mapping of names
    * to SvcCaches for a particular datacenter.
    */
-  class DcCache(name: String, activity: ActUp[Map[String, SvcCache]]) {
+  class DcCache(name: String, activity: ActUp[Map[SvcKey, SvcCache]]) {
 
-    def services: Var[Activity.State[Map[String, SvcCache]]] = activity
+    def services: Var[Activity.State[Map[SvcKey, SvcCache]]] = activity
 
     var index = "0"
-    val api = mkApi(name)
     val _ = init()
 
     def setIndex(idx: String) = {
       index = idx
     }
 
-    def mkRequest(): Future[Seq[String]] =
+    def mkRequest(): Future[Seq[SvcKey]] =
       api
         .serviceMap(datacenter = Some(name), blockingIndex = Some(index), retry = true)
         .map { indexedSvcs =>
           indexedSvcs.index.foreach(setIndex)
-          indexedSvcs.value.keySet.toSeq
+          indexedSvcs.value.flatMap {
+            case (svcName, tags) =>
+              tags.map(tag => SvcKey(svcName, Some(tag))) :+ SvcKey(svcName, None)
+          }.toSeq
         }
 
     def clear(): Unit = synchronized {
@@ -162,10 +187,10 @@ class CatalogNamer(
     }
 
     def init(): Future[Unit] =
-      mkRequest().flatMap { serviceNames =>
+      mkRequest().flatMap { svcKeys =>
 
-        val services = Map(serviceNames.map { serviceName =>
-          serviceName -> mkSvc(serviceName)
+        val services = Map(svcKeys.map { svcKey =>
+          svcKey -> mkSvc(svcKey)
         }: _*)
 
         synchronized {
@@ -178,49 +203,49 @@ class CatalogNamer(
         case e: Throwable => activity() = Activity.Failed(e)
       }
 
-    def update(serviceNames: Seq[String]): Future[Unit] = {
+    def update(serviceKeys: Seq[SvcKey]): Future[Unit] = {
       synchronized {
         val svcs = services.sample() match {
           case Activity.Ok(svcs) => svcs
-          case _ => Map.empty[String, SvcCache]
+          case _ => Map.empty[SvcKey, SvcCache]
         }
 
-        serviceNames.foreach { serviceName =>
-          if (!svcs.contains(serviceName))
-            add(serviceName)
+        serviceKeys.foreach { key =>
+          if (!svcs.contains(key))
+            add(key)
         }
 
         svcs.foreach {
-          case (serviceName, _) =>
-            if (!serviceNames.contains(serviceName))
-              delete(serviceName)
+          case (key, _) =>
+            if (!serviceKeys.contains(key))
+              delete(key)
         }
       }
 
       mkRequest().flatMap(update)
     }
 
-    private[this] def mkSvc(serviceName: String): SvcCache = SvcCache(name, serviceName, Var(Addr.Pending))
+    private[this] def mkSvc(svcKey: SvcKey): SvcCache = SvcCache(name, svcKey, Var(Addr.Pending))
 
-    private[this] def add(serviceName: String): Unit = {
-      log.debug("consul added: %s", serviceName)
+    private[this] def add(serviceKey: SvcKey): Unit = {
+      log.debug("consul added: %s", serviceKey)
       val svcs = services.sample() match {
         case Activity.Ok(svcs) => svcs
-        case _ => Map.empty[String, SvcCache]
+        case _ => Map.empty[SvcKey, SvcCache]
       }
-      activity() = Activity.Ok(svcs + (serviceName -> mkSvc(serviceName)))
+      activity() = Activity.Ok(svcs + (serviceKey -> mkSvc(serviceKey)))
     }
 
-    private[this] def delete(serviceName: String): Unit = {
-      log.debug("consul deleted: %s", serviceName)
+    private[this] def delete(serviceKey: SvcKey): Unit = {
+      log.debug("consul deleted: %s", serviceKey)
       val svcs = services.sample() match {
         case Activity.Ok(svcs) => svcs
-        case _ => Map.empty[String, SvcCache]
+        case _ => Map.empty[SvcKey, SvcCache]
       }
-      svcs.get(serviceName) match {
+      svcs.get(serviceKey) match {
         case Some(svc) =>
           svc.clear()
-          activity() = Activity.Ok(svcs - name)
+          activity() = Activity.Ok(svcs - serviceKey)
         case _ =>
       }
     }
@@ -230,7 +255,6 @@ class CatalogNamer(
 }
 
 object CatalogNamer {
-  val PrefixLen = 2
   type VarUp[T] = Var[T] with Updatable[T]
   type ActUp[T] = VarUp[Activity.State[T]]
 }

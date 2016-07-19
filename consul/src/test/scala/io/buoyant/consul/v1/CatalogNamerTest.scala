@@ -37,7 +37,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -53,7 +53,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -74,7 +74,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -82,7 +83,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
@@ -103,7 +104,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -111,7 +113,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/nosuchservice/residual")).states respond { state = _ }
@@ -137,7 +139,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -145,7 +148,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, _ => new TestApi())
+    val namer = new CatalogNamer(testPath, new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -170,7 +173,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -179,7 +183,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(Path.read("/test"), s => new TestApi())
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
@@ -206,7 +210,8 @@ class CatalogNamerTest extends FunSuite with Awaits {
 
       override def serviceNodes(
         serviceName: String,
-        datacenter: Option[String] = None,
+        datacenter: Option[String],
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
@@ -216,7 +221,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(Path.read("/test"), s => new TestApi())
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi())
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
@@ -227,6 +232,45 @@ class CatalogNamerTest extends FunSuite with Awaits {
     state match {
       case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Neg)
       case _ => assert(false)
+    }
+  }
+
+  test("Namer filters by tag") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          tag match {
+            case Some("master") => Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+            case _ => Future.value(Indexed(Nil, Some("1")))
+          }
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val namer = new CatalogNamer(Path.read("/test"), new TestApi(), includeTag = true)
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
+
+    assertOnAddrs(state) { addrs =>
+      assert(addrs.size == 1)
+      assert(addrs.head.toString.contains("192.168.1.35:8080"))
     }
   }
 }

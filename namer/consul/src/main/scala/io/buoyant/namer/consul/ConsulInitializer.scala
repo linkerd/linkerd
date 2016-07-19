@@ -17,6 +17,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   experimental: true
  *   host: consul.site.biz
  *   port: 8600
+ *   includeTag: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -28,7 +29,8 @@ object ConsulInitializer extends ConsulInitializer
 
 case class ConsulConfig(
   host: Option[String],
-  port: Option[Port]
+  port: Option[Port],
+  includeTag: Option[Boolean]
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -55,8 +57,7 @@ case class ConsulConfig(
       .filtered(new SetHostFilter(getHost, getPort))
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    def mkNs(ns: String) = v1.CatalogApi(service)
-    new CatalogNamer(prefix, mkNs)
+    new CatalogNamer(prefix, v1.CatalogApi(service), includeTag.getOrElse(false))
   }
 }
 
