@@ -23,7 +23,7 @@ import io.buoyant.config.ConfigInitializer
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 @JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
-trait NamerConfig {
+abstract class NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
