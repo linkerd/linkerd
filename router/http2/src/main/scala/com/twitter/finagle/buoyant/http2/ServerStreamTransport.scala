@@ -6,7 +6,7 @@ import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.{Buf, Reader, Writer}
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Future, Promise, Return, Throw, Time}
+import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Throw, Time}
 import io.netty.handler.codec.http2._
 
 object ServerStreamTransport {
@@ -71,6 +71,9 @@ class ServerStreamTransport(
 
   import ServerStreamTransport._
 
+  private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
+  private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
+
   private[this] val manager: StreamState.Manager =
     new StreamState.Manager(statsReceiver.scope("state"))
 
@@ -89,7 +92,9 @@ class ServerStreamTransport(
 
         // Server receipt of a streaming request.
         case (ReadStreamInit(rw, trailers), frame: Http2HeadersFrame) =>
+          val t = Stopwatch.start()
           val reading = readStream()
+          reading.onSuccess(_ => requestDurations.add(t().inMillis))
           Future.value(Request(RequestHeaders(frame.headers), Some(DataStream(rw, trailers))))
 
         case ((state0, state1), frame) =>
@@ -150,7 +155,9 @@ class ServerStreamTransport(
       case (StreamState.LocalIdle(), StreamState.LocalActive(reader, trailers)) =>
         val hframe = new DefaultHttp2HeadersFrame(getHeaders(rsp.headers), false /* eos */ )
         transport.write(hframe).map { _ =>
-          writeStream(reader, trailers)
+          val t = Stopwatch.start()
+          val f = writeStream(reader, trailers)
+          f.onSuccess(_ => responseDurations.add(t().inMillis))
         }
 
       case (StreamState.LocalIdle(), StreamState.LocalClosed()) =>

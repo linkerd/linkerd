@@ -1,4 +1,5 @@
-# An example service discovery backend that uses the filesystem to resolve endpoints.
+tracers: []
+
 namers:
 - kind: io.l5d.fs
   rootDir: linkerd/examples/io.l5d.fs

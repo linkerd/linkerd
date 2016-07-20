@@ -12,7 +12,9 @@ import io.netty.handler.codec.http2.{Http2FrameCodec, Http2MultiplexCodec, Http2
 object Http2Listener {
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] = {
-    val param.Stats(stats) = params[param.Stats]
+    val param.Stats(statsReceiver) = params[param.Stats]
+    val connStats = statsReceiver.scope("conn")
+    val streamStats = statsReceiver.scope("stream")
 
     /*
      * XXX The stream is configured with Netty4ServerChannelinitializer,
@@ -30,9 +32,13 @@ object Http2Listener {
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
           val _ = ch.pipeline.addLast(
+            new TimingHandler(connStats.scope("outer")),
             new Http2FrameCodec(true /*server*/ ),
-            new Http2FrameStatsHandler(stats.scope("frames")),
+            new Http2FrameStatsHandler(statsReceiver.scope("frames")),
+            new TimingHandler(connStats.scope("inner")),
             new Http2MultiplexCodec(true /*server*/ , null, prepChildStream(stream))
+          // No events happen on the pipeline after the muxer, since
+          // it dispatches events onto the stream pipeline.
           )
         }
       }
@@ -40,7 +46,11 @@ object Http2Listener {
     def prepChildStream(stream: ChannelInitializer[Channel]) =
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
-          ch.pipeline.addLast(stream)
+          ch.pipeline.addLast(
+            new TimingHandler(streamStats.scope("outer")),
+            stream,
+            new TimingHandler(streamStats.scope("inner"))
+          )
           val _ = ch.pipeline.addLast(new ChannelInitializer[Channel] {
             def initChannel(ch: Channel): Unit = {
               val _ = ch.pipeline.remove("channel stats")
