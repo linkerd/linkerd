@@ -120,9 +120,7 @@ class ServerStreamTransport(
               case buf => writer.write(buf)
             }
             wrote.ensure {
-              frame.release()
-              val closed = writer.close()
-              val _ = closed.respond {
+              val _ = writer.close().respond {
                 case Throw(e) =>
                   val _ = trailers.updateIfEmpty(Throw(e))
                 case Return(_) =>
@@ -132,14 +130,12 @@ class ServerStreamTransport(
             wrote
 
           case (ReadStreamClosing(writer, trailers), frame: Http2HeadersFrame) =>
-            val closed = writer.close()
-            closed.respond {
+            writer.close().respond {
               case Throw(e) =>
                 val _ = trailers.updateIfEmpty(Throw(e))
               case Return(_) =>
                 val _ = trailers.updateIfEmpty(Return(Some(Headers(frame.headers))))
             }
-            closed
 
           case ((s0, s1), f) =>
             val e = new IllegalStateException(s"[${f.name} ${f.streamId}] $s0 -> $s1")
@@ -173,9 +169,10 @@ class ServerStreamTransport(
     def loop(): Future[Unit] =
       reader.read(BufSize).flatMap {
         case Some(buf) =>
-          val data = new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf))
+          val bb = BufAsByteBuf.Owned(buf)
+          val data = new DefaultHttp2DataFrame(bb)
           transport.write(data).before {
-            data.release()
+            // data.release()
             loop()
           }
 

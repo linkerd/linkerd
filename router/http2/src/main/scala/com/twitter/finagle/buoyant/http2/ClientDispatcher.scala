@@ -8,6 +8,7 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.io.{Buf, Reader, Writer}
 import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Throw}
+import io.netty.buffer.ByteBufAllocator
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -79,6 +80,7 @@ object ClientDispatcher {
  */
 class ClientDispatcher(
   transport: Transport[Http2StreamFrame, Http2StreamFrame],
+  allocator: ByteBufAllocator,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
@@ -243,63 +245,119 @@ class ClientDispatcher(
       def loop(): Future[Option[Headers]] = {
         val snap = Stopwatch.start()
         queueLengths.add(readq.size)
-        readq.poll().flatMap { frame =>
-          dequeueTimes.add(snap().inMicroseconds)
-          (manager.recv(frame), frame) match {
+        if (readq.size > 2) {
+          // Pull everything available out of the queue so that we can
+          // aggregate data frames rather than process each write serially.
+          readq.drain() match {
+            case Throw(e) => Future.exception(e)
+            // Unexpected, but handle the case where we got 0 frames
+            case Return(frames) if frames.isEmpty => loop()
+            case Return(frames) =>
+              dequeueTimes.add(snap().inMicroseconds)
 
-            /*
-             * Data
-             */
+              val agg = allocator.compositeBuffer(frames.length)
+              // var agg = Buf.Empty
 
-            case (ActiveResponse(_), f: Http2DataFrame) =>
-              // Retain the data since we're writing it as an owned
-              // buffer on the writer. The reader is responsible for
-              // releasing buffers when they are unused.
-              ByteBufAsBuf.Owned(f.content.retain()) match {
-                case Buf.Empty => loop()
-                case buf =>
-                  val sz = f.content.readableBytes + f.padding
-                  rw.write(buf).before {
-                    updateCapacity(sz).before {
-                      // TODO: reading should be able to continue
-                      // immediately (before the write completes, but
-                      // this causes odd behavior...
-                      loop()
+              // handrolled loops for great victory
+              var i = 0
+              var headers: Headers = null
+              var eos = false
+              var reclaimed = 0
+              while (i != frames.length && headers == null) {
+                frames(i) match {
+                  case frame: Http2DataFrame =>
+                    val _ = manager.recv(frame)
+                    eos = frame.isEndStream
+                    if (frame.content.readableBytes > 0) {
+                      reclaimed += frame.content.readableBytes + frame.padding
+
+                      agg.addComponent(frame.content.copy())
+                      // agg = agg.concat(ByteBufAsBuf.Owned(frame.content.copy())) // XXX wtf
                     }
-                  }
+                    i += 1
+
+                  case frame: Http2HeadersFrame if frame.isEndStream =>
+                    val _ = manager.recv(frame)
+                    headers = Headers(frame.headers)
+                    eos = true
+
+                  case frame =>
+                    val _ = manager.recv(frame)
+                    i += 1
+                }
               }
 
-            case (s@ActiveResponseEnd(_, _), f: Http2DataFrame) =>
-              // Retain the data since we're writing it as an owned
-              // buffer on the writer. The reader is responsible for
-              // releasing buffers when they are unused.
-              val wrote = ByteBufAsBuf.Owned(f.content.retain()) match {
-                case Buf.Empty => Future.Unit
-                case buf => rw.write(buf)
+              rw.write(ByteBufAsBuf.Owned(agg)).before {
+                updateCapacity(reclaimed).before {
+                  if (eos) {
+                    rw.close().map { _ =>
+                      if (headers == null) None
+                      else Some(headers)
+                    }
+                  } else loop()
+                }
               }
-              wrote.before(rw.close()).transform {
-                case Throw(e) =>
-                  clearIfClosing(s, this)
-                  Future.exception(e)
+          }
+        } else {
+          readq.poll().flatMap { frame =>
+            dequeueTimes.add(snap().inMicroseconds)
+            (manager.recv(frame), frame) match {
 
-                case Return(_) =>
-                  clearIfClosing(s, this)
-                  Future.value(None)
-              }
+              /*
+               * Data
+               */
 
-            /*
-             * Trailers
-             */
+              case (ActiveResponse(_), f: Http2DataFrame) =>
+                // Retain the data since we're writing it as an owned
+                // buffer on the writer. The reader is responsible for
+                // releasing buffers when they are unused.
+                ByteBufAsBuf.Owned(f.content.retain()) match {
+                  case Buf.Empty => loop()
+                  case buf =>
+                    val sz = f.content.readableBytes + f.padding
+                    rw.write(buf).before {
+                      updateCapacity(sz).before {
+                        // TODO: reading should be able to continue
+                        // immediately (before the write completes, but
+                        // this causes odd behavior...
+                        loop()
+                      }
+                    }
+                }
 
-            case (s@ActiveResponseEnd(_, _), f: Http2HeadersFrame) =>
-              clearIfClosing(s, this)
-              rw.close().map(_ => Some(Headers(f.headers)))
+              case (s@ActiveResponseEnd(_, _), f: Http2DataFrame) =>
+                // Retain the data since we're writing it as an owned
+                // buffer on the writer. The reader is responsible for
+                // releasing buffers when they are unused.
+                val wrote = ByteBufAsBuf.Owned(f.content.retain()) match {
+                  case Buf.Empty => Future.Unit
+                  case buf => rw.write(buf)
+                }
+                wrote.before(rw.close()).transform {
+                  case Throw(e) =>
+                    clearIfClosing(s, this)
+                    Future.exception(e)
 
-            case ((s0, s1), f) =>
-              clearIfClosed(s1, this)
-              Future.exception(new IllegalStateException(s"[${f.name} ${id}] $s0 -> $s1"))
+                  case Return(_) =>
+                    clearIfClosing(s, this)
+                    Future.value(None)
+                }
+
+              /*
+               * Trailers
+               */
+
+              case (s@ActiveResponseEnd(_, _), f: Http2HeadersFrame) =>
+                clearIfClosing(s, this)
+                rw.close().map(_ => Some(Headers(f.headers)))
+
+              case ((s0, s1), f) =>
+                clearIfClosed(s1, this)
+                Future.exception(new IllegalStateException(s"[${f.name} ${id}] $s0 -> $s1"))
+            }
           }
         }
+
       }
 
       loop()
