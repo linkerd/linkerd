@@ -1,7 +1,8 @@
 package com.twitter.finagle.buoyant.http2
 
-import com.twitter.io.Reader
-import com.twitter.util.Future
+import com.twitter.concurrent.AsyncQueue
+import com.twitter.io.{Buf, Reader}
+import com.twitter.util.{Future, Promise, Return, Throw}
 import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
 import scala.collection.mutable.ListBuffer
 
@@ -100,10 +101,56 @@ object ResponseHeaders {
   }
 }
 
-case class DataStream(
-  reader: Reader,
-  trailers: Future[Option[Headers]] = Future.value(None)
-)
+object DataStream {
+  sealed trait Value {
+    def isEnd: Boolean
+  }
+
+  private[this] val NullRelease: () => Future[Unit] =
+    () => Future.Unit
+
+  case class Data(
+    buf: Buf,
+    isEnd: Boolean,
+    doRelease: () => Future[Unit] = NullRelease
+  ) extends Value {
+    def release() = doRelease()
+  }
+
+  case class Trailers(headers: Headers) extends Value {
+    val isEnd = true
+  }
+}
+
+trait DataStream {
+  def onEnd: Future[Unit]
+  def read(): Future[DataStream.Value]
+  def fail(exn: Throwable): Future[Unit]
+}
+
+private[http2] class AQDataStream(q: AsyncQueue[DataStream.Value]) extends DataStream {
+
+  private[this] val closer = new Promise[Unit]
+  def onEnd: Future[Unit] = closer
+
+  def read(): Future[DataStream.Value] = {
+    val f = q.poll()
+    f.respond {
+      case Return(v) if v.isEnd =>
+        val _ = closer.updateIfEmpty(Return.Unit)
+      case Throw(e) =>
+        val _ = closer.updateIfEmpty(Throw(e))
+      case _ =>
+    }
+    f
+  }
+
+  def fail(exn: Throwable): Future[Unit] = {
+    q.fail(exn, discard = true)
+    closer.updateIfEmpty(Throw(exn))
+    Future.Unit
+  }
+}
 
 /**
  * An HTTP2 message.

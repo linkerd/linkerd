@@ -49,7 +49,6 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
     private[this] val dispatchStats = params[param.Stats].statsReceiver.scope("dispatch")
     protected def newDispatcher(transport: Http2StreamFrameTransport): Service[Request, Response] = {
-
       new ClientDispatcher(transport, Bufs.allocator(params), dispatchStats)
     }
   }
