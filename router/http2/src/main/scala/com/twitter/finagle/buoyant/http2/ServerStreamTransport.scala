@@ -8,48 +8,12 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.io.{Buf, Reader, Writer}
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Throw, Time}
+import io.netty.buffer.{ByteBuf, CompositeByteBuf}
 import io.netty.handler.codec.http2._
 
 object ServerStreamTransport {
 
   private val log = Logger.get(getClass.getName)
-
-  // private val BufSize = Int.MaxValue // YOLO?
-
-  // private object ReadCompleteInit {
-  //   def unapply(states: (StreamState, StreamState)): Boolean = states match {
-  //     case (StreamState.Idle, StreamState.HalfClosedRemote(_)) => true
-  //     case _ => false
-  //   }
-  // }
-
-  // private object ReadStreamInit {
-  //   def unapply(
-  //     states: (StreamState, StreamState)
-  //   ): Option[(Reader with Writer with Closable, Promise[Option[Headers]])] =
-  //     states match {
-  //       case (StreamState.Idle, StreamState.RemoteActive(rw, trailers)) => Some((rw, trailers))
-  //       case _ => None
-  //     }
-  // }
-
-  // private object ReadStreamActive {
-  //   def unapply(states: (StreamState, StreamState)): Option[Reader with Writer with Closable] =
-  //     states match {
-  //       case (StreamState.RemoteActive(writer, _), StreamState.RemoteActive(_, _)) => Some(writer)
-  //       case _ => None
-  //     }
-  // }
-
-  // private object ReadStreamClosing {
-  //   def unapply(
-  //     states: (StreamState, StreamState)
-  //   ): Option[(Reader with Writer with Closable, Promise[Option[Headers]])] =
-  //     states match {
-  //       case (StreamState.RemoteActive(rw, t), StreamState.RemoteClosed()) => Some((rw, t))
-  //       case _ => None
-  //     }
-  // }
 
   private def getHeaders(hs: Headers): Http2Headers = hs match {
     case hs: Netty4Headers => hs.underlying
@@ -75,15 +39,30 @@ class ServerStreamTransport(
   private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
   private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
 
-  // private[this] val manager: StreamState.Manager =
-  //   new StreamState.Manager(statsReceiver.scope("state"))
+  private[this] val readMs = statsReceiver.stat("read_ms")
+  private[this] val writeMs = statsReceiver.stat("write_ms")
+  private[this] val releaseMs = statsReceiver.stat("release_ms")
+
+  private[this] val recvqSizes = statsReceiver.stat("recvq")
+  private[this] val sendqSizes = statsReceiver.stat("sendq")
+  private[this] val sendqReadMicros = statsReceiver.stat("sendq_poll_us")
 
   def close(deadline: Time): Future[Unit] =
     transport.close(deadline)
 
+  private[this] def readFrame(): Future[Http2StreamFrame] = {
+    val t = Stopwatch.start()
+    transport.read().onSuccess(_ => readMs.add(t().inMillis))
+  }
+
+  private[this] def writeFrame(f: Http2StreamFrame): Future[Unit] = {
+    val t = Stopwatch.start()
+    transport.write(f).onSuccess(_ => writeMs.add(t().inMillis))
+  }
+
   /** Read the Request from the transport. */
-  def read(): Future[Request] =
-    transport.read().flatMap {
+  def read(): Future[Request] = {
+    readFrame().flatMap {
       case f: Http2HeadersFrame if f.isEndStream =>
         Future.value(Request(RequestHeaders(f.headers)))
 
@@ -92,26 +71,32 @@ class ServerStreamTransport(
         val recvq = new AsyncQueue[DataStream.Value]
         val reading = readStream(recvq)
         reading.onSuccess(_ => requestDurations.add(t().inMillis))
-        Future.value(Request(RequestHeaders(f.headers), Some(new AQDataStream(recvq))))
+        val stream = new AQDataStream(recvq)
+        Future.value(Request(RequestHeaders(f.headers), Some(stream)))
 
       case f =>
         val e = new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
         Future.exception(e)
     }
+  }
 
   /**
-   * Read data (and trailer) frames from the transport until an end-of-stream frame is encountered.
+   * Read data (and trailer) frames from the transport until an
+   * end-of-stream frame is encountered.
    */
   private[this] def readStream(recvq: AsyncQueue[DataStream.Value]): Future[Unit] = {
     def loop(): Future[Unit] =
-      transport.read().flatMap {
+      readFrame().flatMap {
         case f: Http2DataFrame =>
-          val buf = ByteBufAsBuf.Owned(f.content.retain())
-          val release: () => Future[Unit] = () => {
-            val _ = f.release()
-            Future.Unit
+          val data = new DataStream.Data {
+            def buf = ByteBufAsBuf.Owned(f.content.retain())
+            def isEnd = f.isEndStream
+            def release(): Future[Unit] = {
+              val _ = f.release()
+              Future.Unit
+            }
           }
-          recvq.offer(DataStream.Data(buf, f.isEndStream, release))
+          recvq.offer(data)
           if (f.isEndStream) Future.Unit else loop()
 
         case f: Http2HeadersFrame if f.isEndStream =>
@@ -120,6 +105,7 @@ class ServerStreamTransport(
 
         case f =>
           val e = new IllegalStateException(s"Read unexpected ${f.name}; expected DATA or HEADERS")
+          recvq.fail(e)
           Future.exception(e)
       }
 
@@ -127,38 +113,109 @@ class ServerStreamTransport(
   }
 
   def write(rsp: Response): Future[Future[Unit]] = {
-    val eos = rsp.data.isEmpty
-    val f = new DefaultHttp2HeadersFrame(getHeaders(rsp.headers), eos)
-    transport.write(f).map { _ =>
+    val f = new DefaultHttp2HeadersFrame(getHeaders(rsp.headers), rsp.data.isEmpty)
+    val writeStart = Stopwatch.start()
+    writeFrame(f).map { _ =>
       rsp.data match {
         case None => Future.Unit
         case Some(data) =>
-          val t = Stopwatch.start()
-          val writing = writeStream(data)
-          writing.onSuccess(_ => responseDurations.add(t().inMillis))
+          val dataStart = Stopwatch.start()
+          val writing = streamFrom(data)
+          writing.onSuccess(_ => responseDurations.add(dataStart().inMillis))
           writing
       }
     }
   }
 
-  private[this] def writeStream(data: DataStream): Future[Unit] = {
-    def loop(): Future[Unit] =
-      data.read.flatMap {
-        case DataStream.Data(buf, eos, release) =>
-          val bb = BufAsByteBuf.Owned(buf)
-          val data = new DefaultHttp2DataFrame(bb)
-          transport.write(data).before {
-            val released = release()
-            if (eos) released
-            else released.before(loop())
-          }
-
-        case DataStream.Trailers(headers) =>
-          val f = new DefaultHttp2HeadersFrame(getHeaders(headers), true /* eos */ )
-          transport.write(f)
+  private[this] def streamFrom(data: DataStream): Future[Unit] = {
+    def loop(): Future[Unit] = {
+      val readW = Stopwatch.start()
+      val read = data.read()
+      read.onSuccess { vs =>
+        sendqReadMicros.add(readW().inMicroseconds)
+        sendqSizes.add(vs.size)
       }
+      read.flatMap {
+        case values if values.isEmpty => loop()
+
+        case Seq(v) => v match {
+          case data: DataStream.Data =>
+            val wrote = {
+              val frame = new DefaultHttp2DataFrame(BufAsByteBuf.Owned(data.buf), data.isEnd)
+              writeFrame(frame).before {
+                val releaseW = Stopwatch.start()
+                val released = data.release()
+                released.onSuccess(_ => releaseMs.add(releaseW().inMillis))
+                released
+              }
+            }
+            if (data.isEnd) wrote
+            else wrote.before(loop())
+
+          case DataStream.Trailers(trailers) => writeTrailers(trailers)
+        }
+
+        case values =>
+          writeAggregatedDataStream(values).flatMap { eos =>
+            if (eos) Future.Unit
+            else loop()
+          }
+      }
+    }
 
     loop()
   }
 
+  private[this] def writeHeaders(h: Headers, eos: Boolean): Future[Unit] =
+    writeFrame(new DefaultHttp2HeadersFrame(getHeaders(h), eos))
+
+  private[this] def writeTrailers(h: Headers): Future[Unit] =
+    writeHeaders(h, true)
+
+  private[this] def writeAggregatedDataStream(vals: Seq[DataStream.Value]): Future[Boolean] = {
+    var i = 0
+    var trailers: Headers = null
+    var eos = false
+    var release: () => Future[Unit] = () => Future.Unit
+    var compositeBuf: CompositeByteBuf = null
+    while (i != vals.size && trailers == null) {
+      vals(i) match {
+        case data: DataStream.Data =>
+          val bb = BufAsByteBuf.Owned(data.buf)
+          if (compositeBuf == null) {
+            compositeBuf = bb.alloc.compositeBuffer(vals.size)
+            compositeBuf.markReaderIndex()
+          }
+          compositeBuf.addComponent(true, bb)
+          eos = data.isEnd
+
+          val releasePrior = release
+          release = () => releasePrior().before(data.release())
+
+          i += 1
+        case DataStream.Trailers(ts) =>
+          trailers = ts
+      }
+    }
+
+    val dataWrite =
+      if (i > 1 || trailers == null) {
+        compositeBuf.resetReaderIndex()
+        writeFrame(new DefaultHttp2DataFrame(compositeBuf.retain(), eos)).before {
+          val releaseW = Stopwatch.start()
+          val released = release()
+          compositeBuf.release()
+          released.onSuccess(_ => releaseMs.add(releaseW().inMillis))
+          released
+        }
+      } else Future.Unit
+
+    trailers match {
+      case null =>
+        dataWrite.map(_ => eos)
+
+      case trailers =>
+        dataWrite.before(writeTrailers(trailers)).map(_ => false)
+    }
+  }
 }

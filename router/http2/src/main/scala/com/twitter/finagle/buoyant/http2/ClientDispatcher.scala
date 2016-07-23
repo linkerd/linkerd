@@ -32,41 +32,6 @@ object ClientDispatcher {
     }
     new DefaultHttp2HeadersFrame(headers, eos).setStreamId(streamId)
   }
-
-  /*
-   * Helpers for matching stream state transitions.
-   */
-
-  // private object ActiveResponseInit {
-  //   def unapply(states: StateTransition): Option[(Inbound, TrailerPromise)] =
-  //     states match {
-  //       case (StreamState.RemoteIdle(), StreamState.RemoteActive(rw, t)) => Some((rw, t))
-  //       case _ => None
-  //     }
-  // }
-
-  // private object ActiveResponse {
-  //   def unapply(states: StateTransition): Option[Inbound] =
-  //     states match {
-  //       case (StreamState.RemoteActive(_, _), StreamState.RemoteActive(rw, _)) => Some(rw)
-  //       case _ => None
-  //     }
-  // }
-
-  // private object ActiveResponseEnd {
-  //   def unapply(states: StateTransition): Option[(Inbound, TrailerPromise)] =
-  //     states match {
-  //       case (StreamState.RemoteActive(rw, t), StreamState.RemoteClosed()) => Some((rw, t))
-  //       case _ => None
-  //     }
-  // }
-
-  // private object FullResponse {
-  //   def unapply(states: StateTransition): Boolean = states match {
-  //     case (StreamState.RemoteIdle(), StreamState.RemoteClosed()) => true
-  //     case _ => false
-  //   }
-  // }
 }
 
 /**
@@ -94,8 +59,7 @@ class ClientDispatcher(
   private[this] val transportReadTimes = transportStats.stat("read_us")
   private[this] val transportWriteTimes = transportStats.stat("write_us")
 
-  private[this] val dequeueTimes = streamStats.stat("dequeue_us")
-  private[this] val queueLengths = streamStats.stat("qlen")
+  private[this] val recvqSizes = streamStats.stat("recvq")
 
   private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
   private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
@@ -127,7 +91,7 @@ class ClientDispatcher(
 
           // Also, finish streaming the request data...
           val clock = Stopwatch.start()
-          val writing = stream.writeStream(data)
+          val writing = stream.streamFrom(data)
           writing.onSuccess(_ => requestDurations.add(clock().inMillis))
 
           // If the response fails, try to stop writing data.
@@ -148,7 +112,7 @@ class ClientDispatcher(
    * Continually read frames from the HTTP2 transport. Demultiplex
    * frames from the transport onto a per-stream receive queue.
    */
-  private[this] val reading = {
+  private[this] val demux = {
     def loop(): Future[Unit] = {
       val readSnap = Stopwatch.start()
       transport.read().flatMap { frame =>
@@ -167,6 +131,7 @@ class ClientDispatcher(
                 stream.recvq.offer(frame)
             }
         }
+
         loop()
       }
     }
@@ -197,27 +162,33 @@ class ClientDispatcher(
     }
 
     /** Write a request stream */
-    def writeStream(data: DataStream): Future[Unit] = {
-      def loop(): Future[Unit] =
-        data.read().flatMap {
-          case DataStream.Data(buf, eos, release) =>
-            val write = writeData(buf, eos = eos).before(release())
-            if (eos) {
-              write.ensure {
-                isRequestFinished = true
-                clearIfClosed()
-              }
-            } else write.before(loop())
+    def streamFrom(data: DataStream): Future[Unit] = {
+      require(!isRequestFinished)
 
-          case DataStream.Trailers(trailers) =>
-            writeHeaders(trailers, eos = true)
+      def write(v: DataStream.Value): Future[Unit] = v match {
+        case data: DataStream.Data =>
+          val wrote = writeData(data.buf, data.isEnd).before(data.release())
+          if (data.isEnd) {
+            wrote.ensure {
+              isRequestFinished = true
+              clearIfClosed()
+            }
+          } else wrote.before(loop())
+
+        case DataStream.Trailers(trailers) =>
+          writeHeaders(trailers, eos = true)
+      }
+
+      def loop(): Future[Unit] =
+        data.read().flatMap { vs =>
+          // TODO FIXME
+          vs.foldLeft(Future.Unit) { (prior, v) => prior.before(write(v)) }
         }
 
-      require(!isRequestFinished)
       loop()
     }
 
-    private[this] def write(f: Http2StreamFrame): Future[Unit] = {
+    private[this] val write: Http2StreamFrame => Future[Unit] = { f =>
       val snap = Stopwatch.start()
       transport.write(f).onSuccess { _ =>
         transportWriteTimes.add(snap().inMicroseconds)
@@ -239,10 +210,8 @@ class ClientDispatcher(
       // queue. Once a response is initialized, if data is expected,
       // continue reading from the queue until an end stream message is
       // encounetered.
-      val snap = Stopwatch.start()
-      recvq.poll().onSuccess { _ =>
-        dequeueTimes.add(snap().inMicroseconds)
-      }.map {
+      recvqSizes.add(recvq.size)
+      recvq.poll().map {
         case f: Http2HeadersFrame if f.isEndStream =>
           isResponseFinished = true
           clearIfClosed()
@@ -251,40 +220,43 @@ class ClientDispatcher(
         case f: Http2HeadersFrame =>
           val clock = Stopwatch.start()
           val sendq = new AsyncQueue[DataStream.Value]
-          val data = new AQDataStream(sendq)
-          val reading = readStream(sendq).ensure {
+          val reading = streamInto(sendq).ensure {
             isResponseFinished = true
             clearIfClosed
           }
           reading.onSuccess(_ => responseDurations.add(clock().inMillis))
           // reading.ensure(clearIfClosing(s, this))
+          val data = new AQDataStream(sendq)
           Response(ResponseHeaders(f.headers), Some(data))
 
-        case frame =>
-          // clearIfClosing(s, this)
-          throw new IllegalArgumentException(s"Expected response HEADERS; received ${frame.name}")
+        case f =>
+          isResponseFinished = true
+          clearIfClosed()
+          throw new IllegalArgumentException(s"Expected response HEADERS; received ${f.name}")
       }
     }
 
-    private[this] def readStream(sendq: AsyncQueue[DataStream.Value]): Future[Unit] = {
+    private[this] def streamInto(sendq: AsyncQueue[DataStream.Value]): Future[Unit] = {
       // TODO readq.drain and aggregate
       def loop(): Future[Unit] = {
-        queueLengths.add(recvq.size)
+        val qsz = recvq.size
+        recvqSizes.add(qsz)
         val snap = Stopwatch.start()
-        recvq.poll().onSuccess { _ =>
-          dequeueTimes.add(snap().inMicroseconds)
-        }.flatMap {
+        recvq.poll().flatMap {
           case f: Http2DataFrame =>
             // Retain the data since we're writing it as an owned
             // buffer on the writer. The reader is responsible for
             // releasing buffers when they are unused.
-            val buf = ByteBufAsBuf.Owned(f.content.retain())
-            val sz = f.content.readableBytes + f.padding
-            val release: () => Future[Unit] = () => {
-              f.content.release()
-              updateCapacity(sz)
+            val pendingBytes = f.content.readableBytes + f.padding
+            val data = new DataStream.Data {
+              val buf = ByteBufAsBuf.Owned(f.content.retain())
+              def isEnd = f.isEndStream
+              def release(): Future[Unit] = {
+                f.content.release()
+                updateCapacity(pendingBytes)
+              }
             }
-            sendq.offer(DataStream.Data(buf, f.isEndStream, release))
+            sendq.offer(data)
             if (f.isEndStream) {
               isResponseFinished = true
               clearIfClosed()
