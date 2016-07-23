@@ -26,15 +26,15 @@ object Http2Transporter {
     // stream frame writes are buffered until this time.
     val initializer: ChannelPipeline => Unit = { cp =>
       val _ = cp.addLast(
-        new TimingHandler(connStats.scope("outer")),
+        // new TimingHandler(connStats.scope("outer")),
 
         new Http2FrameCodec(false /*server*/ ),
-        new Http2FrameStatsHandler(stats.scope("frames")),
-        new TimingHandler(connStats.scope("mid")),
+        // new Http2FrameStatsHandler(stats.scope("frames")),
+        // new TimingHandler(connStats.scope("mid")),
 
-        new BufferingConnectDelay,
+        new BufferingConnectDelay
 
-        new TimingHandler(connStats.scope("inner"))
+      // new TimingHandler(connStats.scope("inner"))
       )
     }
 

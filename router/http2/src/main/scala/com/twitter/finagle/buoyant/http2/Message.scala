@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant.http2
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Return, Throw}
 import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
+import scala.collection.immutable.Queue
 import scala.collection.mutable.ListBuffer
 
 trait Header {
@@ -117,7 +118,7 @@ object DataStream {
 
 trait DataStream {
   // def onEnd: Future[Unit]
-  def read(): Future[Seq[DataStream.Value]]
+  def read(): Future[DataStream.Value]
   def fail(exn: Throwable): Future[Unit]
 }
 

@@ -10,6 +10,8 @@ import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Throw, Time}
 import io.netty.buffer.{ByteBuf, CompositeByteBuf}
 import io.netty.handler.codec.http2._
+import scala.collection.immutable.Queue
+import scala.collection.mutable.ListBuffer
 
 object ServerStreamTransport {
 
@@ -31,6 +33,45 @@ object ServerStreamTransport {
       Future.Unit
     }
   }
+
+  private case class StreamAccum(
+    data: Option[AccumData] = None,
+    trailers: Option[Headers] = None
+  )
+  private case class AccumData(content: ByteBuf, eof: Boolean)
+
+  private def accumStream(q: Queue[DataStream.Value]): StreamAccum = {
+    var content: CompositeByteBuf = null
+    var eos = false
+    var trailers: Option[Headers] = None
+
+    val iter = q.iterator
+    while (iter.hasNext && !eos && trailers == null) {
+      iter.next() match {
+        case data: DataStream.Data =>
+          val bb = BufAsByteBuf.Owned(data.buf)
+          if (content == null) {
+            content = bb.alloc.compositeBuffer(q.length)
+          }
+          content.addComponent(true, bb)
+          eos = data.isEnd
+
+        case DataStream.Trailers(ts) =>
+          trailers = Some(ts)
+      }
+    }
+
+    val data = if (content == null) None else Some(AccumData(content, eos))
+    StreamAccum(data, trailers)
+  }
+
+  private def release(q: Queue[DataStream.Value]): Future[Unit] =
+    if (q.isEmpty) Future.Unit
+    else q.dequeue match {
+      case (data: DataStream.Data, tl) => data.release().before(release(tl))
+      case (_, tl) => release(tl)
+    }
+
 }
 
 /**
@@ -152,7 +193,7 @@ class ServerStreamTransport(
   }
 
   private[this] def writeHeaders(h: Headers, eos: Boolean): Future[Boolean] =
-    writeFrame(new DefaultHttp2HeadersFrame(getHeaders(h), eos)).map(_ => eos)
+    writeFrame(new DefaultHttp2HeadersFrame(getHeaders(h), eos)).before(Future.True)
 
   private[this] def writeTrailers(h: Headers): Future[Boolean] =
     writeHeaders(h, true)
@@ -172,41 +213,32 @@ class ServerStreamTransport(
   private[this] def writeData(data: DataStream.Data): Future[Boolean] =
     writeData(BufAsByteBuf.Owned(data.buf), data.isEnd, data.release)
 
-  private[this] val writeData: Seq[DataStream.Value] => Future[Boolean] = {
-    case values if values.isEmpty => Future.False
-
-    case Seq(v) => v match {
-      case data: DataStream.Data => writeData(data)
-      case DataStream.Trailers(t) => writeTrailers(t)
-    }
-
-    case values =>
-      var i = 0
-      var content: CompositeByteBuf = null
-      var eos = false
-      var release: () => Future[Unit] = () => Future.Unit
-      var trailers: Headers = null
-
-      while (i != values.size && trailers == null) {
-        values(i) match {
-          case data: DataStream.Data =>
-            val bb = BufAsByteBuf.Owned(data.buf)
-            if (content == null) {
-              content = bb.alloc.compositeBuffer(values.size)
-            }
-            content.addComponent(true, bb)
-            eos = data.isEnd
-            val releasePrior = release
-            release = () => releasePrior().before(data.release())
-
-          case DataStream.Trailers(ts) =>
-            trailers = ts
-        }
-        i += 1
-      }
-
-      val wroteData = writeData(content, eos, release)
-      if (trailers == null) wroteData
-      else wroteData.flatMap(_ => writeTrailers(trailers))
+  private[this] def write(v: DataStream.Value): Future[Boolean] = v match {
+    case data: DataStream.Data =>
+      writeData(BufAsByteBuf.Owned(data.buf), data.isEnd, data.release)
+    case DataStream.Trailers(trailers) =>
+      writeTrailers(trailers)
   }
+
+  private[this] val writeData: Queue[DataStream.Value] => Future[Boolean] = {
+    case q if q.isEmpty => Future.False
+
+    case q if q.length == 1 =>
+      val (v, _) = q.dequeue
+      write(v)
+
+    case q =>
+      val StreamAccum(data, trailers) = accumStream(q)
+      val wroteData = data match {
+        case None => Future.False
+        case Some(AccumData(content, eos)) =>
+          writeData(content, eos, () => release(q))
+      }
+      trailers match {
+        case None => wroteData
+        case Some(trailers) =>
+          wroteData.flatMap(_ => writeTrailers(trailers))
+      }
+  }
+
 }
