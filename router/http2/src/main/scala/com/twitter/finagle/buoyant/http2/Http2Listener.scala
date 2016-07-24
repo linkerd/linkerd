@@ -34,6 +34,7 @@ object Http2Listener {
           val _ = ch.pipeline.addLast(
             // new TimingHandler(connStats.scope("outer")),
             new Http2FrameCodec(true /*server*/ ),
+            new DebugHandler("srv.conn"),
             // new Http2FrameStatsHandler(statsReceiver.scope("frames")),
             // new TimingHandler(connStats.scope("inner")),
             new Http2MultiplexCodec(true /*server*/ , null, prepChildStream(stream))
@@ -47,6 +48,7 @@ object Http2Listener {
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
           ch.pipeline.addLast(stream)
+          ch.pipeline.addLast(new DebugHandler("srv.stream"))
           val _ = ch.pipeline.addLast(new ChannelInitializer[Channel] {
             def initChannel(ch: Channel): Unit = {
               val _ = ch.pipeline.remove("channel stats")

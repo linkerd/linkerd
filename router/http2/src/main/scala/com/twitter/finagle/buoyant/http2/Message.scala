@@ -117,7 +117,7 @@ object DataStream {
 }
 
 trait DataStream {
-  // def onEnd: Future[Unit]
+  def onEnd: Future[Unit]
   def read(): Future[DataStream.Value]
   def fail(exn: Throwable): Future[Unit]
 }

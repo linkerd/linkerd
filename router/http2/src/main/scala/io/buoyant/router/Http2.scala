@@ -48,8 +48,11 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     ): Client = copy(stack, params)
 
     private[this] val dispatchStats = params[param.Stats].statsReceiver.scope("dispatch")
-    protected def newDispatcher(transport: Http2StreamFrameTransport): Service[Request, Response] = {
-      new ClientDispatcher(transport, Bufs.allocator(params), dispatchStats)
+    private[this] val transportStats = params[param.Stats].statsReceiver.scope("transport")
+
+    protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] = {
+      val h2 = new Http2Transport(trans, transportStats)
+      new ClientDispatcher(h2, Bufs.allocator(params), dispatchStats)
     }
   }
 
@@ -158,13 +161,15 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
       Http2Listener.mk(params)
 
     private[this] val dispatchStats = params[param.Stats].statsReceiver.scope("dispatch")
+    private[this] val transportStats = params[param.Stats].statsReceiver.scope("transport")
 
     /** A dispatcher is created for each outbound HTTP/2 stream. */
     protected def newDispatcher(
       trans: Http2StreamFrameTransport,
       service: Service[Request, Response]
     ): Closable = {
-      val stream = new ServerStreamTransport(trans, dispatchStats)
+      val h2 = new Http2Transport(trans, transportStats)
+      val stream = new ServerStreamTransport(h2, dispatchStats)
       new ServerDispatcher(stream, service)
     }
   }
