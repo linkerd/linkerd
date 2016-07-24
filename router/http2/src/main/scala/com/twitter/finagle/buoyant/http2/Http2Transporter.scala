@@ -29,7 +29,7 @@ object Http2Transporter {
         // new TimingHandler(connStats.scope("outer")),
 
         new Http2FrameCodec(false /*server*/ ),
-        // new Http2FrameStatsHandler(stats.scope("frames")),
+        new Http2FrameStatsHandler(stats.scope("frames")),
         // new TimingHandler(connStats.scope("mid")),
 
         new BufferingConnectDelay

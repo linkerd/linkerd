@@ -22,10 +22,6 @@ object Http2Listener {
      * bytes. However, the HTTP/2 listener uses frames and
      * de-multiplexes the connection earlier in the pipeline so that
      * each child stream transmits Http2StreamFrame objects.
-     *
-     * ChannelStatsHandler logs a tremendous amount of errors
-     * when it processes non-ByteBuf messages, and so for now we just
-     * remove it from each stream pipeline.
      */
 
     def initHttp2Connection(stream: ChannelInitializer[Channel]) =
@@ -34,8 +30,8 @@ object Http2Listener {
           val _ = ch.pipeline.addLast(
             // new TimingHandler(connStats.scope("outer")),
             new Http2FrameCodec(true /*server*/ ),
-            new DebugHandler("srv.conn"),
-            // new Http2FrameStatsHandler(statsReceiver.scope("frames")),
+            // new DebugHandler("srv.conn"),
+            new Http2FrameStatsHandler(statsReceiver.scope("frames")),
             // new TimingHandler(connStats.scope("inner")),
             new Http2MultiplexCodec(true /*server*/ , null, prepChildStream(stream))
           // No events happen on the pipeline after the muxer, since
@@ -44,11 +40,15 @@ object Http2Listener {
         }
       }
 
+    /*
+     * XXX ChannelStatsHandler logs a tremendous amount of errors when
+     * it processes non-ByteBuf messages, and so for now we just
+     * remove it from each stream pipeline.
+     */
     def prepChildStream(stream: ChannelInitializer[Channel]) =
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
           ch.pipeline.addLast(stream)
-          ch.pipeline.addLast(new DebugHandler("srv.stream"))
           val _ = ch.pipeline.addLast(new ChannelInitializer[Channel] {
             def initChannel(ch: Channel): Unit = {
               val _ = ch.pipeline.remove("channel stats")

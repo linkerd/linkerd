@@ -149,7 +149,12 @@ class ClientDispatcher(
     def streamRequest(data: DataStream): Future[Unit] = {
       require(!isRequestFinished)
       val write: DataStream.Value => Future[Unit] = { v =>
-        val writeF = transport.write(v, id)
+        val writeF = v match {
+          case data: DataStream.Data =>
+            transport.writeData(data, id).before(data.release())
+          case DataStream.Trailers(tlrs) =>
+            transport.writeTrailers(tlrs, id)
+        }
         if (v.isEnd) writeF.ensure(setRequestFinished())
         writeF
       }

@@ -10,8 +10,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 private[http2] object Http2FrameDataStream {
 
-  private val log = com.twitter.logging.Logger.get(getClass.getName)
-
   type DataReleaser = Int => Future[Unit]
 
   private trait State
@@ -103,7 +101,6 @@ private[http2] class Http2FrameDataStream(
 
   private val accumStream: Queue[Http2StreamFrame] => DataStream.Value = { frames =>
     require(frames.nonEmpty)
-    log.info(s"accum: frames=$frames")
 
     var content: CompositeByteBuf = null
     var bytes = 0
