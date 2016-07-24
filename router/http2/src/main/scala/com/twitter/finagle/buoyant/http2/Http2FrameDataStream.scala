@@ -27,26 +27,29 @@ private[http2] object Http2FrameDataStream {
   def expectedOpenException(state: State) =
     new IllegalStateException(s"expected Open state; found ${state}")
 
-  private case class StreamAccum(
-    data: Option[DataStream.Data],
-    trailers: Option[DataStream.Value]
-  ) {
-    require(data.isDefined || trailers.isDefined)
-  }
-
-  private class FrameData(frame: Http2DataFrame, releaser: DataReleaser)
-    extends DataStream.Data {
+  private class FrameData(frame: Http2DataFrame, releaser: DataReleaser) extends DataStream.Data {
+    private[this] val windowIncrement = frame.content.readableBytes + frame.padding
     def buf = ByteBufAsBuf.Owned(frame.content)
     def isEnd = frame.isEndStream
-    private[this] val bytes = frame.content.readableBytes + frame.padding
-    def release(): Future[Unit] = releaser(bytes)
+    def release(): Future[Unit] = releaser(windowIncrement)
   }
 }
 
+/**
+ * An Http2 Data stream that serves values from a queue of
+ * Http2StreamFrames.
+ *
+ * Useful when reading a Message from a Transport. The transport can
+ * just put data & trailer frames on the queue without processing.
+ *
+ * Data frames may be combined if there are at least `minAccumFrames`
+ * pending in the queue. This allows the queue to be flushed more
+ * quickly as it backs up. By default, frames are not accumulated.
+ */
 private[http2] class Http2FrameDataStream(
-  fq: AsyncQueue[Http2StreamFrame],
+  frameq: AsyncQueue[Http2StreamFrame],
   releaser: Http2FrameDataStream.DataReleaser,
-  minAccumFrames: Int = 1,
+  minAccumFrames: Int = Int.MaxValue,
   stats: StatsReceiver = NullStatsReceiver
 ) extends DataStream {
 
@@ -63,26 +66,31 @@ private[http2] class Http2FrameDataStream(
   private[this] val endP = new Promise[Unit]
   def onEnd: Future[Unit] = endP
 
-  def fail(exn: Throwable): Future[Unit] = {
-    fq.fail(exn, discard = true)
-    endP.updateIfEmpty(Throw(exn))
-    Future.Unit
+  def isEmpty = state.get == Closed
+
+  def fail(exn: Throwable): Unit = state.get match {
+    case Closed =>
+    case s if state.compareAndSet(s, Closed) =>
+      frameq.fail(exn, discard = true)
+      endP.setException(exn)
+    case _ =>
   }
 
   def read(): Future[DataStream.Value] = {
     val start = Stopwatch.start()
     val f = state.get match {
       case Open =>
-        val sz = fq.size
+        val sz = frameq.size
         readQlens.add(sz)
-        if (sz < minAccumFrames) fq.poll().map(andDrainAccum)
-        else Future.const(fq.drain()).map(accumStream)
+        if (sz < minAccumFrames) frameq.poll().map(andDrainAccum)
+        else Future.const(frameq.drain()).map(accumStream)
 
       case Closed => Future.exception(closedException)
 
       case closing@Closing(trailers) =>
         if (state.compareAndSet(closing, Closed)) {
-          endP.updateIfEmpty(Return.Unit)
+          frameq.fail(closedException)
+          endP.setDone()
           Future.value(trailers)
         } else Future.exception(closedException)
     }
@@ -102,16 +110,16 @@ private[http2] class Http2FrameDataStream(
       if (state.compareAndSet(Open, Closed)) toData(f)
       else throw expectedOpenException(state.get)
 
-    case f: Http2DataFrame if fq.size < minAccumFrames => toData(f)
+    case f: Http2DataFrame if frameq.size < minAccumFrames => toData(f)
 
     case f: Http2DataFrame =>
-      fq.drain() match {
+      frameq.drain() match {
         case Throw(_) => toData(f)
         case Return(q) => accumStream(f +: q)
       }
 
     case f =>
-      throw new IllegalArgumentException("Unexpected frame: ${f.name}")
+      throw new IllegalArgumentException(s"Unexpected frame: ${f.name}")
   }
 
   private def toData(f: Http2DataFrame): DataStream.Data =

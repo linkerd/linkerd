@@ -114,12 +114,23 @@ object DataStream {
   case class Trailers(headers: Headers) extends Value {
     val isEnd = true
   }
+
+  object Empty extends DataStream {
+    def isEmpty = true
+    def onEnd = Future.Unit
+    def read() = Future.never
+    def fail(exn: Throwable) = {}
+  }
 }
 
 trait DataStream {
+  def isEmpty: Boolean
+  final def nonEmpty: Boolean = !isEmpty
+
   def onEnd: Future[Unit]
+
   def read(): Future[DataStream.Value]
-  def fail(exn: Throwable): Future[Unit]
+  def fail(exn: Throwable): Unit
 }
 
 /**
@@ -134,12 +145,12 @@ trait DataStream {
  */
 sealed trait Message {
   def headers: Headers
-  def data: Option[DataStream]
+  def data: DataStream
 }
 
 case class Request(
   headers: RequestHeaders,
-  data: Option[DataStream] = None
+  data: DataStream = DataStream.Empty
 ) extends Message {
   override def toString =
     s"Request(${headers.method} ${headers.authority} ${headers.path}, eos=${data.isEmpty})"
@@ -147,7 +158,7 @@ case class Request(
 
 case class Response(
   headers: ResponseHeaders,
-  data: Option[DataStream] = None
+  data: DataStream = DataStream.Empty
 ) extends Message {
   override def toString =
     s"Response(${headers.status}, eos=${data.isEmpty})"

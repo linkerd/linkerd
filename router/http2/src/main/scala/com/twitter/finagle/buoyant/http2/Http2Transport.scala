@@ -7,10 +7,25 @@ import com.twitter.io.Buf
 import com.twitter.util.{Future, Stopwatch, Time}
 import io.netty.handler.codec.http2._
 
+object Http2Transport {
+  trait Writer {
+    def writeHeaders(orig: Headers, id: Int, eos: Boolean = false): Future[Unit]
+    def writeTrailers(orig: Headers, id: Int): Future[Unit]
+    def writeTrailers(tlrs: DataStream.Trailers, id: Int): Future[Unit]
+
+    def write(v: DataStream.Value, id: Int): Future[Unit]
+    def writeData(buf: Buf, eos: Boolean = false, id: Int): Future[Unit]
+    def writeData(data: DataStream.Data, id: Int): Future[Unit]
+    def writeWindowUpdate(incr: Int, id: Int): Future[Unit]
+
+  }
+}
+
 class Http2Transport(
   transport: Transport[Http2StreamFrame, Http2StreamFrame],
   statsReceiver: StatsReceiver = NullStatsReceiver
-) extends TransportProxy[Http2StreamFrame, Http2StreamFrame](transport) {
+) extends TransportProxy[Http2StreamFrame, Http2StreamFrame](transport)
+  with Http2Transport.Writer {
 
   // private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
 

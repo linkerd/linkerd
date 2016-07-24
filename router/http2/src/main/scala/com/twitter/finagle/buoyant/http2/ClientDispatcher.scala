@@ -1,20 +1,14 @@
 package com.twitter.finagle.buoyant.http2
 
-import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Service
-import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
-import com.twitter.io.{Buf, Reader, Writer}
-import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Time, Throw}
-import io.netty.handler.codec.http2._
+import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicReference, AtomicInteger}
+import java.util.concurrent.atomic.AtomicInteger
 
 object ClientDispatcher {
   private val log = Logger.get(getClass.getName)
-
   private val MaxStreamId = math.pow(2, 31) - 1
 }
 
@@ -33,13 +27,12 @@ class ClientDispatcher(
   // TODO handle overflow
   private[this] val _id = new AtomicInteger(3) // ID=1 is reserved for HTTP/1 upgrade
   private[this] def nextId() = _id.getAndAdd(2)
-  private[this] val liveStreams = new ConcurrentHashMap[Int, StreamTransport]
+  private[this] val liveStreams = new ConcurrentHashMap[Int, ClientStreamTransport]
 
   private[this] val streamStats = statsReceiver.scope("stream")
-  private[this] val recvqSizes = streamStats.stat("recvq", "sz")
+
   private[this] val recvqOfferMicros = streamStats.stat("recvq", "offer_us")
   private[this] val requestMillis = statsReceiver.stat("request_duration_ms")
-  private[this] val responseMillis = statsReceiver.stat("response_duration_ms")
 
   @volatile private[this] var closed = false
   override def close(d: Time): Future[Unit] = {
@@ -47,36 +40,44 @@ class ClientDispatcher(
     transport.close()
   }
 
+  // Initialize a new Stream; and store it so that a response may be
+  // demultiplexed to it.
+  private[this] def newStream(): ClientStreamTransport = {
+    val id = nextId()
+    val stream = new ClientStreamTransport(
+      id, transport,
+      minAccumFrames = minAccumFrames,
+      statsReceiver = streamStats
+    )
+    if (liveStreams.putIfAbsent(id, stream) != null) {
+      throw new IllegalStateException(s"stream ${stream.streamId} already exists")
+    }
+    stream.onClose.ensure {
+      val _ = liveStreams.remove(id, stream)
+    }
+    stream
+  }
+
   /**
    * Write a request on the underlying connection and return its
    * response when it is received.
    */
   def apply(req: Request): Future[Response] = {
-    // Initialize a new Stream; and store it so that a response may be
-    // demultiplexed to it.
-    val stream = StreamTransport(nextId())
-    if (liveStreams.putIfAbsent(stream.id, stream) != null) {
-      val e = new IllegalStateException(s"stream ${stream.id} already exists")
-      return Future.exception(e)
-    }
+    val stream = newStream()
+    if (req.data.isEmpty) {
+      stream.writeHeaders(req.headers, eos = true)
+        .before(stream.readResponse())
+    } else {
+      stream.writeHeaders(req.headers).before {
+        val clock = Stopwatch.start()
+        val tx = stream.streamRequest(req.data)
+        tx.onSuccess(_ => requestMillis.add(clock().inMillis))
 
-    req.data match {
-      case None =>
-        stream.writeHeaders(req.headers, eos = true)
-          .before(stream.readResponse())
-
-      // New request, with data to be sent.
-      case Some(data) =>
-        stream.writeHeaders(req.headers).before {
-          val clock = Stopwatch.start()
-          val writeF = stream.streamRequest(data)
-          writeF.onSuccess(_ => requestMillis.add(clock().inMillis))
-
-          val readF = stream.readResponse()
-          readF.onFailure(writeF.raise)
-          writeF.onFailure(readF.raise)
-          readF
-        }
+        val rx = stream.readResponse()
+        rx.onFailure(tx.raise)
+        tx.onFailure(rx.raise)
+        rx
+      }
     }
   }
 
@@ -105,80 +106,4 @@ class ClientDispatcher(
     loop().onFailure(log.error(_, "client.dispatch: readLoop"))
   }
 
-  private case class StreamTransport(
-    id: Int,
-    recvq: AsyncQueue[Http2StreamFrame] = new AsyncQueue
-  ) {
-
-    @volatile private[this] var isRequestFinished, isResponseFinished = false
-
-    private[this] def clearIfClosed(): Unit =
-      if (isRequestFinished && isResponseFinished) {
-        val _ = liveStreams.remove(id, this)
-      }
-
-    private[this] def setRequestFinished(): Unit = {
-      isRequestFinished = true
-      clearIfClosed()
-    }
-
-    private[this] def setResponseFinished(): Unit = {
-      isResponseFinished = true
-      clearIfClosed()
-    }
-
-    def writeHeaders(hdrs: Headers, eos: Boolean = false) = {
-      val writeF = transport.writeHeaders(hdrs, id, eos)
-      if (eos) writeF.ensure(setRequestFinished())
-      writeF
-    }
-
-    /** Write a request stream */
-    def streamRequest(data: DataStream): Future[Unit] = {
-      require(!isRequestFinished)
-      lazy val loopUnless: Boolean => Future[Unit] = { eos =>
-        if (eos) Future.Unit
-        else loop()
-      }
-      def loop(): Future[Unit] =
-        data.read().flatMap(writeData).flatMap(loopUnless)
-      loop()
-    }
-
-    private[this] val writeData: DataStream.Value => Future[Boolean] = { v =>
-      val writeF = v match {
-        case data: DataStream.Data => transport.writeData(data, id).before(data.release())
-        case DataStream.Trailers(tlrs) => transport.writeTrailers(tlrs, id)
-      }
-      if (v.isEnd) writeF.ensure(setRequestFinished())
-      writeF.map(_ => v.isEnd)
-    }
-
-    private[this] val releaser: Int => Future[Unit] =
-      bytes => transport.writeWindowUpdate(bytes, id)
-
-    def readResponse(): Future[Response] = {
-      // Start out by reading response headers from the stream
-      // queue. Once a response is initialized, if data is expected,
-      // continue reading from the queue until an end stream message is
-      // encounetered.
-      recvqSizes.add(recvq.size)
-      recvq.poll().map {
-        case f: Http2HeadersFrame if f.isEndStream =>
-          setResponseFinished()
-          Response(ResponseHeaders(f.headers), None)
-
-        case f: Http2HeadersFrame =>
-          val responseStart = Stopwatch.start()
-          val data = new Http2FrameDataStream(recvq, releaser, minAccumFrames, streamStats)
-          data.onEnd.onSuccess(_ => responseMillis.add(responseStart().inMillis))
-          data.onEnd.ensure(setResponseFinished())
-          Response(ResponseHeaders(f.headers), Some(data))
-
-        case f =>
-          setResponseFinished()
-          throw new IllegalArgumentException(s"Expected response HEADERS; received ${f.name}")
-      }
-    }
-  }
 }

@@ -10,35 +10,41 @@ object Http2FrameStatsHandler {
   private class KindStats(stats: StatsReceiver) {
     val count = stats.counter("count")
     val durations = stats.stat("us")
-
-    def measure(f: Http2StreamFrame, d: Duration): Unit = {
-      count.incr()
-      durations.add(d.inMicroseconds)
-    }
   }
 
   private class DataStats(stats: StatsReceiver) extends KindStats(stats) {
     val bytes = stats.stat("bytes")
-
-    override def measure(f: Http2StreamFrame, d: Duration): Unit = {
-      f match {
-        case f: Http2DataFrame =>
-          bytes.add(f.content.readableBytes + f.padding)
-        case _ =>
-      }
-      super.measure(f, d)
-    }
   }
 
-  private case class FrameStats(stats: StatsReceiver) {
+  private case class FrameStats(statsReceiver: StatsReceiver) {
+    val dataStats = new DataStats(statsReceiver.scope("DATA"))
     val kinds = Memoize[String, KindStats] {
-      case "DATA" => new DataStats(stats.scope("DATA"))
-      case k => new KindStats(stats.scope(k))
+      case "DATA" => dataStats
+      case k => new KindStats(statsReceiver.scope(k))
     }
 
-    def apply(obj: Any, d: Duration): Unit = obj match {
-      case f: Http2StreamFrame => kinds(f.name).measure(f, d)
-      case _ =>
+    def apply(obj: Any)(op: (() => Unit) => Unit): Unit = obj match {
+      case f: Http2DataFrame =>
+        val stats = dataStats
+        val bytes = f.content.readableBytes + f.padding
+        val snap = Stopwatch.start()
+        val record: () => Unit = { () =>
+          stats.durations.add(snap().inMicroseconds)
+          stats.count.incr()
+          stats.bytes.add(bytes)
+        }
+        op(record)
+
+      case f: Http2StreamFrame =>
+        val stats = kinds(f.name)
+        val snap = Stopwatch.start()
+        val record: () => Unit = { () =>
+          stats.durations.add(snap().inMicroseconds)
+          stats.count.incr()
+        }
+        op(record)
+
+      case _ => op(() => ())
     }
   }
 
@@ -51,17 +57,17 @@ class Http2FrameStatsHandler(stats: StatsReceiver) extends ChannelDuplexHandler 
   private[this] val recvStats = new FrameStats(stats.scope("recv"))
   private[this] val sendStats = new FrameStats(stats.scope("send"))
 
-  override def channelRead(ctx: ChannelHandlerContext, obj: Any): Unit = {
-    val t = Stopwatch.start()
-    ctx.fireChannelRead(obj)
-    recvStats(obj, t())
-  }
+  override def channelRead(ctx: ChannelHandlerContext, obj: Any): Unit =
+    recvStats(obj) { done =>
+      ctx.fireChannelRead(obj)
+      done()
+    }
 
-  override def write(ctx: ChannelHandlerContext, obj: Any, p: ChannelPromise): Unit = {
-    val t = Stopwatch.start()
-    ctx.write(obj, p)
-    val _ = p.addListener(new ChannelFutureListener {
-      def operationComplete(cf: ChannelFuture): Unit = sendStats(obj, t())
-    })
-  }
+  override def write(ctx: ChannelHandlerContext, obj: Any, p: ChannelPromise): Unit =
+    sendStats(obj) { done =>
+      ctx.write(obj, p)
+      val _ = p.addListener(new ChannelFutureListener {
+        def operationComplete(cf: ChannelFuture): Unit = done()
+      })
+    }
 }
