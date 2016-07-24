@@ -35,11 +35,11 @@ class ClientDispatcher(
   private[this] def nextId() = _id.getAndAdd(2)
   private[this] val liveStreams = new ConcurrentHashMap[Int, StreamTransport]
 
-  private[this] val streamStats = statsReceiver.scope("streams")
-  private[this] val streamStateStats = streamStats.scope("state")
-  private[this] val recvqSizes = streamStats.stat("recvq")
-  private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
-  private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
+  private[this] val streamStats = statsReceiver.scope("stream")
+  private[this] val recvqSizes = streamStats.stat("recvq", "sz")
+  private[this] val recvqOfferMicros = streamStats.stat("recvq", "offer_us")
+  private[this] val requestMillis = statsReceiver.stat("request_duration_ms")
+  private[this] val responseMillis = statsReceiver.stat("response_duration_ms")
 
   @volatile private[this] var closed = false
   override def close(d: Time): Future[Unit] = {
@@ -62,29 +62,19 @@ class ClientDispatcher(
 
     req.data match {
       case None =>
-        stream.writeHeaders(req.headers, eos = true).
-          before(stream.readResponse())
+        stream.writeHeaders(req.headers, eos = true)
+          .before(stream.readResponse())
 
       // New request, with data to be sent.
       case Some(data) =>
         stream.writeHeaders(req.headers).before {
-          // Start reading a response...
-          val readF = stream.readResponse()
-
-          // Also, finish streaming the request data...
           val clock = Stopwatch.start()
           val writeF = stream.streamRequest(data)
-          writeF.onSuccess(_ => requestDurations.add(clock().inMillis))
+          writeF.onSuccess(_ => requestMillis.add(clock().inMillis))
 
-          // If the response fails, try to stop writing data.
-          readF.onFailure(writeF.raise(_))
-
-          // If the request fails, try to stop reading data.
-          writeF.onFailure { e =>
-            log.error(e, s"client.dispatch: ${stream.id} writing error")
-            readF.raise(e)
-          }
-
+          val readF = stream.readResponse()
+          readF.onFailure(writeF.raise)
+          writeF.onFailure(readF.raise)
           readF
         }
     }
@@ -100,10 +90,14 @@ class ClientDispatcher(
       else transport.read().flatMap { frame =>
         frame.streamId match {
           case 0 => log.error(s"Dropping ${frame.name} message on the connection")
-          case id => liveStreams.get(id) match {
-            case null => log.error(s"Dropping ${frame.name} message on unknown stream ${id}")
-            case stream => stream.recvq.offer(frame)
-          }
+          case id =>
+            val enqT = Stopwatch.start()
+            liveStreams.get(id) match {
+              case null => log.error(s"Dropping ${frame.name} message on unknown stream ${id}")
+              case stream =>
+                stream.recvq.offer(frame)
+                recvqOfferMicros.add(enqT().inMicroseconds)
+            }
         }
         loop()
       }
@@ -142,22 +136,26 @@ class ClientDispatcher(
     /** Write a request stream */
     def streamRequest(data: DataStream): Future[Unit] = {
       require(!isRequestFinished)
-      val write: DataStream.Value => Future[Unit] = { v =>
-        val writeF = v match {
-          case data: DataStream.Data =>
-            transport.writeData(data, id).before(data.release())
-          case DataStream.Trailers(tlrs) =>
-            transport.writeTrailers(tlrs, id)
-        }
-        if (v.isEnd) writeF.ensure(setRequestFinished())
-        writeF
+      lazy val loopUnless: Boolean => Future[Unit] = { eos =>
+        if (eos) Future.Unit
+        else loop()
       }
-      def loop(): Future[Unit] = data.read().flatMap(write)
+      def loop(): Future[Unit] =
+        data.read().flatMap(writeData).flatMap(loopUnless)
       loop()
     }
 
-    private[this] val write: Http2StreamFrame => Future[Unit] =
-      f => transport.write(f)
+    private[this] val writeData: DataStream.Value => Future[Boolean] = { v =>
+      val writeF = v match {
+        case data: DataStream.Data => transport.writeData(data, id).before(data.release())
+        case DataStream.Trailers(tlrs) => transport.writeTrailers(tlrs, id)
+      }
+      if (v.isEnd) writeF.ensure(setRequestFinished())
+      writeF.map(_ => v.isEnd)
+    }
+
+    private[this] val releaser: Int => Future[Unit] =
+      bytes => transport.writeWindowUpdate(bytes, id)
 
     def readResponse(): Future[Response] = {
       // Start out by reading response headers from the stream
@@ -173,7 +171,7 @@ class ClientDispatcher(
         case f: Http2HeadersFrame =>
           val responseStart = Stopwatch.start()
           val data = new Http2FrameDataStream(recvq, releaser, minAccumFrames, streamStats)
-          data.onEnd.onSuccess(_ => responseDurations.add(responseStart().inMillis))
+          data.onEnd.onSuccess(_ => responseMillis.add(responseStart().inMillis))
           data.onEnd.ensure(setResponseFinished())
           Response(ResponseHeaders(f.headers), Some(data))
 
@@ -182,8 +180,5 @@ class ClientDispatcher(
           throw new IllegalArgumentException(s"Expected response HEADERS; received ${f.name}")
       }
     }
-
-    private[this] val releaser: Int => Future[Unit] =
-      bytes => transport.writeWindowUpdate(bytes, id)
   }
 }

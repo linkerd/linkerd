@@ -31,12 +31,12 @@ private[http2] object Http2FrameDataStream {
     data: Option[DataStream.Data],
     trailers: Option[DataStream.Value]
   ) {
-    require(data.nonEmpty || trailers.nonEmpty)
+    require(data.isDefined || trailers.isDefined)
   }
 
   private class FrameData(frame: Http2DataFrame, releaser: DataReleaser)
     extends DataStream.Data {
-    def buf = ByteBufAsBuf.Owned(frame.content /*.retain()*/ )
+    def buf = ByteBufAsBuf.Owned(frame.content)
     def isEnd = frame.isEndStream
     private[this] val bytes = frame.content.readableBytes + frame.padding
     def release(): Future[Unit] = releaser(bytes)
@@ -124,44 +124,42 @@ private[http2] class Http2FrameDataStream(
     var content: CompositeByteBuf = null
     var bytes = 0
     var eos = false
-    var trailers: Option[DataStream.Trailers] = None
+    var trailers: DataStream.Trailers = null
 
     var iter = frames.iterator
-    while (iter.hasNext && !eos && trailers.isEmpty) {
+    while (iter.hasNext && !eos && trailers == null) {
       iter.next() match {
         case f: Http2DataFrame =>
           bytes += f.content.readableBytes + f.padding
           if (content == null) {
             content = f.content.alloc.compositeBuffer(frames.length)
           }
-          content.addComponent(true /*advance writerIndex*/ , f.content)
+          content.addComponent(true /*advance widx*/ , f.content)
           eos = f.isEndStream
 
         case f: Http2HeadersFrame =>
-          trailers = Some(DataStream.Trailers(Headers(f.headers)))
+          trailers = DataStream.Trailers(Headers(f.headers))
       }
     }
 
-    val data: Option[DataStream.Data] =
-      if (content == null) None
+    val data: DataStream.Data =
+      if (content == null) null
       else {
         accumBytes.add(bytes)
-        val data = new DataStream.Data {
+        new DataStream.Data {
           val buf = ByteBufAsBuf.Owned(content.retain())
           def isEnd = eos
           def release() = if (bytes > 0) releaser(bytes) else Future.Unit
         }
-        Some(data)
       }
 
     val next = (data, trailers) match {
-      case (Some(data), Some(trailers)) =>
-        if (state.compareAndSet(Open, Closing(trailers))) data
+      case (null, null) => throw new IllegalStateException("No data or trailers available")
+      case (data, null) => data
+      case (null, tlrs) => tlrs
+      case (data, tlrs) =>
+        if (state.compareAndSet(Open, Closing(tlrs))) data
         else throw expectedOpenException(state.get)
-      case (Some(data), None) => data
-      case (None, Some(trailers)) => trailers
-      case (None, None) =>
-        throw new IllegalStateException("No data or trailers available")
     }
 
     accumMicros.add(start().inMicroseconds)

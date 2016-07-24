@@ -67,38 +67,40 @@ class ServerStreamTransport(
 
   /** Read the Request from the transport. */
   def read(): Future[Request] =
-    transport.read().flatMap {
-      case f: Http2HeadersFrame if f.isEndStream =>
-        Future.value(Request(RequestHeaders(f.headers)))
+    transport.read().map(toRequest)
 
-      case f: Http2HeadersFrame =>
-        val t = Stopwatch.start()
-        val recvq = new AsyncQueue[Http2StreamFrame]
-        val readF = readStream(recvq)
-        readF.onSuccess(_ => requestDurations.add(t().inMillis))
-        val stream = new Http2FrameDataStream(recvq, releaser)
-        Future.value(Request(RequestHeaders(f.headers), Some(stream)))
+  private[this] val toRequest: Http2StreamFrame => Request = {
+    case f: Http2HeadersFrame if f.isEndStream =>
+      Request(RequestHeaders(f.headers))
 
-      case f =>
-        val e = new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
-        Future.exception(e)
-    }
+    case f: Http2HeadersFrame =>
+      val t = Stopwatch.start()
+      val recvq = new AsyncQueue[Http2StreamFrame]
+      val readF = readStream(recvq)
+      readF.onSuccess(_ => requestDurations.add(t().inMillis))
+      val stream = new Http2FrameDataStream(recvq, releaser)
+      Request(RequestHeaders(f.headers), Some(stream))
+
+    case f =>
+      throw new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
+  }
 
   /**
    * Read data (and trailer) frames from the transport until an
    * end-of-stream frame is encountered.
    */
   private[this] def readStream(recvq: AsyncQueue[Http2StreamFrame]): Future[Unit] = {
-    def loop(): Future[Unit] =
-      transport.read().flatMap { f =>
-        val isEnd = f match {
-          case f: Http2HeadersFrame => f.isEndStream
-          case f: Http2DataFrame => f.isEndStream
-          case _ => false
-        }
-        recvq.offer(f)
-        if (isEnd) Future.Unit else loop()
+    lazy val enqueueAndLoop: Http2StreamFrame => Future[Unit] = { f =>
+      val isEnd = f match {
+        case f: Http2HeadersFrame => f.isEndStream
+        case f: Http2DataFrame => f.isEndStream
+        case _ => false
       }
+      recvq.offer(f)
+      if (isEnd) Future.Unit else loop()
+    }
+    def loop(): Future[Unit] =
+      transport.read().flatMap(enqueueAndLoop)
 
     loop()
   }
@@ -118,14 +120,15 @@ class ServerStreamTransport(
     }
 
   private[this] def streamFrom(data: DataStream): Future[Unit] = {
+    lazy val loopUnless: Boolean => Future[Unit] = { eos =>
+      if (eos) Future.Unit
+      else loop()
+    }
     def loop(): Future[Unit] = {
       val sinceReadStart = Stopwatch.start()
       val readF = data.read()
       readF.onSuccess(_ => sendqReadMicros.add(sinceReadStart().inMicroseconds))
-      readF.flatMap(writeData).flatMap { eos =>
-        if (eos) Future.Unit
-        else loop()
-      }
+      readF.flatMap(writeData).flatMap(loopUnless)
     }
 
     loop()

@@ -1,42 +1,53 @@
 package com.twitter.finagle.buoyant.http2
 
 import com.twitter.finagle.{CancelledRequestException, Service}
-import com.twitter.util.{Closable, Future, Time}
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.util.{Closable, Future, Stopwatch, Time}
+
+object ServerDispatcher {
+  private lazy val cancelation = new CancelledRequestException
+}
 
 class ServerDispatcher(
   stream: ServerStreamTransport,
-  service: Service[Request, Response]
+  service: Service[Request, Response],
+  stats: StatsReceiver = NullStatsReceiver
 ) extends Closable {
 
-  private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
-  private[this] lazy val cancelation = new CancelledRequestException
+  import ServerDispatcher._
+
+  private[this] val streamingMillis = stats.stat("streaming_ms")
+  private[this] val servingMillis = stats.stat("serving_ms")
 
   @volatile private[this] var finished: Boolean = false
 
-  val pending: Future[Unit] =
-    for {
-      req <- stream.read()
-      rsp <- service(req)
-      writing <- stream.write(rsp)
-      _ <- {
-        val reading = req.data match {
-          case None => Future.Unit
-          case Some(data) => data.onEnd
+  val pending: Future[Unit] = {
+    val serveT0 = Stopwatch.start()
+    val serving =
+      stream.read().flatMap { req =>
+        service(req).flatMap(stream.write(_)).flatMap { writing =>
+          val streamT0 = Stopwatch.start()
+          val reading = req.data match {
+            case None => Future.Unit
+            case Some(data) => data.onEnd
+          }
+          val done = Future.join(reading, writing).unit
+          done.ensure(streamingMillis.add(streamT0().inMillis))
+          done
         }
-        Future.join(reading, writing)
-      }
-      _ <- {
+      }.before {
         finished = true
-        log.info("closing server stream")
-        service.close().join(stream.close()).unit
+        Future.join(service.close(), stream.close()).unit
       }
-    } yield ()
+    serving.ensure(servingMillis.add(serveT0().inMillis))
+    serving
+  }
 
   def close(deadline: Time): Future[Unit] =
     if (finished) Future.Unit
     else {
-      log.info("closing server dispatcher")
+      finished = true
       pending.raise(cancelation)
-      service.close(deadline).join(stream.close(deadline)).unit
+      Future.join(service.close(deadline), stream.close(deadline)).unit
     }
 }
