@@ -21,19 +21,18 @@ object Http2FrameStatsHandler {
     val bytes = stats.stat("bytes")
 
     override def measure(f: Http2StreamFrame, d: Duration): Unit = {
-      super.measure(f, d)
       f match {
         case f: Http2DataFrame =>
           bytes.add(f.content.readableBytes + f.padding)
         case _ =>
       }
+      super.measure(f, d)
     }
   }
 
   private case class FrameStats(stats: StatsReceiver) {
-    val dataStats = new DataStats(stats.scope("DATA"))
     val kinds = Memoize[String, KindStats] {
-      case "DATA" => dataStats
+      case "DATA" => new DataStats(stats.scope("DATA"))
       case k => new KindStats(stats.scope(k))
     }
 

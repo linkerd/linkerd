@@ -8,7 +8,6 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.io.{Buf, Reader, Writer}
 import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Time, Throw}
-import io.netty.buffer.ByteBufAllocator
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicReference, AtomicInteger}
@@ -25,7 +24,7 @@ object ClientDispatcher {
  */
 class ClientDispatcher(
   transport: Http2Transport,
-  allocator: ByteBufAllocator,
+  minAccumFrames: Int = 10,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
@@ -37,13 +36,8 @@ class ClientDispatcher(
   private[this] val liveStreams = new ConcurrentHashMap[Int, StreamTransport]
 
   private[this] val streamStats = statsReceiver.scope("streams")
-  private[this] val liveStreamsGauge = streamStats.addGauge("live") { liveStreams.size }
   private[this] val streamStateStats = streamStats.scope("state")
-
-  private[this] val transportStats = statsReceiver.scope("transport")
-
   private[this] val recvqSizes = streamStats.stat("recvq")
-
   private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
   private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
 
@@ -178,7 +172,7 @@ class ClientDispatcher(
 
         case f: Http2HeadersFrame =>
           val responseStart = Stopwatch.start()
-          val data = new Http2FrameDataStream(recvq, releaser)
+          val data = new Http2FrameDataStream(recvq, releaser, minAccumFrames, streamStats)
           data.onEnd.onSuccess(_ => responseDurations.add(responseStart().inMillis))
           data.onEnd.ensure(setResponseFinished())
           Response(ResponseHeaders(f.headers), Some(data))

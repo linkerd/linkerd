@@ -52,7 +52,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
     protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] = {
       val h2 = new Http2Transport(trans, transportStats)
-      new ClientDispatcher(h2, Bufs.allocator(params), dispatchStats)
+      new ClientDispatcher(h2, 30, dispatchStats)
     }
   }
 
