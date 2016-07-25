@@ -247,6 +247,12 @@ the following command:
 $ docker run -p 4140:4140 -p 9990:9990 -v /absolute/path/to/myapp:/myapp buoyantio/linkerd:0.0.10-SNAPSHOT /myapp/linkerd.yml
 ```
 
+For local testing convenience, we supply a config that routes to a single backend on _localhost:8080_.
+
+```
+$ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.7.1-SNAPSHOT /config/static_namer.yaml
+```
+
 The list of image names may be changed with a command like:
 
 ```
