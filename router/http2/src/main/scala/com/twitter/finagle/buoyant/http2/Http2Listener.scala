@@ -31,7 +31,7 @@ object Http2Listener {
             // new TimingHandler(connStats.scope("outer")),
             new Http2FrameCodec(true /*server*/ ),
             // new DebugHandler("srv.conn"),
-            new Http2FrameStatsHandler(statsReceiver.scope("frames")),
+            // new Http2FrameStatsHandler(statsReceiver.scope("conn")),
             // new TimingHandler(connStats.scope("inner")),
             new Http2MultiplexCodec(true /*server*/ , null, prepChildStream(stream))
           // No events happen on the pipeline after the muxer, since
@@ -48,6 +48,7 @@ object Http2Listener {
     def prepChildStream(stream: ChannelInitializer[Channel]) =
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
+          // ch.pipeline.addLast(new Http2FrameStatsHandler(statsReceiver.scope("stream")))
           ch.pipeline.addLast(stream)
           val _ = ch.pipeline.addLast(new ChannelInitializer[Channel] {
             def initChannel(ch: Channel): Unit = {

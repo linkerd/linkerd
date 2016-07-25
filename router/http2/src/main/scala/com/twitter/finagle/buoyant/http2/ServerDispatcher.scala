@@ -34,7 +34,7 @@ class ServerDispatcher(
         }
       }.before {
         if (closed.compareAndSet(false, true)) {
-          Future.join(service.close(), stream.close()).unit
+          Future.join(service.close(), stream.onClose).unit
         } else Future.Unit
       }
     serving.ensure(servingMillis.add(t0().inMillis))

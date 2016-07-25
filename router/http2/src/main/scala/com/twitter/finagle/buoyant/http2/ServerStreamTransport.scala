@@ -44,6 +44,7 @@ class ServerStreamTransport(
   private[this] val recvqSizes = statsReceiver.stat("recvq")
   private[this] val streamReadMicros = statsReceiver.stat("stream_read_us")
 
+  def onClose: Future[Throwable] = transport.onClose
   def close(deadline: Time): Future[Unit] =
     transport.close(deadline)
 
