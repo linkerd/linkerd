@@ -98,28 +98,28 @@ class ServerStreamTransport(
   private[this] def streamFrom(data: DataStream): Future[Unit] =
     if (data.isEmpty) Future.Unit
     else {
-      def read(): Future[DataStream.Value] = {
-        val t0 = Stopwatch.start()
-        val f = data.read()
-        f.ensure(streamReadMicros.add(t0().inMicroseconds))
-        f
-      }
-
       lazy val loop: Boolean => Future[Unit] = { eos =>
         if (data.isEmpty || eos) Future.Unit
-        else read().flatMap(writeData).flatMap(loop)
+        else readFrame(data).flatMap(writeData).flatMap(loop)
       }
 
       val t0 = Stopwatch.start()
-      val looping = read().flatMap(writeData).flatMap(loop)
+      val looping = readFrame(data).flatMap(writeData).flatMap(loop)
       looping.ensure(responseDurations.add(t0().inMillis))
       looping
     }
 
+  private[this] def readFrame(data: DataStream): Future[DataStream.Frame] = {
+    val t0 = Stopwatch.start()
+    val rx = data.read()
+    rx.ensure(streamReadMicros.add(t0().inMicroseconds))
+    rx
+  }
+
   private[this] def writeHeaders(msg: Message): Future[Boolean] =
     transport.write(streamId, msg).map(_ => msg.isEmpty)
 
-  private[this] val writeData: DataStream.Value => Future[Boolean] = {
+  private[this] val writeData: DataStream.Frame => Future[Boolean] = {
     case data: DataStream.Data =>
       transport.write(streamId, data).before(data.release()).map(_ => data.isEnd)
     case tlrs: DataStream.Trailers =>

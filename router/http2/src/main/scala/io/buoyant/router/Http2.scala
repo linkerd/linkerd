@@ -51,10 +51,12 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
     private[this] lazy val transportStats = statsReceiver.scope("transport")
 
-    protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] = {
-      val h2 = new Http2Transport(trans, transportStats)
-      new ClientDispatcher(h2, statsReceiver = dispatchStats)
-    }
+    protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] =
+      new ClientDispatcher(
+        new Http2Transport(trans, transportStats),
+        minAccumFrames = 3,
+        statsReceiver = dispatchStats
+      )
   }
 
   val client = Client()

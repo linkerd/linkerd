@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.http2
 
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Promise, Return, Throw}
+import com.twitter.util.Future
 
 sealed trait Headers {
   def headers: Seq[(String, String)]
@@ -10,8 +10,8 @@ sealed trait Headers {
 /**
  * A generic HTTP2 message.
  *
- * Like HTTP1 messages, requests consist of an initial list of
- * headers, possibly followed by a data stream and trailing headers.
+ * Comprises initial headers, optionally followed by a data stream,
+ * optionally followed by trailers.
  *
  * These types are only intended to provide a session layer and are
  * not intended to provide programmer-friendly niceties.
@@ -33,12 +33,13 @@ trait Response extends Message {
 }
 
 /**
+ * A readable stream of Data or Trailers frames.
  */
 trait DataStream {
   override def toString = s"DataStream(isEmpty=$isEmpty)"
   def isEmpty: Boolean
   def onEnd: Future[Unit]
-  def read(): Future[DataStream.Value]
+  def read(): Future[DataStream.Frame]
   def fail(exn: Throwable): Unit
 }
 
@@ -67,13 +68,13 @@ object DataStream {
 
   /**
    */
-  sealed trait Value {
+  sealed trait Frame {
     def isEnd: Boolean
   }
 
   /**
    */
-  trait Data extends Value {
+  trait Data extends Frame {
     override def toString = s"DataStream.Data(buf=$buf, isEnd=$isEnd)"
     def buf: Buf
     def release(): Future[Unit]
@@ -87,7 +88,7 @@ object DataStream {
 
   object Eos extends Eos { def buf = Buf.Empty }
 
-  trait Trailers extends Value with Headers {
+  trait Trailers extends Frame with Headers {
     override def toString = s"DataStream.Trailers($headers)"
     val isEnd = true
   }

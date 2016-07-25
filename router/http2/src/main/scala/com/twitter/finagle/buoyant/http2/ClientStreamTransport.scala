@@ -51,7 +51,7 @@ private[http2] class ClientStreamTransport(
     data.read().flatMap(writeData).flatMap(loop)
   }
 
-  private[this] val writeData: DataStream.Value => Future[Boolean] = { v =>
+  private[this] val writeData: DataStream.Frame => Future[Boolean] = { v =>
     val writeF = v match {
       case data: DataStream.Data =>
         transport.write(streamId, data).before(data.release()).map(_ => data.isEnd)
@@ -63,6 +63,7 @@ private[http2] class ClientStreamTransport(
   }
 
   def readResponse(): Future[Response] = {
+    require(!isResponseFinished)
     // Start out by reading response headers from the stream
     // queue. Once a response is initialized, if data is expected,
     // continue reading from the queue until an end stream message is
@@ -75,10 +76,10 @@ private[http2] class ClientStreamTransport(
 
       case f: Http2HeadersFrame =>
         val responseStart = Stopwatch.start()
-        val data = newDataStream()
-        data.onEnd.ensure(responseMillis.add(responseStart().inMillis))
-        data.onEnd.ensure(setResponseFinished())
-        Netty4Message.Response(f.headers, data)
+        val rsp = Netty4Message.Response(f.headers, newDataStream())
+        rsp.onEnd.ensure(responseMillis.add(responseStart().inMillis))
+        rsp.onEnd.ensure(setResponseFinished())
+        rsp
 
       case f =>
         setResponseFinished()

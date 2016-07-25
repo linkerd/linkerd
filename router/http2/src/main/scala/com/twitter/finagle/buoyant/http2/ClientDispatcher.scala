@@ -18,7 +18,7 @@ object ClientDispatcher {
  */
 class ClientDispatcher(
   transport: Http2Transport,
-  minAccumFrames: Int = 10,
+  minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 

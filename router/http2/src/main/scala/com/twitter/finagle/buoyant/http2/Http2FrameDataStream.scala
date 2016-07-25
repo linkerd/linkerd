@@ -79,7 +79,7 @@ private[http2] class Http2FrameDataStream(
     case _ =>
   }
 
-  def read(): Future[DataStream.Value] = {
+  def read(): Future[DataStream.Frame] = {
     val start = Stopwatch.start()
     val f = state.get match {
       case Open =>
@@ -104,7 +104,7 @@ private[http2] class Http2FrameDataStream(
   // Try to read as much data as is available so that it may be
   // chunked. This is done after poll() returns because it's likely
   // that multiple items may have entered the queue.
-  private[this] val andDrainAccum: Http2StreamFrame => DataStream.Value = {
+  private[this] val andDrainAccum: Http2StreamFrame => DataStream.Frame = {
     case f: Http2HeadersFrame if f.isEndStream =>
       if (state.compareAndSet(Open, Closed)) {
         endP.setDone()
@@ -131,7 +131,7 @@ private[http2] class Http2FrameDataStream(
   private def toData(f: Http2DataFrame): DataStream.Data =
     new FrameData(f, releaser)
 
-  private val accumStream: Queue[Http2StreamFrame] => DataStream.Value = { frames =>
+  private val accumStream: Queue[Http2StreamFrame] => DataStream.Frame = { frames =>
     require(frames.nonEmpty)
     val start = Stopwatch.start()
 
