@@ -53,20 +53,20 @@ class ServerStreamTransport(
 
   private[this] val toRequest: Http2StreamFrame => Request = {
     case f: Http2HeadersFrame if f.isEndStream =>
-      Request(RequestHeaders(f.headers))
+      Netty4Message.Request(f.headers, DataStream.Nil)
 
     case f: Http2HeadersFrame =>
       val recvq = new AsyncQueue[Http2StreamFrame]
-      val readF = readStream(recvq)
+      readStream(recvq)
       val stream = new Http2FrameDataStream(recvq, releaser)
-      Request(RequestHeaders(f.headers), stream)
+      Netty4Message.Request(f.headers, stream)
 
     case f =>
       throw new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
   }
 
   private[this] val releaser: Int => Future[Unit] =
-    incr => transport.writeWindowUpdate(incr, streamId)
+    incr => transport.updateWindow(streamId, incr)
 
   /**
    * Read data (and trailer) frames from the transport until an
@@ -82,7 +82,7 @@ class ServerStreamTransport(
 
     val t0 = Stopwatch.start()
     val looping = transport.read().flatMap(enqueueLoop)
-    looping.onSuccess(_ => requestDurations.add(t0().inMillis))
+    looping.ensure(requestDurations.add(t0().inMillis))
     looping
   }
 
@@ -93,7 +93,7 @@ class ServerStreamTransport(
   }
 
   def write(rsp: Response): Future[Future[Unit]] =
-    writeHeaders(rsp.headers, rsp.data.isEmpty).map(_ => streamFrom(rsp.data))
+    writeHeaders(rsp).map(_ => streamFrom(rsp))
 
   private[this] def streamFrom(data: DataStream): Future[Unit] =
     if (data.isEmpty) Future.Unit
@@ -101,7 +101,7 @@ class ServerStreamTransport(
       def read(): Future[DataStream.Value] = {
         val t0 = Stopwatch.start()
         val f = data.read()
-        f.onSuccess(_ => streamReadMicros.add(t0().inMicroseconds))
+        f.ensure(streamReadMicros.add(t0().inMicroseconds))
         f
       }
 
@@ -112,21 +112,18 @@ class ServerStreamTransport(
 
       val t0 = Stopwatch.start()
       val looping = read().flatMap(writeData).flatMap(loop)
-      looping.onSuccess(_ => responseDurations.add(t0().inMillis))
+      looping.ensure(responseDurations.add(t0().inMillis))
       looping
     }
 
-  private[this] def writeHeaders(h: Headers, eos: Boolean): Future[Boolean] =
-    transport.writeHeaders(h, streamId, eos).map(_ => eos)
-
-  private[this] def writeTrailers(h: Headers): Future[Boolean] =
-    transport.writeTrailers(h, streamId).before(Future.True)
+  private[this] def writeHeaders(msg: Message): Future[Boolean] =
+    transport.write(streamId, msg).map(_ => msg.isEmpty)
 
   private[this] val writeData: DataStream.Value => Future[Boolean] = {
     case data: DataStream.Data =>
-      transport.writeData(data, streamId).before(data.release()).map(_ => data.isEnd)
-    case DataStream.Trailers(tlrs) =>
-      transport.writeTrailers(tlrs, streamId).before(Future.True)
+      transport.write(streamId, data).before(data.release()).map(_ => data.isEnd)
+    case tlrs: DataStream.Trailers =>
+      transport.write(streamId, tlrs).before(Future.True)
   }
 
 }

@@ -53,7 +53,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
 
     protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] = {
       val h2 = new Http2Transport(trans, transportStats)
-      new ClientDispatcher(h2, 30, dispatchStats)
+      new ClientDispatcher(h2, statsReceiver = dispatchStats)
     }
   }
 
@@ -110,7 +110,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
         Future.value((dst, req))
       }
 
-      private def reqPath(req: Request): Path = req.headers.path match {
+      private def reqPath(req: Request): Path = req.path match {
         case "" | "/" => Path.empty
         case UriPath(path) => Path.read(path)
       }

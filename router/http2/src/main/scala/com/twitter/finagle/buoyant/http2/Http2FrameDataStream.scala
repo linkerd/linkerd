@@ -18,14 +18,17 @@ private[http2] object Http2FrameDataStream {
   private case class Closing(trailers: DataStream.Trailers) extends State
   private object Closed extends State
 
-  val closedException =
+  private val closedException =
     new IllegalStateException("stream closed")
 
-  val noTrailersException =
+  private val noTrailersException =
     new IllegalStateException("closing state without trailers")
 
-  def expectedOpenException(state: State) =
+  private def expectedOpenException(state: State) =
     new IllegalStateException(s"expected Open state; found ${state}")
+
+  private def unexpectedFrame(f: Http2StreamFrame) =
+    new IllegalStateException(s"Unexpected frame: ${f.name}")
 
   private class FrameData(frame: Http2DataFrame, releaser: DataReleaser) extends DataStream.Data {
     private[this] val windowIncrement = frame.content.readableBytes + frame.padding
@@ -103,12 +106,16 @@ private[http2] class Http2FrameDataStream(
   // that multiple items may have entered the queue.
   private[this] val andDrainAccum: Http2StreamFrame => DataStream.Value = {
     case f: Http2HeadersFrame if f.isEndStream =>
-      if (state.compareAndSet(Open, Closed)) DataStream.Trailers(Headers(f.headers))
-      else throw expectedOpenException(state.get)
+      if (state.compareAndSet(Open, Closed)) {
+        endP.setDone()
+        Netty4Message.Trailers(f.headers)
+      } else throw expectedOpenException(state.get)
 
     case f: Http2DataFrame if f.isEndStream =>
-      if (state.compareAndSet(Open, Closed)) toData(f)
-      else throw expectedOpenException(state.get)
+      if (state.compareAndSet(Open, Closed)) {
+        endP.setDone()
+        toData(f)
+      } else throw expectedOpenException(state.get)
 
     case f: Http2DataFrame if frameq.size < minAccumFrames => toData(f)
 
@@ -118,8 +125,7 @@ private[http2] class Http2FrameDataStream(
         case Return(q) => accumStream(f +: q)
       }
 
-    case f =>
-      throw new IllegalArgumentException(s"Unexpected frame: ${f.name}")
+    case f => throw unexpectedFrame(f)
   }
 
   private def toData(f: Http2DataFrame): DataStream.Data =
@@ -146,7 +152,7 @@ private[http2] class Http2FrameDataStream(
           eos = f.isEndStream
 
         case f: Http2HeadersFrame =>
-          trailers = DataStream.Trailers(Headers(f.headers))
+          trailers = Netty4Message.Trailers(f.headers)
       }
     }
 

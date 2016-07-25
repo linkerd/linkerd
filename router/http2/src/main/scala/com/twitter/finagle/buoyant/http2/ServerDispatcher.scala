@@ -28,7 +28,7 @@ class ServerDispatcher(
       stream.read().flatMap { req =>
         service(req).flatMap(stream.write(_)).flatMap { writing =>
           val t1 = Stopwatch.start()
-          val done = Future.join(req.data.onEnd, writing).unit
+          val done = Future.join(req.onEnd, writing).unit
           done.ensure(streamingMillis.add(t1().inMillis))
           done
         }

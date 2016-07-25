@@ -36,9 +36,9 @@ private[http2] class ClientStreamTransport(
   }
 
   def writeHeaders(hdrs: Headers, eos: Boolean = false) = {
-    val writeF = transport.writeHeaders(hdrs, streamId, eos)
-    if (eos) writeF.ensure(setRequestFinished())
-    writeF
+    val tx = transport.write(streamId, hdrs, eos)
+    if (eos) tx.ensure(setRequestFinished())
+    tx
   }
 
   /** Write a request stream */
@@ -54,9 +54,9 @@ private[http2] class ClientStreamTransport(
   private[this] val writeData: DataStream.Value => Future[Boolean] = { v =>
     val writeF = v match {
       case data: DataStream.Data =>
-        transport.writeData(data, streamId).before(data.release()).map(_ => data.isEnd)
-      case DataStream.Trailers(tlrs) =>
-        transport.writeTrailers(tlrs, streamId).before(Future.True)
+        transport.write(streamId, data).before(data.release()).map(_ => data.isEnd)
+      case tlrs: DataStream.Trailers =>
+        transport.write(streamId, tlrs).before(Future.True)
     }
     if (v.isEnd) writeF.ensure(setRequestFinished())
     writeF
@@ -71,14 +71,14 @@ private[http2] class ClientStreamTransport(
     recvq.poll().map {
       case f: Http2HeadersFrame if f.isEndStream =>
         setResponseFinished()
-        Response(ResponseHeaders(f.headers))
+        Netty4Message.Response(f.headers, DataStream.Nil)
 
       case f: Http2HeadersFrame =>
         val responseStart = Stopwatch.start()
-        val data = new Http2FrameDataStream(recvq, releaser, minAccumFrames, statsReceiver)
-        data.onEnd.onSuccess(_ => responseMillis.add(responseStart().inMillis))
+        val data = newDataStream()
+        data.onEnd.ensure(responseMillis.add(responseStart().inMillis))
         data.onEnd.ensure(setResponseFinished())
-        Response(ResponseHeaders(f.headers), data)
+        Netty4Message.Response(f.headers, data)
 
       case f =>
         setResponseFinished()
@@ -86,6 +86,9 @@ private[http2] class ClientStreamTransport(
     }
   }
 
-  private[this] val releaser: Int => Future[Unit] =
-    incr => transport.writeWindowUpdate(incr, streamId)
+  protected[this] def newDataStream(): DataStream =
+    new Http2FrameDataStream(recvq, releaser, minAccumFrames, statsReceiver)
+
+  protected[this] val releaser: Int => Future[Unit] =
+    incr => transport.updateWindow(streamId, incr)
 }

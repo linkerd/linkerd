@@ -128,6 +128,7 @@ object LinkerdBuild extends Base {
   val execScriptJvmOptions =
     """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
        |   -Dsun.net.inetaddr.ttl=60                         \
+       |   -DDcom.twitter.util.events.sinkEnabled=false      \
        |   -Xms${JVM_HEAP_MIN:-32M}                          \
        |   -Xmx${JVM_HEAP_MAX:-1024M}                        \
        |   -XX:+AggressiveOpts                               \

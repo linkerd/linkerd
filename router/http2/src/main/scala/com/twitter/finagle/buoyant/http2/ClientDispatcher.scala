@@ -64,13 +64,13 @@ class ClientDispatcher(
    */
   def apply(req: Request): Future[Response] = {
     val stream = newStream()
-    if (req.data.isEmpty) {
-      stream.writeHeaders(req.headers, eos = true)
+    if (req.isEmpty) {
+      stream.writeHeaders(req, eos = true)
         .before(stream.readResponse())
     } else {
-      stream.writeHeaders(req.headers).before {
+      stream.writeHeaders(req).before {
         val clock = Stopwatch.start()
-        val tx = stream.streamRequest(req.data)
+        val tx = stream.streamRequest(req)
         tx.onSuccess(_ => requestMillis.add(clock().inMillis))
 
         val rx = stream.readResponse()

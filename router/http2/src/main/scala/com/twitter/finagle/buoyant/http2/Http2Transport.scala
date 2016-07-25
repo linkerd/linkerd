@@ -9,14 +9,13 @@ import io.netty.handler.codec.http2._
 
 object Http2Transport {
   trait Writer {
-    def writeHeaders(orig: Headers, id: Int, eos: Boolean = false): Future[Unit]
-    def writeTrailers(orig: Headers, id: Int): Future[Unit]
-    def writeTrailers(tlrs: DataStream.Trailers, id: Int): Future[Unit]
+    def write(id: Int, orig: Headers, eos: Boolean): Future[Unit]
+    def write(id: Int, orig: Message): Future[Unit]
+    def write(id: Int, tlrs: DataStream.Trailers): Future[Unit]
 
-    def write(v: DataStream.Value, id: Int): Future[Unit]
-    def writeData(buf: Buf, eos: Boolean = false, id: Int): Future[Unit]
-    def writeData(data: DataStream.Data, id: Int): Future[Unit]
-    def writeWindowUpdate(incr: Int, id: Int): Future[Unit]
+    def write(id: Int, buf: Buf, eos: Boolean): Future[Unit]
+    def write(id: Int, data: DataStream.Data): Future[Unit]
+    def updateWindow(id: Int, incr: Int): Future[Unit]
 
   }
 }
@@ -33,60 +32,42 @@ class Http2Transport(
   private[this] val transportWriteUs = statsReceiver.stat("write_us")
 
   override def read(): Future[Http2StreamFrame] = {
-    val snap = Stopwatch.start()
-    val readF = transport.read()
-    // readF.respond(log.info("read: %s", _))
-    readF.onSuccess(_ => transportReadUs.add(snap().inMicroseconds))
-    readF
+    val t0 = Stopwatch.start()
+    val rx = transport.read()
+    rx.onSuccess(_ => transportReadUs.add(t0().inMicroseconds))
+    rx
   }
 
   override def write(f: Http2StreamFrame): Future[Unit] = {
-    val snap = Stopwatch.start()
-    val writeF = transport.write(f)
-    // writeF.respond(log.info("write: %s => %s", f, _))
-    writeF.onSuccess(_ => transportWriteUs.add(snap().inMicroseconds))
-    writeF
+    val t0 = Stopwatch.start()
+    val tx = transport.write(f)
+    tx.onSuccess(_ => transportWriteUs.add(t0().inMicroseconds))
+    tx
   }
 
-  def writeHeaders(orig: Headers, id: Int, eos: Boolean = false): Future[Unit] = {
-    val headers = orig match {
-      case h: Netty4Headers => h.underlying
-      case hs =>
-        val headers = new DefaultHttp2Headers
-        for ((k, v) <- hs.toSeq) headers.add(k, v)
-        headers
-    }
-    val frame = new DefaultHttp2HeadersFrame(headers, eos)
+  def write(id: Int, msg: Headers, eos: Boolean): Future[Unit] = {
+    val frame = new DefaultHttp2HeadersFrame(Netty4Message.extract(msg), eos)
     if (id >= 0) frame.setStreamId(id)
     write(frame)
   }
 
-  def writeTrailers(headers: Headers, id: Int): Future[Unit] =
-    writeHeaders(headers, id, eos = true)
+  def write(id: Int, msg: Message): Future[Unit] =
+    write(id, msg, msg.isEmpty)
 
-  def writeTrailers(tlrs: DataStream.Trailers, id: Int): Future[Unit] =
-    writeTrailers(tlrs.headers, id)
+  def write(id: Int, data: DataStream.Data): Future[Unit] =
+    write(id, data.buf, data.isEnd)
 
-  def write(v: DataStream.Value, id: Int): Future[Unit] = v match {
-    case data: DataStream.Data => writeData(data.buf, data.isEnd, id)
-    case DataStream.Trailers(tlrs) => writeTrailers(tlrs, id)
-  }
+  def write(id: Int, tlrs: DataStream.Trailers): Future[Unit] =
+    write(id, tlrs, true /*eos*/ )
 
-  def writeData(buf: Buf, eos: Boolean = false, id: Int): Future[Unit] = {
+  def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
     val bb = BufAsByteBuf.Owned(buf)
     val frame = new DefaultHttp2DataFrame(bb, eos)
     if (id >= 0) frame.setStreamId(id)
     write(frame)
   }
 
-  def writeData(data: DataStream.Data, id: Int): Future[Unit] = {
-    val bb = BufAsByteBuf.Owned(data.buf)
-    val frame = new DefaultHttp2DataFrame(bb, data.isEnd)
-    if (id >= 0) frame.setStreamId(id)
-    write(frame)
-  }
-
-  def writeWindowUpdate(incr: Int, id: Int): Future[Unit] = {
+  def updateWindow(id: Int, incr: Int): Future[Unit] = {
     val frame = new DefaultHttp2WindowUpdateFrame(incr)
     if (id >= 0) frame.setStreamId(id)
     write(frame)
