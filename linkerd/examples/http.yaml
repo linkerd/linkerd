@@ -19,6 +19,7 @@ routers:
     engine:
       kind: netty3
   client:
+    # maxResponseKB: 40960 # 40MB
     engine:
       kind: netty3
 

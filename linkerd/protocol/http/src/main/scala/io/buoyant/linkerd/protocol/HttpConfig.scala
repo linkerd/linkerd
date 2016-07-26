@@ -2,8 +2,9 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.storage._
 import com.twitter.finagle.{Path, Stack}
-import com.twitter.finagle.Http.param.HttpImpl
+import com.twitter.finagle.Http.{param => hparam}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.service.Retries
@@ -72,7 +73,14 @@ case class HttpServerConfig(
 
 case class HttpConfig(
   httpAccessLog: Option[String],
-  identifier: Option[HttpIdentifierConfig]
+  identifier: Option[HttpIdentifierConfig],
+  maxChunkKB: Option[Int],
+  maxHeadersKB: Option[Int],
+  maxInitialLineKB: Option[Int],
+  maxRequestKB: Option[Int],
+  maxResponseKB: Option[Int],
+  streamingEnabled: Option[Boolean],
+  compressionLevel: Option[Int]
 ) extends RouterConfig {
 
   var client: Option[HttpClientConfig] = None
@@ -89,4 +97,12 @@ case class HttpConfig(
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
     .maybeWith(identifier.map(id => Http.param.HttpIdentifier(id.newIdentifier)))
+    .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
+    .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
+    .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
+    .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))
+    .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
+    .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
+    .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
+
 }
