@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.finagle.Path
-import com.twitter.finagle.buoyant.http2.{Request, Response}
+import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.buoyant.router.{H2, RoutingFactory}
 

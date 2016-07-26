@@ -1,10 +1,20 @@
 package io.buoyant.router
 package h2
 
+import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.{Dtab, Path}
 import com.twitter.finagle.buoyant.h2.Request
 import com.twitter.util.Future
+
+object PathIdentifier {
+  def mk(params: Stack.Params) = {
+    val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
+    val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
+    new PathIdentifier(pfx, baseDtab)
+  }
+
+  val param = H2.Identifier(mk)
+}
 
 class PathIdentifier(pfx: Path, baseDtab: () => Dtab)
   extends RoutingFactory.Identifier[Request] {

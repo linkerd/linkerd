@@ -14,7 +14,9 @@ import io.buoyant.router.h2.PathIdentifier
 import io.netty.handler.codec.http2.Http2StreamFrame
 import java.net.SocketAddress
 
-object H2 extends Client[Request, Response] with Server[Request, Response] {
+object H2 extends Client[Request, Response]
+  with Router[Request, Response]
+  with Server[Request, Response] {
 
   private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
 
@@ -32,11 +34,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
 
   case class Identifier(mk: Stack.Params => RoutingFactory.Identifier[Request])
   implicit private[buoyant] object Identifier extends Stack.Param[Identifier] {
-    val default = Identifier({ params =>
-      val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
-      val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
-      new PathIdentifier(pfx, baseDtab)
-    })
+    val default = PathIdentifier.param
   }
 
   /*

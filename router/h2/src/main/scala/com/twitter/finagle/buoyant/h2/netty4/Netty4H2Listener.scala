@@ -5,7 +5,9 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
 import com.twitter.finagle.server.Listener
 import io.netty.channel.{Channel, ChannelInitializer, ChannelPipeline}
-import io.netty.handler.codec.http2.{Http2FrameCodec, Http2MultiplexCodec, Http2StreamFrame}
+import io.netty.handler.codec.http.HttpServerUpgradeHandler
+import io.netty.handler.codec.http2._
+import io.netty.util.AsciiString
 
 /**
  * Please note that the listener cannot be used for TLS yet.
@@ -69,5 +71,22 @@ object Netty4Http2Listener {
       // See https://github.com/netty/netty/issues/3667#issue-69640214
       params = params + Netty4Listener.BackPressure(false)
     )
+  }
+
+  class DeteectH2Preface(handlerH1: ChannelHandler, handlerH2: ChannelHandler)
+      extends ChannelDuplexHandler {
+
+    def channelRead(ctx: ChannelHandlerContext, obj: Any): Unit = obj match {
+      case bb: ByteBuf =>
+        val preface = Http2CodecUtil.connectionPrefaceBuf
+        if (bb.readableBytes >= preface.readableBytes) {
+        } else {
+          // TODO buffer at least preface.readableBytes from bb
+          val _ = ctx.fireChannelRead(bb)
+        }
+
+      case obj =>
+        val _ = ctx.fireChannelRead(obj)
+    }
   }
 }
