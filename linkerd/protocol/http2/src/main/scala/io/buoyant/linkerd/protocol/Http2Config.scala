@@ -13,23 +13,25 @@ class Http2Initializer extends ProtocolInitializer.Simple {
   protected type Req = Request
   protected type Rsp = Response
 
+  // TODO
   protected val defaultRouter = {
-    val pathStack = Http2.router.pathStack
-    // .prepend(Headers.Dst.PathFilter.module)
-    // .replace(StackClient.Role.prepFactory, DelayedRelease.module)
-    // .prepend(http.ErrorResponder.module)
-    val boundStack = Http2.router.boundStack
-    // .prepend(Headers.Dst.BoundFilter.module)
-    val clientStack = Http2.router.clientStack
-    // .prepend(http.AccessLogger.module)
-    // .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
-    // .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
-    // .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
-    Http2.router
-      .withPathStack(pathStack)
-      .withBoundStack(boundStack)
-      .withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
+    // val pathStack = Http2.router.pathStack
+    //   .prepend(Headers.Dst.PathFilter.module)
+    //   .replace(StackClient.Role.prepFactory, DelayedRelease.module)
+    //   .prepend(http.ErrorResponder.module)
+    // val boundStack = Http2.router.boundStack
+    //   .prepend(Headers.Dst.BoundFilter.module)
+    // val clientStack = Http2.router.clientStack
+    //   .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+    //   .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+    //   .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
+    // Http2.router
+    //   .withPathStack(pathStack)
+    //   .withBoundStack(boundStack)
+    //   .withClientStack(clientStack)
+    //   .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
+
+    Http2.router.configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   protected val defaultServer = Http2.server

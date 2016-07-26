@@ -20,6 +20,11 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
   private[this]type Http2StreamFrameTransporter = Transporter[Http2StreamFrame, Http2StreamFrame]
   private[this]type Http2StreamFrameTransport = Transport[Http2StreamFrame, Http2StreamFrame]
 
+  private[buoyant] case class MinAccumFrames(count: Int)
+  private[buoyant] implicit object MinAccumFrames extends Stack.Param[MinAccumFrames] {
+    val default = MinAccumFrames(Int.MaxValue)
+  }
+
   /*
    * Client
    */
@@ -55,7 +60,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] =
       new Netty4ClientDispatcher(
         new Netty4Http2Transport(trans, transportStats),
-        minAccumFrames = 3,
+        minAccumFrames = params[MinAccumFrames].count,
         statsReceiver = dispatchStats
       )
   }
@@ -174,7 +179,7 @@ object Http2 extends Client[Request, Response] with Server[Request, Response] {
       service: Service[Request, Response]
     ): Closable = {
       val h2 = new Netty4Http2Transport(trans, transportStats)
-      val stream = new Netty4ServerStreamTransport(h2, dispatchStats)
+      val stream = new Netty4ServerStreamTransport(h2, params[MinAccumFrames].count, dispatchStats)
       new ServerDispatcher(stream, service, dispatchStats)
     }
   }

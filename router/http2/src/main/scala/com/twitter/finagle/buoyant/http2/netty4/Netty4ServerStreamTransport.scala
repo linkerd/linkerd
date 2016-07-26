@@ -26,6 +26,7 @@ object Netty4ServerStreamTransport {
  */
 class Netty4ServerStreamTransport(
   transport: Netty4Http2Transport,
+  minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends ServerStreamTransport {
 
@@ -34,6 +35,8 @@ class Netty4ServerStreamTransport(
   /*
    * Stats
    */
+
+  private[this] val streamStats = statsReceiver.scope("stream")
 
   private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
   private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
@@ -60,12 +63,14 @@ class Netty4ServerStreamTransport(
     case f: Http2HeadersFrame =>
       val recvq = new AsyncQueue[Http2StreamFrame]
       readStream(recvq)
-      val stream = new Netty4DataStream(recvq, releaser)
-      Netty4Message.Request(f.headers, stream)
+      Netty4Message.Request(f.headers, newDataStream(recvq))
 
     case f =>
       throw new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
   }
+
+  private[this] def newDataStream(q: AsyncQueue[Http2StreamFrame]) =
+    new Netty4DataStream(q, releaser, minAccumFrames, streamStats)
 
   private[this] val releaser: Int => Future[Unit] =
     incr => transport.updateWindow(streamId, incr)

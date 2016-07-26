@@ -29,7 +29,7 @@ private[http2] object Netty4Message {
       headers
   }
 
-  case class Request(netty4Headers: Http2Headers, data: DataStream)
+  case class Request(netty4Headers: Http2Headers, dataStream: DataStream)
     extends com.twitter.finagle.buoyant.http2.Request
     with DataStream.Proxy with Netty4Headers {
 
@@ -46,7 +46,7 @@ private[http2] object Netty4Message {
     def authority = netty4Headers.authority.toString
   }
 
-  case class Response(netty4Headers: Http2Headers, data: DataStream)
+  case class Response(netty4Headers: Http2Headers, dataStream: DataStream)
     extends com.twitter.finagle.buoyant.http2.Response
     with DataStream.Proxy with Netty4Headers {
 
