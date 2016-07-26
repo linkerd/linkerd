@@ -46,9 +46,10 @@ object LinkerdBuild extends Base {
       .withTests()
       .withE2e()
 
-    val http2 = projectDir("router/http2")
+    val h2 = projectDir("router/h2")
       .dependsOn(core)
-      .withTwitterLibs(Deps.finagle("http2"), Deps.twitterServer)
+      .withTwitterLibs(Deps.finagle("netty4"))
+      .withLibs(Deps.netty("codec-http2"), Deps.netty("handler"))
       .withTests()
       .withE2e()
 
@@ -72,7 +73,7 @@ object LinkerdBuild extends Base {
 
     val all = projectDir("router")
       .settings(aggregateSettings)
-      .aggregate(core, http, http2, mux, thrift)
+      .aggregate(core, http, h2, mux, thrift)
   }
 
   val configCore = projectDir("config")
@@ -365,12 +366,12 @@ object LinkerdBuild extends Base {
           Namer.fs % "integration",
           Router.http)
 
-      val http2 = projectDir("linkerd/protocol/http2")
+      val h2 = projectDir("linkerd/protocol/h2")
         .withTests()
         .withTwitterLibs(Deps.finagle("netty4"))
         .dependsOn(
           core % "compile->compile",
-          Router.http2)
+          Router.h2)
 
       val mux = projectDir("linkerd/protocol/mux")
         .dependsOn(core, Router.mux)
@@ -381,7 +382,7 @@ object LinkerdBuild extends Base {
 
       val all = projectDir("linkerd/protocol")
         .settings(aggregateSettings)
-        .aggregate(http, http2, mux, thrift)
+        .aggregate(http, h2, mux, thrift)
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, Protocol.http)
@@ -468,7 +469,7 @@ object LinkerdBuild extends Base {
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
         Interpreter.namerd,
-        Protocol.http2, Protocol.mux, Protocol.thrift,
+        Protocol.h2, Protocol.mux, Protocol.thrift,
         Tracer.zipkin,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -513,7 +514,7 @@ object LinkerdBuild extends Base {
   val router = Router.all
   val routerCore = Router.core
   val routerHttp = Router.http
-  val routerHttp2 = Router.http2
+  val routerH2 = Router.h2
   val routerMux = Router.mux
   val routerThrift = Router.thrift
   val routerThriftIdl = Router.thriftIdl
@@ -555,7 +556,7 @@ object LinkerdBuild extends Base {
   val linkerdMain = Linkerd.main
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolHttp = Linkerd.Protocol.http
-  val linkerdProtocolHttp2 = Linkerd.Protocol.http2
+  val linkerdProtocolH2 = Linkerd.Protocol.h2
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
   val linkerdTracer = Linkerd.Tracer.all

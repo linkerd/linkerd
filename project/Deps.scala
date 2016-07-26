@@ -14,6 +14,9 @@ object Deps {
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "6.36.0"
 
+  def netty(mod: String) =
+    "io.netty" % s"netty-$mod" % "4.1.3.Final"
+
   def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
 
   // Jackson (parsing)
@@ -25,7 +28,7 @@ object Deps {
   val jacksonDatabind =
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonScala =
-    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion 
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
   val jackson =
     jacksonCore :: jacksonAnnotations :: jacksonDatabind :: jacksonScala :: Nil
 
