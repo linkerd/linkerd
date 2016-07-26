@@ -1,4 +1,5 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
@@ -7,7 +8,7 @@ import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-object ClientDispatcher {
+object Netty4ClientDispatcher {
   private val log = Logger.get(getClass.getName)
   private val MaxStreamId = math.pow(2, 31) - 1
 }
@@ -16,18 +17,18 @@ object ClientDispatcher {
  * Multiplexes HTTP/2 request/responses onto HTTP/2 streams over a
  * shared connection transport.
  */
-class ClientDispatcher(
-  transport: Http2Transport,
+class Netty4ClientDispatcher(
+  transport: Netty4Http2Transport,
   minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
-  import ClientDispatcher._
+  import Netty4ClientDispatcher._
 
   // TODO handle overflow
   private[this] val _id = new AtomicInteger(3) // ID=1 is reserved for HTTP/1 upgrade
   private[this] def nextId() = _id.getAndAdd(2)
-  private[this] val liveStreams = new ConcurrentHashMap[Int, ClientStreamTransport]
+  private[this] val liveStreams = new ConcurrentHashMap[Int, Netty4ClientStreamTransport]
 
   private[this] val streamStats = statsReceiver.scope("stream")
 
@@ -42,9 +43,9 @@ class ClientDispatcher(
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
-  private[this] def newStream(): ClientStreamTransport = {
+  private[this] def newStream(): Netty4ClientStreamTransport = {
     val id = nextId()
-    val stream = new ClientStreamTransport(
+    val stream = new Netty4ClientStreamTransport(
       id, transport,
       minAccumFrames = minAccumFrames,
       statsReceiver = streamStats

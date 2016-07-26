@@ -1,4 +1,5 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.{Duration, Memoize, Stopwatch}

@@ -1,5 +1,7 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
+import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
 import com.twitter.finagle.server.Listener
 import io.netty.channel.{Channel, ChannelInitializer, ChannelPipeline}
@@ -8,7 +10,7 @@ import io.netty.handler.codec.http2.{Http2FrameCodec, Http2MultiplexCodec, Http2
 /**
  * Please note that the listener cannot be used for TLS yet.
  */
-object Http2Listener {
+object Netty4Http2Listener {
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] = {
     /*

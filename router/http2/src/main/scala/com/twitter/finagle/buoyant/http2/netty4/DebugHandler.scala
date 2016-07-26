@@ -1,4 +1,5 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import com.twitter.logging.Logger
 import io.netty.channel._

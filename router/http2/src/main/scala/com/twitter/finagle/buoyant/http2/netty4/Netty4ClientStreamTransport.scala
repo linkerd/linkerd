@@ -1,11 +1,12 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
 import io.netty.handler.codec.http2.{Http2StreamFrame, Http2HeadersFrame}
 
-private[http2] class ClientStreamTransport(
+private[http2] class Netty4ClientStreamTransport(
   val streamId: Int,
   transport: Http2Transport.Writer,
   val recvq: AsyncQueue[Http2StreamFrame] = new AsyncQueue,
@@ -88,7 +89,7 @@ private[http2] class ClientStreamTransport(
   }
 
   protected[this] def newDataStream(): DataStream =
-    new Http2FrameDataStream(recvq, releaser, minAccumFrames, statsReceiver)
+    new Netty4DataStream(recvq, releaser, minAccumFrames, statsReceiver)
 
   protected[this] val releaser: Int => Future[Unit] =
     incr => transport.updateWindow(streamId, incr)

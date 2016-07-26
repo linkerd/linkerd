@@ -1,4 +1,5 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
 import scala.collection.mutable.ListBuffer

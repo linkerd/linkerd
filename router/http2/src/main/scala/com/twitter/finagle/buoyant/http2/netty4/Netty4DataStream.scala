@@ -1,4 +1,5 @@
 package com.twitter.finagle.buoyant.http2
+package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
@@ -9,7 +10,7 @@ import io.netty.handler.codec.http2._
 import scala.collection.immutable.Queue
 import java.util.concurrent.atomic.AtomicReference
 
-private[http2] object Http2FrameDataStream {
+private[http2] object Netty4DataStream {
 
   type DataReleaser = Int => Future[Unit]
 
@@ -49,22 +50,21 @@ private[http2] object Http2FrameDataStream {
  * pending in the queue. This allows the queue to be flushed more
  * quickly as it backs up. By default, frames are not accumulated.
  */
-private[http2] class Http2FrameDataStream(
+private[http2] class Netty4DataStream(
   frameq: AsyncQueue[Http2StreamFrame],
-  releaser: Http2FrameDataStream.DataReleaser,
+  releaser: Netty4DataStream.DataReleaser,
   minAccumFrames: Int = Int.MaxValue,
   stats: StatsReceiver = NullStatsReceiver
 ) extends DataStream {
 
-  import Http2FrameDataStream._
+  import Netty4DataStream._
 
   private[this] val accumBytes = stats.stat("accum_bytes")
   private[this] val accumMicros = stats.stat("accum_us")
   private[this] val readQlens = stats.stat("read_qlen")
   private[this] val readMicros = stats.stat("read_us")
 
-  private[this] val state: AtomicReference[State] =
-    new AtomicReference(Open)
+  private[this] val state: AtomicReference[State] = new AtomicReference(Open)
 
   private[this] val endP = new Promise[Unit]
   def onEnd: Future[Unit] = endP
