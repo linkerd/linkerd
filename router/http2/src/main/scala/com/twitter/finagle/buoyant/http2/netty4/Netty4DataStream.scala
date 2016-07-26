@@ -117,7 +117,7 @@ private[http2] class Netty4DataStream(
         toData(f)
       } else throw expectedOpenException(state.get)
 
-    case f: Http2DataFrame if frameq.size < minAccumFrames => toData(f)
+    case f: Http2DataFrame if (frameq.size + 1) < minAccumFrames => toData(f)
 
     case f: Http2DataFrame =>
       frameq.drain() match {
