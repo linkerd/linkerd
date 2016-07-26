@@ -15,33 +15,31 @@ package object v1 {
 
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   @JsonSubTypes(Array(
-    new JsonSubTypes.Type(value = classOf[EndpointsWatch.Added], name = "ADDED"),
-    new JsonSubTypes.Type(value = classOf[EndpointsWatch.Modified], name = "MODIFIED"),
-    new JsonSubTypes.Type(value = classOf[EndpointsWatch.Deleted], name = "DELETED"),
-    new JsonSubTypes.Type(value = classOf[EndpointsWatch.Error], name = "ERROR")
+    new JsonSubTypes.Type(value = classOf[Added], name = "ADDED"),
+    new JsonSubTypes.Type(value = classOf[Modified], name = "MODIFIED"),
+    new JsonSubTypes.Type(value = classOf[Deleted], name = "DELETED"),
+    new JsonSubTypes.Type(value = classOf[Error], name = "ERROR")
   ))
   sealed trait EndpointsWatch extends Watch[Endpoints]
-  object EndpointsWatch {
-    case class Added(
-      `object`: Endpoints
-    ) extends EndpointsWatch with Watch.Added[Endpoints]
+  case class Added(
+    `object`: Endpoints
+  ) extends EndpointsWatch with Watch.Added[Endpoints]
 
-    case class Modified(
-      `object`: Endpoints
-    ) extends EndpointsWatch with Watch.Modified[Endpoints]
+  case class Modified(
+    `object`: Endpoints
+  ) extends EndpointsWatch with Watch.Modified[Endpoints]
 
-    case class Deleted(
-      `object`: Endpoints
-    ) extends EndpointsWatch with Watch.Deleted[Endpoints]
+  case class Deleted(
+    `object`: Endpoints
+  ) extends EndpointsWatch with Watch.Deleted[Endpoints]
 
-    case class Error(
-      @JsonProperty(value = "object") status: Status
-    ) extends EndpointsWatch with Watch.Error[Endpoints]
-  }
+  case class Error(
+    @JsonProperty(value = "object") status: Status
+  ) extends EndpointsWatch with Watch.Error[Endpoints]
 
   implicit object EndpointsDescriptor extends ObjectDescriptor[Endpoints, EndpointsWatch] {
     def listName = "endpoints"
-    def toWatch(e: Endpoints) = EndpointsWatch.Modified(e)
+    def toWatch(e: Endpoints) = Modified(e)
   }
 
   case class Api(client: Client) extends Version[Object] {

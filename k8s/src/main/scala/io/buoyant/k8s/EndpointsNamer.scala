@@ -6,7 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
-import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
+import io.buoyant.k8s.v1._
 import io.buoyant.namer.EnumeratingNamer
 import scala.collection.mutable
 
@@ -301,10 +301,10 @@ private object EndpointsNamer {
     }
 
     def update(watch: EndpointsWatch): Unit = watch match {
-      case EndpointsWatch.Error(e) => log.error("k8s watch error: %s", e)
-      case EndpointsWatch.Added(endpoints) => add(endpoints)
-      case EndpointsWatch.Modified(endpoints) => modify(endpoints)
-      case EndpointsWatch.Deleted(endpoints) => delete(endpoints)
+      case Error(e) => log.error("k8s watch error: %s", e)
+      case Added(endpoints) => add(endpoints)
+      case Modified(endpoints) => modify(endpoints)
+      case Deleted(endpoints) => delete(endpoints)
     }
 
     private[this] def getName(endpoints: v1.Endpoints) =
