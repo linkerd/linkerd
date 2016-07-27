@@ -13,7 +13,7 @@ import io.netty.util.AsciiString
 /**
  * Please note that the listener cannot be used for TLS yet.
  */
-object Netty4Http2Listener {
+object Netty4H2Listener {
 
   // private val log = com.twitter.logging.Logger.get(getClass.getName)
 
@@ -79,6 +79,7 @@ object Netty4Http2Listener {
 
     private[this] val rawH2 = new Http2Codec(true /*server*/ , stream)
 
+    private[this] val h1 = new HttpServerCodec
     private[this] val upgradedH2 = new HttpServerUpgradeHandler.UpgradeCodecFactory {
       override def newUpgradeCodec(proto: CharSequence): HttpServerUpgradeHandler.UpgradeCodec =
         if (isH2C(proto)) new Http2ServerUpgradeCodec(rawH2) else null
@@ -96,7 +97,6 @@ object Netty4Http2Listener {
           ctx.pipeline.addLast("h2", rawH2)
 
         case bb: ByteBuf => // Try to upgrade from HTTP1
-          val h1 = new HttpServerCodec
           ctx.pipeline.addLast("h1", h1)
           ctx.pipeline.addLast("h1 to h2", new HttpServerUpgradeHandler(h1, upgradedH2))
 

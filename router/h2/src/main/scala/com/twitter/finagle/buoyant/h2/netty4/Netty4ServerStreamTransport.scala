@@ -25,7 +25,7 @@ object Netty4ServerStreamTransport {
  * Models a single Http/2 stream as a transport.
  */
 class Netty4ServerStreamTransport(
-  transport: Netty4Http2Transport,
+  transport: Netty4H2Transport,
   minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends ServerStreamTransport {

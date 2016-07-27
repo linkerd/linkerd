@@ -6,7 +6,6 @@ import com.twitter.finagle.buoyant.h2.{Request, Response, ServerDispatcher}
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.param
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
-import com.twitter.finagle.netty4.buoyant.Bufs
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Closable, Future}
@@ -37,6 +36,11 @@ object H2 extends Client[Request, Response]
     val default = PathIdentifier.param
   }
 
+  case class PriorKnowledge(enabled: Boolean)
+  implicit private[buoyant] object PriorKnowledge extends Stack.Param[PriorKnowledge] {
+    val default = PriorKnowledge(false)
+  }
+
   /*
    * Client
    */
@@ -58,20 +62,20 @@ object H2 extends Client[Request, Response]
     protected type Out = Http2StreamFrame
 
     protected def newTransporter(): Http2StreamFrameTransporter =
-      Netty4Http2Transporter.mk(params)
+      Netty4H2Transporter.mk(params)
 
     protected def copy1(
       stack: Stack[ServiceFactory[Request, Response]] = this.stack,
       params: Stack.Params = this.params
     ): Client = copy(stack, params)
 
-    private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
+    private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
     private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
     private[this] lazy val transportStats = statsReceiver.scope("transport")
 
     protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] =
       new Netty4ClientDispatcher(
-        new Netty4Http2Transport(trans, transportStats),
+        new Netty4H2Transport(trans, transportStats),
         minAccumFrames = params[MinAccumFrames].count,
         statsReceiver = dispatchStats
       )
@@ -154,7 +158,7 @@ object H2 extends Client[Request, Response]
      * incoming HTTP/2 *stream*.
      */
     protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
-      Netty4Http2Listener.mk(params)
+      Netty4H2Listener.mk(params)
 
     private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
     private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
@@ -165,7 +169,7 @@ object H2 extends Client[Request, Response]
       trans: Http2StreamFrameTransport,
       service: Service[Request, Response]
     ): Closable = {
-      val h2 = new Netty4Http2Transport(trans, transportStats)
+      val h2 = new Netty4H2Transport(trans, transportStats)
       val stream = new Netty4ServerStreamTransport(h2, params[MinAccumFrames].count, dispatchStats)
       new ServerDispatcher(stream, service, dispatchStats)
     }

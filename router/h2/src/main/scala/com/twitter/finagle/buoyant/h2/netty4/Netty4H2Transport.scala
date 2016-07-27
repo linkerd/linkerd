@@ -8,7 +8,7 @@ import com.twitter.io.Buf
 import com.twitter.util.{Future, Stopwatch, Time}
 import io.netty.handler.codec.http2._
 
-class Netty4Http2Transport(
+class Netty4H2Transport(
   transport: Transport[Http2StreamFrame, Http2StreamFrame],
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends TransportProxy[Http2StreamFrame, Http2StreamFrame](transport)

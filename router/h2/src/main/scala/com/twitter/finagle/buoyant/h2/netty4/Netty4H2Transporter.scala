@@ -9,9 +9,23 @@ import com.twitter.finagle.transport.TransportProxy
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2.{Http2FrameCodec, Http2StreamFrame}
 
-object Netty4Http2Transporter {
+object Netty4H2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
+    val H2.PriorKnowledge(priorKnowledge) = params0[H2.PriorKnowledge]
+    if (!priorKnowledge) {
+
+      val h1 = new HttpClientCodec(
+        maxInitialLineSize.inBytes.toInt,
+        maxHeaderSize.inBytes.toInt,
+        maxChunkSize.inBytes.toInt
+      )
+      val h2h1 = new Http2ClientUpgradeCodec(connectionHandler)
+      val upgradeHandler = new HttpClientUpgradeHandler(sourceCodec, upgradeCodec, Int.MaxValue)
+
+      cp.addLast()
+    }
+
     // Each client connection pipeline is framed into HTTP/2 stream
     // frames. The connect promise does not fire (and therefore
     // transports are not created) until a connection is fully

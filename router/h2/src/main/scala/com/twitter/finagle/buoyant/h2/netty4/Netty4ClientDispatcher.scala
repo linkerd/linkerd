@@ -18,7 +18,7 @@ object Netty4ClientDispatcher {
  * shared connection transport.
  */
 class Netty4ClientDispatcher(
-  transport: Netty4Http2Transport,
+  transport: Netty4H2Transport,
   minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
