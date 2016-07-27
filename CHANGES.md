@@ -1,6 +1,7 @@
 ## x.x.x
 
 * Add support for tags in the `io.l5d.consul` namer
+* linkerd should use last known good data if it get errors from namerd
 
 ## 0.7.1
 

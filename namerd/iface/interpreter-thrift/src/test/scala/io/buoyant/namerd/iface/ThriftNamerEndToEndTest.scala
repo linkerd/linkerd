@@ -151,4 +151,40 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
         )
       ))
   }
+
+  test("use last good bind data") {
+    val id = Path.read("/io.l5d.w00t")
+    val (act, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      def lookup(path: Path) = act
+    }
+    val namers = Seq(id -> namer)
+    def interpreter(ns: String) = new ConfiguredDtabNamer(
+      Activity.value(Dtab.read("/http => /io.l5d.w00t")),
+      namers
+    )
+    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
+    val client = new ThriftNamerClient(service, ns, clientId)
+
+    witness.notify(Return(NameTree.Leaf(Name.Bound(
+      Var(Addr.Bound(Address("localhost", 9000))),
+      Path.read("/io.l5d.w00t/foo"),
+      Path.empty
+    ))))
+
+    val bindAct = client.bind(Dtab.empty, Path.read("/http/foo"))
+    var bound: NameTree[Name.Bound] = null
+    // hold activity open so that it doesn't get restarted and lose state
+    bindAct.values.respond(_ => ())
+    val NameTree.Leaf(bound0) = await(bindAct.toFuture)
+    // hold var open so that it doesn't get restarted and lose state
+    bound0.addr.changes.respond(_ => ())
+    assert(bound0.id == Path.read("/io.l5d.w00t/foo"))
+    assert(bound0.addr.sample == Addr.Bound(Address("localhost", 9000)))
+
+    witness.notify(Throw(new Exception("bind failure")))
+    val NameTree.Leaf(bound1) = await(bindAct.toFuture)
+    assert(bound1.id == Path.read("/io.l5d.w00t/foo"))
+    assert(bound1.addr.sample == Addr.Bound(Address("localhost", 9000)))
+  }
 }

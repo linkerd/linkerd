@@ -80,7 +80,6 @@ class ThriftNamerClient(
 
           case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
             Trace.recordBinary("namerd.client/bind.fail", reason)
-            states() = Activity.Failed(e)
             if (!stopped) {
               pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
             }
@@ -178,7 +177,6 @@ class ThriftNamerClient(
 
           case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
             Trace.recordBinary("namerd.client/addr.fail", msg)
-            addr() = Addr.Failed(e)
             if (!stopped) {
               pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
             }
