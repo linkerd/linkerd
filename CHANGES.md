@@ -1,5 +1,7 @@
 ## x.x.x
 
+## 0.7.2
+
 * Add support for tags in the `io.l5d.consul` namer.
 * Add an experimental `io.l5d.consul` storage backend for namerd.
 * linkerd should use last known good data if it get errors from namerd.
