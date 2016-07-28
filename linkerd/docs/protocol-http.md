@@ -1,19 +1,24 @@
 # HTTP/1.1 protocol
 
-*(for the [routers](config.md#routers) key)*
-
-Router configuration options include:
+The HTTP/1.1 protocol is used when the *protocol* option of the
+[routers configuration block](config.md#routers) is set to *http*.
+With this protocol selected, configuration options on the *routers* block
+include:
 
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
-* *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-io.l5d.methodAndHost)
+* *identifier* -- [Http-specific identifier](#protocol-http-identifiers)
 
-The default _dstPrefix_ is `/http`
-The default server _port_ is 4140
+<a name="protocol-http-defaults"></a>
+## Defaults
+
+The default identifier for HTTP/1.1 routers is `io.l5d.methodAndHost`.  The
+default _dstPrefix_ (i.e. for all identifiers) is `/http`. The default server
+port is `4140`.
 
 As an example, here's an http router config that routes all `POST`
-requests to 8091 and all other requests to 8081:
+requests to 8091 and all other requests to 8081, using the default
+identifier of `io.l5d.methodAndHost`:
 
 ```yaml
 routers:
@@ -27,56 +32,76 @@ routers:
     port: 5000
 ```
 
+(Note that the dtab is written in terms of names produced by the
+`methodAndHost` identifier. Using a different identifier would require a
+different set of dtab rules.)
+
 <a name="protocol-http-identifiers"></a>
 ## HTTP/1.1 Identifiers
 
-Identifiers are objects responsible for creating logical names from an incoming
-request with the following parameters:
+Identifiers are responsible for creating logical names from an incoming
+request; these names are then matched against the dtab. HTTP/1.1 identifiers
+are configured with the following parameters:
 
-* *kind* -- One of the supported identifier plugins, by fully-qualified class
- name. Current plugins include:
+* *kind* -- The fully-qualified class name of an identifier. Current
+identifiers include:
   * *io.l5d.methodAndHost*
   * *io.l5d.path*
-* any other identifier-specific parameters
+* other identifier-specific parameters
 
-### Method and Host
+### The Method and Host Identifier
 
-`io.l5d.methodAndHost`
+This identifier is selected by setting the *kind* value of the *identifier*
+congiruation block to `io.l5d.methodAndHost`.
 
-HTTP requests are routed by a combination of Host header, method, and URI.
+With this identifier, HTTP requests are turned into glogical names using a
+combination of Host header, method, and (optionally) URI. Configuration
+settings include:
 
 * *httpUriInDst* -- If `true` http paths are appended to destinations. This
-  allows path-prefix routing. (default: false)
+  allows a form of path-prefix routing. This option is **not** recommended as
+  performance implications may be severe; it has been supplanted by the path
+  identifier below. (default: false)
 
-Specifically, HTTP/1.0 logical names are of the form:
+The methodAndHost identifier generates HTTP/1.1 logical names of the form:
 ```
-  dstPrefix / "1.0" / method [/ uri* ]
+  / dstPrefix / "1.1" / method / host [/ uri* ]
 ```
-and HTTP/1.1 logical names are of the form:
+For HTTP/1.0 requests, logical names are of the form:
 ```
-  dstPrefix / "1.1" / method / host [/ uri* ]
+  / dstPrefix / "1.0" / method [/ uri* ]
 ```
 
-In both cases, `uri` is only considered a part
-of the logical name if the config option `httpUriInDst` is true.
+In both cases, `uri` is only considered a part of the logical name if the
+config option `httpUriInDst` is true.
 
-### Path
+### The Path Identifier
 
-`io.l5d.path`
+This identifier is selected by setting the *kind* value of an *identifier*
+block to `io.l5d.path`.
 
-HTTP requests are routed based on a configurable number of "/" separated
-segments from the start of their HTTP path.
+With this identifier, HTTP requests are turned into names based only on the
+path component of the URL, using a configurable number of "/" separated
+segments from the start of their HTTP path. Configuration options include:
 
 * *segments* -- Number of segments from the path that are appended to
   destinations. (default: 1)
-* *consume* -- Strip the read segments from the HTTP path.  (default: false)
+* *consume* -- Whether to additionally strip the consumed segments from the
+  HTTP request proxied to the final destination service. (default: false)
 
-For instance, here's a router configured with an http path identifier:
+Note that *consume* only affects the request sent to the destination service;
+it does not affect identification or routing.
+
+The path identifier generates logical names of the form:
+```
+  / dstPrefix / [*segments* number of segments from the URL path]
+```
+
+For example, here's a router configured with the path identifier:
 
 ```yaml
 routers:
 - protocol: http
-  dstPrefix: /custom/prefix
   identifier:
     kind: io.l5d.path
     segments: 2
@@ -85,9 +110,11 @@ routers:
     port: 5000
 ```
 
-A request to `:5000/true/love/waits.php` will be identified as
-`/custom/prefix/true/love` and will be forwarded with `/waits.php` as the URI.
-
+With this configuration, a request to `:5000/true/love/waits.php` will be
+mapped to `/http/true/love` and will be routed based on this name by the
+corresponding dtab. Additionalyl, because `consume` is true, after routing,
+requests will be proxied to the destination service with `/waits.php` as the
+path component of the URL.
 
 ## HTTP Engines
 
