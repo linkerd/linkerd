@@ -11,19 +11,22 @@ import io.netty.handler.codec.http2.{Http2FrameCodec, Http2StreamFrame}
 
 object Netty4H2Transporter {
 
+  private[this] val priorKnowledgeRequired =
+    new IllegalArgumentException("H2.PriorKnowledge must be set to true")
+
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
     val H2.PriorKnowledge(priorKnowledge) = params0[H2.PriorKnowledge]
     if (!priorKnowledge) {
+      throw priorKnowledgeRequired
 
-      val h1 = new HttpClientCodec(
-        maxInitialLineSize.inBytes.toInt,
-        maxHeaderSize.inBytes.toInt,
-        maxChunkSize.inBytes.toInt
-      )
-      val h2h1 = new Http2ClientUpgradeCodec(connectionHandler)
-      val upgradeHandler = new HttpClientUpgradeHandler(sourceCodec, upgradeCodec, Int.MaxValue)
-
-      cp.addLast()
+      // val h1 = new HttpClientCodec(
+      //   maxInitialLineSize.inBytes.toInt,
+      //   maxHeaderSize.inBytes.toInt,
+      //   maxChunkSize.inBytes.toInt
+      // )
+      // val h2h1 = new Http2ClientUpgradeCodec(connectionHandler)
+      // val upgradeHandler = new HttpClientUpgradeHandler(sourceCodec, upgradeCodec, Int.MaxValue)
+      // cp.addLast()
     }
 
     // Each client connection pipeline is framed into HTTP/2 stream
@@ -40,6 +43,5 @@ object Netty4H2Transporter {
     // See https://github.com/netty/netty/issues/3667#issue-69640214
     val params = params0 + Netty4Transporter.Backpressure(false)
     Netty4Transporter(initializer, params)
-
   }
 }

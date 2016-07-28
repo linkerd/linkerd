@@ -15,7 +15,7 @@ object Deps {
     "com.twitter" %% s"finagle-$mod" % "6.36.0"
 
   def netty(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.3.Final"
+    "io.netty" % s"netty-$mod" % "4.1.4.Final"
 
   def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
 
