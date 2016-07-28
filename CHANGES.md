@@ -1,9 +1,12 @@
 ## x.x.x
 
-* Add support for tags in the `io.l5d.consul` namer
-* linkerd should use last known good data if it get errors from namerd
-* Fix exceptions when k8s namer encounters unexpected end of stream #551
+* Add support for tags in the `io.l5d.consul` namer.
+* Add an experimental `io.l5d.consul` storage backend for namerd.
+* linkerd should use last known good data if it get errors from namerd.
+* Fix exceptions when k8s namer encounters unexpected end of stream #551.
 * Expose HTTP codec parameters as configuration options.
+* Handle "too old" error when re-establishing Kubernetes watches.
+* Improve Java compatibility for Namers plugins.
 
 ## 0.7.1
 
