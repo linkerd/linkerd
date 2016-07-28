@@ -3,6 +3,7 @@
 * Add support for tags in the `io.l5d.consul` namer
 * linkerd should use last known good data if it get errors from namerd
 * Fix exceptions when k8s namer encounters unexpected end of stream #551
+* Expose HTTP codec parameters as configuration options.
 
 ## 0.7.1
 
