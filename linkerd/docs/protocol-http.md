@@ -8,6 +8,21 @@ Router configuration options include:
 access log is written.
 * *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
 io.l5d.methodAndHost)
+* *maxChunkKB* -- The maximum size of an HTTP chunk (default: 8KB)
+* *maxHeadersKB* -- The maximum size of all headers in an HTTP message (default: 8KB)
+* *maxInitialLineKB* -- The maximum size of an initial HTTP
+  message line (default: 4KB)
+* *maxRequestKB* -- The maximum size of a non-chunked HTTP request
+  payload (default: 5MB)
+* *maxResponseKB* -- The maximum size of a non-chunked HTTP response
+  payload (default: 5MB)
+* *compressionLevel* -- The compression level to use (on 0-9)
+  (default: -1, automatically compresses textual content types with
+  compression level 6)
+
+_Note_: These memory constraints are selected to allow reliable
+concurrent usage of linkerd. Changing these parameters may
+significantly alter linkerd's performance characteristics.
 
 The default _dstPrefix_ is `/http`
 The default server _port_ is 4140
