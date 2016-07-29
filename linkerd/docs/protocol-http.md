@@ -39,9 +39,10 @@ different set of dtab rules.)
 <a name="protocol-http-identifiers"></a>
 ## HTTP/1.1 Identifiers
 
-Identifiers are responsible for creating logical names from an incoming
-request; these names are then matched against the dtab. HTTP/1.1 identifiers
-are configured with the following parameters:
+Identifiers are responsible for creating logical *names* from an incoming
+request; these names are then matched against the dtab. (See the [linkerd
+routing overview](https://linkerd.io/doc/latest/routing/) for more details on
+this.) HTTP/1.1 identifiers are configured with the following parameters:
 
 * *kind* -- The fully-qualified class name of an identifier. Current
 identifiers include:
@@ -52,7 +53,7 @@ identifiers include:
 ### The Method and Host Identifier
 
 This identifier is selected by setting the *kind* value of the *identifier*
-congiruation block to `io.l5d.methodAndHost`.
+configuration block to `io.l5d.methodAndHost`.
 
 With this identifier, HTTP requests are turned into glogical names using a
 combination of Host header, method, and (optionally) URI. Configuration
@@ -112,7 +113,7 @@ routers:
 
 With this configuration, a request to `:5000/true/love/waits.php` will be
 mapped to `/http/true/love` and will be routed based on this name by the
-corresponding dtab. Additionalyl, because `consume` is true, after routing,
+corresponding dtab. Additionally, because `consume` is true, after routing,
 requests will be proxied to the destination service with `/waits.php` as the
 path component of the URL.
 
