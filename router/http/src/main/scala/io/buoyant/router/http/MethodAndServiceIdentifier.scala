@@ -4,7 +4,6 @@ import com.twitter.finagle.{Dtab, Path, http}
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
-import com.twitter.logging.Logger
 
 object MethodAndServiceIdentifier {
   def mk(
@@ -18,8 +17,6 @@ case class MethodAndServiceIdentifier(
   uris: Boolean = false,
   baseDtab: () => Dtab = () => Dtab.base
 ) extends RoutingFactory.Identifier[http.Request] {
-
-  private[this] val log = Logger.get(getClass.getName)
 
   private[this] def suffix(req: http.Request): Path =
     if (uris) Path.read(req.path) else Path.empty
