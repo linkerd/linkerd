@@ -37,6 +37,21 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
+  /**
+   * Apply the router's codec coonfiguration applies to the server.
+   */
+  override protected def configureServer(router: Router, server: Server): Server = {
+    println(s"configuring server with ${router.params}")
+    super.configureServer(router, server)
+      .configured(router.params[hparam.MaxChunkSize])
+      .configured(router.params[hparam.MaxHeaderSize])
+      .configured(router.params[hparam.MaxInitialLineSize])
+      .configured(router.params[hparam.MaxRequestSize])
+      .configured(router.params[hparam.MaxResponseSize])
+      .configured(router.params[hparam.Streaming])
+      .configured(router.params[hparam.CompressionLevel])
+  }
+
   protected val defaultServer = {
     val stk = Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
