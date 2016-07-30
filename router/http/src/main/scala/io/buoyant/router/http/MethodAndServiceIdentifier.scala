@@ -34,7 +34,7 @@ case class MethodAndServiceIdentifier(
       req.host match {
         case Some(host) if host.nonEmpty =>
           Future.value(
-            (mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)), req)
+            (mkPath(Path.Utf8("1.1", req.method.toString, host.split(".")[0]) ++ suffix(req)), req)
           )
         case _ =>
           Future.exception(new IllegalArgumentException(s"${http.Version.Http11} request missing hostname: $req"))
