@@ -55,7 +55,7 @@ identifiers include:
 This identifier is selected by setting the *kind* value of the *identifier*
 configuration block to `io.l5d.methodAndHost`.
 
-With this identifier, HTTP requests are turned into glogical names using a
+With this identifier, HTTP requests are turned into logical names using a
 combination of Host header, method, and (optionally) URI. Configuration
 settings include:
 
@@ -158,7 +158,7 @@ for all linkerd features to work. These headers include:
 - `l5d-ctx-deadline`: describes time bounds within which a request is
   expected to be satisfied. Currently deadlines are only advisory and
   do not factor into request cancellation.
-- `l5d-ctx-trace`: encodes zipkin-style trace IDs and flags so that
+- `l5d-ctx-trace`: encodes Zipkin-style trace IDs and flags so that
   trace annotations emitted by linkerd may be correlated.
 
 Edge services should take care to ensure these headers are not set
