@@ -38,10 +38,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   }
 
   /**
-   * Apply the router's codec coonfiguration applies to the server.
+   * Apply the router's codec configuration parameters to a server.
    */
-  override protected def configureServer(router: Router, server: Server): Server = {
-    println(s"configuring server with ${router.params}")
+  override protected def configureServer(router: Router, server: Server): Server =
     super.configureServer(router, server)
       .configured(router.params[hparam.MaxChunkSize])
       .configured(router.params[hparam.MaxHeaderSize])
@@ -50,7 +49,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .configured(router.params[hparam.MaxResponseSize])
       .configured(router.params[hparam.Streaming])
       .configured(router.params[hparam.CompressionLevel])
-  }
 
   protected val defaultServer = {
     val stk = Http.server.stack
