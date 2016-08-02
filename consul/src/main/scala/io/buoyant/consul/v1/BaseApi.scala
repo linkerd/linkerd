@@ -61,17 +61,11 @@ trait BaseApi extends Closable {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[v1] def executeJson[T: Manifest](req: http.Request, retry: Boolean): Future[Indexed[T]] = {
+  private[v1] def execute[T: Manifest](req: http.Request, retry: Boolean): Future[Indexed[T]] = {
     for {
       rsp <- Trace.letClear(getClient(retry)(req))
       value <- Future.const(parseJson[T](rsp.content))
     } yield Indexed[T](value, rsp.headerMap.get(Headers.Index))
-  }
-
-  private[v1] def executeRaw(req: http.Request, retry: Boolean): Future[Indexed[String]] = {
-    Trace.letClear(getClient(retry)(req)).map { rsp =>
-      Indexed[String](rsp.contentString, rsp.headerMap.get(Headers.Index))
-    }
   }
 }
 

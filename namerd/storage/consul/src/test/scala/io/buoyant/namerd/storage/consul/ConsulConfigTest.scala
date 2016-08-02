@@ -8,7 +8,7 @@ import org.scalatest.{FunSuite, OptionValues}
 
 class ConsulConfigTest extends FunSuite with OptionValues {
   test("sanity") {
-    val store = ConsulConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore
+    val store = ConsulConfig(None, None, Some(Path.read("/foo/bar")), None).mkDtabStore
   }
 
   test("parse config") {
@@ -17,13 +17,15 @@ class ConsulConfigTest extends FunSuite with OptionValues {
          |experimental: true
          |pathPrefix: /foo/bar
          |host: consul.local
+         |recursive: true
          |port: 80
       """.stripMargin
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulDtabStoreInitializer)))
-    val etcd = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[ConsulConfig]
-    assert(etcd.host.value == "consul.local")
-    assert(etcd.port.value == Port(80))
-    assert(etcd.pathPrefix == Some(Path.read("/foo/bar")))
+    val consul = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[ConsulConfig]
+    assert(consul.host.value == "consul.local")
+    assert(consul.port.value == Port(80))
+    assert(consul.pathPrefix == Some(Path.read("/foo/bar")))
+    assert(consul.recursive.getOrElse(false))
   }
 
 }

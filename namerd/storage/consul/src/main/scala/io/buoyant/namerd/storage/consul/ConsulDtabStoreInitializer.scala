@@ -5,13 +5,14 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.consul.SetHostFilter
-import io.buoyant.consul.v1.KvApi
+import io.buoyant.consul.v1.KvApiV1
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
-  pathPrefix: Option[Path]
+  pathPrefix: Option[Path],
+  recursive: Option[Boolean]
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -28,8 +29,9 @@ case class ConsulConfig(
       .filtered(new SetHostFilter(serviceHost, servicePort))
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
-      KvApi(service),
-      pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
+      KvApiV1(service),
+      pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
+      recursive.getOrElse(false)
     )
   }
 }

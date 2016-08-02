@@ -22,7 +22,7 @@ class CatalogApi(
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_datacenters
   def datacenters(retry: Boolean = false): Future[Seq[String]] = {
     val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters")
-    executeJson[Seq[String]](req, retry).map(_.value)
+    execute[Seq[String]](req, retry).map(_.value)
   }
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_services
@@ -37,7 +37,7 @@ class CatalogApi(
       "index" -> blockingIndex,
       "dc" -> datacenter
     )
-    executeJson[Map[String, Seq[String]]](req, retry)
+    execute[Map[String, Seq[String]]](req, retry)
   }
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_service
@@ -55,7 +55,7 @@ class CatalogApi(
       "dc" -> datacenter,
       "tag" -> tag
     )
-    executeJson[Seq[ServiceNode]](req, retry)
+    execute[Seq[ServiceNode]](req, retry)
   }
 }
 
