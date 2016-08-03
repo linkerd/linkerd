@@ -1,5 +1,7 @@
 package io.buoyant.namerd.iface
 
+import java.net.InetSocketAddress
+
 import com.twitter.conversions.time._
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
@@ -7,9 +9,9 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
-import io.buoyant.namer.ConfiguredNamersInterpreter
-import io.buoyant.namerd.storage.InMemoryDtabStore
+import io.buoyant.namer.ConfiguredDtabNamer
 import io.buoyant.namerd._
+import io.buoyant.namerd.storage.InMemoryDtabStore
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -532,5 +534,137 @@ class HttpControlServiceTest extends FunSuite with Awaits {
                                    |    }
                                    |  ]
                                    |}""".stripMargin.replaceAll("\\s", ""))
+  }
+
+  test("resolve w/ dtab") {
+    val prefix = Path.read("/io.l5d.namer")
+
+    val ni = new NameInterpreter {
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] = {
+        val idStr = s"${prefix.show}${dtab.lookup(path).show}"
+        Activity.value(NameTree.Leaf(Name.Bound(Var(null), Path.read(idStr))))
+      }
+    }
+
+    def delegate(ns: Ns): NameInterpreter = ni
+
+    val (nameTreeAct, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      override def lookup(path: Path): Activity[NameTree[Name]] = nameTreeAct
+    }
+
+    val service = new HttpControlService(newDtabStore(), delegate, Map(prefix -> namer))
+
+    val id = "/foo"
+
+    val addr = Var[Addr](Addr.Pending)
+    witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
+    val isa = new InetSocketAddress("127.0.0.1", 1)
+    val inet = Address.Inet(isa, Addr.Metadata(("isa-meta", "isa-data"))).asInstanceOf[Address]
+    addr() = Addr.Bound(Set(inet), Addr.Metadata(("bound-meta", "bound-data")))
+
+    val resp = await(service(Request(s"/api/1/resolve/default?path=/yeezy&dtab=/yeezy=>/foo")))
+
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString ==
+      """
+        |{
+        |  "type":"bound",
+        |  "addrs":[
+        |    {"ip":"127.0.0.1","port":1}
+        |  ],
+        |  "meta":{
+        |    "bound-meta":"bound-data"
+        |  }
+        |}""".stripMargin.replaceAll("\\s", "") + "\n")
+
+  }
+
+  test("resolve watch") {
+    val prefix = Path.read("/io.l5d.namer")
+
+    val ni = new NameInterpreter {
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] = {
+        val idsStr = s"${prefix.show}${dtab.lookup(path).show}"
+        Activity.value(NameTree.Leaf(Name.Bound(Var(null), Path.read(idsStr))))
+      }
+    }
+
+    def delegate(ns: Ns): NameInterpreter = ni
+
+    val (nameTreeAct, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      override def lookup(path: Path): Activity[NameTree[Name]] = nameTreeAct
+    }
+
+    val service = new HttpControlService(newDtabStore(), delegate, Map(prefix -> namer))
+
+    val id = "/foo"
+
+    val addr = Var[Addr](Addr.Pending)
+    witness.notify(Return(NameTree.Leaf(Name.Bound(addr, id))))
+
+    val resp = await(service(Request(s"/api/1/resolve/default?path=/yeezy&dtab=/yeezy=>/foo&watch=true")))
+
+    val isa1 = new InetSocketAddress("127.0.0.1", 1)
+    val inet1 = Address.Inet(isa1, Addr.Metadata(("isa-meta-1", "isa-data-1"))).asInstanceOf[Address]
+    addr() = Addr.Bound(Set(inet1), Addr.Metadata(("bound-meta", "bound-data")))
+
+    readAndAssert(
+      resp.reader,
+      """
+        |{
+        |  "type":"pending"
+        |}""".stripMargin.replaceAll("\\s", "")
+    )
+
+    readAndAssert(
+      resp.reader,
+      """
+        |{
+        |  "type":"bound",
+        |  "addrs":[
+        |    {"ip":"127.0.0.1","port":1}
+        |  ],
+        |  "meta":{
+        |    "bound-meta":"bound-data"
+        |  }
+        |}""".stripMargin.replaceAll("\\s", "")
+    )
+
+    val isa2 = new InetSocketAddress("127.0.0.1", 2)
+    val inet2 = Address.Inet(isa2, Addr.Metadata(("isa-meta-2", "isa-data-2"))).asInstanceOf[Address]
+    addr() = Addr.Bound(Set(inet1, inet2), Addr.Metadata(("bound-meta", "bound-data")))
+    readAndAssert(
+      resp.reader,
+      """
+        |{
+        |  "type":"bound",
+        |  "addrs":[
+        |    {"ip":"127.0.0.1","port":1},
+        |    {"ip":"127.0.0.1","port":2}
+        |  ],
+        |  "meta":{
+        |    "bound-meta":"bound-data"
+        |  }
+        |}""".stripMargin.replaceAll("\\s", "")
+    )
+
+    witness.notify(Return(NameTree.Neg))
+    readAndAssert(
+      resp.reader,
+      """
+        |{
+        |  "type":"neg"
+        |}""".stripMargin.replaceAll("\\s", "")
+    )
+
+    resp.reader.discard()
+  }
+
+  test("resolve an invalid path") {
+    val service = newService(NullDtabStore)
+    val resp = await(service(Request("/api/1/resolve/default?path=invalid")))
+    assert(resp.status == Status.BadRequest)
   }
 }

@@ -1,5 +1,6 @@
 ## x.x.x
 
+* Add `resolve` endpoint to Namerd HTTP API 
 * Add file-system based name interpreter.
 * Add auth `token` parameter to Consul Namer & Dtab Store
 
