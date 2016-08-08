@@ -37,8 +37,8 @@ object H2 extends Client[Request, Response]
   }
 
   case class PriorKnowledge(enabled: Boolean)
-  implicit private[buoyant] object PriorKnowledge extends Stack.Param[PriorKnowledge] {
-    val default = PriorKnowledge(false)
+  implicit object PriorKnowledge extends Stack.Param[PriorKnowledge] {
+    val default = PriorKnowledge(true)
   }
 
   /*
