@@ -11,21 +11,18 @@ import com.twitter.finagle.netty4.http.exp.Netty4Impl
   property = "kind"
 )
 @JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[HttpEngine.Netty3], name = "netty3"),
-  new JsonSubTypes.Type(value = classOf[HttpEngine.Netty4], name = "netty4")
+  new JsonSubTypes.Type(value = classOf[Netty3HttpEngine], name = "netty3"),
+  new JsonSubTypes.Type(value = classOf[Netty4HttpEngine], name = "netty4")
 ))
-abstract trait HttpEngine {
-
+abstract class HttpEngine {
   @JsonIgnore
   def mk(params: Stack.Params): Stack.Params
 }
 
-object HttpEngine {
-  class Netty3 extends HttpEngine {
-    def mk(params: Stack.Params) = params + Http.param.Netty3Impl
-  }
+class Netty3HttpEngine extends HttpEngine {
+  def mk(params: Stack.Params) = params + Http.param.Netty3Impl
+}
 
-  class Netty4 extends HttpEngine {
-    def mk(params: Stack.Params) = params + Netty4Impl
-  }
+class Netty4HttpEngine extends HttpEngine {
+  def mk(params: Stack.Params) = params + Netty4Impl
 }

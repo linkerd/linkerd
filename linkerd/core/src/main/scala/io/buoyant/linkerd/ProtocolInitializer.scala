@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.Time
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
@@ -18,7 +19,7 @@ import java.net.InetSocketAddress
  * configuration parameters.
  *
  */
-abstract class ProtocolInitializer extends ConfigInitializer {
+abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   import ProtocolInitializer._
 
   /** The protocol name, as read from configuration. */
@@ -34,6 +35,19 @@ abstract class ProtocolInitializer extends ConfigInitializer {
   /** The default protocol-specific router configuration */
   protected def defaultRouter: StackRouter[RouterReq, RouterRsp]
 
+  protected def configureServer(router: Router, server: Server): Server = {
+    val ip = server.ip.getHostAddress
+    val port = server.port
+    val param.Stats(stats) = router.params[param.Stats]
+    val routerLabel = router.label
+    server.configured(param.Label(s"$ip/$port"))
+      .configured(Server.RouterLabel(routerLabel))
+      .configured(param.Stats(stats.scope(routerLabel, "srv")))
+      .configured(router.params[TimeoutFilter.Param])
+      .configured(router.params[param.ResponseClassifier])
+      .configured(router.params[param.Tracer])
+  }
+
   /**
    * Satisfies the protocol-agnostic linkerd Router interface by
    * wrapping the protocol-specific router stack.
@@ -47,6 +61,9 @@ abstract class ProtocolInitializer extends ConfigInitializer {
 
     protected def _withParams(ps: Stack.Params): Router =
       copy(router = router.withParams(ps))
+
+    protected def configureServer(s: Server): Server =
+      initializer.configureServer(this, s)
 
     protected def withServers(ss: Seq[Server]): Router = copy(servers = ss)
 

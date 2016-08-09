@@ -37,9 +37,11 @@ trait Router {
 
   protected def _withParams(ps: Stack.Params): Router
 
+  protected def configureServer(s: Server): Server
+
   def withParams(ps: Stack.Params): Router =
     _withParams(ps)
-      .withServers(servers.map(Router.configureServer(this, _)))
+      .withServers(servers.map(configureServer(_)))
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
@@ -53,7 +55,7 @@ trait Router {
 
   /** Return a router with an additional server. */
   def serving(s: Server): Router =
-    withServers(servers :+ Router.configureServer(this, s))
+    withServers(servers :+ configureServer(s))
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
@@ -79,19 +81,6 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
-  }
-
-  private def configureServer(router: Router, server: Server): Server = {
-    val ip = server.ip.getHostAddress
-    val port = server.port
-    val param.Stats(stats) = router.params[param.Stats]
-    val routerLabel = router.label
-    server.configured(param.Label(s"$ip/$port"))
-      .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[TimeoutFilter.Param])
-      .configured(router.params[param.ResponseClassifier])
-      .configured(router.params[param.Tracer])
   }
 }
 

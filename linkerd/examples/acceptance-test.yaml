@@ -160,6 +160,12 @@ routers:
     /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   timeoutMs: 1000
+  maxChunkKB: 16
+  maxHeadersKB: 16
+  maxInitialLineKB: 16
+  maxRequestKB: 102400 # 100MB
+  maxResponseKB: 102400 # 100MB
+  compressionLevel: 9
   client:
     tls:
       kind: io.l5d.boundPath

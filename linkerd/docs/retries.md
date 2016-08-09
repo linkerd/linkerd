@@ -44,7 +44,7 @@ routers:
   client:
     retries:
       budget:
-        minRetiesPerSec: 5
+        minRetriesPerSec: 5
         percentCanRetry: 0.5
         ttlSecs: 15
       backoff:

@@ -7,18 +7,29 @@ include:
 
 * *httpAccessLog* -- Sets the access log path.  If not specified, no
 access log is written.
-* *identifier* -- [Http-specific identifier](#protocol-http-identifiers)
+* *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
+io.l5d.methodAndHost)
+* *maxChunkKB* -- The maximum size of an HTTP chunk (default: 8KB)
+* *maxHeadersKB* -- The maximum size of all headers in an HTTP message (default: 8KB)
+* *maxInitialLineKB* -- The maximum size of an initial HTTP
+  message line (default: 4KB)
+* *maxRequestKB* -- The maximum size of a non-chunked HTTP request
+  payload (default: 5MB)
+* *maxResponseKB* -- The maximum size of a non-chunked HTTP response
+  payload (default: 5MB)
+* *compressionLevel* -- The compression level to use (on 0-9)
+  (default: -1, automatically compresses textual content types with
+  compression level 6)
+
+_Note_: These memory constraints are selected to allow reliable
+concurrent usage of linkerd. Changing these parameters may
+significantly alter linkerd's performance characteristics.
 
 <a name="protocol-http-defaults"></a>
-## Defaults
-
-The default identifier for HTTP/1.1 routers is `io.l5d.methodAndHost`.  The
-default _dstPrefix_ (i.e. for all identifiers) is `/http`. The default server
-port is `4140`.
-
-As an example, here's an http router config that routes all `POST`
+## Example
+As an example, here's an HTTP router config that routes all `POST`
 requests to 8091 and all other requests to 8081, using the default
-identifier of `io.l5d.methodAndHost`:
+identifier of `io.l5d.methodAndHost`, listening on port 5000:
 
 ```yaml
 routers:
@@ -34,7 +45,7 @@ routers:
 
 (Note that the dtab is written in terms of names produced by the
 `methodAndHost` identifier. Using a different identifier would require a
-different set of dtab rules.)
+different set of dtab rules. See the next section for more on identifiers.)
 
 <a name="protocol-http-identifiers"></a>
 ## HTTP/1.1 Identifiers
@@ -76,6 +87,9 @@ For HTTP/1.0 requests, logical names are of the form:
 In both cases, `uri` is only considered a part of the logical name if the
 config option `httpUriInDst` is true.
 
+Note that `dstPrefix`, if unset in the identifier configuration block,
+defaults to "http".
+
 ### The Path Identifier
 
 This identifier is selected by setting the *kind* value of an *identifier*
@@ -98,7 +112,9 @@ The path identifier generates logical names of the form:
   / dstPrefix / [*segments* number of segments from the URL path]
 ```
 
-For example, here's a router configured with the path identifier:
+Note that `dstPrefix`, if unset in the identifier configuration block,
+defaults to "http". For example, here's a router configured with the path
+identifier:
 
 ```yaml
 routers:
