@@ -147,7 +147,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] def getDtab(ns: String): Future[Option[VersionedDtab]] =
     storage.observe(ns).toFuture
 
-  private[this] val delegateApiHander = new DelegateApiHandler(delegate)
+  private[this] val delegateApiHander = new DelegateApiHandler(delegate, namers.toSeq)
 
   def apply(req: Request): Future[Response] = Future(req match {
     case DtabUri(_, None) =>

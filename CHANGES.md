@@ -1,5 +1,7 @@
 ## x.x.x
 
+* Modify namerd's `/delegate` http endpoint to return bound names #569.
+
 ## 0.7.2
 
 * Add support for tags in the `io.l5d.consul` namer.
