@@ -123,9 +123,9 @@ Each router must be configured as an object with the following params:
 
 * *protocol* -- a protocol name must match one of the loaded configuration plugins (e.g. _http_, _mux_).
   linkerd currently supports the following protocols:
-  * [HTTP/1.1](protocol-http.md)
-  * [Thrift](protocol-thrift.md)
-  * [Mux](protocol-mux.md) (experimental)
+  * [HTTP/1.1](protocol-http.md), by using the value *http*;
+  * [Thrift](protocol-thrift.md), by using the value *thrift*; and
+  * [Mux](protocol-mux.md) (experimental), by using the value *mux*.
 * [basic router params](#basic-router-params) or protocol-specific router params
 * *servers* -- a list of server objects with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
