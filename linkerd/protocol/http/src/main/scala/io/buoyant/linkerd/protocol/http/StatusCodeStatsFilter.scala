@@ -39,6 +39,7 @@ class StatusCodeStatsFilter(stats: StatsReceiver)
   private[this] val statusReceiver = stats.scope("status")
   private[this] val timeReceiver = stats.scope("time")
 
+  private[this] val errorCounter = statusReceiver.counter("error")
   private[this] val errorStat = timeReceiver.stat("error")
 
   private[this] val statusCodeCounters =
@@ -46,10 +47,11 @@ class StatusCodeStatsFilter(stats: StatsReceiver)
 
   private[this] val statusClasses = (1 to 5).map(c => s"${c}XX").toIndexedSeq
   private[this] val statusClassCounters = statusClasses.map(statusReceiver.counter(_))
-  private[this] val statusClassStats = statusClasses.map(timeReceiver.stat(_))
+  private[this] val statusClassTimeStats = statusClasses.map(timeReceiver.stat(_))
 
   private[this] def count(rsp: Try[Response], duration: Long): Unit = rsp match {
     case Throw(_) =>
+      errorCounter.incr()
       errorStat.add(duration)
 
     case Return(rsp) =>
@@ -57,7 +59,7 @@ class StatusCodeStatsFilter(stats: StatsReceiver)
 
       val classIdx = (rsp.statusCode / 100) - 1
       statusClassCounters(classIdx).incr()
-      statusClassStats(classIdx).add(duration)
+      statusClassTimeStats(classIdx).add(duration)
   }
 
   def apply(request: Request, service: Service[Request, Response]): Future[Response] = {
