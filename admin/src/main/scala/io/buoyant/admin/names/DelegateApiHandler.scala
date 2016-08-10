@@ -191,7 +191,8 @@ object DelegateApiHandler {
 }
 
 class DelegateApiHandler(
-  interpreters: String => NameInterpreter
+  interpreters: String => NameInterpreter,
+  namers: Seq[(Path, Namer)] = Nil
 ) extends Service[Request, Response] {
 
   import DelegateApiHandler._
@@ -207,7 +208,7 @@ class DelegateApiHandler(
               err(Status.NotImplemented, s"Name Interpreter for $ns cannot show delegations")
           }
         case None =>
-          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(Nil))
+          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(namers))
       }
     case _ => err(Status.MethodNotAllowed)
   }
