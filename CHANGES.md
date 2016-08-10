@@ -1,6 +1,9 @@
-## x.x.x
+## 0.7.3
 
+* Allow protocol-specific parameters to be inherited on servers #561.
+* Don't clear addr on k8s service deletion #567.
 * Modify namerd's `/delegate` http endpoint to return bound names #569.
+* Memoize status stats components #547.
 
 ## 0.7.2
 
