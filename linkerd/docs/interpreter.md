@@ -41,7 +41,7 @@ interpreter accepts the following parameters:
 
 `io.l5d.fs`
 
-The default interpreter resolves names via the configured
+The file-system interpreter resolves names via the configured
 [`namers`](config.md#namers), just like the default interpreter, but also uses
 a dtab read from a file on the local file-system.  The specified file is watched
 for changes so that the dtab may be edited live.  This interpreter accepts the
