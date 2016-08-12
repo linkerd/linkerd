@@ -1,5 +1,6 @@
 io.buoyant.config.types.DirectoryDeserializer
 io.buoyant.config.types.DtabDeserializer
+io.buoyant.config.types.FileDeserializer
 io.buoyant.config.types.InetAddressDeserializer
 io.buoyant.config.types.PathDeserializer
 io.buoyant.config.types.PortDeserializer

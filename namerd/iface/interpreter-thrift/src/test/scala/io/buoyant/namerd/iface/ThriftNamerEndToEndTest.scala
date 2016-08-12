@@ -5,8 +5,8 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.namer.DelegateTree
-import io.buoyant.namerd.{ConfiguredDtabNamer, RichActivity}
+import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree}
+import io.buoyant.namerd.RichActivity
 import io.buoyant.test.Awaits
 import java.util.concurrent.atomic.AtomicLong
 import org.scalatest.FunSuite
