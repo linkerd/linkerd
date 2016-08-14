@@ -6,9 +6,9 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.Http.{param => hparam}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
-import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.service.Retries
-import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers}
+import io.buoyant.linkerd.protocol.http.{RewriteHostHeader, AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -28,6 +28,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+      .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
       .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
     Http.router
