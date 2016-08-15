@@ -39,6 +39,7 @@ namers:
 routers:
 - protocol: http
   label: int
+  dstPrefix: /http
   interpreter:
     kind: io.l5d.fs
     dtabFile: linkerd/examples/example.dtab
