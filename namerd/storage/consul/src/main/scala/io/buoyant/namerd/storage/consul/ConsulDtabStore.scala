@@ -7,14 +7,15 @@ import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Version}
 
-class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
+class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None) extends DtabStore {
 
   def path(ns: Ns) = s"${root.show}/$ns"
 
   def getNs(ns: Ns, index: Option[String] = None) =
-    api.get(path(ns), blockingIndex = index, recurse = path(ns).endsWith("/"))
+    api.get(path(ns), blockingIndex = index, recurse = path(ns).endsWith("/"), datacenter = datacenter)
 
-  def putNs(ns: Ns, value: String, cas: Option[String] = None) = api.put(path(ns), value, cas = cas)
+  def putNs(ns: Ns, value: String, cas: Option[String] = None) =
+    api.put(path(ns), value, cas = cas, datacenter = datacenter)
 
   def watch[T](ns: Ns)(empty: T)(f: Indexed[Seq[Key]] => T) = {
     val run = Var.async[Activity.State[T]](Activity.Pending) { updates =>
@@ -49,7 +50,7 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
     }
 
   def delete(ns: Ns): Future[Unit] = getNs(ns).transform {
-    case Return(_) => api.delete(path(ns)).unit
+    case Return(_) => api.delete(path(ns), datacenter = datacenter).unit
     case Throw(e: NotFound) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
     case Throw(e) => Future.exception(e)
   }
