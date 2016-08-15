@@ -4,14 +4,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
-import io.buoyant.consul.SetHostFilter
+import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter}
 import io.buoyant.consul.v1.KvApiV1
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
-  pathPrefix: Option[Path]
+  pathPrefix: Option[Path],
+  token: Option[String] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -24,9 +25,14 @@ case class ConsulConfig(
     val servicePort = port.getOrElse(DefaultPort).port
     val prefix = pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
 
+    val filters = if (token.isDefined)
+      new SetHostFilter(serviceHost, servicePort) andThen new SetAuthTokenFilter(token.get)
+    else
+      new SetHostFilter(serviceHost, servicePort)
+
     val service = Http.client
       .withTracer(NullTracer)
-      .filtered(new SetHostFilter(serviceHost, servicePort))
+      .filtered(filters)
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(KvApiV1(service), prefix)
   }
