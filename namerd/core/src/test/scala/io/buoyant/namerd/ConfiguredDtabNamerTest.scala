@@ -2,6 +2,7 @@ package io.buoyant.namerd
 
 import com.twitter.finagle._
 import com.twitter.util.{Activity, Await, Var}
+import io.buoyant.namer.ConfiguredDtabNamer
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
 
