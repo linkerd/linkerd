@@ -217,7 +217,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] def isStreaming(req: Request): Boolean = req.getBooleanParam("watch")
 
-  private[this] def renderList(list: Set[Ns]): Buf = Json.write(list).concat(newline)
+  private[this] def renderList(list: Iterable[Ns]): Buf = Json.write(list).concat(newline)
 
   private[this] def handleList(req: Request): Future[Response] =
     if (isStreaming(req)) {
@@ -226,7 +226,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       storage.list().toFuture.map { namespaces =>
         val rsp = Response()
         rsp.contentType = MediaType.Json
-        rsp.content = renderList(namespaces)
+        rsp.content = renderList(namespaces.toSeq.sorted)
         rsp
       }
     }

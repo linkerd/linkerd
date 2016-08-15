@@ -55,7 +55,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    val expected = HttpControlService.Json.write(defaultDtabs.keys).concat(HttpControlService.newline)
+    val expected = HttpControlService.Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
     assert(rsp.content == expected)
   }
 
@@ -112,7 +112,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    val expected = HttpControlService.Json.write(defaultDtabs.keys).concat(HttpControlService.newline)
+    val expected = HttpControlService.Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
     assert(rsp.content == expected)
   }
 
