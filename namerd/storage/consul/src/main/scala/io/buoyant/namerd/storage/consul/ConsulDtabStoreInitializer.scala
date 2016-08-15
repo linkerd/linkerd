@@ -13,7 +13,8 @@ case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
   pathPrefix: Option[Path],
-  token: Option[String] = None
+  token: Option[String] = None,
+  datacenter: Option[String] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -37,7 +38,8 @@ case class ConsulConfig(
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
       KvApi(service),
-      pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
+      pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
+      datacenter = datacenter
     )
   }
 }

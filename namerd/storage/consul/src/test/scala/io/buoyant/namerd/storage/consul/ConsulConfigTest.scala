@@ -17,8 +17,9 @@ class ConsulConfigTest extends FunSuite with OptionValues {
          |experimental: true
          |pathPrefix: /foo/bar
          |host: consul.local
-         |token: some-token
          |port: 80
+         |token: some-token
+         |datacenter: us-east-42
       """.stripMargin
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulDtabStoreInitializer)))
     val consul = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[ConsulConfig]
@@ -26,6 +27,7 @@ class ConsulConfigTest extends FunSuite with OptionValues {
     assert(consul.port.value == Port(80))
     assert(consul.pathPrefix == Some(Path.read("/foo/bar")))
     assert(consul.token == Some("some-token"))
+    assert(consul.datacenter == Some("us-east-42"))
   }
 
 }
