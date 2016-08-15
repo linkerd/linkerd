@@ -5,7 +5,7 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.consul.SetHostFilter
-import io.buoyant.consul.v1.KvApi
+import io.buoyant.consul.v1.KvApiV1
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
@@ -22,15 +22,13 @@ case class ConsulConfig(
   override def mkDtabStore: DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
+    val prefix = pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
 
     val service = Http.client
       .withTracer(NullTracer)
       .filtered(new SetHostFilter(serviceHost, servicePort))
       .newService(s"/$$/inet/$serviceHost/$servicePort")
-    new ConsulDtabStore(
-      KvApi(service),
-      pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
-    )
+    new ConsulDtabStore(KvApiV1(service), prefix)
   }
 }
 

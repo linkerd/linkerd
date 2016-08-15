@@ -8,11 +8,13 @@ import com.twitter.util.Future
 import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
-class KvApiTest extends FunSuite with Awaits with Exceptions {
-  val listBuf = Buf.Utf8("""["foo/bar/", "foo/baz/"]""")
-  val getBuf = Buf.Utf8("""foobar""")
+class KvApiV1Test extends FunSuite with Awaits with Exceptions {
+  val getBuf = Buf.Utf8("""[{"LockIndex":0,"Key":"sample","Flags":0,"Value":"Zm9vYmFy","CreateIndex":10,"ModifyIndex":12}]""")
   val putOkBuf = Buf.Utf8("""true""")
   val putFailBuf = Buf.Utf8("""false""")
+  val deleteOkBuf = Buf.Utf8("""true""")
+  val deleteFailBuf = Buf.Utf8("""false""")
+
   var lastUri = ""
 
   override val defaultWait = 2.seconds
@@ -26,42 +28,34 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     Future.value(rsp)
   }
 
-  test("list returns an indexed seq of key names") {
-    val service = stubService(listBuf)
-
-    val result = await(KvApi(service).list("/foo/"))
-
-    assert(result.index == Some("4"))
-    assert(result.value.size == 2)
-    assert(result.value == List("foo/bar/", "foo/baz/"))
-  }
-
-  test("list reports wrong paths with an error") {
-    val failureService = Service.mk[Request, Response] { req =>
-      val rsp = Response()
-      rsp.headerMap.set("X-Consul-Index", "42")
-      rsp.setStatusCode(404)
-      lastUri = req.uri
-      Future.value(rsp)
-    }
-    assertThrows[NotFound](
-      await(KvApi(failureService).list("/wrong/path/"))
-    )
-  }
-
-  test("get returns an indexed value") {
+  test("get returns an indexed seq of values") {
     val service = stubService(getBuf)
 
-    val result = await(KvApi(service).get("/some/path/to/key"))
+    val result = await(KvApiV1(service).get("/sample"))
     assert(result.index == Some("4"))
-    assert(result.value == "foobar")
+    assert(result.value.size == 1)
+    assert(result.value.head.decoded == Some("foobar"))
   }
 
-  test("get uses raw values") {
-    val service = stubService(putFailBuf)
+  test("get by default is non-recurse") {
+    val service = stubService(getBuf)
 
-    await(KvApi(service).get("/path/to/key"))
-    assert(lastUri.contains(s"raw=true"))
+    await(KvApiV1(service).get("/path/to/key"))
+    assert(!lastUri.contains("recurse"))
+  }
+
+  test("get with recurse set to true adds a recurse parameter") {
+    val service = stubService(getBuf)
+
+    await(KvApiV1(service).get("/path/to/key", recurse = true))
+    assert(lastUri.contains("recurse"))
+  }
+
+  test("get with recurse set to false doesn't add recurse parameter") {
+    val service = stubService(getBuf)
+
+    await(KvApiV1(service).get("/path/to/key", recurse = false))
+    assert(!lastUri.contains("recurse"))
   }
 
   test("get reports wrong paths with an error") {
@@ -73,73 +67,85 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[NotFound](
-      await(KvApi(failureService).get("/wrong/path"))
+      await(KvApiV1(failureService).get("/wrong/path"))
     )
   }
 
   test("put returns true on success") {
     val service = stubService(putOkBuf)
 
-    val result = await(KvApi(service).put("/path/to/key", "foobar"))
+    val result = await(KvApiV1(service).put("/path/to/key", "foobar"))
     assert(result)
   }
 
   test("put returns false on failure") {
     val service = stubService(putFailBuf)
 
-    val result = await(KvApi(service).put("/path/to/key", "foobar"))
+    val result = await(KvApiV1(service).put("/path/to/key", "foobar"))
     assert(!result)
   }
 
   test("put cas flag") {
     val service = stubService(putFailBuf)
 
-    await(KvApi(service).put("/path/to/key", "foobar", cas = Some("0")))
+    await(KvApiV1(service).put("/path/to/key", "foobar", cas = Some("0")))
     assert(lastUri.contains(s"cas=0"))
 
-    await(KvApi(service).put("/path/to/key", "foobar"))
+    await(KvApiV1(service).put("/path/to/key", "foobar"))
     assert(!lastUri.contains(s"cas"))
   }
 
   test("delete returns true on success") {
-    val service = stubService(putOkBuf)
+    val service = stubService(deleteOkBuf)
 
-    val result = await(KvApi(service).delete("/path/to/key"))
+    val result = await(KvApiV1(service).delete("/path/to/key"))
     assert(result)
   }
 
   test("delete returns false on failure") {
     val service = stubService(putFailBuf)
 
-    val result = await(KvApi(service).delete("/path/to/key"))
+    val result = await(KvApiV1(service).delete("/path/to/key"))
     assert(!result)
   }
 
   test("delete cas flag") {
-    val service = stubService(putFailBuf)
+    val service = stubService(deleteFailBuf)
 
-    await(KvApi(service).delete("/path/to/key", cas = Some("0")))
+    await(KvApiV1(service).delete("/path/to/key", cas = Some("0")))
     assert(lastUri.contains(s"cas=0"))
 
-    await(KvApi(service).delete("/path/to/key"))
+    await(KvApiV1(service).delete("/path/to/key"))
     assert(!lastUri.contains(s"cas"))
+  }
+
+  test("delete by default is non-recurse") {
+    val service = stubService(deleteOkBuf)
+
+    await(KvApiV1(service).delete("/path/to/key"))
+    assert(!lastUri.contains("recurse"))
+  }
+
+  test("delete with recurse set to true adds a recurse parameter") {
+    val service = stubService(deleteOkBuf)
+
+    await(KvApiV1(service).delete("/path/to/key", recurse = true))
+    assert(lastUri.contains("recurse"))
+  }
+
+  test("delete with recurse set to false doesn't add recurse parameter") {
+    val service = stubService(deleteOkBuf)
+
+    await(KvApiV1(service).delete("/path/to/key", recurse = false))
+    assert(!lastUri.contains("recurse"))
   }
 
   test("blocking index returned from one call can be used to set index on subsequent calls") {
     val service = stubService(getBuf)
-    val index = await(KvApi(service).get("/some/path")).index.get
+    val index = await(KvApiV1(service).get("/some/path")).index.get
 
-    await(KvApi(service).get("/some/path", blockingIndex = Some(index)))
+    await(KvApiV1(service).get("/some/path", blockingIndex = Some(index)))
     assert(lastUri.contains(s"index=$index"))
-  }
-
-  test("propagates client failures") {
-    val failureService = Service.mk[Request, Response] { req =>
-      Future.exception(new Exception("I have no idea who to talk to"))
-    }
-    assertThrows[Exception](
-      await(KvApi(failureService).list("/foo/"))
-    )
   }
 
   test("makes infinite retry attempts on retry = true") {
@@ -150,15 +156,15 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
         val rsp = Response()
         rsp.setContentTypeJson()
         rsp.headerMap.set("X-Consul-Index", "4")
-        rsp.content = listBuf
+        rsp.content = getBuf
         Future.value(rsp)
       } else {
         Future.exception(new Exception("I have no idea who to talk to"))
       }
     }
-    val result = await(KvApi(failureService).list("/some/path/", retry = true))
+    val result = await(KvApiV1(failureService).get("/some/path/", retry = true))
     assert(result.index == Some("4"))
-    assert(result.value == List("foo/bar/", "foo/baz/"))
+    assert(result.value.head.decoded == Some("foobar"))
   }
 
   test("reports invalid datacenter as an unexpected response") {
@@ -172,7 +178,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     assertThrows[UnexpectedResponse](
-      await(KvApi(failureService).list("/some/path/", datacenter = Some("non-existent dc")))
+      await(KvApiV1(failureService).get("/some/path/", datacenter = Some("non-existent dc")))
     )
   }
 
@@ -184,7 +190,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[Forbidden](
-      await(KvApi(failureService).get("/some/path"))
+      await(KvApiV1(failureService).get("/some/path"))
     )
   }
 }

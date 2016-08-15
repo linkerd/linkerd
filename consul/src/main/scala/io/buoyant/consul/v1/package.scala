@@ -1,6 +1,6 @@
 package io.buoyant.consul
 
-import com.twitter.finagle.{SimpleFilter, Service, http}
+import com.twitter.finagle.{Service, SimpleFilter, http}
 import com.twitter.util.Future
 
 package object v1 {
@@ -16,7 +16,7 @@ package object v1 {
 
   private[v1] val apiErrorFilter = new SimpleFilter[http.Request, http.Response] {
 
-    def apply(request: http.Request, service: Client): Future[http.Response] = {
+    def apply(request: http.Request, service: Client): Future[http.Response] =
       service(request).flatMap { response: http.Response =>
         response.status match {
           case http.Status.Ok => Future.value(response)
@@ -25,7 +25,5 @@ package object v1 {
           case _ => Future.exception(UnexpectedResponse(response))
         }
       }
-    }
   }
-
 }
