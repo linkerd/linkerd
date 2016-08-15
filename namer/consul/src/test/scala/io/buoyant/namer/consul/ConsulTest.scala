@@ -23,6 +23,7 @@ class ConsulTest extends FunSuite {
                     |kind: io.l5d.consul
                     |experimental: true
                     |host: consul.site.biz
+                    |token: some-token
                     |port: 8600
       """.stripMargin
 
@@ -30,6 +31,7 @@ class ConsulTest extends FunSuite {
     val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))
+    assert(consul.token == Some("some-token"))
     assert(!consul.disabled)
   }
 
