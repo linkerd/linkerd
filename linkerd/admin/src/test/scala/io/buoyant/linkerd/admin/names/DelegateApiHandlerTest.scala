@@ -43,7 +43,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
-      |"type":"delegate","path":"/boo/humbug","dentry":null,"delegate":{
+      |"type":"delegate","path":"/boo/humbug","delegate":{
         |"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[
           |{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},
           |{"type":"delegate","path":"/bah/humbug",
