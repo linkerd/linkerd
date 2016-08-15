@@ -12,11 +12,11 @@ class DtabListHandler(
     store.list().toFuture.map { list =>
       val response = Response()
       response.contentType = MediaType.Html + ";charset=UTF-8"
-      response.contentString = render(list)
+      response.contentString = render(list.toSeq.sorted)
       response
     }
 
-  def render(list: Set[String]) = {
+  def render(list: Iterable[String]) = {
     val listHtml = list.map { ns =>
       s"""
         <a class="list-group-item" href="dtab/$ns">$ns</a>
