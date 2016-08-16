@@ -11,5 +11,5 @@ import com.twitter.util.{Awaitable, Closable}
 trait Telemeter {
   def stats: StatsReceiver = NullStatsReceiver
   def tracer: Tracer = NullTracer
-  def run(): Closable with Awaitable[_]
+  def run(): Closable with Awaitable[Unit]
 }
