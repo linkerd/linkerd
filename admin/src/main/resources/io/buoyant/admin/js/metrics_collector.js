@@ -32,8 +32,8 @@ var MetricsCollector = (function() {
     listeners.push({handler: handler, metrics: metrics});
   }
 
-  function deregisterListener(listener) {
-    _.remove(listeners, function(l) { return l.handler === listener; });
+  function deregisterListener(handler) {
+    _.remove(listeners, function(l) { return l.handler === handler; });
   }
 
   return function(initialMetrics) {
