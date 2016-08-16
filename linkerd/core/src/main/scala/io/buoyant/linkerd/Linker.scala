@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.stats.MetricsStatsReceiver
 import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
@@ -18,6 +19,7 @@ trait Linker {
   def namers: Seq[(Path, Namer)]
   def admin: AdminConfig
   def tracer: Tracer
+  def metricsExporters: Seq[MetricsExporter]
   def configured[T: Stack.Param](t: T): Linker
 }
 
@@ -31,10 +33,11 @@ object Linker {
     tlsClient: Seq[TlsClientInitializer] = Nil,
     tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
-    classifier: Seq[ResponseClassifierInitializer] = Nil
+    classifier: Seq[ResponseClassifierInitializer] = Nil,
+    metricsExporter: Seq[MetricsExporterInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, metricsExporter)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -52,7 +55,8 @@ object Linker {
     LoadService[TlsClientInitializer],
     LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
-    LoadService[ResponseClassifierInitializer]
+    LoadService[ResponseClassifierInitializer],
+    LoadService[MetricsExporterInitializer]
   )
 
   def parse(
@@ -70,11 +74,16 @@ object Linker {
   def load(config: String): Linker =
     load(config, LoadedInitializers)
 
+  case class Metrics(
+    exporters: Option[Seq[MetricsExporterConfig]]
+  )
+
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
     tracers: Option[Seq[TracerConfig]],
-    admin: Option[AdminConfig]
+    admin: Option[AdminConfig],
+    metrics: Option[Metrics]
   ) {
     def mk(): Linker = {
       // At least one router must be specified
@@ -118,7 +127,18 @@ object Linker {
           case _ =>
         }
 
-      new Impl(routerImpls, namersByPrefix, tracer, admin.getOrElse(AdminConfig()))
+      val metricsExporters = metrics.flatMap(_.exporters)
+        .toSeq
+        .flatten
+        .map(_.mk(MetricsStatsReceiver.defaultRegistry))
+
+      new Impl(
+        routerImpls,
+        namersByPrefix,
+        tracer,
+        admin.getOrElse(AdminConfig()),
+        metricsExporters
+      )
     }
   }
 
@@ -130,7 +150,8 @@ object Linker {
     routers: Seq[Router],
     namers: Seq[(Path, Namer)],
     tracer: Tracer,
-    admin: AdminConfig
+    admin: AdminConfig,
+    metricsExporters: Seq[MetricsExporter]
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
       copy(routers = routers.map(_.configured(t)))
