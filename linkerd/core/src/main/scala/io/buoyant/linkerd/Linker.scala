@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.{param, Path, Namer, Stack}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, DefaultStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.logging.Logger
@@ -9,6 +10,7 @@ import io.buoyant.admin.AdminConfig
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
+import io.buoyant.telemetry.{TelemeterInitializer, TelemeterConfig, Telemeter}
 
 /**
  * Represents the total configuration of a Linkerd process.
@@ -18,6 +20,7 @@ trait Linker {
   def namers: Seq[(Path, Namer)]
   def admin: AdminConfig
   def tracer: Tracer
+  def telemeters: Seq[Telemeter]
   def configured[T: Stack.Param](t: T): Linker
 }
 
@@ -31,10 +34,11 @@ object Linker {
     tlsClient: Seq[TlsClientInitializer] = Nil,
     tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
-    classifier: Seq[ResponseClassifierInitializer] = Nil
+    classifier: Seq[ResponseClassifierInitializer] = Nil,
+    telemeter: Seq[TelemeterInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, telemeter)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -52,7 +56,8 @@ object Linker {
     LoadService[TlsClientInitializer],
     LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
-    LoadService[ResponseClassifierInitializer]
+    LoadService[ResponseClassifierInitializer],
+    LoadService[TelemeterInitializer]
   )
 
   def parse(
@@ -60,7 +65,6 @@ object Linker {
     inits: Initializers = LoadedInitializers
   ): LinkerConfig = {
     val mapper = Parser.objectMapper(config, inits.iter)
-
     mapper.readValue[LinkerConfig](config)
   }
 
@@ -74,26 +78,52 @@ object Linker {
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
     tracers: Option[Seq[TracerConfig]],
+    telemetry: Option[Seq[TelemeterConfig]],
     admin: Option[AdminConfig]
   ) {
     def mk(): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val tracer: Tracer = tracers.map(_.map { t =>
-        // override the global {com.twitter.finagle.tracing.debugTrace} flag
-        fDebugTrace.parse(t.debugTrace.toString)
-        t.newTracer()
-      }) match {
-        case Some(Nil) => NullTracer
-        case Some(Seq(tracer)) => tracer
-        case Some(tracers) => BroadcastTracer(tracers)
-        case None => DefaultTracer
-      }
+      val telemeters = telemetry.map(_.map(_.mk()))
 
+      // Telemeters may provide StatsReceivers.  Note that if all
+      // telemeters provide implementations that do not use the
+      // default Metrics registry, linker stats may be missing from
+      // /admin/metrics.json
+      val stats =
+        telemeters.getOrElse(Nil).collect { case t if !t.stats.isNull => t.stats } match {
+          case Nil => DefaultStatsReceiver
+          case Seq(receiver) => receiver
+          case receivers => BroadcastStatsReceiver(receivers)
+        }
+
+      // Similarly, tracers may be provided by telemeters OR by
+      // 'tracers' configuration. 
+      //
+      // TODO the TracerInitializer API should be killed and these
+      // modules should be converted to Telemeters.
+      val configuredTracers = tracers.map { tracers =>
+        tracers.map { t =>
+          // override the global {com.twitter.finagle.tracing.debugTrace} flag
+          fDebugTrace.parse(t.debugTrace.toString)
+          t.newTracer()
+        }
+      }
+      val telemeterTracers = telemeters.map { ts =>
+        ts.collect { case t if !t.tracer.isNull => t.tracer }
+      }
+      val tracer: Tracer = (configuredTracers, telemeterTracers) match {
+        case (None, None) => DefaultTracer
+        case (tracers0, tracers1) => (tracers0.getOrElse(Nil) ++ tracers1.getOrElse(Nil)) match {
+          case Nil => NullTracer
+          case Seq(tracer) => tracer
+          case tracers => BroadcastTracer(tracers)
+        }
+      }
       log.info(s"Loading tracer: $tracer")
 
-      val namerParams = Stack.Params.empty + param.Tracer(tracer)
+      val namerParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
       val namersByPrefix = namers.getOrElse(Nil).reverse.map { namer =>
         if (namer.disabled) throw new IllegalArgumentException(
           s"""The ${namer.prefix.show} namer is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
@@ -105,7 +135,9 @@ object Linker {
       for ((label, rts) <- routers.groupBy(_.label))
         if (rts.size > 1) throw ConflictingLabels(label)
 
-      val routerParams = namerParams + Namers(namersByPrefix)
+      val routerParams = namerParams +
+        Namers(namersByPrefix) +
+        param.Stats(namerParams[param.Stats].statsReceiver.scope("rt"))
       val routerImpls = routers.map { router =>
         val interpreter = router.interpreter.newInterpreter(routerParams)
         router.router(routerParams + DstBindingFactory.Namer(interpreter))
@@ -118,7 +150,13 @@ object Linker {
           case _ =>
         }
 
-      new Impl(routerImpls, namersByPrefix, tracer, admin.getOrElse(AdminConfig()))
+      Impl(
+        routerImpls,
+        namersByPrefix,
+        tracer,
+        telemeters.getOrElse(Nil),
+        admin.getOrElse(AdminConfig())
+      )
     }
   }
 
@@ -130,6 +168,7 @@ object Linker {
     routers: Seq[Router],
     namers: Seq[(Path, Namer)],
     tracer: Tracer,
+    telemeters: Seq[Telemeter],
     admin: AdminConfig
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
