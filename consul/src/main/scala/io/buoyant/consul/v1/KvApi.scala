@@ -1,41 +1,52 @@
 package io.buoyant.consul.v1
 
+import java.util.Base64
+
 import com.twitter.conversions.time._
 import com.twitter.finagle.http
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.util._
 
-object KvApi {
-  def apply(c: Client): KvApi = new KvApi(c, s"/$versionString")
-}
+trait KvApi {
 
-class KvApi(
-  override val client: Client,
-  override val uriPrefix: String,
-  override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
-  override val stats: StatsReceiver = DefaultStatsReceiver
-) extends BaseApi with Closable {
-  val kvPrefix = s"$uriPrefix/kv"
-
-  // https://www.consul.io/docs/agent/http/kv.html#single
-  def list(
+  def get(
     path: String,
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
-    separator: Option[String] = Some("/"),
+    recurse: Boolean = false,
     retry: Boolean = false
-  ): Future[Indexed[Seq[String]]] = {
-    val req = mkreq(
-      http.Method.Get,
-      s"$kvPrefix$path",
-      "keys" -> Some(true.toString),
-      "separator" -> separator,
-      "index" -> blockingIndex,
-      "dc" -> datacenter
-    )
-    executeJson[Seq[String]](req, retry)
-  }
+  ): Future[Indexed[Seq[Key]]]
+
+  def put(
+    path: String,
+    value: String,
+    datacenter: Option[String] = None,
+    cas: Option[String] = None,
+    retry: Boolean = false
+  ): Future[Boolean]
+
+  def delete(
+    path: String,
+    datacenter: Option[String] = None,
+    cas: Option[String] = None,
+    recurse: Boolean = false,
+    retry: Boolean = false
+  ): Future[Boolean]
+
+}
+
+object KvApiV1 {
+  def apply(c: Client): KvApiV1 = new KvApiV1(c, s"/$versionString")
+}
+
+class KvApiV1(
+  val client: Client,
+  val uriPrefix: String,
+  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+  val stats: StatsReceiver = DefaultStatsReceiver
+) extends KvApi with BaseApi with Closable {
+  val kvPrefix = s"$uriPrefix/kv"
 
   /**
    * Get the key value
@@ -48,16 +59,17 @@ class KvApi(
     path: String,
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
+    recurse: Boolean = false,
     retry: Boolean = false
-  ): Future[Indexed[String]] = {
+  ): Future[Indexed[Seq[Key]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
-      "raw" -> Some(true.toString),
       "index" -> blockingIndex,
-      "dc" -> datacenter
+      "dc" -> datacenter,
+      "recurse" -> (if (recurse) Some(recurse.toString) else None)
     )
-    executeRaw(req, retry)
+    execute[Seq[Key]](req, retry)
   }
 
   /**
@@ -81,7 +93,7 @@ class KvApi(
       "dc" -> datacenter
     )
     req.setContentString(value)
-    executeJson[Boolean](req, retry).map(_.value)
+    execute[Boolean](req, retry).map(_.value)
   }
 
   /**
@@ -95,15 +107,30 @@ class KvApi(
     path: String,
     datacenter: Option[String] = None,
     cas: Option[String] = None,
+    recurse: Boolean = false,
     retry: Boolean = false
   ): Future[Boolean] = {
     val req = mkreq(
       http.Method.Delete,
       s"$kvPrefix$path",
       "cas" -> cas,
+      "recurse" -> (if (recurse) Some(recurse.toString) else None),
       "dc" -> datacenter
     )
-    executeJson[Boolean](req, retry).map(_.value)
+    execute[Boolean](req, retry).map(_.value)
   }
+}
 
+object Key {
+  def apply(key: String, value: String): Key = Key(Some(key), Some(Base64.getEncoder.encodeToString(value.getBytes)))
+}
+
+case class Key(
+  Key: Option[String],
+  Value: Option[String]
+) {
+  lazy val decoded: Option[String] = Value match {
+    case Some(raw: String) => Some(new String(Base64.getDecoder.decode(raw)))
+    case None => None
+  }
 }

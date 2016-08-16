@@ -1,10 +1,11 @@
 package io.buoyant.linkerd.admin.names
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.util.{Var, Activity}
+import com.twitter.util.Activity
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.linkerd._
 import io.buoyant.namer.{ErrorNamerInitializer, TestNamerInitializer}
@@ -40,7 +41,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
     val req = Request()
     req.uri = s"/delegate?namespace=plain&path=/boo/humbug&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
-    val rsp = await(web(req))
+    val rsp = await(500.millis)(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
       |"type":"delegate","path":"/boo/humbug","delegate":{
