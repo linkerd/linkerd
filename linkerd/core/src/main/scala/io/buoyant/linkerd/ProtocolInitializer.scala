@@ -6,6 +6,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.Time
 import io.buoyant.config.ConfigInitializer
+import io.buoyant.linkerd.Server.AnnouncerName
 import io.buoyant.router._
 import java.net.InetSocketAddress
 
@@ -146,7 +147,7 @@ object ProtocolInitializer {
     addr: InetSocketAddress,
     server: StackServer[Req, Rsp],
     factory: ServiceFactory[Req, Rsp],
-    announce: Seq[String]
+    announce: Seq[AnnouncerName]
   ) extends Server.Initializer {
     def params = server.params
     def router: String = server.params[Server.RouterLabel].label

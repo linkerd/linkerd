@@ -14,11 +14,16 @@ class ZkAnnouncer(zkAddrs: Seq[HostAndPort], pathPrefix: String) extends Announc
 
   private[this] val connect = zkAddrs.map(_.toString).mkString(",")
 
-  override def announce(addr: InetSocketAddress, name: String): Future[Announcement] =
-    underlying.announce(addr, s"$connect!$pathPrefix/$name!0")
-
+  override def announce(addr: InetSocketAddress, name: String, version: Option[String] = None): Future[Announcement] =
+    version match {
+      case Some(v) => underlying.announce(addr, s"$connect!$pathPrefix/$name-$v!0")
+      case None => underlying.announce(addr, s"$connect!$pathPrefix/$name!0")
+    }
 
   private[this] val prefix = Path.read(pathPrefix)
-  override def concreteName(name: String): Path =
-    Path.Utf8("#", "io.l5d.serversets") ++ prefix ++ Path.Utf8(name)
+  override def concreteName(name: String, version: Option[String] = None): Path =
+    version match {
+      case Some(v) => Path.Utf8("#", "io.l5d.serversets") ++ prefix ++ Path.Utf8(s"$name-$v")
+      case None => Path.Utf8("#", "io.l5d.serversets") ++ prefix ++ Path.Utf8(name)
+    }
 }

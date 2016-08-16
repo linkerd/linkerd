@@ -46,8 +46,13 @@ object Linkerd extends App {
             val listening = server.serve()
             for (name <- server.announce) {
               for (announcer <- running.announcers) {
-                log.info("announcing %s as %s to %s", server.addr, name, announcer.scheme)
-                announcer.announce(server.addr, name).onSuccess(closeOnExit)
+                name.version match {
+                  case Some(version) =>
+                    log.info("announcing %s as %s version %s to %s", server.addr, name.service, version, announcer.scheme)
+                  case None =>
+                    log.info("announcing %s as %s to %s", server.addr, name.service, announcer.scheme)
+                }
+                announcer.announce(server.addr, name.service, name.version).onSuccess(closeOnExit)
               }
             }
             closeOnExit(listening)

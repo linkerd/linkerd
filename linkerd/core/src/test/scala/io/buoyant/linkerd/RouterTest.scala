@@ -129,7 +129,7 @@ servers:
         |- kind: test
         |servers:
         |- announce:
-        |    - foo
+        |    - service: foo
       """.
       stripMargin
     val router = parse(yaml, Stack.Params.empty)

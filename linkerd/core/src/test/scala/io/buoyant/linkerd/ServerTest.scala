@@ -4,6 +4,7 @@ import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.config.Parser
+import io.buoyant.linkerd.Server.AnnouncerName
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
@@ -106,8 +107,8 @@ fancyRouter: true
     val yaml =
       """
         |announce:
-        |- foobar
+        |- service: foobar
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq("foobar"))
+    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(AnnouncerName("foobar", None)))
   }
 }
