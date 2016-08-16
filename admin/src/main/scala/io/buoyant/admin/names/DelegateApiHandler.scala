@@ -4,6 +4,7 @@ package admin.names
 import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{io => _, _}
 import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.annotation.JsonSerialize.Inclusion
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -169,6 +170,7 @@ object DelegateApiHandler {
     private[this] val mapper = new ObjectMapper with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
     mapper.registerModule(mkModule())
 
     def writeStr[T](t: T): String = mapper.writeValueAsString(t)
