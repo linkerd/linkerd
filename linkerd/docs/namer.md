@@ -131,6 +131,7 @@ The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 * *host* --  the Consul host. (default: localhost)
 * *port* --  the Consul port. (default: 8500)
 * *includeTag* -- whether to read a Consul tag from the path.  (default: false)
+* *token* -- Optional. The auth token to use when making API calls.
 
 For example:
 ```yaml

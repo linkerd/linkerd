@@ -1,10 +1,11 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.http.{Response, Request}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Http, Path, Stack}
-import io.buoyant.consul.{CatalogNamer, SetHostFilter, v1}
+import com.twitter.finagle.{Filter, Http, Path, Stack}
+import io.buoyant.consul.{SetAuthTokenFilter, CatalogNamer, SetHostFilter, v1}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
@@ -30,7 +31,8 @@ object ConsulInitializer extends ConsulInitializer
 case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
-  includeTag: Option[Boolean]
+  includeTag: Option[Boolean],
+  token: Option[String] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -50,14 +52,19 @@ case class ConsulConfig(
    */
   @JsonIgnore
   def newNamer(params: Stack.Params): CatalogNamer = {
+    val authFilter = token match {
+      case Some(t) => new SetAuthTokenFilter(t)
+      case None => Filter.identity[Request, Response]
+    }
+    val filters = new SetHostFilter(getHost, getPort) andThen authFilter
+
     val service = Http.client
       .withParams(Http.client.params ++ params)
       .configured(Label("namer" + prefix))
       .withTracer(NullTracer)
-      .filtered(new SetHostFilter(getHost, getPort))
+      .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
     new CatalogNamer(prefix, v1.CatalogApi(service), includeTag.getOrElse(false))
   }
 }
-
