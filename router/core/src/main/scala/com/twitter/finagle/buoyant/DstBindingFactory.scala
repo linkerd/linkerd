@@ -140,7 +140,7 @@ object DstBindingFactory {
 
     def apply(dst: Dst, conn: ClientConnection): Future[Service[Req, Rsp]] = dst match {
       case path: Dst.Path =>
-        val exc = new RequestTimeoutException(bindingTimeout.timeout, s"Binding ${path.path.show} exceeded timeout")
+        val exc = new RequestTimeoutException(bindingTimeout.timeout, s"binding ${path.path.show}")
         pathCache(path, conn).raiseWithin(bindingTimeout.timeout, exc)
       case bound: Dst.Bound => boundCache(bound, conn)
     }
@@ -151,9 +151,12 @@ object DstBindingFactory {
     private[this] val pathCache: Cache[Dst.Path] = {
       def mk(dst: Dst.Path): ServiceFactory[Req, Rsp] = {
         // dtabs aren't available when NoBrokers is thrown so we add them here
+        // as well as add a binding timeout
         val dyn = new ServiceFactoryProxy(new DynBoundFactory(dst.bind(namer), treeCache)) {
-          override def apply(conn: ClientConnection) =
-            self(conn).rescue(handleNoBrokers)
+          override def apply(conn: ClientConnection) = {
+            val exc = new RequestTimeoutException(bindingTimeout.timeout, s"dyn binding ${dst.path.show}")
+            self(conn).rescue(handleNoBrokers).raiseWithin(bindingTimeout.timeout, exc)
+          }
 
           private val handleNoBrokers: PartialFunction[Throwable, Future[Service[Req, Rsp]]] = {
             case e: NoBrokersAvailableException => nbae
