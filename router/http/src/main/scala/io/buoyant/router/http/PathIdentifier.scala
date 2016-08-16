@@ -13,16 +13,15 @@ case class PathIdentifier(
 ) extends RoutingFactory.Identifier[http.Request] {
 
   def apply(req: http.Request): Future[(Dst, http.Request)] =
-    Path.read(req.path) match {
+    req.path.split("/").drop(1) match {
       case path if path.size >= segments =>
         if (consume) {
           req.uri = req.uri.split("/").drop(segments + 1).mkString("/", "/", "")
         }
         Future.value(
-          (Dst.Path(prefix ++ path.take(segments), baseDtab(), Dtab.local), req)
+          (Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local), req)
         )
       case _ =>
         Future.exception(new IllegalArgumentException(s"not enough segments in path ${req.path}"))
     }
-
 }
