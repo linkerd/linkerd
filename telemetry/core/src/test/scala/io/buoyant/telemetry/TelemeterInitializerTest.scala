@@ -1,5 +1,7 @@
 package io.buoyant.telemetry
 
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util._
 import io.buoyant.config.Parser
@@ -10,7 +12,6 @@ class TelemeterInitializerTest extends FunSuite {
   test("telemetry is totally radical") {
     val yaml =
       """|kind: io.l5d.testelemeter
-         |radical: true
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
@@ -27,16 +28,21 @@ class TestTelemeterInitializer extends TelemeterInitializer {
   def configClass = classOf[TestTelemeterConfig]
 }
 
-case class TestTelemeterConfig(radical: Boolean) extends TelemeterConfig {
-  def mk(): TestTelemeter = new TestTelemeter(radical)
+case class TestTelemeterConfig(metrics: Boolean, tracing: Boolean) extends TelemeterConfig {
+  def mk(): TestTelemeter = new TestTelemeter(metrics, tracing)
 }
 
-case class TestTelemeter(radical: Boolean) extends Telemeter {
-  @volatile var closed = false
-  def run(): Closable with Awaitable[Unit] = new Closable with CloseAwaitably {
-    def close(d: Time) = closeAwaitably {
-      closed = true
-      Future.Unit
+case class TestTelemeter(metrics: Boolean, tracing: Boolean) extends Telemeter {
+  override val stats =
+    if (metrics) new InMemoryStatsReceiver
+    else NullStatsReceiver
+
+  override val tracer =
+    if (tracing) new BufferingTracer
+    else NullTracer
+
+  def run(): Closable with Awaitable[Unit] =
+    new Closable with CloseAwaitably {
+      def close(d: Time) = closeAwaitably(Future.Unit)
     }
-  }
 }

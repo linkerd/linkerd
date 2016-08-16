@@ -35,10 +35,10 @@ object Linker {
     tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
     classifier: Seq[ResponseClassifierInitializer] = Nil,
-    telemeter: Seq[TelemeterInitializer] = Nil
+    telemetry: Seq[TelemeterInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, telemeter)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, telemetry)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -94,12 +94,11 @@ object Linker {
       val stats =
         telemeters.getOrElse(Nil).collect { case t if !t.stats.isNull => t.stats } match {
           case Nil => DefaultStatsReceiver
-          case Seq(receiver) => receiver
           case receivers => BroadcastStatsReceiver(receivers)
         }
 
       // Similarly, tracers may be provided by telemeters OR by
-      // 'tracers' configuration. 
+      // 'tracers' configuration.
       //
       // TODO the TracerInitializer API should be killed and these
       // modules should be converted to Telemeters.
@@ -115,11 +114,7 @@ object Linker {
       }
       val tracer: Tracer = (configuredTracers, telemeterTracers) match {
         case (None, None) => DefaultTracer
-        case (tracers0, tracers1) => (tracers0.getOrElse(Nil) ++ tracers1.getOrElse(Nil)) match {
-          case Nil => NullTracer
-          case Seq(tracer) => tracer
-          case tracers => BroadcastTracer(tracers)
-        }
+        case (tracers0, tracers1) => BroadcastTracer((tracers0 ++ tracers1).flatten.toSeq)
       }
       log.info(s"Loading tracer: $tracer")
 

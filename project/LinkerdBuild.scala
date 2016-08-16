@@ -344,7 +344,7 @@ object LinkerdBuild extends Base {
       .dependsOn(
         configCore,
         LinkerdBuild.admin,
-        telemetryCore,
+        telemetryCore % "compile->compile;test->test",
         Namer.core % "compile->compile;test->test",
         Router.core
       )
