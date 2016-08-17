@@ -1,16 +1,24 @@
-package io.buoyant.consul
+package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.consul.v1.{UnexpectedResponse, ServiceNode}
+import io.buoyant.consul._
+import io.buoyant.consul.v1.{ServiceNode, UnexpectedResponse}
+import io.buoyant.namer.Metadata
 
 class CatalogNamer(
   idPrefix: Path,
-  api: v1.CatalogApi,
-  includeTag: Boolean = false
+  catalogApi: v1.CatalogApi,
+  agentApi: v1.AgentApi,
+  includeTag: Boolean = false,
+  setHost: Boolean = false
 ) extends Namer {
 
   import CatalogNamer._
+
+  private[this] def domainFuture(): Future[Option[String]] =
+    agentApi.localAgent().map { la => la.Config.flatMap(_.Domain).map(_.stripPrefix(".").stripSuffix(".")) }
 
   /**
    * Accepts names in the form:
@@ -38,7 +46,12 @@ class CatalogNamer(
         Activity.value(NameTree.Neg)
     }
 
-  def lookup(dcName: String, svcKey: SvcKey, id: Path, residual: Path): Activity[NameTree[Name]] = {
+  def lookup(
+    dcName: String,
+    svcKey: SvcKey,
+    id: Path,
+    residual: Path
+  ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
     Activity(Dc.get(dcName).services).map { services =>
       log.debug("consul dc %s initial state: %s", dcName, services.keys.mkString(", "))
@@ -83,7 +96,8 @@ class CatalogNamer(
   }
 
   /**
-   * Contains all cached serviceNodes responses for a particular serviceName in a particular datacenter
+   * Contains all cached serviceNodes responses for a particular serviceName
+   * in a particular datacenter
    */
   case class SvcCache(datacenter: String, key: SvcKey, updateableAddr: VarUp[Addr]) {
 
@@ -97,7 +111,7 @@ class CatalogNamer(
     }
 
     def mkRequest(): Future[Seq[ServiceNode]] =
-      api
+      catalogApi
         .serviceNodes(key.name, datacenter = Some(datacenter), tag = key.tag, blockingIndex = Some(index), retry = true)
         .map { indexedNodes =>
           indexedNodes.index.foreach(setIndex)
@@ -112,26 +126,37 @@ class CatalogNamer(
 
     def serviceNodeToAddr(node: ServiceNode): Option[Address] = {
       (node.Address, node.ServiceAddress, node.ServicePort) match {
-        case (_, Some(addr), Some(port)) if !addr.isEmpty =>
-          Some(Address(addr, port))
-        case (Some(addr), _, Some(port)) if !addr.isEmpty =>
-          Some(Address(addr, port))
+        case (_, Some(serviceIp), Some(port)) if !serviceIp.isEmpty =>
+          Some(Address(serviceIp, port))
+        case (Some(nodeIp), _, Some(port)) if !nodeIp.isEmpty =>
+          Some(Address(nodeIp, port))
         case _ => None
       }
     }
 
     def update(nodes: Seq[ServiceNode]): Future[Unit] = {
-      synchronized {
-        try {
-          val socketAddrs = nodes.flatMap(serviceNodeToAddr).toSet
-          updateableAddr() = if (socketAddrs.isEmpty) Addr.Neg else Addr.Bound(socketAddrs)
-        } catch {
-          // in the event that we are trying to parse an invalid addr
-          case e: IllegalArgumentException =>
-            updateableAddr() = Addr.Failed(e)
+      val metaFuture =
+        if (setHost)
+          domainFuture().map { domainOption =>
+            val domain = domainOption.getOrElse("consul")
+            Addr.Metadata(Metadata.authority -> s"${key.name}.service.$datacenter.$domain")
+          }
+        else
+          Future.value(Addr.Metadata.empty)
+
+      metaFuture.flatMap { meta =>
+        synchronized {
+          try {
+            val socketAddrs = nodes.flatMap(serviceNodeToAddr).toSet
+            updateableAddr() = if (socketAddrs.isEmpty) Addr.Neg else Addr.Bound(socketAddrs, meta)
+          } catch {
+            // in the event that we are trying to parse an invalid addr
+            case e: IllegalArgumentException =>
+              updateableAddr() = Addr.Failed(e)
+          }
         }
+        mkRequest().flatMap(update).handle(handleUnexpected)
       }
-      mkRequest().flatMap(update).handle(handleUnexpected)
     }
 
     val handleUnexpected: PartialFunction[Throwable, Unit] = {
@@ -165,7 +190,7 @@ class CatalogNamer(
     }
 
     def mkRequest(): Future[Seq[SvcKey]] =
-      api
+      catalogApi
         .serviceMap(datacenter = Some(name), blockingIndex = Some(index), retry = true)
         .map { indexedSvcs =>
           indexedSvcs.index.foreach(setIndex)
@@ -257,5 +282,5 @@ class CatalogNamer(
 object CatalogNamer {
   type VarUp[T] = Var[T] with Updatable[T]
   type ActUp[T] = VarUp[Activity.State[T]]
+  private val log = Logger.get(getClass.getName)
 }
-
