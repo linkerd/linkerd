@@ -1,11 +1,11 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
+import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree}
+import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree, Metadata}
 import io.buoyant.namerd.RichActivity
 import io.buoyant.test.Awaits
 import java.util.concurrent.atomic.AtomicLong
@@ -68,11 +68,21 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     bound0.addr.changes.respond(clientAddr0 = _)
     assert(clientAddr0 == Addr.Pending)
 
-    serverAddr0() = Addr.Bound(Address("127.1", 4321))
-    eventually { assert(clientAddr0 == serverAddr0.sample()) }
+    serverAddr0() = Addr.Bound(
+      Set(Address("127.1", 4321)),
+      Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+    )
+    eventually {
+      assert(clientAddr0 == Addr.Bound(Set(Address("127.1", 4321)), Addr.Metadata(Metadata.authority -> "acme.co")))
+    }
 
-    serverAddr0() = Addr.Bound(Address("127.1", 5432))
-    eventually { assert(clientAddr0 == serverAddr0.sample()) }
+    serverAddr0() = Addr.Bound(
+      Set(Address("127.1", 5432)),
+      Addr.Metadata(Metadata.authority -> "acme.co", "also" -> "ignored")
+    )
+    eventually {
+      assert(clientAddr0 == Addr.Bound(Set(Address("127.1", 5432)), Addr.Metadata(Metadata.authority -> "acme.co")))
+    }
 
     serverState() = Activity.Ok(NameTree.Neg)
     eventually { assert(clientState == serverState.sample()) }
@@ -101,7 +111,12 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       def lookup(path: Path) = {
         path match {
           case Path.Utf8("woop") => Activity.value(NameTree.Leaf(Name.Bound(
-            Var(Addr.Bound(Address("localhost", 9000))),
+            Var(
+              Addr.Bound(
+                Set(Address("localhost", 9000)),
+                Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+              )
+            ),
             Path.read("/io.l5d.w00t/woop"),
             Path.empty
           )))
