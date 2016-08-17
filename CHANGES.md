@@ -1,6 +1,7 @@
 ## x.x.x
 
 * Add file-system based name interpreter.
+* Allow `_` to be used as an 'no tags' placeholder in CatalogNamer
 * Add auth `token` parameter to Consul Namer & Dtab Store
 
 ## 0.7.3
