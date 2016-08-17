@@ -7,9 +7,9 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
-import io.buoyant.namer.ConfiguredNamersInterpreter
-import io.buoyant.namerd.storage.InMemoryDtabStore
+import io.buoyant.namer.ConfiguredDtabNamer
 import io.buoyant.namerd._
+import io.buoyant.namerd.storage.InMemoryDtabStore
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
