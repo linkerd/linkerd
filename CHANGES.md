@@ -5,6 +5,7 @@
 * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
 * Add file-system based name interpreter.
 * Add auth `token` parameter to Consul Namer & Dtab Store
+* Add `datacenter` parameter to Consul Dtab Store
 
 ## 0.7.3
 

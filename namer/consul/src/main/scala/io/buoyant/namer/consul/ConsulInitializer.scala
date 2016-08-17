@@ -20,6 +20,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   port: 8600
  *   includeTag: true
  *   setHost: true
+ *   token: some-consul-acl-token
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {

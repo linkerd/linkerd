@@ -7,7 +7,7 @@ import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Version}
 
-class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
+class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None) extends DtabStore {
 
   override def list(): Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
@@ -17,7 +17,7 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.list(s"${root.show}/", blockingIndex = index).transform {
+          api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter).transform {
             case Return(result) =>
               val namespaces = result.value.map(namespace).toSet
               updates() = Activity.Ok(namespaces)
@@ -44,14 +44,14 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
   }
 
   def create(ns: Ns, dtab: Dtab): Future[Unit] =
-    api.put(s"${root.show}/$ns", dtab.show, cas = Some("0")).flatMap { result =>
+    api.put(s"${root.show}/$ns", dtab.show, cas = Some("0"), datacenter = datacenter).flatMap { result =>
       if (result) Future.Done else Future.exception(new DtabNamespaceAlreadyExistsException(ns))
     }
 
   def delete(ns: Ns): Future[Unit] = {
     val key = s"${root.show}/$ns"
-    api.get(key).transform {
-      case Return(_) => api.delete(key).unit
+    api.get(key, datacenter = datacenter).transform {
+      case Return(_) => api.delete(key, datacenter = datacenter).unit
       case Throw(e: NotFound) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
       case Throw(e) => Future.exception(e)
     }
@@ -61,7 +61,7 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
     val Buf.Utf8(vstr) = version
     Try(vstr.toLong) match {
       case Return(_) =>
-        api.put(s"${root.show}/$ns", dtab.show, cas = Some(vstr)).flatMap { result =>
+        api.put(s"${root.show}/$ns", dtab.show, cas = Some(vstr), datacenter = datacenter).flatMap { result =>
           if (result) Future.Done else Future.exception(new DtabVersionMismatchException)
         }
       case _ => Future.exception(new DtabVersionMismatchException)
@@ -69,7 +69,7 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
   }
 
   def put(ns: Ns, dtab: Dtab): Future[Unit] =
-    api.put(s"${root.show}/$ns", dtab.show).unit
+    api.put(s"${root.show}/$ns", dtab.show, datacenter = datacenter).unit
 
   def observe(ns: Ns): Activity[Option[VersionedDtab]] = {
     val key = s"${root.show}/$ns"
@@ -78,7 +78,7 @@ class ConsulDtabStore(api: KvApi, root: Path) extends DtabStore {
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.get(key, blockingIndex = index).transform {
+          api.get(key, blockingIndex = index, datacenter = datacenter).transform {
             case Return(result) =>
               val version = Buf.Utf8(result.index.get)
               val dtab = Dtab.read(result.value)
