@@ -1,12 +1,11 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.Name.Bound
+import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle._
 import com.twitter.util.{Activity, Await, Var}
-import io.buoyant.namer.{Delegator, DelegateTree}
+import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -148,14 +147,20 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
       assert(!initF.isDefined) // addrs still pending
 
       val isa = new InetSocketAddress("8.8.8.8", 4949)
-      addrs() = Addr.Bound(Address(isa))
+      val isaMeta = Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+      val addresses: Set[Address] = Set(Address.Inet(isa, isaMeta))
+      val addressesMeta = Addr.Metadata(Metadata.authority -> "example.com", "another" -> "value")
+      addrs() = Addr.Bound(addresses, addressesMeta)
       assert(initF.isDefined)
       val init = Await.result(initF, 1.second)
 
       val boundAddr = {
         val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+        val ipMeta = thrift.AddrMeta(Some("acme.co"))
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort, Some(ipMeta)))
+        val baddrMeta = thrift.AddrMeta(Some("example.com"))
+        val baddr = thrift.BoundAddr(taddrs, Some(baddrMeta))
+        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(baddr))
       }
       assert(Await.result(initF, 1.second) == boundAddr)
     }
@@ -173,13 +178,19 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
       assert(!rsp0.isDefined) // addrs still pending
 
       val isa = new InetSocketAddress("8.8.8.8", 4949)
-      addrs0() = Addr.Bound(Address(isa))
+      val isaMeta = Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+      val addresses: Set[Address] = Set(Address.Inet(isa, isaMeta))
+      val addressesMeta = Addr.Metadata(Metadata.authority -> "example.com", "another" -> "value")
+      addrs0() = Addr.Bound(addresses, addressesMeta)
       assert(rsp0.isDefined)
 
       val boundAddr0 = {
         val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+        val ipMeta = thrift.AddrMeta(Some("acme.co"))
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort, Some(ipMeta)))
+        val baddrMeta = thrift.AddrMeta(Some("example.com"))
+        val baddr = thrift.BoundAddr(taddrs, Some(baddrMeta))
+        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(baddr))
       }
       assert(Await.result(rsp0, 1.second) == boundAddr0)
 
@@ -199,13 +210,16 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
       val addrs1 = Var[Addr](Addr.Pending)
       states() = Activity.Ok(NameTree.Leaf(Name.Bound(addrs1, ThriftNamerInterface.mkPath(id))))
       assert(!rsp2.isDefined)
-      addrs1() = Addr.Bound(Address(isa))
+      addrs1() = Addr.Bound(addresses, addressesMeta)
       assert(rsp2.isDefined)
 
       val boundAddr1 = {
         val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort))
-        thrift.Addr(TStamp.mk(3), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+        val ipMeta = thrift.AddrMeta(Some("acme.co"))
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort, Some(ipMeta)))
+        val baddrMeta = thrift.AddrMeta(Some("example.com"))
+        val baddr = thrift.BoundAddr(taddrs, Some(baddrMeta))
+        thrift.Addr(TStamp.mk(3), thrift.AddrVal.Bound(baddr))
       }
       assert(Await.result(rsp2, 1.second) == boundAddr1)
     }

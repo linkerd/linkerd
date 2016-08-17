@@ -132,6 +132,12 @@ The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 * *port* --  the Consul port. (default: 8500)
 * *includeTag* -- whether to read a Consul tag from the path.  (default: false)
 * *token* -- Optional. The auth token to use when making API calls.
+* *setHost* --  if set to true (default: false) will instruct Linkerd
+                to override `Host` header value of forwarded HTTP
+                requests to `${name}.service.${datacenter}.${domain}`
+                when Consul concrete name is used to handle the request
+                (`$domain` fetched from Consul).
+
 
 For example:
 ```yaml
@@ -141,6 +147,7 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
+  setHost: true
 ```
 
 The default _prefix_ is `io.l5d.consul`.

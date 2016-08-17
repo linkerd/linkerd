@@ -1,12 +1,12 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.http.{Response, Request}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Filter, Http, Path, Stack}
-import io.buoyant.consul.{SetAuthTokenFilter, CatalogNamer, SetHostFilter, v1}
 import io.buoyant.config.types.Port
+import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
@@ -19,6 +19,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   host: consul.site.biz
  *   port: 8600
  *   includeTag: true
+ *   setHost: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -32,7 +33,8 @@ case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
   includeTag: Option[Boolean],
-  token: Option[String] = None
+  token: Option[String] = None,
+  setHost: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -65,6 +67,12 @@ case class ConsulConfig(
       .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new CatalogNamer(prefix, v1.CatalogApi(service), includeTag.getOrElse(false))
+    new CatalogNamer(
+      prefix,
+      v1.CatalogApi(service),
+      v1.AgentApi(service),
+      includeTag = includeTag.getOrElse(false),
+      setHost = setHost.getOrElse(false)
+    )
   }
 }

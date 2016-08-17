@@ -37,7 +37,10 @@ trait BaseApi extends Closable {
   )
 
   def getClient(retry: Boolean) = {
-    val retryFilter = if (retry) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+    val retryFilter = if (retry)
+      infiniteRetryFilter
+    else
+      Filter.identity[http.Request, http.Response]
     retryFilter andThen apiErrorFilter andThen client
   }
 
@@ -61,7 +64,10 @@ trait BaseApi extends Closable {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[v1] def executeJson[T: Manifest](req: http.Request, retry: Boolean): Future[Indexed[T]] = {
+  private[v1] def executeJson[T: Manifest](
+    req: http.Request,
+    retry: Boolean
+  ): Future[Indexed[T]] = {
     for {
       rsp <- Trace.letClear(getClient(retry)(req))
       value <- Future.const(parseJson[T](rsp.content))
