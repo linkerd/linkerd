@@ -3,10 +3,11 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.google.common.cache.{CacheLoader, RemovalNotification, RemovalListener, CacheBuilder}
+import com.google.common.cache.{CacheBuilder, CacheLoader}
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.util.{Rng, Drv}
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -120,6 +121,10 @@ object HttpControlService {
     val prefix = s"$apiPrefix/addr"
   }
 
+  object ResolveUri extends NsPathUri {
+    val prefix = s"$apiPrefix/resolve"
+  }
+
   object DelegateUri extends NsPathUri {
     val prefix = s"$apiPrefix/delegate"
   }
@@ -167,6 +172,8 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       handleGetBind(ns, path, req)
     case AddrUri(Some(ns), path) =>
       handleGetAddr(ns, path, req)
+    case ResolveUri(Some(ns), path) =>
+      handleGetResolve(ns, path, req)
     case DelegateUri(Some(ns), path) =>
       handleGetDelegate(ns, path, req.params.get("dtab"))
     case DelegateUri(None, path) =>
@@ -412,6 +419,49 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
         val rsp = Response(Status.NotImplemented)
         rsp.contentString = s"Name Interpreter for $ns cannot show delegations"
         Future.value(rsp)
+    }
+  }
+
+  private[this] def flattenTree(tree: NameTree[Name.Bound], rng: Rng = Rng.threadLocal): Option[Path] = {
+    tree match {
+      case NameTree.Neg | NameTree.Fail | NameTree.Empty | NameTree.Alt() => None
+      case NameTree.Leaf(bound) => bound.id match {
+        case p: Path => Some(p)
+        case _ => None
+      }
+      case NameTree.Union(weightedTrees@_*) =>
+        val (weights, trees) = weightedTrees.unzip { case NameTree.Weighted(w, t) => (w, t) }
+        val drv = Drv.fromWeights(weights)
+        val randomTree = trees(drv(rng))
+        flattenTree(randomTree, rng)
+      case NameTree.Alt(alts@_*) =>
+        flattenTree(alts.head) match {
+          case p: Some[Path] => p
+          case None => flattenTree(NameTree.Alt(alts.tail: _*), rng)
+        }
+    }
+  }
+
+  private[this] def handleGetResolve(ns: String, path: Path, req: Request): Future[Response] = {
+    val extraDtab = req.params.get("dtab")
+
+    val activity = getBind(ns, path, extraDtab).flatMap { tree =>
+      flattenTree(tree) match {
+        case Some(p) => addrCache.get((ns, p))
+        case None => Activity.value(Addr.Neg)
+      }
+    }
+
+    if (isStreaming(req)) {
+      streamingResp(activity.values, Some(MediaType.Json))(renderAddr)
+    } else {
+      activity.toFuture.map { addr =>
+        // maybe we should return 404 on Addr.Neg and 302 with Retry-After header on Addr.Pending?..
+        val rsp = Response()
+        rsp.content = renderAddr(addr)
+        rsp.contentType = MediaType.Json
+        rsp
+      }
     }
   }
 

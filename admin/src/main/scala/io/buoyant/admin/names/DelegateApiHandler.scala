@@ -36,10 +36,10 @@ object DelegateApiHandler {
     Future.value(resp)
   }
 
-  case class Address(ip: String, port: Int)
+  case class Address(ip: String, port: Int, meta: Map[String, Any])
   object Address {
     def mk(addr: FAddress): Option[Address] = addr match {
-      case FAddress.Inet(isa, _) => Some(Address(isa.getAddress.getHostAddress, isa.getPort))
+      case FAddress.Inet(isa, meta) => Some(Address(isa.getAddress.getHostAddress, isa.getPort, meta))
       case _ => None
     }
   }
