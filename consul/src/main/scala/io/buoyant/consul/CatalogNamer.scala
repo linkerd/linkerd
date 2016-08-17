@@ -142,13 +142,6 @@ class CatalogNamer(
     }
   }
 
-  case class SvcKey(name: String, tag: Option[String]) {
-    override def toString = tag match {
-      case Some(t) => s"$name:$t"
-      case None => name
-    }
-  }
-
   /**
    * Contains all cached serviceMap responses and the mapping of names
    * to SvcCaches for a particular datacenter.
@@ -257,5 +250,12 @@ class CatalogNamer(
 object CatalogNamer {
   type VarUp[T] = Var[T] with Updatable[T]
   type ActUp[T] = VarUp[Activity.State[T]]
+
+  case class SvcKey(name: String, tag: Option[String]) {
+    override def toString = tag match {
+      case Some(t) if t != "_" => s"$name:$t"
+      case _ => name
+    }
+  }
 }
 

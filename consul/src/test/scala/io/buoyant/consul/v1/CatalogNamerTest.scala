@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.consul.CatalogNamer
+import io.buoyant.consul.CatalogNamer.SvcKey
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -272,5 +273,10 @@ class CatalogNamerTest extends FunSuite with Awaits {
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
     }
+  }
+
+  test("SvcKey treats _ as an empty tag") {
+    val key = SvcKey("my-service", Some("_"))
+    assert(key.toString == "my-service")
   }
 }
