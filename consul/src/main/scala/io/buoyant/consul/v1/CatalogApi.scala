@@ -11,10 +11,10 @@ object CatalogApi {
 }
 
 class CatalogApi(
-  override val client: Client,
-  override val uriPrefix: String,
-  override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
-  override val stats: StatsReceiver = DefaultStatsReceiver
+  val client: Client,
+  val uriPrefix: String,
+  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+  val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
 
   val catalogPrefix = s"$uriPrefix/catalog"
