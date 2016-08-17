@@ -290,11 +290,12 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
     val resp = await(service(Request("/api/1/bind/default?path=/foo")))
     assert(resp.status == Status.Ok)
-    assert(resp.contentString.replaceAllLiterally("\n", "") == """
-                                                                 |{"type":"leaf",
-                                                                 |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}},
-                                                                 |"id":"/#/io.l5d.namer/foo","path":"/"}}
-                                                                 |""".stripMargin.replaceAllLiterally("\n", ""))
+    assert(resp.contentString.replaceAllLiterally("\n", "") ==
+      """
+        |{"type":"leaf",
+        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}},
+        |"id":"/#/io.l5d.namer/foo","path":"/"}}
+        |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
   test("bind with an extra dtab") {
@@ -314,11 +315,12 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
     val resp = await(service(Request("/api/1/bind/default?path=/foo&dtab=/foo=>/bar")))
     assert(resp.status == Status.Ok)
-    assert(resp.contentString.replaceAllLiterally("\n", "") == """
-                                                                 |{"type":"leaf",
-                                                                 |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}},
-                                                                 |"id":"/#/io.l5d.namer/bar","path":"/"}}
-                                                                 |""".stripMargin.replaceAllLiterally("\n", ""))
+    assert(resp.contentString.replaceAllLiterally("\n", "") ==
+      """
+        |{"type":"leaf",
+        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}},
+        |"id":"/#/io.l5d.namer/bar","path":"/"}}
+        |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
   test("bind watch") {
@@ -336,7 +338,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{"type":"leaf",
-        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}},
+        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}},
         |"id":"/#/io.l5d.namer/foo","path":"/"}}""".stripMargin.replaceAllLiterally("\n", "")
     )
 
@@ -353,7 +355,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{"type":"leaf",
-        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}},
+        |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}},
         |"id":"/#/io.l5d.namer/bar","path":"/"}}""".stripMargin.replaceAllLiterally("\n", "")
     )
 
@@ -403,7 +405,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(resp.contentString.replaceAllLiterally("\n", "") ==
       """
         |{"type":"bound",
-        |"addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}}
+        |"addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}}
         |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
@@ -423,7 +425,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{"type":"bound",
-        |"addrs":[{"ip":"127.0.0.1","port":1}],"meta":{}}
+        |"addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}}
         |""".stripMargin.replaceAllLiterally("\n", "")
     )
 
@@ -432,7 +434,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{"type":"bound",
-        |"addrs":[{"ip":"127.0.0.1","port":1},{"ip":"127.0.0.1","port":2}],"meta":{}}
+        |"addrs":[{"ip":"127.0.0.1","port":1,"meta":{}},{"ip":"127.0.0.1","port":2,"meta":{}}],"meta":{}}
         |""".stripMargin.replaceAllLiterally("\n", "")
     )
 
@@ -450,7 +452,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{"type":"bound",
-        |"addrs":[{"ip":"127.0.0.1","port":3}],"meta":{}}
+        |"addrs":[{"ip":"127.0.0.1","port":3,"meta":{}}],"meta":{}}
         |""".stripMargin.replaceAllLiterally("\n", "")
     )
 
@@ -571,7 +573,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
         |{
         |  "type":"bound",
         |  "addrs":[
-        |    {"ip":"127.0.0.1","port":1}
+        |    {"ip":"127.0.0.1","port":1,"meta":{"isa-meta":"isa-data"}}
         |  ],
         |  "meta":{
         |    "bound-meta":"bound-data"
@@ -624,7 +626,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
         |{
         |  "type":"bound",
         |  "addrs":[
-        |    {"ip":"127.0.0.1","port":1}
+        |    {"ip":"127.0.0.1","port":1,"meta":{"isa-meta-1":"isa-data-1"}}
         |  ],
         |  "meta":{
         |    "bound-meta":"bound-data"
@@ -641,8 +643,8 @@ class HttpControlServiceTest extends FunSuite with Awaits {
         |{
         |  "type":"bound",
         |  "addrs":[
-        |    {"ip":"127.0.0.1","port":1},
-        |    {"ip":"127.0.0.1","port":2}
+        |    {"ip":"127.0.0.1","port":1,"meta":{"isa-meta-1":"isa-data-1"}},
+        |    {"ip":"127.0.0.1","port":2,"meta":{"isa-meta-2":"isa-data-2"}}
         |  ],
         |  "meta":{
         |    "bound-meta":"bound-data"
