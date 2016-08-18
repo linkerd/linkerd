@@ -73,7 +73,7 @@ routers:
     ip: 0.0.0.0
     label: foo/bar
     announce:
-    - foo/bar
+    - service: foo/bar
     maxConcurrentRequests: 1000
     engine:
       kind: netty3
