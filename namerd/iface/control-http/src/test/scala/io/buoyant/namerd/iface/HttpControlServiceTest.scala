@@ -616,14 +616,6 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       resp.reader,
       """
         |{
-        |  "type":"pending"
-        |}""".stripMargin.replaceAll("\\s", "")
-    )
-
-    readAndAssert(
-      resp.reader,
-      """
-        |{
         |  "type":"bound",
         |  "addrs":[
         |    {"ip":"127.0.0.1","port":1,"meta":{"isa-meta-1":"isa-data-1"}}
