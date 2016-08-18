@@ -181,7 +181,9 @@ local IPv4 interfaces.
 * *maxConcurrentRequests* -- Optional.  The maximum number of concurrent
 requests the server will accept.  (default: unlimited)
 * *announce* -- Optional.  A list of names to announce using the router's
-  announcers.
+  announcers.  Each name must be an object with these keys:
+  * *service* -- The service name to announce as.
+  * *version* -- Optional.  The service version name to announce as.
 
 <a name="basic-client-params"></a>
 ### Basic client parameters
