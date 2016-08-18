@@ -383,6 +383,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
             case NameTree.Neg => Activity.value(Addr.Neg)
             case NameTree.Alt(_) | NameTree.Union(_) =>
               Activity.exception(new Exception(s"${key._2.show} is not a concrete bound id"))
+          }.flatMap {
+            case Addr.Pending => Activity.pending
+            case addr => Activity.value(addr)
           }
       }
     )
