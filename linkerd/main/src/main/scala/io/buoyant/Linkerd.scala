@@ -34,6 +34,10 @@ object Linkerd extends App {
         // TODO initialize:
         // - namers
         // - tracers
+
+        val telemeters = linker.telemeters.map(_.run())
+        telemeters.foreach(closeOnExit(_))
+
         val routers = linker.routers.flatMap { router =>
           val running = router.initialize()
           closeOnExit(running)
@@ -44,7 +48,7 @@ object Linkerd extends App {
             listening
           }
         }
-        Await.all(routers: _*)
+        Await.all(routers ++ telemeters: _*)
 
       case _ => exitOnError("usage: linkerd path/to/config")
     }

@@ -2,10 +2,13 @@
 
 * Add `resolve` endpoint to Namerd HTTP API
 * Add `authority` metadata field to re-write HTTP host/:authority on demand
-* Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+* Consul improvements:
+  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+  * Add auth `token` parameter to Consul Namer & Dtab Store
+  * Add `datacenter` parameter to Consul Dtab Store
 * Add file-system based name interpreter.
-* Add auth `token` parameter to Consul Namer & Dtab Store
-* Add `datacenter` parameter to Consul Dtab Store
+* Introduce the _telemetry_ plugin subsystem to support arbitrary stats
+  exporters and to eventually supplant the `tracers` subsystem.
 
 ## 0.7.3
 

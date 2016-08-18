@@ -117,6 +117,11 @@ object LinkerdBuild extends Base {
     .withTwitterLib(Deps.finagle("stats"))
     .withTests()
 
+  val telemetryCore = projectDir("telemetry/core")
+    .dependsOn(configCore)
+    .withTwitterLib(Deps.finagle("core"))
+    .withTests()
+
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
   val execScriptJvmOptions =
@@ -337,10 +342,11 @@ object LinkerdBuild extends Base {
 
     val core = projectDir("linkerd/core")
       .dependsOn(
-        Router.core,
         configCore,
         LinkerdBuild.admin,
-        Namer.core % "compile->compile;test->test"
+        telemetryCore % "compile->compile;test->test",
+        Namer.core % "compile->compile;test->test",
+        Router.core
       )
       .withLib(Deps.jacksonCore)
       .withTests()
