@@ -1,5 +1,6 @@
 package io.buoyant.telemetry
 
+import com.twitter.finagle.Stack
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
 import com.twitter.finagle.util.LoadService
@@ -17,19 +18,19 @@ class TelemeterInitializerTest extends FunSuite {
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
       .readValue[TelemeterConfig](yaml)
 
-    val telemeter = config.mk()
+    val telemeter = config.mk(Stack.Params.empty)
     val closer = telemeter.run()
   }
 }
 
 class TestTelemeterInitializer extends TelemeterInitializer {
   type Config = TestTelemeterConfig
-  override def configId = "io.l5d.testelemeter"
+  override def configId = "io.l5d.testTelemeter"
   def configClass = classOf[TestTelemeterConfig]
 }
 
 case class TestTelemeterConfig(metrics: Boolean, tracing: Boolean) extends TelemeterConfig {
-  def mk(): TestTelemeter = new TestTelemeter(metrics, tracing)
+  def mk(params: Stack.Params): TestTelemeter = new TestTelemeter(metrics, tracing)
 }
 
 case class TestTelemeter(metrics: Boolean, tracing: Boolean) extends Telemeter {

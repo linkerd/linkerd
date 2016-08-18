@@ -204,11 +204,11 @@ class LinkerTest extends FunSuite with Exceptions {
          |- kind: test
          |  debugTrace: true
          |telemetry:
-         |- kind: io.l5d.testelemeter
+         |- kind: io.l5d.testTelemeter
          |  metrics: true
-         |- kind: io.l5d.testelemeter
+         |- kind: io.l5d.testTelemeter
          |  tracing: true
-         |- kind: io.l5d.testelemeter
+         |- kind: io.l5d.testTelemeter
          |  metrics: true
          |  tracing: true
          |namers:

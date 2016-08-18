@@ -85,7 +85,7 @@ object Linker {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val telemeters = telemetry.map(_.map(_.mk()))
+      val telemeters = telemetry.map(_.map(_.mk(Stack.Params.empty)))
 
       // Telemeters may provide StatsReceivers.  Note that if all
       // telemeters provide implementations that do not use the
