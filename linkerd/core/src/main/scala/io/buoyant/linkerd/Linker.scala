@@ -93,8 +93,12 @@ object Linker {
       // /admin/metrics.json
       val stats =
         telemeters.getOrElse(Nil).collect { case t if !t.stats.isNull => t.stats } match {
-          case Nil => DefaultStatsReceiver
-          case receivers => BroadcastStatsReceiver(receivers)
+          case Nil =>
+            log.info(s"Using default stats receiver")
+            DefaultStatsReceiver
+          case receivers =>
+            for (r <- receivers) log.info(s"Using stats receiver: $r")
+            BroadcastStatsReceiver(receivers)
         }
 
       // Similarly, tracers may be provided by telemeters OR by
@@ -113,10 +117,14 @@ object Linker {
         ts.collect { case t if !t.tracer.isNull => t.tracer }
       }
       val tracer: Tracer = (configuredTracers, telemeterTracers) match {
-        case (None, None) => DefaultTracer
-        case (tracers0, tracers1) => BroadcastTracer((tracers0 ++ tracers1).flatten.toSeq)
+        case (None, None) =>
+          log.info(s"Using default stats tracer")
+          DefaultTracer
+        case (tracers0, tracers1) =>
+          val tracers = (tracers0 ++ tracers1).flatten.toSeq
+          for (t <- tracers) log.info(s"Using tracer: $t")
+          BroadcastTracer(tracers)
       }
-      log.info(s"Loading tracer: $tracer")
 
       val namerParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
       val namersByPrefix = namers.getOrElse(Nil).reverse.map { namer =>
