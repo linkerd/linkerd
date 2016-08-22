@@ -12,7 +12,7 @@ class TelemeterInitializerTest extends FunSuite {
 
   test("telemetry is totally radical") {
     val yaml =
-      """|kind: io.l5d.testelemeter
+      """|kind: io.l5d.testTelemeter
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
