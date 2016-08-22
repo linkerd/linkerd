@@ -5,9 +5,6 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.stats.{DefaultStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{DefaultTracer, NullTracer}
 
-/**
- * Telemeter plugins describe how to load TelemeterConfig items.
- */
 class DefaultInitializer extends TelemeterInitializer {
   type Config = DefaultConfig
   def configClass = classOf[DefaultConfig]
