@@ -1,8 +1,8 @@
 package io.buoyant.telemetry
 
-import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.tracing.Tracer
-import com.twitter.util.{Awaitable, Closable}
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.tracing.{Tracer, NullTracer}
+import com.twitter.util.{Awaitable, Closable, CloseAwaitably, Future, Time}
 
 /**
  * A telemeter may receive stats and trace annotations, i.e. to send
@@ -12,4 +12,11 @@ trait Telemeter {
   def stats: StatsReceiver
   def tracer: Tracer
   def run(): Closable with Awaitable[Unit]
+}
+
+object Telemeter {
+  val runNop: Closable with Awaitable[Unit] =
+    new Closable with CloseAwaitably {
+      def close(d: Time) = closeAwaitably(Future.Unit)
+    }
 }
