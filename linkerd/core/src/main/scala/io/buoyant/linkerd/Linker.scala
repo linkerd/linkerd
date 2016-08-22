@@ -118,7 +118,7 @@ object Linker {
       }
       val tracer: Tracer = (configuredTracers, telemeterTracers) match {
         case (None, None) =>
-          log.info(s"Using default stats tracer")
+          log.info(s"Using default tracer")
           DefaultTracer
         case (tracers0, tracers1) =>
           val tracers = (tracers0 ++ tracers1).flatten.toSeq
