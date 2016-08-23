@@ -8,7 +8,10 @@ tracers:
   host: zipkincollector
   port: 9410
   sampleRate: 0.02
-  debugTrace: true
+
+telemetry:
+- kind: io.l5d.tracelog
+  sampleRate: 0.2
 
 namers:
 - kind: io.l5d.fs
