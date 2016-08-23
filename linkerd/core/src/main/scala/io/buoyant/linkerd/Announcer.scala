@@ -7,7 +7,5 @@ import java.net.InetSocketAddress
 abstract class Announcer {
   val scheme: String
 
-  def announce(addr: InetSocketAddress, name: String, version: Option[String] = None): Future[Announcement]
-
-  def concreteName(name: String, version: Option[String] = None): Path
+  def announce(addr: InetSocketAddress, name: Path): Future[Announcement]
 }

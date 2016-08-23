@@ -1,10 +1,10 @@
 package io.buoyant.linkerd
 
+import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.Server.AnnouncerName
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
@@ -107,8 +107,8 @@ fancyRouter: true
     val yaml =
       """
         |announce:
-        |- service: foobar
+        |- /#/io.l5d.foo/bar
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(AnnouncerName("foobar", None)))
+    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(Path.read("/#/io.l5d.foo/bar")))
   }
 }

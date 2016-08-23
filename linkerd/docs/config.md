@@ -136,6 +136,7 @@ Each router must be configured as an object with the following params:
   [interpreter](interpreter.md) object determining what module will be used to
   process destinations.  (default: default)
   * protocol-specific module params, if any (the _default_ module has none)
+<a name="announcers"></a>
 * *announcers* (optional) -- a list of service discovery
   [announcers](announcer.md) that servers can announce to.
 
@@ -180,10 +181,9 @@ local IPv4 interfaces.
   * *keyPath* -- File path to the TLS key file
 * *maxConcurrentRequests* -- Optional.  The maximum number of concurrent
 requests the server will accept.  (default: unlimited)
-* *announce* -- Optional.  A list of names to announce using the router's
-  announcers.  Each name must be an object with these keys:
-  * *service* -- The service name to announce as.
-  * *version* -- Optional.  The service version name to announce as.
+<a name="announce"></a>
+* *announce* -- Optional.  A list of concrete names to announce using the
+  router's announcers.
 
 <a name="basic-client-params"></a>
 ### Basic client parameters

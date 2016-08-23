@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Dtab, Stack}
+import com.twitter.finagle.{Path, Dtab, Stack}
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.service.TimeoutFilter
 import io.buoyant.config.Parser
@@ -126,14 +126,16 @@ servers:
     val yaml = """
         |protocol: plain
         |announcers:
-        |- kind: test
+        |- kind: io.l5d.test
         |servers:
         |- announce:
-        |    - service: foo
+        |    - /#/io.l5d.test/foobar
       """.
       stripMargin
     val router = parse(yaml, Stack.Params.empty)
-    assert(router.initialize().announcers.head.isInstanceOf[TestAnnouncer])
+    val (path, announcer) = router.initialize().announcers.head
+    assert(path == Path.read("/#/io.l5d.test"))
+    assert(announcer.isInstanceOf[TestAnnouncer])
   }
 
   test("with retries") {

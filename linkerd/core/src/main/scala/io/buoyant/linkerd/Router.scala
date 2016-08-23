@@ -62,7 +62,7 @@ trait Router {
   /** Return a router with TLS configuration read from the provided config. */
   def withTls(tls: TlsClientConfig): Router
 
-  def withAnnouncers(announcers: Seq[Announcer]): Router
+  def withAnnouncers(announcers: Seq[(Path, Announcer)]): Router
 
   /**
    * Initialize a router by instantiating a downstream router client
@@ -83,7 +83,7 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
-    def announcers: Seq[Announcer]
+    def announcers: Seq[(Path, Announcer)]
   }
 }
 
@@ -181,7 +181,9 @@ trait RouterConfig {
   def router(params: Stack.Params): Router = {
     val prms = params ++ routerParams
     val param.Label(label) = prms[param.Label]
-    val announcers = _announcers.toSeq.flatten.map(_.mk)
+    val announcers = _announcers.toSeq.flatten.map { announcer =>
+      announcer.prefix -> announcer.mk
+    }
     protocol.router.configured(prms)
       .serving(servers.map(_.mk(protocol, label)))
       .withAnnouncers(announcers)

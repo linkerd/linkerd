@@ -6,9 +6,8 @@ import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{ListeningServer, Stack}
+import com.twitter.finagle.{Path, ListeningServer, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.linkerd.Server.AnnouncerName
 import java.net.{InetAddress, InetSocketAddress}
 
 /**
@@ -32,14 +31,12 @@ trait Server {
 
   def addr: InetSocketAddress = new InetSocketAddress(ip, port)
 
-  def announce: Seq[AnnouncerName]
+  def announce: Seq[Path]
 }
 
 object Server {
 
   case class RouterLabel(label: String)
-
-  case class AnnouncerName(service: String, version: Option[String])
 
   implicit object RouterLabel extends Stack.Param[RouterLabel] {
     val default = RouterLabel("")
@@ -63,7 +60,7 @@ object Server {
 
     def serve(): ListeningServer
 
-    def announce: Seq[AnnouncerName]
+    def announce: Seq[Path]
   }
 
   case class Impl(
@@ -73,7 +70,7 @@ object Server {
     port: Int,
     protocol: ProtocolInitializer,
     params: Stack.Params,
-    announce: Seq[AnnouncerName]
+    announce: Seq[Path]
   ) extends Server {
     override def configured[T: Param](t: T): Server = copy(params = params + t)
 
@@ -89,7 +86,7 @@ class ServerConfig { config =>
   var tls: Option[TlsServerConfig] = None
   var label: Option[String] = None
   var maxConcurrentRequests: Option[Int] = None
-  var announce: Option[Seq[AnnouncerName]] = None
+  var announce: Option[Seq[String]] = None
 
   private[this] def requestSemaphore = maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
@@ -113,7 +110,7 @@ class ServerConfig { config =>
     port.map(_.port).getOrElse(pi.defaultServerPort),
     pi,
     serverParams,
-    announce.toSeq.flatten
+    announce.toSeq.flatten.map(Path.read)
   )
 }
 

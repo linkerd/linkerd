@@ -6,7 +6,6 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.Time
 import io.buoyant.config.ConfigInitializer
-import io.buoyant.linkerd.Server.AnnouncerName
 import io.buoyant.router._
 import java.net.InetSocketAddress
 
@@ -56,7 +55,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   private case class ProtocolRouter(
     router: StackRouter[RouterReq, RouterRsp],
     servers: Seq[Server] = Nil,
-    announcers: Seq[Announcer] = Nil
+    announcers: Seq[(Path, Announcer)] = Nil
   ) extends Router {
     def params = router.params
     def protocol = ProtocolInitializer.this
@@ -69,7 +68,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
 
     protected def withServers(ss: Seq[Server]): Router = copy(servers = ss)
 
-    def withAnnouncers(ann: Seq[Announcer]): Router = copy(announcers = ann)
+    def withAnnouncers(ann: Seq[(Path, Announcer)]): Router = copy(announcers = ann)
 
     def initialize(): Router.Initialized = {
       if (servers.isEmpty) {
@@ -135,7 +134,7 @@ object ProtocolInitializer {
     params: Stack.Params,
     factory: ServiceFactory[Req, Rsp],
     servers: Seq[Server.Initializer],
-    announcers: Seq[Announcer]
+    announcers: Seq[(Path, Announcer)]
   ) extends Router.Initialized {
     def name: String = params[Label].label
     def close(t: Time) = factory.close(t)
@@ -147,7 +146,7 @@ object ProtocolInitializer {
     addr: InetSocketAddress,
     server: StackServer[Req, Rsp],
     factory: ServiceFactory[Req, Rsp],
-    announce: Seq[AnnouncerName]
+    announce: Seq[Path]
   ) extends Server.Initializer {
     def params = server.params
     def router: String = server.params[Server.RouterLabel].label

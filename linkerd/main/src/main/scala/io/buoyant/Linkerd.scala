@@ -45,15 +45,14 @@ object Linkerd extends App {
             log.info("serving %s on %s:%d", server.router, server.ip, server.port)
             val listening = server.serve()
             for (name <- server.announce) {
-              for (announcer <- running.announcers) {
-                name.version match {
-                  case Some(version) =>
-                    log.info("announcing %s as %s version %s to %s", server.addr, name.service, version, announcer.scheme)
-                  case None =>
-                    log.info("announcing %s as %s to %s", server.addr, name.service, announcer.scheme)
-                }
-                announcer.announce(server.addr, name.service, name.version).onSuccess(closeOnExit)
+              val announcers = running.announcers.filter {
+                case (prefix, announcer) => name.startsWith(prefix)
               }
+              for ((prefix, announcer) <- announcers) {
+                log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
+                announcer.announce(server.addr, name.drop(prefix.size)).onSuccess(closeOnExit)
+              }
+              if (announcers.isEmpty) log.warning("no announcer found for %s", name.show)
             }
             closeOnExit(listening)
             listening
