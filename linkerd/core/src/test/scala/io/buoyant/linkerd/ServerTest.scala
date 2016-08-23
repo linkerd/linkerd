@@ -1,5 +1,6 @@
 package io.buoyant.linkerd
 
+import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
@@ -100,5 +101,14 @@ fancyRouter: true
         |maxConcurrentRequests: 1000
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.params[RequestSemaphoreFilter.Param].sem.get.numInitialPermits == 1000)
+  }
+
+  test("announce") {
+    val yaml =
+      """
+        |announce:
+        |- /#/io.l5d.foo/bar
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(Path.read("/#/io.l5d.foo/bar")))
   }
 }

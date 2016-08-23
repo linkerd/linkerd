@@ -6,7 +6,7 @@ import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{ListeningServer, Stack}
+import com.twitter.finagle.{Path, ListeningServer, Stack}
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -30,6 +30,8 @@ trait Server {
   def port: Int
 
   def addr: InetSocketAddress = new InetSocketAddress(ip, port)
+
+  def announce: Seq[Path]
 }
 
 object Server {
@@ -57,6 +59,8 @@ object Server {
     def addr: InetSocketAddress
 
     def serve(): ListeningServer
+
+    def announce: Seq[Path]
   }
 
   case class Impl(
@@ -65,12 +69,14 @@ object Server {
     label: String,
     port: Int,
     protocol: ProtocolInitializer,
-    params: Stack.Params
+    params: Stack.Params,
+    announce: Seq[Path]
   ) extends Server {
     override def configured[T: Param](t: T): Server = copy(params = params + t)
 
     override def withParams(ps: Params): Server = copy(params = ps)
   }
+
 }
 
 class ServerConfig { config =>
@@ -80,6 +86,7 @@ class ServerConfig { config =>
   var tls: Option[TlsServerConfig] = None
   var label: Option[String] = None
   var maxConcurrentRequests: Option[Int] = None
+  var announce: Option[Seq[String]] = None
 
   private[this] def requestSemaphore = maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
@@ -102,7 +109,8 @@ class ServerConfig { config =>
     label.getOrElse(routerLabel),
     port.map(_.port).getOrElse(pi.defaultServerPort),
     pi,
-    serverParams
+    serverParams,
+    announce.toSeq.flatten.map(Path.read)
   )
 }
 

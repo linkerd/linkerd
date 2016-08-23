@@ -9,6 +9,8 @@
 * Add file-system based name interpreter.
 * Introduce the _telemetry_ plugin subsystem to support arbitrary stats
   exporters and to eventually supplant the `tracers` subsystem.
+* Add announcer support! linkerd can now announce to service discovery backends!
+  * Add zk announcer.
 
 ## 0.7.3
 
