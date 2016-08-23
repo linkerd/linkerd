@@ -1,12 +1,16 @@
-## x.x.x
+## 0.7.4
 
-* Add `resolve` endpoint to Namerd HTTP API
+* Dashboard: add toggling to the router clients to better handle large numbers of clients
+* namerd HTTP API:
+  * Add `resolve` endpoint
+  * All endpoints return json
 * Add `authority` metadata field to re-write HTTP host/:authority on demand
 * Consul improvements:
   * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
   * Add auth `token` parameter to Consul Namer & Dtab Store
   * Add `datacenter` parameter to Consul Dtab Store
 * Add file-system based name interpreter.
+* Path identifier should only parse as many segments as requested
 * Introduce the _telemetry_ plugin subsystem to support arbitrary stats
   exporters and to eventually supplant the `tracers` subsystem.
 * Add announcer support! linkerd can now announce to service discovery backends!
