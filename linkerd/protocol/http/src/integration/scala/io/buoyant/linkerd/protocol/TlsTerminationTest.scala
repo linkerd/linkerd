@@ -9,8 +9,6 @@ import org.scalatest.FunSuite
 
 class TlsTerminationTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
-
   test("tls server + plain backend") {
     withCerts("linkerd") { certs =>
       val dog = Downstream.const("dogs", "woof")

@@ -14,8 +14,6 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
   val mapBuf = Buf.Utf8("""{"consul":[],"hosted_web":["master"],"redis":[]}""")
   var lastUri = ""
 
-  override val defaultWait = 2.seconds
-
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
     rsp.setContentTypeJson()

@@ -6,7 +6,7 @@ import org.scalatest.exceptions.TestFailedException
 
 trait Awaits {
 
-  def defaultWait: Duration = 250.millis
+  def defaultWait: Duration = 2.seconds
   def awaitStackDepth: Int = 4
 
   def await[T](t: Duration)(f: => Future[T]): T =

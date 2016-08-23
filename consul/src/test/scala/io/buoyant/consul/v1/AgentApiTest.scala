@@ -12,8 +12,6 @@ class AgentApiTest extends FunSuite with Awaits with Exceptions {
   val localAgentBuf = Buf.Utf8("""{ "Config": { "Domain": "acme.co." } }""")
   var lastUri = ""
 
-  override val defaultWait = 2.seconds
-
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
     rsp.setContentTypeJson()
