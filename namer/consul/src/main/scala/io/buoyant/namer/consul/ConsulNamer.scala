@@ -7,15 +7,15 @@ import io.buoyant.consul._
 import io.buoyant.consul.v1.{ServiceNode, UnexpectedResponse}
 import io.buoyant.namer.Metadata
 
-class CatalogNamer(
+class ConsulNamer(
   idPrefix: Path,
-  catalogApi: v1.CatalogApi,
+  consulApi: v1.ConsulApi,
   agentApi: v1.AgentApi,
   includeTag: Boolean = false,
   setHost: Boolean = false
 ) extends Namer {
 
-  import CatalogNamer._
+  import ConsulNamer._
 
   private[this] def domainFuture(): Future[Option[String]] =
     agentApi.localAgent().map { la => la.Config.flatMap(_.Domain).map(_.stripPrefix(".").stripSuffix(".")) }
@@ -111,7 +111,7 @@ class CatalogNamer(
     }
 
     def mkRequest(): Future[Seq[ServiceNode]] =
-      catalogApi
+      consulApi
         .serviceNodes(key.name, datacenter = Some(datacenter), tag = key.tag, blockingIndex = Some(index), retry = true)
         .map { indexedNodes =>
           indexedNodes.index.foreach(setIndex)
@@ -194,7 +194,7 @@ class CatalogNamer(
     }
 
     def mkRequest(): Future[Seq[SvcKey]] =
-      catalogApi
+      consulApi
         .serviceMap(datacenter = Some(name), blockingIndex = Some(index), retry = true)
         .map { indexedSvcs =>
           indexedSvcs.index.foreach(setIndex)
@@ -283,7 +283,7 @@ class CatalogNamer(
 
 }
 
-object CatalogNamer {
+object ConsulNamer {
   type VarUp[T] = Var[T] with Updatable[T]
   type ActUp[T] = VarUp[Activity.State[T]]
   private val log = Logger.get(getClass.getName)
