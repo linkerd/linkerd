@@ -11,25 +11,44 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = ConsulConfig(None, None).newNamer(Stack.Params.empty)
+    val _ = ConsulConfig(None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
     assert(LoadService[NamerInitializer]().exists(_.isInstanceOf[ConsulInitializer]))
   }
 
-  test("parse config") {
+  test("parse minimal config") {
+    val yaml = s"""
+                  |kind: io.l5d.consul
+                  |experimental: true
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
+    val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
+    assert(consul.setHost.isEmpty)
+    assert(consul.includeTag.isEmpty)
+    assert(!consul.disabled)
+  }
+
+  test("parse all options config") {
     val yaml = s"""
                     |kind: io.l5d.consul
                     |experimental: true
                     |host: consul.site.biz
                     |port: 8600
+                    |token: some-token
+                    |includeTag: true
+                    |setHost: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
     val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))
+    assert(consul.token == Some("some-token"))
+    assert(consul.setHost == Some(true))
+    assert(consul.includeTag == Some(true))
     assert(!consul.disabled)
   }
 

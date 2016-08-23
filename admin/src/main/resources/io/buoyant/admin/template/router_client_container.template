@@ -1,10 +1,14 @@
 <div class="client-container clearfix">
   <div class="router-header-large"style="border-bottom: 2px solid {{clientColor}};">
     /{{client}}
+    <div class="client-toggle pull-right">
+      <a class="client-expand" target="blank">expand</a>
+      <a class="client-collapse" target="blank">collapse</a>
+    </div>
   </div>
   <div class="metrics-container col-md-6"></div>
-  <div class="col-md-6">
+  <div class="chart-container col-md-6">
     <div class="router-graph-header">Client success rate</div>
-    <div class="chart-container "></div>
+    <div class="client-success-rate"></div>
   </div>
 </div>

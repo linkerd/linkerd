@@ -36,3 +36,15 @@ interpreter accepts the following parameters:
  namerd.  (default: (5 seconds, 10 minutes))
   * *baseSeconds* -- The base number of seconds to wait before retrying.
   * *maxSeconds* -- The maximum number of seconds to wait before retrying.
+
+## File-System
+
+`io.l5d.fs`
+
+The file-system interpreter resolves names via the configured
+[`namers`](config.md#namers), just like the default interpreter, but also uses
+a dtab read from a file on the local file-system.  The specified file is watched
+for changes so that the dtab may be edited live.  This interpreter accepts the
+following parameters:
+
+* *dtabFile* -- Required.  The file-system path to a file containing a dtab.

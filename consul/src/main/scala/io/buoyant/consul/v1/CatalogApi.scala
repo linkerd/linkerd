@@ -11,10 +11,10 @@ object CatalogApi {
 }
 
 class CatalogApi(
-  override val client: Client,
-  override val uriPrefix: String,
-  override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
-  override val stats: StatsReceiver = DefaultStatsReceiver
+  val client: Client,
+  val uriPrefix: String,
+  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+  val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
 
   val catalogPrefix = s"$uriPrefix/catalog"
@@ -44,6 +44,7 @@ class CatalogApi(
   def serviceNodes(
     serviceName: String,
     datacenter: Option[String] = None,
+    tag: Option[String] = None,
     blockingIndex: Option[String] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[ServiceNode]]] = {
@@ -51,7 +52,8 @@ class CatalogApi(
       http.Method.Get,
       s"$catalogPrefix/service/$serviceName",
       "index" -> blockingIndex,
-      "dc" -> datacenter
+      "dc" -> datacenter,
+      "tag" -> tag
     )
     executeJson[Seq[ServiceNode]](req, retry)
   }

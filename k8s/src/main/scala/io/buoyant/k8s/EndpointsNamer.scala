@@ -6,7 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
-import io.buoyant.k8s.v1.{EndpointsWatch, NsApi}
+import io.buoyant.k8s.v1._
 import io.buoyant.namer.EnumeratingNamer
 import scala.collection.mutable
 
@@ -198,18 +198,6 @@ private object EndpointsNamer {
 
     val ports = Activity(state)
 
-    def clear(): Unit = synchronized {
-      state.sample() match {
-        case Activity.Ok(snap) =>
-          for (port <- snap.values) {
-            port() = Addr.Neg
-          }
-          state() = Activity.Pending
-
-        case _ =>
-      }
-    }
-
     def delete(name: String): Unit = synchronized {
       state.sample() match {
         case Activity.Ok(snap) =>
@@ -274,17 +262,6 @@ private object EndpointsNamer {
 
     val services: Activity[Map[String, SvcCache]] = Activity(state)
 
-    def clear(): Unit = synchronized {
-      state.sample() match {
-        case Activity.Ok(snap) =>
-          for (svc <- snap.values) {
-            svc.clear()
-          }
-        case _ =>
-      }
-      state() = Activity.Pending
-    }
-
     /**
      * Initialize a namespaces of services.  The activity is updated
      * once with the entire state of the namespace (i.e. not
@@ -301,10 +278,10 @@ private object EndpointsNamer {
     }
 
     def update(watch: EndpointsWatch): Unit = watch match {
-      case EndpointsWatch.Error(e) => log.error("k8s watch error: %s", e)
-      case EndpointsWatch.Added(endpoints) => add(endpoints)
-      case EndpointsWatch.Modified(endpoints) => modify(endpoints)
-      case EndpointsWatch.Deleted(endpoints) => delete(endpoints)
+      case Error(e) => log.error("k8s watch error: %s", e)
+      case Added(endpoints) => add(endpoints)
+      case Modified(endpoints) => modify(endpoints)
+      case Deleted(endpoints) => delete(endpoints)
     }
 
     private[this] def getName(endpoints: v1.Endpoints) =
@@ -347,7 +324,6 @@ private object EndpointsNamer {
         state.sample() match {
           case Activity.Ok(snap) =>
             for (svc <- snap.get(name)) {
-              svc.clear()
               state() = Activity.Ok(snap - name)
             }
 

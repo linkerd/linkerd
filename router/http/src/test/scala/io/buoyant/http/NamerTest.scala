@@ -1,8 +1,7 @@
 package io.buoyant.http
 
-import com.twitter.finagle.{Status => SvcStatus, _}
 import com.twitter.finagle.http.{Http => _, _}
-import com.twitter.util._
+import com.twitter.finagle.{Status => SvcStatus, _}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -59,6 +58,16 @@ class NamerTest extends FunSuite with Awaits {
   test("subdomainOfPfx") {
     val path = Path.read("/$/io.buoyant.http.subdomainOfPfx/a.b/foo/bar.a.b/bah")
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar", "bah"))))
+  }
+
+  test("subdomainOfPfx with underscore") {
+    val path = Path.read("/$/io.buoyant.http.subdomainOfPfx/a.b/foo/bar_suffix.a.b/bah")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar_suffix", "bah"))))
+  }
+
+  test("subdomainOfPfx with dash") {
+    val path = Path.read("/$/io.buoyant.http.subdomainOfPfx/a.b/foo/bar-suffix.a.b/bah")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar-suffix", "bah"))))
   }
 
   test("domainToPath") {

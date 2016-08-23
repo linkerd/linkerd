@@ -110,12 +110,12 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val w = rsp.writer
     await(w.write(modified2 concat added0))
     await(stream.uncons) match {
-      case Some((EndpointsWatch.Modified(eps), getStream)) =>
+      case Some((Modified(eps), getStream)) =>
         assert(eps.subsets.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
           Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
 
         await(getStream().uncons) match {
-          case Some((EndpointsWatch.Added(eps), getStream)) =>
+          case Some((Added(eps), getStream)) =>
             assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
               Seq("104.154.78.240"))
 
@@ -124,7 +124,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
             await(w.write(modified1))
             assert(next.isDefined)
             await(next) match {
-              case Some((EndpointsWatch.Modified(eps), getStream)) =>
+              case Some((Modified(eps), getStream)) =>
                 assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
                   Seq("10.248.3.3"))
 
@@ -133,7 +133,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
                 await(w.write(modified0))
                 assert(next.isDefined)
                 await(next) match {
-                  case Some((EndpointsWatch.Modified(eps), getStream)) =>
+                  case Some((Modified(eps), getStream)) =>
                     assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
                       Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
                     val next = getStream().uncons
@@ -194,14 +194,14 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
 
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
     await(stream.uncons) match {
-      case Some((EndpointsWatch.Error(status), stream)) =>
+      case Some((Error(status), stream)) =>
         assert(status.status == Some("Failure"))
         await(stream().uncons) match {
-          case Some((EndpointsWatch.Modified(mod), stream)) =>
+          case Some((Modified(mod), stream)) =>
             assert(mod.metadata.get.resourceVersion.get == "17147786")
             assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
             await(stream().uncons) match {
-              case Some((EndpointsWatch.Modified(mod), stream)) =>
+              case Some((Modified(mod), stream)) =>
                 assert(mod.metadata.get.resourceVersion.get == "17147808")
                 assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                 val next = stream().uncons
@@ -298,11 +298,11 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
 
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
     await(stream.uncons) match {
-      case Some((EndpointsWatch.Modified(mod), stream)) =>
+      case Some((Modified(mod), stream)) =>
         assert(mod.metadata.get.resourceVersion.get == "17147786")
         assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
         await(stream().uncons) match {
-          case Some((EndpointsWatch.Modified(mod), stream)) =>
+          case Some((Modified(mod), stream)) =>
             assert(mod.metadata.get.resourceVersion.get == "17147808")
             assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
             val next = stream().uncons

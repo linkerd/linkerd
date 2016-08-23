@@ -1,3 +1,38 @@
+## 0.7.4
+
+* Dashboard: add toggling to the router clients to better handle large numbers of clients
+* namerd HTTP API:
+  * Add `resolve` endpoint
+  * All endpoints return json
+* Add `authority` metadata field to re-write HTTP host/:authority on demand
+* Consul improvements:
+  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+  * Add auth `token` parameter to Consul Namer & Dtab Store
+  * Add `datacenter` parameter to Consul Dtab Store
+* Add file-system based name interpreter.
+* Path identifier should only parse as many segments as requested
+* Introduce the _telemetry_ plugin subsystem to support arbitrary stats
+  exporters and to eventually supplant the `tracers` subsystem.
+* Add announcer support! linkerd can now announce to service discovery backends!
+  * Add zk announcer.
+
+## 0.7.3
+
+* Allow protocol-specific parameters to be inherited on servers #561.
+* Don't clear addr on k8s service deletion #567.
+* Modify namerd's `/delegate` http endpoint to return bound names #569.
+* Memoize status stats components #547.
+
+## 0.7.2
+
+* Add support for tags in the `io.l5d.consul` namer.
+* Add an experimental `io.l5d.consul` storage backend for namerd.
+* linkerd should use last known good data if it get errors from namerd.
+* Fix exceptions when k8s namer encounters unexpected end of stream #551.
+* Expose HTTP codec parameters as configuration options.
+* Handle "too old" error when re-establishing Kubernetes watches.
+* Improve Java compatibility for Namers plugins.
+
 ## 0.7.1
 
 * Turn off HTTP decompression so that linkerd doesn't decompress and then

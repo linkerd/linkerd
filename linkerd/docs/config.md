@@ -123,9 +123,9 @@ Each router must be configured as an object with the following params:
 
 * *protocol* -- a protocol name must match one of the loaded configuration plugins (e.g. _http_, _mux_).
   linkerd currently supports the following protocols:
-  * [HTTP/1.1](protocol-http.md)
-  * [Thrift](protocol-thrift.md)
-  * [Mux](protocol-mux.md) (experimental)
+  * [HTTP/1.1](protocol-http.md), by using the value *http*;
+  * [Thrift](protocol-thrift.md), by using the value *thrift*; and
+  * [Mux](protocol-mux.md) (experimental), by using the value *mux*.
 * [basic router params](#basic-router-params) or protocol-specific router params
 * *servers* -- a list of server objects with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
@@ -136,6 +136,9 @@ Each router must be configured as an object with the following params:
   [interpreter](interpreter.md) object determining what module will be used to
   process destinations.  (default: default)
   * protocol-specific module params, if any (the _default_ module has none)
+<a name="announcers"></a>
+* *announcers* (optional) -- a list of service discovery
+  [announcers](announcer.md) that servers can announce to.
 
 <a name="basic-router-params"></a>
 ### Basic router parameters
@@ -178,6 +181,9 @@ local IPv4 interfaces.
   * *keyPath* -- File path to the TLS key file
 * *maxConcurrentRequests* -- Optional.  The maximum number of concurrent
 requests the server will accept.  (default: unlimited)
+<a name="announce"></a>
+* *announce* -- Optional.  A list of concrete names to announce using the
+  router's announcers.
 
 <a name="basic-client-params"></a>
 ### Basic client parameters

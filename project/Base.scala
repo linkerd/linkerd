@@ -17,7 +17,7 @@ import scoverage.ScoverageSbtPlugin
  * Base project configuration.
  */
 class Base extends Build {
-  val headVersion = "0.7.1"
+  val headVersion = "0.7.4"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
@@ -123,7 +123,7 @@ class Base extends Build {
 
     docker <<= docker dependsOn (assembly in configuration),
     dockerEnvPrefix := "",
-    dockerJavaImage := "library/java:openjdk-8-jre",
+    dockerJavaImage := "buoyantio/debian-32-bit",
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"

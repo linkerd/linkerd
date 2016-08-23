@@ -1,0 +1,9 @@
+# Routes 'default' to a single backend on localhost:8080
+routers:
+- protocol: http
+  baseDtab: |
+    /host/default => /$/inet/127.0.0.1/8080;
+    /http => /host/default;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0

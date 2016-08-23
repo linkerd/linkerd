@@ -4,6 +4,7 @@ package admin.names
 import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{io => _, _}
 import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.annotation.JsonSerialize.Inclusion
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -35,10 +36,10 @@ object DelegateApiHandler {
     Future.value(resp)
   }
 
-  case class Address(ip: String, port: Int)
+  case class Address(ip: String, port: Int, meta: Map[String, Any])
   object Address {
     def mk(addr: FAddress): Option[Address] = addr match {
-      case FAddress.Inet(isa, _) => Some(Address(isa.getAddress.getHostAddress, isa.getPort))
+      case FAddress.Inet(isa, meta) => Some(Address(isa.getAddress.getHostAddress, isa.getPort, meta))
       case _ => None
     }
   }
@@ -169,6 +170,7 @@ object DelegateApiHandler {
     private[this] val mapper = new ObjectMapper with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
     mapper.registerModule(mkModule())
 
     def writeStr[T](t: T): String = mapper.writeValueAsString(t)
@@ -191,7 +193,8 @@ object DelegateApiHandler {
 }
 
 class DelegateApiHandler(
-  interpreters: String => NameInterpreter
+  interpreters: String => NameInterpreter,
+  namers: Seq[(Path, Namer)] = Nil
 ) extends Service[Request, Response] {
 
   import DelegateApiHandler._
@@ -207,7 +210,7 @@ class DelegateApiHandler(
               err(Status.NotImplemented, s"Name Interpreter for $ns cannot show delegations")
           }
         case None =>
-          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(Nil))
+          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(namers))
       }
     case _ => err(Status.MethodNotAllowed)
   }

@@ -37,9 +37,11 @@ trait Router {
 
   protected def _withParams(ps: Stack.Params): Router
 
+  protected def configureServer(s: Server): Server
+
   def withParams(ps: Stack.Params): Router =
     _withParams(ps)
-      .withServers(servers.map(Router.configureServer(this, _)))
+      .withServers(servers.map(configureServer(_)))
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
@@ -53,12 +55,14 @@ trait Router {
 
   /** Return a router with an additional server. */
   def serving(s: Server): Router =
-    withServers(servers :+ Router.configureServer(this, s))
+    withServers(servers :+ configureServer(s))
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
   /** Return a router with TLS configuration read from the provided config. */
   def withTls(tls: TlsClientConfig): Router
+
+  def withAnnouncers(announcers: Seq[(Path, Announcer)]): Router
 
   /**
    * Initialize a router by instantiating a downstream router client
@@ -79,19 +83,7 @@ object Router {
     def protocol: ProtocolInitializer
     def params: Stack.Params
     def servers: Seq[Server.Initializer]
-  }
-
-  private def configureServer(router: Router, server: Server): Server = {
-    val ip = server.ip.getHostAddress
-    val port = server.port
-    val param.Stats(stats) = router.params[param.Stats]
-    val routerLabel = router.label
-    server.configured(param.Label(s"$ip/$port"))
-      .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[TimeoutFilter.Param])
-      .configured(router.params[param.ResponseClassifier])
-      .configured(router.params[param.Tracer])
+    def announcers: Seq[(Path, Announcer)]
   }
 }
 
@@ -107,6 +99,9 @@ trait RouterConfig {
   var failFast: Option[Boolean] = None
   var timeoutMs: Option[Int] = None
   var dstPrefix: Option[String] = None
+
+  @JsonProperty("announcers")
+  var _announcers: Option[Seq[AnnouncerConfig]] = None
 
   @JsonProperty("label")
   var _label: Option[String] = None
@@ -186,8 +181,12 @@ trait RouterConfig {
   def router(params: Stack.Params): Router = {
     val prms = params ++ routerParams
     val param.Label(label) = prms[param.Label]
+    val announcers = _announcers.toSeq.flatten.map { announcer =>
+      announcer.prefix -> announcer.mk
+    }
     protocol.router.configured(prms)
       .serving(servers.map(_.mk(protocol, label)))
+      .withAnnouncers(announcers)
       .maybeTransform(client.flatMap(_.tls).map(tls => _.withTls(tls)))
   }
 

@@ -2,10 +2,12 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.param
-import com.twitter.finagle.tracing.DefaultTracer
+import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.finagle.tracing._
 import io.buoyant.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer.{NamerInitializer, ConflictingNamerInitializer, TestNamerInitializer, TestNamer}
+import io.buoyant.telemetry._
 import io.buoyant.test.Exceptions
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
@@ -17,8 +19,9 @@ class LinkerTest extends FunSuite with Exceptions {
   def initializer(
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
     namers: Seq[NamerInitializer] = Seq(TestNamerInitializer),
-    tracers: Seq[TracerInitializer] = Seq(TestTracerInitializer)
-  ) = Linker.Initializers(protocol = protos, namer = namers, tracer = tracers)
+    tracers: Seq[TracerInitializer] = Seq(TestTracerInitializer),
+    telemeters: Seq[TelemeterInitializer] = Seq(new TestTelemeterInitializer)
+  ) = Linker.Initializers(protocol = protos, namer = namers, tracer = tracers, telemetry = telemeters)
 
   def parse(yaml: String) = initializer().load(yaml)
 
@@ -195,11 +198,19 @@ class LinkerTest extends FunSuite with Exceptions {
     assert(fDebugTrace())
   }
 
-  test("with namers & tracers") {
+  test("with namers & tracers & telemetry") {
     val yaml =
       """|tracers:
          |- kind: test
          |  debugTrace: true
+         |telemetry:
+         |- kind: io.l5d.testTelemeter
+         |  metrics: true
+         |- kind: io.l5d.testTelemeter
+         |  tracing: true
+         |- kind: io.l5d.testTelemeter
+         |  metrics: true
+         |  tracing: true
          |namers:
          |- kind: test
          |routers:
@@ -216,9 +227,27 @@ class LinkerTest extends FunSuite with Exceptions {
       case Seq((_, namer: TestNamer)) =>
       case namers => fail(s"unexpected namers: $namers")
     }
+    assert(linker.telemeters.size == 3)
+
+    val ttracers = linker.telemeters.map(_.tracer).collect { case t: BufferingTracer => t }
+    assert(ttracers.size == 2)
+    val treceivers = linker.telemeters.map(_.stats).collect { case s: InMemoryStatsReceiver => s }
+    assert(treceivers.size == 2)
+
+    val param.Stats(stats) = linker.routers.head.params[param.Stats]
+    stats.counter("rad").incr()
+    treceivers.foreach { r =>
+      assert(r.counters(Seq("rt", "rad")) == 1)
+    }
+
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
-    assert(tracer.isInstanceOf[TestTracer])
-    assert(linker.tracer.isInstanceOf[TestTracer])
+    Trace.letTracer(tracer) {
+      Trace.recordBinary("ugh", "hi")
+    }
+    ttracers.foreach { t =>
+      assert(t.size == 1)
+    }
+
     assert(fDebugTrace())
   }
 

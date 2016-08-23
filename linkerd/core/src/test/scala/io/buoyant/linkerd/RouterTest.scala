@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Dtab, Stack}
+import com.twitter.finagle.{Path, Dtab, Stack}
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.service.TimeoutFilter
 import io.buoyant.config.Parser
@@ -24,9 +24,11 @@ class RouterTest extends FunSuite with Exceptions {
     yaml: String,
     params: Stack.Params = Stack.Params.empty,
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
-    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer)
+    interpreters: Seq[InterpreterInitializer] = Seq(TestInterpreterInitializer),
+    announcers: Seq[AnnouncerInitializer] = Seq(TestAnnouncerInitializer)
   ): Router = {
-    val cfg = parseConfig(yaml, protos, interpreters)
+    val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters, announcers))
+    val cfg = mapper.readValue[RouterConfig](yaml)
     val interpreter = cfg.interpreter.newInterpreter(cfg.routerParams)
     cfg.router(params + DstBindingFactory.Namer(interpreter))
   }
@@ -118,6 +120,22 @@ servers:
     val router = parse(yaml, Stack.Params.empty)
     val DstBindingFactory.Namer(interpreter) = router.params[DstBindingFactory.Namer]
     assert(interpreter.isInstanceOf[TestInterpreter])
+  }
+
+  test("announcer") {
+    val yaml = """
+        |protocol: plain
+        |announcers:
+        |- kind: io.l5d.test
+        |servers:
+        |- announce:
+        |    - /#/io.l5d.test/foobar
+      """.
+      stripMargin
+    val router = parse(yaml, Stack.Params.empty)
+    val (path, announcer) = router.initialize().announcers.head
+    assert(path == Path.read("/#/io.l5d.test"))
+    assert(announcer.isInstanceOf[TestAnnouncer])
   }
 
   test("with retries") {

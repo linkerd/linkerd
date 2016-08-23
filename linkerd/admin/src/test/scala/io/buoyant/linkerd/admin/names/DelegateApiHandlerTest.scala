@@ -4,7 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.util.{Var, Activity}
+import com.twitter.util.Activity
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.linkerd._
 import io.buoyant.namer.{ErrorNamerInitializer, TestNamerInitializer}
@@ -43,14 +43,14 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
-      |"type":"delegate","path":"/boo/humbug","dentry":null,"delegate":{
+      |"type":"delegate","path":"/boo/humbug","delegate":{
         |"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[
           |{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},
           |{"type":"delegate","path":"/bah/humbug",
           |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
             |"type":"leaf","path":"/$/inet/127.1/8080","dentry":{"prefix":"/bah/humbug",
               |"dst":"/$/inet/127.1/8080"},
-            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080}],"meta":{}},
+            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080,"meta":{}}],"meta":{}},
               |"id":"/$/inet/127.1/8080","path":"/"}}},
           |{"type":"delegate","path":"/beh/humbug",
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{

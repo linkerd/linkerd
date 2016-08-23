@@ -1,12 +1,12 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
+import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.namer.DelegateTree
-import io.buoyant.namerd.{ConfiguredDtabNamer, RichActivity}
+import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree, Metadata}
+import io.buoyant.namerd.RichActivity
 import io.buoyant.test.Awaits
 import java.util.concurrent.atomic.AtomicLong
 import org.scalatest.FunSuite
@@ -68,11 +68,21 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     bound0.addr.changes.respond(clientAddr0 = _)
     assert(clientAddr0 == Addr.Pending)
 
-    serverAddr0() = Addr.Bound(Address("127.1", 4321))
-    eventually { assert(clientAddr0 == serverAddr0.sample()) }
+    serverAddr0() = Addr.Bound(
+      Set(Address("127.1", 4321)),
+      Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+    )
+    eventually {
+      assert(clientAddr0 == Addr.Bound(Set(Address("127.1", 4321)), Addr.Metadata(Metadata.authority -> "acme.co")))
+    }
 
-    serverAddr0() = Addr.Bound(Address("127.1", 5432))
-    eventually { assert(clientAddr0 == serverAddr0.sample()) }
+    serverAddr0() = Addr.Bound(
+      Set(Address("127.1", 5432)),
+      Addr.Metadata(Metadata.authority -> "acme.co", "also" -> "ignored")
+    )
+    eventually {
+      assert(clientAddr0 == Addr.Bound(Set(Address("127.1", 5432)), Addr.Metadata(Metadata.authority -> "acme.co")))
+    }
 
     serverState() = Activity.Ok(NameTree.Neg)
     eventually { assert(clientState == serverState.sample()) }
@@ -101,7 +111,12 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       def lookup(path: Path) = {
         path match {
           case Path.Utf8("woop") => Activity.value(NameTree.Leaf(Name.Bound(
-            Var(Addr.Bound(Address("localhost", 9000))),
+            Var(
+              Addr.Bound(
+                Set(Address("localhost", 9000)),
+                Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+              )
+            ),
             Path.read("/io.l5d.w00t/woop"),
             Path.empty
           )))
@@ -150,5 +165,41 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
           ): _*
         )
       ))
+  }
+
+  test("use last good bind data") {
+    val id = Path.read("/io.l5d.w00t")
+    val (act, witness) = Activity[NameTree[Name]]()
+    val namer = new Namer {
+      def lookup(path: Path) = act
+    }
+    val namers = Seq(id -> namer)
+    def interpreter(ns: String) = new ConfiguredDtabNamer(
+      Activity.value(Dtab.read("/http => /io.l5d.w00t")),
+      namers
+    )
+    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
+    val client = new ThriftNamerClient(service, ns, clientId)
+
+    witness.notify(Return(NameTree.Leaf(Name.Bound(
+      Var(Addr.Bound(Address("localhost", 9000))),
+      Path.read("/io.l5d.w00t/foo"),
+      Path.empty
+    ))))
+
+    val bindAct = client.bind(Dtab.empty, Path.read("/http/foo"))
+    var bound: NameTree[Name.Bound] = null
+    // hold activity open so that it doesn't get restarted and lose state
+    bindAct.values.respond(_ => ())
+    val NameTree.Leaf(bound0) = await(bindAct.toFuture)
+    // hold var open so that it doesn't get restarted and lose state
+    bound0.addr.changes.respond(_ => ())
+    assert(bound0.id == Path.read("/io.l5d.w00t/foo"))
+    assert(bound0.addr.sample == Addr.Bound(Address("localhost", 9000)))
+
+    witness.notify(Throw(new Exception("bind failure")))
+    val NameTree.Leaf(bound1) = await(bindAct.toFuture)
+    assert(bound1.id == Path.read("/io.l5d.w00t/foo"))
+    assert(bound1.addr.sample == Addr.Bound(Address("localhost", 9000)))
   }
 }

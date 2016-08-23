@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.Time
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
@@ -18,7 +19,7 @@ import java.net.InetSocketAddress
  * configuration parameters.
  *
  */
-abstract class ProtocolInitializer extends ConfigInitializer {
+abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   import ProtocolInitializer._
 
   /** The protocol name, as read from configuration. */
@@ -34,13 +35,27 @@ abstract class ProtocolInitializer extends ConfigInitializer {
   /** The default protocol-specific router configuration */
   protected def defaultRouter: StackRouter[RouterReq, RouterRsp]
 
+  protected def configureServer(router: Router, server: Server): Server = {
+    val ip = server.ip.getHostAddress
+    val port = server.port
+    val param.Stats(stats) = router.params[param.Stats]
+    val routerLabel = router.label
+    server.configured(param.Label(s"$ip/$port"))
+      .configured(Server.RouterLabel(routerLabel))
+      .configured(param.Stats(stats.scope(routerLabel, "srv")))
+      .configured(router.params[TimeoutFilter.Param])
+      .configured(router.params[param.ResponseClassifier])
+      .configured(router.params[param.Tracer])
+  }
+
   /**
    * Satisfies the protocol-agnostic linkerd Router interface by
    * wrapping the protocol-specific router stack.
    */
   private case class ProtocolRouter(
     router: StackRouter[RouterReq, RouterRsp],
-    servers: Seq[Server] = Nil
+    servers: Seq[Server] = Nil,
+    announcers: Seq[(Path, Announcer)] = Nil
   ) extends Router {
     def params = router.params
     def protocol = ProtocolInitializer.this
@@ -48,7 +63,12 @@ abstract class ProtocolInitializer extends ConfigInitializer {
     protected def _withParams(ps: Stack.Params): Router =
       copy(router = router.withParams(ps))
 
+    protected def configureServer(s: Server): Server =
+      initializer.configureServer(this, s)
+
     protected def withServers(ss: Seq[Server]): Router = copy(servers = ss)
+
+    def withAnnouncers(ann: Seq[(Path, Announcer)]): Router = copy(announcers = ann)
 
     def initialize(): Router.Initialized = {
       if (servers.isEmpty) {
@@ -60,9 +80,9 @@ abstract class ProtocolInitializer extends ConfigInitializer {
       val adapted = adapter.andThen(factory)
       val servable = servers.map { server =>
         val stackServer = defaultServer.withParams(defaultServer.params ++ server.params)
-        ServerInitializer(protocol, server.addr, stackServer, adapted)
+        ServerInitializer(protocol, server.addr, stackServer, adapted, server.announce)
       }
-      InitializedRouter(protocol, params, factory, servable)
+      InitializedRouter(protocol, params, factory, servable, announcers)
     }
 
     private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
@@ -113,7 +133,8 @@ object ProtocolInitializer {
     protocol: ProtocolInitializer,
     params: Stack.Params,
     factory: ServiceFactory[Req, Rsp],
-    servers: Seq[Server.Initializer]
+    servers: Seq[Server.Initializer],
+    announcers: Seq[(Path, Announcer)]
   ) extends Router.Initialized {
     def name: String = params[Label].label
     def close(t: Time) = factory.close(t)
@@ -124,7 +145,8 @@ object ProtocolInitializer {
     protocol: ProtocolInitializer,
     addr: InetSocketAddress,
     server: StackServer[Req, Rsp],
-    factory: ServiceFactory[Req, Rsp]
+    factory: ServiceFactory[Req, Rsp],
+    announce: Seq[Path]
   ) extends Server.Initializer {
     def params = server.params
     def router: String = server.params[Server.RouterLabel].label
