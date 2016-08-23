@@ -12,7 +12,7 @@ tracers:
 telemetry:
 - kind: io.l5d.tracelog
   sampleRate: 0.2
-  leve: TRACE
+  level: TRACE
 
 namers:
 - kind: io.l5d.fs
