@@ -36,7 +36,7 @@ class TracelogInitializerTest extends FunSuite {
     assert(!telemeter.tracer.isNull)
   }
 
-  test("io.l5d.default telemeter loads, with invalid log level") {
+  test("io.l5d.default telemeter fails with invalid log level") {
     val yaml =
       """|kind: io.l5d.tracelog
          |level: supergood
