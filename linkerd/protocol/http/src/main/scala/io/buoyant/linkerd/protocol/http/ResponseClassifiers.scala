@@ -15,7 +15,10 @@ object ResponseClassifiers {
 
     case class ByMethod(methods: Set[Method]) {
       def withMethods(other: Set[Method]): ByMethod = copy(methods ++ other)
-      def unapply(req: Request): Boolean = methods.contains(req.method)
+
+      // Chunked requests are not considered to be retryable
+      def unapply(req: Request): Boolean =
+        methods.contains(req.method)
     }
 
     /** Matches read-only requests */
@@ -77,7 +80,8 @@ object ResponseClassifiers {
    */
   val RetryableIdempotentFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableIdempotentFailures") {
-      case ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
+      case ReqRep(req@Requests.Idempotent(), RetryableResult()) if !req.isChunked =>
+        ResponseClass.RetryableFailure
     }
 
   /**
@@ -86,7 +90,8 @@ object ResponseClassifiers {
    */
   val RetryableReadFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableReadFailures") {
-      case ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
+      case ReqRep(req@Requests.ReadOnly(), RetryableResult()) if !req.isChunked =>
+        ResponseClass.RetryableFailure
     }
 
   /**

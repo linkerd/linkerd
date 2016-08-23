@@ -16,9 +16,12 @@ class ResponseClassifiersTest extends FunSuite {
     classifier: ResponseClassifier,
     method: Method,
     status: Try[Status],
-    classification: Option[ResponseClass]
+    classification: Option[ResponseClass],
+    chunkedReq: Boolean = false
   ): Unit = {
-    val key = ReqRep(Request(method, "/"), status.map(Response(_)))
+    val req = Request(method, "/")
+    req.setChunked(chunkedReq)
+    val key = ReqRep(req, status.map(Response(_)))
     classification match {
       case None =>
         assert(!classifier.isDefinedAt(key))
@@ -65,12 +68,33 @@ class ResponseClassifiersTest extends FunSuite {
           )
       }
 
+      test(s"$classifier: retries $method 5XX, unless chunked") {
+        for (code <- 500 to 599)
+          testClassifier(
+            classifier,
+            method,
+            Return(Status(code)),
+            None,
+            chunkedReq = true
+          )
+      }
+
       test(s"$classifier: retries $method timeout") {
         testClassifier(
           classifier,
           method,
           Throw(new TimeoutException("timeout")),
           Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: retries $method timeout, unless chunked") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new TimeoutException("timeout")),
+          None,
+          chunkedReq = true
         )
       }
 
@@ -83,12 +107,32 @@ class ResponseClassifiersTest extends FunSuite {
         )
       }
 
+      test(s"$classifier: retries $method request timeout, unless chunked") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new RequestTimeoutException(Duration.Zero, "timeout")),
+          None,
+          chunkedReq = true
+        )
+      }
+
       test(s"$classifier: retries $method channel closed") {
         testClassifier(
           classifier,
           method,
           Throw(new ChannelClosedException),
           Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: retries $method channel closed, unless chunked") {
+        testClassifier(
+          classifier,
+          method,
+          Throw(new ChannelClosedException),
+          None,
+          chunkedReq = true
         )
       }
 
