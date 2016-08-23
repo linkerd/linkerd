@@ -484,7 +484,9 @@ object LinkerdBuild extends Base {
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
         Interpreter.namerd, Interpreter.fs,
         Protocol.mux, Protocol.thrift,
-        Announcer.all, Telemetry.all, Tracer.all,
+        Announcer.serversets,
+        Telemetry.core, Telemetry.tracelog,
+        Tracer.zipkin,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
