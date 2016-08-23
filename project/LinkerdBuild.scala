@@ -117,11 +117,21 @@ object LinkerdBuild extends Base {
     .withTwitterLib(Deps.finagle("stats"))
     .withTests()
 
-  val telemetryCore = projectDir("telemetry/core")
-    .dependsOn(configCore)
-    .withTwitterLib(Deps.finagle("core"))
-    .withTwitterLib(Deps.finagle("stats") % Test)
-    .withTests()
+  object Telemetry {
+    val core = projectDir("telemetry/core")
+      .dependsOn(configCore)
+      .withTwitterLib(Deps.finagle("core"))
+      .withTwitterLib(Deps.finagle("stats") % Test)
+      .withTests()
+
+    val tracelog = projectDir("telemetry/tracelog")
+      .dependsOn(core, Router.core)
+      .withTests()
+
+    val all = projectDir("telemetry")
+      .settings(aggregateSettings)
+      .aggregate(core, tracelog)
+  }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
@@ -345,7 +355,7 @@ object LinkerdBuild extends Base {
       .dependsOn(
         configCore,
         LinkerdBuild.admin,
-        telemetryCore % "compile->compile;test->test",
+        Telemetry.core % "compile->compile;test->test",
         Namer.core % "compile->compile;test->test",
         Router.core
       )
@@ -466,7 +476,7 @@ object LinkerdBuild extends Base {
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http)
+      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
@@ -474,8 +484,9 @@ object LinkerdBuild extends Base {
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
         Interpreter.namerd, Interpreter.fs,
         Protocol.mux, Protocol.thrift,
-        Tracer.zipkin,
         Announcer.serversets,
+        Telemetry.core, Telemetry.tracelog,
+        Tracer.zipkin,
         tls)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
@@ -522,6 +533,10 @@ object LinkerdBuild extends Base {
   val routerMux = Router.mux
   val routerThrift = Router.thrift
   val routerThriftIdl = Router.thriftIdl
+
+  val telemetry = Telemetry.all
+  val telemetryCore = Telemetry.core
+  val telemetryTracelog = Telemetry.tracelog
 
   val namer = Namer.all
   val namerCore = Namer.core
@@ -581,11 +596,11 @@ object LinkerdBuild extends Base {
       k8s,
       marathon,
       testUtil,
-      telemetryCore,
       Interpreter.all,
       Linkerd.all,
       Namer.all,
       Namerd.all,
-      Router.all
+      Router.all,
+      Telemetry.all
     )
 }

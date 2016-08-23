@@ -2,5 +2,6 @@ io.buoyant.config.types.DirectorySerializer
 io.buoyant.config.types.DtabSerializer
 io.buoyant.config.types.FileSerializer
 io.buoyant.config.types.InetAddressSerializer
+io.buoyant.config.types.LogLevelSerializer
 io.buoyant.config.types.PathSerializer
 io.buoyant.config.types.PortSerializer
