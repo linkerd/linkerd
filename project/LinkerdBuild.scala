@@ -120,6 +120,7 @@ object LinkerdBuild extends Base {
   val telemetryCore = projectDir("telemetry/core")
     .dependsOn(configCore)
     .withTwitterLib(Deps.finagle("core"))
+    .withTwitterLib(Deps.finagle("stats") % Test)
     .withTests()
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
