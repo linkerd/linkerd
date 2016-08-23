@@ -1,7 +1,7 @@
 package io.buoyant.telemetry
 
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.tracing.{Tracer, NullTracer}
+import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.tracing.Tracer
 import com.twitter.util.{Awaitable, Closable, CloseAwaitably, Future, Time}
 
 /**
@@ -15,8 +15,12 @@ trait Telemeter {
 }
 
 object Telemeter {
-  val runNop: Closable with Awaitable[Unit] =
+
+  /**
+   * A utility useful when a Telemeter has no _run_ning to do.
+   */
+  val nopRun: Closable with Awaitable[Unit] =
     new Closable with CloseAwaitably {
-      def close(d: Time) = closeAwaitably(Future.Unit)
+      def close(t: Time) = closeAwaitably(Future.Unit)
     }
 }

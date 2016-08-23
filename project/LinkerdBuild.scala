@@ -121,6 +121,7 @@ object LinkerdBuild extends Base {
     val core = projectDir("telemetry/core")
       .dependsOn(configCore)
       .withTwitterLib(Deps.finagle("core"))
+      .withTwitterLib(Deps.finagle("stats") % Test)
       .withTests()
 
     val tracelog = projectDir("telemetry/tracelog")

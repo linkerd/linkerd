@@ -28,7 +28,7 @@ case class TracelogConfig(
 class TracelogTelemeter(logger: Logger, level: Level, sampler: Sampler) extends Telemeter {
   val stats = NullStatsReceiver
   lazy val tracer = new TracelogTracer(logger, level, sampler)
-  def run() = Telemeter.runNop
+  def run() = Telemeter.nopRun
 }
 
 class TracelogTracer(logger: Logger, level: Level, sample: Sampler) extends Tracer {
