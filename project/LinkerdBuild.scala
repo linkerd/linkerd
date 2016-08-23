@@ -593,11 +593,11 @@ object LinkerdBuild extends Base {
       k8s,
       marathon,
       testUtil,
-      telemetryCore,
       Interpreter.all,
       Linkerd.all,
       Namer.all,
       Namerd.all,
-      Router.all
+      Router.all,
+      Telemetry.all
     )
 }
