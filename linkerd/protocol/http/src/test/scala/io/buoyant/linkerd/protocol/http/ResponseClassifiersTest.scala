@@ -16,12 +16,9 @@ class ResponseClassifiersTest extends FunSuite {
     classifier: ResponseClassifier,
     method: Method,
     status: Try[Status],
-    classification: Option[ResponseClass],
-    chunkedReq: Boolean = false
+    classification: Option[ResponseClass]
   ): Unit = {
-    val req = Request(method, "/")
-    req.setChunked(chunkedReq)
-    val key = ReqRep(req, status.map(Response(_)))
+    val key = ReqRep(Request(method, "/"), status.map(Response(_)))
     classification match {
       case None =>
         assert(!classifier.isDefinedAt(key))
@@ -68,33 +65,12 @@ class ResponseClassifiersTest extends FunSuite {
           )
       }
 
-      test(s"$classifier: retries $method 5XX, unless chunked") {
-        for (code <- 500 to 599)
-          testClassifier(
-            classifier,
-            method,
-            Return(Status(code)),
-            None,
-            chunkedReq = true
-          )
-      }
-
       test(s"$classifier: retries $method timeout") {
         testClassifier(
           classifier,
           method,
           Throw(new TimeoutException("timeout")),
           Some(ResponseClass.RetryableFailure)
-        )
-      }
-
-      test(s"$classifier: retries $method timeout, unless chunked") {
-        testClassifier(
-          classifier,
-          method,
-          Throw(new TimeoutException("timeout")),
-          None,
-          chunkedReq = true
         )
       }
 
@@ -107,32 +83,12 @@ class ResponseClassifiersTest extends FunSuite {
         )
       }
 
-      test(s"$classifier: retries $method request timeout, unless chunked") {
-        testClassifier(
-          classifier,
-          method,
-          Throw(new RequestTimeoutException(Duration.Zero, "timeout")),
-          None,
-          chunkedReq = true
-        )
-      }
-
       test(s"$classifier: retries $method channel closed") {
         testClassifier(
           classifier,
           method,
           Throw(new ChannelClosedException),
           Some(ResponseClass.RetryableFailure)
-        )
-      }
-
-      test(s"$classifier: retries $method channel closed, unless chunked") {
-        testClassifier(
-          classifier,
-          method,
-          Throw(new ChannelClosedException),
-          None,
-          chunkedReq = true
         )
       }
 
@@ -202,5 +158,22 @@ class ResponseClassifiersTest extends FunSuite {
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(init)))
       assert(mapper.readValue[RouterConfig](yaml)._responseClassifier.isDefined)
     }
+  }
+
+  test("NonRetryableChunked: makes RetryableFailures NonRetryableFailures when chunked") {
+    val classifier = ResponseClassifiers.NonRetryableChunked {
+      case ReqRep(_, _) => ResponseClass.RetryableFailure
+    }
+    val req = Request()
+    req.setChunked(true)
+    assert(classifier(ReqRep(req, Return(Response()))) == ResponseClass.NonRetryableFailure)
+  }
+
+  test("NonRetryableChunked: does not change RetryableFailures when not chunked") {
+    val classifier = ResponseClassifiers.NonRetryableChunked {
+      case ReqRep(_, _) => ResponseClass.RetryableFailure
+    }
+    val req = Request()
+    assert(classifier(ReqRep(req, Return(Response()))) == ResponseClass.RetryableFailure)
   }
 }

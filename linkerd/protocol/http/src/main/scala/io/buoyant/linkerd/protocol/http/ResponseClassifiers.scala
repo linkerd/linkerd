@@ -16,9 +16,7 @@ object ResponseClassifiers {
     case class ByMethod(methods: Set[Method]) {
       def withMethods(other: Set[Method]): ByMethod = copy(methods ++ other)
 
-      // Chunked requests are not considered to be retryable
-      def unapply(req: Request): Boolean =
-        methods.contains(req.method)
+      def unapply(req: Request): Boolean = methods.contains(req.method)
     }
 
     /** Matches read-only requests */
@@ -80,8 +78,7 @@ object ResponseClassifiers {
    */
   val RetryableIdempotentFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableIdempotentFailures") {
-      case ReqRep(req@Requests.Idempotent(), RetryableResult()) if !req.isChunked =>
-        ResponseClass.RetryableFailure
+      case ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -90,8 +87,7 @@ object ResponseClassifiers {
    */
   val RetryableReadFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableReadFailures") {
-      case ReqRep(req@Requests.ReadOnly(), RetryableResult()) if !req.isChunked =>
-        ResponseClass.RetryableFailure
+      case ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -100,6 +96,16 @@ object ResponseClassifiers {
    */
   val NonRetryableServerFailures: ResponseClassifier =
     HttpResponseClassifier.ServerErrorsAsFailures
+
+  def NonRetryableChunked(classifier: ResponseClassifier): ResponseClassifier =
+    ResponseClassifier.named(s"NonRetryableChunked") {
+      case rr@ReqRep(req, _) if classifier.isDefinedAt(rr) =>
+        (req, classifier(rr)) match {
+          case (req: Request, ResponseClass.RetryableFailure) if req.isChunked =>
+            ResponseClass.NonRetryableFailure
+          case (_, rc) => rc
+        }
+    }
 }
 
 class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
