@@ -105,6 +105,10 @@ case class HttpConfig(
     ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
 
   @JsonIgnore
+  override def responseClassifier =
+    ResponseClassifiers.NonRetryableChunked(super.responseClassifier)
+
+  @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore

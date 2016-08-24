@@ -159,4 +159,21 @@ class ResponseClassifiersTest extends FunSuite {
       assert(mapper.readValue[RouterConfig](yaml)._responseClassifier.isDefined)
     }
   }
+
+  test("NonRetryableChunked: makes RetryableFailures NonRetryableFailures when chunked") {
+    val classifier = ResponseClassifiers.NonRetryableChunked {
+      case ReqRep(_, _) => ResponseClass.RetryableFailure
+    }
+    val req = Request()
+    req.setChunked(true)
+    assert(classifier(ReqRep(req, Return(Response()))) == ResponseClass.NonRetryableFailure)
+  }
+
+  test("NonRetryableChunked: does not change RetryableFailures when not chunked") {
+    val classifier = ResponseClassifiers.NonRetryableChunked {
+      case ReqRep(_, _) => ResponseClass.RetryableFailure
+    }
+    val req = Request()
+    assert(classifier(ReqRep(req, Return(Response()))) == ResponseClass.RetryableFailure)
+  }
 }
