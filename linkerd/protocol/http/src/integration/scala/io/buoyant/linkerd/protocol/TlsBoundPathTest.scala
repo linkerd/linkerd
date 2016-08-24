@@ -14,8 +14,6 @@ import scala.sys.process._
 
 class TlsBoundPathTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
-
   test("tls router + 2 tls backends") {
 
     withCerts("bill.buoyant.io", "ted.buoyant.io") { certs =>

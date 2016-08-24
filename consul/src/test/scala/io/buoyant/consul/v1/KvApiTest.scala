@@ -18,8 +18,6 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   val deleteFailBuf = Buf.Utf8("""false""")
   var lastUri = ""
 
-  override val defaultWait = 2.seconds
-
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
     rsp.setContentTypeJson()
