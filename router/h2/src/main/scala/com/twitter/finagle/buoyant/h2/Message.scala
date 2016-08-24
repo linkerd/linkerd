@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
 import com.twitter.util.Future
+import scala.util.control.NoStackTrace
 
 /**
  * A generic HTTP2 message.
@@ -81,7 +82,7 @@ trait DataStream {
 
 object DataStream {
 
-  class ClosedException extends Exception("DataStream is closed")
+  class ClosedException extends Exception("DataStream is closed") with NoStackTrace
 
   /** A DataStream that wraps an underlyign DataStream. */
   trait Proxy extends DataStream {
@@ -94,7 +95,7 @@ object DataStream {
 
   /**
    * An empty stream. Useful, for instance, when a Message consists of
-   * only a headers frame with an
+   * only a headers frame with END_STREAM set.
    */
   trait Nil extends DataStream {
     override def toString = "DataStream.Nil"
