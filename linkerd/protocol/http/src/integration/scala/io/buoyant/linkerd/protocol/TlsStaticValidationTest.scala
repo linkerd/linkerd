@@ -11,8 +11,6 @@ import org.scalatest.FunSuite
 
 class TlsStaticValidationTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
-
   val init = Linker.Initializers(
     protocol = Seq(HttpInitializer),
     tlsClient = Seq(StaticInitializer)

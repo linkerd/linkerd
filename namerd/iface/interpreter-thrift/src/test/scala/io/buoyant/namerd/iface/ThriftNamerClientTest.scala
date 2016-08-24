@@ -13,8 +13,6 @@ import org.scalatest.FunSuite
 class ThriftNamerClientTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
 
-  override def defaultWait: Duration = 2.seconds
-
   class Rsp[T] {
     val promise = new Promise[T]
     var count = 1

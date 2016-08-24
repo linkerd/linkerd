@@ -58,7 +58,6 @@ class EtcdFixture extends FunSuite with Awaits with BeforeAndAfterAll {
   def serverName = s"/$$/inet/127.1/$etcdPort"
 
   private[this] implicit val timer = DefaultTimer.twitter
-  override def defaultWait = 1.second
 
   type FixtureParam = Etcd
 
