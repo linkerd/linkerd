@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant.h2
 import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, BucketAndCount}
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import org.scalatest.FunSuite
@@ -72,15 +73,22 @@ class ServerDispatcherTest extends FunSuite with Eventually {
 
       clock.advance(10.millisecond)
 
+      val reqEndP = new Promise[Unit]
       val req = new Request {
         val scheme = "http"
         val method = "get"
         val authority = "authoirtah"
         val path = "/"
-        val isEmpty = true
+        val isEmpty = false
         val headers = Nil
-        def onEnd = Future.Unit
-        def read() = Future.never
+        def onEnd = reqEndP
+        def read() = reqEndP.map { _ =>
+          new DataStream.Data {
+            val buf = Buf.Empty
+            def release() = Future.Unit
+            def isEnd = true
+          }
+        }
         def fail(e: Throwable): Unit = {}
       }
       streamReadP.setValue(req)
@@ -91,48 +99,63 @@ class ServerDispatcherTest extends FunSuite with Eventually {
       assert(streamWriting.get == null)
       assert(serviceClosing.get == false)
       assert(streamClosing.get == false)
-
+      assert(stats.histogramDetails.size == 0)
       clock.advance(10.millisecond)
 
+      val rspEndP = new Promise[Unit]
       val rsp = new Response {
         val status = 200
         val isEmpty = true
         val headers = Nil
-        def onEnd = Future.Unit
+        def onEnd = rspEndP
         def read() = Future.never
         def fail(e: Throwable): Unit = {}
       }
       serviceRspP.setValue(rsp)
 
-      clock.advance(10.millisecond)
-
       assert(streamWriting.get == rsp)
       assert(serviceClosing.get == false)
       assert(streamClosing.get == false)
+      assert(stats.histogramDetails.size == 1)
+      assert(stats.histogramDetails.contains("serve_ms"))
+      assert(stats.histogramDetails("serve_ms").counts == Seq(BucketAndCount(20, 21, 1)))
 
-      streamWritingP.setValue(streamWroteP)
+      clock.advance(10.millisecond)
+      reqEndP.setDone()
+      assert(stats.histogramDetails.size == 2)
+      assert(stats.histogramDetails.contains("read_ms"))
+      assert(stats.histogramDetails("read_ms").counts == Seq(BucketAndCount(40, 41, 1)))
+      assert(stats.histogramDetails.contains("serve_ms"))
+      assert(stats.histogramDetails("serve_ms").counts == Seq(BucketAndCount(20, 21, 1)))
+
+      clock.advance(10.millisecond)
+      streamWritingP.setValue(rspEndP)
       assert(serviceClosing.get == false)
       assert(streamClosing.get == false)
 
       clock.advance(10.millisecond)
-
-      streamWroteP.setDone()
-      assert(stats.histogramDetails.size == 1)
-      assert(stats.histogramDetails.contains("streaming_ms"))
-      assert(stats.histogramDetails("streaming_ms").counts == Seq(BucketAndCount(10, 11, 1)))
+      rspEndP.setDone()
+      assert(stats.histogramDetails.size == 3)
+      assert(stats.histogramDetails.contains("read_ms"))
+      assert(stats.histogramDetails("read_ms").counts == Seq(BucketAndCount(40, 41, 1)))
+      assert(stats.histogramDetails.contains("write_ms"))
+      assert(stats.histogramDetails("write_ms").counts == Seq(BucketAndCount(30, 31, 1)))
+      assert(stats.histogramDetails.contains("serve_ms"))
+      assert(stats.histogramDetails("serve_ms").counts == Seq(BucketAndCount(20, 21, 1)))
       eventually {
         assert(serviceClosing.get == true)
       }
       // stream.close() isn't actally called, we just wait on its onClose to fire...
       assert(streamClosing.get == false)
-      assert(stats.histogramDetails.size == 1)
+      assert(stats.histogramDetails.size == 3)
 
       clock.advance(10.millisecond)
       serviceCloseP.setDone()
       streamCloseP.setValue(new Exception)
 
-      assert(stats.histogramDetails.contains("serving_ms"))
-      assert(stats.histogramDetails("serving_ms").counts == Seq(BucketAndCount(60, 61, 1)))
+      assert(stats.histogramDetails.size == 4)
+      assert(stats.histogramDetails.contains("active_ms"))
+      assert(stats.histogramDetails("active_ms").counts == Seq(BucketAndCount(70, 71, 1)))
     }
   }
 }
