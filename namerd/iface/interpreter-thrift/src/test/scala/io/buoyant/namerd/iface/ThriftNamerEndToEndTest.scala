@@ -193,14 +193,16 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     try {
       val NameTree.Leaf(bound0) = await(bindAct.toFuture)
       // hold var open so that it doesn't get restarted and lose state
-      bound0.addr.changes.respond(_ => ())
-      assert(bound0.id == Path.read("/io.l5d.w00t/foo"))
-      assert(bound0.addr.sample == Addr.Bound(Address("localhost", 9000)))
+      val bound0Obs = bound0.addr.changes.respond(_ => ())
+      try {
+        assert(bound0.id == Path.read("/io.l5d.w00t/foo"))
+        assert(bound0.addr.sample == Addr.Bound(Address("localhost", 9000)))
 
-      witness.notify(Throw(new Exception("bind failure")))
-      val NameTree.Leaf(bound1) = await(bindAct.toFuture)
-      assert(bound1.id == Path.read("/io.l5d.w00t/foo"))
-      assert(bound1.addr.sample == Addr.Bound(Address("localhost", 9000)))
+        witness.notify(Throw(new Exception("bind failure")))
+        val NameTree.Leaf(bound1) = await(bindAct.toFuture)
+        assert(bound1.id == Path.read("/io.l5d.w00t/foo"))
+        assert(bound1.addr.sample == Addr.Bound(Address("localhost", 9000)))
+      } finally await(bound0Obs.close())
     } finally await(bindObs.close())
 
   }
