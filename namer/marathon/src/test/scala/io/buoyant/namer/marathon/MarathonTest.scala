@@ -11,7 +11,8 @@ class MarathonTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = MarathonConfig(None, None, None, None, None).newNamer(Stack.Params.empty)
+    // We use a name that resolves here
+    val _ = MarathonConfig(Some("localhost"), None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -23,7 +24,7 @@ class MarathonTest extends FunSuite {
                   |kind:      io.l5d.marathon
                   |experimental: true
                   |prefix:    /io.l5d.marathon
-                  |host:      marathon.mesos
+                  |host:      localhost
                   |port:      80
                   |uriPrefix: /marathon
                   |ttlMs:     300
@@ -31,7 +32,7 @@ class MarathonTest extends FunSuite {
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
-    assert(marathon.host.contains("marathon.mesos"))
+    assert(marathon.host.contains("localhost"))
     assert(marathon.port.contains(Port(80)))
     assert(marathon.uriPrefix.contains("/marathon"))
     assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
@@ -43,7 +44,7 @@ class MarathonTest extends FunSuite {
     val yaml = s"""
                   |kind:      io.l5d.marathon
                   |prefix:    /io.l5d.marathon
-                  |host:      marathon.mesos
+                  |host:      localhost
                   |port:      80
                   |uriPrefix: /marathon
                   |ttlMs:     300
@@ -51,7 +52,7 @@ class MarathonTest extends FunSuite {
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
-    assert(marathon.host.contains("marathon.mesos"))
+    assert(marathon.host.contains("localhost"))
     assert(marathon.port.contains(Port(80)))
     assert(marathon.uriPrefix.contains("/marathon"))
     assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
