@@ -3,8 +3,10 @@ package netty4
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
+import io.netty.handler.codec.http2.Http2StreamFrame
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -18,12 +20,14 @@ object Netty4ClientDispatcher {
  * shared connection transport.
  */
 class Netty4ClientDispatcher(
-  transport: Netty4H2Transport,
+  transport: Transport[Http2StreamFrame, Http2StreamFrame],
   minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
   import Netty4ClientDispatcher._
+
+  private[this] val writer = new Netty4H2Writer(transport)
 
   // TODO handle overflow
   private[this] val _id = new AtomicInteger(3) // ID=1 is reserved for HTTP/1 upgrade
@@ -46,7 +50,7 @@ class Netty4ClientDispatcher(
   private[this] def newStream(): Netty4ClientStreamTransport = {
     val id = nextId()
     val stream = new Netty4ClientStreamTransport(
-      id, transport,
+      id, writer,
       minAccumFrames = minAccumFrames,
       statsReceiver = streamStats
     )

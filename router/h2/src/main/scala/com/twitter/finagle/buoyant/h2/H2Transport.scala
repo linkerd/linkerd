@@ -4,6 +4,10 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 
 object H2Transport {
+
+  /**
+   * A codec-agnostic interface supporting writes of H2 messages to a transport.
+   */
   trait Writer {
     def write(id: Int, orig: Headers, eos: Boolean): Future[Unit]
 

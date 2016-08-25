@@ -71,11 +71,10 @@ object H2 extends Client[Request, Response]
 
     private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
     private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
-    private[this] lazy val transportStats = statsReceiver.scope("transport")
 
     protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] =
       new Netty4ClientDispatcher(
-        new Netty4H2Transport(trans, transportStats),
+        trans,
         minAccumFrames = params[MinAccumFrames].count,
         statsReceiver = dispatchStats
       )
@@ -169,8 +168,7 @@ object H2 extends Client[Request, Response]
       trans: Http2StreamFrameTransport,
       service: Service[Request, Response]
     ): Closable = {
-      val h2 = new Netty4H2Transport(trans, transportStats)
-      val stream = new Netty4ServerStreamTransport(h2, params[MinAccumFrames].count, dispatchStats)
+      val stream = new Netty4ServerStreamTransport(trans, params[MinAccumFrames].count, transportStats)
       new ServerDispatcher(stream, service, dispatchStats)
     }
   }

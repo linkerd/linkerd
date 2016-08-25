@@ -17,26 +17,32 @@ import scala.collection.mutable.ListBuffer
 object Netty4ServerStreamTransport {
   private val log = Logger.get(getClass.getName)
 
-  // Stub; actual values are set by the underlying transport.3
+  // Stub; actual values are set by the underlying transport.
   private val streamId = -1
+
+  private val isEnd: Http2StreamFrame => Boolean = {
+    case f: Http2HeadersFrame => f.isEndStream
+    case f: Http2DataFrame => f.isEndStream
+    case _ => false
+  }
 }
 
 /**
  * Models a single Http/2 stream as a transport.
  */
 class Netty4ServerStreamTransport(
-  transport: Netty4H2Transport,
+  transport: Transport[Http2StreamFrame, Http2StreamFrame],
   minAccumFrames: Int = Int.MaxValue,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends ServerStreamTransport {
 
   import Netty4ServerStreamTransport._
 
+  private[this] val writer = new Netty4H2Writer(transport)
+
   /*
    * Stats
    */
-
-  private[this] val streamStats = statsReceiver.scope("stream")
 
   private[this] val requestDurations = statsReceiver.stat("request_duration_ms")
   private[this] val responseDurations = statsReceiver.stat("response_duration_ms")
@@ -48,9 +54,10 @@ class Netty4ServerStreamTransport(
   private[this] val recvqSizes = statsReceiver.stat("recvq")
   private[this] val streamReadMicros = statsReceiver.stat("stream_read_us")
 
+  private[this] val streamStats = statsReceiver.scope("stream")
+
   def onClose: Future[Throwable] = transport.onClose
-  def close(deadline: Time): Future[Unit] =
-    transport.close(deadline)
+  def close(deadline: Time): Future[Unit] = transport.close(deadline)
 
   /** Read the Request from the transport. */
   def read(): Future[Request] =
@@ -73,11 +80,11 @@ class Netty4ServerStreamTransport(
     new Netty4DataStream(q, releaser, minAccumFrames, streamStats)
 
   private[this] val releaser: Int => Future[Unit] =
-    incr => transport.updateWindow(streamId, incr)
+    incr => writer.updateWindow(streamId, incr)
 
   /**
-   * Read data (and trailer) frames from the transport until an
-   * end-of-stream frame is encountered.
+   * Read data (and trailer) frames from the transport to the recvq
+   * until an end-of-stream frame is encountered.
    */
   private[this] def readStream(recvq: AsyncQueue[Http2StreamFrame]): Future[Unit] = {
     lazy val enqueueLoop: Http2StreamFrame => Future[Unit] = { f =>
@@ -91,12 +98,6 @@ class Netty4ServerStreamTransport(
     val looping = transport.read().flatMap(enqueueLoop)
     looping.ensure(requestDurations.add(t0().inMillis))
     looping
-  }
-
-  private[this] val isEnd: Http2StreamFrame => Boolean = {
-    case f: Http2HeadersFrame => f.isEndStream
-    case f: Http2DataFrame => f.isEndStream
-    case _ => false
   }
 
   def write(rsp: Response): Future[Future[Unit]] =
@@ -124,13 +125,13 @@ class Netty4ServerStreamTransport(
   }
 
   private[this] def writeHeaders(msg: Message): Future[Boolean] =
-    transport.write(streamId, msg).map(_ => msg.isEmpty)
+    writer.write(streamId, msg).map(_ => msg.isEmpty)
 
   private[this] val writeData: DataStream.Frame => Future[Boolean] = {
     case data: DataStream.Data =>
-      transport.write(streamId, data).before(data.release()).map(_ => data.isEnd)
+      writer.write(streamId, data).before(data.release()).map(_ => data.isEnd)
     case tlrs: DataStream.Trailers =>
-      transport.write(streamId, tlrs).before(Future.True)
+      writer.write(streamId, tlrs).before(Future.True)
   }
 
 }
