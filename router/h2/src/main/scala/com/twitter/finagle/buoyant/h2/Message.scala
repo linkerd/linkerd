@@ -84,7 +84,7 @@ object DataStream {
 
   class ClosedException extends Exception("DataStream is closed") with NoStackTrace
 
-  /** A DataStream that wraps an underlyign DataStream. */
+  /** A DataStream that wraps an underlying DataStream. */
   trait Proxy extends DataStream {
     def dataStream: DataStream
     def isEmpty = dataStream.isEmpty

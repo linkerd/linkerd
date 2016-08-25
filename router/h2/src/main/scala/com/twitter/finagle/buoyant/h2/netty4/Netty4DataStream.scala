@@ -12,12 +12,24 @@ import java.util.concurrent.atomic.AtomicReference
 
 private[h2] object Netty4DataStream {
 
-  type DataReleaser = Int => Future[Unit]
+  type Releaser = Int => Future[Unit]
 
-  private trait State
+  /**
+   * States of a data stream
+   */
+  private sealed trait State
+
+  /** The stream is open and more data is expected */
   private object Open extends State
+
+  /** All data has been read to the user, but there is a pending trailers frame to be returned. */
   private case class Closing(trailers: DataStream.Trailers) extends State
+
+  /** The stream has ended and no more data will be returned */
   private object Closed extends State
+
+  /** The stream has been failed; all subsequent reads will fail */
+  private case class Failed(exn: Throwable) extends State
 
   private val closedException =
     new IllegalStateException("stream closed")
@@ -31,11 +43,15 @@ private[h2] object Netty4DataStream {
   private def unexpectedFrame(f: Http2StreamFrame) =
     new IllegalStateException(s"Unexpected frame: ${f.name}")
 
-  private class FrameData(frame: Http2DataFrame, releaser: DataReleaser) extends DataStream.Data {
+  /** A data frame that wraps an Http2DataFrame */
+  private class FrameData(frame: Http2DataFrame, releaser: Releaser) extends DataStream.Data {
     private[this] val windowIncrement = frame.content.readableBytes + frame.padding
     def buf = ByteBufAsBuf.Owned(frame.content)
     def isEnd = frame.isEndStream
-    def release(): Future[Unit] = releaser(windowIncrement)
+    def release(): Future[Unit] = {
+      frame.content.release() // ???
+      releaser(windowIncrement)
+    }
   }
 }
 
@@ -52,7 +68,7 @@ private[h2] object Netty4DataStream {
  */
 private[h2] class Netty4DataStream(
   frameq: AsyncQueue[Http2StreamFrame],
-  releaser: Netty4DataStream.DataReleaser,
+  releaser: Netty4DataStream.Releaser,
   minAccumFrames: Int = Int.MaxValue,
   stats: StatsReceiver = NullStatsReceiver
 ) extends DataStream {
@@ -69,16 +85,21 @@ private[h2] class Netty4DataStream(
   private[this] val endP = new Promise[Unit]
   def onEnd: Future[Unit] = endP
 
-  def isEmpty = state.get == Closed
+  /** We need to process at least one frame, so it's not empty... */
+  def isEmpty = false
 
-  def fail(exn: Throwable): Unit = state.get match {
-    case Closed =>
-    case s if state.compareAndSet(s, Closed) =>
+  /** Fail the underlying queue and*/
+  def fail(exn: Throwable): Unit =
+    if (state.compareAndSet(Open, Failed(exn))) {
       frameq.fail(exn, discard = true)
       endP.setException(exn)
-    case _ =>
-  }
+    }
 
+  /**
+   * Read a Data from the underlying queue.
+   *
+   * If there are at least `minAccumFrames` in the queue, data frames may be combined
+   */
   def read(): Future[DataStream.Frame] = {
     val start = Stopwatch.start()
     val f = state.get match {
@@ -89,6 +110,7 @@ private[h2] class Netty4DataStream(
         else Future.const(frameq.drain()).map(accumStream)
 
       case Closed => Future.exception(closedException)
+      case Failed(e) => Future.exception(e)
 
       case closing@Closing(trailers) =>
         if (state.compareAndSet(closing, Closed)) {
@@ -105,12 +127,6 @@ private[h2] class Netty4DataStream(
   // chunked. This is done after poll() returns because it's likely
   // that multiple items may have entered the queue.
   private[this] val andDrainAccum: Http2StreamFrame => DataStream.Frame = {
-    case f: Http2HeadersFrame if f.isEndStream =>
-      if (state.compareAndSet(Open, Closed)) {
-        endP.setDone()
-        Netty4Message.Trailers(f.headers)
-      } else throw expectedOpenException(state.get)
-
     case f: Http2DataFrame if f.isEndStream =>
       if (state.compareAndSet(Open, Closed)) {
         endP.setDone()
@@ -124,6 +140,12 @@ private[h2] class Netty4DataStream(
         case Throw(_) => toData(f)
         case Return(q) => accumStream(f +: q)
       }
+
+    case f: Http2HeadersFrame if f.isEndStream => // Trailers
+      if (state.compareAndSet(Open, Closed)) {
+        endP.setDone()
+        Netty4Message.Trailers(f.headers)
+      } else throw expectedOpenException(state.get)
 
     case f => throw unexpectedFrame(f)
   }
