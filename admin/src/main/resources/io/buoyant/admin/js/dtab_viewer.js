@@ -21,6 +21,18 @@ function DtabViewer(initialDtab, dentryTemplate) {
     this.render();
     this._toggleEdit();
   }.bind(this));
+
+  //make the input bigger when you hit enter
+  $("#dtab-input").on('paste input', function () {
+    if ($(this).outerHeight() > this.scrollHeight){
+      $(this).height(1);
+    }
+    while ($(this).outerHeight() < this.scrollHeight + parseFloat($(this).css("borderTopWidth")) + parseFloat($(this).css("borderBottomWidth"))){
+      $(this).height($(this).height() + 1);
+    }
+
+    $("#save-dtab-btn.disabled").removeClass("disabled");
+  });
 }
 
 DtabViewer.prototype._toggleEdit = function() {
@@ -39,18 +51,6 @@ DtabViewer.prototype._toggleEdit = function() {
 DtabViewer.prototype.render = function() {
   this._renderDtabHtml();
   this._renderDtabInput();
-
-  //make the input bigger when you hit enter
-  $("#dtab-input").on('paste input', function () {
-    if ($(this).outerHeight() > this.scrollHeight){
-      $(this).height(1);
-    }
-    while ($(this).outerHeight() < this.scrollHeight + parseFloat($(this).css("borderTopWidth")) + parseFloat($(this).css("borderBottomWidth"))){
-      $(this).height($(this).height() + 1);
-    }
-
-    $("#save-dtab-btn.disabled").removeClass("disabled");
-  });
 
   //dentry click handlers
   $(".dentry-prefix").click(this._activateDentries.bind(this, "data-dentry-prefix"));
