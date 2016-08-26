@@ -34,6 +34,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     /foo => /bar ;
     /boo => /foo ;
     /meh => /heh ;
+    /neg => ~ ;
   """)
 
   test("/delegate response") {
@@ -56,8 +57,31 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
               |"type":"exception","path":"/#/error/humbug","dentry":{"prefix":"/beh","dst":"/#/error"},
                 |"message":"error naming /#/error/humbug"}},
-          |{"type":"fail","path":"/$/fail/humbug",
-            |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
+          |{"type":"fail","dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"path":"!"}]}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("delegates to neg when no matches found") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request()
+    req.uri = s"/delegate?namespace=plain&path=/meh&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    val rsp = await(web(req))
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/meh","delegate":{
+        |"type":"neg","path":"/heh","dentry":{"prefix":"/meh","dst":"/heh"}}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("delegation for explicit neg is shown") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request()
+    req.uri = s"/delegate?namespace=plain&path=/neg&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    val rsp = await(web(req))
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/neg","delegate":{
+        |"type":"neg","path":"/neg","dentry":{"prefix":"/neg","dst":"~"}}}
       |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 

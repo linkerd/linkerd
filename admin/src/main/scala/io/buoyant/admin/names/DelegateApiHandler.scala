@@ -92,15 +92,11 @@ object DelegateApiHandler {
   ))
   sealed trait JsonDelegateTree
   object JsonDelegateTree {
-    case class Empty(dentry: Option[Dentry]) extends JsonDelegateTree {
-      val path = "$"
-    }
+    case class Empty(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Fail(dentry: Option[Dentry]) extends JsonDelegateTree {
       val path = "!"
     }
-    case class Neg(dentry: Option[Dentry]) extends JsonDelegateTree {
-      val path = "~"
-    }
+    case class Neg(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Exception(path: Path, dentry: Option[Dentry], message: String) extends JsonDelegateTree
     case class Delegate(path: Path, dentry: Option[Dentry], delegate: JsonDelegateTree) extends JsonDelegateTree
     case class Leaf(path: Path, dentry: Option[Dentry], bound: Bound) extends JsonDelegateTree
@@ -112,11 +108,11 @@ object DelegateApiHandler {
       case DelegateTree.Exception(p, d, e) =>
         Future.value(JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage))
       case DelegateTree.Empty(p, d) =>
-        Future.value(JsonDelegateTree.Empty(mkDentry(d)))
+        Future.value(JsonDelegateTree.Empty(p, mkDentry(d)))
       case DelegateTree.Fail(p, d) =>
         Future.value(JsonDelegateTree.Fail(mkDentry(d)))
       case DelegateTree.Neg(p, d) =>
-        Future.value(JsonDelegateTree.Neg(mkDentry(d)))
+        Future.value(JsonDelegateTree.Neg(p, mkDentry(d)))
       case DelegateTree.Delegate(p, d, t) =>
         mk(t).map(JsonDelegateTree.Delegate(p, mkDentry(d), _))
       case DelegateTree.Alt(p, d, ts@_*) =>
