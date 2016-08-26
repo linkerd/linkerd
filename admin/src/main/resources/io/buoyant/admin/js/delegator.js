@@ -40,7 +40,7 @@ var Delegator = (function() {
         "/delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr(), namespace: namespace }),
         renderAll.bind(this));
       request.fail(function( jqXHR ) {
-        $(".error-modal").html(templates.errorModal(jqXHR.statusText));
+        $(".error-modal").html(templates.errorModal(jqXHR.responseText));
         $('.error-modal').modal();
       });
     });

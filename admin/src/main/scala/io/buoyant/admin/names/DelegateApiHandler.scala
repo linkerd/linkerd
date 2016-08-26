@@ -17,17 +17,6 @@ import io.buoyant.namer._
 
 object DelegateApiHandler {
 
-  private object PathStr {
-    def unapply(p: String) = Try(Path.read(p)).toOption
-  }
-
-  private object DtabStr {
-    def unapply(d: String) = if (d == null)
-      Some(Dtab.empty)
-    else
-      Try(Dtab.read(d)).toOption
-  }
-
   private def err(status: Status) = Future.value(Response(status))
 
   private def err(status: Status, content: String) = {
@@ -177,9 +166,11 @@ object DelegateApiHandler {
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
   }
 
-  def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] =
-    (dtab, path) match {
-      case (DtabStr(d), PathStr(p)) =>
+  def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
+    val dtabTry = if (dtab == null) Return(Dtab.empty) else Try(Dtab.read(dtab))
+    val pathTry = Try(Path.read(path))
+    (dtabTry, pathTry) match {
+      case (Return(d), Return(p)) =>
         delegator.delegate(d, p).values.toFuture()
           .flatMap(Future.const)
           .flatMap(JsonDelegateTree.mk).map { tree =>
@@ -188,8 +179,12 @@ object DelegateApiHandler {
             rsp.contentType = MediaType.Json
             rsp
           }
-      case _ => err(Status.BadRequest)
+      case (Throw(e), _) =>
+        err(Status.BadRequest, s"Invalid dtab: ${e.getMessage}")
+      case (_, Throw(e)) =>
+        err(Status.BadRequest, s"Invalid path: ${e.getMessage}")
     }
+  }
 }
 
 class DelegateApiHandler(
