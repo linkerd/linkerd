@@ -92,7 +92,7 @@ private[h2] class Netty4ClientStreamTransport(
   }
 
   protected[this] def newDataStream(): DataStream =
-    new Netty4DataStream(releaser, minAccumFrames, statsReceiver)
+    new Netty4DataStream(releaser, minAccumFrames, recvq, statsReceiver)
 
   protected[this] val releaser: Int => Future[Unit] =
     incr => transport.updateWindow(streamId, incr)

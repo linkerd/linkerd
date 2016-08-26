@@ -70,6 +70,7 @@ private[h2] object Netty4DataStream {
 private[h2] class Netty4DataStream(
   releaser: Netty4DataStream.Releaser,
   minAccumFrames: Int = Int.MaxValue,
+  frameq: AsyncQueue[Http2StreamFrame] = new AsyncQueue,
   stats: StatsReceiver = NullStatsReceiver
 ) extends DataStream with DataStream.Offerable[Http2StreamFrame] {
 
@@ -79,8 +80,6 @@ private[h2] class Netty4DataStream(
   private[this] val accumMicros = stats.stat("accum_us")
   private[this] val readQlens = stats.stat("read_qlen")
   private[this] val readMicros = stats.stat("read_us")
-
-  private[this] val frameq = new AsyncQueue[Http2StreamFrame]
 
   private[this] val state: AtomicReference[State] = new AtomicReference(Open)
 

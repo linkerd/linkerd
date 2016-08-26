@@ -79,7 +79,7 @@ class Netty4ServerStreamTransport(
   }
 
   private[this] def newDataStream() =
-    new Netty4DataStream(releaser, minAccumFrames, streamStats)
+    new Netty4DataStream(releaser, minAccumFrames, stats = streamStats)
 
   private[this] val releaser: Int => Future[Unit] =
     incr => writer.updateWindow(StubStreamId, incr)

@@ -49,7 +49,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
   }
 
   test("streamRequest") {
-    val id = 4
+    val id = 6
     var recvq = Queue.empty[Http2StreamFrame]
     val writer = new Netty4H2Writer {
       def write(f: Http2StreamFrame) = {
@@ -78,7 +78,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
       def release() = Future.Unit
     })
     assert(recvq.head ==
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), false).setStreamId(4))
+      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), false).setStreamId(id))
     recvq = recvq.tail
 
     sendq.offer(new DataStream.Data {
@@ -87,7 +87,125 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
       def release() = Future.Unit
     })
     assert(recvq.head ==
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), true).setStreamId(4))
+      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), true).setStreamId(id))
     recvq = recvq.tail
+  }
+
+  test("readResponse, no accumulation") {
+    val id = 8
+    var recvq = Queue.empty[Http2StreamFrame]
+    val writer = new Netty4H2Writer {
+      def write(f: Http2StreamFrame) = ???
+    }
+    val stats = new InMemoryStatsReceiver
+    val stream = new Netty4ClientStreamTransport(id, writer, Int.MaxValue, stats)
+
+    val rspf = stream.readResponse()
+    assert(!rspf.isDefined)
+
+    stream.offer(new DefaultHttp2HeadersFrame({
+      val hs = new DefaultHttp2Headers
+      hs.status("222")
+      hs
+    }))
+
+    assert(rspf.isDefined)
+    val rsp = await(rspf)
+    assert(!rsp.isEmpty)
+    val endf = rsp.onEnd
+    assert(!endf.isDefined)
+    assert(rsp.status == 222)
+
+    val dataf = rsp.read()
+    assert(!dataf.isDefined)
+
+    val buf = Buf.Utf8("space ghost coast to coast")
+    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offer({
+      val hs = new DefaultHttp2Headers
+      hs.set("trailers", "yea")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    })
+    assert(dataf.isDefined)
+    await(dataf) match {
+      case data: DataStream.Data =>
+        assert(data.buf == buf)
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+
+    val trailf = rsp.read()
+    assert(trailf.isDefined)
+    await(trailf) match {
+      case trailers: DataStream.Trailers =>
+        assert(trailers.headers == Seq("trailers" -> "yea"))
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+  }
+
+  test("readResponse, with accumulation") {
+    val id = 8
+    var recvq = Queue.empty[Http2StreamFrame]
+    val writer = new Netty4H2Writer {
+      def write(f: Http2StreamFrame) = ???
+    }
+    val stats = new InMemoryStatsReceiver
+    val stream = new Netty4ClientStreamTransport(id, writer, 2, stats)
+
+    val rspf = stream.readResponse()
+    assert(!rspf.isDefined)
+
+    stream.offer(new DefaultHttp2HeadersFrame({
+      val hs = new DefaultHttp2Headers
+      hs.status("222")
+      hs
+    }))
+
+    assert(rspf.isDefined)
+    val rsp = await(rspf)
+    assert(!rsp.isEmpty)
+    val endf = rsp.onEnd
+    assert(!endf.isDefined)
+    assert(rsp.status == 222)
+
+    val dataf0 = rsp.read()
+    assert(!dataf0.isDefined)
+
+    val buf = Buf.Utf8("space ghost coast to coast")
+    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offer({
+      val hs = new DefaultHttp2Headers
+      hs.set("trailers", "yea")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    })
+
+    assert(dataf0.isDefined)
+    await(dataf0) match {
+      case data: DataStream.Data =>
+        assert(data.buf == buf)
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+
+    val dataf1 = rsp.read()
+    assert(dataf1.isDefined)
+    await(dataf1) match {
+      case data: DataStream.Data =>
+        assert(data.buf == buf.concat(buf))
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+
+    val trailf = rsp.read()
+    assert(trailf.isDefined)
+    await(trailf) match {
+      case trailers: DataStream.Trailers =>
+        assert(trailers.headers == Seq("trailers" -> "yea"))
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
   }
 }
