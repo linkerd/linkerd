@@ -143,4 +143,8 @@ object DataStream {
     override def toString = s"DataStream.Trailers($headers)"
     val isEnd = true
   }
+
+  trait Offerable[T] {
+    def offer(frame: T): Boolean
+  }
 }

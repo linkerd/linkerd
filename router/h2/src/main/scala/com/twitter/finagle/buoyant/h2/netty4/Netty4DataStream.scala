@@ -8,6 +8,7 @@ import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
 import io.netty.buffer.CompositeByteBuf
 import io.netty.handler.codec.http2._
 import scala.collection.immutable.Queue
+import scala.util.control.NoStackTrace
 import java.util.concurrent.atomic.AtomicReference
 
 private[h2] object Netty4DataStream {
@@ -23,25 +24,25 @@ private[h2] object Netty4DataStream {
   private object Open extends State
 
   /** All data has been read to the user, but there is a pending trailers frame to be returned. */
-  private case class Closing(trailers: DataStream.Trailers) extends State
+  private case class Draining(trailers: DataStream.Trailers) extends State
 
-  /** The stream has ended and no more data will be returned */
-  private object Closed extends State
-
-  /** The stream has been failed; all subsequent reads will fail */
-  private case class Failed(exn: Throwable) extends State
+  /** The stream has been closed with a cause; all subsequent reads will fail */
+  private case class Closed(cause: Throwable) extends State
 
   private val closedException =
-    new IllegalStateException("stream closed")
+    new IllegalStateException("stream closed") with NoStackTrace
 
-  private val noTrailersException =
-    new IllegalStateException("closing state without trailers")
+  private val closedState =
+    Closed(closedException)
 
   private def expectedOpenException(state: State) =
     new IllegalStateException(s"expected Open state; found ${state}")
 
   private def unexpectedFrame(f: Http2StreamFrame) =
     new IllegalStateException(s"Unexpected frame: ${f.name}")
+
+  private val illegalReadException =
+    new IllegalStateException("No data or trailers available")
 
   /** A data frame that wraps an Http2DataFrame */
   private class FrameData(frame: Http2DataFrame, releaser: Releaser) extends DataStream.Data {
@@ -67,11 +68,10 @@ private[h2] object Netty4DataStream {
  * quickly as it backs up. By default, frames are not accumulated.
  */
 private[h2] class Netty4DataStream(
-  frameq: AsyncQueue[Http2StreamFrame],
   releaser: Netty4DataStream.Releaser,
   minAccumFrames: Int = Int.MaxValue,
   stats: StatsReceiver = NullStatsReceiver
-) extends DataStream {
+) extends DataStream with DataStream.Offerable[Http2StreamFrame] {
 
   import Netty4DataStream._
 
@@ -80,20 +80,32 @@ private[h2] class Netty4DataStream(
   private[this] val readQlens = stats.stat("read_qlen")
   private[this] val readMicros = stats.stat("read_us")
 
+  private[this] val frameq = new AsyncQueue[Http2StreamFrame]
+
   private[this] val state: AtomicReference[State] = new AtomicReference(Open)
 
   private[this] val endP = new Promise[Unit]
   def onEnd: Future[Unit] = endP
 
-  /** We need to process at least one frame, so it's not empty... */
-  def isEmpty = false
+  /** We need to process at least one frame. */
+  def isEmpty = state.get.isInstanceOf[Closed]
 
   /** Fail the underlying queue and*/
   def fail(exn: Throwable): Unit =
-    if (state.compareAndSet(Open, Failed(exn))) {
+    if (state.compareAndSet(Open, Closed(exn))) {
       frameq.fail(exn, discard = true)
       endP.setException(exn)
     }
+
+  def offer(frame: Http2StreamFrame): Boolean = {
+    val s = state.get
+    s match {
+      case Open =>
+        frameq.offer(frame)
+
+      case _ => false
+    }
+  }
 
   /**
    * Read a Data from the underlying queue.
@@ -109,11 +121,10 @@ private[h2] class Netty4DataStream(
         if (sz < minAccumFrames) frameq.poll().map(andDrainAccum)
         else Future.const(frameq.drain()).map(accumStream)
 
-      case Closed => Future.exception(closedException)
-      case Failed(e) => Future.exception(e)
+      case Closed(cause) => Future.exception(cause)
 
-      case closing@Closing(trailers) =>
-        if (state.compareAndSet(closing, Closed)) {
+      case s@Draining(trailers) =>
+        if (state.compareAndSet(s, closedState)) {
           frameq.fail(closedException)
           endP.setDone()
           Future.value(trailers)
@@ -128,7 +139,7 @@ private[h2] class Netty4DataStream(
   // that multiple items may have entered the queue.
   private[this] val andDrainAccum: Http2StreamFrame => DataStream.Frame = {
     case f: Http2DataFrame if f.isEndStream =>
-      if (state.compareAndSet(Open, Closed)) {
+      if (state.compareAndSet(Open, closedState)) {
         endP.setDone()
         toData(f)
       } else throw expectedOpenException(state.get)
@@ -142,7 +153,7 @@ private[h2] class Netty4DataStream(
       }
 
     case f: Http2HeadersFrame if f.isEndStream => // Trailers
-      if (state.compareAndSet(Open, Closed)) {
+      if (state.compareAndSet(Open, closedState)) {
         endP.setDone()
         Netty4Message.Trailers(f.headers)
       } else throw expectedOpenException(state.get)
@@ -153,28 +164,36 @@ private[h2] class Netty4DataStream(
   private def toData(f: Http2DataFrame): DataStream.Data =
     new FrameData(f, releaser)
 
+  /**
+   *
+   */
   private val accumStream: Queue[Http2StreamFrame] => DataStream.Frame = { frames =>
     require(frames.nonEmpty)
     val start = Stopwatch.start()
 
     var content: CompositeByteBuf = null
     var bytes = 0
-    var eos = false
+    var dataEos = false
     var trailers: DataStream.Trailers = null
 
-    var iter = frames.iterator
-    while (iter.hasNext && !eos && trailers == null) {
-      iter.next() match {
+    val nFrames = frames.length
+    val iter = frames.iterator
+    while (!dataEos && trailers == null && iter.hasNext) {
+      val f = iter.next()
+      f match {
         case f: Http2DataFrame =>
           bytes += f.content.readableBytes + f.padding
+          // Initialize content using the first frame's allocator
           if (content == null) {
-            content = f.content.alloc.compositeBuffer(frames.length)
+            content = f.content.alloc.compositeBuffer(nFrames)
           }
           content.addComponent(true /*advance widx*/ , f.content)
-          eos = f.isEndStream
+          dataEos = f.isEndStream
 
         case f: Http2HeadersFrame =>
           trailers = Netty4Message.Trailers(f.headers)
+
+        case _ =>
       }
     }
 
@@ -184,26 +203,24 @@ private[h2] class Netty4DataStream(
         accumBytes.add(bytes)
         new DataStream.Data {
           val buf = ByteBufAsBuf.Owned(content.retain())
-          def isEnd = eos
-          def release() = if (bytes > 0) releaser(bytes) else Future.Unit
+          def isEnd = dataEos
+          def release() =
+            if (bytes > 0) releaser(bytes)
+            else Future.Unit
         }
       }
 
     val next = (data, trailers) match {
-      case (null, null) => throw new IllegalStateException("No data or trailers available")
+      case (null, null) => throw illegalReadException
       case (data, null) => data
       case (null, tlrs) => tlrs
       case (data, tlrs) =>
-        if (state.compareAndSet(Open, Closing(tlrs))) data
+        if (state.compareAndSet(Open, Draining(tlrs))) data
         else throw expectedOpenException(state.get)
     }
+    if (next.isEnd) endP.setDone()
 
     accumMicros.add(start().inMicroseconds)
-
-    if (eos) {
-      endP.setDone()
-    }
-
     next
   }
 

@@ -21,23 +21,21 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   transport: Transport[Http2StreamFrame, Http2StreamFrame],
-  minAccumFrames: Int = Int.MaxValue,
+  minAccumFrames: Int,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
   import Netty4ClientDispatcher._
 
-  private[this] val writer = new Netty4H2Writer(transport)
+  private[this] val writer = Netty4H2Writer(transport)
 
   // TODO handle overflow
   private[this] val _id = new AtomicInteger(3) // ID=1 is reserved for HTTP/1 upgrade
   private[this] def nextId() = _id.getAndAdd(2)
   private[this] val liveStreams = new ConcurrentHashMap[Int, Netty4ClientStreamTransport]
 
+  private[this] val requestMillis = statsReceiver.stat("latency_ms")
   private[this] val streamStats = statsReceiver.scope("stream")
-
-  private[this] val recvqOfferMicros = streamStats.stat("recvq", "offer_us")
-  private[this] val requestMillis = statsReceiver.stat("request_duration_ms")
 
   @volatile private[this] var closed = false
   override def close(d: Time): Future[Unit] = {
@@ -49,11 +47,7 @@ class Netty4ClientDispatcher(
   // demultiplexed to it.
   private[this] def newStream(): Netty4ClientStreamTransport = {
     val id = nextId()
-    val stream = new Netty4ClientStreamTransport(
-      id, writer,
-      minAccumFrames = minAccumFrames,
-      statsReceiver = streamStats
-    )
+    val stream = new Netty4ClientStreamTransport(id, writer, minAccumFrames, streamStats)
     if (liveStreams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
@@ -74,14 +68,14 @@ class Netty4ClientDispatcher(
         .before(stream.readResponse())
     } else {
       stream.writeHeaders(req).before {
-        val clock = Stopwatch.start()
-        val tx = stream.streamRequest(req)
-        tx.onSuccess(_ => requestMillis.add(clock().inMillis))
+        val t0 = Stopwatch.start()
+        val send = stream.streamRequest(req)
+        send.onSuccess(_ => requestMillis.add(t0().inMillis))
 
-        val rx = stream.readResponse()
-        rx.onFailure(tx.raise)
-        tx.onFailure(rx.raise)
-        rx
+        val recv = stream.readResponse()
+        recv.onFailure(send.raise)
+        send.onFailure(recv.raise)
+        recv
       }
     }
   }
@@ -101,8 +95,8 @@ class Netty4ClientDispatcher(
             liveStreams.get(id) match {
               case null => log.error(s"Dropping ${frame.name} message on unknown stream ${id}")
               case stream =>
-                stream.recvq.offer(frame)
-                recvqOfferMicros.add(enqT().inMicroseconds)
+                val offered = stream.offer(frame)
+                if (!offered) log.error(s"Failed to offer ${frame.name} on stream ${id}")
             }
         }
         loop()

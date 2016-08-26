@@ -9,12 +9,12 @@ import io.netty.handler.codec.http2.{Http2StreamFrame, Http2HeadersFrame}
 private[h2] class Netty4ClientStreamTransport(
   val streamId: Int,
   transport: H2Transport.Writer,
-  val recvq: AsyncQueue[Http2StreamFrame] = new AsyncQueue,
-  minAccumFrames: Int = 10,
+  minAccumFrames: Int,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) {
-  private[this] val responseMillis = statsReceiver.stat("response_duration_ms")
-  private[this] val recvqSizes = statsReceiver.stat("recvq", "sz")
+  require(minAccumFrames >= 2)
+
+  private[this] val recvq = new AsyncQueue[Http2StreamFrame]
 
   @volatile private[this] var isRequestFinished, isResponseFinished = false
   def isClosed = isRequestFinished && isResponseFinished
@@ -36,6 +36,8 @@ private[h2] class Netty4ClientStreamTransport(
     }
   }
 
+  def offer(f: Http2StreamFrame): Boolean = recvq.offer(f)
+
   def writeHeaders(hdrs: Headers, eos: Boolean = false) = {
     val tx = transport.write(streamId, hdrs, eos)
     if (eos) tx.ensure(setRequestFinished())
@@ -45,11 +47,14 @@ private[h2] class Netty4ClientStreamTransport(
   /** Write a request stream */
   def streamRequest(data: DataStream): Future[Unit] = {
     require(!isRequestFinished)
-    lazy val loop: Boolean => Future[Unit] = { eos =>
-      if (eos) Future.Unit
-      else data.read().flatMap(writeData).flatMap(loop)
+    if (data.isEmpty) Future.Unit
+    else {
+      lazy val loop: Boolean => Future[Unit] = { eos =>
+        if (eos) Future.Unit
+        else data.read().flatMap(writeData).flatMap(loop)
+      }
+      data.read().flatMap(writeData).flatMap(loop)
     }
-    data.read().flatMap(writeData).flatMap(loop)
   }
 
   private[this] val writeData: DataStream.Frame => Future[Boolean] = { v =>
@@ -69,7 +74,6 @@ private[h2] class Netty4ClientStreamTransport(
     // queue. Once a response is initialized, if data is expected,
     // continue reading from the queue until an end stream message is
     // encounetered.
-    recvqSizes.add(recvq.size)
     recvq.poll().map {
       case f: Http2HeadersFrame if f.isEndStream =>
         setResponseFinished()
@@ -78,7 +82,6 @@ private[h2] class Netty4ClientStreamTransport(
       case f: Http2HeadersFrame =>
         val responseStart = Stopwatch.start()
         val rsp = Netty4Message.Response(f.headers, newDataStream())
-        rsp.onEnd.ensure(responseMillis.add(responseStart().inMillis))
         rsp.onEnd.ensure(setResponseFinished())
         rsp
 
@@ -89,7 +92,7 @@ private[h2] class Netty4ClientStreamTransport(
   }
 
   protected[this] def newDataStream(): DataStream =
-    new Netty4DataStream(recvq, releaser, minAccumFrames, statsReceiver)
+    new Netty4DataStream(releaser, minAccumFrames, statsReceiver)
 
   protected[this] val releaser: Int => Future[Unit] =
     incr => transport.updateWindow(streamId, incr)

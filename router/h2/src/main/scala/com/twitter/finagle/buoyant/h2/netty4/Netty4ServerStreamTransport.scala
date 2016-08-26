@@ -18,13 +18,15 @@ object Netty4ServerStreamTransport {
   private val log = Logger.get(getClass.getName)
 
   // Stub; actual values are set by the underlying transport.
-  private val streamId = -1
+  private val StubStreamId = -1
 
   private val isEnd: Http2StreamFrame => Boolean = {
     case f: Http2HeadersFrame => f.isEndStream
     case f: Http2DataFrame => f.isEndStream
     case _ => false
   }
+
+  object OfferFailed extends Exception("Failed to offer a frame")
 }
 
 /**
@@ -38,7 +40,7 @@ class Netty4ServerStreamTransport(
 
   import Netty4ServerStreamTransport._
 
-  private[this] val writer = new Netty4H2Writer(transport)
+  private[this] val writer = Netty4H2Writer(transport)
 
   /*
    * Stats
@@ -68,29 +70,30 @@ class Netty4ServerStreamTransport(
       Netty4Message.Request(f.headers, DataStream.Nil)
 
     case f: Http2HeadersFrame =>
-      val recvq = new AsyncQueue[Http2StreamFrame]
-      readStream(recvq)
-      Netty4Message.Request(f.headers, newDataStream(recvq))
+      val data = newDataStream()
+      readStream(data)
+      Netty4Message.Request(f.headers, data)
 
     case f =>
       throw new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
   }
 
-  private[this] def newDataStream(q: AsyncQueue[Http2StreamFrame]) =
-    new Netty4DataStream(q, releaser, minAccumFrames, streamStats)
+  private[this] def newDataStream() =
+    new Netty4DataStream(releaser, minAccumFrames, streamStats)
 
   private[this] val releaser: Int => Future[Unit] =
-    incr => writer.updateWindow(streamId, incr)
+    incr => writer.updateWindow(StubStreamId, incr)
 
   /**
    * Read data (and trailer) frames from the transport to the recvq
    * until an end-of-stream frame is encountered.
    */
-  private[this] def readStream(recvq: AsyncQueue[Http2StreamFrame]): Future[Unit] = {
+  private[this] def readStream(stream: DataStream.Offerable[Http2StreamFrame]): Future[Unit] = {
     lazy val enqueueLoop: Http2StreamFrame => Future[Unit] = { f =>
       val eos = isEnd(f)
-      recvq.offer(f)
-      if (eos) Future.Unit
+      val offered = stream.offer(f)
+      if (!offered) Future.exception(OfferFailed)
+      else if (eos) Future.Unit
       else transport.read().flatMap(enqueueLoop)
     }
 
@@ -125,13 +128,13 @@ class Netty4ServerStreamTransport(
   }
 
   private[this] def writeHeaders(msg: Message): Future[Boolean] =
-    writer.write(streamId, msg).map(_ => msg.isEmpty)
+    writer.write(StubStreamId, msg).map(_ => msg.isEmpty)
 
   private[this] val writeData: DataStream.Frame => Future[Boolean] = {
     case data: DataStream.Data =>
-      writer.write(streamId, data).before(data.release()).map(_ => data.isEnd)
+      writer.write(StubStreamId, data).before(data.release()).map(_ => data.isEnd)
     case tlrs: DataStream.Trailers =>
-      writer.write(streamId, tlrs).before(Future.True)
+      writer.write(StubStreamId, tlrs).before(Future.True)
   }
 
 }

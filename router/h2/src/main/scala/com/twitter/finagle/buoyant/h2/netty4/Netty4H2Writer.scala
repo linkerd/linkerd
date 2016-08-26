@@ -8,9 +8,9 @@ import com.twitter.io.Buf
 import com.twitter.util.{Future, Stopwatch, Time}
 import io.netty.handler.codec.http2._
 
-private[netty4] class Netty4H2Writer(
-  transport: Transport[Http2StreamFrame, Http2StreamFrame]
-) extends H2Transport.Writer {
+private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
+
+  protected[this] def write(f: Http2StreamFrame): Future[Unit]
 
   /*
    * H2Transport.Writer -- netty4-agnostic h2 message writer
@@ -20,7 +20,7 @@ private[netty4] class Netty4H2Writer(
     val headers = Netty4Message.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
     if (id >= 0) frame.setStreamId(id)
-    transport.write(frame)
+    write(frame)
   }
 
   def write(id: Int, msg: Message): Future[Unit] =
@@ -36,12 +36,20 @@ private[netty4] class Netty4H2Writer(
     val bb = BufAsByteBuf.Owned(buf)
     val frame = new DefaultHttp2DataFrame(bb, eos)
     if (id >= 0) frame.setStreamId(id)
-    transport.write(frame)
+    write(frame)
   }
 
   def updateWindow(id: Int, incr: Int): Future[Unit] = {
     val frame = new DefaultHttp2WindowUpdateFrame(incr)
     if (id >= 0) frame.setStreamId(id)
-    transport.write(frame)
+    write(frame)
   }
+}
+
+private[netty4] object Netty4H2Writer {
+
+  def apply(transport: Transport[Http2StreamFrame, Http2StreamFrame]): H2Transport.Writer =
+    new Netty4H2Writer {
+      protected[this] def write(f: Http2StreamFrame) = transport.write(f)
+    }
 }
