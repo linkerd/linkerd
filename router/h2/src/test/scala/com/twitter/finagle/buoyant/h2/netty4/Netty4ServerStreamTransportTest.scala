@@ -58,12 +58,27 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
 
     val d0f = req.read()
     assert(!d0f.isDefined)
-    trans.recvq.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), true))
+    trans.recvq.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), false))
     assert(d0f.isDefined)
     await(d0f) match {
       case f: DataStream.Data =>
         assert(f.buf == Buf.Utf8("data"))
-        assert(f.isEnd)
+        assert(!f.isEnd)
+      case f =>
+        fail(s"unexpected frame: $f")
+    }
+
+    val d1f = req.read()
+    assert(!d1f.isDefined)
+    trans.recvq.offer({
+      val hs = new DefaultHttp2Headers
+      hs.set("trailers", "chya")
+      new DefaultHttp2HeadersFrame(hs, true)
+    })
+    assert(d1f.isDefined)
+    await(d1f) match {
+      case f: DataStream.Trailers =>
+        assert(f.headers == Seq("trailers" -> "chya"))
       case f =>
         fail(s"unexpected frame: $f")
     }
