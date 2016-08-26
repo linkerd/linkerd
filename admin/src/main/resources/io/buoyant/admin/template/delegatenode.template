@@ -19,7 +19,7 @@
       </div>
       {{path}}
       {{#with dentry}}
-        <span class='node-dentry'>{{prefix}}=>{{dst}}</span>
+        <span class='node-dentry'>{{prefix}} => {{dst}}</span>
       {{/with}}
     </div>
     <ul class='list-group'>{{{child}}}</ul>
@@ -63,7 +63,7 @@
     {{/with}}
     {{path}}
     {{#with dentry}}
-      <span class='node-dentry'>{{prefix}}=>{{dst}}</span>
+      <span class='node-dentry'>{{prefix}} => {{dst}}</span>
     {{/with}}
   </li>
 {{/if}}

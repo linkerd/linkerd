@@ -50,7 +50,12 @@ object DelegateTree {
   private def simplify[T](tree: DelegateTree[T]): DelegateTree[T] = tree match {
     case Delegate(path, dentry, tree) =>
       val simplified = simplify(tree)
-      if (simplified.path == path) simplified.withDentry(dentry)
+      val collapse = simplified match {
+        case _: DelegateTree.Neg | _: DelegateTree.Fail | _: DelegateTree.Empty =>
+          false
+        case _ => simplified.path == path
+      }
+      if (collapse) simplified.withDentry(dentry)
       else Delegate(path, dentry, simplified)
 
     case Alt(path, dentry) => Neg(path, dentry)
