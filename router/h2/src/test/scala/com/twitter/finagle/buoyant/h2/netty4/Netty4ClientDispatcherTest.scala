@@ -8,7 +8,6 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.Awaits
-import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
