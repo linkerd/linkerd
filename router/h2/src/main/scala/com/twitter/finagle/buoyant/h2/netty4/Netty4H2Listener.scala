@@ -59,8 +59,8 @@ object Netty4H2Listener {
     Netty4Listener(
       pipelineInit = initHttp2Stream,
       handlerDecorator = initHttp2Connection,
-      // XXX Netty4's Http2 Codec doesn't support backpressure yet.
-      // See https://github.com/netty/netty/issues/3667#issue-69640214
+      // Netty4's Http2 Codec doesn't allow finagle-style
+      // backpressure; we instead rely on Http2's flow control.
       params = params + Netty4Listener.BackPressure(false)
     )
   }

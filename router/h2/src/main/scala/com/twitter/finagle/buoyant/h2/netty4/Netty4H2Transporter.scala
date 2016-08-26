@@ -40,8 +40,7 @@ object Netty4H2Transporter {
       val _ = cp.addLast(new BufferingConnectDelay)
     }
 
-    // Netty4's Http2 Codec doesn't support backpressure yet.
-    // See https://github.com/netty/netty/issues/3667#issue-69640214
+    // Netty4's Http2 Codec doesn't support finagle-style backpressure.
     val params = params0 + Netty4Transporter.Backpressure(false)
     Netty4Transporter(initializer, params)
   }
