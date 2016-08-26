@@ -62,6 +62,7 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     assert(d0f.isDefined)
     await(d0f) match {
       case f: DataStream.Data =>
+        assert(f.buf == Buf.Utf8("data"))
         assert(f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
