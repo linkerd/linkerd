@@ -79,8 +79,39 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     await(d1f) match {
       case f: DataStream.Trailers =>
         assert(f.headers == Seq("trailers" -> "chya"))
+        assert(f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
     }
+  }
+
+  test("writes a response on the underlying transport") {
+    val trans = new TestTransport
+    val stream = new Netty4ServerStreamTransport(trans)
+
+    val rspdata = new Netty4DataStream(_ => Future.Unit)
+    val rsp = {
+      val hs = new DefaultHttp2Headers
+      hs.status("202")
+      Netty4Message.Response(hs, rspdata)
+    }
+
+    val wf = stream.write(rsp)
+    assert(wf.isDefined)
+    val endf = await(wf)
+    assert(!endf.isDefined)
+
+    assert(await(trans.sentq.poll()) == {
+      val hs = new DefaultHttp2Headers
+      hs.status("202")
+      new DefaultHttp2HeadersFrame(hs, false)
+    })
+
+    val buf = Buf.Utf8("Looks like some tests failed.")
+    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false))
+
+    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), true))
+    assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true))
   }
 }
