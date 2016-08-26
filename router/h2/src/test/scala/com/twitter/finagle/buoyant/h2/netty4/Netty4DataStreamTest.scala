@@ -126,4 +126,46 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     }
     assert(endF.isDefined)
   }
+
+  test("with accumulation and trailers") {
+    val ctx = new Ctx(2)
+    import ctx._
+
+    val buf = Buf.Utf8("hi my name is brak")
+
+    assert(!stream.isEmpty)
+    val endF = stream.onEnd
+    assert(!endF.isDefined)
+
+    assert(frameq.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Shared(buf), false)))
+    assert(frameq.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Shared(buf), false)))
+    val trailingHeaders = new DefaultHttp2Headers()
+    trailingHeaders.set("hey", "sup")
+    assert(frameq.offer(new DefaultHttp2HeadersFrame(trailingHeaders, true)))
+
+    val read0 = stream.read()
+    assert(read0.isDefined)
+    await(read0) match {
+      case data: DataStream.Data =>
+        assert(data.buf == buf.concat(buf))
+        assert(released == 0)
+        await(data.release())
+        assert(released == buf.length * 2)
+
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+    assert(!endF.isDefined)
+
+    val read1 = stream.read()
+    assert(read1.isDefined)
+    await(read1) match {
+      case trailers: DataStream.Trailers =>
+        assert(trailers.isEnd)
+        assert(trailers.headers == Seq("hey" -> "sup"))
+      case frame =>
+        fail(s"unexpected frame: $frame")
+    }
+    assert(endF.isDefined)
+  }
 }
