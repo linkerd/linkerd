@@ -40,7 +40,7 @@ class Netty4ClientDispatcher(
   @volatile private[this] var closed = false
   override def close(d: Time): Future[Unit] = {
     closed = true
-    transport.close()
+    transport.close(d)
   }
 
   // Initialize a new Stream; and store it so that a response may be
