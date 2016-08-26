@@ -200,6 +200,10 @@ private[h2] class Netty4DataStream(
 
     accumMicros.add(start().inMicroseconds)
 
+    if (eos) {
+      endP.setDone()
+    }
+
     next
   }
 
