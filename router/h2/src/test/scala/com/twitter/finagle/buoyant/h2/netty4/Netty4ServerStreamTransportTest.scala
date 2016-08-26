@@ -111,7 +111,12 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
     assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false))
 
-    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), true))
-    assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true))
+    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false))
+
+    val trailers = new DefaultHttp2Headers
+    trailers.set("trailin", "yams")
+    rspdata.offer(new DefaultHttp2HeadersFrame(trailers, true))
+    assert(await(trans.sentq.poll()) == new DefaultHttp2HeadersFrame(trailers, true))
   }
 }
