@@ -45,7 +45,8 @@ object Netty4H2Listener {
         ch.pipeline.addLast(stream)
         val _ = ch.pipeline.addLast(new ChannelInitializer[Channel] {
           def initChannel(ch: Channel): Unit = {
-            val _ = ch.pipeline.remove("channel stats")
+            // XXX this was necessary but maybe isn't now..
+            // val _ = ch.pipeline.remove("channel stats")
           }
         })
       }
