@@ -101,7 +101,10 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
 
     val lookup: Activity[DelegateTree[Name]] = result match {
       case DelegateTree.Neg(path, d) =>
-        this.lookup(path).map(fromNameTree(path, d, _))
+        this.lookup(path).map {
+          case NameTree.Neg => result
+          case tree => fromNameTree(path, d, tree)
+        }
       case tree => Activity.value(tree)
     }
 

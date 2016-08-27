@@ -57,7 +57,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
               |"type":"exception","path":"/#/error/humbug","dentry":{"prefix":"/beh","dst":"/#/error"},
                 |"message":"error naming /#/error/humbug"}},
-          |{"type":"fail","dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"path":"!"}]}}
+          |{"type":"fail","path":"/$/fail/humbug","dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
       |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
@@ -81,7 +81,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
       |"type":"delegate","path":"/neg","delegate":{
-        |"type":"neg","path":"/neg","dentry":{"prefix":"/neg","dst":"~"}}}
+        |"type":"neg","path":"~","dentry":{"prefix":"/neg","dst":"~"}}}
       |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
