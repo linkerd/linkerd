@@ -32,9 +32,13 @@ requests are considered to be retryable.
 All 5XX responses are considered to be failures. However, `GET`,
 `HEAD`, `OPTIONS`, and `TRACE` requests may be retried automatically.
 
+Requests with chunked bodies are NEVER considered to be retryable.
+
 ## Retryable Idempotent 5XX
 
 `io.l5d.retryableIdempotent5XX`
 
-Like _io.l5d.retryableRead5XX_, but `PUT` and `DELETE` requests may also be
-retried.
+Like _io.l5d.retryableRead5XX_, but `PUT` and `DELETE` requests may
+also be retried.
+
+Requests with chunked bodies are NEVER considered to be retryable.
