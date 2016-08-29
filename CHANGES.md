@@ -1,3 +1,7 @@
+## 0.x.y
+
+* Upgrade to Finagle 6.37.0.
+
 ## 0.7.4
 
 * Dashboard: add toggling to the router clients to better handle large numbers of clients
