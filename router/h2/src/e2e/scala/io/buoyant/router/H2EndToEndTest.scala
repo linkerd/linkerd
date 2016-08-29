@@ -49,10 +49,15 @@ class H2EndToEndTest extends FunSuite with Awaits {
         def onEnd = endP
         def fail(e: Throwable) = reqQ.fail(e)
       }
+
       val rspf = client(req)
       assert(!rspf.isDefined)
       rspP.setDone()
+      // eventually { assert(rspf.isDefined) }
+
       val rsp = await(rspf)
+      assert(rsp.status == 200)
+
     } finally await(Closable.all(server, client).close())
   }
 }
