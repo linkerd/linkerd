@@ -139,7 +139,11 @@ class CatalogNamer(
         if (setHost)
           domainFuture().map { domainOption =>
             val domain = domainOption.getOrElse("consul")
-            Addr.Metadata(Metadata.authority -> s"${key.name}.service.$datacenter.$domain")
+            val authority = key.tag match {
+              case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
+              case None => s"${key.name}.service.$datacenter.$domain"
+            }
+            Addr.Metadata(Metadata.authority -> authority)
           }
         else
           Future.value(Addr.Metadata.empty)
