@@ -105,6 +105,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     req.uri = s"/delegate?path=invalid-param&namespace=label"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
+    assert(rsp.contentString == "Invalid path: '/' expected but 'i' found at '[i]nvalid-param'")
   }
 
   test("invalid dtab results in 400") {
@@ -113,5 +114,6 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     req.uri = s"/delegate?path=/boo/humbug&dtab=invalid-param"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
+    assert(rsp.contentString == "Invalid dtab: '/' expected but 'i' found at '[i]nvalid-param'")
   }
 }
