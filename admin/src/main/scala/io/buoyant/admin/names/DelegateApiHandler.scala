@@ -93,8 +93,8 @@ object DelegateApiHandler {
   sealed trait JsonDelegateTree
   object JsonDelegateTree {
     case class Empty(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
-    case class Fail(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
-    case class Neg(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
+    case class Fail(path: String, dentry: Option[Dentry]) extends JsonDelegateTree
+    case class Neg(path: String, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Exception(path: Path, dentry: Option[Dentry], message: String) extends JsonDelegateTree
     case class Delegate(path: Path, dentry: Option[Dentry], delegate: JsonDelegateTree) extends JsonDelegateTree
     case class Leaf(path: Path, dentry: Option[Dentry], bound: Bound) extends JsonDelegateTree
@@ -102,15 +102,23 @@ object DelegateApiHandler {
     case class Union(path: Path, dentry: Option[Dentry], union: Seq[Weighted]) extends JsonDelegateTree
     case class Weighted(weight: Double, tree: JsonDelegateTree)
 
+    private[this] val fail = Path.read("/$/fail")
+
     def mk(d: DelegateTree[Name.Bound]): Future[JsonDelegateTree] = d match {
       case DelegateTree.Exception(p, d, e) =>
         Future.value(JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage))
       case DelegateTree.Empty(p, d) =>
         Future.value(JsonDelegateTree.Empty(p, mkDentry(d)))
       case DelegateTree.Fail(p, d) =>
-        Future.value(JsonDelegateTree.Fail(p, mkDentry(d)))
+        val path = if (p == null) null
+        else if (p.startsWith(fail)) p.show
+        else "!"
+        Future.value(JsonDelegateTree.Fail(path, mkDentry(d)))
       case DelegateTree.Neg(p, d) =>
-        Future.value(JsonDelegateTree.Neg(p, mkDentry(d)))
+        val path = if (p == null) null
+        else if (p.isEmpty) "~"
+        else p.show
+        Future.value(JsonDelegateTree.Neg(path, mkDentry(d)))
       case DelegateTree.Delegate(p, d, t) =>
         mk(t).map(JsonDelegateTree.Delegate(p, mkDentry(d), _))
       case DelegateTree.Alt(p, d, ts@_*) =>

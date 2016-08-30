@@ -355,7 +355,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] def renderNameTree(tree: NameTree[Name.Bound]): Future[Buf] =
     JsonDelegateTree.mk(
-      DelegateTree.fromNameTree(null, Dentry.nop, tree)
+      DelegateTree.fromNameTree(tree)
     ).map(DelegateApiHandler.Codec.writeBuf).map(_.concat(Buf.Utf8("\n")))
 
   private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] = {
