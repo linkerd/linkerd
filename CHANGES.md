@@ -1,3 +1,9 @@
+## 0.x.y
+
+* Upgrade to Finagle 6.37.0.
+* HTTP response classifiers must not consider a request to be
+  retryable when it has a chunked request body.
+
 ## 0.7.4
 
 * Dashboard: add toggling to the router clients to better handle large numbers of clients

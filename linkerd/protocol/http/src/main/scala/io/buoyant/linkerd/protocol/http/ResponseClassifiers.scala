@@ -15,6 +15,7 @@ object ResponseClassifiers {
 
     case class ByMethod(methods: Set[Method]) {
       def withMethods(other: Set[Method]): ByMethod = copy(methods ++ other)
+
       def unapply(req: Request): Boolean = methods.contains(req.method)
     }
 
@@ -95,6 +96,16 @@ object ResponseClassifiers {
    */
   val NonRetryableServerFailures: ResponseClassifier =
     HttpResponseClassifier.ServerErrorsAsFailures
+
+  def NonRetryableChunked(classifier: ResponseClassifier): ResponseClassifier =
+    ResponseClassifier.named(s"NonRetryableChunked") {
+      case rr@ReqRep(req, _) if classifier.isDefinedAt(rr) =>
+        (req, classifier(rr)) match {
+          case (req: Request, ResponseClass.RetryableFailure) if req.isChunked =>
+            ResponseClass.NonRetryableFailure
+          case (_, rc) => rc
+        }
+    }
 }
 
 class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
