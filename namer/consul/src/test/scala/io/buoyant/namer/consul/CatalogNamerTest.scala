@@ -333,6 +333,46 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val namer = new CatalogNamer(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = true
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+
+    assertOnAddrs(state) { (_, metadata) =>
+      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+    }
+  }
+
+  test("Namer returns authority with tag in bound address metadata when setHost is true and tag is provided") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
           tag match {
             case Some("master") =>
               Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
@@ -353,7 +393,11 @@ class CatalogNamerTest extends FunSuite with Awaits {
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
 
     assertOnAddrs(state) { (_, metadata) =>
-      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      assert(
+        metadata == Addr.Metadata(
+          Metadata.authority -> "master.servicename.service.dc1.consul.acme.co"
+        )
+      )
     }
   }
 }
