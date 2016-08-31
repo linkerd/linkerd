@@ -1,7 +1,7 @@
 package io.buoyant.namerd
 package storage.consul
 
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.v1._
@@ -25,6 +25,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(Set.empty[Ns])
               cycle(e.rsp.headerMap.get(Headers.Index))
+            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               cycle(None)
@@ -35,7 +36,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       Closable.make { _ =>
         running = false
-        pending.raise(new FutureCancelledException)
+        pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
     }
@@ -87,6 +88,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(None)
               cycle(e.rsp.headerMap.get(Headers.Index))
+            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               cycle(None)
@@ -97,7 +99,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       Closable.make { _ =>
         running = false
-        pending.raise(new FutureCancelledException)
+        pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
     }
