@@ -1,23 +1,12 @@
 package io.buoyant.router.http
 
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
+import com.twitter.finagle.{Filter, Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.http.{Request, Response, Message}
-import java.net.{URI, URLEncoder}
+import java.net.URI
 
 /**
- * Strips host from request URI and drops Proxy-* headers
- * Those side-effects are added by proxy-aware clients
+ * Coerces HTTP proxy requests to normal requests.
  */
-class ProxyRewriteFilter extends SimpleFilter[Request, Response] {
-  import ProxyRewriteFilter._
-
-  def apply(req: Request, svc: Service[Request, Response]) = {
-    Headers.strip(req)
-    rewriteIfProxy(req)
-    svc(req)
-  }
-}
-
 object ProxyRewriteFilter {
 
   /**
@@ -57,11 +46,23 @@ object ProxyRewriteFilter {
     if (!orig.isAbsolute) orig.toString
     else new URI(null, null, orig.getPath, orig.getQuery, orig.getFragment).toString
 
+  /**
+   * Strips host from request URI and drops Proxy-* headers
+   * Those side-effects are added by proxy-aware clients
+   */
+  val filter: Filter[Request, Response, Request, Response] =
+    new SimpleFilter[Request, Response] {
+      def apply(req: Request, svc: Service[Request, Response]) = {
+        Headers.strip(req)
+        rewriteIfProxy(req)
+        svc(req)
+      }
+    }
+
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = Stack.Role("ProxyRewriteFilter")
       val description = "Strips host from request URI and drops Proxy-* headers"
-      def make(next: ServiceFactory[Request, Response]) =
-        new ProxyRewriteFilter().andThen(next)
+      def make(next: ServiceFactory[Request, Response]) = filter.andThen(next)
     }
 }
