@@ -21,15 +21,11 @@ io.l5d.methodAndHost)
   (default: -1, automatically compresses textual content types with
   compression level 6)
 
-_Note_: These memory constraints are selected to allow reliable
+<aside class="warning">
+These memory constraints are selected to allow reliable
 concurrent usage of linkerd. Changing these parameters may
 significantly alter linkerd's performance characteristics.
-
-<a name="protocol-http-defaults"></a>
-## Example
-As an example, here's an HTTP router config that routes all `POST`
-requests to 8091 and all other requests to 8081, using the default
-identifier of `io.l5d.methodAndHost`, listening on port 5000:
+</aside>
 
 ```yaml
 routers:
@@ -43,9 +39,15 @@ routers:
     port: 5000
 ```
 
-(Note that the dtab is written in terms of names produced by the
+As an example, here's an HTTP router config that routes all `POST`
+requests to 8091 and all other requests to 8081, using the default
+identifier of `io.l5d.methodAndHost`, listening on port 5000:
+
+<aside class="notice">
+The dtab is written in terms of names produced by the
 `methodAndHost` identifier. Using a different identifier would require a
-different set of dtab rules. See the next section for more on identifiers.)
+different set of dtab rules. See the next section for more on identifiers.
+</aside>
 
 <a name="protocol-http-identifiers"></a>
 ## HTTP/1.1 Identifiers
@@ -112,10 +114,6 @@ The path identifier generates logical names of the form:
   / dstPrefix / [*segments* number of segments from the URL path]
 ```
 
-Note that `dstPrefix`, if unset in the identifier configuration block,
-defaults to "http". For example, here's a router configured with the path
-identifier:
-
 ```yaml
 routers:
 - protocol: http
@@ -126,6 +124,10 @@ routers:
   servers:
     port: 5000
 ```
+
+Note that `dstPrefix`, if unset in the identifier configuration block,
+defaults to "http". For example, here's a router configured with the path
+identifier
 
 With this configuration, a request to `:5000/true/love/waits.php` will be
 mapped to `/http/true/love` and will be routed based on this name by the
@@ -140,9 +142,6 @@ alternate HTTP implementation to be used. Currently there are two
 supported HTTP implementations: _netty3_ (default) and _netty4_ (will
 become default in an upcoming release).
 
-For example, the following configures an HTTP router that uses the new
-netty4 implementation on both the client and server:
-
 ```yaml
 - protocol: http
   ...
@@ -156,6 +155,8 @@ netty4 implementation on both the client and server:
       kind: netty4
 ```
 
+For example, the following configures an HTTP router that uses the new
+netty4 implementation on both the client and server:
 
 ## HTTP Headers
 

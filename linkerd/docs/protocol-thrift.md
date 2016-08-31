@@ -1,7 +1,5 @@
 # Thrift Protocol
 
-*(for the [routers](config.md#routers) key)*
-
 Since the Thrift protocol does not encode a destination name in the message
 itself, routing must be done per port. This implies one port per Thrift
 service. For out-of-the-box configuration, this means that the contents of
@@ -38,9 +36,6 @@ Thrift also supports additional *client* parameters:
 * *attemptTTwitterUpgrade* -- controls whether thrift protocol upgrade should be
    attempted.  (default: true)
 
-As an example: Here's a thrift router configuration that routes thrift--via
-buffered transport using the TCompactProtocol --from port 4004 to port 5005
-
 ```yaml
 routers:
 - protocol: thrift
@@ -56,3 +51,7 @@ routers:
     thriftFramed: false
     thriftProtocol: compact
 ```
+
+As an example: Here's a thrift router configuration that routes thrift--via
+buffered transport using the TCompactProtocol --from port 4004 to port 5005
+

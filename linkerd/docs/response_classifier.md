@@ -1,14 +1,5 @@
 # HTTP Response Classifiers
-
-*(for the [responseClassifier](config.md#response_classifier) key)*
-
-Response classifiers determine which HTTP responses are considered to
-be failures (for the purposes of success rate calculation) and which
-of these responses may be [retried](retries.md). A response classifier
-config block must contain a `kind` parameter which indicates which classifier
-plugin to use.  By default, the _io.l5d.nonRetryable5XX_ classifier is used.
-
-### Example
+> Example Response Classifier
 
 ```yaml
 routers:
@@ -17,6 +8,12 @@ routers:
     responseClassifier:
       kind: io.l5d.retryableRead5XX
 ```
+
+Response classifiers determine which HTTP responses are considered to
+be failures (for the purposes of success rate calculation) and which
+of these responses may be [retried](retries.md). A response classifier
+config block must contain a `kind` parameter which indicates which classifier
+plugin to use.  By default, the _io.l5d.nonRetryable5XX_ classifier is used.
 
 ## Non-Retryable 5XX
 
