@@ -1,6 +1,11 @@
 # Namers
 
-*(for the [namers](config.md#namers) key)*
+```yaml
+namers:
+- kind: io.l5d.fs
+  prefix: /disco
+  rootDir: disco
+```
 
 A namer binds a concrete name to a physical address.
 http://twitter.github.io/finagle/guide/Names.html
@@ -14,17 +19,23 @@ A namer config block has the following parameters:
 * *experimental* -- Set this to `true` to enable the namer if it is experimental.
 * *namer-specific parameters*.
 
-### Example
-
-```yaml
-namers:
-- kind: io.l5d.fs
-  prefix: /disco
-  rootDir: disco
-```
-
 <a name="fs"></a>
 ## File-based service discovery
+
+> Example filesystem directory:
+
+```bash
+$ ls disco/
+apps    users   web
+```
+> And an example of what the contents of the files might look like:
+
+```bash
+$ cat config/web
+192.0.2.220 8080
+192.0.2.105 8080
+192.0.2.210 8080
+```
 
 `io.l5d.fs`
 
@@ -46,21 +57,6 @@ filesystem and relative to linkerd's start path. Every file in this directory
 corresponds to a service, where the name of the file is the service's _concrete
 name_, and the contents of the file must be a newline-delimited set of
 addresses.
-
-For example, the directory might look like this:
-
-```bash
-$ ls disco/
-apps    users   web
-```
-And the contents of the files might look like this:
-
-```bash
-$ cat config/web
-192.0.2.220 8080
-192.0.2.105 8080
-192.0.2.210 8080
-```
 
 linkerd watches all files in this directory, so files can be added, removed, or
 updated, and linkerd will pick up the changes automatically.
@@ -120,6 +116,18 @@ baseDtab: |
 <a name="consul"></a>
 ## Consul service discovery (experimental)
 
+> Example Consul config
+
+```yaml
+namers:
+- kind: io.l5d.consul
+  experimental: true
+  host: 127.0.0.1
+  port: 2181
+  includeTag: true
+  setHost: true
+```
+
 `io.l5d.consul`
 
 linkerd provides support for service discovery via
@@ -139,31 +147,30 @@ The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
                 (`$domain` fetched from Consul).
 
 
-For example:
-```yaml
-namers:
-- kind: io.l5d.consul
-  experimental: true
-  host: 127.0.0.1
-  port: 2181
-  includeTag: true
-  setHost: true
-```
-
 The default _prefix_ is `io.l5d.consul`.
-
-Once configured, to use the Consul namer, you must reference it in
-the dtab. The Consul namer takes two path components: `datacenter` and
-`serviceName`.  If `includeTag` is true, then it takes three path components:
-`datacenter`, `tag`, and `serviceName`.  For example:
 
 ```
 baseDtab: |
   /http/1.1/* => /#/io.l5d.consul/dc1/prod;
 ```
 
+Once configured, to use the Consul namer, you must reference it in
+the dtab. The Consul namer takes two path components: `datacenter` and
+`serviceName`.  If `includeTag` is true, then it takes three path components:
+`datacenter`, `tag`, and `serviceName`.
+
 <a name="k8s"></a>
 ## Kubernetes service discovery (experimental)
+
+> Example k8s config
+
+```yaml
+namers:
+- kind: io.l5d.k8s
+  experimental: true
+  host: localhost
+  port: 8001
+```
 
 `io.l5d.k8s`
 
@@ -175,15 +182,6 @@ The Kubernetes namer is configured with kind `io.l5d.k8s`, and these parameters:
 
 * *host* -- the Kubernetes master host. (default: localhost)
 * *port* -- the Kubernetes master port. (default: 8001)
-
-For example:
-```yaml
-namers:
-- kind: io.l5d.k8s
-  experimental: true
-  host: localhost
-  port: 8001
-```
 
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
 which will create a local proxy for securely talking to the Kubernetes cluster API.
@@ -197,15 +195,29 @@ The Kubernetes namer takes three path components: `namespace`, `port-name` and
 * port-name: the port name.
 * svc-name: the name of the service.
 
-Once configured, to use the Kubernetes namer, you must reference it in
-the dtab.
 ```
 baseDtab: |
   /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
+Once configured, to use the Kubernetes namer, you must reference it in
+the dtab.
+
 <a name="marathon"></a>
 ## Marathon service discovery (experimental)
+
+> Example marathon config
+
+```yaml
+namers:
+- kind:         io.l5d.marathon
+  experimental: true
+  prefix:       /#/io.l5d.marathon
+  host:         marathon.mesos
+  port:         80
+  uriPrefix:    /marathon
+  ttlMs:        500
+```
 
 `io.l5d.marathon`
 
@@ -224,17 +236,6 @@ The Marathon namer is configured with kind `io.l5d.marathon`, and these paramete
 * *ttlMs* -- the polling timeout in milliseconds against the marathon API
   (default: 5000)
 
-For example:
-```yaml
-namers:
-- kind:         io.l5d.marathon
-  experimental: true
-  prefix:       /#/io.l5d.marathon
-  host:         marathon.mesos
-  port:         80
-  uriPrefix:    /marathon
-  ttlMs:        500
-```
 
 The default _prefix_ is `io.l5d.marathon`.
 
@@ -244,14 +245,15 @@ id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app
 with id "/appgroup/usergroup/users" can be reached with
 `/#/io.l5d.marathon/appgroup/usergroup/users`.
 
-Once configured, to use the Marathon namer, you must reference it in
-the dtab.
 ```
 baseDtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
 ```
+
+Once configured, to use the Marathon namer, you must reference it in
+the dtab.
 
 <a name="zkLeader"></a>
 ## ZooKeeper Leader

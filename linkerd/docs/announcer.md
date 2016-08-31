@@ -1,7 +1,5 @@
 # Announcers
 
-*(for the [announcers](config.md#announcers) key)*
-
 An announcer registers servers in service discovery.  Each server may specify
 a list of concrete names to announce as in the [announce](config.md#announce)
 server key.  Each announcer has a prefix and will only announce names that

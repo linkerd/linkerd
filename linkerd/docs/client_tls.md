@@ -1,31 +1,38 @@
 # Client TLS
 
-*(for the [tls](config.md#client_tls) key)*
+>Client TLS is defined in the client section of routers:
+
+```yaml
+routers:
+- protocol: http
+  client:
+    tls: ...
+```
 
 A client TLS object describes how linkerd should use TLS when sending requests
 to destination services.  A client TLS config block must contain a `kind`
 parameter which indicates which client TLS plugin to use as well as any
 parameters specific to the plugin.
 
-### Example
+## No Validation
 
 ```yaml
-routers:
-- ...
-  client:
-    tls:
-      kind: io.l5d.static
-      commonName: foo
-      caCertPath: /foo/caCert.pem
+tls:
+  kind: io.l5d.noValidation
 ```
-
-## No Validation
 
 `io.l5d.noValidation`
 
-Skip hostname validation.  This is unsafe.
+<aside class="warning">This skips hostname validation and is unsafe.</aside>
 
 ## Static
+
+```yaml
+tls:
+  kind: io.l5d.static
+  commonName: foo
+  caCertPath: /foo/caCert.pem
+```
 
 `io.l5d.static`
 
@@ -38,6 +45,16 @@ options:
 * *caCertPath* -- Optional.  Use the given CA cert for common name validation.
 
 ## Bound Path
+
+```yaml
+tls:
+  kind: io.l5d.boundPath
+  caCertPath: /foo/cacert.pem
+  names:
+  - prefix: "/#/io.l5d.fs/{host}"
+    commonNamePattern: "{host}.buoyant.io"
+  strict: false
+```
 
 `io.l5d.boundPath`
 
@@ -56,13 +73,4 @@ supports the following options:
 * *strict* -- Optional. When true, paths that fail to match any prefixes throw
     an exception. Defaults to true.
 
-For example,
 
-```yaml
-kind: io.l5d.boundPath
-caCertPath: /foo/cacert.pem
-names:
-- prefix: "/#/io.l5d.fs/{host}"
-  commonNamePattern: "{host}.buoyant.io"
- strict: false
-```

@@ -1,25 +1,16 @@
-# Configuration
+# Introduction
 
-linkerd's configuration is controlled via config file, which must be provided
-as a command-line argument. It may be a local file path or `-` to
-indicate that the configuration should be read from the standard input.
-For convenience, the release package includes a default `linkerd.yaml` file in
-the `config/` directory.
+>The most minimal linkerd configuration looks something like the following, which forwards all requests on `localhost:8080` to `localhost:8888`
 
-## File Format
+```yaml
+routers:
+- protocol: http
+  baseDtab: /http => /$/inet/127.1/8888
+  servers:
+  - port: 8080
+```
 
-The configuration may be specified as a JSON or YAML object, as described
-below.  Four top level keys are supported:
-
-* [admin](#admin)
-* [routers](#routers)
-* [namers](#namers)
-* [tracers](#tracers)
-
-There are no requirements on field ordering, though it's generally
-good style to start a router with the _protocol_.
-
-## Example
+> Here's a more complex linkerd config example
 
 ```yaml
 admin:
@@ -77,19 +68,32 @@ routers:
     /thrift => /#/io.l5d.fs/thrift;
 ```
 
-The most minimal configuration looks something like the following,
-which forwards all requests on `localhost:8080` to `localhost:8888`.
+linkerd's configuration is controlled via config file, which must be provided
+as a command-line argument. It may be a local file path or `-` to
+indicate that the configuration should be read from the standard input.
+For convenience, the release package includes a default `linkerd.yaml` file in
+the `config/` directory.
 
-```yaml
-routers:
-- protocol: http
-  baseDtab: /http => /$/inet/127.1/8888
-  servers:
-  - port: 8080
-```
+### File Format
+
+The configuration may be specified as a JSON or YAML object, as described
+below.  Four top level keys are supported:
+
+* [admin](#admin)
+* [routers](#routers)
+* [namers](#namers)
+* [tracers](#tracers)
+
+There are no requirements on field ordering, though it's generally
+good style to start a router with the _protocol_.
 
 <a name="admin"></a>
 ## Administrative interface
+
+```yaml
+admin:
+  port: 9990
+```
 
 linkerd supports an administrative interface, both as a web ui and a collection
 of json endpoints. The exposed admin port is configurable via a top-level
@@ -98,11 +102,6 @@ of json endpoints. The exposed admin port is configurable via a top-level
 * *admin* -- Config section for the admin interface, contains keys:
   * *port* -- Port for the admin interface (default is `9990`)
 
-For example:
-```yaml
-admin:
-  port: 9990
-```
 
 <a name="routers"></a>
 ## Routers

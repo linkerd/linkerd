@@ -1,11 +1,6 @@
 # Interpreter
 
-*(for the [interpreter](config.md#interpreter) key)*
-
-An interpreter determines how names are resolved.  An interpreter config block
-must contain a `kind` parameter which indicates which interpreter plugin to use.
-
-### Example
+> Example Interpreter Configuration
 
 ```yaml
 routers:
@@ -14,6 +9,9 @@ routers:
     kind: io.l5d.namerd
     dst: /$/inet/1.2.3.4/4180
 ```
+
+An interpreter determines how names are resolved.  An interpreter config block
+must contain a `kind` parameter which indicates which interpreter plugin to use.
 
 ## Default
 
