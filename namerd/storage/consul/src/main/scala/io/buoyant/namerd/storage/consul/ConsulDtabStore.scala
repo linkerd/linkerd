@@ -17,18 +17,19 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter).transform {
-            case Return(result) =>
-              val namespaces = result.value.map(namespace).toSet
-              updates() = Activity.Ok(namespaces)
-              cycle(result.index)
-            case Throw(e: NotFound) =>
-              updates() = Activity.Ok(Set.empty[Ns])
-              cycle(e.rsp.headerMap.get(Headers.Index))
-            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
-            case Throw(e) =>
-              updates() = Activity.Failed(e)
-              cycle(None)
+          api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter, retry = true)
+            .transform {
+              case Return(result) =>
+                val namespaces = result.value.map(namespace).toSet
+                updates() = Activity.Ok(namespaces)
+                cycle(result.index)
+              case Throw(e: NotFound) =>
+                updates() = Activity.Ok(Set.empty[Ns])
+                cycle(e.rsp.headerMap.get(Headers.Index))
+              case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
+              case Throw(e) =>
+                updates() = Activity.Failed(e)
+                cycle(None)
           }
         else
           Future.Unit
@@ -79,7 +80,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.get(key, blockingIndex = index, datacenter = datacenter).transform {
+          api.get(key, blockingIndex = index, datacenter = datacenter, retry = true).transform {
             case Return(result) =>
               val version = Buf.Utf8(result.index.get)
               val dtab = Dtab.read(result.value)
