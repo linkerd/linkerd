@@ -21,7 +21,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
   }
 
   trait Fixtures {
-    @volatile var doInit, didInit, doScaleUp, doScaleDown = new Promise[Unit]
+    @volatile var doInit, didInit, doScaleUp, doScaleDown, doFail = new Promise[Unit]
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/srv/endpoints" =>
@@ -36,8 +36,17 @@ class EndpointsNamerTest extends FunSuite with Awaits {
           doScaleDown before rsp.writer.write(Rsps.ScaleDown)
         }
 
-        Future.value(rsp)
+        doFail onSuccess { _ =>
+          rsp.writer.fail(new Exception("oops"))
+        }
 
+        Future.value(rsp)
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319582" =>
+        val rsp = Response()
+
+        doScaleDown before rsp.writer.write(Rsps.ScaleDown)
+
+        Future.value(rsp)
       case req =>
         fail(s"unexpected request: $req")
     }
@@ -119,5 +128,23 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
 
     assert(state == Activity.Ok(NameTree.Neg))
+  }
+
+  test("reconnects on reader error") {
+    val _ = new Fixtures {
+      assert(state == Activity.Pending)
+      doInit.setDone()
+      assertHas(3)
+
+      doScaleUp.setDone()
+      assertHas(4)
+
+      doInit = new Promise[Unit]
+
+      doFail.setDone()
+
+      doScaleDown.setDone()
+      assertHas(3)
+    }
   }
 }
