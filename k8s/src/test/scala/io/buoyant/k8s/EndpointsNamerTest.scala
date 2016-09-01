@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.{Addr, Name, NameTree, Path, Service}
+import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.Awaits
@@ -37,7 +37,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         }
 
         doFail onSuccess { _ =>
-          rsp.writer.fail(new Exception("oops"))
+          rsp.writer.fail(new ChannelClosedException)
         }
 
         Future.value(rsp)
