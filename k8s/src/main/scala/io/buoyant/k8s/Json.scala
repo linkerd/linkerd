@@ -8,8 +8,8 @@ import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle.util.LoadService
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, Return, Throw, Try}
-import scala.collection.JavaConverters._
+import com.twitter.util.{Return, Throw, Try}
+
 import scala.collection.mutable
 import scala.reflect.classTag
 
@@ -106,14 +106,15 @@ object Json {
       for {
         chunk <- {
           log.trace("json reading chunk of %d bytes", bufsize)
-          val read = reader.read(bufsize)
-          read.respond {
+          val read = reader.read(bufsize).respond {
             case Return(Some(Buf.Utf8(chunk))) =>
               log.trace("json read chunk: %s", chunk)
             case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
               log.trace("json read eoc")
             case Throw(e) =>
               log.warning(e, "json read error")
+          }.handle {
+            case e: Throwable => None
           }
           AsyncStream.fromFuture(read).flatMap(AsyncStream.fromOption)
         }
