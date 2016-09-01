@@ -30,14 +30,15 @@ class ProxyRewriteFilterTest extends FunSuite with Awaits {
     req.headerMap.set("Proxy-Connection", "Keep-Alive")
     req.headerMap.set("Proxy-Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
     req.headerMap.set("Proxy-Authenticate", "Basic")
-    // req.headerMap.set("Proxy-Foo", "Bar")
+    req.headerMap.set("Proxy-Foo", "Bar")
     req.headerMap.set("Pragma", "42")
 
     val result = await(service(req))
     assert(result.getContentString() == "/foo;matrix=uri;/bar?x=1&y=2&z=(%20hi%20)")
     assert(result.headerMap == Map(
       "Host" -> "acme.co:8080",
-      "Pragma" -> "42"
+      "Pragma" -> "42",
+      "Proxy-Foo" -> "Bar"
     ))
   }
 
@@ -47,14 +48,15 @@ class ProxyRewriteFilterTest extends FunSuite with Awaits {
     req.headerMap.set("Proxy-Connection", "Keep-Alive")
     req.headerMap.set("Proxy-Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
     req.headerMap.set("Proxy-Authenticate", "Basic")
-    // req.headerMap.set("Proxy-Foo", "Bar")
+    req.headerMap.set("Proxy-Foo", "Bar")
     req.headerMap.set("Pragma", "42")
 
     val result = await(service(req))
     assert(result.getContentString() == "/foo;matrix=uri;/bar?x=1&y=2")
     assert(result.headerMap == Map(
       "Host" -> "acme.co:8080",
-      "Pragma" -> "42"
+      "Pragma" -> "42",
+      "Proxy-Foo" -> "Bar"
     ))
   }
 }

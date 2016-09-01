@@ -18,7 +18,7 @@ object ProxyRewriteFilter {
     val ProxyAuthenticate = "proxy-authenticate"
     val ProxyAuthorization = "proxy-authorization"
 
-    def strip(msg: Message): Unit = {
+    def scrub(msg: Message): Unit = {
       msg.headerMap.remove(ProxyConnection)
       msg.headerMap.remove(ProxyAuthenticate)
       val _ = msg.headerMap.remove(ProxyAuthorization)
@@ -46,23 +46,22 @@ object ProxyRewriteFilter {
     if (!orig.isAbsolute) orig.toString
     else new URI(null, null, orig.getPath, orig.getQuery, orig.getFragment).toString
 
-  /**
-   * Strips host from request URI and drops Proxy-* headers
-   * Those side-effects are added by proxy-aware clients
-   */
   val filter: Filter[Request, Response, Request, Response] =
     new SimpleFilter[Request, Response] {
-      def apply(req: Request, svc: Service[Request, Response]) = {
-        Headers.strip(req)
+      def apply(req: Request, service: Service[Request, Response]) = {
+        Headers.scrub(req)
         rewriteIfProxy(req)
-        svc(req)
+        service(req)
       }
     }
 
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = Stack.Role("ProxyRewriteFilter")
-      val description = "Strips host from request URI and drops Proxy-* headers"
+
+      val description = "Rewrites proxied requests as direct requests, " +
+        "overriding the Host header and removing canonical proxy headers"
+
       def make(next: ServiceFactory[Request, Response]) = filter.andThen(next)
     }
 }
