@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Filter, Http, Path, Stack}
+import com.twitter.finagle._
+import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
@@ -60,8 +61,12 @@ case class ConsulConfig(
       case None => Filter.identity[Request, Response]
     }
     val filters = new SetHostFilter(getHost, getPort) andThen authFilter
+    val interruptionMonitor = Monitor.mk {
+      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+    }
 
     val service = Http.client
+      .withMonitor(interruptionMonitor)
       .withParams(Http.client.params ++ params)
       .configured(Label("namer" + prefix))
       .withTracer(NullTracer)
