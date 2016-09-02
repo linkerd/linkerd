@@ -343,24 +343,23 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       case _ => bindingCache.get(NsPath(ns, path)).activity
     }
 
-
   case class NsPath(ns: Ns, path: Path)
-  case class ActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
+  case class NameActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
 
   private[this] val bindingCache = CacheBuilder.newBuilder()
     .maximumSize(bindingCacheSize)
-    .removalListener(new RemovalListener[NsPath, ActClose] {
-      override def onRemoval(notification: RemovalNotification[NsPath, ActClose]): Unit = {
+    .removalListener(new RemovalListener[NsPath, NameActClose] {
+      override def onRemoval(notification: RemovalNotification[NsPath, NameActClose]): Unit = {
         val _ = notification.getValue.closable.close()
       }
     })
-    .build[NsPath, ActClose](
-      new CacheLoader[NsPath, ActClose] {
-        override def load(key: NsPath): ActClose = {
+    .build[NsPath, NameActClose](
+      new CacheLoader[NsPath, NameActClose] {
+        override def load(key: NsPath): NameActClose = {
           val act = delegate(key.ns).bind(Dtab.empty, key.path)
           // we want to keep the activity observed as long as it's in the cache
           val closable = act.run.changes.respond(_ => ())
-          ActClose(act, closable)
+          NameActClose(act, closable)
         }
       }
     )
@@ -383,22 +382,33 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     }
   }
 
+  case class AddrActClose(activity: Activity[Addr], closable: Closable)
+
   private[this] val addrCache = CacheBuilder.newBuilder()
     .maximumSize(addrCacheSize)
-    .build[(String, Path), Activity[Addr]](
-      new CacheLoader[(String, Path), Activity[Addr]] {
-        override def load(key: (String, Path)): Activity[Addr] =
-          bindAddrId(key._2).flatMap {
+    .removalListener(new RemovalListener[NsPath, AddrActClose] {
+      override def onRemoval(notification: RemovalNotification[NsPath, AddrActClose]): Unit = {
+        val _ = notification.getValue.closable.close()
+      }
+    })
+    .build[NsPath, AddrActClose](
+      new CacheLoader[NsPath, AddrActClose] {
+        override def load(key: NsPath): AddrActClose = {
+          val act = bindAddrId(key.path).flatMap {
             case NameTree.Leaf(bound) => Activity(bound.addr.map(Activity.Ok(_)))
             case NameTree.Empty => Activity.value(Addr.Bound())
             case NameTree.Fail => Activity.exception(new Exception("name tree failed"))
             case NameTree.Neg => Activity.value(Addr.Neg)
             case NameTree.Alt(_) | NameTree.Union(_) =>
-              Activity.exception(new Exception(s"${key._2.show} is not a concrete bound id"))
+              Activity.exception(new Exception(s"${key.path.show} is not a concrete bound id"))
           }.flatMap {
             case Addr.Pending => Activity.pending
             case addr => Activity.value(addr)
           }
+          // we want to keep the activity observed as long as it's in the cache
+          val closable = act.run.changes.respond(_ => ())
+          AddrActClose(act, closable)
+        }
       }
     )
 
@@ -412,9 +422,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] def handleGetAddr(ns: String, path: Path, req: Request): Future[Response] = {
     if (isStreaming(req)) {
-      streamingResp(addrCache.get((ns, path)).values)(renderAddr)
+      streamingResp(addrCache.get(NsPath(ns, path)).activity.values)(renderAddr)
     } else {
-      addrCache.get((ns, path)).toFuture.map { addr =>
+      addrCache.get(NsPath(ns, path)).activity.toFuture.map { addr =>
         val rsp = Response()
         rsp.content = renderAddr(addr)
         rsp
@@ -462,7 +472,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
     val activity = getBind(ns, path, extraDtab).flatMap { tree =>
       flattenTree(tree) match {
-        case Some(p) => addrCache.get((ns, p))
+        case Some(p) => addrCache.get(NsPath(ns, p)).activity
         case None => Activity.value(Addr.Neg)
       }
     }
