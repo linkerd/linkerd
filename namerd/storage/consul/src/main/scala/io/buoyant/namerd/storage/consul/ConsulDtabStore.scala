@@ -1,7 +1,7 @@
 package io.buoyant.namerd
 package storage.consul
 
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.v1._
@@ -17,17 +17,19 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter).transform {
-            case Return(result) =>
-              val namespaces = result.value.map(namespace).toSet
-              updates() = Activity.Ok(namespaces)
-              cycle(result.index)
-            case Throw(e: NotFound) =>
-              updates() = Activity.Ok(Set.empty[Ns])
-              cycle(e.rsp.headerMap.get(Headers.Index))
-            case Throw(e) =>
-              updates() = Activity.Failed(e)
-              cycle(None)
+          api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter, retry = true)
+            .transform {
+              case Return(result) =>
+                val namespaces = result.value.map(namespace).toSet
+                updates() = Activity.Ok(namespaces)
+                cycle(result.index)
+              case Throw(e: NotFound) =>
+                updates() = Activity.Ok(Set.empty[Ns])
+                cycle(e.rsp.headerMap.get(Headers.Index))
+              case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
+              case Throw(e) =>
+                updates() = Activity.Failed(e)
+                cycle(None)
           }
         else
           Future.Unit
@@ -35,7 +37,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       Closable.make { _ =>
         running = false
-        pending.raise(new FutureCancelledException)
+        pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
     }
@@ -78,7 +80,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       def cycle(index: Option[String]): Future[Unit] =
         if (running)
-          api.get(key, blockingIndex = index, datacenter = datacenter).transform {
+          api.get(key, blockingIndex = index, datacenter = datacenter, retry = true).transform {
             case Return(result) =>
               val version = Buf.Utf8(result.index.get)
               val dtab = Dtab.read(result.value)
@@ -87,6 +89,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(None)
               cycle(e.rsp.headerMap.get(Headers.Index))
+            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               cycle(None)
@@ -97,7 +100,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
 
       Closable.make { _ =>
         running = false
-        pending.raise(new FutureCancelledException)
+        pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
     }
