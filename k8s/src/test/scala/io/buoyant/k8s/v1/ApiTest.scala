@@ -206,9 +206,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
                 assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                 val next = stream().uncons
                 await(closable.close())
-                assertThrows[Reader.ReaderDiscarded] {
-                  await(next)
-                }
+                assert(!next.isDefined)
 
               case event =>
                 fail(s"unexpected event: $event")
@@ -244,15 +242,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     await {
       closer.close()
     }
-    assert(uncons.isDefined)
-    assertThrows[Reader.ReaderDiscarded] {
-      await(uncons)
-    }
-    assertThrows[Reader.ReaderDiscarded] {
-      await {
-        rsp.writer.write(added0)
-      }
-    }
+    assert(!uncons.isDefined)
   }
 
   test("watch too old") {
@@ -307,9 +297,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
             assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
             val next = stream().uncons
             await(closable.close())
-            assertThrows[Reader.ReaderDiscarded] {
-              await(next)
-            }
+            assert(!next.isDefined)
 
           case event =>
             fail(s"unexpected event: $event")

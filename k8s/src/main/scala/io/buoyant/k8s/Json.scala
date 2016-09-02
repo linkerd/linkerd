@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.ChannelException
 import com.twitter.finagle.util.LoadService
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
@@ -13,6 +12,7 @@ import com.twitter.util.{Return, Throw, Try}
 
 import scala.collection.mutable
 import scala.reflect.classTag
+import scala.util.control.NonFatal
 
 object Json {
 
@@ -115,7 +115,7 @@ object Json {
             case Throw(e) =>
               log.warning(e, "json read error")
           }.handle {
-            case e: ChannelException => None
+            case NonFatal(e) => None
           }
           AsyncStream.fromFuture(read).flatMap(AsyncStream.fromOption)
         }
