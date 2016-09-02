@@ -3,19 +3,18 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.google.common.cache.{CacheBuilder, CacheLoader}
-import com.twitter.finagle.Name.Bound
+import com.google.common.cache.{CacheBuilder, CacheLoader, RemovalListener, RemovalNotification}
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.util.{Rng, Drv}
+import com.twitter.finagle.util.{Drv, Rng}
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.admin.names.DelegateApiHandler.{Addr => JsonAddr, JsonDelegateTree}
+import io.buoyant.admin.names.DelegateApiHandler.{JsonDelegateTree, Addr => JsonAddr}
 import io.buoyant.namer.{DelegateTree, Delegator, EnumeratingNamer}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
-import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
+import io.buoyant.namerd.{DtabStore, Ns, RichActivity, VersionedDtab, DtabCodec => DtabModule}
 
 object HttpControlService {
 
@@ -341,15 +340,28 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] def getBind(ns: String, path: Path, extraDtab: Option[String]): Activity[NameTree[Name.Bound]] =
     extraDtab match {
       case Some(dtab) => delegate(ns).bind(Dtab.read(dtab), path)
-      case _ => bindingCache.get((ns, path))
+      case _ => bindingCache.get(NsPath(ns, path)).activity
     }
+
+
+  case class NsPath(ns: Ns, path: Path)
+  case class ActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
 
   private[this] val bindingCache = CacheBuilder.newBuilder()
     .maximumSize(bindingCacheSize)
-    .build[(String, Path), Activity[NameTree[Name.Bound]]](
-      new CacheLoader[(String, Path), Activity[NameTree[Name.Bound]]] {
-        override def load(key: (String, Path)): Activity[NameTree[Bound]] =
-          delegate(key._1).bind(Dtab.empty, key._2)
+    .removalListener(new RemovalListener[NsPath, ActClose] {
+      override def onRemoval(notification: RemovalNotification[NsPath, ActClose]): Unit = {
+        val _ = notification.getValue.closable.close()
+      }
+    })
+    .build[NsPath, ActClose](
+      new CacheLoader[NsPath, ActClose] {
+        override def load(key: NsPath): ActClose = {
+          val act = delegate(key.ns).bind(Dtab.empty, key.path)
+          // we want to keep the activity observed as long as it's in the cache
+          val closable = act.run.changes.respond(_ => ())
+          ActClose(act, closable)
+        }
       }
     )
 
