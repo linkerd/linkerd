@@ -8,7 +8,7 @@ import io.buoyant.namer.Metadata
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
-class CatalogNamerTest extends FunSuite with Awaits {
+class ConsulNamerTest extends FunSuite with Awaits {
 
   val testPath = Path.read("/test")
   val testServiceNode = ServiceNode(
@@ -45,7 +45,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       testPath,
       new TestCatalogApi(),
       new TestAgentApi("acme.co"),
@@ -67,7 +67,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
-    val namer = new CatalogNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -97,7 +97,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
@@ -127,7 +127,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/nosuchservice/residual")).states respond { state = _ }
@@ -162,7 +162,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new CatalogNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -200,7 +200,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
@@ -246,7 +246,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
@@ -296,7 +296,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
@@ -338,7 +338,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
@@ -382,7 +382,7 @@ class CatalogNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new CatalogNamer(
+    val namer = new ConsulNamer(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),

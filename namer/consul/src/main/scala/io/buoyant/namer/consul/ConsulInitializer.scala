@@ -20,6 +20,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   host: consul.site.biz
  *   port: 8600
  *   includeTag: true
+ *   useHealthCheck: false
  *   setHost: true
  *   token: some-consul-acl-token
  * </pre>
@@ -35,6 +36,7 @@ case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
   includeTag: Option[Boolean],
+  useHealthCheck: Option[Boolean],
   token: Option[String] = None,
   setHost: Option[Boolean] = None
 ) extends NamerConfig {
@@ -55,7 +57,7 @@ case class ConsulConfig(
    * Build a Namer backed by Consul.
    */
   @JsonIgnore
-  def newNamer(params: Stack.Params): CatalogNamer = {
+  def newNamer(params: Stack.Params): ConsulNamer = {
     val authFilter = token match {
       case Some(t) => new SetAuthTokenFilter(t)
       case None => Filter.identity[Request, Response]
@@ -73,9 +75,9 @@ case class ConsulConfig(
       .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new CatalogNamer(
+    new ConsulNamer(
       prefix,
-      v1.CatalogApi(service),
+      if (useHealthCheck.getOrElse(false)) v1.HealthApi(service) else v1.CatalogApi(service),
       v1.AgentApi(service),
       includeTag = includeTag.getOrElse(false),
       setHost = setHost.getOrElse(false)

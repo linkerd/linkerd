@@ -125,6 +125,7 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
+  useHealthCheck: true
   setHost: true
 ```
 
@@ -139,6 +140,7 @@ The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
 * *host* --  the Consul host. (default: localhost)
 * *port* --  the Consul port. (default: 8500)
 * *includeTag* -- whether to read a Consul tag from the path.  (default: false)
+* *useHealthCheck* -- whether to rely on Consul health checks.  (default: false)
 * *token* -- Optional. The auth token to use when making API calls.
 * *setHost* --  if set to true (default: false) will instruct Linkerd
                 to override `Host` header value of forwarded HTTP
