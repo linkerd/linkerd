@@ -29,7 +29,7 @@ Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs.
 1. Requires a cluster running Kubernetes 1.2+.  
 2. `kubectl` client 1.3+ is installed.  
 3. [ThirdPartyResource](http://kubernetes.io/docs/api-reference/extensions/v1beta1/definitions/#_v1beta1_thirdpartyresource) feature should be enabled in Kubernetes cluster.  
-  1. **How to check ThirdPartyResource is enabled**
+  * **How to check ThirdPartyResource is enabled**
     1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.  
     2. Check that kind `ThirdPartyResource` exists in response:
     
@@ -80,7 +80,7 @@ Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs.
     experimental: true
 ```
 
-*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 serivces for sync with `Linkerd` and `Namerd API`:*  
+*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 services for sync with `Linkerd` and `Namerd API`:*  
 
 ```yaml
 apiVersion: v1
