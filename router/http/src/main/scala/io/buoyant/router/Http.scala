@@ -56,23 +56,11 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       params: Stack.Params = this.params
     ): Router = copy(pathStack, boundStack, client, params)
 
-    protected def dstIdentifier(
-      baseDtab: () => Dtab,
-      id: RoutingFactory.Identifier[Request]
-    ): RoutingFactory.Identifier[Request] = {
-      case req if req.headerMap.contains("l5d-dst-concrete") =>
-        Future {
-          val path = Path.read(req.headerMap("l5d-dst-concrete"))
-          (Dst.Path(path, baseDtab()), req)
-        }
-      case req => id(req)
-    }
-
     protected def newIdentifier(): RoutingFactory.Identifier[Request] = {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
       val param.HttpIdentifier(id) = params[param.HttpIdentifier]
-      dstIdentifier(baseDtab, id(pfx, baseDtab))
+      id(pfx, baseDtab)
     }
   }
 
