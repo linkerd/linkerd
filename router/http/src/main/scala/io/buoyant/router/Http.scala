@@ -1,10 +1,12 @@
 package io.buoyant.router
 
+import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => fhttp, _}
+import com.twitter.util.{Try, Future}
 import io.buoyant.router.Http.param.HttpIdentifier
 import io.buoyant.router.http._
 import java.net.SocketAddress
@@ -54,11 +56,23 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       params: Stack.Params = this.params
     ): Router = copy(pathStack, boundStack, client, params)
 
+    protected def dstIdentifier(
+      baseDtab: () => Dtab,
+      id: RoutingFactory.Identifier[Request]
+    ): RoutingFactory.Identifier[Request] = {
+      case req if req.headerMap.contains("l5d-dst-concrete") =>
+        Future {
+          val path = Path.read(req.headerMap("l5d-dst-concrete"))
+          (Dst.Path(path, baseDtab()), req)
+        }
+      case req => id(req)
+    }
+
     protected def newIdentifier(): RoutingFactory.Identifier[Request] = {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
       val param.HttpIdentifier(id) = params[param.HttpIdentifier]
-      id(pfx, baseDtab)
+      dstIdentifier(baseDtab, id(pfx, baseDtab))
     }
   }
 
