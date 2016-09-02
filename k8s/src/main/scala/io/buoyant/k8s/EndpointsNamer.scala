@@ -8,6 +8,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
 import io.buoyant.namer.EnumeratingNamer
+
 import scala.collection.mutable
 
 class EndpointsNamer(

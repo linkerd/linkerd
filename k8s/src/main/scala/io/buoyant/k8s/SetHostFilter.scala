@@ -1,8 +1,9 @@
 package io.buoyant.k8s
 
-import com.twitter.finagle.{Service, SimpleFilter}
-import com.twitter.finagle.http.{Request, Response}
 import java.net.InetSocketAddress
+
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Service, SimpleFilter}
 
 class SetHostFilter(hostname: String, port: Int) extends SimpleFilter[Request, Response] {
   def this(addr: InetSocketAddress) = this(addr.getHostString, addr.getPort)

@@ -2,7 +2,7 @@ package io.buoyant.k8s.v1
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.k8s.{ObjectMeta, ObjectReference}
 import io.buoyant.test.{Awaits, Exceptions}

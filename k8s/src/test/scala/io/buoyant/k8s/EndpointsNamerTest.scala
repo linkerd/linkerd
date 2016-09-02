@@ -1,8 +1,8 @@
 package io.buoyant.k8s
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle._
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.Awaits
