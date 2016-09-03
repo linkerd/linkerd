@@ -13,10 +13,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
 
     val run = Var.async[Activity.State[Set[Ns]]](Activity.Pending) { updates =>
-      @volatile var running = true
-
       def cycle(index: Option[String]): Future[Unit] =
-        if (running)
           api.list(s"${root.show}/", blockingIndex = index, datacenter = datacenter, retry = true)
             .transform {
               case Return(result) =>
@@ -31,12 +28,10 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
                 updates() = Activity.Failed(e)
                 cycle(None)
           }
-        else
-          Future.Unit
+
       val pending = cycle(None)
 
       Closable.make { _ =>
-        running = false
         pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
@@ -76,10 +71,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
   def observe(ns: Ns): Activity[Option[VersionedDtab]] = {
     val key = s"${root.show}/$ns"
     val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
-      @volatile var running = true
-
       def cycle(index: Option[String]): Future[Unit] =
-        if (running)
           api.get(key, blockingIndex = index, datacenter = datacenter, retry = true).transform {
             case Return(result) =>
               val version = Buf.Utf8(result.index.get)
@@ -94,12 +86,9 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
               updates() = Activity.Failed(e)
               cycle(None)
           }
-        else
-          Future.Unit
       val pending = cycle(None)
 
       Closable.make { _ =>
-        running = false
         pending.raise(Failure("Consul observation released", Failure.Interrupted))
         Future.Unit
       }
