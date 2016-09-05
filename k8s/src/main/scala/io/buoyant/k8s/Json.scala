@@ -9,7 +9,6 @@ import com.twitter.finagle.util.LoadService
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Return, Throw, Try}
-
 import scala.collection.mutable
 import scala.reflect.classTag
 import scala.util.control.NonFatal
