@@ -10,10 +10,19 @@ routers:
     dst: /$/inet/1.2.3.4/4180
 ```
 
-An interpreter determines how names are resolved.  An interpreter config block
-must contain a `kind` parameter which indicates which interpreter plugin to use.
+An interpreter determines how names are resolved.
+
+<aside class="notice">
+These parameters are available to the identifier regardless of kind. Identifiers may also have kind-specific parameters.
+</aside>
+
+Key | Default Value | Value Description
+--- | ------------- | -----------------
+kind | `default` | `default`, `io.l5d.namerd`, or `io.l5d.fs`
 
 ## Default
+
+kind: `default`
 
 The default interpreter resolves names via the configured
 [`namers`](config.md#namers), with a fallback to the default Finagle
@@ -21,28 +30,33 @@ The default interpreter resolves names via the configured
 
 ## namerd
 
-`io.l5d.namerd`
+kind: `io.l5d.namerd`
 
 The namerd interpreter offloads the responsibilities of name resolution to the
-namerd service.  Any namers configured in this linkerd are not used.  This
-interpreter accepts the following parameters:
+namerd service.  Any namers configured in this linkerd are not used.
 
-* *dst* -- Required.  A finagle path locating the namerd service.
-* *namespace* -- Optional.  This indicates which namerd dtab to use.
-  (default: default)
-*retry* -- Optional.  An object configuring retry backoffs for requests to
- namerd.  (default: (5 seconds, 10 minutes))
-  * *baseSeconds* -- The base number of seconds to wait before retrying.
-  * *maxSeconds* -- The maximum number of seconds to wait before retrying.
+Key | Default Value | Value Description
+--- | ------------- | -----------------
+dst | _required_ | A finagle path locating the namerd service.
+namespace | `default` | The name of the namerd dtab to use.
+retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
+
+### namerd retry
+
+Key | Default Value | Value Description
+--- | ------------- | -----------------
+baseSeconds | 5 seconds | The base number of seconds to wait before retrying.
+maxSeconds | 10 minutes | The maximum number of seconds to wait before retrying.
 
 ## File-System
 
-`io.l5d.fs`
+kind: `io.l5d.fs`
 
 The file-system interpreter resolves names via the configured
 [`namers`](config.md#namers), just like the default interpreter, but also uses
 a dtab read from a file on the local file-system.  The specified file is watched
-for changes so that the dtab may be edited live.  This interpreter accepts the
-following parameters:
+for changes so that the dtab may be edited live.
 
-* *dtabFile* -- Required.  The file-system path to a file containing a dtab.
+Key | Default Value | Value Description
+--- | ------------- | -----------------
+dtabFile | _required_ | The file-system path to a file containing a dtab.
