@@ -1,6 +1,8 @@
 # Introduction
 
->The most minimal linkerd configuration looks something like the following, which forwards all requests on `localhost:8080` to `localhost:8888`
+> A minimal linkerd configuration example, which forwards all requests on `localhost:8080` to `localhost:8888`
+
+
 
 ```yaml
 routers:
@@ -10,15 +12,19 @@ routers:
   - port: 8080
 ```
 
-> Here's a more complex linkerd config example
+linkerd's configuration is controlled via config file, which must be provided
+as a command-line argument. It may be a local file path or `-` to
+indicate that the configuration should be read from the standard input.
+For convenience, the release package includes a default `linkerd.yaml` file in
+the `config/` directory.
+
+### File Format
+
+> A more complex linkerd config example
 
 ```yaml
 admin:
   port: 9990
-
-namers:
-- kind: io.l5d.fs
-  rootDir: disco
 
 routers:
 - protocol: http
@@ -33,29 +39,6 @@ routers:
   - port: 4140
     ip: 0.0.0.0
 
-- protocol: http
-  label: ext-http
-  dstPrefix: /ext/http
-  baseDtab: |
-    /ext/http/1.1/*/* => /#/io.l5d.fs/web;
-  servers:
-  - port: 8080
-    ip: 0.0.0.0
-    tls:
-      certPath: /foo/cert.pem
-      keyPath: /foo/key.pem
-  client:
-    tls:
-      kind: io.l5d.static
-      commonName: foo
-      caCertPath: /foo/caCert.pem
-    loadBalancer:
-      kind: ewma
-      enableProbation: false
-    responseClassifier:
-      kind: io.l5d.retryableRead5XX
-  timeoutMs: 1000
-
 - protocol: thrift
   servers:
   - port: 8081
@@ -66,23 +49,23 @@ routers:
   thriftMethodInDst: false
   baseDtab: |
     /thrift => /#/io.l5d.fs/thrift;
+
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
+
+tracers:
+- kind: io.l5d.zipkin
+  sampleRate: 0.02
 ```
-
-linkerd's configuration is controlled via config file, which must be provided
-as a command-line argument. It may be a local file path or `-` to
-indicate that the configuration should be read from the standard input.
-For convenience, the release package includes a default `linkerd.yaml` file in
-the `config/` directory.
-
-### File Format
 
 The configuration may be specified as a JSON or YAML object, as described
 below.  Four top level keys are supported:
 
-* [admin](#admin)
-* [routers](#routers)
-* [namers](#namers)
-* [tracers](#tracers)
+* [Admin](#admin)
+* [Routers](#routers)
+* [Namers](#namers)
+* [Tracers](#tracers)
 
 There are no requirements on field ordering, though it's generally
 good style to start a router with the _protocol_.
@@ -97,14 +80,22 @@ admin:
 
 linkerd supports an administrative interface, both as a web ui and a collection
 of json endpoints. The exposed admin port is configurable via a top-level
-`admin` section:
+`admin` section
 
 * *admin* -- Config section for the admin interface, contains keys:
   * *port* -- Port for the admin interface (default is `9990`)
 
-
 <a name="routers"></a>
 ## Routers
+
+```yaml
+routers:
+- protocol: http
+  servers: ...
+  client: ...
+  interpreter: ...
+  announcers: ...
+```
 
 All configurations must define a **routers** key, the value of which
 must be an array of router configurations. Each router implements RPC
@@ -122,25 +113,42 @@ Each router must be configured as an object with the following params:
 
 * *protocol* -- a protocol name must match one of the loaded configuration plugins (e.g. _http_, _mux_).
   linkerd currently supports the following protocols:
-  * [HTTP/1.1](protocol-http.md), by using the value *http*;
-  * [Thrift](protocol-thrift.md), by using the value *thrift*; and
-  * [Mux](protocol-mux.md) (experimental), by using the value *mux*.
+  * [HTTP/1.1](#http-1-1-protocol), by using the value *http*;
+  * [Thrift](#thrift-protocol), by using the value *thrift*; and
+  * [Mux](#mux-protocol-experimental) (experimental), by using the value *mux*.
 * [basic router params](#basic-router-params) or protocol-specific router params
 * *servers* -- a list of server objects with the following params:
   * [basic server params](#basic-server-params) or protocol-specific server params
 * *client* -- an object containing [basic client params](#basic-client-params)
   or protocol-specific client params
-<a name="interpreter"></a>
 * *interpreter* (optional) -- an
-  [interpreter](interpreter.md) object determining what module will be used to
+  [interpreter](#interpreter) object determining what module will be used to
   process destinations.  (default: default)
   * protocol-specific module params, if any (the _default_ module has none)
-<a name="announcers"></a>
 * *announcers* (optional) -- a list of service discovery
-  [announcers](announcer.md) that servers can announce to.
+  [announcers](#announcers) that servers can announce to.
 
 <a name="basic-router-params"></a>
 ### Basic router parameters
+
+```yaml
+routers:
+- protocol: http
+  label: myPackIce
+  dstPrefix: /walruses/http
+  baseDtab: |
+    /host                => /#/io.l5d.fs;
+    /walruses/http/1.1/* => /host;
+  failFast: false
+  timeoutMs: 10000
+  bindingTimeoutMs: 5000
+  bindingCache:
+    paths: 100
+    trees: 100
+    bounds: 100
+    clients: 100
+  responseClassifier: io.l5d.nonRetryable5XX
+```
 
 * *label* -- The name of the router (in stats and the admin ui). (default: the
   protocol name)
@@ -159,15 +167,26 @@ Each router must be configured as an object with the following params:
   * *trees* -- Optional.  Size of the tree cache.  (default: 100)
   * *bounds* -- Optional.  Size of the bound cache.  (default: 100)
   * *clients* -- Optional.  Size of the client cache.  (default: 10)
-<a name="response_classifier"></a>
 * *responseClassifier* -- Optional. A
-  (sometimes protocol-specific) [response classifier](response_classifier.md)
+  (sometimes protocol-specific) [response classifier](#http-response-classifiers)
   that determines which responses should be considered failures and, of those,
-  which should be considered [retryable](retries.md).
+  which should be considered [retryable](#retries).
   (default: _io.l5d.nonRetryable5XX_)
 
 <a name="basic-server-params"></a>
 ### Basic server parameters
+
+```yaml
+servers:
+- port: 8080
+  ip: 0.0.0.0
+  tls:
+    certPath: /foo/cert.pem
+    keyPath: /foo/key.pem
+  maxConcurrentRequests: 1000
+  announce:
+    - /#/io.l5d.fs/web
+```
 
 * *port* -- The TCP port number. Protocols may provide default
 values. If no default is provided, the port parameter is required.
@@ -182,10 +201,31 @@ local IPv4 interfaces.
 requests the server will accept.  (default: unlimited)
 <a name="announce"></a>
 * *announce* -- Optional.  A list of concrete names to announce using the
-  router's announcers.
+  router's [announcers](#announcers).
 
 <a name="basic-client-params"></a>
 ### Basic client parameters
+
+```yaml
+client:
+  hostConnectionPool:
+    minSize: 0
+    maxSize: 1000
+    idleTimeMs: 10000
+    maxWaiters: 5000
+  tls:
+    kind: io.l5d.noValidation
+    commonName: foo
+    caCertPath: /foo/caCert.pem
+  loadBalancer:
+    kind: ewma
+    enableProbation: false
+  retries:
+    backoff:
+      kind: jittered
+      minMs: 10
+      maxMs: 10000
+```
 
 * *hostConnectionPool* -- Optional.  Configure the number of connections to
 maintain to each destination host.  It must be an object containing keys:
@@ -198,19 +238,22 @@ maintain to each destination host.  It must be an object containing keys:
   * *maxWaiters* -- Optional.  The maximum number of connection requests that
   are queued when the connection concurrency exceeds maxSize.  (default:
   Int.MaxValue)
-<a name="client_tls"></a>
 * *tls* -- Optional.  The router will make requests
   using TLS if this parameter is provided.  It must be a
-  [client TLS](client_tls.md) object.
-<a name="load_balancer"></a>
+  [client TLS](#client-tls) object.
 * *loadBalancer* -- Optional.  A
-  [load balancer](load_balancer.md) object.  (default: p2c)
-<a name="retries"></a>
-* *retries* -- Optional. A [retry policy](retries.md) for all clients created by
+  [load balancer](#load-balancer) object.  (default: p2c)
+* *retries* -- Optional. A [retry policy](#retries) for all clients created by
   this router.
 
-<a name="namers"></a>
+<a name="service-discovery-and-naming"></a>
 ## Service discovery and naming
+
+```yaml
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
+```
 
 linkerd supports a variety of common service discovery backends, including
 ZooKeeper and Consul. linkerd provides abstractions on top of service discovery
@@ -222,13 +265,19 @@ Naming and service discovery are configured via the `namers` section of the
 configuration file.  A namer acts on paths that start with `/#` followed by the
 namer's prefix.
 
-* *namers* -- An array of [namer](namer.md) objects.
+* *namers* -- An array of [namer](#namers) objects.
 
 <a name="tracers"></a>
 ## Tracers
+
+```yaml
+tracers:
+- kind: io.l5d.zipkin
+  sampleRate: 0.02
+```
 
 Requests that are routed by linkerd are also traceable using Finagle's built-in
 tracing instrumentation. Trace data can be exported from a linkerd process by
 configuring tracers via a top-level `tracers` section:
 
-* *tracers* -- An array of [tracer](tracer.md) objects.
+* *tracers* -- An array of [tracer](#tracers10) objects.
