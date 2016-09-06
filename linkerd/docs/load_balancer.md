@@ -16,10 +16,10 @@ routers:
 These parameters are available to the loadbalancer regardless of kind. The loadbalancer may also have kind-specific parameters.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | `p2c` | `p2c`, `ewma`, `aperture`, or `heap`
-enableProbation | `true` | If `true`, endpoints are eagerly evicted from service discovery. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28)
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `p2c` | Either `p2c`, `ewma`, `aperture`, or `heap`.
+enableProbation | `true` | If `true`, endpoints are eagerly evicted from service discovery. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28).
 
 [p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded
 [ewma]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma
@@ -31,11 +31,11 @@ enableProbation | `true` | If `true`, endpoints are eagerly evicted from service
 kind: `p2c`
 
 <aside class="success">
-  Learn more about p2c and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded">finagle's documentation</a>
+  Learn more about p2c and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded">Finagle's documentation</a>.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
 
 ## Power of Two Choices: Peak EWMA
@@ -43,11 +43,11 @@ maxEffort | `5` | The number of times a load balancer can retry if the previousl
 kind: `ewma`
 
 <aside class="success">
-  Learn more about ewma and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma">finagle's documentation</a>
+  Learn more about ewma and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma">Finagle's documentation</a>.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
 decayTimeMs | 10 seconds | The window of latency observations.
 
@@ -56,21 +56,21 @@ decayTimeMs | 10 seconds | The window of latency observations.
 kind: `aperture`
 
 <aside class="success">
-  Learn more about aperture and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded">finagle's documentation</a>
+  Learn more about aperture and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded">Finagle's documentation</a>.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
-smoothWin | 5 seconds |  the window of concurrent load observation
-lowLoad | `0.5` | The lower bound of the load band used to adjust an aperture
-highLoad | `2` | The upper bound of the load band used to adjust an aperture
-minAperture | `1` | The minimum size of the aperture
+smoothWin | 5 seconds |  The window of concurrent load observation.
+lowLoad | `0.5` | The lower bound of the load band used to adjust an aperture.
+highLoad | `2` | The upper bound of the load band used to adjust an aperture.
+minAperture | `1` | The minimum size of the aperture.
 
 ## Heap: Least Loaded
 
 kind: `heap`
 
 <aside class="success">
-  Learn more about heap and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded">finagle's documentation</a>
+  Learn more about heap and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded">Finagle's documentation</a>
 </aside>

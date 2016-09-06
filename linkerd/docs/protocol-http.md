@@ -42,17 +42,17 @@ The HTTP/1.1 protocol is used when the *protocol* option of the
 [routers configuration block](#router-parameters) is set to *http*.
 This protocol has additional configuration options on the *routers* block.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers)
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
-identifier | `io.l5d.methodAndHost` | see [Http-specific identifiers](#http-1-1-identifiers)
-maxChunkKB | 8KB | The maximum size of an HTTP chunk
-maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message
-maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line
-maxRequestKB | 5MB | The maximum size of a non-chunked HTTP request payload
-maxResponseKB | 5MB | The maximum size of a non-chunked HTTP response payload
-compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9)
+identifier | `io.l5d.methodAndHost` | See [Http-specific identifiers](#http-1-1-identifiers).
+maxChunkKB | 8KB | The maximum size of an HTTP chunk.
+maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
+maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
+maxRequestKB | 5MB | The maximum size of a non-chunked HTTP request payload.
+maxResponseKB | 5MB | The maximum size of a non-chunked HTTP response payload.
+compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
 
 <aside class="warning">
 These memory constraints are selected to allow reliable
@@ -68,9 +68,9 @@ request; these names are then matched against the dtab. (See the [linkerd
 routing overview](https://linkerd.io/doc/latest/routing/) for more details on
 this.) All HTTP/1.1 identifiers have a `kind`.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | _required_ | either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier)
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier).
 
 <a name="method-and-host-identifier"></a>
 ### Method and Host Identifier
@@ -90,8 +90,8 @@ identifier:
   httpUriInDst: true
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 httpUriInDst | `false` | If `true` http paths are appended to destinations. This allows a form of path-prefix routing. This option is **not** recommended as performance implications may be severe; Use the [path identifier](#path-identifier) instead.
 
 
@@ -109,9 +109,9 @@ httpUriInDst | `false` | If `true` http paths are appended to destinations. This
   / dstPrefix / "1.0" / method [/ uri* ]
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-dstPrefix | `http` | The `dstPrefix` as set in the routers block
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
 host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/BuoyantIO/linkerd/issues/106). Not used in HTTP/1.0.
 uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
@@ -144,8 +144,8 @@ routers:
     port: 5000
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 segments | `1` | Number of segments from the path that are appended to destinations.
 consume | `false` | Whether to additionally strip the consumed segments from the HTTP request proxied to the final destination service. This only affects the request sent to the destination service; it does not affect identification or routing.
 
@@ -157,8 +157,8 @@ consume | `false` | Whether to additionally strip the consumed segments from the
   / dstPrefix [/ *urlPath ]
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
 
@@ -183,9 +183,9 @@ netty4 implementation on both the client and server:
 An _engine_ may be configured on HTTP clients and servers, causing an
 alternate HTTP implementation to be used.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | `netty3` | either `netty3` or `netty4` (`netty4` will become default in an upcoming release)
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `netty3` | Either `netty3` or `netty4` (`netty4` will become default in an upcoming release).
 
 <a name="http-headers"></a>
 ## HTTP Headers
@@ -201,9 +201,9 @@ for all linkerd features to work.
 
 Header | Description
 ------ | -----------
-`dtab-local` | deprecated. Use `l5d-ctx-dtab` and `l5d-dtab`.
-`l5d-ctx-deadline` | describes time bounds within which a request is expected to be satisfied. Currently deadlines are only advisory and do not factor into request cancellation.
-`l5d-ctx-trace` | encodes Zipkin-style trace IDs and flags so that trace annotations emitted by linkerd may be correlated.
+`dtab-local` | Deprecated. Use `l5d-ctx-dtab` and `l5d-dtab`.
+`l5d-ctx-deadline` | Describes time bounds within which a request is expected to be satisfied. Currently deadlines are only advisory and do not factor into request cancellation.
+`l5d-ctx-trace` | Encodes Zipkin-style trace IDs and flags so that trace annotations emitted by linkerd may be correlated.
 
 <aside class="warning">
 Edge services should take care to ensure these headers are not set
@@ -222,8 +222,8 @@ _User headers_ enable user-overrides.
 
 Header | Description
 ------ | -----------
-`l5d-dtab` | a client-specified delegation override
-`l5d-sample` | a client-specified trace sample rate override
+`l5d-dtab` | A client-specified delegation override.
+`l5d-sample` | A client-specified trace sample rate override.
 
 <aside class="notice">
 If linkerd processes incoming requests for applications
@@ -245,10 +245,10 @@ The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | the logical name of the request as identified by linkerd
-`l5d-dst-concrete` | the concrete client name after delegation
-`l5d-dst-residual` | an optional residual path remaining after delegation
-`l5d-reqid` | a token that may be used to correlate requests in a callgraph across services and linkerd instances
+`l5d-dst-logical` | The logical name of the request as identified by linkerd.
+`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-residual` | An optional residual path remaining after delegation.
+`l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
 Applications are not required to forward these headers on downstream
 requests.
@@ -265,7 +265,7 @@ The informational headers linkerd emits on outgoing responses.
 
 Header | Description
 ------ | -----------
-`l5d-err` | indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
 
 Applications are not required to forward these headers on upstream
 responses.

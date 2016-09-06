@@ -19,14 +19,14 @@ protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
 
 ## Mux Router Parameters
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-dstPrefix | `mux` | A path prefix used in `baseDtab`
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `mux` | A path prefix used in `baseDtab`.
 
 ## Mux Server Parameters
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 port | `4141` | The TCP port number.
 
 

@@ -16,9 +16,9 @@ An interpreter determines how names are resolved.
 These parameters are available to the identifier regardless of kind. Identifiers may also have kind-specific parameters.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | `default` | `default`, `io.l5d.namerd`, or `io.l5d.fs`
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `default` | Either `default`, `io.l5d.namerd`, or `io.l5d.fs`.
 
 ## Default
 
@@ -35,16 +35,16 @@ kind: `io.l5d.namerd`
 The namerd interpreter offloads the responsibilities of name resolution to the
 namerd service.  Any namers configured in this linkerd are not used.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-dst | _required_ | A finagle path locating the namerd service.
+Key | Default Value | Description
+--- | ------------- | -----------
+dst | _required_ | A Finagle path locating the namerd service.
 namespace | `default` | The name of the namerd dtab to use.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
 
 ### namerd retry
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 baseSeconds | 5 seconds | The base number of seconds to wait before retrying.
 maxSeconds | 10 minutes | The maximum number of seconds to wait before retrying.
 
@@ -57,6 +57,6 @@ The file-system interpreter resolves names via the configured
 a dtab read from a file on the local file-system.  The specified file is watched
 for changes so that the dtab may be edited live.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 dtabFile | _required_ | The file-system path to a file containing a dtab.

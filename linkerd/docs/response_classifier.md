@@ -17,9 +17,9 @@ of these responses may be [retried](#retries).
 These parameters are available to the classifier regardless of kind. Classifiers may also have kind-specific parameters.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | `io.l5d.nonRetryable5XX` | `io.l5d.nonRetryable5XX`, `io.l5d.retryableRead5XX`, or `io.l5d.retryableIdempotent5XX`
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `io.l5d.nonRetryable5XX` | Either `io.l5d.nonRetryable5XX`, `io.l5d.retryableRead5XX`, or `io.l5d.retryableIdempotent5XX`.
 
 
 ## Non-Retryable 5XX

@@ -51,12 +51,12 @@ the `config/` directory.
 
 The configuration may be specified as a JSON or YAML object. There are no requirements on field ordering, though it's generally good style to start a router with the _protocol_. Four top level keys are supported:
 
-Key | Required? | Value Description
---- | --------- | -----------------
-[Admin](#administrative-interface) | no | Configures linkerd's administrative interface.
-[Routers](#routers) | yes | Configures linkerd's RPC support for various protocols.
-[Namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
-[Tracers](#tracers) | no | Configures linkerd's request instrumentation.
+Key | Required | Description
+--- | -------- | -----------
+[admin](#administrative-interface) | no | Configures linkerd's administrative interface.
+[routers](#routers) | yes | Configures linkerd's RPC support for various protocols.
+[namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
+[tracers](#tracers) | no | Configures linkerd's request instrumentation.
 
 
 ### Administrative interface
@@ -70,9 +70,9 @@ linkerd supports an administrative interface, both as a web ui and a collection
 of json endpoints. The exposed admin port is configurable via a top-level
 `admin` section.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-port | `9990` | Port for the admin interface
+Key | Default Value | Description
+--- | ------------- | -----------
+port | `9990` | Port for the admin interface.
 
 ### Routers
 

@@ -29,27 +29,27 @@ combinations for a specific thrift service.
 
 ## Thrift Router Parameters
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-dstPrefix | `thrift` | A path prefix used in `baseDtab`
-thriftMethodInDst | `false` | if `true`, thrift method names are appended to destinations for outgoing requests.
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `thrift` | A path prefix used in `baseDtab`.
+thriftMethodInDst | `false` | If `true`, thrift method names are appended to destinations for outgoing requests.
 
 
 ## Thrift Server Parameters
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 port | `4114` | The TCP port number.
-thriftFramed | `true` | if `true`, a framed thrift transport is used for incoming requests; otherwise, a buffered transport is used. Typically this setting matches the router's `thriftFramed` param.
-thriftProtocol | `binary` | either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's client `thriftProtocol` param.
+thriftFramed | `true` | If `true`, a framed thrift transport is used for incoming requests; otherwise, a buffered transport is used. Typically this setting matches the router's `thriftFramed` param.
+thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's client `thriftProtocol` param.
 
 ## Thrift Client Parameters
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-thriftFramed | `true` | if `true`, a framed thrift transport is used for outgoing requests; otherwise, a buffered transport is used. Typically this setting matches the router's servers' `thriftFramed` param.
-thriftProtocol | `binary` | either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's servers' `thriftProtocol` param.
-attemptTTwitterUpgrade | `true` | controls whether thrift protocol upgrade should be attempted.
+Key | Default Value | Description
+--- | ------------- | -----------
+thriftFramed | `true` | If `true`, a framed thrift transport is used for outgoing requests; otherwise, a buffered transport is used. Typically this setting matches the router's servers' `thriftFramed` param.
+thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's servers' `thriftProtocol` param.
+attemptTTwitterUpgrade | `true` | Controls whether thrift protocol upgrade should be attempted.
 
 
 

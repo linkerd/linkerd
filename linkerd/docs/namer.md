@@ -13,10 +13,10 @@ A namer binds a [concrete name to a physical address](http://twitter.github.io/f
 These parameters are available to the namer regardless of kind. Namers may also have kind-specific parameters.
 </aside>
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-kind | _required_ | `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`
-prefix | namer dependent | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`.
+prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
 
 <a name="fs"></a>
@@ -79,9 +79,9 @@ addresses.
 linkerd watches all files in this directory, so files can be added, removed, or
 updated, and linkerd will pick up the changes automatically.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.fs` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.fs` | Resolves names with `/#/<prefix>`.
 rootDir | _required_ | the directory containing name files as described above.
 
 ### File-based Path Parameters
@@ -92,10 +92,10 @@ rootDir | _required_ | the directory containing name files as described above.
 /#/<prefix>/<fileName>
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
+Key | Required | Description
+--- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the fs namer.
-fileName | yes | The file in `rootDir` to use when resolving this request
+fileName | yes | The file in `rootDir` to use when resolving this request.
 
 <a name="serversets"></a>
 ## ZooKeeper ServerSets service discovery
@@ -125,9 +125,9 @@ baseDtab: |
 linkerd provides support for [ZooKeeper
 ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.serversets` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.serversets` | Resolves names with `/#/<prefix>`.
 zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
 
 ### ServerSets Path Parameters
@@ -138,12 +138,12 @@ zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` 
 /#/<prefix>/<zkHosts>/<zkPath>[:<endpoint>]
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
-prefix | yes | Tells linkerd to resolve the request path using the serversets namer
-zkHosts | yes | The ZooKeeper host to use for this request
-zkPath | yes | The ZooKeeper path to use for this request
-endpoint | no | The ZooKeeper endpoint to use for this request
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the serversets namer.
+zkHosts | yes | The ZooKeeper host to use for this request.
+zkPath | yes | The ZooKeeper path to use for this request.
+endpoint | no | The ZooKeeper endpoint to use for this request.
 
 <a name="consul"></a>
 ## Consul service discovery (experimental)
@@ -173,15 +173,15 @@ baseDtab: |
 
 linker provides support for service discovery via [Consul](https://www.consul.io/).
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
-includeTag | `false` | if `true`, read a Consul tag from the path.
+includeTag | `false` | If `true`, read a Consul tag from the path.
 token | no authentication | The auth token to use when making API calls.
-setHost | `false` | if `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul
+setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 
 ### Consul Path Parameters
 
@@ -197,12 +197,12 @@ setHost | `false` | if `true`, HTTP requests resolved by Consul will have their 
 /#/<prefix>/<datacenter>/<tag>/<serviceName>
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
-prefix | yes | Tells linkerd to resolve the request path using the consul namer
-datacenter | yes | The Consul datacenter to use for this request
-tag | yes if includeTag is `true` | The Consul tag to use for this request
-serviceName | yes | The Consul service name to use for this request
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the consul namer.
+datacenter | yes | The Consul datacenter to use for this request.
+tag | yes if includeTag is `true` | The Consul tag to use for this request.
+serviceName | yes | The Consul service name to use for this request.
 
 
 <a name="k8s"></a>
@@ -232,15 +232,17 @@ baseDtab: |
 linkerd provides support for service discovery via
 [Kubernetes](https://k8s.io/).
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
 
+<aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)["https://linkerd.io/doc/latest/k8s/"] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
 
 ### K8s Path Parameters
 
@@ -250,12 +252,12 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 /#/<prefix>/<namespace>/<port-name>/<svc-name>
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
-prefix | yes | Tells linkerd to resolve the request path using the k8s namer
-namespace | yes | the Kubernetes namespace
-port-name | yes | the port name
-svc-name | yes | the name of the service
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
+namespace | yes | The Kubernetes namespace.
+port-name | yes | The port name.
+svc-name | yes | The name of the service.
 
 
 <a name="marathon"></a>
@@ -289,14 +291,14 @@ baseDtab: |
 linkerd provides support for service discovery via
 [Marathon](https://mesosphere.github.io/marathon/).
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
-host | `marathon.mesos` | the Marathon master host.
-port | `80` | the Marathon master port.
-uriPrefix | none | the Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
-ttlMs | `500` | the polling timeout in milliseconds against the marathon API.
+host | `marathon.mesos` | The Marathon master host.
+port | `80` | The Marathon master port.
+uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
+ttlMs | `500` | The polling timeout in milliseconds against the marathon API.
 
 ### Marathon Path Parameters
 
@@ -306,9 +308,9 @@ ttlMs | `500` | the polling timeout in milliseconds against the marathon API.
 /#/<prefix>/<appId>
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
-prefix | yes | Tells linkerd to resolve the request path using the marathon namer
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 appId | yes | The app id of a marathon application. This id can be multiple path segments long. For example, the app with id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app with id "/appgroup/usergroup/users" can be reached with `/#/io.l5d.marathon/appgroup/usergroup/users`.
 
 
@@ -322,9 +324,9 @@ kind: `io.l5d.zkLeader`
 
 A namer backed by ZooKeeper leader election.
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-prefix | `io.l5d.zkLeader` | Resolves names with `/#/<prefix>`
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.zkLeader` | Resolves names with `/#/<prefix>`.
 zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
 
 ### ZK Leader Path Parameters
@@ -335,8 +337,8 @@ zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` 
 /#/<prefix>/<zkPath>
 ```
 
-Key | Required? | Value Description
---- | --------- | -----------------
-prefix | yes | Tells linkerd to resolve the request path using the marathon namer
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 

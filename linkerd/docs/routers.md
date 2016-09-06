@@ -28,18 +28,18 @@ routers:
   responseClassifier: io.l5d.nonRetryable5XX
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-protocol | _required_ | either "[http](#http-1-1-protocol)", "[thrift](#thrift-protocol)", or "[mux](#mux-protocol-experimental)"
-servers | _required_ | a list of [server objects](#servers)
-announcers | an empty list | a list of service discovery [announcers](#announcers) that servers can announce to.
+Key | Default Value | Description
+--- | ------------- | -----------
+protocol | _required_ | Either [`http`](#http-1-1-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
+servers | _required_ | A list of [server objects](#servers).
+announcers | an empty list | A list of service discovery [announcers](#announcers) that servers can announce to.
 baseDtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
-client | an empty object | an object of [client params](#basic-client-params)
+client | an empty object | An object of [client params](#basic-client-params).
 dstPrefix | protocol dependent | A path prefix to be used on request destinations.
 failFast | `false` | If `true`, connection failures are punished more aggressively. Should not be used with small destination pools.
-interpreter | default interpreter | an [interpreter object](#interpreter) determining what module will be used to process destinations.
+interpreter | default interpreter | An [interpreter object](#interpreter) determining what module will be used to process destinations.
 label | the value of *protocol* | The name of the router (in stats and the admin ui)
 response Classifier | `io.l5d.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
 timeoutMs | no timeout | Per-request timeout in milliseconds.
@@ -57,12 +57,12 @@ timeoutMs | no timeout | Per-request timeout in milliseconds.
     clients: 10
 ```
 
-Key | Default Value | Value Description
+Key | Default Value | Description
 -------------- | -------------- | --------------
-paths | `100` | Size of the path cache in KB
-trees | `100` | Size of the trees cache in KB
-bounds | `100` | Size of the bounds cache in KB
-clients | `10` | Size of the clients cache in KB
+paths | `100` | Max number of paths in the path cache.
+trees | `100` | Max number of trees in the tree cache.
+bounds | `100` | Max number of bounds in the bounds cache.
+clients | `10` | Max number of clients in the clients cache.
 
 <a name="server-parameters"></a>
 ## Server Parameters
@@ -83,13 +83,13 @@ servers:
     - /#/io.l5d.serversets/discovery/prod/web
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 port | protocol dependent | The TCP port number. Protocols may provide default values. If no default is provided, the port parameter is required.
 ip | loopback address | The local IP address. A value like 0.0.0.0 configures the server to listen on all local IPv4 interfaces.
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
-announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers)
+announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
 
 
 <a name="client-parameters"></a>
@@ -117,9 +117,9 @@ client:
       maxMs: 10000
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
-hostConnectionPool | an empty object | see [hostConnectionPool](#host-connection-pool).
+Key | Default Value | Description
+--- | ------------- | -----------
+hostConnectionPool | An empty object | see [hostConnectionPool](#host-connection-pool).
 tls | no tls | The router will make requests using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 loadBalancer | [p2c](#power-of-two-choices-least-loaded) | A [load balancer](#load-balancer) object.
 retries | see [retries](#retries) | A [retry policy](#retries) for all clients created by this router.
@@ -135,8 +135,8 @@ client:
     maxWaiters: 5000
 ```
 
-Key | Default Value | Value Description
---- | ------------- | -----------------
+Key | Default Value | Description
+--- | ------------- | -----------
 minSize | `0` | The minimum number of connections to maintain to each host.
 maxSize | Int.MaxValue | The maximum number of connections to maintain to each host.
 idleTimeMs | forever | The amount of idle time for which a connection is cached in milliseconds.
