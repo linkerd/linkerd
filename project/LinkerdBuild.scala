@@ -12,6 +12,10 @@ object LinkerdBuild extends Base {
   val Bundle = config("bundle") extend Minimal
   val Dcos = config("dcos") extend Bundle
 
+  val dtree = projectDir("dtree")
+    .withTwitterLib(Deps.finagle("core"))
+    .withTests()
+
   val consul = projectDir("consul")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
