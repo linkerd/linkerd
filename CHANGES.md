@@ -2,7 +2,8 @@
 
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
-  * Add `useHealthCheck` parameter to Consul Namer #589
+* Add `useHealthCheck` parameter to Consul Namer #589
+* Configured namers are now available to other plugins
 
 ## 0.7.4
 

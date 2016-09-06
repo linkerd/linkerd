@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, DefaultStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
@@ -135,6 +136,8 @@ object Linker {
         )
         namer.prefix -> namer.newNamer(namerParams)
       }
+
+      NameInterpreter.setGlobal(ConfiguredNamersInterpreter(namersByPrefix))
 
       // Router labels must not conflict
       for ((label, rts) <- routers.groupBy(_.label))
