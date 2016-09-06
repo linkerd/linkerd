@@ -3,7 +3,8 @@ package io.buoyant.namerd.storage.consul
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Filter, Http, Path}
+import com.twitter.finagle.{Failure, Filter, Http, Path}
+import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
 import io.buoyant.consul.v1.KvApi
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter}
@@ -31,8 +32,12 @@ case class ConsulConfig(
       case None => Filter.identity[Request, Response]
     }
     val filters = new SetHostFilter(serviceHost, servicePort) andThen authFilter
+    val interruptionMonitor = Monitor.mk {
+      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+    }
 
     val service = Http.client
+      .withMonitor(interruptionMonitor)
       .withTracer(NullTracer)
       .filtered(filters)
       .newService(s"/$$/inet/$serviceHost/$servicePort")

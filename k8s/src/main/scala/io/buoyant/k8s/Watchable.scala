@@ -1,7 +1,5 @@
 package io.buoyant.k8s
 
-import java.util.concurrent.atomic.AtomicReference
-
 import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle.http
 import com.twitter.finagle.param.HighResTimer
@@ -11,6 +9,7 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
 import com.twitter.util._
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].

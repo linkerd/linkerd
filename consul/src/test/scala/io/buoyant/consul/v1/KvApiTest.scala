@@ -1,8 +1,7 @@
 package io.buoyant.consul.v1
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Failure, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, Exceptions}
@@ -210,6 +209,19 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     val result = await(KvApi(failureService).list("/some/path/", retry = true))
     assert(result.index == Some("4"))
     assert(result.value == List("foo/bar/", "foo/baz/"))
+  }
+
+  test("doesn't retry on Failure.Interrupted with retry = true") {
+    val failureService = Service.mk[Request, Response] { _ =>
+      Future.exception(
+        Failure("consul observation released", Failure.Interrupted)
+      )
+    }
+    val api = KvApi(failureService)
+    val result = api.list("/some/path/", retry = true)
+    assertThrows[Failure](
+      await(result)
+    )
   }
 
   test("reports invalid datacenter as an unexpected response") {
