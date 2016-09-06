@@ -343,8 +343,8 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
       case _ => bindingCache.get(NsPath(ns, path)).activity
     }
 
-  case class NsPath(ns: Ns, path: Path)
-  case class NameActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
+  private[this] case class NsPath(ns: Ns, path: Path)
+  private[this] case class NameActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
 
   private[this] val bindingCache = CacheBuilder.newBuilder()
     .maximumSize(bindingCacheSize)
@@ -382,7 +382,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     }
   }
 
-  case class AddrActClose(activity: Activity[Addr], closable: Closable)
+  private[this] case class AddrActClose(activity: Activity[Addr], closable: Closable)
 
   private[this] val addrCache = CacheBuilder.newBuilder()
     .maximumSize(addrCacheSize)
