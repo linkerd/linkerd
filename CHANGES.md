@@ -2,6 +2,7 @@
 
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
+* Configured namers are now available to other plugins
 
 ## 0.7.4
 
