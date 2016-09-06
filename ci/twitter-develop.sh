@@ -87,6 +87,7 @@ SCALA_VERSION=$ORIG_SCALA_VERSION
 
 cd $TMP_DIR/finagle
 build finagle \
+      finagle-benchmark/publishLocal \
       finagle-core/publishLocal \
       finagle-netty4/publishLocal \
       finagle-netty4-http/publishLocal \
@@ -96,11 +97,11 @@ build finagle \
       finagle-ostrich4/publishLocal \
       finagle-thrift/publishLocal \
       finagle-thriftmux/publishLocal \
+      finagle-toggle/publishLocal \
       finagle-stats/publishLocal \
       finagle-serversets/publishLocal \
+      finagle-zipkin/publishLocal
       finagle-zipkin-core/publishLocal \
-      finagle-zipkin/publishLocal \
-      finagle-benchmark/publishLocal
 
 cd $TMP_DIR/twitter-server
 build twitter-server publishLocal

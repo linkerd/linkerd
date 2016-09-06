@@ -125,7 +125,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
   test("strips connection header") {
     @volatile var connection: Option[Option[String]] = None
-    val srv = Downstream.mk("srv") { req =>
+    val srv = Downstream.mk("stripped") { req =>
       connection = Some(req.headerMap.get("Connection"))
       Response()
     }
@@ -313,5 +313,35 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       await(router.close())
       await(downstream.server.close())
     }
+  }
+
+  test("simple non-keepalive request with `Connection: close`") {
+    val server = FinagleHttp.serve(new InetSocketAddress(0), ServiceFactory.const(
+      Service.mk[Request, Response] { req =>
+        Future.value(req.response)
+      }
+    ))
+    val addr = server.boundAddress.asInstanceOf[InetSocketAddress]
+    val client = FinagleHttp.newService(s"/$$/inet/127.1/${addr.getPort}")
+    try {
+      val req = Request()
+      req.headerMap.set("Connection", "close")
+      assert(await(client(req)).status == Status.Ok)
+    } finally await(client.close().join(server.close()).unit)
+  }
+
+  test("simple HTTP/1.0 request") {
+    val server = FinagleHttp.serve(new InetSocketAddress(0), ServiceFactory.const(
+      Service.mk[Request, Response] { req =>
+        Future.value(req.response)
+      }
+    ))
+    val addr = server.boundAddress.asInstanceOf[InetSocketAddress]
+    val client = FinagleHttp.newService(s"/$$/inet/127.1/${addr.getPort}")
+    try {
+      val req = Request()
+      req.version = Version.Http10
+      assert(await(client(req)).status == Status.Ok)
+    } finally await(client.close().join(server.close()).unit)
   }
 }

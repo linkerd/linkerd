@@ -1,8 +1,8 @@
 package com.twitter.finagle.buoyant.linkerd
 
-import com.twitter.finagle.{Deadline => FDeadline, Dtab => FDtab, Status => _, _}
+import com.twitter.finagle.{Dtab => FDtab, Status => _, _}
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
-import com.twitter.finagle.context.Contexts
+import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
 import com.twitter.io.Charsets
