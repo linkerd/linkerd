@@ -25,7 +25,7 @@ kind | `default` | Either `default`, `io.l5d.namerd`, or `io.l5d.fs`.
 kind: `default`
 
 The default interpreter resolves names via the configured
-[`namers`](config.md#namers), with a fallback to the default Finagle
+[`namers`](#namers), with a fallback to the default Finagle
 `Namer.Global` that handles paths of the form `/$/`.
 
 ## namerd
@@ -53,7 +53,7 @@ maxSeconds | 10 minutes | The maximum number of seconds to wait before retrying.
 kind: `io.l5d.fs`
 
 The file-system interpreter resolves names via the configured
-[`namers`](config.md#namers), just like the default interpreter, but also uses
+[`namers`](#namers), just like the default interpreter, but also uses
 a dtab read from a file on the local file-system.  The specified file is watched
 for changes so that the dtab may be edited live.
 
