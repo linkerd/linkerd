@@ -35,7 +35,8 @@ private[consul] object SvcAddr {
         retry = true
       ).map(indexedToAddresses)
 
-    // Start by fetching the service immediately, and then
+    // Start by fetching the service immediately, and then long-poll
+    // the service for updates.
     Var.async[Addr](Addr.Pending) { state =>
       @volatile var stopped: Boolean = false
 
