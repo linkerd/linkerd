@@ -89,6 +89,7 @@ case class HttpServerConfig(
   }
 }
 
+// Cribbed from https://gist.github.com/Aivean/6bb90e3942f3bf966608
 class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpIdentifierConfig]]] {
   override def deserialize(p: JsonParser, ctxt: DeserializationContext): Option[Seq[HttpIdentifierConfig]] = {
     val codec = p.getCodec
