@@ -9,6 +9,9 @@ package object v1 {
 
   trait ConsulApiError extends Throwable {
     def rsp: http.Response
+
+    override def toString: String =
+      s"${this.getClass.getSimpleName}(${rsp.statusCode}: ${rsp.contentString})"
   }
   case class UnexpectedResponse(rsp: http.Response) extends ConsulApiError
   case class NotFound(rsp: http.Response) extends ConsulApiError
