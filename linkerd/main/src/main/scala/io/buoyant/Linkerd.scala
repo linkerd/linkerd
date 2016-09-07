@@ -1,11 +1,12 @@
 package io.buoyant
 
-import com.twitter.util.Await
-import io.buoyant.admin.{App, AdminInitializer}
+import com.twitter.util.{Await, Duration}
+import io.buoyant.admin.{AdminInitializer, App}
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
+
 import scala.io.Source
 
 /**
@@ -17,12 +18,16 @@ import scala.io.Source
  */
 object Linkerd extends App {
 
+  protected[this] val graceFlag = flag("l5d.grace", 10, "Grace shutdown time (secs)")
+
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
 
     args match {
       case Array(path) =>
+        sys.addShutdownHook(closeAndWait)
+
         val linkerConfig = loadLinker(path)
         val linker = linkerConfig.mk
 
@@ -58,6 +63,7 @@ object Linkerd extends App {
             listening
           }
         }
+        log.info("linkerd initialized.")
         Await.all(routers ++ telemeters: _*)
 
       case _ => exitOnError("usage: linkerd path/to/config")
@@ -75,5 +81,11 @@ object Linkerd extends App {
     }
 
     Linker.parse(configText)
+  }
+
+  private def closeAndWait(): Unit = {
+    println("Closing all ...")
+    Await.result(close(Duration.fromSeconds(graceFlag())))
+    println("All closed.")
   }
 }
