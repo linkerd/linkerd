@@ -2,8 +2,7 @@ package io.buoyant.namer.consul
 
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.consul._
-import io.buoyant.consul.v1.{Indexed, ServiceNode, UnexpectedResponse}
+import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -17,7 +16,7 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
  * Contains all cached serviceNodes responses for a particular serviceName
  * in a particular datacenter
  */
-private[consul] case class SvcCache(
+private[consul] class SvcCache(
   consulApi: v1.ConsulApi,
   datacenter: String,
   key: SvcKey,
@@ -34,13 +33,13 @@ private[consul] case class SvcCache(
       index = idx
   }
 
-  private[this] val indexed: Indexed[Seq[ServiceNode]] => Seq[ServiceNode] = {
-    case Indexed(nodes, idx) =>
+  private[this] val indexed: v1.Indexed[Seq[v1.ServiceNode]] => Seq[v1.ServiceNode] = {
+    case v1.Indexed(nodes, idx) =>
       setIndex(idx)
       nodes
   }
 
-  private[this] def mkRequest(): Future[Seq[ServiceNode]] =
+  private[this] def mkRequest(): Future[Seq[v1.ServiceNode]] =
     consulApi.serviceNodes(
       key.name,
       datacenter = Some(datacenter),
@@ -56,7 +55,7 @@ private[consul] case class SvcCache(
   private[this] def run(): Future[Unit] =
     mkRequest().flatMap(update).handle(handleUnexpected)
 
-  def update(nodes: Seq[ServiceNode]): Future[Unit] = {
+  def update(nodes: Seq[v1.ServiceNode]): Future[Unit] = {
     val addr = nodes.flatMap(serviceNodeToAddr) match {
       case addrs if addrs.isEmpty => Addr.Neg
       case addrs =>
@@ -80,7 +79,7 @@ private[consul] case class SvcCache(
   /**
    * Prefer service IPs to node IPs. Invalid addresses are ignored.
    */
-  private[this] val serviceNodeToAddr: ServiceNode => Traversable[Address] = { n =>
+  private[this] val serviceNodeToAddr: v1.ServiceNode => Traversable[Address] = { n =>
     (n.Address, n.ServiceAddress, n.ServicePort) match {
       case (_, Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
       case (Some(ip), _, Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption

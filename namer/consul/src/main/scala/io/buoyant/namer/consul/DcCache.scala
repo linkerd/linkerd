@@ -2,9 +2,7 @@ package io.buoyant.namer.consul
 
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.consul._
-import io.buoyant.consul.v1.{Indexed, ServiceNode, UnexpectedResponse}
-import io.buoyant.namer.Metadata
+import io.buoyant.consul.v1
 
 /**
  * Contains all cached serviceMap responses and the mapping of names
@@ -28,8 +26,8 @@ private[consul] class DcCache(
       index = idx
   }
 
-  private[this] val indexed: Indexed[Map[String, Seq[String]]] => Set[SvcKey] = {
-    case Indexed(services, idx) =>
+  private[this] val indexed: v1.Indexed[Map[String, Seq[String]]] => Set[SvcKey] = {
+    case v1.Indexed(services, idx) =>
       setIndex(idx)
       services.flatMap {
         case (svcName, tags) =>
@@ -86,9 +84,9 @@ private[consul] class DcCache(
   }
 
   private[this] def mkSvc(svcKey: SvcKey): SvcCache =
-    SvcCache(consulApi, name, svcKey, domain)
+    new SvcCache(consulApi, name, svcKey, domain)
 
-  val running: Future[Unit] =
+  private[this] val running: Future[Unit] =
     mkRequest().flatMap { svcKeys =>
       val services = svcKeys.map { k => k -> mkSvc(k) }.toMap
       synchronized {
@@ -96,7 +94,7 @@ private[consul] class DcCache(
       }
       mkRequest().flatMap(update)
     }.handle {
-      case e: UnexpectedResponse => activity() = Activity.Ok(Map.empty)
+      case e: v1.UnexpectedResponse => activity() = Activity.Ok(Map.empty)
       case e: Throwable => activity() = Activity.Failed(e)
     }
 
