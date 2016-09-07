@@ -4,6 +4,9 @@
   retryable when it has a chunked request body.
 * Add `useHealthCheck` parameter to Consul Namer #589
 * Configured namers are now available to other plugins
+* `enableProbation` is now disabled by default on clients. It leads to
+  unexpected behavior in environments that reuse IP:PORT pairs across
+  services in a close time proximity.
 
 ## 0.7.4
 
