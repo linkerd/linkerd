@@ -8,6 +8,7 @@ import com.twitter.util._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 import org.scalatest.exceptions.TestFailedException
+import scala.util.control.NoStackTrace
 
 class EndpointsNamerTest extends FunSuite with Awaits {
 
@@ -89,9 +90,8 @@ class EndpointsNamerTest extends FunSuite with Awaits {
   test("retries initial failures") {
     Time.withCurrentTimeFrozen { time =>
       val _ = new Fixtures {
-        val e = new Exception()
         assert(state == Activity.Pending)
-        doInit.setException(e)
+        doInit.setException(new Exception("should be retried") with NoStackTrace)
 
         time.advance(1.millis)
         timer.tick()
