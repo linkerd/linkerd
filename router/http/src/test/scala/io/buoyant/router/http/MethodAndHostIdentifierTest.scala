@@ -14,7 +14,7 @@ class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
     val identifier = MethodAndHostIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
-    assertThrows[IllegalArgumentException] {
+    assertThrows[UnidentifiableRequestException] {
       await(identifier(req))
     }
   }

@@ -26,7 +26,7 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
     val identifier = PathIdentifier(Path.Utf8("http"), 2)
     val req = Request()
     req.uri = "/mysvc?other=stuff"
-    assertThrows[IllegalArgumentException] {
+    assertThrows[UnidentifiableRequestException] {
       await(identifier(req))
     }
   }
