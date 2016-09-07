@@ -6,14 +6,15 @@
 routers:
 - protocol: http
   httpAccessLog: access.log
-  identifier: io.l5d.methodAndHost
+  identifier:
+    kind: io.l5d.methodAndHost
   maxChunkKB: 8KB
   maxHeadersKB: 8KB
   maxInitialLineKB: 4KB
   maxRequestKB: 5MB
   maxResponseKB: 5MB
   servers:
-    port: 5000
+  - port: 5000
 ```
 
 > Below: an example HTTP router config that routes all `POST` requests to 8091
@@ -30,7 +31,7 @@ routers:
     /method/POST => /$/inet/127.1/8091;
     /http/1.1    => /method;
   servers:
-    port: 5000
+  - port: 5000
 ```
 > The baseDtab above is written to work with the
 [`methodAndHost` identifier](#method-and-host-identifier).
@@ -141,7 +142,7 @@ routers:
     segments: 2
     consume: true
   servers:
-    port: 5000
+  - port: 5000
 ```
 
 Key | Default Value | Description
