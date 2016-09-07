@@ -37,7 +37,7 @@ case class MethodAndHostIdentifier(
             (mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)), req)
           )
         case _ =>
-          Future.exception(new IllegalArgumentException(s"${http.Version.Http11} request missing hostname: $req"))
+          Future.exception(UnidentifiableRequestException(req, s"${http.Version.Http11} request missing hostname"))
       }
   }
 

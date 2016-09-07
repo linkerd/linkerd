@@ -22,6 +22,6 @@ case class PathIdentifier(
           (Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local), req)
         )
       case _ =>
-        Future.exception(new IllegalArgumentException(s"not enough segments in path ${req.path}"))
+        Future.exception(UnidentifiableRequestException(req, "not enough segments in path"))
     }
 }

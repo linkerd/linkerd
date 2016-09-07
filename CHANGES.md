@@ -7,6 +7,8 @@
 * `enableProbation` is now disabled by default on clients. It leads to
   unexpected behavior in environments that reuse IP:PORT pairs across
   services in a close time proximity.
+* Allow routers to be configured with a list of identifiers.  If an identifier
+  cannot assign a dest to a request, it falls back to the next one in the list.
 
 ## 0.7.4
 

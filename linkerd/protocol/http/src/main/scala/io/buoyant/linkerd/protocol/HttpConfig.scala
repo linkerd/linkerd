@@ -2,13 +2,17 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.core.{JsonParser, TreeNode}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.Http.{param => hparam}
-import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
+import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.service.Retries
-import io.buoyant.linkerd.protocol.http.{RewriteHostHeader, AccessLogger, ResponseClassifiers}
+import com.twitter.finagle.{Path, Stack}
+import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
+import io.buoyant.router.http.UnidentifiableRequestException
 import io.buoyant.router.{Http, RoutingFactory}
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -85,9 +89,23 @@ case class HttpServerConfig(
   }
 }
 
+class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpIdentifierConfig]]] {
+  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Option[Seq[HttpIdentifierConfig]] = {
+    val codec = p.getCodec
+    codec.readTree[TreeNode](p) match {
+      case n: JsonNode if n.isArray =>
+        import scala.collection.JavaConversions._
+        Some(n.toList.map(codec.treeToValue(_, classOf[HttpIdentifierConfig])))
+      case node => Some(Seq(codec.treeToValue(node, classOf[HttpIdentifierConfig])))
+    }
+  }
+
+  override def getNullValue(ctxt: DeserializationContext): Option[Seq[HttpIdentifierConfig]] = None
+}
+
 case class HttpConfig(
   httpAccessLog: Option[String],
-  identifier: Option[HttpIdentifierConfig],
+  @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -112,9 +130,23 @@ case class HttpConfig(
   override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore
+  private[this] val combinedIdentifier = identifier.map { identifierConfigs =>
+    Http.param.HttpIdentifier { (path, dtab) =>
+      identifierConfigs.map(_.newIdentifier(path, dtab))
+        .reduceLeft { (id0, id1) =>
+          { req =>
+            id0(req).rescue {
+              case e: UnidentifiableRequestException => id1(req)
+            }
+          }
+        }
+    }
+  }
+
+  @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
-    .maybeWith(identifier.map(id => Http.param.HttpIdentifier(id.newIdentifier)))
+    .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
