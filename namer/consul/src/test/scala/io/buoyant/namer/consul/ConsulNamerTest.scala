@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.http.{Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.consul.v1._
@@ -83,19 +84,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None => Future.exception(new UnexpectedResponse(null))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
-      override def serviceNodes(
-        serviceName: String,
-        datacenter: Option[String],
-        tag: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None => Future.exception(new UnexpectedResponse(null))
-        case _ => Future.never //don't respond to blocking index calls
+        case None => Future.exception(new UnexpectedResponse(Response(Status.NotFound)))
+        case _ => Future.never // don't respond to blocking index calls
       }
     }
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))

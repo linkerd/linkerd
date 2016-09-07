@@ -21,7 +21,7 @@ private[consul] class LookupCache(
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
-    watchDc(dcName).map { services =>
+    Dc.watch(dcName).map { services =>
       services.get(svcKey) match {
         case None =>
           log.debug("consul dc %s service %s missing", dcName, svcKey)
@@ -45,23 +45,22 @@ private[consul] class LookupCache(
       }
     } else Activity.value(None)
 
-  protected[this] def watchDc(dc: String): Activity[Map[SvcKey, Var[Addr]]] =
-    domain.flatMap { domain =>
-      Activity(Dc.get(dc, domain).services)
-    }
-
   /**
    * Contains all cached responses from the Consul API
    */
   private[this] object Dc {
-    private[this] val activity: ActUp[Map[String, DcCache]] =
+    type Services = Activity[Map[SvcKey, Var[Addr]]]
+    private[this] val activity: ActUp[Map[String, Services]] =
       Var(Activity.Pending)
+
+    def watch(dc: String): Services =
+      domain.flatMap(get(dc, _))
 
     /**
      * Returns existing datacenter cache with that name
      * or creates a new one
      */
-    def get(name: String, domain: Option[String]): DcCache =
+    private[this] def get(name: String, domain: Option[String]): Services =
       synchronized {
         activity.sample() match {
           case Activity.Ok(snap) => snap.getOrElse(name, mkAndUpdate(snap, name, domain))
@@ -70,11 +69,11 @@ private[consul] class LookupCache(
       }
 
     private[this] def mkAndUpdate(
-      cache: Map[String, DcCache],
+      cache: Map[String, Services],
       name: String,
       domain: Option[String]
-    ): DcCache = {
-      val dc = new DcCache(consulApi, name, domain)
+    ): Services = {
+      val dc = DcServices(consulApi, name, domain)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }
