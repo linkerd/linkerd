@@ -1,5 +1,7 @@
 # Load Balancer
 
+> Example load balancer configuration
+
 ```yaml
 routers:
 - ...
@@ -10,44 +12,65 @@ routers:
       decayTimeMs: 15000
 ```
 
-Specifies a load balancer to use.  It must be an object containing keys:
+<aside class="notice">
+These parameters are available to the loadbalancer regardless of kind. The loadbalancer may also have kind-specific parameters.
+</aside>
 
-  * *kind* -- One of the supported load balancers.
-  * *enableProbation* -- Optional.  Controls whether endpoints are eagerly evicted from
-    service discovery. (default: true)
-    See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28)
-  * Any options specific to the load balancer.
-
-If unspecified, p2c is used. Current load balancers include:
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `p2c` | Either `p2c`, `ewma`, `aperture`, or `heap`.
+enableProbation | `true` | If `true`, endpoints are eagerly evicted from service discovery. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28).
 
 [p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded
 [ewma]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma
 [aperture]: https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded
 [heap]: https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded
 
-## [p2c][p2c]
+## Power of Two Choices: Least Loaded
 
-p2c supports the following options (see [here][p2c] for option semantics and defaults):
+kind: `p2c`
 
-* *maxEffort* -- Optional.
+<aside class="success">
+  Learn more about p2c and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded">Finagle's documentation</a>.
+</aside>
 
-## [ewma][ewma]
+Key | Default Value | Description
+--- | ------------- | -----------
+maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
 
-ewma supports the following options (see [here][ewma] for option semantics and defaults):
+## Power of Two Choices: Peak EWMA
 
-* *maxEffort* -- Optional.
-* *decayTimeMs* -- Optional.
+kind: `ewma`
 
-## [aperture][aperture]
+<aside class="success">
+  Learn more about ewma and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma">Finagle's documentation</a>.
+</aside>
 
-aperture supports the following options (see [here][aperture] for option semantics and defaults):
+Key | Default Value | Description
+--- | ------------- | -----------
+maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
+decayTimeMs | 10 seconds | The window of latency observations.
 
-* *maxEffort* -- Optional.
-* *smoothWindowMs* -- Optional.
-* *lowLoad* -- Optional.
-* *highLoad* -- Optional.
-* *minAperture* -- Optional.
+## Aperture: Least Loaded
 
-## [heap][heap]
+kind: `aperture`
 
-heap does not support any options.
+<aside class="success">
+  Learn more about aperture and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded">Finagle's documentation</a>.
+</aside>
+
+Key | Default Value | Description
+--- | ------------- | -----------
+maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
+smoothWin | 5 seconds |  The window of concurrent load observation.
+lowLoad | `0.5` | The lower bound of the load band used to adjust an aperture.
+highLoad | `2` | The upper bound of the load band used to adjust an aperture.
+minAperture | `1` | The minimum size of the aperture.
+
+## Heap: Least Loaded
+
+kind: `heap`
+
+<aside class="success">
+  Learn more about heap and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded">Finagle's documentation</a>
+</aside>
