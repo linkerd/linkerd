@@ -33,30 +33,40 @@ private[consul] class SvcCache(
       index = idx
   }
 
-  private[this] val indexed: v1.Indexed[Seq[v1.ServiceNode]] => Seq[v1.ServiceNode] = {
-    case v1.Indexed(nodes, idx) =>
-      setIndex(idx)
-      nodes
+  /**
+   * Prefer service IPs to node IPs. Invalid addresses are ignored.
+   */
+  private[this] val serviceNodeToAddr: v1.ServiceNode => Traversable[Address] = { n =>
+    (n.Address, n.ServiceAddress, n.ServicePort) match {
+      case (_, Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
+      case (Some(ip), _, Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
+      case _ => None
+    }
   }
 
-  private[this] def mkRequest(): Future[Seq[v1.ServiceNode]] =
+  private[this] val indexedToAddresses: v1.Indexed[Seq[v1.ServiceNode]] => Set[Address] = {
+    case v1.Indexed(nodes, idx) =>
+      setIndex(idx)
+      nodes.flatMap(serviceNodeToAddr).toSet
+  }
+
+  private[this] def getAddresses(): Future[Set[Address]] =
     consulApi.serviceNodes(
       key.name,
       datacenter = Some(datacenter),
       tag = key.tag,
       blockingIndex = Some(index),
       retry = true
-    ).map(indexed)
+    ).map(indexedToAddresses)
 
-  def clear(): Unit = {
-    updatableAddr() = Addr.Pending
-  }
+  @volatile private[this] var stopped: Boolean = false
 
-  private[this] def run(): Future[Unit] =
-    mkRequest().flatMap(update).handle(handleUnexpected)
+  private[this] def watch(): Future[Unit] =
+    if (stopped) Future.Unit
+    else getAddresses().flatMap(updateAndWatch)
 
-  def update(nodes: Seq[v1.ServiceNode]): Future[Unit] = {
-    val addr = nodes.flatMap(serviceNodeToAddr) match {
+  private[this] val updateAndWatch: Set[Address] => Future[Unit] = { addrs =>
+    val addr = addrs match {
       case addrs if addrs.isEmpty => Addr.Neg
       case addrs =>
         val meta = domain match {
@@ -71,28 +81,19 @@ private[consul] class SvcCache(
         Addr.Bound(addrs.toSet, meta)
     }
     updatableAddr() = addr
-    run()
+    watch()
   }
 
-  private[this] val running = run()
-
-  /**
-   * Prefer service IPs to node IPs. Invalid addresses are ignored.
-   */
-  private[this] val serviceNodeToAddr: v1.ServiceNode => Traversable[Address] = { n =>
-    (n.Address, n.ServiceAddress, n.ServicePort) match {
-      case (_, Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
-      case (Some(ip), _, Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
-      case _ => None
+  private[this] val pending: Future[Unit] =
+    watch().onFailure {
+      case e: Throwable =>
+        updatableAddr() = Addr.Failed(e)
     }
-  }
 
-  private[this] val handleUnexpected: PartialFunction[Throwable, Unit] = {
-    case e: ChannelClosedException =>
-      // XXX why doesn't this clear out the addr?
-      log.error(s"""lost consul connection while querying for $datacenter/$key updates""")
-
-    case e: Throwable =>
-      updatableAddr() = Addr.Failed(e)
+  def clear(): Unit = {
+    stopped = true
+    val e = Failure("stopped").flagged(Failure.Interrupted)
+    pending.raise(e)
+    updatableAddr() = Addr.Failed(e)
   }
 }
