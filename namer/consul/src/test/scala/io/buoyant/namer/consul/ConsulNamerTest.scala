@@ -27,9 +27,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
     case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
       bound.addr.sample() match {
         case Addr.Bound(addrs, metadata) => f(addrs, metadata)
-        case _ => assert(false)
+        case Addr.Failed(e) => throw e
+        case addr => fail(s"unexpected addr: $addr")
       }
-    case _ => assert(false)
+    case Activity.Failed(e) => throw e
+    case state => fail(s"unexpected state: $state")
   }
 
   class TestAgentApi(domain: String) extends AgentApi(null, "/v1") {

@@ -3,7 +3,7 @@ package io.buoyant.namer.consul
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.consul._
-import io.buoyant.consul.v1.{ServiceNode, UnexpectedResponse}
+import io.buoyant.consul.v1.{Indexed, ServiceNode, UnexpectedResponse}
 import io.buoyant.namer.Metadata
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -18,85 +18,82 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
  * in a particular datacenter
  */
 private[consul] case class SvcCache(
-  catalogApi: v1.ConsulApi,
-  agentApi: v1.AgentApi,
+  consulApi: v1.ConsulApi,
   datacenter: String,
   key: SvcKey,
-  updateableAddr: VarUp[Addr],
-  setHost: Boolean
+  domain: Option[String]
 ) {
 
-  def addrs: VarUp[Addr] = updateableAddr
+  private[this] val updatableAddr = Var[Addr](Addr.Pending)
+  def addrs: VarUp[Addr] = updatableAddr
 
-  var index = "0"
-  val _ = init()
-
-  def setIndex(idx: String) = {
-    index = idx
+  @volatile private[this] var index = "0"
+  private[this] def setIndex(idx: Option[String]) = idx match {
+    case None =>
+    case Some(idx) =>
+      index = idx
   }
 
-  def mkRequest(): Future[Seq[ServiceNode]] =
-    catalogApi
-      .serviceNodes(key.name, datacenter = Some(datacenter), tag = key.tag, blockingIndex = Some(index), retry = true)
-      .map { indexedNodes =>
-        indexedNodes.index.foreach(setIndex)
-        indexedNodes.value
-      }
-
-  def clear(): Unit = synchronized {
-    updateableAddr() = Addr.Pending
+  private[this] val indexed: Indexed[Seq[ServiceNode]] => Seq[ServiceNode] = {
+    case Indexed(nodes, idx) =>
+      setIndex(idx)
+      nodes
   }
 
-  def init(): Future[Unit] = mkRequest().flatMap(update).handle(handleUnexpected)
+  private[this] def mkRequest(): Future[Seq[ServiceNode]] =
+    consulApi.serviceNodes(
+      key.name,
+      datacenter = Some(datacenter),
+      tag = key.tag,
+      blockingIndex = Some(index),
+      retry = true
+    ).map(indexed)
 
-  def serviceNodeToAddr(node: ServiceNode): Option[Address] = {
-    (node.Address, node.ServiceAddress, node.ServicePort) match {
-      case (_, Some(serviceIp), Some(port)) if !serviceIp.isEmpty =>
-        Some(Address(serviceIp, port))
-      case (Some(nodeIp), _, Some(port)) if !nodeIp.isEmpty =>
-        Some(Address(nodeIp, port))
+  def clear(): Unit = {
+    updatableAddr() = Addr.Pending
+  }
+
+  private[this] def run(): Future[Unit] =
+    mkRequest().flatMap(update).handle(handleUnexpected)
+
+  def update(nodes: Seq[ServiceNode]): Future[Unit] = {
+    val addr = nodes.flatMap(serviceNodeToAddr) match {
+      case addrs if addrs.isEmpty => Addr.Neg
+      case addrs =>
+        val meta = domain match {
+          case None => Addr.Metadata.empty
+          case Some(domain) =>
+            val authority = key.tag match {
+              case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
+              case None => s"${key.name}.service.$datacenter.$domain"
+            }
+            Addr.Metadata(Metadata.authority -> authority)
+        }
+        Addr.Bound(addrs.toSet, meta)
+    }
+    updatableAddr() = addr
+    run()
+  }
+
+  private[this] val running = run()
+
+  /**
+   * Prefer service IPs to node IPs. Invalid addresses are ignored.
+   */
+  private[this] val serviceNodeToAddr: ServiceNode => Traversable[Address] = { n =>
+    (n.Address, n.ServiceAddress, n.ServicePort) match {
+      case (_, Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
+      case (Some(ip), _, Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
       case _ => None
     }
   }
 
-  private[this] def domainFuture(): Future[String] =
-    agentApi.localAgent().map { la =>
-      la.Config.flatMap(_.Domain).getOrElse("consul")
-        .stripPrefix(".").stripSuffix(".")
-    }
-
-  def update(nodes: Seq[ServiceNode]): Future[Unit] = {
-    val metaFuture =
-      if (setHost)
-        domainFuture().map { domain =>
-          val authority = key.tag match {
-            case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
-            case None => s"${key.name}.service.$datacenter.$domain"
-          }
-          Addr.Metadata(Metadata.authority -> authority)
-        }
-      else
-        Future.value(Addr.Metadata.empty)
-
-    metaFuture.flatMap { meta =>
-      synchronized {
-        try {
-          val socketAddrs = nodes.flatMap(serviceNodeToAddr).toSet
-          updateableAddr() = if (socketAddrs.isEmpty) Addr.Neg else Addr.Bound(socketAddrs, meta)
-        } catch {
-          // in the event that we are trying to parse an invalid addr
-          case e: IllegalArgumentException =>
-            updateableAddr() = Addr.Failed(e)
-        }
-      }
-      mkRequest().flatMap(update).handle(handleUnexpected)
-    }
-  }
-
-  val handleUnexpected: PartialFunction[Throwable, Unit] = {
+  private[this] val handleUnexpected: PartialFunction[Throwable, Unit] = {
     case e: ChannelClosedException =>
+      // XXX why doesn't this clear out the addr?
       log.error(s"""lost consul connection while querying for $datacenter/$key updates""")
+
     case e: Throwable =>
-      updateableAddr() = Addr.Failed(e)
+      updatableAddr() = Addr.Failed(e)
   }
 }

@@ -3,7 +3,7 @@ package io.buoyant.namer.consul
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.consul._
-import io.buoyant.consul.v1.{ServiceNode, UnexpectedResponse}
+import io.buoyant.consul.v1.{Indexed, ServiceNode, UnexpectedResponse}
 import io.buoyant.namer.Metadata
 
 /**
@@ -12,43 +12,37 @@ import io.buoyant.namer.Metadata
  */
 private[consul] class DcCache(
   consulApi: v1.ConsulApi,
-  agentApi: v1.AgentApi,
   name: String,
-  activity: ActUp[Map[SvcKey, SvcCache]],
-  setHost: Boolean
+  domain: Option[String]
 ) {
+
+  // Write access to `activity` must be synchronized because of read/write blocks.
+  private[this] val activity: ActUp[Map[SvcKey, SvcCache]] = Var(Activity.Pending)
 
   def services: Var[Activity.State[Map[SvcKey, SvcCache]]] = activity
 
-  private[this] var index = "0"
-  val running =
-    mkRequest().flatMap { svcKeys =>
-      val services = svcKeys.map { k => k -> mkSvc(k) }.toMap
-      synchronized {
-        activity() = Activity.Ok(services)
-      }
-      mkRequest().flatMap(update)
-    }.handle {
-      case e: UnexpectedResponse => activity() = Activity.Ok(Map.empty)
-      case e: Throwable => activity() = Activity.Failed(e)
-    }
-
+  @volatile private[this] var index = "0"
   private[this] def setIndex(idx: Option[String]) = idx match {
     case None =>
     case Some(idx) =>
       index = idx
   }
 
-  def mkRequest(): Future[Seq[SvcKey]] =
-    consulApi
-      .serviceMap(datacenter = Some(name), blockingIndex = Some(index), retry = true)
-      .map { indexedSvcs =>
-        setIndex(indexedSvcs.index)
-        indexedSvcs.value.flatMap {
-          case (svcName, tags) =>
-            tags.map(tag => SvcKey(svcName, Some(tag))) :+ SvcKey(svcName, None)
-        }.toSeq
-      }
+  private[this] val indexed: Indexed[Map[String, Seq[String]]] => Set[SvcKey] = {
+    case Indexed(services, idx) =>
+      setIndex(idx)
+      services.flatMap {
+        case (svcName, tags) =>
+          tags.map(tag => SvcKey(svcName, Some(tag))) :+ SvcKey(svcName, None)
+      }.toSet
+  }
+
+  private[this] def mkRequest(): Future[Set[SvcKey]] =
+    consulApi.serviceMap(
+      datacenter = Some(name),
+      blockingIndex = Some(index),
+      retry = true
+    ).map(indexed)
 
   def clear(): Unit = synchronized {
     activity.sample() match {
@@ -61,52 +55,49 @@ private[consul] class DcCache(
     activity() = Activity.Pending
   }
 
-  def update(serviceKeys: Seq[SvcKey]): Future[Unit] = {
+  def update(updateKeys: Set[SvcKey]): Future[Unit] = {
     synchronized {
-      val svcs = services.sample() match {
+      val orig = activity.sample() match {
         case Activity.Ok(svcs) => svcs
         case _ => Map.empty[SvcKey, SvcCache]
       }
 
-      serviceKeys.foreach { key =>
-        if (!svcs.contains(key))
-          add(key)
+      orig.foreach {
+        case (k, _) if updateKeys(k) => // reuse this service below
+        case (k, svc) =>
+          log.debug("consul deleted: %s", svc)
+          svc.clear()
       }
 
-      svcs.foreach {
-        case (key, _) =>
-          if (!serviceKeys.contains(key))
-            delete(key)
+      val updated = updateKeys.map { k =>
+        val svc = orig.get(k) match {
+          case Some(svc) => svc
+          case None =>
+            log.debug("consul added: %s", k)
+            mkSvc(k)
+        }
+        k -> svc
       }
+
+      activity() = Activity.Ok(updated.toMap)
     }
 
     mkRequest().flatMap(update)
   }
 
   private[this] def mkSvc(svcKey: SvcKey): SvcCache =
-    SvcCache(consulApi, agentApi, name, svcKey, Var(Addr.Pending), setHost)
+    SvcCache(consulApi, name, svcKey, domain)
 
-  private[this] def add(serviceKey: SvcKey): Unit = {
-    log.debug("consul added: %s", serviceKey)
-    val svcs = services.sample() match {
-      case Activity.Ok(svcs) => svcs
-      case _ => Map.empty[SvcKey, SvcCache]
+  val running: Future[Unit] =
+    mkRequest().flatMap { svcKeys =>
+      val services = svcKeys.map { k => k -> mkSvc(k) }.toMap
+      synchronized {
+        activity() = Activity.Ok(services)
+      }
+      mkRequest().flatMap(update)
+    }.handle {
+      case e: UnexpectedResponse => activity() = Activity.Ok(Map.empty)
+      case e: Throwable => activity() = Activity.Failed(e)
     }
-    activity() = Activity.Ok(svcs + (serviceKey -> mkSvc(serviceKey)))
-  }
-
-  private[this] def delete(serviceKey: SvcKey): Unit = {
-    log.debug("consul deleted: %s", serviceKey)
-    val svcs = services.sample() match {
-      case Activity.Ok(svcs) => svcs
-      case _ => Map.empty[SvcKey, SvcCache]
-    }
-    svcs.get(serviceKey) match {
-      case Some(svc) =>
-        svc.clear()
-        activity() = Activity.Ok(svcs - serviceKey)
-      case _ =>
-    }
-  }
 
 }

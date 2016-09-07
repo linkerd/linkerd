@@ -48,19 +48,29 @@ class ConsulNamer(
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
-    Activity(Dc.get(dcName).services).map { services =>
-      log.debug("consul dc %s initial state: %s", dcName, services.keys.mkString(", "))
-      services.get(svcKey) match {
-        case None =>
-          log.debug("consul dc %s service %s missing", dcName, svcKey)
-          NameTree.Neg
+    domain.flatMap { domain =>
+      Activity(Dc.get(dcName, domain).services).map { services =>
+        log.debug("consul dc %s initial state: %s", dcName, services.keys.mkString(", "))
+        services.get(svcKey) match {
+          case None =>
+            log.debug("consul dc %s service %s missing", dcName, svcKey)
+            NameTree.Neg
 
-        case Some(service) =>
-          log.debug("consul ns %s service %s found + %s", dcName, svcKey, residual.show)
-          NameTree.Leaf(Name.Bound(service.addrs, id, residual))
+          case Some(service) =>
+            log.debug("consul ns %s service %s found + %s", dcName, svcKey, residual.show)
+            NameTree.Leaf(Name.Bound(service.addrs, id, residual))
+        }
       }
     }
   }
+
+  private[this] lazy val domain: Activity[Option[String]] =
+    if (setHost) {
+      Activity.future(agentApi.localAgent(retry = true)).map { la =>
+        val dom = la.Config.flatMap(_.Domain).getOrElse("consul")
+        Some(dom.stripPrefix(".").stripSuffix("."))
+      }
+    } else Activity.value(None)
 
   /**
    * Contains all cached responses from the Consul API
@@ -73,22 +83,22 @@ class ConsulNamer(
      * Returns existing datacenter cache with that name
      * or creates a new one
      */
-    def get(name: String): DcCache =
+    def get(name: String, domain: Option[String]): DcCache =
       synchronized {
         activity.sample() match {
-          case Activity.Ok(snap) => snap.getOrElse(name, mkAndUpdate(snap, name))
-          case _ => mkAndUpdate(Map.empty, name)
+          case Activity.Ok(snap) => snap.getOrElse(name, mkAndUpdate(snap, name, domain))
+          case _ => mkAndUpdate(Map.empty, name, domain)
         }
       }
 
-    private[this] def mkAndUpdate(cache: Map[String, DcCache], name: String): DcCache = {
-      val dc = mk(name)
+    private[this] def mkAndUpdate(
+      cache: Map[String, DcCache],
+      name: String,
+      domain: Option[String]
+    ): DcCache = {
+      val dc = new DcCache(consulApi, name, domain)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }
-
-    private[this] def mk(name: String): DcCache =
-      new DcCache(consulApi, agentApi, name, Var(Activity.Pending), setHost)
   }
-
 }
