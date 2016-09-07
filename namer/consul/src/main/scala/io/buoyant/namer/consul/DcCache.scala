@@ -6,7 +6,7 @@ import io.buoyant.consul.v1
 
 /**
  * Contains all cached serviceMap responses and the mapping of names
- * to SvcCaches for a particular datacenter.
+ * to Addrs for a particular datacenter.
  */
 private[consul] class DcCache(
   consulApi: v1.ConsulApi,
@@ -17,8 +17,8 @@ private[consul] class DcCache(
   // Write access to `activity` must be synchronized to ensure
   // ordering for read/write blocks.
   private[this] val activityMu = new {}
-  private[this] val activity: ActUp[Map[SvcKey, SvcCache]] = Var(Activity.Pending)
-  def services: Var[Activity.State[Map[SvcKey, SvcCache]]] = activity
+  private[this] val activity: ActUp[Map[SvcKey, Var[Addr]]] = Var(Activity.Pending)
+  def services: Var[Activity.State[Map[SvcKey, Var[Addr]]]] = activity
 
   @volatile private[this] var index = "0"
   private[this] def setIndex(idx: Option[String]) = idx match {
@@ -53,14 +53,14 @@ private[consul] class DcCache(
     activityMu.synchronized {
       val cache = activity.sample() match {
         case Activity.Ok(svcs) => svcs
-        case _ => Map.empty[SvcKey, SvcCache]
+        case _ => Map.empty[SvcKey, Var[Addr]]
       }
 
       cache.foreach {
         case (k, _) if updateKeys(k) => // reuse this service below
         case (k, svc) =>
+          // Observation of the service updates the service Addr appropriately.
           log.debug("consul deleted: %s", svc)
-          svc.clear()
       }
 
       val updated = updateKeys.map { k =>
@@ -68,7 +68,7 @@ private[consul] class DcCache(
           case Some(svc) => svc
           case None =>
             log.debug("consul added: %s", k)
-            new SvcCache(consulApi, name, k, domain)
+            SvcAddr(consulApi, name, k, domain)
         }
         k -> svc
       }

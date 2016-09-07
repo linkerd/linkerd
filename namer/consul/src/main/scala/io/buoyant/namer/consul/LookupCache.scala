@@ -34,6 +34,9 @@ private[consul] class LookupCache(
     }
   }
 
+  // Note that this activity is never recomputed.  We simply do a
+  // lookup for the domain and then wrap it an activity for
+  // convenience.
   private[this] lazy val domain: Activity[Option[String]] =
     if (setHost) {
       Activity.future(agentApi.localAgent(retry = true)).map { la =>
@@ -44,7 +47,7 @@ private[consul] class LookupCache(
 
   protected[this] def watchDc(dc: String): Activity[Map[SvcKey, Var[Addr]]] =
     domain.flatMap { domain =>
-      Activity(Dc.get(dc, domain).services).map(_.mapValues(_.addrs))
+      Activity(Dc.get(dc, domain).services)
     }
 
   /**
