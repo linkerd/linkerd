@@ -21,7 +21,7 @@ trait LoadBalancerConfig {
 
   @JsonIgnore
   def clientParams = Stack.Params.empty + LoadBalancerFactory.Param(factory) +
-    LoadBalancerFactory.EnableProbation(enableProbation.getOrElse(true))
+    LoadBalancerFactory.EnableProbation(enableProbation.getOrElse(false))
 }
 
 case class P2C(maxEffort: Option[Int]) extends LoadBalancerConfig {
