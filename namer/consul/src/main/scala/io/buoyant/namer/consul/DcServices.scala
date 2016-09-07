@@ -10,6 +10,10 @@ private[consul] object DcServices {
   /**
    * Contains all cached serviceMap responses and the mapping of names
    * to Addrs for a particular datacenter.
+   *
+   * If the named datacenter does not exist, the consul API will retry
+   * indefinitely.  This is because missing datacenters cannot be
+   * distinguished from server errors.
    */
   def apply(
     consulApi: v1.ConsulApi,
@@ -30,20 +34,15 @@ private[consul] object DcServices {
       def loop(index0: Option[String], cache: Map[SvcKey, Var[Addr]]): Future[Unit] =
         if (stopped) Future.Unit
         else getServices(index0).transform {
-          case Throw(e@v1.UnexpectedResponse(rsp)) if rsp.status == Status.NotFound =>
-            // We assume this means the datacenter doesn't exist, so
-            // we just treat it as empty.  This will never be updated
-            // though.  If we care about this, we should schedule
-            // recovery with e.g.:
-            //   Future.sleep(t).before(loop(index0))
-            state() = Activity.Ok(Map.empty)
-            Future.exception(e)
-
           case Throw(e) =>
+            // If an exception escaped getService's retries, we treat it as
+            // effectively fatal to DC observation. In the future, we
+            // may consider retrying certain failures (with backoff).
             state() = Activity.Failed(e)
             Future.exception(e)
 
           case Return(v1.Indexed(_, None)) =>
+            // If consul didn't give us an index, all bets are off.
             val e = NoIndexException
             state() = Activity.Failed(e)
             Future.exception(e)
@@ -53,6 +52,9 @@ private[consul] object DcServices {
               if (!keys(k)) log.debug("consul deleted: %s", k)
             }
 
+            // Create a Var[Addr] for each new service. These addrs
+            // are lazily evaluated, so no additional work is done
+            // until the addr is observed.
             val updated = keys.map { k =>
               val svc = cache.get(k) match {
                 case Some(svc) => svc

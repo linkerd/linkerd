@@ -5,8 +5,8 @@ import com.twitter.util._
 import io.buoyant.consul.v1
 
 /**
- * A helper supporting service resolution in consul, caching results
- * and watching for new updates.
+ * A helper supporting service resolution in consul, caching
+ * observations so that they may be shared between lookups.
  */
 private[consul] class LookupCache(
   consulApi: v1.ConsulApi,
@@ -15,20 +15,20 @@ private[consul] class LookupCache(
 ) {
 
   def apply(
-    dcName: String,
-    svcKey: SvcKey,
+    dc: String,
+    key: SvcKey,
     id: Path,
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
-    Dc.watch(dcName).map { services =>
-      services.get(svcKey) match {
+    Dc.watch(dc).map { services =>
+      services.get(key) match {
         case None =>
-          log.debug("consul dc %s service %s missing", dcName, svcKey)
+          log.debug("consul dc %s service %s missing", dc, key)
           NameTree.Neg
 
         case Some(addr) =>
-          log.debug("consul ns %s service %s found + %s", dcName, svcKey, residual.show)
+          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
           NameTree.Leaf(Name.Bound(addr, id, residual))
       }
     }
@@ -49,18 +49,19 @@ private[consul] class LookupCache(
    * Contains all cached responses from the Consul API
    */
   private[this] object Dc {
-    type Services = Activity[Map[SvcKey, Var[Addr]]]
-    private[this] val activity: ActUp[Map[String, Services]] =
+    // Access to `activity` needs to be synchronized to preserve
+    // ordering safety for read-writes (i.e. sample() and update()).
+    private[this] val activity: ActUp[Map[String, Activity[Map[SvcKey, Var[Addr]]]]] =
       Var(Activity.Pending)
 
-    def watch(dc: String): Services =
+    def watch(dc: String): Activity[Map[SvcKey, Var[Addr]]] =
       domain.flatMap(get(dc, _))
 
     /**
      * Returns existing datacenter cache with that name
      * or creates a new one
      */
-    private[this] def get(name: String, domain: Option[String]): Services =
+    private[this] def get(name: String, domain: Option[String]): Activity[Map[SvcKey, Var[Addr]]] =
       synchronized {
         activity.sample() match {
           case Activity.Ok(snap) => snap.getOrElse(name, mkAndUpdate(snap, name, domain))
@@ -69,10 +70,10 @@ private[consul] class LookupCache(
       }
 
     private[this] def mkAndUpdate(
-      cache: Map[String, Services],
+      cache: Map[String, Activity[Map[SvcKey, Var[Addr]]]],
       name: String,
       domain: Option[String]
-    ): Services = {
+    ): Activity[Map[SvcKey, Var[Addr]]] = {
       val dc = DcServices(consulApi, name, domain)
       activity() = Activity.Ok(cache + (name -> dc))
       dc

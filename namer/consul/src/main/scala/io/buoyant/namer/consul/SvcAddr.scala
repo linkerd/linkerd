@@ -35,6 +35,8 @@ private[consul] object SvcAddr {
         retry = true
       ).map(indexedToAddresses)
 
+    lazy val meta = mkMeta(key, datacenter, domain)
+
     // Start by fetching the service immediately, and then long-poll
     // the service for updates.
     Var.async[Addr](Addr.Pending) { state =>
@@ -42,35 +44,29 @@ private[consul] object SvcAddr {
 
       def loop(index0: Option[String]): Future[Unit] =
         if (stopped) Future.Unit
-        else getAddresses(index0).flatMap {
-          case v1.Indexed(_, None) =>
+        else getAddresses(index0).transform {
+          case Throw(e) =>
+            // If an exception escaped getAddresses's retries, we
+            // treat it as effectively fatal to the service
+            // observation. In the future, we may consider retrying
+            // certain failures (with backoff).
+            state() = Addr.Failed(e)
+            Future.exception(e)
+
+          case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
             Future.exception(NoIndexException)
 
-          case v1.Indexed(addrs, index1) =>
+          case Return(v1.Indexed(addrs, index1)) =>
             val addr = addrs match {
               case addrs if addrs.isEmpty => Addr.Neg
-              case addrs =>
-                val meta = domain match {
-                  case None => Addr.Metadata.empty
-                  case Some(domain) =>
-                    val authority = key.tag match {
-                      case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
-                      case None => s"${key.name}.service.$datacenter.$domain"
-                    }
-                    Addr.Metadata(Metadata.authority -> authority)
-                }
-                Addr.Bound(addrs.toSet, meta)
+              case addrs => Addr.Bound(addrs, mkMeta(key, datacenter, domain))
             }
             state() = addr
             loop(index1)
         }
 
-      val pending = loop(None).handle {
-        case e: Throwable =>
-          state() = Addr.Failed(e)
-      }
-
+      val pending = loop(None)
       Closable.make { _ =>
         stopped = true
         pending.raise(ServiceRelease)
@@ -78,6 +74,17 @@ private[consul] object SvcAddr {
       }
     }
   }
+
+  private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
+    domain match {
+      case None => Addr.Metadata.empty
+      case Some(domain) =>
+        val authority = key.tag match {
+          case Some(tag) => s"${tag}.${key.name}.service.${dc}.${domain}"
+          case None => s"${key.name}.service.${dc}.${domain}"
+        }
+        Addr.Metadata(Metadata.authority -> authority)
+    }
 
   private[this] val indexedToAddresses: v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
     case v1.Indexed(nodes, idx) =>

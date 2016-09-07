@@ -77,15 +77,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Failed(ChannelWriteException(null)))
   }
 
-  test("Namer returns neg when dc does not exist") {
+  test("Namer goes pending when dc does not exist") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case None => Future.exception(new UnexpectedResponse(Response(Status.NotFound)))
-        case _ => Future.never // don't respond to blocking index calls
+      ): Future[Indexed[Map[String, Seq[String]]]] = {
+        // When the dc doesn't exist, consul throws a 500, which is
+        // automatically retried indefinitely:
+        Future.never
       }
     }
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
@@ -93,7 +94,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Ok(NameTree.Neg))
+    assert(state == Activity.Pending)
   }
 
   test("Namer returns neg when servicename does not exist in serviceMap response") {
