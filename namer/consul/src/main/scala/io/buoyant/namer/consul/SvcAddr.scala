@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
+import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
   override def toString = tag match {
@@ -23,63 +24,64 @@ private[consul] object SvcAddr {
     datacenter: String,
     key: SvcKey,
     domain: Option[String]
-  ): Var[Addr] = Var.async[Addr](Addr.Pending) { state =>
+  ): Var[Addr] = {
 
-    @volatile var index = "0"
-    def setIndex(idx: Option[String]) = idx match {
-      case None =>
-      case Some(idx) =>
-        index = idx
-    }
-
-    val indexedToAddresses: v1.Indexed[Seq[v1.ServiceNode]] => Set[Address] = {
-      case v1.Indexed(nodes, idx) =>
-        setIndex(idx)
-        nodes.flatMap(serviceNodeToAddr).toSet
-    }
-
-    def getAddresses(): Future[Set[Address]] =
+    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
       consulApi.serviceNodes(
         key.name,
         datacenter = Some(datacenter),
         tag = key.tag,
-        blockingIndex = Some(index),
+        blockingIndex = index,
         retry = true
       ).map(indexedToAddresses)
 
-    @volatile var stopped: Boolean = false
-    def loop(): Future[Unit] =
-      if (stopped) Future.Unit
-      else getAddresses().flatMap { addrs =>
-        val addr = addrs match {
-          case addrs if addrs.isEmpty => Addr.Neg
-          case addrs =>
-            val meta = domain match {
-              case None => Addr.Metadata.empty
-              case Some(domain) =>
-                val authority = key.tag match {
-                  case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
-                  case None => s"${key.name}.service.$datacenter.$domain"
-                }
-                Addr.Metadata(Metadata.authority -> authority)
-            }
-            Addr.Bound(addrs.toSet, meta)
-        }
-        state() = addr
+    // Start by fetching the service immediately, and then
+    Var.async[Addr](Addr.Pending) { state =>
+      @volatile var stopped: Boolean = false
 
-        loop()
+      def loop(index0: Option[String]): Future[Unit] =
+        if (stopped) Future.Unit
+        else getAddresses(index0).flatMap {
+          case v1.Indexed(_, None) =>
+            // If consul doesn't return an index, we're in bad shape.
+            Future.exception(NoIndexException)
+
+          case v1.Indexed(addrs, index1) =>
+            val addr = addrs match {
+              case addrs if addrs.isEmpty => Addr.Neg
+              case addrs =>
+                val meta = domain match {
+                  case None => Addr.Metadata.empty
+                  case Some(domain) =>
+                    val authority = key.tag match {
+                      case Some(tag) => s"$tag.${key.name}.service.$datacenter.$domain"
+                      case None => s"${key.name}.service.$datacenter.$domain"
+                    }
+                    Addr.Metadata(Metadata.authority -> authority)
+                }
+                Addr.Bound(addrs.toSet, meta)
+            }
+            state() = addr
+            loop(index1)
+        }
+
+      val pending = loop(None).handle {
+        case e: Throwable =>
+          state() = Addr.Failed(e)
       }
 
-    val pending = loop().handle {
-      case e: Throwable =>
-        state() = Addr.Failed(e)
+      Closable.make { _ =>
+        stopped = true
+        pending.raise(ServiceRelease)
+        Future.Unit
+      }
     }
+  }
 
-    Closable.make { _ =>
-      stopped = true
-      pending.raise(Failure("stopped").flagged(Failure.Interrupted))
-      Future.Unit
-    }
+  private[this] val indexedToAddresses: v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
+    case v1.Indexed(nodes, idx) =>
+      val addrs = nodes.flatMap(serviceNodeToAddr).toSet
+      v1.Indexed(addrs, idx)
   }
 
   /**
@@ -92,4 +94,10 @@ private[consul] object SvcAddr {
       case _ => None
     }
   }
+
+  private[this] val ServiceRelease =
+    Failure("service observation released").flagged(Failure.Interrupted)
+
+  private[this] val NoIndexException =
+    Failure("consul did not return an index")
 }
