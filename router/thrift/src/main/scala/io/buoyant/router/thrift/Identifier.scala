@@ -5,6 +5,7 @@ import com.twitter.finagle.thrift.{Protocols, ThriftClientRequest}
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification}
 import org.apache.thrift.protocol.TProtocolFactory
 import org.apache.thrift.transport.TMemoryInputTransport
 
@@ -26,8 +27,8 @@ case class Identifier(
     }
   }
 
-  def apply(req: ThriftClientRequest): Future[(Dst, ThriftClientRequest)] =
+  def apply(req: ThriftClientRequest): Future[RequestIdentification[ThriftClientRequest]] =
     Future.value(
-      (Dst.Path(name ++ suffix(req), dtab(), Dtab.local), req)
+      new IdentifiedRequest[ThriftClientRequest](Dst.Path(name ++ suffix(req), dtab(), Dtab.local), req)
     )
 }

@@ -6,6 +6,7 @@ import com.twitter.finagle.thrift.{Protocols, ThriftClientRequest, ThriftService
 import com.twitter.finagle.{Path, Service}
 import com.twitter.scrooge.ThriftMethod
 import com.twitter.util.{Await, Future, Throw}
+import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.router.thriftscala.PingService
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -29,12 +30,18 @@ class IdentifierTest extends FunSuite with Awaits {
   test("thrift request") {
     val identifier = Identifier(Path.Utf8("thrift"))
     val req = encodeRequest(PingService.Ping)(PingService.Ping.Args("hi"))
-    assert(await(identifier(req))._1 == Dst.Path(Path.read("/thrift")))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[ThriftClientRequest]].dst ==
+        Dst.Path(Path.read("/thrift"))
+    )
   }
 
   test("thrift request with method") {
     val identifier = Identifier(Path.Utf8("thrift"), methodInDst = true)
     val req = encodeRequest(PingService.Ping)(PingService.Ping.Args("hi"))
-    assert(await(identifier(req))._1 == Dst.Path(Path.read("/thrift/ping")))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[ThriftClientRequest]].dst ==
+        Dst.Path(Path.read("/thrift/ping"))
+    )
   }
 }

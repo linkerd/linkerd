@@ -6,6 +6,7 @@ import io.buoyant.config.Parser
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpInitializer}
 import io.buoyant.router.Http
+import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -44,7 +45,10 @@ class HttpConfigTest extends FunSuite with Awaits {
       .id(Path.read("/http"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
-    assert(await(identifier(req))._1.path == Path.read("/http/1.1/GET/host.com"))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
+        Path.read("/http/1.1/GET/host.com")
+    )
   }
 
   test("single identifier") {
@@ -60,7 +64,10 @@ class HttpConfigTest extends FunSuite with Awaits {
       .id(Path.read("/http"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
-    assert(await(identifier(req))._1.path == Path.read("/http/1.1/GET/host.com"))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
+        Path.read("/http/1.1/GET/host.com")
+    )
   }
 
   test("identifier list") {
@@ -77,7 +84,10 @@ class HttpConfigTest extends FunSuite with Awaits {
       .id(Path.read("/http"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
-    assert(await(identifier(req))._1.path == Path.read("/http/1.1/GET/host.com"))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
+        Path.read("/http/1.1/GET/host.com")
+    )
   }
 
   test("identifier list with fallback") {
@@ -93,6 +103,9 @@ class HttpConfigTest extends FunSuite with Awaits {
     val identifier = config.routerParams[Http.param.HttpIdentifier]
       .id(Path.read("/http"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
-    assert(await(identifier(req))._1.path == Path.read("/http/one"))
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
+        Path.read("/http/one")
+    )
   }
 }

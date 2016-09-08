@@ -9,10 +9,12 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.Http.{param => hparam}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
+import com.twitter.finagle.http.Request
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{Path, Stack}
+import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
-import io.buoyant.router.http.UnidentifiableRequestException
+import io.buoyant.router.RoutingFactory.{UnidentifiedRequest, IdentifiedRequest}
 import io.buoyant.router.{Http, RoutingFactory}
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -136,8 +138,9 @@ case class HttpConfig(
       identifierConfigs.map(_.newIdentifier(path, dtab))
         .reduceLeft { (id0, id1) =>
           { req =>
-            id0(req).rescue {
-              case e: UnidentifiableRequestException => id1(req)
+            id0(req).flatMap {
+              case identified: IdentifiedRequest[Request] => Future.value(identified)
+              case unidentified: UnidentifiedRequest[Request] => id1(req)
             }
           }
         }

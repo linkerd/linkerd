@@ -9,6 +9,7 @@ import com.twitter.finagle.stack.{Endpoint, nilStack}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Activity, Duration, Future, MockTimer, Return, Throw, Time, Try, Var}
+import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.test.{Exceptions, Awaits}
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FunSuite
@@ -56,7 +57,7 @@ class RouterTest extends FunSuite with Awaits with Exceptions {
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val RoutingFactory.BaseDtab(baseDtab) = params[RoutingFactory.BaseDtab]
       in => Future.value(
-        (Dst.Path(pfx ++ Path.Utf8(in), baseDtab(), Dtab.local), in)
+        new IdentifiedRequest[String](Dst.Path(pfx ++ Path.Utf8(in), baseDtab(), Dtab.local), in)
       )
     }
   }

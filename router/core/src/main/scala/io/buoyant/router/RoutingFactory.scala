@@ -3,22 +3,26 @@ package io.buoyant.router
 import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
 import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Future, Time}
+import com.twitter.util.{Throw, Return, Future, Time}
 import scala.util.control.NoStackTrace
 
 object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
   val description = "Performs per-request name binding"
 
-  case class UnknownDst[Req](request: Req, cause: Throwable)
-    extends Exception(s"Unknown destination: $request / ${cause.getMessage}", cause)
+  case class UnknownDst[Req](request: Req, reason: String)
+    extends Exception(s"Unknown destination: $request / $reason")
     with NoStackTrace
+
+  sealed trait RequestIdentification[Req]
+  class IdentifiedRequest[Req](val dst: Dst, val request: Req) extends RequestIdentification[Req]
+  class UnidentifiedRequest[Req](val reason: String, val request: Req) extends RequestIdentification[Req]
 
   /**
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst
    * destination]] for `Req`-typed requests.
    */
-  type Identifier[Req] = Req => Future[(Dst, Req)]
+  type Identifier[Req] = Req => Future[RequestIdentification[Req]]
 
   /**
    * A prefix to be assigned to [[com.twitter.finagle.buoyant.Dst
@@ -97,19 +101,24 @@ class RoutingFactory[Req, Rsp](
       }
 
       for {
-        (dst, req1) <- getDst(req0).rescue {
-          case e: Throwable =>
-            Annotations.Failure.Identification.record(e)
-            Future.exception(UnknownDst(req0, e))
+        identified <- getDst(req0).transform {
+          case Return(identified: IdentifiedRequest[Req]) =>
+            Future.value(identified)
+          case Return(unidentified: UnidentifiedRequest[Req]) =>
+            Annotations.Failure.Identification.record(unidentified.reason)
+            Future.exception(UnknownDst(req0, unidentified.reason))
+          case Throw(e) =>
+            Annotations.Failure.Identification.record(e.getMessage)
+            Future.exception(UnknownDst(req0, e.getMessage))
         }
 
         // Client acquisition failures are recorded within the
         // clientFactory's path stack.
-        service <- clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
+        service <- clientFactory(identified.dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
 
         // Service failures are recorded within the clientFactory's
         // path stack, too.
-        rsp <- service(req1).ensure {
+        rsp <- service(identified.request).ensure {
           val _ = service.close()
         }
       } yield rsp
