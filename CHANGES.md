@@ -1,8 +1,13 @@
 ## 0.x.x
 
+* Beautiful new linkerd docs!!! :heart_eyes:
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
+* Fix query paramater encoding when rewriting proxied requests
+* Improve error handling and retry behavior of consul plugins.
 * Add `useHealthCheck` parameter to Consul Namer #589
+* The k8s namer will now resume watches if the connection is closed.
+* Improved the performance of the namerd HTTP API.
 * Configured namers are now available to other plugins
 * `enableProbation` is now disabled by default on clients. It leads to
   unexpected behavior in environments that reuse IP:PORT pairs across
