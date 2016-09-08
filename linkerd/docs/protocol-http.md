@@ -165,6 +165,47 @@ Key | Default Value | Description
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
 
+<a name="header-identifier"></a>
+### Header Identifier
+
+kind: `io.l5d.header`
+
+With this identifier, HTTP requests are turned into names based only on the
+value of an HTTP header.  If the header value is a valid path, that path is
+used.  Otherwise, the header value is converted to a path with one path segment.
+
+#### Namer Configuration:
+
+> With this configuration, the value of the `my-header` HTTP header will be used
+as the logical name.
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.header
+    header: my-header
+  servers:
+  - port: 5000
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `l5d-dst-concrete` | The name of the HTTP header to use
+
+#### Namer Path Parameters:
+
+> Dtab Path Format
+
+```
+  / dstPrefix [/ *headerValue ]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+headerValue | N/A | The value of the HTTP header as a path, if it is a valid path.  The value of the HTTP header as a single path segment, otherwise.
+
 <a name="http-engines"></a>
 ## HTTP Engines
 

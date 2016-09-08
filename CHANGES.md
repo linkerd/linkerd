@@ -1,6 +1,11 @@
 ## 0.x.y
 
+* Allow routers to be configured with a list of identifiers.  If an identifier
+  cannot assign a dest to a request, it falls back to the next one in the list.
+  * **Breaking Change**: Identifier plugins must now return a
+    `RequestIdentification` object.
 * Improve shutdown ordering to facilitate graceful shutdown.
+* Add `io.l5d.header` identifier for naming requests based on an HTTP header
 
 ## 0.7.5
 
@@ -16,10 +21,6 @@
 * `enableProbation` is now disabled by default on clients. It leads to
   unexpected behavior in environments that reuse IP:PORT pairs across
   services in a close time proximity.
-* Allow routers to be configured with a list of identifiers.  If an identifier
-  cannot assign a dest to a request, it falls back to the next one in the list.
-  * **Breaking Change**: Identifier plugins must now return a
-    `RequestIdentification` object.
 
 ## 0.7.4
 
