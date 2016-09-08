@@ -55,4 +55,12 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
     req.uri = "/mysvc/subsvc/!"
     assert(await(identifier(req))._1 == Dst.Path(Path.read("/http/mysvc/subsvc")))
   }
+
+  test("l5d-dst-concrete") {
+    val identifier = PathIdentifier(Path.Utf8("http"), 2)
+    val req = Request()
+    req.uri = "/mysvc/subsvc"
+    req.headerMap.add("l5d-dst-concrete", "/#/io.l5d.fs/foo")
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/#/io.l5d.fs/foo")))
+  }
 }

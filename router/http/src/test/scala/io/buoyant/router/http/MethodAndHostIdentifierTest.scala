@@ -48,4 +48,13 @@ class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
     req.version = Version.Http10
     assert(await(identifier(req))._1 == Dst.Path(Path.read("/prefix/1.0/POST/drum/bass")))
   }
+
+  test("l5d-dst-concrete") {
+    val identifier = MethodAndHostIdentifier(Path.Utf8("https"), false)
+    val req = Request()
+    req.uri = "/some/path?other=stuff"
+    req.host = "domain"
+    req.headerMap.add("l5d-dst-concrete", "/#/io.l5d.fs/foo")
+    assert(await(identifier(req))._1 == Dst.Path(Path.read("/#/io.l5d.fs/foo")))
+  }
 }
