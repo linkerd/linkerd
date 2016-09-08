@@ -1,6 +1,6 @@
 ## 0.x.x
 
-* Beautiful new linkerd docs!!! :heart_eyes:
+* Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
 * Fix query paramater encoding when rewriting proxied requests
