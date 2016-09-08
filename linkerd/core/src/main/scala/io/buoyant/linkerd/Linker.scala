@@ -146,7 +146,7 @@ object Linker {
 
       val routerParams = baseParams +
         Namers(namersByPrefix) +
-        param.Stats(namerParams[param.Stats].statsReceiver.scope("rt"))
+        param.Stats(baseParams[param.Stats].statsReceiver.scope("rt"))
       val routerImpls = routers.map { router =>
         val interpreter = router.interpreter.newInterpreter(routerParams)
         router.router(routerParams + DstBindingFactory.Namer(interpreter))
