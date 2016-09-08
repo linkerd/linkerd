@@ -49,7 +49,7 @@ timeoutMs | no timeout | Per-request timeout in milliseconds.
 ```yaml
 - protocol: http
   servers:
-    - port: 9000
+  - port: 9000
   bindingCache:
     paths: 100
     trees: 100
