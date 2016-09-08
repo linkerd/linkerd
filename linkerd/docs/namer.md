@@ -161,6 +161,7 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
+  useHealthCheck: true
   setHost: true
 ```
 
@@ -180,6 +181,7 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
+useHealthCheck | `false` | If `true`, rely on Consul health checks.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 
