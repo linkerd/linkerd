@@ -1,44 +1,48 @@
 # Interfaces
 
-*(for the [interfaces](config.md#interfaces) key)*
+An interface is a published network interface to namerd.
 
-An interface is a published network interface to namerd.  An interface config
-block supports the following params:
+<aside class="notice">
+These parameters are available to the interface regardless of kind. Interfaces may also have kind-specific parameters.
+</aside>
 
-* *kind* -- Required. One of the supported interface plugins.
-* *ip* -- Optional.  The local IP address on which to serve the namer interface
-(defaults may be provided by plugins)
-* *port* -- Optional.  The port number on which to server the namer interface.
-(defaults may be provided by plugins)
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either `io.l5d.thriftNameInterpreter` or `io.l5d.httpController`.
+ip | interface dependent | The local IP address on which to serve the namer interface.
+port | interface dependent | The port number on which to server the namer interface.
 
 ## Thrift Name Interpreter
 
-`io.l5d.thriftNameInterpreter`
+kind: `io.l5d.thriftNameInterpreter`
 
 A read-only interface providing `NameInterpreter` functionality over the ThriftMux protocol.
 
-* default *ip*: 0.0.0.0 (wildcard)
-* default *port*: 4100
-* *retryBaseSecs* -- Optional. Base number of seconds to tell clients to wait
-before retrying after an error.  (default: 600)
-* *retryJitterSecs* -- Optional.  Maximum number of seconds to jitter retry
-time by.  (default: 60)
-* *cache* -- Optional.  Configure the size of the binding and address caches.
-It must be an object containing keys:
-  * *bindingCacheActive* -- Optional.  The size of the binding active cache.
-  (default: 1000)
-  * *bindingCacheInactive* -- Optional.  The size of the binding inactive cache.
-  (default: 100)
-  * *addrCacheActive* -- Optional.  The size of the address active cache.
-  (default: 1000)
-  * *addrCacheInactive* -- Optional.  The size of the address inactive cache.
-  (default: 100)
+Key | Default Value | Description
+--- | ------------- | -----------
+ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
+port | `4100` | The port number on which to server the namer interface.
+retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
+retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
+cache | see [cache](#cache) | Binding and address cache size configuration.
+
+### Cache
+
+Key | Default Value | Description
+-------------- | -------------- | --------------
+bindingCacheActive | `1000` | The size of the binding active cache.
+bindingCacheInactive | `100` | The size of the binding inactive cache.
+addrCacheActive | `1000` | The size of the address active cache.
+addrCacheInactive | `100` | The size of the address inactive cache.
+
 
 ## Http Controller
 
-`io.l5d.httpController`
+kind: `io.l5d.httpController`
 
-A read-write HTTP interface to the `storage`.
+A read-write HTTP interface to the [storage](#storage).
 
-* default *ip*: loopback
-* default *port*: 4180
+Key | Default Value | Description
+--- | ------------- | -----------
+ip | loopback | The local IP address on which to serve the namer interface.
+port | `4180` | The port number on which to server the namer interface.
