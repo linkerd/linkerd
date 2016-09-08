@@ -25,6 +25,7 @@ private[consul] object SvcAddr {
     key: SvcKey,
     domain: Option[String]
   ): Var[Addr] = {
+    val meta = mkMeta(key, datacenter, domain)
 
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
       consulApi.serviceNodes(
@@ -35,10 +36,8 @@ private[consul] object SvcAddr {
         retry = true
       ).map(indexedToAddresses)
 
-    lazy val meta = mkMeta(key, datacenter, domain)
-
     // Start by fetching the service immediately, and then long-poll
-    // the service for updates.
+    // for service updates.
     Var.async[Addr](Addr.Pending) { state =>
       @volatile var stopped: Boolean = false
 
@@ -55,12 +54,13 @@ private[consul] object SvcAddr {
 
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
+            state() = Addr.Failed(NoIndexException)
             Future.exception(NoIndexException)
 
           case Return(v1.Indexed(addrs, index1)) =>
             val addr = addrs match {
               case addrs if addrs.isEmpty => Addr.Neg
-              case addrs => Addr.Bound(addrs, mkMeta(key, datacenter, domain))
+              case addrs => Addr.Bound(addrs, meta)
             }
             state() = addr
             loop(index1)
@@ -104,8 +104,9 @@ private[consul] object SvcAddr {
   }
 
   private[this] val ServiceRelease =
-    Failure("service observation released").flagged(Failure.Interrupted)
+    Failure("service observation released")
+      .flagged(Failure.Interrupted)
 
   private[this] val NoIndexException =
-    Failure("consul did not return an index")
+    Failure(new IllegalArgumentException("consul did not return an index") with NoStackTrace)
 }
