@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle._
+import com.twitter.finagle.{Failure, Filter, Http, Namer, Path, Stack}
 import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
@@ -57,7 +57,7 @@ case class ConsulConfig(
    * Build a Namer backed by Consul.
    */
   @JsonIgnore
-  def newNamer(params: Stack.Params): ConsulNamer = {
+  def newNamer(params: Stack.Params): Namer = {
     val authFilter = token match {
       case Some(t) => new SetAuthTokenFilter(t)
       case None => Filter.identity[Request, Response]
@@ -75,12 +75,17 @@ case class ConsulConfig(
       .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new ConsulNamer(
-      prefix,
-      if (useHealthCheck.getOrElse(false)) v1.HealthApi(service) else v1.CatalogApi(service),
-      v1.AgentApi(service),
-      includeTag = includeTag.getOrElse(false),
-      setHost = setHost.getOrElse(false)
-    )
+    val consul = useHealthCheck match {
+      case Some(true) => v1.HealthApi(service)
+      case _ => v1.CatalogApi(service)
+    }
+    val agent = v1.AgentApi(service)
+
+    includeTag match {
+      case Some(true) =>
+        ConsulNamer.tagged(prefix, consul, agent, setHost.getOrElse(false))
+      case _ =>
+        ConsulNamer.untagged(prefix, consul, agent, setHost.getOrElse(false))
+    }
   }
 }

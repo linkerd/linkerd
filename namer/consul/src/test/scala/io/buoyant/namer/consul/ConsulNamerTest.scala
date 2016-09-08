@@ -27,9 +27,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
     case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
       bound.addr.sample() match {
         case Addr.Bound(addrs, metadata) => f(addrs, metadata)
-        case _ => assert(false)
+        case Addr.Failed(e) => throw e
+        case addr => fail(s"unexpected addr: $addr")
       }
-    case _ => assert(false)
+    case Activity.Failed(e) => throw e
+    case state => fail(s"unexpected state: $state")
   }
 
   class TestAgentApi(domain: String) extends AgentApi(null, "/v1") {
@@ -45,11 +47,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.untagged(
       testPath,
       new TestCatalogApi(),
       new TestAgentApi("acme.co"),
-      includeTag = false,
       setHost = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
@@ -67,7 +68,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
-    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -97,7 +98,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
@@ -127,7 +128,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/nosuchservice/residual")).states respond { state = _ }
@@ -162,7 +163,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = new ConsulNamer(testPath, new TestApi(), new TestAgentApi("acme.co"), false, false)
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -200,11 +201,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      includeTag = false,
       setHost = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
@@ -246,11 +246,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      includeTag = false,
       setHost = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
@@ -296,11 +295,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.tagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      includeTag = true,
       setHost = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
@@ -338,7 +336,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
@@ -382,11 +380,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-    val namer = new ConsulNamer(
+    val namer = ConsulNamer.tagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
-      includeTag = true,
       setHost = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
