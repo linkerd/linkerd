@@ -69,7 +69,7 @@ case class ConsulConfig(
 
     val service = Http.client
       .withParams(Http.client.params ++ params)
-      .withLabel(prefix.show)
+      .withLabel(prefix.show.stripPrefix("/"))
       .withMonitor(interruptionMonitor)
       .withTracer(NullTracer)
       .filtered(filters)
