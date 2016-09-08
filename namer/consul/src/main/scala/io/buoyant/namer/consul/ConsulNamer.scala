@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
 
@@ -10,9 +11,10 @@ object ConsulNamer {
     prefix: Path,
     consulApi: v1.ConsulApi,
     agentApi: v1.AgentApi,
-    setHost: Boolean = false
+    setHost: Boolean = false,
+    stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, stats)
     new TaggedNamer(lookup, prefix)
   }
 
@@ -20,9 +22,10 @@ object ConsulNamer {
     prefix: Path,
     consulApi: v1.ConsulApi,
     agentApi: v1.AgentApi,
-    setHost: Boolean = false
+    setHost: Boolean = false,
+    stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, stats)
     new UntaggedNamer(lookup, prefix)
   }
 

@@ -2,6 +2,7 @@ package io.buoyant.namer.consul
 
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Response, Status}
+import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.consul.v1._
@@ -48,17 +49,22 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
       testPath,
       new TestCatalogApi(),
       new TestAgentApi("acme.co"),
-      setHost = false
+      setHost = false,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
-
     assert(state == Activity.Pending)
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer fails if the consul api cannot be reached") {
@@ -69,12 +75,18 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
-    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
     assert(state == Activity.Failed(ChannelWriteException(null)))
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "errors") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer goes pending when dc does not exist") {
@@ -89,12 +101,17 @@ class ConsulNamerTest extends FunSuite with Awaits {
         Future.never
       }
     }
-    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
 
     assert(state == Activity.Pending)
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer returns neg when servicename does not exist in serviceMap response") {
@@ -119,12 +136,20 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/nosuchservice/residual")).states respond { state = _ }
 
     assert(state == Activity.Ok(NameTree.Neg))
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer updates when serviceMap blocking calls return") {
@@ -154,7 +179,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case _ => Future.never //don't respond to blocking index calls
       }
     }
-    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"))
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -163,6 +190,12 @@ class ConsulNamerTest extends FunSuite with Awaits {
     blockingCallResponder.setDone()
     assert(state == Activity.Ok(
       NameTree.Leaf(Path(Buf.Utf8("test"), Buf.Utf8("dc1"), Buf.Utf8("servicename")))
+    ))
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 2,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -192,11 +225,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      setHost = false
+      setHost = false,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -205,6 +240,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
     }
+
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Addrs update when blocking call for serviceNodes returns") {
@@ -237,11 +282,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      setHost = false
+      setHost = false,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -254,6 +301,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
       case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Neg)
       case _ => assert(false)
     }
+
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 4,
+      Seq("service", "closes") -> 2,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer filters by tag") {
@@ -286,11 +343,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.tagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("acme.co"),
-      setHost = false
+      setHost = false,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -299,6 +358,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
     }
+
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer returns authority in bound address metadata when setHost is true") {
@@ -327,11 +396,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
-      setHost = true
+      setHost = true,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -339,6 +410,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (_, metadata) =>
       assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
     }
+
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 
   test("Namer returns authority with tag in bound address metadata when setHost is true and tag is provided") {
@@ -371,11 +452,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
+    val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.tagged(
       Path.read("/test"),
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
-      setHost = true
+      setHost = true,
+      stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -387,5 +470,15 @@ class ConsulNamerTest extends FunSuite with Awaits {
         )
       )
     }
+
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
+    ))
   }
 }

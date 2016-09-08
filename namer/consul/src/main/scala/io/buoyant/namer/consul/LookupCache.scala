@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.stats.{Counter, StatsReceiver, NullStatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
 
@@ -11,8 +12,11 @@ import io.buoyant.consul.v1
 private[consul] class LookupCache(
   consulApi: v1.ConsulApi,
   agentApi: v1.AgentApi,
-  setHost: Boolean = false
+  setHost: Boolean = false,
+  stats: StatsReceiver = NullStatsReceiver
 ) {
+
+  private[this] val lookupCounter = stats.counter("lookups")
 
   def apply(
     dc: String,
@@ -21,6 +25,8 @@ private[consul] class LookupCache(
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
+    lookupCounter.incr()
+
     Dc.watch(dc).map { services =>
       services.get(key) match {
         case None =>
@@ -69,12 +75,14 @@ private[consul] class LookupCache(
         }
       }
 
+    private[this] val dcStats = DcServices.Stats(stats)
+
     private[this] def mkAndUpdate(
       cache: Map[String, Activity[Map[SvcKey, Var[Addr]]]],
       name: String,
       domain: Option[String]
     ): Activity[Map[SvcKey, Var[Addr]]] = {
-      val dc = DcServices(consulApi, name, domain)
+      val dc = DcServices(consulApi, name, domain, dcStats)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }

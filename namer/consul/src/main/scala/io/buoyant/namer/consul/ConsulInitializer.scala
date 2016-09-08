@@ -2,7 +2,7 @@ package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.param.Label
+import com.twitter.finagle.param
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Failure, Filter, Http, Namer, Path, Stack}
 import com.twitter.util.Monitor
@@ -68,9 +68,9 @@ case class ConsulConfig(
     }
 
     val service = Http.client
-      .withMonitor(interruptionMonitor)
       .withParams(Http.client.params ++ params)
-      .configured(Label("namer" + prefix))
+      .withLabel(prefix.show.stripPrefix("/"))
+      .withMonitor(interruptionMonitor)
       .withTracer(NullTracer)
       .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
@@ -81,11 +81,13 @@ case class ConsulConfig(
     }
     val agent = v1.AgentApi(service)
 
+    val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
+
     includeTag match {
       case Some(true) =>
-        ConsulNamer.tagged(prefix, consul, agent, setHost.getOrElse(false))
+        ConsulNamer.tagged(prefix, consul, agent, setHost.getOrElse(false), stats)
       case _ =>
-        ConsulNamer.untagged(prefix, consul, agent, setHost.getOrElse(false))
+        ConsulNamer.untagged(prefix, consul, agent, setHost.getOrElse(false), stats)
     }
   }
 }
