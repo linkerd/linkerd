@@ -16,8 +16,7 @@ private[consul] class LookupCache(
   stats: StatsReceiver = NullStatsReceiver
 ) {
 
-  private[this] val negs = stats.counter("negs")
-  private[this] val leafs = stats.counter("leafs")
+  private[this] val lookupCounter = stats.counter("lookups")
 
   def apply(
     dc: String,
@@ -26,17 +25,16 @@ private[consul] class LookupCache(
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
+    lookupCounter.incr()
 
     Dc.watch(dc).map { services =>
       services.get(key) match {
         case None =>
           log.debug("consul dc %s service %s missing", dc, key)
-          negs.incr()
           NameTree.Neg
 
         case Some(addr) =>
           log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
-          leafs.incr()
           NameTree.Leaf(Name.Bound(addr, id, residual))
       }
     }
@@ -77,7 +75,7 @@ private[consul] class LookupCache(
         }
       }
 
-    private[this] val dcStats = DcServices.Stats(stats.scope("dc"))
+    private[this] val dcStats = DcServices.Stats(stats)
 
     private[this] def mkAndUpdate(
       cache: Map[String, Activity[Map[SvcKey, Var[Addr]]]],

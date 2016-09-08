@@ -12,7 +12,9 @@ private[consul] object DcServices {
    * We use a shared stats object so that counters/stats are not
    * created anew for each DC/service.
    */
-  case class Stats(stats: StatsReceiver) {
+  case class Stats(stats0: StatsReceiver) {
+    val stats = stats0.scope("dc")
+
     val opens = stats.counter("opens")
     val closes = stats.counter("closes")
     val errors = stats.counter("errors")
@@ -20,7 +22,7 @@ private[consul] object DcServices {
     val adds = stats.counter("adds")
     val removes = stats.counter("removes")
 
-    val service = SvcAddr.Stats(stats.scope("service"))
+    val service = SvcAddr.Stats(stats0.scope("service"))
   }
 
   /**

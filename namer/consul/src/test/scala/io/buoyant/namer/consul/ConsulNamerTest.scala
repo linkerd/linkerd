@@ -62,7 +62,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
     assert(state == Activity.Pending)
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1
+      Seq("dc", "opens") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -83,7 +84,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Failed(ChannelWriteException(null)))
     assert(stats.counters == Map(
       Seq("dc", "opens") -> 1,
-      Seq("dc", "errors") -> 1
+      Seq("dc", "errors") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -107,7 +109,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assert(state == Activity.Pending)
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1
+      Seq("dc", "opens") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -145,7 +148,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 1,
-      Seq("negs") -> 1
+      Seq("lookups") -> 1
     ))
   }
 
@@ -192,8 +195,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 2,
       Seq("dc", "adds") -> 4,
-      Seq("negs") -> 1,
-      Seq("leafs") -> 1
+      Seq("lookups") -> 1
     ))
   }
 
@@ -243,10 +245,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("dc", "service", "opens") -> 1,
-      Seq("dc", "service", "updates") -> 1,
-      Seq("dc", "service", "closes") -> 1,
-      Seq("leafs") -> 1
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -304,10 +306,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("dc", "service", "opens") -> 2,
-      Seq("dc", "service", "updates") -> 4,
-      Seq("dc", "service", "closes") -> 2,
-      Seq("leafs") -> 1
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 4,
+      Seq("service", "closes") -> 2,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -361,10 +363,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("dc", "service", "opens") -> 1,
-      Seq("dc", "service", "updates") -> 1,
-      Seq("dc", "service", "closes") -> 1,
-      Seq("leafs") -> 1
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -413,10 +415,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("dc", "service", "opens") -> 1,
-      Seq("dc", "service", "updates") -> 1,
-      Seq("dc", "service", "closes") -> 1,
-      Seq("leafs") -> 1
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 
@@ -473,10 +475,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("dc", "service", "opens") -> 1,
-      Seq("dc", "service", "updates") -> 1,
-      Seq("dc", "service", "closes") -> 1,
-      Seq("leafs") -> 1
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1,
+      Seq("lookups") -> 1
     ))
   }
 }
