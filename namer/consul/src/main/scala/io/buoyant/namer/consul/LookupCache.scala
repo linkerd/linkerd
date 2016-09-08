@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.stats.{Counter, StatsReceiver, NullStatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
 
@@ -11,8 +12,12 @@ import io.buoyant.consul.v1
 private[consul] class LookupCache(
   consulApi: v1.ConsulApi,
   agentApi: v1.AgentApi,
-  setHost: Boolean = false
+  setHost: Boolean = false,
+  stats: StatsReceiver = NullStatsReceiver
 ) {
+
+  private[this] val negs = stats.counter("negs")
+  private[this] val leafs = stats.counter("leafs")
 
   def apply(
     dc: String,
@@ -21,14 +26,17 @@ private[consul] class LookupCache(
     residual: Path
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", id.show)
+
     Dc.watch(dc).map { services =>
       services.get(key) match {
         case None =>
           log.debug("consul dc %s service %s missing", dc, key)
+          negs.incr()
           NameTree.Neg
 
         case Some(addr) =>
           log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+          leafs.incr()
           NameTree.Leaf(Name.Bound(addr, id, residual))
       }
     }
@@ -69,12 +77,14 @@ private[consul] class LookupCache(
         }
       }
 
+    private[this] val dcStats = DcServices.Stats(stats.scope("dc"))
+
     private[this] def mkAndUpdate(
       cache: Map[String, Activity[Map[SvcKey, Var[Addr]]]],
       name: String,
       domain: Option[String]
     ): Activity[Map[SvcKey, Var[Addr]]] = {
-      val dc = DcServices(consulApi, name, domain)
+      val dc = DcServices(consulApi, name, domain, dcStats)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }

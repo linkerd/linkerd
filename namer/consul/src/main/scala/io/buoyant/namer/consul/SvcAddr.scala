@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
@@ -15,6 +16,13 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
 
 private[consul] object SvcAddr {
 
+  case class Stats(stats: StatsReceiver) {
+    val opens = stats.counter("opens")
+    val closes = stats.counter("closes")
+    val errors = stats.counter("errors")
+    val updates = stats.counter("updates")
+  }
+
   /**
    * Runs a long-polling loop on a service object to obtain the set of
    * Addresses.  This evaluates lazily so that only activity observed
@@ -23,7 +31,8 @@ private[consul] object SvcAddr {
     consulApi: v1.ConsulApi,
     datacenter: String,
     key: SvcKey,
-    domain: Option[String]
+    domain: Option[String],
+    stats: Stats
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
 
@@ -39,9 +48,10 @@ private[consul] object SvcAddr {
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
     Var.async[Addr](Addr.Pending) { state =>
-      @volatile var stopped: Boolean = false
+      stats.opens.incr()
 
-      def loop(index0: Option[String]): Future[Unit] =
+      @volatile var stopped: Boolean = false
+      def loop(index0: Option[String]): Future[Unit] = {
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(e) =>
@@ -50,25 +60,31 @@ private[consul] object SvcAddr {
             // observation. In the future, we may consider retrying
             // certain failures (with backoff).
             state() = Addr.Failed(e)
+            stats.errors.incr()
             Future.exception(e)
 
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
             state() = Addr.Failed(NoIndexException)
+            stats.errors.incr()
             Future.exception(NoIndexException)
 
           case Return(v1.Indexed(addrs, index1)) =>
+            stats.updates.incr()
             val addr = addrs match {
               case addrs if addrs.isEmpty => Addr.Neg
               case addrs => Addr.Bound(addrs, meta)
             }
             state() = addr
+
             loop(index1)
         }
+      }
 
       val pending = loop(None)
       Closable.make { _ =>
         stopped = true
+        stats.closes.incr()
         pending.raise(ServiceRelease)
         Future.Unit
       }

@@ -129,7 +129,8 @@ object Linker {
           BroadcastTracer(tracers)
       }
 
-      val namerParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
+      val baseParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
+      val namerParams = baseParams + param.Stats(stats.scope("namer"))
       val namersByPrefix = namers.getOrElse(Nil).reverse.map { namer =>
         if (namer.disabled) throw new IllegalArgumentException(
           s"""The ${namer.prefix.show} namer is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
@@ -143,7 +144,7 @@ object Linker {
       for ((label, rts) <- routers.groupBy(_.label))
         if (rts.size > 1) throw ConflictingLabels(label)
 
-      val routerParams = namerParams +
+      val routerParams = baseParams +
         Namers(namersByPrefix) +
         param.Stats(namerParams[param.Stats].statsReceiver.scope("rt"))
       val routerImpls = routers.map { router =>

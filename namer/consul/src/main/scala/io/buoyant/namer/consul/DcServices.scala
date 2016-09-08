@@ -1,11 +1,27 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle.http.{Response, Status}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Addr, Failure}
 import com.twitter.util._
 import io.buoyant.consul.v1
 
 private[consul] object DcServices {
+
+  /**
+   * We use a shared stats object so that counters/stats are not
+   * created anew for each DC/service.
+   */
+  case class Stats(stats: StatsReceiver) {
+    val opens = stats.counter("opens")
+    val closes = stats.counter("closes")
+    val errors = stats.counter("errors")
+    val updates = stats.counter("updates")
+    val adds = stats.counter("adds")
+    val removes = stats.counter("removes")
+
+    val service = SvcAddr.Stats(stats.scope("service"))
+  }
 
   /**
    * Contains all cached serviceMap responses and the mapping of names
@@ -18,7 +34,8 @@ private[consul] object DcServices {
   def apply(
     consulApi: v1.ConsulApi,
     name: String,
-    domain: Option[String]
+    domain: Option[String],
+    stats: Stats
   ): Activity[Map[SvcKey, Var[Addr]]] = {
 
     def getServices(index: Option[String]): Future[v1.Indexed[Set[SvcKey]]] =
@@ -29,9 +46,10 @@ private[consul] object DcServices {
       ).map(toServices)
 
     val states = Var.async[Activity.State[Map[SvcKey, Var[Addr]]]](Activity.Pending) { state =>
-      @volatile var stopped: Boolean = false
+      stats.opens.incr()
 
-      def loop(index0: Option[String], cache: Map[SvcKey, Var[Addr]]): Future[Unit] =
+      @volatile var stopped: Boolean = false
+      def loop(index0: Option[String], cache: Map[SvcKey, Var[Addr]]): Future[Unit] = {
         if (stopped) Future.Unit
         else getServices(index0).transform {
           case Throw(e) =>
@@ -39,17 +57,23 @@ private[consul] object DcServices {
             // effectively fatal to DC observation. In the future, we
             // may consider retrying certain failures (with backoff).
             state() = Activity.Failed(e)
+            stats.errors.incr()
             Future.exception(e)
 
           case Return(v1.Indexed(_, None)) =>
             // If consul didn't give us an index, all bets are off.
-            val e = NoIndexException
-            state() = Activity.Failed(e)
-            Future.exception(e)
+            state() = Activity.Failed(NoIndexException)
+            stats.errors.incr()
+            Future.exception(NoIndexException)
 
           case Return(v1.Indexed(keys, index1)) =>
+            stats.updates.incr()
+
             cache.keys.foreach { k =>
-              if (!keys(k)) log.debug("consul deleted: %s", k)
+              if (!keys(k)) {
+                log.debug("consul deleted: %s", k)
+                stats.removes.incr()
+              }
             }
 
             // Create a Var[Addr] for each new service. These addrs
@@ -60,7 +84,8 @@ private[consul] object DcServices {
                 case Some(svc) => svc
                 case None =>
                   log.debug("consul added: %s", k)
-                  SvcAddr(consulApi, name, k, domain)
+                  stats.adds.incr()
+                  SvcAddr(consulApi, name, k, domain, stats.service)
               }
               k -> svc
             }.toMap
@@ -68,11 +93,13 @@ private[consul] object DcServices {
             state() = Activity.Ok(updated)
             loop(index1, updated)
         }
+      }
 
       val pending = loop(None, Map.empty)
       Closable.make { _ =>
         stopped = true
         pending.raise(DcRelease)
+        stats.closes.incr()
         Future.Unit
       }
     }
