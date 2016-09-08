@@ -45,4 +45,4 @@ A read-write HTTP interface to the [storage](#storage).
 Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback | The local IP address on which to serve the namer interface.
-port | `4180` | The port number on which to server the namer interface.
+port | `4180` | The port number on which to serve the namer interface.

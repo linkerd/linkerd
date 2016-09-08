@@ -11,7 +11,6 @@ Key | Default Value | Description
 --- | ------------- | -----------
 kind | _required_ | Either `io.l5d.inMemory`, `io.l5d.k8s`, `io.l5d.zk`, `io.l5d.etcd` or `io.l5d.consul`.
 experimental | `false` | Set this to `true` to enable the storage if it is experimental.
-port | interface dependent | The port number on which to server the namer interface.
 
 ## In Memory
 

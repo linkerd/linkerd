@@ -37,7 +37,7 @@ Key | Required | Description
 [admin](#administrative-interface) | no | Configures namerd's administrative interface. namerd admin has the same options as linkerd admin.
 [interfaces](#interfaces) | no | Configures namerd's published network interfaces.
 [storage](#storage) | yes | Configures namerd's storage backend.
-[namers](https://linkerd.io/config/latest/linkerd#namers) | no | Configures namerd's integration with various service discovery backends. namerd uses the same namers as linkerd.
+[namers](https://linkerd.io/config/head/linkerd#namers) | no | Configures namerd's integration with various service discovery backends. namerd uses the same namers as linkerd.
 
 ### Administrative interface
 
