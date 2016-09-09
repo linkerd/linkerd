@@ -6,10 +6,8 @@ import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
-
-import sun.misc.{Signal, SignalHandler}
-
 import scala.io.Source
+import sun.misc.{Signal, SignalHandler}
 
 /**
  * linkerd main execution.
@@ -94,9 +92,8 @@ object Linkerd extends App {
   private def registerTerminationSignalHandler(shutdownGraceMs: Int): Unit = {
     val shutdownHandler = new SignalHandler {
       override def handle(sig: Signal): Unit = {
-        log.info("Closing linkerd ...")
+        log.info("Received %s. Shutting down ...", sig)
         Await.result(close(Duration.fromMilliseconds(shutdownGraceMs)))
-        log.info("linkerd closed.")
       }
     }
 
