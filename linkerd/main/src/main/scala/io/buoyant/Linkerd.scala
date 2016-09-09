@@ -7,6 +7,8 @@ import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Build, Linker}
 import java.io.File
 
+import sun.misc.{Signal, SignalHandler}
+
 import scala.io.Source
 
 /**
@@ -18,19 +20,17 @@ import scala.io.Source
  */
 object Linkerd extends App {
 
-  protected[this] val graceFlag = flag("l5d.grace", 10, "Grace shutdown time (secs)")
-
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
 
     args match {
       case Array(path) =>
-        sys.addShutdownHook(closeAndWait)
 
         val linkerConfig = loadLinker(path)
         val linker = linkerConfig.mk
 
+        registerTerminationSignalHandler(linker.admin.shutdownGraceMs)
         val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
         val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
         adminInitializer.startServer()
@@ -83,9 +83,26 @@ object Linkerd extends App {
     Linker.parse(configText)
   }
 
-  private def closeAndWait(): Unit = {
-    println("Closing all ...")
-    Await.result(close(Duration.fromSeconds(graceFlag())))
-    println("All closed.")
+  /**
+   * Trap termination signals and triggers an App.close for a graceful shutdown.
+   * Shutdown hook is not used because it has, at least, the following problems:
+   * <ul>
+   *   <li>LogManager uses a shutdown hook which makes nothing to be logged during shutdown
+   *   <li>TracerCache uses a shutdown hook to flush
+   * </ul>
+   */
+  private def registerTerminationSignalHandler(shutdownGraceMs: Int): Unit = {
+    val shutdownHandler = new SignalHandler {
+      override def handle(sig: Signal): Unit = {
+        log.info("Closing linkerd ...")
+        Await.result(close(Duration.fromMilliseconds(shutdownGraceMs)))
+        log.info("linkerd closed.")
+      }
+    }
+
+    Signal.handle(new Signal("INT"), shutdownHandler)
+    Signal.handle(new Signal("TERM"), shutdownHandler)
+    ()
   }
+
 }
