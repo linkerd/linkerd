@@ -47,7 +47,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
-identifier | `io.l5d.methodAndHost` | See [Http-specific identifiers](#http-1-1-identifiers).
+identifier | The `methodAndHost` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
 maxChunkKB | 8KB | The maximum size of an HTTP chunk.
 maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
@@ -67,7 +67,9 @@ significantly alter linkerd's performance characteristics.
 Identifiers are responsible for creating logical *names* from an incoming
 request; these names are then matched against the dtab. (See the [linkerd
 routing overview](https://linkerd.io/doc/latest/routing/) for more details on
-this.) All HTTP/1.1 identifiers have a `kind`.
+this.) All HTTP/1.1 identifiers have a `kind`.  If a list of identifiers is
+provided, each identifier is tried in turn until one successfully assigns a
+logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
