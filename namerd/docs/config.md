@@ -1,13 +1,6 @@
-# Configuration
+# Introduction
 
-namerd's configuration is controlled via config file, which must be provided
-as a command-line argument. It may be a local file path or `-` to
-indicate that the configuration should be read from the standard input.
-
-## File Format
-
-The configuration may be specified as a JSON or YAML object, as described
-below.
+> A namerd config example
 
 ```yaml
 storage:
@@ -29,21 +22,32 @@ interfaces:
   port: 4321
 ```
 
-<a name="storage"></a>
-## Storage
+Welcome to the Configuration Reference for namerd!
 
-All configurations must define a **storage** key which must be a
-[storage](storage.md) object.
+namerd's configuration is controlled via config file, which must be provided
+as a command-line argument. It may be a local file path or `-` to
+indicate that the configuration should be read from the standard input.
 
-<a name="namers"></a>
-## Namers
+#### File Format
 
-Naming and service discovery are configured via the `namers` section of the
-configuration file. In this file, `namers` is an array of objects each of which
-must be a [namer](../../linkerd/docs/namer.md).
+The configuration may be specified as a JSON or YAML object.
 
-<a name="interfaces"></a>
-## Interfaces
+Key | Required | Description
+--- | -------- | -----------
+[admin](#administrative-interface) | no | Configures namerd's administrative interface. namerd admin has the same options as linkerd admin.
+[interfaces](#interfaces) | no | Configures namerd's published network interfaces.
+[storage](#storage) | yes | Configures namerd's storage backend.
+[namers](https://linkerd.io/config/head/linkerd#namers) | no | Configures namerd's integration with various service discovery backends. namerd uses the same namers as linkerd.
 
-A top-level `interfaces` section controls the published network interfaces to
-namerd. It is an array of [interface](interface.md) objects.
+### Administrative interface
+
+```yaml
+admin:
+  port: 9991
+```
+
+namerd supports an administrative interface. The exposed admin port is configurable via a top-level `admin` section.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+port | `9991` | Port for the admin interface.
