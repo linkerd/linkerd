@@ -169,6 +169,6 @@ case class HttpConfig(
 }
 
 object HttpConfig {
-  val NilIdentification: Future[RequestIdentification[Request]] =
+  private val NilIdentification: Future[RequestIdentification[Request]] =
     Future.value(new UnidentifiedRequest("no identifiers"))
 }
