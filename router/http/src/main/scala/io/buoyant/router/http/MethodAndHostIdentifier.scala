@@ -28,9 +28,8 @@ case class MethodAndHostIdentifier(
 
   def apply(req: http.Request): Future[RequestIdentification[Request]] = req.version match {
     case http.Version.Http10 =>
-      Future.value(
-        new IdentifiedRequest[Request](mkPath(Path.Utf8("1.0", req.method.toString) ++ suffix(req)), req)
-      )
+      val dst = mkPath(Path.Utf8("1.0", req.method.toString) ++ suffix(req))
+      Future.value(new IdentifiedRequest(dst, req))
 
     case http.Version.Http11 =>
       req.host match {
