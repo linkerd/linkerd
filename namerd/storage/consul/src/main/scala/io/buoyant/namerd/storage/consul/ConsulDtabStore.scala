@@ -30,7 +30,7 @@ class ConsulDtabStore(api: KvApi, root: Path, datacenter: Option[String] = None)
               case Throw(e) =>
                 updates() = Activity.Failed(e)
                 cycle(None)
-          }
+            }
         else
           Future.Unit
       val pending = cycle(None)
