@@ -9,6 +9,8 @@
   services in a close time proximity.
 * Allow routers to be configured with a list of identifiers.  If an identifier
   cannot assign a dest to a request, it falls back to the next one in the list.
+  * **Breaking Change**: Identifier plugins must now return a
+    `RequestIdentification` object.
 
 ## 0.7.4
 
