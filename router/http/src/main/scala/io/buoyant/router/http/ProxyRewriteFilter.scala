@@ -31,20 +31,32 @@ object ProxyRewriteFilter {
    * the authority to set the request's Host header, and rewrite the
    * URI to the remaining path, query, and fragment.
    */
-  private def rewriteIfProxy(req: Request): Unit = {
-    val uri = new URI(req.uri)
-    if (uri.isAbsolute) {
-      req.host = uri.getAuthority
-      req.uri = unproxifyUri(uri)
+  private def rewriteIfProxy(req: Request): Unit =
+    guessAbsolute(req.uri) match {
+      case null => // not absolute, nothing to do
+      case uri if uri.isAbsolute =>
+        req.host = uri.getAuthority
+        req.uri = unproxifyUri(uri)
+      case _ => // wasn't actually absolute after all
     }
-  }
+
+  /**
+   * If the uri _looks_ absolute, build a URI. This doesn't have to be
+   * perfect, as we can know authoritatively after we've parsed the
+   * URI. This lets us forego parsing if the URI doesn't have a scheme.
+   *
+   * We're using nulls here so we can forego a Some allocation when
+   * the URI is absolute.
+   */
+  private[this] def guessAbsolute(uri: String): URI =
+    if (uri.contains("://")) new URI(uri)
+    else null
 
   /**
    * Return only the path, query, and fragment segments of a URI.
    */
-  private def unproxifyUri(orig: URI): String =
-    if (!orig.isAbsolute) orig.toString
-    else new URI(null, null, orig.getPath, orig.getQuery, orig.getFragment).toString
+  private def unproxifyUri(uri: URI): String =
+    new URI(null, null, uri.getPath, uri.getQuery, uri.getFragment).toString
 
   val filter: Filter[Request, Response, Request, Response] =
     new SimpleFilter[Request, Response] {
