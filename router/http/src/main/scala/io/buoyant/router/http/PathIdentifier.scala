@@ -24,7 +24,7 @@ case class PathIdentifier(
         Future.value(new IdentifiedRequest[Request](dst, req))
       case _ =>
         Future.value(
-          new UnidentifiedRequest[Request]("not enough segments in path")
+          new UnidentifiedRequest("not enough segments in path")
         )
     }
 }

@@ -39,7 +39,7 @@ case class MethodAndHostIdentifier(
           Future.value(new IdentifiedRequest(dst, req))
         case _ =>
           Future.value(
-            new UnidentifiedRequest[Request](
+            new UnidentifiedRequest(
               s"${http.Version.Http11} request missing hostname"
             )
           )
