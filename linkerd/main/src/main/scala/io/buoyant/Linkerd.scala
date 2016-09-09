@@ -98,8 +98,7 @@ object Linkerd extends App {
     }
 
     Signal.handle(new Signal("INT"), shutdownHandler)
-    Signal.handle(new Signal("TERM"), shutdownHandler)
-    ()
+    val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
   }
 
 }
