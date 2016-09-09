@@ -18,6 +18,7 @@ object RoutingFactory {
 
   /** The result of attempting to identify a request. */
   sealed trait RequestIdentification[Req]
+
   /**
    * This indicates that a destination was successfully assigned.  The attached
    * request should be sent to the destination.
@@ -30,7 +31,7 @@ object RoutingFactory {
 
   object IdentifiedRequest {
     def unapply[Req](identified: IdentifiedRequest[Req]): Option[(Dst, Req)] =
-      Some(identified.dst, identified.request)
+      Some((identified.dst, identified.request))
   }
 
   /**

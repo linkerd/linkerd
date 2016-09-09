@@ -14,8 +14,9 @@ import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
-import io.buoyant.router.RoutingFactory.{UnidentifiedRequest, IdentifiedRequest}
+import io.buoyant.router.RoutingFactory.{RequestIdentification, IdentifiedRequest, UnidentifiedRequest}
 import io.buoyant.router.{Http, RoutingFactory}
+import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
@@ -97,8 +98,7 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
     val codec = p.getCodec
     codec.readTree[TreeNode](p) match {
       case n: JsonNode if n.isArray =>
-        import scala.collection.JavaConversions._
-        Some(n.toList.map(codec.treeToValue(_, classOf[HttpIdentifierConfig])))
+        Some(n.asScala.toList.map(codec.treeToValue(_, classOf[HttpIdentifierConfig])))
       case node => Some(Seq(codec.treeToValue(node, classOf[HttpIdentifierConfig])))
     }
   }
@@ -133,17 +133,24 @@ case class HttpConfig(
   override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore
-  private[this] val combinedIdentifier = identifier.map { identifierConfigs =>
-    Http.param.HttpIdentifier { (path, dtab) =>
-      identifierConfigs.map(_.newIdentifier(path, dtab))
-        .reduceLeft { (id0, id1) =>
-          { req =>
-            id0(req).flatMap {
-              case identified: IdentifiedRequest[Request] => Future.value(identified)
-              case unidentified: UnidentifiedRequest[Request] => id1(req)
-            }
-          }
+  private[this] val combinedIdentifier = {
+    // use the first identifier that yields an IdentifiedRequest
+    def combine(identifiers: Seq[RoutingFactory.Identifier[Request]]): RoutingFactory.Identifier[Request] = { req =>
+      identifiers.foldLeft(HttpConfig.NilIdentification) { (identification, next) =>
+        identification.flatMap {
+          // the request has already been identified, just use that
+          case identified: IdentifiedRequest[Request] => Future.value(identified)
+          // the request has not yet been identified, try the next identifier
+          case unidentified: UnidentifiedRequest[Request] => next(req)
         }
+      }
+    }
+
+    identifier.map { identifierConfigs =>
+      Http.param.HttpIdentifier { (prefix, dtab) =>
+        val identifiers = identifierConfigs.map(_.newIdentifier(prefix, dtab))
+        combine(identifiers)
+      }
     }
   }
 
@@ -159,4 +166,9 @@ case class HttpConfig(
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
 
+}
+
+object HttpConfig {
+  val NilIdentification: Future[RequestIdentification[Request]] =
+    Future.value(new UnidentifiedRequest("no identifiers"))
 }
