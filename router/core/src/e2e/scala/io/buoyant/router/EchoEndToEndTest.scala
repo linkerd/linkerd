@@ -10,6 +10,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
 import com.twitter.util._
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification}
 import io.buoyant.test.Awaits
 import java.net.{InetSocketAddress, SocketAddress}
 import org.scalatest.FunSuite
@@ -174,9 +175,11 @@ object Echo extends Router[String, String] with Server[String, String] {
     case class Identifier(prefix: Path = Path.empty, dtab: () => Dtab = () => Dtab.base)
         extends RoutingFactory.Identifier[String] {
 
-      def apply(req: String): Future[(Dst, String)] = {
+      def apply(req: String): Future[RequestIdentification[String]] = {
         val path = Path.read(if (req startsWith "/") req else s"/$req")
-        Future.value((Dst.Path(prefix ++ path, dtab(), Dtab.local), req))
+        Future.value(
+          new IdentifiedRequest(Dst.Path(prefix ++ path, dtab(), Dtab.local), req)
+        )
       }
     }
 
