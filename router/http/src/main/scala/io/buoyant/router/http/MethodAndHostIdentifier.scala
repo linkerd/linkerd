@@ -35,17 +35,12 @@ case class MethodAndHostIdentifier(
     case http.Version.Http11 =>
       req.host match {
         case Some(host) if host.nonEmpty =>
-          Future.value(
-            new IdentifiedRequest[Request](
-              mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req)),
-              req
-            )
-          )
+          val dst = mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req))
+          Future.value(new IdentifiedRequest(dst, req))
         case _ =>
           Future.value(
             new UnidentifiedRequest[Request](
-              s"${http.Version.Http11} request missing hostname",
-              req
+              s"${http.Version.Http11} request missing hostname"
             )
           )
       }

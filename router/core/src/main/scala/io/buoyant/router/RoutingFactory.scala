@@ -10,19 +10,39 @@ object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
   val description = "Performs per-request name binding"
 
-  case class UnknownDst[Req](request: Req, reason: String)
-    extends Exception(s"Unknown destination: $request / $reason")
-    with NoStackTrace
-
-  sealed trait RequestIdentification[Req]
-  class IdentifiedRequest[Req](val dst: Dst, val request: Req) extends RequestIdentification[Req]
-  class UnidentifiedRequest[Req](val reason: String, val request: Req) extends RequestIdentification[Req]
-
   /**
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst
    * destination]] for `Req`-typed requests.
    */
   type Identifier[Req] = Req => Future[RequestIdentification[Req]]
+
+  /** The result of attempting to identify a request. */
+  sealed trait RequestIdentification[Req]
+  /**
+   * This indicates that a destination was successfully assigned.  The attached
+   * request should be sent to the destination.
+   * @param dst The destination of the request.
+   * @param request The request to send to the destination.  This allows
+   *                identifiers to effectively mutate requests that they
+   *                identify.
+   */
+  class IdentifiedRequest[Req](val dst: Dst, val request: Req) extends RequestIdentification[Req]
+
+  object IdentifiedRequest {
+    def unapply[Req](identified: IdentifiedRequest[Req]): Option[(Dst, Req)] =
+      Some(identified.dst, identified.request)
+  }
+
+  /**
+   * This indicates that the identifier could not assign a destination to the
+   * request.
+   */
+  class UnidentifiedRequest[Req](val reason: String) extends RequestIdentification[Req]
+
+  /** Indicates that no destination could be found for a request. */
+  case class UnknownDst[Req](request: Req, reason: String)
+    extends Exception(s"Unknown destination: $request / $reason")
+    with NoStackTrace
 
   /**
    * A prefix to be assigned to [[com.twitter.finagle.buoyant.Dst
@@ -101,7 +121,7 @@ class RoutingFactory[Req, Rsp](
       }
 
       for {
-        identified <- getDst(req0).transform {
+        IdentifiedRequest(dst, req1) <- getDst(req0).transform {
           case Return(identified: IdentifiedRequest[Req]) =>
             Future.value(identified)
           case Return(unidentified: UnidentifiedRequest[Req]) =>
@@ -114,11 +134,11 @@ class RoutingFactory[Req, Rsp](
 
         // Client acquisition failures are recorded within the
         // clientFactory's path stack.
-        service <- clientFactory(identified.dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
+        service <- clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
 
         // Service failures are recorded within the clientFactory's
         // path stack, too.
-        rsp <- service(identified.request).ensure {
+        rsp <- service(req1).ensure {
           val _ = service.close()
         }
       } yield rsp

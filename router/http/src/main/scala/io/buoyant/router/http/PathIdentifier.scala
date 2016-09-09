@@ -20,15 +20,11 @@ case class PathIdentifier(
         if (consume) {
           req.uri = req.uri.split("/").drop(segments + 1).mkString("/", "/", "")
         }
-        Future.value(
-          new IdentifiedRequest[Request](
-            Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local),
-            req
-          )
-        )
+        val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
+        Future.value(new IdentifiedRequest[Request](dst, req))
       case _ =>
         Future.value(
-          new UnidentifiedRequest[Request]("not enough segments in path", req)
+          new UnidentifiedRequest[Request]("not enough segments in path")
         )
     }
 }
