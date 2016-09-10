@@ -56,21 +56,7 @@ object Linkerd extends App {
             listening
           }
 
-          new Closable with CloseAwaitably {
-            def close(deadline: Time) = closeAwaitably {
-              val serving = servers.map { server =>
-                Closable.make { d =>
-                  log.debug("closing %s server: %s", routerConfig.label, server.boundAddress)
-                  server.close(d)
-                }
-              }
-
-              Closable.all(serving: _*).close(deadline).before {
-                log.debug("closing router: %s", routerConfig.label)
-                router.close(deadline)
-              }
-            }
-          }
+          new RouterCloser(servers, router)
         }
 
         closeOnExit(Closable.sequence(
@@ -98,4 +84,12 @@ object Linkerd extends App {
 
     Linker.parse(configText)
   }
+
+  private class RouterCloser(servers: Seq[Closable], router: Closable)
+    extends Closable with CloseAwaitably {
+
+    private[this] val closer = Closable.sequence(Closable.all(servers: _*), router)
+    def close(deadline: Time) = closeAwaitably { closer.close(deadline) }
+  }
+
 }
