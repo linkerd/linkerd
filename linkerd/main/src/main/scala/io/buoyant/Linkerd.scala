@@ -1,11 +1,13 @@
 package io.buoyant
 
-import com.twitter.util.{Await, Closable, CloseAwaitably, Time}
+import com.twitter.finagle.{Failure, Path}
+import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
 import io.buoyant.admin.{AdminInitializer, App}
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import io.buoyant.linkerd.{Build, Linker}
+import io.buoyant.linkerd.{Announcer, Build, Linker, Router, Server}
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import scala.io.Source
 
 /**
@@ -23,50 +25,19 @@ object Linkerd extends App {
 
     args match {
       case Array(path) =>
-        val linkerConfig = loadLinker(path)
-        val linker = linkerConfig.mk
-
-        val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
-        val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
-        adminInitializer.startServer()
-
+        val config = loadLinker(path)
+        val linker = config.mk
+        val admin = initAdmin(linker, config)
         val telemeters = linker.telemeters.map(_.run())
-
-        val routers = linker.routers.map { routerConfig =>
-          val router = routerConfig.initialize()
-
-          val servers = router.servers.map { server =>
-            log.info("serving %s on %s:%d", server.router, server.ip, server.port)
-            val listening = server.serve()
-
-            // TODO we should add closing semantics to announcers so
-            // they can gracefully teardown with servers.
-            for (name <- server.announce) {
-              val announcers = router.announcers.filter {
-                case (prefix, _) => name.startsWith(prefix)
-              }
-
-              for ((prefix, announcer) <- announcers) {
-                log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
-                announcer.announce(server.addr, name.drop(prefix.size)).onSuccess(closeOnExit)
-              }
-              if (announcers.isEmpty) log.warning("no announcer found for %s", name.show)
-            }
-
-            listening
-          }
-
-          new RouterCloser(servers, router)
-        }
-
+        val routers = linker.routers.map(initRouter(_))
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
           Closable.all(telemeters: _*),
-          adminInitializer.adminHttpServer
+          admin
         ))
         Await.all(routers: _*)
         Await.all(telemeters: _*)
-        Await.result(adminInitializer.adminHttpServer)
+        Await.result(admin)
 
       case _ => exitOnError("usage: linkerd path/to/config")
     }
@@ -81,15 +52,73 @@ object Linkerd extends App {
         if (!f.isFile) throw new IllegalArgumentException(s"config is not a file: $path")
         Source.fromFile(f).mkString
     }
-
     Linker.parse(configText)
   }
 
-  private class RouterCloser(servers: Seq[Closable], router: Closable)
-    extends Closable with CloseAwaitably {
+  private def initAdmin(linker: Linker, linkerConfig: LinkerConfig): Closable with Awaitable[Unit] = {
+    val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
+    val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
+    adminInitializer.startServer()
+    adminInitializer.adminHttpServer
+  }
 
-    private[this] val closer = Closable.sequence(Closable.all(servers: _*), router)
-    def close(deadline: Time) = closeAwaitably { closer.close(deadline) }
+  private def initRouter(config: Router): Closable with Awaitable[Unit] = {
+    val router = config.initialize()
+
+    val servers = router.servers.map { server =>
+      log.info("serving %s on %s:%d", server.router, server.ip, server.port)
+      val listening = server.serve()
+      val announcements = announce(router.announcers, server)
+      Closable.sequence(announcements, listening)
+    }
+
+    new Closable with CloseAwaitably {
+      private[this] val closer = Closable.sequence(Closable.all(servers: _*), router)
+      def close(deadline: Time) = closeAwaitably { closer.close(deadline) }
+    }
+  }
+
+  private def announce(announcers: Seq[(Path, Announcer)], server: Server.Initializer): Closable =
+    Closable.all(server.announce.map(announce(announcers, server, _)): _*)
+
+  private def announce(
+    announcers: Seq[(Path, Announcer)],
+    server: Server.Initializer,
+    name: Path
+  ): Closable = {
+    announcers.filter { case (pfx, _) => name.startsWith(pfx) } match {
+      case Seq() =>
+        log.warning("no announcer found for %s", name.show)
+        Closable.nop
+
+      case announcers =>
+        val closers = announcers.map {
+          case (prefix, announcer) =>
+            // If we close before the announcer registers, we
+            // cancel the registration. If we close after
+            // registration, we close it.
+            //
+            // XXX we should change the announcer API to return
+            // an Announcement synchronously (that may actually
+            // wrap some asynchronous announcement logic).
+            val closeRef = new AtomicReference[Closable](Closable.nop)
+            val closer = Closable.ref(closeRef)
+
+            log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
+            val f = announcer.announce(server.addr, name.drop(prefix.size))
+            closeRef.set(Closable.make { deadline =>
+              f.raise(Failure("closed").flagged(Failure.Interrupted))
+              Future.Unit
+            })
+            f.respond {
+              case Throw(e) => closeRef.set(Closable.nop)
+              case Return(closer) => closeRef.set(closer)
+            }
+
+            closer
+        }
+        Closable.all(closers: _*)
+    }
   }
 
 }
