@@ -1,3 +1,7 @@
+## 0.x.y
+
+* Improve shutdown ordering to facilitate graceful shutdown.
+
 ## 0.7.5
 
 * Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
