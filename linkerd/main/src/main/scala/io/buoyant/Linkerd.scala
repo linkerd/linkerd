@@ -85,7 +85,7 @@ object Linkerd extends App {
     announcers: Seq[(Path, Announcer)],
     server: Server.Initializer,
     name: Path
-  ): Closable = {
+  ): Closable =
     announcers.filter { case (pfx, _) => name.startsWith(pfx) } match {
       case Seq() =>
         log.warning("no announcer found for %s", name.show)
@@ -93,32 +93,36 @@ object Linkerd extends App {
 
       case announcers =>
         val closers = announcers.map {
-          case (prefix, announcer) =>
-            // If we close before the announcer registers, we
-            // cancel the registration. If we close after
-            // registration, we close it.
-            //
-            // XXX we should change the announcer API to return
-            // an Announcement synchronously (that may actually
-            // wrap some asynchronous announcement logic).
-            val closeRef = new AtomicReference[Closable](Closable.nop)
-            val closer = Closable.ref(closeRef)
-
-            log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
-            val f = announcer.announce(server.addr, name.drop(prefix.size))
-            closeRef.set(Closable.make { deadline =>
-              f.raise(Failure("closed").flagged(Failure.Interrupted))
-              Future.Unit
-            })
-            f.respond {
-              case Throw(e) => closeRef.set(Closable.nop)
-              case Return(closer) => closeRef.set(closer)
-            }
-
-            closer
+          case (prefix, announcer) => announce(prefix, announcer, server, name)
         }
         Closable.all(closers: _*)
     }
+
+  private def announce(
+    prefix: Path,
+    announcer: Announcer,
+    server: Server.Initializer,
+    name: Path
+  ): Closable = {
+    log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
+    val f = announcer.announce(server.addr, name.drop(prefix.size))
+
+    // If we close before the announcer registers, we
+    // cancel the registration. If we close after
+    // registration, we close it.
+    //
+    // XXX we should change the announcer API to return
+    // an Announcement synchronously (that may actually
+    // wrap some asynchronous announcement logic).
+    val closeRef = new AtomicReference[Closable](Closable.make { _ =>
+      f.raise(Failure("closed").flagged(Failure.Interrupted))
+      Future.Unit
+    })
+    f.respond {
+      case Throw(e) => closeRef.set(Closable.nop)
+      case Return(closer) => closeRef.set(closer)
+    }
+    Closable.ref(closeRef)
   }
 
 }
