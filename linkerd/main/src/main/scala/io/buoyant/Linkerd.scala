@@ -73,13 +73,11 @@ object Linkerd extends App {
           }
         }
 
-        closeOnExit(Closable.make { deadline =>
-          Closable.all(routers: _*).close(deadline).before {
-            val telems = Closable.all(telemeters: _*)
-            Closable.sequence(telems, adminInitializer.adminHttpServer).close(deadline)
-          }
-        })
-
+        closeOnExit(Closable.sequence(
+          Closable.all(routers: _*),
+          Closable.all(telemeters: _*),
+          adminInitializer.adminHttpServer
+        ))
         Await.all(routers: _*)
         Await.all(telemeters: _*)
         Await.result(adminInitializer.adminHttpServer)
