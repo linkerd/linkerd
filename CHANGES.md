@@ -4,6 +4,7 @@
   defaults, reducing logging noise.
 * The `debugTrace` tracer configuration flag has been removed in favor
   of the `io.l5d.tracelog` telemeter.
+* Improve shutdown ordering to facilitate graceful shutdown.
 
 ## 0.7.5
 
