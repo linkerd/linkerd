@@ -1,6 +1,8 @@
 ## 0.x.y
 
 * Improve shutdown ordering to facilitate graceful shutdown.
+* Require tracer configuration instead of falling back to
+  defaults, reducing logging noise.
 
 ## 0.7.5
 
