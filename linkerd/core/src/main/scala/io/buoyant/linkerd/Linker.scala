@@ -4,7 +4,7 @@ import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, BroadcastTracer, Tracer}
+import com.twitter.finagle.tracing.{NullTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
@@ -116,21 +116,11 @@ object Linker {
       //
       // TODO the TracerInitializer API should be killed and these
       // modules should be converted to Telemeters.
-      val configuredTracers = tracers match {
-        case None => Nil
-        case Some(tracers) =>
-          tracers.map { t =>
-            // override the global {com.twitter.finagle.tracing.debugTrace} flag
-            fDebugTrace.parse(t.debugTrace.toString)
-            t.newTracer()
-          }
-      }
-      val telemeterTracers = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
-      val tracer = (configuredTracers ++ telemeterTracers) match {
-        case Nil => NullTracer
-        case tracers =>
-          for (t <- tracers) log.info("tracer: %s", t)
-          BroadcastTracer(tracers)
+      val tracer = {
+        val all = tracers.getOrElse(Nil).map(_.newTracer()) ++
+          telemeters.collect { case t if !t.tracer.isNull => t.tracer }
+        for (t <- all) log.info("tracer: %s", t)
+        BroadcastTracer(all)
       }
 
       val baseParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
