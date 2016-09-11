@@ -1,3 +1,8 @@
+## 0.x.y
+
+* Require tracer configuration instead of falling back to
+  defaults, reducing logging noise.
+
 ## 0.7.5
 
 * Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
