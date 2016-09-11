@@ -10,24 +10,34 @@ import com.twitter.util.Future
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
 import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter}
 import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
 
-class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
+class LinkerdAdmin(
+  app: App,
+  linker: Linker,
+  config: Linker.LinkerConfig
+) extends Admin[Linker.LinkerConfig] {
 
-  private[this] val dtabs: Map[String, Dtab] =
+  private[this] val dtabsByRouter: Map[String, Dtab] =
     linker.routers.map { router =>
       val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
       router.label -> dtab()
     }.toMap
 
-  private[this] val enumeratingNamers = linker.namers.collect {
-    case (_, namer: EnumeratingNamer) => namer
-  }
+  private[this] val enumeratingNamers: Seq[EnumeratingNamer] =
+    linker.namers.collect { case (_, namer: EnumeratingNamer) => namer }
 
-  private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
-    "/" -> new DashboardHandler,
+  private[this] val interpretersByRouter: Map[String, NameInterpreter] =
+    linker.routers.map { router =>
+      val DstBindingFactory.Namer(namer) = router.params[DstBindingFactory.Namer]
+      router.label -> namer
+    }.toMap
+
+  private[this] def interpreterForRouter(label: String): NameInterpreter =
+    linker.getOrElse(label, NameInterpreter)
+
+  private[this] val linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
     "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/admin",
@@ -35,16 +45,11 @@ class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin
     )),
     "/delegator" -> new DelegateHandler(AdminHandler, dtabs, interpreterForRouter),
     "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
-    "/metrics" -> MetricsHandler,
     "/help" -> new HelpPageHandler,
     "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
     "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
   )
 
-  private[this] def interpreterForRouter(label: String): NameInterpreter =
-    linker.routers.find(_.label == label).map { router =>
-      router.params[DstBindingFactory.Namer].interpreter
-    }.getOrElse(NameInterpreter)
-
-  override def allRoutes = super.allRoutes ++ linkerdAdminRoutes
+  override protected[this] val baseRoutes =
+    super.baseRoutes ++ linkerdAdminRoutes
 }
