@@ -10,7 +10,6 @@ These parameters are available to the tracer regardless of kind. Tracers may als
 Key | Default Value | Description
 --- | ------------- | -----------
 kind | _required_ | Only `io.l5d.zipkin` is available at this time.
-debugTrace | `false` | If `true`, print all traces to the console. Note this overrides the global `-com.twitter.finagle.tracing.debugTrace` flag, and will default to that flag if not set here.
 
 
 ## Zipkin
@@ -23,7 +22,6 @@ tracers:
   host: localhost
   port: 9410
   sampleRate: 0.02
-  debugTrace: true
 ```
 
 kind: `io.l5d.zipkin`
