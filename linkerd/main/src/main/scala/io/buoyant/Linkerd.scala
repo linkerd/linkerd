@@ -57,9 +57,8 @@ object Linkerd extends App {
 
   private def initAdmin(linker: Linker, linkerConfig: LinkerConfig): Closable with Awaitable[Unit] = {
     val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
-    val adminInitializer = new AdminInitializer(linker.admin, linkerdAdmin.adminMuxer)
-    adminInitializer.startServer()
-    adminInitializer.adminHttpServer
+    log.info(s"serving http admin on %s", linker.admin.port.port)
+    AdminInitializer.run(linker.admin, linkerdAdmin.adminMuxer)
   }
 
   private def initRouter(config: Router): Closable with Awaitable[Unit] = {
