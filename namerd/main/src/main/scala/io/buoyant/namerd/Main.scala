@@ -1,10 +1,10 @@
 package io.buoyant.namerd
 
-import com.twitter.util.Await
+import com.twitter.util.{Await, Closable}
+import io.buoyant.admin.{AdminConfig, AdminInitializer, App}
 import io.buoyant.config.types.Port
 import java.io.File
 import scala.io.Source
-import io.buoyant.admin.{AdminConfig, AdminInitializer, App}
 
 object Main extends App {
 
@@ -14,22 +14,24 @@ object Main extends App {
         val config = loadNamerd(path)
         val namerd = config.mk(statsReceiver)
 
-        val admin = new NamerdAdmin(this, config, namerd)
-        val adminInitializer = new AdminInitializer(
+        val admin = AdminInitializer.run(
           config.admin.getOrElse(AdminConfig(Port(9991))),
-          admin.adminMuxer
+          new NamerdAdmin(this, config, namerd).adminMuxer
         )
-        adminInitializer.startServer()
-        closeOnExit(adminInitializer.adminHttpServer)
+        log.info(s"serving http admin on ${admin.boundAddress}")
 
         val servers = namerd.interfaces.map { iface =>
           val server = iface.serve()
-          closeOnExit(server)
           log.info(s"serving ${iface.kind} interface on ${server.boundAddress}")
           server
         }
 
+        closeOnExit(Closable.sequence(
+          Closable.all(servers: _*),
+          admin
+        ))
         Await.all(servers: _*)
+        Await.result(admin)
 
       case _ => exitOnError("usage: namerd path/to/config")
     }
