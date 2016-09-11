@@ -1,19 +1,19 @@
 package io.buoyant.admin
 
-import com.twitter.finagle._
+import com.twitter.finagle.{Http, ListeningServer, Service}
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.logging.Logger
 import com.twitter.server.view.NotFoundView
-import com.twitter.util.{Awaitable, Closable, Monitor}
+import com.twitter.util.Monitor
 import java.net.InetSocketAddress
 
 private[buoyant] object AdminInitializer {
   private[this] val label = "adminhttp"
 
-  private[this] val log = Logger(label)
   private[this] val loggingMonitor = new Monitor {
+    val log = Logger(label)
     def handle(exc: Throwable): Boolean = {
       log.error(exc, label)
       false
