@@ -28,7 +28,7 @@ object AdminInitializer {
 
   def run(config: AdminConfig, service: Service[Request, Response]): Closable with Awaitable[Unit] = {
     val addr = new InetSocketAddress(config.port.port)
-    val svc = new NotFoundView().andThen(servce)
+    val svc = new NotFoundView().andThen(service)
     server.serve(addr, svc)
   }
 }
