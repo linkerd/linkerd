@@ -1,11 +1,9 @@
-package io.buoyant
+package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
 import io.buoyant.admin.{AdminInitializer, App}
-import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import io.buoyant.linkerd.{Announcer, Build, Linker, Router, Server}
 import java.io.File
 import scala.io.Source
 
@@ -16,7 +14,7 @@ import scala.io.Source
  *
  * The config file may be either JSON- or YAML-formatted
  */
-object Linkerd extends App {
+object Main extends App {
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
@@ -42,7 +40,7 @@ object Linkerd extends App {
     }
   }
 
-  private def loadLinker(path: String): LinkerConfig = {
+  private def loadLinker(path: String): Linker.LinkerConfig = {
     val configText = path match {
       case "-" =>
         Source.fromInputStream(System.in).mkString
@@ -54,8 +52,11 @@ object Linkerd extends App {
     Linker.parse(configText)
   }
 
-  private def initAdmin(linker: Linker, linkerConfig: LinkerConfig): Closable with Awaitable[Unit] = {
-    val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
+  private def initAdmin(
+    linker: Linker,
+    config: Linker.LinkerConfig
+  ): Closable with Awaitable[Unit] = {
+    val linkerdAdmin = new LinkerdAdmin(this, linker, config)
     log.info(s"serving http admin on %s", linker.admin.port.port)
     AdminInitializer.run(linker.admin, linkerdAdmin.adminMuxer)
   }
