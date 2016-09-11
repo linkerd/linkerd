@@ -11,8 +11,8 @@ import java.net.InetSocketAddress
 
 object AdminInitializer {
   private[this] val label = "adminhttp"
-  private[this] val log = Logger(label)
 
+  private[this] val log = Logger(label)
   private[this] val loggingMonitor = new Monitor {
     def handle(exc: Throwable): Boolean = {
       log.error(exc, label)
