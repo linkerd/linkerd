@@ -9,7 +9,7 @@ import com.twitter.server.view.NotFoundView
 import com.twitter.util.{Awaitable, Closable, Monitor}
 import java.net.InetSocketAddress
 
-object AdminInitializer {
+private[buoyant] object AdminInitializer {
   private[this] val label = "adminhttp"
 
   private[this] val log = Logger(label)
@@ -26,7 +26,7 @@ object AdminInitializer {
     .withStatsReceiver(NullStatsReceiver)
     .withTracer(NullTracer)
 
-  def run(config: AdminConfig, service: Service[Request, Response]): Closable with Awaitable[Unit] = {
+  def run(config: AdminConfig, service: Service[Request, Response]): ListeningServer = {
     val addr = new InetSocketAddress(config.port.port)
     val svc = new NotFoundView().andThen(service)
     server.serve(addr, svc)
