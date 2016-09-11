@@ -20,11 +20,15 @@ object AdminInitializer {
     }
   }
 
-  def run(admin: AdminConfig, svc: Service[Request, Response]): Closable with Awaitable[Unit] =
-    Http.server
-      .withLabel(label)
-      .withMonitor(loggingMonitor)
-      .withStatsReceiver(NullStatsReceiver)
-      .withTracer(NullTracer)
-      .serve(new InetSocketAddress(admin.port.port), new NotFoundView().andThen(svc))
+  private[this] val server = Http.server
+    .withLabel(label)
+    .withMonitor(loggingMonitor)
+    .withStatsReceiver(NullStatsReceiver)
+    .withTracer(NullTracer)
+
+  def run(config: AdminConfig, service: Service[Request, Response]): Closable with Awaitable[Unit] = {
+    val addr = new InetSocketAddress(config.port.port)
+    val svc = new NotFoundView().andThen(servce)
+    server.serve(addr, svc)
+  }
 }
