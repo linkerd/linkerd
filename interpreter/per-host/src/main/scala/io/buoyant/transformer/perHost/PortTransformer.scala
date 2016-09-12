@@ -6,6 +6,12 @@ import com.twitter.util.Activity
 import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
 import java.net.InetSocketAddress
 
+/**
+  * The port transformer replaces the port number in every addresses with a
+  * configured value.  This can be used if there is an incoming linkerd router
+  * (or other reverse-proxy) running on a fixed port on each host and you with
+  * to send traffic to that port instead of directly to the destination address.
+  */
 class PortTransformer(port: Int) extends DelegatingNameTreeTransformer {
 
   private[this] val mapAddress: Address => Address = {
