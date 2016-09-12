@@ -254,7 +254,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    assert(linker.admin.port.port == 9991)
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9991)
   }
 
   test("conflicting subtypes") {

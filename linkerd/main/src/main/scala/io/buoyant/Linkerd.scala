@@ -2,7 +2,7 @@ package io.buoyant
 
 import com.twitter.finagle.{Failure, Path}
 import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
-import io.buoyant.admin.{AdminInitializer, App}
+import io.buoyant.admin.App
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Announcer, Build, Linker, Router, Server}
@@ -26,8 +26,8 @@ object Linkerd extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
-        val linker = config.mk
-        val admin = initAdmin(linker, config)
+        val linker = config.mk()
+        val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))
         closeOnExit(Closable.sequence(
@@ -55,10 +55,13 @@ object Linkerd extends App {
     Linker.parse(configText)
   }
 
-  private def initAdmin(linker: Linker, linkerConfig: LinkerConfig): Closable with Awaitable[Unit] = {
-    val linkerdAdmin = new LinkerdAdmin(this, linker, linkerConfig)
-    log.info(s"serving http admin on %s", linker.admin.port.port)
-    AdminInitializer.run(linker.admin, linkerdAdmin.adminMuxer)
+  private def initAdmin(
+    config: Linker.LinkerConfig,
+    linker: Linker
+  ): Closable with Awaitable[Unit] = {
+    val server = linker.admin.serve(this, LinkerdAdmin(config, linker))
+    log.info(s"serving http admin on %s", server.boundAddress)
+    server
   }
 
   private def initRouter(config: Router): Closable with Awaitable[Unit] = {

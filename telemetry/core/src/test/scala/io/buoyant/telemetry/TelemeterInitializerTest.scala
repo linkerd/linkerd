@@ -34,13 +34,15 @@ case class TestTelemeterConfig(metrics: Boolean, tracing: Boolean) extends Telem
 }
 
 case class TestTelemeter(metrics: Boolean, tracing: Boolean) extends Telemeter {
-  override val stats =
+  val stats =
     if (metrics) new InMemoryStatsReceiver
     else NullStatsReceiver
 
-  override val tracer =
+  val tracer =
     if (tracing) new BufferingTracer
     else NullTracer
+
+  val adminRoutes = Seq.empty
 
   def run(): Closable with Awaitable[Unit] =
     new Closable with CloseAwaitably {

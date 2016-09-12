@@ -1,4 +1,5 @@
-package io.buoyant.linkerd.admin
+package io.buoyant.linkerd
+package admin
 
 import com.twitter.app.App
 import com.twitter.finagle._
@@ -12,44 +13,50 @@ import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter}
 import io.buoyant.linkerd.Linker
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
+import io.buoyant.telemetry.Telemeter
 
-class LinkerdAdmin(
-  app: App,
-  linker: Linker,
-  config: Linker.LinkerConfig
-) extends Admin[Linker.LinkerConfig] {
+object LinkerdAdmin {
+  def boundNames(namers: Seq[Namer]): Admin.Routes = {
+    val enumerating = namers.collect { case en: EnumeratingNamer => en }
+    Seq("/bound-names.json" -> new BoundNamesHandler(enumerating))
+  }
 
-  private[this] val dtabsByRouter: Map[String, Dtab] =
-    linker.routers.map { router =>
+  def config(lc: Linker.LinkerConfig): Admin.Routes = Seq(
+    "/config.json" -> new ConfigHandler(lc, Linker.LoadedInitializers.iter)
+  )
+
+  def delegator(routers: Seq[Router]): Admin.Routes = {
+    val byLabel = routers.map(r => r.label -> r).toMap
+    val dtabs = byLabel.mapValues { router =>
       val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
-      router.label -> dtab()
-    }.toMap
-
-  private[this] val enumeratingNamers: Seq[EnumeratingNamer] =
-    linker.namers.collect { case (_, namer: EnumeratingNamer) => namer }
-
-  private[this] val interpretersByRouter: Map[String, NameInterpreter] =
-    linker.routers.map { router =>
+      dtab()
+    }
+    val interpreters = byLabel.mapValues { router =>
       val DstBindingFactory.Namer(namer) = router.params[DstBindingFactory.Namer]
-      router.label -> namer
-    }.toMap
+      namer
+    }
+    def getInterpreter(label: String): NameInterpreter =
+      interpreters.getOrElse(label, NameInterpreter)
 
-  private[this] def interpreterForRouter(label: String): NameInterpreter =
-    linker.getOrElse(label, NameInterpreter)
+    Seq(
+      "/delegator" -> new DelegateHandler(AdminHandler, dtabs, getInterpreter),
+      "/delegator.json" -> new DelegateApiHandler(getInterpreter)
+    )
+  }
 
-  private[this] val linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
-    "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
+  val static: Admin.Routes = Seq(
+    "/" -> new DashboardHandler,
+    "/files/" -> StaticFilter.andThen(ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/admin",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
-    "/delegator" -> new DelegateHandler(AdminHandler, dtabs, interpreterForRouter),
-    "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
-    "/help" -> new HelpPageHandler,
-    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
-    "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
+    "/help" -> new HelpPageHandler
   )
 
-  override protected[this] val baseRoutes =
-    super.baseRoutes ++ linkerdAdminRoutes
+  def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Routes =
+    static ++ config(lc) ++
+      boundNames(linker.namers.map { case (_, n) => n }) ++
+      delegator(linker.routers) ++
+      linker.telemeters.flatMap(_.adminRoutes)
 }
