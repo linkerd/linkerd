@@ -82,11 +82,11 @@ object Linkerd extends App {
     Closable.all(server.announce.map(announce(announcers, server, _)): _*)
 
   private def announce(
-    announcers: Seq[(Path, Announcer)],
+    announcers0: Seq[(Path, Announcer)],
     server: Server.Initializer,
     name: Path
   ): Closable =
-    announcers.filter { case (pfx, _) => name.startsWith(pfx) } match {
+    announcers0.filter { case (pfx, _) => name.startsWith(pfx) } match {
       case Seq() =>
         log.warning("no announcer found for %s", name.show)
         Closable.nop
@@ -114,13 +114,19 @@ object Linkerd extends App {
     // XXX we should change the announcer API to return
     // an Announcement synchronously (that may actually
     // wrap some asynchronous announcement logic).
-    val closeRef = new AtomicReference[Closable](Closable.make { _ =>
+    @volatile var deadline: Option[Time] = None
+    val closeRef = new AtomicReference[Closable](Closable.make { d =>
+      deadline = Some(d)
       f.raise(Failure("closed").flagged(Failure.Interrupted))
       Future.Unit
     })
     f.respond {
-      case Throw(e) => closeRef.set(Closable.nop)
-      case Return(closer) => closeRef.set(closer)
+      case Throw(_) => closeRef.set(Closable.nop)
+      case Return(announced) =>
+        deadline match {
+          case None => closeRef.set(announced)
+          case Some(d) => announced.close(d)
+        }
     }
     Closable.ref(closeRef)
   }
