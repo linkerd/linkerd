@@ -105,7 +105,7 @@ object Linkerd extends App {
     name: Path
   ): Closable = {
     log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
-    val f = announcer.announce(server.addr, name.drop(prefix.size))
+    val pending = announcer.announce(server.addr, name.drop(prefix.size))
 
     // If we close before the announcer registers, we
     // cancel the registration. If we close after
@@ -117,10 +117,10 @@ object Linkerd extends App {
     @volatile var deadline: Option[Time] = None
     val closeRef = new AtomicReference[Closable](Closable.make { d =>
       deadline = Some(d)
-      f.raise(Failure("closed").flagged(Failure.Interrupted))
+      pending.raise(Failure("closed").flagged(Failure.Interrupted))
       Future.Unit
     })
-    f.respond {
+    pending.respond {
       case Throw(_) => closeRef.set(Closable.nop)
       case Return(announced) =>
         deadline match {
@@ -128,6 +128,7 @@ object Linkerd extends App {
           case Some(d) => announced.close(d)
         }
     }
+
     Closable.ref(closeRef)
   }
 
