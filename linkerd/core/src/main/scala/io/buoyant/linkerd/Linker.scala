@@ -102,11 +102,10 @@ object Linker {
       // telemeters provide implementations that do not use the
       // default Metrics registry, linker stats may be missing from
       // /admin/metrics.json
-      val stats = telemeters.collect { case t if !t.stats.isNull => t.stats } match {
-        case Nil => NullStatsReceiver
-        case receivers =>
-          for (r <- receivers) log.info("stats: %s", r)
-          BroadcastStatsReceiver(receivers)
+      val stats = {
+        val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats }
+        for (r <- receivers) log.info("stats: %s", r)
+        BroadcastStatsReceiver(receivers)
       }
 
       // Similarly, tracers may be provided by telemeters OR by
@@ -114,21 +113,20 @@ object Linker {
       //
       // TODO the TracerInitializer API should be killed and these
       // modules should be converted to Telemeters.
-      val configuredTracers = tracers match {
-        case None => Nil
-        case Some(tracers) =>
-          tracers.map { t =>
-            // override the global {com.twitter.finagle.tracing.debugTrace} flag
-            fDebugTrace.parse(t.debugTrace.toString)
-            t.newTracer()
-          }
-      }
-      val telemeterTracers = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
-      val tracer = (configuredTracers ++ telemeterTracers) match {
-        case Nil => NullTracer
-        case tracers =>
-          for (t <- tracers) log.info("tracer: %s", t)
-          BroadcastTracer(tracers)
+      val tracer = {
+        val configuredTracers = tracers match {
+          case None => Nil
+          case Some(tracers) =>
+            tracers.map { t =>
+              // override the global {com.twitter.finagle.tracing.debugTrace} flag
+              fDebugTrace.parse(t.debugTrace.toString)
+              t.newTracer()
+            }
+        }
+        val telemeterTracers = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
+        val all = configuredTracers ++ telemeterTracers
+        for (t <- all) log.info("tracer: %s", t)
+        BroadcastTracer(all)
       }
 
       val baseParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
