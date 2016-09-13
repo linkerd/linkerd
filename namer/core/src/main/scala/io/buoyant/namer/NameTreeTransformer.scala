@@ -31,7 +31,7 @@ trait NameTreeTransformer {
  */
 trait DelegatingNameTreeTransformer extends NameTreeTransformer {
 
-  protected def transformDelegate(tree: DelegateTree[Name.Bound]): DelegateTree[Name.Bound]
+  protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]]
 
   /** Like wrap, but preserving the ability of the NameInterpreter to delegate */
   def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = new NameInterpreter with Delegator {
@@ -41,7 +41,7 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
     override def delegate(
       dtab: Dtab,
       tree: DelegateTree[Name.Path]
-    ): Activity[DelegateTree[Bound]] = underlying.delegate(dtab, tree).map(transformDelegate)
+    ): Activity[DelegateTree[Bound]] = underlying.delegate(dtab, tree).flatMap(transformDelegate)
 
     override def dtab: Activity[Dtab] = underlying.dtab
   }
