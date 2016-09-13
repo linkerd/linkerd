@@ -16,6 +16,7 @@ object HeaderIdentifierInitializer extends HeaderIdentifierInitializer
 
 object HeaderIdentifierConfig {
   val kind = "io.l5d.header"
+  val defaultHeader = Headers.Prefix + "name"
 }
 
 class HeaderIdentifierConfig extends HttpIdentifierConfig {
@@ -25,5 +26,9 @@ class HeaderIdentifierConfig extends HttpIdentifierConfig {
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
-  ) = HeaderIdentifier(prefix, header.getOrElse(Headers.Dst.Bound), baseDtab)
+  ) = HeaderIdentifier(
+    prefix,
+    header.getOrElse(HeaderIdentifierConfig.defaultHeader),
+    baseDtab
+  )
 }

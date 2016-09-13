@@ -19,16 +19,6 @@ class HeaderIdentifierTest extends FunSuite with Awaits with Exceptions {
     )
   }
 
-  test("use path segment from header") {
-    val identifier = HeaderIdentifier(Path.Utf8("http"), "my-header")
-    val req = Request()
-    req.headerMap.set("my-header", "hello")
-    assert(
-      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst ==
-        Dst.Path(Path.read("/http/hello"))
-    )
-  }
-
   test("header is absent") {
     val identifier = HeaderIdentifier(Path.Utf8("http"), "my-header")
     val req = Request()

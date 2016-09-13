@@ -191,7 +191,7 @@ routers:
 
 Key | Default Value | Description
 --- | ------------- | -----------
-header | `l5d-dst-concrete` | The name of the HTTP header to use
+header | `l5d-name` | The name of the HTTP header to use
 
 #### Namer Path Parameters:
 
@@ -204,7 +204,7 @@ header | `l5d-dst-concrete` | The name of the HTTP header to use
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
-headerValue | N/A | The value of the HTTP header as a path, if it is a valid path.  The value of the HTTP header as a single path segment, otherwise.
+headerValue | N/A | The value of the HTTP header as a path.
 
 <a name="http-engines"></a>
 ## HTTP Engines
