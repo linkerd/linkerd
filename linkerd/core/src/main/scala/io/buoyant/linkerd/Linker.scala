@@ -3,15 +3,15 @@ package io.buoyant.linkerd
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{param, Path, Namer, Stack}
-import com.twitter.finagle.stats.{BroadcastStatsReceiver, DefaultStatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, DefaultTracer, BroadcastTracer, Tracer}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.tracing.{debugTrace => fDebugTrace, NullTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.logging.Logger
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
-import io.buoyant.telemetry.{TelemeterInitializer, TelemeterConfig, Telemeter}
+import io.buoyant.telemetry.{DefaultTelemeter, TelemeterInitializer, TelemeterConfig, Telemeter}
 
 /**
  * Represents the total configuration of a Linkerd process.
@@ -88,45 +88,45 @@ object Linker {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val telemeters = telemetry.map(_.map(_.mk(Stack.Params.empty)))
+      val telemeters = telemetry match {
+        case None =>
+          // Use the default stats receiver but require explicit
+          // tracer configuration.
+          val default = new DefaultTelemeter(true, false)
+          Seq(default)
+        case Some(telemeters) =>
+          telemeters.map(_.mk(Stack.Params.empty))
+      }
 
       // Telemeters may provide StatsReceivers.  Note that if all
       // telemeters provide implementations that do not use the
       // default Metrics registry, linker stats may be missing from
       // /admin/metrics.json
-      val stats =
-        telemeters.getOrElse(Nil).collect { case t if !t.stats.isNull => t.stats } match {
-          case Nil =>
-            log.info(s"Using default stats receiver")
-            DefaultStatsReceiver
-          case receivers =>
-            for (r <- receivers) log.info(s"Using stats receiver: $r")
-            BroadcastStatsReceiver(receivers)
-        }
+      val stats = {
+        val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats }
+        for (r <- receivers) log.info("stats: %s", r)
+        BroadcastStatsReceiver(receivers)
+      }
 
       // Similarly, tracers may be provided by telemeters OR by
       // 'tracers' configuration.
       //
       // TODO the TracerInitializer API should be killed and these
       // modules should be converted to Telemeters.
-      val configuredTracers = tracers.map { tracers =>
-        tracers.map { t =>
-          // override the global {com.twitter.finagle.tracing.debugTrace} flag
-          fDebugTrace.parse(t.debugTrace.toString)
-          t.newTracer()
+      val tracer = {
+        val configuredTracers = tracers match {
+          case None => Nil
+          case Some(tracers) =>
+            tracers.map { t =>
+              // override the global {com.twitter.finagle.tracing.debugTrace} flag
+              fDebugTrace.parse(t.debugTrace.toString)
+              t.newTracer()
+            }
         }
-      }
-      val telemeterTracers = telemeters.map { ts =>
-        ts.collect { case t if !t.tracer.isNull => t.tracer }
-      }
-      val tracer: Tracer = (configuredTracers, telemeterTracers) match {
-        case (None, None) =>
-          log.info(s"Using default tracer")
-          DefaultTracer
-        case (tracers0, tracers1) =>
-          val tracers = (tracers0 ++ tracers1).flatten.toSeq
-          for (t <- tracers) log.info(s"Using tracer: $t")
-          BroadcastTracer(tracers)
+        val telemeterTracers = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
+        val all = configuredTracers ++ telemeterTracers
+        for (t <- all) log.info("tracer: %s", t)
+        BroadcastTracer(all)
       }
 
       val baseParams = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
@@ -163,7 +163,7 @@ object Linker {
         routerImpls,
         namersByPrefix,
         tracer,
-        telemeters.getOrElse(Nil),
+        telemeters,
         admin.getOrElse(AdminConfig())
       )
     }

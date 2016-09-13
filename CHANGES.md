@@ -5,6 +5,8 @@
   * **Breaking Change**: Identifier plugins must now return a
     `RequestIdentification` object.
 * Improve shutdown ordering to facilitate graceful shutdown.
+* Require tracer configuration instead of falling back to
+  defaults, reducing logging noise.
 * Add `io.l5d.header` identifier for naming requests based on an HTTP header
 
 ## 0.7.5
