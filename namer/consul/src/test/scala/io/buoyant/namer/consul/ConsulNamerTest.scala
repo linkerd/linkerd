@@ -55,7 +55,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestCatalogApi(),
       new TestAgentApi("acme.co"),
       setHost = false,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
@@ -239,7 +239,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("acme.co"),
       setHost = false,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -298,7 +298,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("acme.co"),
       setHost = false,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -361,7 +361,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("acme.co"),
       setHost = false,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -416,7 +416,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       setHost = true,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -474,7 +474,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       setHost = true,
-      stats
+      stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
