@@ -10,6 +10,7 @@ trait ConsulApi extends BaseApi {
   def serviceMap(
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Map[String, Seq[String]]]]
 
@@ -18,6 +19,7 @@ trait ConsulApi extends BaseApi {
     datacenter: Option[String] = None,
     tag: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[ServiceNode]]]
 }
@@ -37,7 +39,7 @@ class CatalogApi(
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_datacenters
   def datacenters(retry: Boolean = false): Future[Seq[String]] = {
-    val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters")
+    val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters", None)
     executeJson[Seq[String]](req, retry).map(_.value)
   }
 
@@ -45,11 +47,13 @@ class CatalogApi(
   def serviceMap(
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Map[String, Seq[String]]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$catalogPrefix/services",
+      consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter
     )
@@ -62,11 +66,13 @@ class CatalogApi(
     datacenter: Option[String] = None,
     tag: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[ServiceNode]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$catalogPrefix/service/$serviceName",
+      consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag
@@ -99,11 +105,13 @@ class HealthApi(
     datacenter: Option[String] = None,
     tag: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[ServiceNode]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$healthPrefix/service/$serviceName",
+      consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag,

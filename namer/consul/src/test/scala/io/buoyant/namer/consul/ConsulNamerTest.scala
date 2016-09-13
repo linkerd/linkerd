@@ -1,7 +1,6 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Response, Status}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
@@ -46,6 +45,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
     }
@@ -72,6 +72,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
     }
@@ -94,6 +95,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = {
         // When the dc doesn't exist, consul throws a 500, which is
@@ -119,6 +121,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
@@ -130,6 +133,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
@@ -159,6 +163,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
@@ -173,6 +178,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
@@ -204,6 +210,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
@@ -217,6 +224,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
@@ -259,6 +267,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
@@ -272,6 +281,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
@@ -318,6 +328,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
@@ -331,6 +342,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
@@ -375,6 +387,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
@@ -388,6 +401,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
@@ -427,6 +441,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       override def serviceMap(
         datacenter: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
@@ -440,6 +455,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         datacenter: Option[String],
         tag: Option[String] = None,
         blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
