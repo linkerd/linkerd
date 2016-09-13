@@ -89,11 +89,12 @@ object Linkerd extends App {
    *   <li>TracerCache uses a shutdown hook to flush
    * </ul>
    */
-  private def registerTerminationSignalHandler(shutdownGraceMs: Int): Unit = {
+  private def registerTerminationSignalHandler(shutdownGraceMs: Option[Int]): Unit = {
     val shutdownHandler = new SignalHandler {
       override def handle(sig: Signal): Unit = {
         log.info("Received %s. Shutting down ...", sig)
-        Await.result(close(Duration.fromMilliseconds(shutdownGraceMs)))
+        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(Duration.fromSeconds(10))
+        Await.result(close(closeTimeOut))
       }
     }
 
