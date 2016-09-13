@@ -7,10 +7,10 @@ import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
 import java.net.InetAddress
 
 /**
-  * The localhost transformer filters the list of addresses down to only
-  * addresses that have the same IP address as localhost.  This can be used by
-  * an incoming router to only route traffic to local destinations.
-  */
+ * The localhost transformer filters the list of addresses down to only
+ * addresses that have the same IP address as localhost.  This can be used by
+ * an incoming router to only route traffic to local destinations.
+ */
 class LocalhostTransformer extends DelegatingNameTreeTransformer {
 
   private[this] val localhost = InetAddress.getLocalHost.getAddress

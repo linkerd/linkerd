@@ -24,8 +24,9 @@ kind | _required_ | One of the transformer kinds listed below.
 kind: `io.l5d.localhost`
 
 The localhost transformer filters the list of addresses down to only addresses
-that have the same IP address as localhost.  This can be used by an incoming
-router to only route traffic to local destinations.
+that have the same IP address as localhost.  The IP of localhost is determined
+by doing a one-time dns lookup of the local hostname.  This transformer can be
+used by an incoming router to only route traffic to local destinations.
 
 ## Port
 
