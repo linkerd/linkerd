@@ -7,6 +7,7 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Failure, Filter, Http, Namer, Path, Stack}
 import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
+import io.buoyant.consul.v1.ConsistencyMode
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
@@ -38,7 +39,8 @@ case class ConsulConfig(
   includeTag: Option[Boolean],
   useHealthCheck: Option[Boolean],
   token: Option[String] = None,
-  setHost: Option[Boolean] = None
+  setHost: Option[Boolean] = None,
+  consistencyMode: Option[ConsistencyMode] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -85,9 +87,13 @@ case class ConsulConfig(
 
     includeTag match {
       case Some(true) =>
-        ConsulNamer.tagged(prefix, consul, agent, setHost.getOrElse(false), stats)
+        ConsulNamer.tagged(
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+        )
       case _ =>
-        ConsulNamer.untagged(prefix, consul, agent, setHost.getOrElse(false), stats)
+        ConsulNamer.untagged(
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+        )
     }
   }
 }
