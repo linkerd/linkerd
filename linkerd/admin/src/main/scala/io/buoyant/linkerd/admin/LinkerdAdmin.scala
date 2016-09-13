@@ -1,4 +1,5 @@
-package io.buoyant.linkerd.admin
+package io.buoyant.linkerd
+package admin
 
 import com.twitter.app.App
 import com.twitter.finagle._
@@ -13,38 +14,50 @@ import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
+import io.buoyant.telemetry.Telemeter
 
-class LinkerdAdmin(app: App, linker: Linker, config: LinkerConfig) extends Admin(app) {
-
-  private[this] val dtabs: Map[String, Dtab] =
-    linker.routers.map { router =>
-      val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
-      router.label -> dtab()
-    }.toMap
-
-  private[this] val enumeratingNamers = linker.namers.collect {
-    case (_, namer: EnumeratingNamer) => namer
+object LinkerdAdmin {
+  def boundNames(namers: Seq[Namer]): Admin.Routes = {
+    val enumerating = namers.collect { case en: EnumeratingNamer => en }
+    Seq("/bound-names.json" -> new BoundNamesHandler(enumerating))
   }
 
-  private[this] def linkerdAdminRoutes: Seq[(String, Service[Request, Response])] = Seq(
+  def config(lc: Linker.LinkerConfig): Admin.Routes = Seq(
+    "/config.json" -> new ConfigHandler(lc, Linker.LoadedInitializers.iter)
+  )
+
+  def delegator(routers: Seq[Router]): Admin.Routes = {
+    val byLabel = routers.map(r => r.label -> r).toMap
+    val dtabs = byLabel.mapValues { router =>
+      val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
+      dtab()
+    }
+    val interpreters = byLabel.mapValues { router =>
+      val DstBindingFactory.Namer(namer) = router.params[DstBindingFactory.Namer]
+      namer
+    }
+    def getInterpreter(label: String): NameInterpreter =
+      interpreters.getOrElse(label, NameInterpreter)
+
+    Seq(
+      "/delegator" -> new DelegateHandler(AdminHandler, dtabs, getInterpreter),
+      "/delegator.json" -> new DelegateApiHandler(getInterpreter)
+    )
+  }
+
+  val static: Admin.Routes = Seq(
     "/" -> new DashboardHandler,
-    "/files/" -> (StaticFilter andThen ResourceHandler.fromDirectoryOrJar(
+    "/files/" -> StaticFilter.andThen(ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/admin",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
-    "/delegator" -> new DelegateHandler(AdminHandler, dtabs, interpreterForRouter),
-    "/delegator.json" -> new DelegateApiHandler(interpreterForRouter),
-    "/metrics" -> MetricsHandler,
-    "/help" -> new HelpPageHandler,
-    "/config.json" -> new ConfigHandler(config, Linker.LoadedInitializers.iter),
-    "/bound-names.json" -> new BoundNamesHandler(enumeratingNamers)
+    "/help" -> new HelpPageHandler
   )
 
-  private[this] def interpreterForRouter(label: String): NameInterpreter =
-    linker.routers.find(_.label == label).map { router =>
-      router.params[DstBindingFactory.Namer].interpreter
-    }.getOrElse(NameInterpreter)
-
-  override def allRoutes = super.allRoutes ++ linkerdAdminRoutes
+  def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Routes =
+    static ++ config(lc) ++
+      boundNames(linker.namers.map { case (_, n) => n }) ++
+      delegator(linker.routers) ++
+      linker.telemeters.flatMap(_.adminRoutes)
 }

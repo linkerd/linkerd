@@ -113,13 +113,13 @@ object LinkerdBuild extends Base {
 
   val admin = projectDir("admin")
     .dependsOn(configCore, Namer.core)
+    .withTwitterLib(Deps.finagle("http"))
     .withTwitterLib(Deps.twitterServer)
-    .withTwitterLib(Deps.finagle("stats"))
     .withTests()
 
   object Telemetry {
     val core = projectDir("telemetry/core")
-      .dependsOn(configCore)
+      .dependsOn(configCore, admin)
       .withTwitterLib(Deps.finagle("core"))
       .withTwitterLib(Deps.finagle("stats") % Test)
       .withTests()
@@ -128,9 +128,14 @@ object LinkerdBuild extends Base {
       .dependsOn(core, Router.core)
       .withTests()
 
+    val twitterMetrics = projectDir("telemetry/twittermetrics")
+      .dependsOn(core)
+      .withTwitterLib(Deps.finagle("stats"))
+      .withTests()
+
     val all = projectDir("telemetry")
       .settings(aggregateSettings)
-      .aggregate(core, tracelog)
+      .aggregate(core, tracelog, twitterMetrics)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -159,7 +164,9 @@ object LinkerdBuild extends Base {
         admin,
         configCore,
         Namer.core,
-        Namer.fs % "test"
+        Namer.fs % "test",
+        Telemetry.core,
+        Telemetry.twitterMetrics
       )
       .withTests()
 
@@ -355,9 +362,10 @@ object LinkerdBuild extends Base {
       .dependsOn(
         configCore,
         LinkerdBuild.admin,
-        Telemetry.core % "compile->compile;test->test",
         Namer.core % "compile->compile;test->test",
-        Router.core
+        Router.core,
+        Telemetry.core % "compile->compile;test->test",
+        Telemetry.twitterMetrics
       )
       .withLib(Deps.jacksonCore)
       .withTests()
@@ -476,9 +484,8 @@ object LinkerdBuild extends Base {
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog)
+      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog, Telemetry.twitterMetrics)
       .settings(inConfig(Minimal)(MinimalSettings))
-      .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
@@ -537,6 +544,7 @@ object LinkerdBuild extends Base {
   val telemetry = Telemetry.all
   val telemetryCore = Telemetry.core
   val telemetryTracelog = Telemetry.tracelog
+  val telemetryTwitterMetrics = Telemetry.twitterMetrics
 
   val namer = Namer.all
   val namerCore = Namer.core

@@ -28,6 +28,7 @@ case class TracelogConfig(
 class TracelogTelemeter(logger: Logger, level: Level, sampler: Sampler) extends Telemeter {
   val stats = NullStatsReceiver
   lazy val tracer = new TracelogTracer(logger, level, sampler)
+  val adminRoutes = Seq.empty
   def run() = Telemeter.nopRun
 }
 
