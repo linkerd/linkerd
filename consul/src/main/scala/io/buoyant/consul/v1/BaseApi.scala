@@ -29,8 +29,8 @@ trait BaseApi extends Closable {
       case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
-      case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying consul request on error $ex")
+      case (req, Throw(NonFatal(ex))) =>
+        log.error(s"retrying consul request ${req.method} ${req.uri} on error $ex")
         true
     },
     HighResTimer.Default,

@@ -103,12 +103,9 @@ object Linker {
       // default Metrics registry, linker stats may be missing from
       // /admin/metrics.json
       val stats = {
-        val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats } match {
-          case Nil => NullStatsReceiver
-          case receivers => BroadcastStatsReceiver(receivers)
-        }
-        for (t <- tracers) log.info("stats: %s", t)
-        receivers
+        val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats }
+        for (r <- receivers) log.info("stats: %s", r)
+        BroadcastStatsReceiver(receivers)
       }
 
       // Similarly, tracers may be provided by telemeters OR by
