@@ -24,17 +24,17 @@ private[buoyant] class DynBoundFactory[Req, Rep](
   ) extends State
   private case class Named(name: Dst.BoundTree) extends State
   private case class Failed(exc: Throwable) extends State
-  private case class Closed() extends State
+  private object Closed extends State
 
   override def status = state match {
     case Pending(_) => Status.Busy
     case Named(name) => cache.status(name)
-    case Failed(_) | Closed() => Status.Closed
+    case Failed(_) | Closed => Status.Closed
   }
 
   @volatile private[this] var state: State = Pending(immutable.Queue.empty)
 
-  private[this] val sub = name.run.changes respond {
+  private[this] val sub = name.run.changes.respond {
     case Activity.Ok(name) => synchronized {
       state match {
         case Pending(q) =>
@@ -45,7 +45,7 @@ private[buoyant] class DynBoundFactory[Req, Rep](
           }
         case Failed(_) | Named(_) =>
           state = Named(name)
-        case Closed() =>
+        case Closed =>
       }
     }
 
@@ -61,7 +61,7 @@ private[buoyant] class DynBoundFactory[Req, Rep](
           // if already failed, just update the exception; the promises
           // must already be satisfied.
           state = Failed(exc)
-        case Named(_) | Closed() =>
+        case Named(_) | Closed =>
       }
     }
 
@@ -78,9 +78,8 @@ private[buoyant] class DynBoundFactory[Req, Rep](
         Trace.recordBinary("namer.failure", exc.getClass.getName)
         Future.exception(Failure.adapt(exc, Failure.Naming))
 
-      case Closed() =>
+      case Closed =>
         Trace.record("namer.closed")
-        // don't trace these, since they're not a namer failure
         Future.exception(new ServiceClosedException)
 
       case Pending(_) =>
@@ -116,7 +115,7 @@ private[buoyant] class DynBoundFactory[Req, Rep](
   def close(deadline: Time) = {
     val prev = synchronized {
       val prev = state
-      state = Closed()
+      state = Closed
       prev
     }
     prev match {

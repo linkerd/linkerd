@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.TimeoutFilter
-import com.twitter.util.Time
+import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
 import java.net.InetSocketAddress
@@ -77,7 +77,12 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
       }
 
       val factory = router.factory()
-      val adapted = adapter.andThen(factory)
+
+      // Don't let server closure close the router.
+      val adapted = new ServiceFactoryProxy(adapter.andThen(factory)) {
+        override def close(d: Time) = Future.Unit
+      }
+
       val servable = servers.map { server =>
         val stackServer = defaultServer.withParams(defaultServer.params ++ server.params)
         ServerInitializer(protocol, server.addr, stackServer, adapted, server.announce)
