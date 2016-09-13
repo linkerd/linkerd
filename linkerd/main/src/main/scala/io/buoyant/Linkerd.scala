@@ -90,7 +90,7 @@ object Linkerd extends App {
         Closable.nop
 
       case announcers =>
-        val closers = matching.map {
+        val closers = announcers.map {
           case (prefix, announcer) =>
             log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
             announcer.announce(server.addr, name.drop(prefix.size))
