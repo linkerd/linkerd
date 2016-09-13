@@ -3,10 +3,8 @@ package io.buoyant.router.http
 import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Method, Request, Version}
-import com.twitter.util._
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, UnidentifiedRequest}
-import io.buoyant.test.{Exceptions, Awaits}
-import java.net.SocketAddress
+import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
 class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
@@ -22,7 +20,7 @@ class MethodAndHostIdentifierTest extends FunSuite with Awaits with Exceptions {
     val identifier = MethodAndHostIdentifier(Path.Utf8("https"), false)
     val req = Request()
     req.uri = "/some/path?other=stuff"
-    req.host = "domain"
+    req.host = "DoMaiN" // should be lowercased as per RFC 2616
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst ==
         Dst.Path(Path.read("/https/1.1/GET/domain"))

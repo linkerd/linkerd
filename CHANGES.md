@@ -8,6 +8,7 @@
 * Require tracer configuration instead of falling back to
   defaults, reducing logging noise.
 * Add `io.l5d.header` identifier for naming requests based on an HTTP header
+* Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
 
 ## 0.7.5
 
