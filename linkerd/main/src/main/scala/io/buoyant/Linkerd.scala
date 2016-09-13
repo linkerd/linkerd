@@ -125,7 +125,8 @@ object Linkerd extends App {
       case Return(announced) =>
         deadline match {
           case None => closeRef.set(announced)
-          case Some(d) => announced.close(d)
+          case Some(d) =>
+            val _ = announced.close(d)
         }
     }
 
