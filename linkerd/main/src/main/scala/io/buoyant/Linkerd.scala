@@ -1,13 +1,12 @@
 package io.buoyant
 
-import com.twitter.finagle.{Failure, Path}
+import com.twitter.finagle.Path
 import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
 import io.buoyant.admin.{AdminInitializer, App}
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.linkerd.{Announcer, Build, Linker, Router, Server}
 import java.io.File
-import java.util.concurrent.atomic.AtomicReference
 import scala.io.Source
 
 /**
@@ -84,52 +83,20 @@ object Linkerd extends App {
     announcers0: Seq[(Path, Announcer)],
     server: Server.Initializer,
     name: Path
-  ): Closable =
+  ): Closable = {
     announcers0.filter { case (pfx, _) => name.startsWith(pfx) } match {
-      case Seq() =>
+      case Nil =>
         log.warning("no announcer found for %s", name.show)
         Closable.nop
 
       case announcers =>
         val closers = announcers.map {
-          case (prefix, announcer) => announce(prefix, announcer, server, name)
+          case (prefix, announcer) =>
+            log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
+            announcer.announce(server.addr, name.drop(prefix.size))
         }
         Closable.all(closers: _*)
     }
-
-  private def announce(
-    prefix: Path,
-    announcer: Announcer,
-    server: Server.Initializer,
-    name: Path
-  ): Closable = {
-    log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
-    val pending = announcer.announce(server.addr, name.drop(prefix.size))
-
-    // If we close before the announcer registers, we
-    // cancel the registration. If we close after
-    // registration, we close it.
-    //
-    // XXX we should change the announcer API to return
-    // an Announcement synchronously (that may actually
-    // wrap some asynchronous announcement logic).
-    @volatile var deadline: Option[Time] = None
-    val closeRef = new AtomicReference[Closable](Closable.make { d =>
-      deadline = Some(d)
-      pending.raise(Failure("closed").flagged(Failure.Interrupted))
-      Future.Unit
-    })
-    pending.respond {
-      case Throw(_) => closeRef.set(Closable.nop)
-      case Return(announced) =>
-        deadline match {
-          case None => closeRef.set(announced)
-          case Some(d) =>
-            val _ = announced.close(d)
-        }
-    }
-
-    Closable.ref(closeRef)
   }
 
 }
