@@ -12,7 +12,13 @@ object LinkerdBuild extends Base {
   val Bundle = config("bundle") extend Minimal
   val Dcos = config("dcos") extend Bundle
 
+  val configCore = projectDir("config")
+    .withTwitterLibs(Deps.finagle("core"))
+    .withLibs(Deps.jackson)
+    .withLib(Deps.jacksonYaml)
+
   val consul = projectDir("consul")
+    .dependsOn(configCore)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -68,11 +74,6 @@ object LinkerdBuild extends Base {
       .settings(aggregateSettings)
       .aggregate(core, http, mux, thrift)
   }
-
-  val configCore = projectDir("config")
-    .withTwitterLibs(Deps.finagle("core"))
-    .withLibs(Deps.jackson)
-    .withLib(Deps.jacksonYaml)
 
   object Namer {
     val core = projectDir("namer/core")
