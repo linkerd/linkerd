@@ -1,6 +1,7 @@
 package io.buoyant.transformer.k8s
 
 import com.twitter.finagle.Stack.Params
+import com.twitter.finagle.param.Label
 import com.twitter.finagle.{NameTree, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1.Api
@@ -28,9 +29,9 @@ case class DaemonSetTransformerConfig(
 
   override def mk: NameTreeTransformer = {
     val client = mkClient(Params.empty)
-    def mkNs(ns: String) = {
-      Api(client.configured("daemonsetTransformer").newService(dst)).withNamespace(ns)
-    }
+    def mkNs(ns: String) = Api(client.configured(Label("daemonsetTransformer"))
+      .newService(dst))
+      .withNamespace(ns)
     val namer = new EndpointsNamer(Path.empty, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     new DaemonSetTransformer(daemonSet)

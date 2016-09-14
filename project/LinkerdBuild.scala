@@ -349,7 +349,7 @@ object LinkerdBuild extends Base {
           .withTests()
 
     val k8s = projectDir("interpreter/k8s")
-        .dependsOn(Namer.core, LinkerdBuild.k8s)
+        .dependsOn(Namer.core, LinkerdBuild.k8s, perHost)
         .withTests()
 
     val all = projectDir("interpreter")

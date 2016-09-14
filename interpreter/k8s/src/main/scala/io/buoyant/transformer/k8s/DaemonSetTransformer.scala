@@ -6,12 +6,12 @@ import com.twitter.util.{Var, Activity}
 import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
 
 /**
-  * The DaemonSetTransformer maps each address in the NameTree to a member of
-  * a given daemon set that is on the same /24 subnet.  Since each k8s node
-  * is its own /24 subnet, the result is that each address is mapped to the
-  * member of the daemon set that is running on the same node.  This can be used
-  * to redirect traffic to a reverse-proxy that runs as a daemon set.
-  */
+ * The DaemonSetTransformer maps each address in the NameTree to a member of
+ * a given daemon set that is on the same /24 subnet.  Since each k8s node
+ * is its own /24 subnet, the result is that each address is mapped to the
+ * member of the daemon set that is running on the same node.  This can be used
+ * to redirect traffic to a reverse-proxy that runs as a daemon set.
+ */
 class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]]) extends DelegatingNameTreeTransformer {
 
   override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] = {
@@ -39,8 +39,10 @@ class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]]) extends Delegat
     }
   }
 
-  /** Return a new Bound with the address replaced by a member of the daemon
-    * set on the same /24 subnet */
+  /**
+   * Return a new Bound with the address replaced by a member of the daemon
+   * set on the same /24 subnet
+   */
   private[this] def mapBound(bound: Name.Bound, daemons: Var[Addr]): Name.Bound = {
     val vaddr = Var.collect(List(bound.addr, daemons)).map {
       case List(Addr.Bound(addrs, meta), Addr.Bound(daemon, _)) =>
@@ -61,6 +63,7 @@ class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]]) extends Delegat
         val b2 = addr2.getAddress.getAddress
         // examine only the first 3 bytes (24 bits)
         b1.zip(b2).take(3).forall(tupleEqual)
+      case _ => false
     }
   }
 

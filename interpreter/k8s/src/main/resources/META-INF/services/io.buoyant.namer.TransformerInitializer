@@ -1,1 +1,2 @@
 io.buoyant.transformer.k8s.DaemonSetTransformerInitializer
+io.buoyant.transformer.k8s.LocalNodeTransformerInitializer
