@@ -29,7 +29,7 @@ class RouterTest extends FunSuite with Exceptions {
   ): Router = {
     val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters, announcers))
     val cfg = mapper.readValue[RouterConfig](yaml)
-    val interpreter = cfg.interpreter.newInterpreter(cfg.routerParams)
+    val interpreter = cfg.interpreter.interpreter(cfg.routerParams)
     cfg.router(params + DstBindingFactory.Namer(interpreter))
   }
 
