@@ -32,6 +32,7 @@ object Linker {
     protocol: Seq[ProtocolInitializer] = Nil,
     namer: Seq[NamerInitializer] = Nil,
     interpreter: Seq[InterpreterInitializer] = Nil,
+    transformer: Seq[TransformerInitializer] = Nil,
     tlsClient: Seq[TlsClientInitializer] = Nil,
     tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
@@ -40,7 +41,7 @@ object Linker {
     announcer: Seq[AnnouncerInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, classifier, telemetry, announcer)
+      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, transformer, classifier, telemetry, announcer)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -55,6 +56,7 @@ object Linker {
     LoadService[ProtocolInitializer],
     LoadService[NamerInitializer],
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
+    LoadService[TransformerInitializer],
     LoadService[TlsClientInitializer],
     LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
@@ -139,7 +141,7 @@ object Linker {
         Namers(namersByPrefix) +
         param.Stats(baseParams[param.Stats].statsReceiver.scope("rt"))
       val routerImpls = routers.map { router =>
-        val interpreter = router.interpreter.newInterpreter(routerParams)
+        val interpreter = router.interpreter.interpreter(routerParams)
         router.router(routerParams + DstBindingFactory.Namer(interpreter))
       }
 

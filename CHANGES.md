@@ -11,6 +11,8 @@
   of the `io.l5d.tracelog` telemeter.<<<<<<< HEAD
 * Add `io.l5d.header` identifier for naming requests based on an HTTP header
 * Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
+* Introduce transformers for post-processing the set of addresses returned by
+  an interpreter.
 
 ## 0.7.5
 
