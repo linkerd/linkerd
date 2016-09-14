@@ -3,8 +3,12 @@ package io.buoyant.admin
 import io.buoyant.config.types.Port
 import java.net.InetSocketAddress
 
-case class AdminConfig(port: Port) {
+case class AdminConfig(
+  port: Option[Port]
+) {
 
-  def mk(): Admin =
-    new Admin(new InetSocketAddress(port.port))
+  def mk(defaultPort: Port): Admin = {
+    val addr = new InetSocketAddress(port.getOrElse(defaultPort).port)
+    new Admin(addr)
+  }
 }

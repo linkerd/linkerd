@@ -31,7 +31,8 @@ trait Linker {
 object Linker {
   private[this] val log = Logger()
 
-  private[this] val DefaultAdminConfig = AdminConfig(Port(9990))
+  private[this] val DefaultAdminPort = Port(9990)
+  private[this] val DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort))
 
   private[linkerd] case class Initializers(
     protocol: Seq[ProtocolInitializer] = Nil,
@@ -112,7 +113,7 @@ object Linker {
 
       val routerImpls = mkRouters(params + Namers(namersByPrefix) + param.Stats(stats.scope("rt")))
 
-      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk()
+      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
 
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
     }

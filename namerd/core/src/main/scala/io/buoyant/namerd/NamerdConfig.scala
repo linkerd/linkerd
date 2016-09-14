@@ -33,7 +33,7 @@ private[namerd] case class NamerdConfig(
     val dtabStore = storage.mkDtabStore
     val namersByPfx = mkNamers()
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
-    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk()
+    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
     new Namerd(ifaces, dtabStore, namersByPfx, adminImpl)
   }
 
@@ -60,7 +60,8 @@ private[namerd] case class NamerdConfig(
 
 private[namerd] object NamerdConfig {
 
-  private def DefaultAdminConfig = AdminConfig(Port(9991))
+  private def DefaultAdminPort = Port(9991)
+  private def DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort))
 
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
     lazy val message =
