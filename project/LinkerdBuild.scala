@@ -454,12 +454,12 @@ object LinkerdBuild extends Base {
       execScriptJvmOptions +
       """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
-         |     io.buoyant.Linkerd "$@"
+         |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin
 
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
-      mainClass := Some("io.buoyant.Linkerd"),
+      mainClass := Some("io.buoyant.linkerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "L5D_",
       unmanagedBase := baseDirectory.value / "plugins"
