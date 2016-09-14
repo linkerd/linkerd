@@ -73,12 +73,22 @@ object Admin {
   )
 
   // XXX this will be moved into telemeters soon
-  private[this] def metricsHandlers: Seq[(String, Service[Request, Response])] = Seq(
+  private def metricsHandlers: Seq[(String, Service[Request, Response])] = Seq(
     "/admin/metrics" -> new MetricsQueryHandler,
     "/admin/metrics/prometheus" -> new PrometheusStatsHandler(MetricsStatsReceiver.defaultRegistry),
     "/admin/metrics.json" -> HttpMuxer,
     "/admin/per_host_metrics.json" -> HttpMuxer
   )
+
+  /** Generate an index of the provided handlers */
+  private def indexHandlers(handlers: Handlers): Handlers = {
+    val paths = handlers.map { case (p, _) => p }.sorted.distinct
+    val index = new IndexTxtHandler(paths)
+    Seq(
+      "/admin/index.txt" -> index,
+      "/admin" -> index
+    )
+  }
 }
 
 class Admin(val address: SocketAddress) {
@@ -86,14 +96,17 @@ class Admin(val address: SocketAddress) {
 
   private[this] val notFoundView = new NotFoundView()
 
-  def mkService(app: com.twitter.app.App, handlers: Admin.Handlers): Service[Request, Response] =
-    (baseHandlers ++ appHandlers(app) ++ handlers).foldLeft(new HttpMuxer) {
+  def mkService(app: com.twitter.app.App, extHandlers: Admin.Handlers): Service[Request, Response] = {
+    val handlers = baseHandlers ++ appHandlers(app) ++ metricsHandlers ++ extHandlers
+    val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
       case (muxer, (path, handler)) =>
         log.debug(s"admin: $path => ${handler.getClass.getName}")
         muxer.withHandler(path, handler)
     }
+    notFoundView.andThen(muxer)
+  }
 
   def serve(app: com.twitter.app.App, handlers: Admin.Handlers): ListeningServer =
-    server.serve(address, notFoundView.andThen(mkService(app, handlers)))
+    server.serve(address, mkService(app, handlers))
 
 }
