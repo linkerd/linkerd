@@ -1,5 +1,6 @@
 package io.buoyant.admin
 
+import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
 import com.twitter.finagle.http.{HttpMuxer, Request, Response}
 import com.twitter.finagle.stats.{MetricsStatsReceiver, NullStatsReceiver}
@@ -25,13 +26,13 @@ object Admin {
     def adminHandlers: Handlers
   }
 
-  def getHandlers(obj: Any): Handlers =
+  def getHandlers(obj: AnyRef): Handlers =
     obj match {
       case wh: WithHandlers => wh.adminHandlers
       case _ => Nil
     }
 
-  def collectHandlers(objs: Seq[Any]): Handlers =
+  def extractHandlers(objs: Seq[AnyRef]): Handlers =
     objs.flatMap(getHandlers(_))
 
   private val loggingMonitor = new Monitor {
@@ -47,7 +48,7 @@ object Admin {
     .withStatsReceiver(NullStatsReceiver)
     .withTracer(NullTracer)
 
-  def appHandlers(app: com.twitter.app.App): Handlers = Seq(
+  def appHandlers(app: TApp): Handlers = Seq(
     "/admin/server_info" -> new TextBlockView().andThen(new ServerInfoHandler(app)),
     "/admin/shutdown" -> new ShutdownHandler(app)
   )
@@ -96,7 +97,7 @@ class Admin(val address: SocketAddress) {
 
   private[this] val notFoundView = new NotFoundView()
 
-  def mkService(app: com.twitter.app.App, extHandlers: Admin.Handlers): Service[Request, Response] = {
+  def mkService(app: TApp, extHandlers: Admin.Handlers): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ metricsHandlers ++ extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
       case (muxer, (path, handler)) =>
@@ -106,7 +107,7 @@ class Admin(val address: SocketAddress) {
     notFoundView.andThen(muxer)
   }
 
-  def serve(app: com.twitter.app.App, handlers: Admin.Handlers): ListeningServer =
-    server.serve(address, mkService(app, handlers))
+  def serve(app: TApp, extHandlers: Admin.Handlers): ListeningServer =
+    server.serve(address, mkService(app, extHandlers))
 
 }

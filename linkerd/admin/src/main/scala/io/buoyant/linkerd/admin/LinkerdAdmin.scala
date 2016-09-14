@@ -60,5 +60,5 @@ object LinkerdAdmin {
     static ++ config(lc) ++
       boundNames(linker.namers.map { case (_, n) => n }) ++
       delegator(linker.routers) ++
-      Admin.collectHandlers(linker.namers ++ linker.routers ++ linker.telemeters)
+      Admin.extractHandlers(linker.namers ++ linker.routers ++ linker.telemeters)
 }
