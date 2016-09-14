@@ -4,6 +4,7 @@ import com.twitter.finagle.Path
 import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
+import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import scala.io.Source
 
@@ -16,6 +17,9 @@ import scala.io.Source
  */
 object Main extends App {
 
+  private[this] val DefaultTelemeter =
+    new CommonMetricsTelemeter
+
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
@@ -23,7 +27,7 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
-        val linker = config.mk()
+        val linker = config.mk(DefaultTelemeter)
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))

@@ -73,14 +73,6 @@ object Admin {
     )
   )
 
-  // XXX this will be moved into telemeters soon
-  private def metricsHandlers: Seq[(String, Service[Request, Response])] = Seq(
-    "/admin/metrics" -> new MetricsQueryHandler,
-    "/admin/metrics/prometheus" -> new PrometheusStatsHandler(MetricsStatsReceiver.defaultRegistry),
-    "/admin/metrics.json" -> HttpMuxer,
-    "/admin/per_host_metrics.json" -> HttpMuxer
-  )
-
   /** Generate an index of the provided handlers */
   private def indexHandlers(handlers: Handlers): Handlers = {
     val paths = handlers.map { case (p, _) => p }.sorted.distinct
@@ -97,8 +89,8 @@ class Admin(val address: SocketAddress) {
 
   private[this] val notFoundView = new NotFoundView()
 
-  def mkService(app: TApp, extHandlers: Admin.Handlers): Service[Request, Response] = {
-    val handlers = baseHandlers ++ appHandlers(app) ++ metricsHandlers ++ extHandlers
+  def mkService(app: TApp, extHandlers: Handlers): Service[Request, Response] = {
+    val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
       case (muxer, (path, handler)) =>
         log.debug(s"admin: $path => ${handler.getClass.getName}")
@@ -107,7 +99,6 @@ class Admin(val address: SocketAddress) {
     notFoundView.andThen(muxer)
   }
 
-  def serve(app: TApp, extHandlers: Admin.Handlers): ListeningServer =
+  def serve(app: TApp, extHandlers: Handlers): ListeningServer =
     server.serve(address, mkService(app, extHandlers))
-
 }
