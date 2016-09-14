@@ -158,7 +158,7 @@ object Linker {
         if (rts.size > 1) throw ConflictingLabels(label)
 
       val impls = routers.map { router =>
-        val interpreter = router.interpreter.newInterpreter(params)
+        val interpreter = router.interpreter.interpreter(params)
         router.router(params + DstBindingFactory.Namer(interpreter))
       }
 
