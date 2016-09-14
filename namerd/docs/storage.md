@@ -157,7 +157,7 @@ spec:
             name: namerd-config
       containers:
         - name: namerd
-          image: buoyantio/namerd:0.7.4
+          image: buoyantio/namerd:<version> # specify required version or remove to use the latest
           args:
             - /io.buoyant/namerd/config/config.yml
             - -com.twitter.finagle.tracing.debugTrace=true
@@ -173,7 +173,7 @@ spec:
               mountPath: "/io.buoyant/namerd/config"
               readOnly: true
         - name: kubectl
-          image: buoyantio/kubectl:1.2.3
+          image: buoyantio/kubectl:<version> # specify required version or remove to use the latest
           args:
           - "proxy"
           - "-p"
