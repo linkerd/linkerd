@@ -81,7 +81,8 @@ kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier)
 kind: `io.l5d.methodAndHost`.
 
 With this identifier, HTTP requests are turned into logical names using a
-combination of Host header, method, and (optionally) URI.
+combination of `Host` header, method, and (optionally) URI. `Host`
+header value is lower-cased as per `RFC 2616`.
 
 #### Namer Configuration:
 

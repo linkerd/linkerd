@@ -34,7 +34,7 @@ case class MethodAndHostIdentifier(
     case Version.Http11 =>
       req.host match {
         case Some(host) if host.nonEmpty =>
-          val dst = mkPath(Path.Utf8("1.1", req.method.toString, host) ++ suffix(req))
+          val dst = mkPath(Path.Utf8("1.1", req.method.toString, host.toLowerCase) ++ suffix(req))
           Future.value(new IdentifiedRequest(dst, req))
         case _ =>
           Future.value(
