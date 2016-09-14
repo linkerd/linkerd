@@ -30,5 +30,6 @@ object NamerdAdmin {
   def apply(nc: NamerdConfig, namerd: Namerd): Admin.Handlers =
     static ++ config(nc) ++
       dtabs(namerd.dtabStore, namerd.namers) ++
-      Admin.extractHandlers(namerd.dtabStore +: namerd.namers.values.toSeq ++ namerd.telemeters)
+      Admin.extractHandlers(namerd.dtabStore +: (namerd.namers.values.toSeq ++ namerd.telemeters))
+
 }
