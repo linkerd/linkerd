@@ -4,7 +4,7 @@ import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInit
 import java.net.InetAddress
 
 class LocalNodeTransformerInitializer extends TransformerInitializer {
-  val configClass = classOf[DaemonSetTransformerConfig]
+  val configClass = classOf[LocalNodeTransformerConfig]
   override val configId = "io.l5d.localnode"
 }
 
