@@ -1,31 +1,26 @@
 # HTTP/1.1 protocol
 
-The HTTP/1.1 protocol is used when the *protocol* option of the
-[routers configuration block](config.md#routers) is set to *http*.
-With this protocol selected, configuration options on the *routers* block
-include:
+> Below: http-specific configuration options
 
-* *httpAccessLog* -- Sets the access log path.  If not specified, no
-access log is written.
-* *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-io.l5d.methodAndHost)
-* *maxChunkKB* -- The maximum size of an HTTP chunk (default: 8KB)
-* *maxHeadersKB* -- The maximum size of all headers in an HTTP message (default: 8KB)
-* *maxInitialLineKB* -- The maximum size of an initial HTTP
-  message line (default: 4KB)
-* *maxRequestKB* -- The maximum size of a non-chunked HTTP request
-  payload (default: 5MB)
-* *maxResponseKB* -- The maximum size of a non-chunked HTTP response
-  payload (default: 5MB)
-* *compressionLevel* -- The compression level to use (on 0-9)
-  (default: -1, automatically compresses textual content types with
-  compression level 6)
+```yaml
+routers:
+- protocol: http
+  httpAccessLog: access.log
+  identifier:
+    kind: io.l5d.methodAndHost
+  maxChunkKB: 8KB
+  maxHeadersKB: 8KB
+  maxInitialLineKB: 4KB
+  maxRequestKB: 5MB
+  maxResponseKB: 5MB
+  servers:
+  - port: 5000
+```
 
-<aside class="warning">
-These memory constraints are selected to allow reliable
-concurrent usage of linkerd. Changing these parameters may
-significantly alter linkerd's performance characteristics.
-</aside>
+> Below: an example HTTP router config that routes all `POST` requests to 8091
+and all other requests to 8081,
+using the default identifier of `io.l5d.methodAndHost`,
+listening on port 5000
 
 ```yaml
 routers:
@@ -36,83 +31,111 @@ routers:
     /method/POST => /$/inet/127.1/8091;
     /http/1.1    => /method;
   servers:
-    port: 5000
+  - port: 5000
 ```
+> The baseDtab above is written to work with the
+[`methodAndHost` identifier](#method-and-host-identifier).
+Using a different identifier would require a different set of dtab rules.
 
-As an example, here's an HTTP router config that routes all `POST`
-requests to 8091 and all other requests to 8081, using the default
-identifier of `io.l5d.methodAndHost`, listening on port 5000:
+protocol: `http`
 
-<aside class="notice">
-The dtab is written in terms of names produced by the
-`methodAndHost` identifier. Using a different identifier would require a
-different set of dtab rules. See the next section for more on identifiers.
+The HTTP/1.1 protocol is used when the *protocol* option of the
+[routers configuration block](#router-parameters) is set to *http*.
+This protocol has additional configuration options on the *routers* block.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
+httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
+identifier | The `methodAndHost` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
+maxChunkKB | 8KB | The maximum size of an HTTP chunk.
+maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
+maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
+maxRequestKB | 5MB | The maximum size of a non-chunked HTTP request payload.
+maxResponseKB | 5MB | The maximum size of a non-chunked HTTP response payload.
+compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
+
+<aside class="warning">
+These memory constraints are selected to allow reliable
+concurrent usage of linkerd. Changing these parameters may
+significantly alter linkerd's performance characteristics.
 </aside>
 
-<a name="protocol-http-identifiers"></a>
+<a name="http-1-1-identifiers"></a>
 ## HTTP/1.1 Identifiers
 
 Identifiers are responsible for creating logical *names* from an incoming
 request; these names are then matched against the dtab. (See the [linkerd
 routing overview](https://linkerd.io/doc/latest/routing/) for more details on
-this.) HTTP/1.1 identifiers are configured with the following parameters:
+this.) All HTTP/1.1 identifiers have a `kind`.  If a list of identifiers is
+provided, each identifier is tried in turn until one successfully assigns a
+logical *name* to the request.
 
-* *kind* -- The fully-qualified class name of an identifier. Current
-identifiers include:
-  * *io.l5d.methodAndHost*
-  * *io.l5d.path*
-* other identifier-specific parameters
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier).
 
-### The Method and Host Identifier
+<a name="method-and-host-identifier"></a>
+### Method and Host Identifier
 
-This identifier is selected by setting the *kind* value of the *identifier*
-configuration block to `io.l5d.methodAndHost`.
+kind: `io.l5d.methodAndHost`.
 
 With this identifier, HTTP requests are turned into logical names using a
-combination of Host header, method, and (optionally) URI. Configuration
-settings include:
+combination of `Host` header, method, and (optionally) URI. `Host`
+header value is lower-cased as per `RFC 2616`.
 
-* *httpUriInDst* -- If `true` http paths are appended to destinations. This
-  allows a form of path-prefix routing. This option is **not** recommended as
-  performance implications may be severe; it has been supplanted by the path
-  identifier below. (default: false)
+#### Namer Configuration:
 
-The methodAndHost identifier generates HTTP/1.1 logical names of the form:
+> Configuration example
+
+```yaml
+identifier:
+  kind: io.l5d.methodAndHost
+  httpUriInDst: true
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+httpUriInDst | `false` | If `true` http paths are appended to destinations. This allows a form of path-prefix routing. This option is **not** recommended as performance implications may be severe; Use the [path identifier](#path-identifier) instead.
+
+
+#### Namer Path Parameters:
+
+> Dtab Path Format for HTTP/1.1
+
 ```
   / dstPrefix / "1.1" / method / host [/ uri* ]
 ```
-For HTTP/1.0 requests, logical names are of the form:
+
+> Dtab Path Format for HTTP/1.0
+
 ```
   / dstPrefix / "1.0" / method [/ uri* ]
 ```
 
-In both cases, `uri` is only considered a part of the logical name if the
-config option `httpUriInDst` is true.
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
+host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/BuoyantIO/linkerd/issues/106). Not used in HTTP/1.0.
+uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
 
-Note that `dstPrefix`, if unset in the identifier configuration block,
-defaults to "http".
+<a name="path-identifier"></a>
+### Path Identifier
 
-### The Path Identifier
-
-This identifier is selected by setting the *kind* value of an *identifier*
-block to `io.l5d.path`.
+kind: `io.l5d.path`
 
 With this identifier, HTTP requests are turned into names based only on the
 path component of the URL, using a configurable number of "/" separated
-segments from the start of their HTTP path. Configuration options include:
+segments from the start of their HTTP path.
 
-* *segments* -- Number of segments from the path that are appended to
-  destinations. (default: 1)
-* *consume* -- Whether to additionally strip the consumed segments from the
-  HTTP request proxied to the final destination service. (default: false)
+#### Namer Configuration:
 
-Note that *consume* only affects the request sent to the destination service;
-it does not affect identification or routing.
-
-The path identifier generates logical names of the form:
-```
-  / dstPrefix / [*segments* number of segments from the URL path]
-```
+> With this configuration, a request to `:5000/true/love/waits.php` will be
+mapped to `/http/true/love` and will be routed based on this name by the
+corresponding dtab. Additionally, because `consume` is true, after routing,
+requests will be proxied to the destination service with `/waits.php` as the
+path component of the URL.
 
 ```yaml
 routers:
@@ -122,29 +145,76 @@ routers:
     segments: 2
     consume: true
   servers:
-    port: 5000
+  - port: 5000
 ```
 
-Note that `dstPrefix`, if unset in the identifier configuration block,
-defaults to "http". For example, here's a router configured with the path
-identifier
+Key | Default Value | Description
+--- | ------------- | -----------
+segments | `1` | Number of segments from the path that are appended to destinations.
+consume | `false` | Whether to additionally strip the consumed segments from the HTTP request proxied to the final destination service. This only affects the request sent to the destination service; it does not affect identification or routing.
 
-With this configuration, a request to `:5000/true/love/waits.php` will be
-mapped to `/http/true/love` and will be routed based on this name by the
-corresponding dtab. Additionally, because `consume` is true, after routing,
-requests will be proxied to the destination service with `/waits.php` as the
-path component of the URL.
+#### Namer Path Parameters:
 
+> Dtab Path Format
+
+```
+  / dstPrefix [/ *urlPath ]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
+
+<a name="header-identifier"></a>
+### Header Identifier
+
+kind: `io.l5d.header`
+
+With this identifier, HTTP requests are turned into names based only on the
+value of an HTTP header.  If the header value is a valid path, that path is
+used.  Otherwise, the header value is converted to a path with one path segment.
+
+#### Namer Configuration:
+
+> With this configuration, the value of the `my-header` HTTP header will be used
+as the logical name.
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.header
+    header: my-header
+  servers:
+  - port: 5000
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `l5d-name` | The name of the HTTP header to use
+
+#### Namer Path Parameters:
+
+> Dtab Path Format
+
+```
+  / dstPrefix [/ *headerValue ]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+headerValue | N/A | The value of the HTTP header as a path.
+
+<a name="http-engines"></a>
 ## HTTP Engines
 
-An _engine_ may be configured on HTTP clients and servers, causing an
-alternate HTTP implementation to be used. Currently there are two
-supported HTTP implementations: _netty3_ (default) and _netty4_ (will
-become default in an upcoming release).
+> This configures an HTTP router that uses the new
+netty4 implementation on both the client and server:
 
 ```yaml
 - protocol: http
-  ...
   servers:
   - port: 4141
     ip: 0.0.0.0
@@ -155,78 +225,98 @@ become default in an upcoming release).
       kind: netty4
 ```
 
-For example, the following configures an HTTP router that uses the new
-netty4 implementation on both the client and server:
+An _engine_ may be configured on HTTP clients and servers, causing an
+alternate HTTP implementation to be used.
 
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `netty3` | Either `netty3` or `netty4` (`netty4` will become default in an upcoming release).
+
+<a name="http-headers"></a>
 ## HTTP Headers
 
 linkerd reads and sets several headers prefixed by `l5d-`.
 
+<a name="context-headers"></a>
 ### Context Headers
 
 _Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
 instances. Applications should forward all context headers in order
-for all linkerd features to work. These headers include:
+for all linkerd features to work.
 
-- `dtab-local`: currently (until the next release of finagle), the
-  `dtab-local` header is used to propagate dtab context. In an
-  upcoming release this header will no longer be honored, in favor of
-  `l5d-ctx-dtab` and `l5d-dtab`.
-- `l5d-ctx-deadline`: describes time bounds within which a request is
-  expected to be satisfied. Currently deadlines are only advisory and
-  do not factor into request cancellation.
-- `l5d-ctx-trace`: encodes Zipkin-style trace IDs and flags so that
-  trace annotations emitted by linkerd may be correlated.
+Header | Description
+------ | -----------
+`dtab-local` | Deprecated. Use `l5d-ctx-dtab` and `l5d-dtab`.
+`l5d-ctx-deadline` | Describes time bounds within which a request is expected to be satisfied. Currently deadlines are only advisory and do not factor into request cancellation.
+`l5d-ctx-trace` | Encodes Zipkin-style trace IDs and flags so that trace annotations emitted by linkerd may be correlated.
 
+<aside class="warning">
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
+</aside>
 
 ### User Headers
 
-_User headers_ are useful to allow user-overrides
+> Append a dtab override to the baseDtab for this request
 
-- `l5d-dtab`: a client-specified delegation override
-- `l5d-sample`: a client-specified trace sample rate override
+```shell
+curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"
+```
 
-Note that if linkerd processes incoming requests for applications
+_User headers_ enable user-overrides.
+
+Header | Description
+------ | -----------
+`l5d-dtab` | A client-specified delegation override.
+`l5d-sample` | A client-specified trace sample rate override.
+
+<aside class="notice">
+If linkerd processes incoming requests for applications
 (i.e. in linker-to-linker configurations), applications do not need to
-provide special treatment for these headers since linkerd does _not_
+provide special treatment for these headers since linkerd does <b>not</b>
 forward these headers (and instead translates them into context
-headers). If applications receive traffic directly, they _should_
+headers). If applications receive traffic directly, they <b>should</b>
 forward these headers.
+</aside>
 
+<aside class="warning">
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
+</aside>
 
 ### Informational Request Headers
 
-In addition to the context headers, linkerd may emit the following
-headers on outgoing requests:
+The informational headers linkerd emits on outgoing requests.
 
-- `l5d-dst-logical`: the logical name of the request as identified by linkerd
-- `l5d-dst-concrete`: the concrete client name after delegation
-- `l5d-dst-residual`: an optional residual path remaining after delegation
-- `l5d-reqid`: a token that may be used to correlate requests in a
-               callgraph across services and linkerd instances
+Header | Description
+------ | -----------
+`l5d-dst-logical` | The logical name of the request as identified by linkerd.
+`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-residual` | An optional residual path remaining after delegation.
+`l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
 Applications are not required to forward these headers on downstream
 requests.
 
-The value of the _dst_ headers may include service discovery
+<aside class="notice">
+The value of the dst headers may include service discovery
 information including host names.  Operators may opt to remove these
 headers from requests sent to the outside world.
+</aside>
 
 ### Informational Response Headers
 
-linkerd may emit the following _informational_ headers on outgoing
-responses:
+The informational headers linkerd emits on outgoing responses.
 
-- `l5d-err`: indicates a linkerd-generated error. Error responses
-             that do not have this header are application errors.
+Header | Description
+------ | -----------
+`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
 
 Applications are not required to forward these headers on upstream
 responses.
 
+<aside class="notice">
 The value of this header may include service discovery information
 including host names. Operators may opt to remove this header from
 responses sent to the outside world.
+</aside>

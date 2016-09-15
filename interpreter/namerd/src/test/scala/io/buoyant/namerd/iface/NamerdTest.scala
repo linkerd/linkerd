@@ -10,7 +10,7 @@ class NamerdTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
     val _ = NamerdInterpreterConfig(Some(Path.read("/whats/in/a")), Some("name"), None)
-      .newInterpreter(Stack.Params.empty)
+      .interpreter(Stack.Params.empty)
   }
 
   test("interpreter registration") {

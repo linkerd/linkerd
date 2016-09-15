@@ -344,9 +344,13 @@ object LinkerdBuild extends Base {
       .withTests()
       .dependsOn(Namer.core, Namer.fs)
 
+    val perHost = projectDir("interpreter/per-host")
+        .dependsOn(Namer.core)
+          .withTests()
+
     val all = projectDir("interpreter")
       .settings(aggregateSettings)
-      .aggregate(namerd, fs)
+      .aggregate(namerd, fs, perHost)
   }
 
   object Linkerd {
@@ -454,12 +458,12 @@ object LinkerdBuild extends Base {
       execScriptJvmOptions +
       """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
-         |     io.buoyant.Linkerd "$@"
+         |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin
 
     val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
-      mainClass := Some("io.buoyant.Linkerd"),
+      mainClass := Some("io.buoyant.linkerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "L5D_",
       unmanagedBase := baseDirectory.value / "plugins"
@@ -482,7 +486,7 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
-        Interpreter.namerd, Interpreter.fs,
+        Interpreter.namerd, Interpreter.fs, Interpreter.perHost,
         Protocol.mux, Protocol.thrift,
         Announcer.serversets,
         Telemetry.core, Telemetry.tracelog,
@@ -566,6 +570,7 @@ object LinkerdBuild extends Base {
   val interpreter = Interpreter.all
   val interpreterNamerd = Interpreter.namerd
   val interpreterFs = Interpreter.fs
+  val interpreterPerHost = Interpreter.perHost
 
   val linkerd = Linkerd.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark

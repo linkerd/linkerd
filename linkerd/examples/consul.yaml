@@ -3,6 +3,7 @@ namers:
   experimental: true
   prefix: /consul
   includeTag: true
+  useHealthCheck: false
 
 routers:
 - protocol: http

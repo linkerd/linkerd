@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.{Service, http}
-import io.buoyant.k8s.{KubeObject => BaseObject, _}
+import io.buoyant.k8s.{KubeObject => BaseObject}
 
 package object v1 {
 

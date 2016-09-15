@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Announcement}
-import com.twitter.util.Future
+import com.twitter.util.{Closable, Future}
 import java.net.InetSocketAddress
 
 class TestAnnouncerInitializer extends AnnouncerInitializer {
@@ -25,16 +25,15 @@ class TestAnnouncer extends Announcer {
 
   var services: Map[Path, Set[InetSocketAddress]] = Map.empty
 
-  override def announce(
-    addr: InetSocketAddress,
-    name: Path
-  ): Future[Announcement] = synchronized {
-    services = services + (name -> (services(name) + addr))
-    Future.value(new Announcement {
+  def announce(addr: InetSocketAddress, name: Path): Closable = {
+    synchronized {
+      services = services + (name -> (services(name) + addr))
+    }
+    new Announcement {
       override def unannounce(): Future[Unit] = synchronized {
         services = services + (name -> (services(name) - addr))
         Future.Unit
       }
-    })
+    }
   }
 }

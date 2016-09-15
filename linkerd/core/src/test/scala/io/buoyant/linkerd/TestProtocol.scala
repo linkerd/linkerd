@@ -10,6 +10,7 @@ import com.twitter.finagle.stack.Endpoint
 import com.twitter.util.Future
 import io.buoyant.linkerd.TestProtocol.FancyParam
 import io.buoyant.config.Parser
+import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.router.{RoutingFactory, StackRouter, StdStackRouter}
 import java.net.SocketAddress
 
@@ -76,7 +77,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
       val RoutingFactory.BaseDtab(dtab) = params[RoutingFactory.BaseDtab]
       val RoutingFactory.DstPrefix(pfx) = params[RoutingFactory.DstPrefix]
       val path = pfx ++ Path.read(req)
-      Future.value((Dst.Path(path, dtab(), Dtab.local), req))
+      Future.value(new IdentifiedRequest[String](Dst.Path(path, dtab(), Dtab.local), req))
     }
   }
 

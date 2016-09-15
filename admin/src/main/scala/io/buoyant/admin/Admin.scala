@@ -58,7 +58,7 @@ class Admin(app: TApp) {
   def adminMuxer = {
     allRoutes.foldLeft(new HttpMuxer) {
       case (muxer, (path, handler)) =>
-        log.info(s"$path => ${handler.getClass.getName}")
+        log.debug(s"admin: $path => ${handler.getClass.getName}")
         muxer.withHandler(path, handler)
     }
   }
