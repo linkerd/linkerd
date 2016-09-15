@@ -2,12 +2,13 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Path, Namer, Stack}
-import com.twitter.finagle.stats.{DefaultStatsReceiver}
+import com.twitter.finagle.stats.LoadedStatsReceiver
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
+import io.buoyant.telemetry.{Telemeter, NullTelemeter}
 import scala.util.control.NoStackTrace
 
 private[namerd] case class NamerdConfig(
@@ -21,20 +22,22 @@ private[namerd] case class NamerdConfig(
   require(interfaces.nonEmpty, "One or more interfaces must be specified")
   import NamerdConfig._
 
-  def mk(): Namerd = {
+  def mk(defaultTelemeter: Telemeter = NullTelemeter): Namerd = {
     if (storage.disabled) {
       val msg = s"The ${storage.getClass.getName} storage is experimental and must be " +
         "explicitly enabled by setting the `experimental' parameter to true."
       throw new IllegalArgumentException(msg) with NoStackTrace
     }
 
-    val stats = DefaultStatsReceiver
+    val stats = defaultTelemeter.stats
+    LoadedStatsReceiver.self = stats
 
     val dtabStore = storage.mkDtabStore
     val namersByPfx = mkNamers()
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
     val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
-    new Namerd(ifaces, dtabStore, namersByPfx, adminImpl)
+    val telemeters = Seq(defaultTelemeter)
+    new Namerd(ifaces, dtabStore, namersByPfx, adminImpl, telemeters)
   }
 
   private[this] def mkNamers(): Map[Path, Namer] =

@@ -4,8 +4,8 @@ import com.twitter.finagle.{Service, http}
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{param, Path, Namer, Stack}
-import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.tracing.{DefaultTracer, NullTracer, BroadcastTracer, Tracer}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
+import com.twitter.finagle.tracing.{DefaultTracer, BroadcastTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.logging.Logger
 import io.buoyant.admin.{AdminConfig, Admin}
@@ -13,7 +13,7 @@ import io.buoyant.config._
 import io.buoyant.config.types.Port
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
-import io.buoyant.telemetry.{DefaultTelemeter, TelemeterInitializer, TelemeterConfig, Telemeter}
+import io.buoyant.telemetry._
 import scala.util.control.NoStackTrace
 
 /**
@@ -92,14 +92,19 @@ object Linker {
     telemetry: Option[Seq[TelemeterConfig]],
     admin: Option[AdminConfig]
   ) {
-    def mk(): Linker = {
+
+    def mk(defaultTelemeter: Telemeter = NullTelemeter): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val telemeters = mkTelemeters()
+      val telemeters = telemetry match {
+        case None => Seq(defaultTelemeter)
+        case Some(telemeters) => telemeters.map(_.mk(Stack.Params.empty))
+      }
 
       // Telemeters may provide StatsReceivers.
       val stats = mkStats(telemeters)
+      LoadedStatsReceiver.self = stats
 
       // Tracers may be provided by telemeters OR by 'tracers'
       // configuration.
@@ -107,6 +112,7 @@ object Linker {
       // TODO the TracerInitializer API should be killed and these
       // modules should be converted to Telemeters.
       val tracer = mkTracer(telemeters)
+      DefaultTracer.self = tracer
 
       val params = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
 
@@ -118,14 +124,6 @@ object Linker {
       val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
 
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
-    }
-
-    private[this] def mkTelemeters() = telemetry match {
-      case None =>
-        val default = new DefaultTelemeter(true, false)
-        Seq(default)
-      case Some(telemeters) =>
-        telemeters.map(_.mk(Stack.Params.empty))
     }
 
     private[this] def mkStats(telemeters: Seq[Telemeter]) = {
