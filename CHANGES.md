@@ -15,6 +15,8 @@
   an interpreter.
 * Add k8s transformers to support linkerd-to-linkerd deployments when linkerd
   is deployed as a k8s daemonset.
+* Add `consistencyMode` option to `io.l5d.consul` namer
+* Add `readConsistencyMode` and `writeConsistencyMode` options to `io.l5d.consul` dtab storage
 
 ## 0.7.5
 
