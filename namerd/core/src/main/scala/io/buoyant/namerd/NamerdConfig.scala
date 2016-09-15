@@ -2,32 +2,42 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Path, Namer, Stack}
+import com.twitter.finagle.stats.{DefaultStatsReceiver}
 import com.twitter.finagle.util.LoadService
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
+import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
+import scala.util.control.NoStackTrace
 
-case class NamerdConfig(
+private[namerd] case class NamerdConfig(
   admin: Option[AdminConfig],
   storage: DtabStoreConfig,
   namers: Seq[NamerConfig],
   interfaces: Seq[InterfaceConfig]
 ) {
-  // TODO: remove the null checks once we upgrade to a Jackson supporting FAIL_ON_MISSING_CREATOR_PROPERTIES
   require(namers != null, "'namers' field is required")
   require(interfaces != null, "'interfaces' field is required")
   require(interfaces.nonEmpty, "One or more interfaces must be specified")
+  import NamerdConfig._
 
-  def mk(stats: StatsReceiver): Namerd = {
-    if (storage.disabled) throw new IllegalArgumentException(
-      s"""The ${storage.getClass.getName} storage is experimental and must be explicitly enabled by setting the "experimental" parameter to true."""
-    )
+  def mk(): Namerd = {
+    if (storage.disabled) {
+      val msg = s"The ${storage.getClass.getName} storage is experimental and must be " +
+        "explicitly enabled by setting the `experimental' parameter to true."
+      throw new IllegalArgumentException(msg) with NoStackTrace
+    }
+
+    val stats = DefaultStatsReceiver
+
     val dtabStore = storage.mkDtabStore
-    val namersByPfx = mkNamers
-    Namerd(mkInterfaces(dtabStore, namersByPfx, stats), dtabStore, namersByPfx)
+    val namersByPfx = mkNamers()
+    val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
+    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
+    new Namerd(ifaces, dtabStore, namersByPfx, adminImpl)
   }
 
-  private[this] def mkNamers: Map[Path, Namer] =
+  private[this] def mkNamers(): Map[Path, Namer] =
     namers.foldLeft(Map.empty[Path, Namer]) {
       case (namers, config) =>
         if (config.prefix.isEmpty)
@@ -48,7 +58,10 @@ case class NamerdConfig(
     interfaces.map(_.mk(dtabStore, namersByPfx, stats))
 }
 
-object NamerdConfig {
+private[namerd] object NamerdConfig {
+
+  private def DefaultAdminPort = Port(9991)
+  private def DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort))
 
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
     lazy val message =
