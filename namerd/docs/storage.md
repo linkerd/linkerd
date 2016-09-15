@@ -1,234 +1,98 @@
 # Storage
 
-*(for the [storage](config.md#storage) key)*
-
 A storage object configures the namerd dtabStore which stores and retrieves
 dtabs. This object supports the following params:
 
-* *kind* -- The name of the storage plugin.
-* *experimental* -- Set this to `true` to enable the storage if it is experimental.
-* *sotrage-specific parameters*.
+<aside class="notice">
+These parameters are available to the storage regardless of kind. Storage may also have kind-specific parameters.
+</aside>
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either `io.l5d.inMemory`, `io.l5d.k8s`, `io.l5d.zk`, `io.l5d.etcd` or `io.l5d.consul`.
+experimental | `false` | Set this to `true` to enable the storage if it is experimental.
 
 ## In Memory
 
-`io.l5d.inMemory`
+kind: `io.l5d.inMemory`
 
 Stores the dtab in memory.  Not suitable for production use.
 
-* *namespaces* -- Optional.  A map of namespaces to corresponding dtabs.
+Key | Default Value | Description
+--- | ------------- | -----------
+namespaces | empty map | A map of namespaces to corresponding dtabs.
 
 ## Kubernetes
 
-`io.l5d.k8s`
+kind: `io.l5d.k8s`
 
-*experimental*
+Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs. Requires a cluster
+running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 
-Stores the dtab with the Kubernetes master via the ThirdPartyResource APIs. 
-
-**Prerequisites**  
-1. Requires a cluster running Kubernetes 1.2+.  
-2. `kubectl` client 1.3+ is installed.  
-3. [ThirdPartyResource](http://kubernetes.io/docs/api-reference/extensions/v1beta1/definitions/#_v1beta1_thirdpartyresource) feature should be enabled in Kubernetes cluster.  
-  * **How to check ThirdPartyResource is enabled**
-    1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.  
-    2. Check that kind `ThirdPartyResource` exists in response:
-    
-    ```
-    {
-      "kind": "APIResourceList",
-      "groupVersion": "extensions/v1beta1",
-      "resources": [
-        ...
-        {
-          "name": "thirdpartyresources",
-          "namespaced": false,
-          "kind": "ThirdPartyResource"
-        }
-      ]
-    }
-    ```
-
-**Configuration**  
-
-1. Define configuration of `ThirdPartyResource`.
-  ```yaml
-  metadata:
-    name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
-  apiVersion: extensions/v1beta1
-  kind: ThirdPartyResource
-  description: stores dtabs used by Buoyant's `namerd` service
-  versions:
-    - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
-  ```
-  
-2. Define configuration of `Namerd` with k8s cluster storage.
-  * *experimental* -- Required. Has to be set to `true` as `k8s` storage is experimental feature right now.
-  * *host* -- Optional. The location of the Kubernetes API. (default: "kubernetes.default.svc.cluster.local")
-  * *port* -- Optional. The port used to connect to the Kubernetes API. (default: 443)
-  * *tls*  -- Optional. Whether to connect to the Kubernetes API using TLS. (default: true)
-  * *tlsWithoutValidation* -- Optional. Whether to disable certificate checking against the Kubernetes
-  API. Meaningless if *tls* is false. (default: false)
-  * *authTokenFile* -- Optional. The location of the token used to authenticate against the Kubernetes
-  API, if any. (default: no authentication)
-  * *namespace* The Kubernetes namespace in which dtabs will be stored. This should usually be the
-  same namespace in which namerd is running. (default: "default")
-
-*Example:*  
-```yaml
-  storage:
-    kind: io.l5d.k8s
-    experimental: true
-```
-
-*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 services for sync with `Linkerd` and `Namerd API`:*  
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: namerd-sync
-spec:
-  selector:
-    app: namerd
-  ports:
-  - name: sync
-    port: 4100
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: namerd-api
-spec:
-  selector:
-    app: namerd
-  ports:
-  - name: api
-    port: 4180
----
-metadata:
-  name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
-apiVersion: extensions/v1beta1
-kind: ThirdPartyResource
-description: stores dtabs used by Buoyant's `namerd` service
-versions:
-  - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: namerd-config
-data:
-  config.yml: |-
-    admin:
-      port: 9991
-    storage:
-      kind: io.l5d.k8s
-      experimental: true
-    namers:
-      - kind: io.l5d.k8s
-        experimental: true
-        host: 127.0.0.1
-        port: 8001
-    interfaces:
-      - kind: io.l5d.thriftNameInterpreter
-        ip: 0.0.0.0
-        port: 4100
-      - kind: io.l5d.httpController
-        ip: 0.0.0.0
-        port: 4180
----
-kind: ReplicationController
-apiVersion: v1
-metadata:
-  name: namerd
-spec:
-  replicas: 1
-  selector:
-    app: namerd
-  template:
-    metadata:
-      labels:
-        app: namerd
-    spec:
-      dnsPolicy: ClusterFirst
-      volumes:
-        - name: namerd-config
-          configMap:
-            name: namerd-config
-      containers:
-        - name: namerd
-          image: buoyantio/namerd:<version> # specify required version or remove to use the latest
-          args:
-            - /io.buoyant/namerd/config/config.yml
-            - -com.twitter.finagle.tracing.debugTrace=true
-            - -log.level=DEBUG
-          imagePullPolicy: Always
-          ports:
-            - name: sync
-              containerPort: 4100
-            - name: api
-              containerPort: 4180
-          volumeMounts:
-            - name: "namerd-config"
-              mountPath: "/io.buoyant/namerd/config"
-              readOnly: true
-        - name: kubectl
-          image: buoyantio/kubectl:<version> # specify required version or remove to use the latest
-          args:
-          - "proxy"
-          - "-p"
-          - "8001"
-          imagePullPolicy: Always
-```
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
+host | `kubernetes.default.svc.cluster.local` | The location of the Kubernetes API.
+port | `443` | The port used to connect to the Kubernetes API.
+tls | `true` | Whether to connect to the Kubernetes API using TLS.
+tlsWithoutValidation | `false` | Whether to disable certificate checking against the Kubernetes API. Meaningless if `tls` is false.
+authTokenFile | no auth | The location of the token used to authenticate against the Kubernetes API, if any.
+namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
 
 ## ZooKeeper
 
-`io.l5d.zk`
+kind: `io.l5d.zk`
 
-*experimental*
+Stores the dtab in ZooKeeper.
 
-Stores the dtab in ZooKeeper.  Supports the following options
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
+zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
+pathPrefix | `/dtabs` | The ZooKeeper path under which dtabs should be stored.
+sessionTimeoutMs | `10000` | ZooKeeper session timeout in milliseconds.
+authInfo | no auth when logging | Configures the authentication information to use when logging. See [authInfo](#authInfo).
+acls | an empty list | A list of ACLs to set on each dtab znode created. See [acls](#acls).
 
-* *zkAddrs* -- list of ZooKeeper addresses:
-  * *host* --  the ZooKeeper host.
-  * *port* --  the ZooKeeper port.
-* *pathPrefix* -- Optional.  The ZooKeeper path under which dtabs should be stored.  (default:
-"/dtabs")
-* *sessionTimeoutMs* -- Optional.  ZooKeeper session timeout in milliseconds.
-(default: 10000)
-* *authInfo* -- Optional.  An object containing the authentication information to use when logging
-in ZooKeeper:
-  * *scheme* -- Required.  The ZooKeeper auth scheme to use.
-  * *auth* -- Required.  The ZooKeeper auth value to use.
-* *acls* -- Optional.  A list of ACLs to set on each dtab znode created.  Each ACL is an object
-containing:
-  * *scheme* -- Required.  The ACL auth scheme to use.
-  * *id* -- Required.  The ACL id to use.
-  * *perms* -- Required.  A subset of the string "crwda" representing the permissions of this ACL.
-  The characters represent create, read, write, delete, and admin, respectively.
+### authInfo
+
+Key | Default Value | Description
+--- | ------------- | -----------
+scheme | _required_ | The ZooKeeper auth scheme to use.
+auth | _required_ | The ZooKeeper auth value to use.
+
+### acls
+
+Key | Default Value | Description
+--- | ------------- | -----------
+scheme | _required_ | The ACL auth scheme to use.
+id | _required_ | The ACL id to use.
+perms | _required_ | A subset of the string "crwda" representing the permissions of this ACL. The characters represent create, read, write, delete, and admin, respectively.
 
 ## Etcd
 
-`io.l5d.etcd`
+kind: `io.l5d.etcd`
 
-*experimental*
+Stores the dtab in Etcd.
 
-Stores the dtab in Etcd.  Supports the following options
-
-* *host* -- Optional. The location of the etcd API.  (default: localhost)
-* *port* -- Optional. The port used to connect to the etcd API.  (default: 2379)
-* *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/namerd/dtabs")
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
+host | `localhost` | The location of the etcd API.
+port | `2379` | The port used to connect to the etcd API.
+pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
 
 ## Consul
 
-`io.l5d.consul`
+kind: `io.l5d.consul`
 
-*experimental*
+Stores the dtab in Consul KV storage.
 
-Stores the dtab in Consul KV storage.  Supports the following options
-
-* *host* -- Optional. The location of the etcd API.  (default: localhost)
-* *port* -- Optional. The port used to connect to the consul API.  (default: 8500)
-* *pathPrefix* -- Optional. The key path under which dtabs should be stored. (default: "/namerd/dtabs")
-* *token* -- Optional. The auth token to use when making API calls.
-* *datacenter* -- Optional. The datacenter to forward requests to. (default: not set, use agent's datacenter)
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
+host | `localhost` | The location of the consul API.
+port | `8500` | The port used to connect to the consul API.
+pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
+token | no auth | The auth token to use when making API calls.
+datacenter | uses agent's datacenter | The datacenter to forward requests to.
