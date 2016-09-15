@@ -96,3 +96,6 @@ port | `8500` | The port used to connect to the consul API.
 pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
 token | no auth | The auth token to use when making API calls.
 datacenter | uses agent's datacenter | The datacenter to forward requests to.
+readConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for reads.
+writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
+
