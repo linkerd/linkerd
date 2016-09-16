@@ -32,6 +32,6 @@ class PortTransformer(port: Int) extends DelegatingNameTreeTransformer {
   override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
     Activity.value(tree.map(mapBound))
 
-  override protected def transformDelegate(tree: DelegateTree[Bound]): DelegateTree[Bound] =
-    tree.map(mapBound)
+  override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
+    Activity.value(tree.map(mapBound))
 }

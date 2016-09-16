@@ -354,9 +354,13 @@ object LinkerdBuild extends Base {
         .dependsOn(Namer.core)
           .withTests()
 
+    val k8s = projectDir("interpreter/k8s")
+        .dependsOn(Namer.core, LinkerdBuild.k8s, perHost)
+        .withTests()
+
     val all = projectDir("interpreter")
       .settings(aggregateSettings)
-      .aggregate(namerd, fs, perHost)
+      .aggregate(namerd, fs, perHost, k8s)
   }
 
   object Linkerd {
@@ -492,7 +496,7 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(
         Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
-        Interpreter.namerd, Interpreter.fs, Interpreter.perHost,
+        Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
         Protocol.mux, Protocol.thrift,
         Announcer.serversets,
         Telemetry.core, Telemetry.tracelog,
@@ -578,6 +582,7 @@ object LinkerdBuild extends Base {
   val interpreterNamerd = Interpreter.namerd
   val interpreterFs = Interpreter.fs
   val interpreterPerHost = Interpreter.perHost
+  val interpreterK8s = Interpreter.k8s
 
   val linkerd = Linkerd.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark

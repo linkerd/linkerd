@@ -40,3 +40,53 @@ traffic to that port instead of directly to the destination address.
 Key | Default Value | Description
 --- | ------------- | -----------
 port | _required_ | The port number to use.
+
+## DaemonSet (Kubernetes)
+
+kind: `io.l5d.k8s.daemonset`
+
+The DaemonSetTransformer maps each address in the destination NameTree to a 
+member of a given daemonset that is on the same /24 subnet.  Since each k8s
+node is its own /24 subnet, the result is that each destination address is
+mapped to the member of the daemonset that is running on the same node.
+This can be used to redirect traffic to a reverse-proxy that runs as a
+daemonset.
+
+This transformer assumes that there is a Kubernetes service for the daemonset
+which can be used to find all pods in the daemonset.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+k8sHost | `localhost` | The Kubernetes master host.
+k8sPort | `8001` | The Kubernetes master post.
+namespace | _required_ | The Kubernetes namespace of the daemonset.
+service | _required_ | The Kubernetes service name for the daemonset.
+port | _required_ | The name of the daemonset port to use.
+
+<aside class="notice">
+The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
+
+## Localnode (Kubernetes)
+
+kind: `io.l5d.k8s.localnode`
+
+The localnode transformer filters the list of addresses down to only addresses
+that are on the same /24 subnet as localhost.  Since each k8s node is its own
+/24 subnet, the result is that only addresses on the local node are used.
+
+This transformer does not have any configuration properties but it does require
+the `POD_IP` environment variable be set with the localhost IP address.  This is
+most easily done with the
+[Kubernetes downward API](http://kubernetes.io/docs/user-guide/downward-api/).
+
+> In your container spec:
+
+```
+env:
+- name: POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+```

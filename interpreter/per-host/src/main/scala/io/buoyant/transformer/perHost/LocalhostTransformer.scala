@@ -15,11 +15,11 @@ class LocalhostTransformer extends DelegatingNameTreeTransformer {
 
   private[this] val localhost = InetAddress.getLocalHost.getAddress
 
-  private[this] val tupleEqual: Tuple2[Byte, Byte] => Boolean = {
+  protected val tupleEqual: Tuple2[Byte, Byte] => Boolean = {
     case (b1, b2) => b1 == b2
   }
 
-  private[this] val isLocal: Address => Boolean = {
+  protected val isLocal: Address => Boolean = {
     case Address.Inet(addr, meta) =>
       val bytes = addr.getAddress.getAddress
       localhost.zip(bytes).forall(tupleEqual)
@@ -35,8 +35,8 @@ class LocalhostTransformer extends DelegatingNameTreeTransformer {
     Name.Bound(vaddr, bound.id, bound.path)
   }
 
-  override protected def transformDelegate(tree: DelegateTree[Bound]): DelegateTree[Bound] =
-    tree.map(mapBound)
+  override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
+    Activity.value(tree.map(mapBound))
 
   override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
     Activity.value(tree.map(mapBound))

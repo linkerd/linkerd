@@ -13,6 +13,8 @@
 * Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
 * Introduce transformers for post-processing the set of addresses returned by
   an interpreter.
+* Add k8s transformers to support linkerd-to-linkerd deployments when linkerd
+  is deployed as a k8s daemonset.
 
 ## 0.7.5
 
