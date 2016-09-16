@@ -8,5 +8,5 @@ class LocalhostTransformerInitializer extends TransformerInitializer {
 }
 
 class LocalhostTransformerConfig extends TransformerConfig {
-  override def mk: NameTreeTransformer = new LocalhostTransformer
+  override def mk(): NameTreeTransformer = new LocalhostTransformer
 }

@@ -43,13 +43,14 @@ port | _required_ | The port number to use.
 
 ## DaemonSet (Kubernetes)
 
-kind: `io.l5d.daemonset`
+kind: `io.l5d.k8s.daemonset`
 
-The DaemonSetTransformer maps each address in the NameTree to a member of a
-given daemon set that is on the same /24 subnet.  Since each k8s node is its own
-/24 subnet, the result is that each address is mapped to the member of the
-daemon set that is running on the same node.  This can be used to redirect
-traffic to a reverse-proxy that runs as a daemonset.
+The DaemonSetTransformer maps each address in the destination NameTree to a 
+member of a given daemonset that is on the same /24 subnet.  Since each k8s
+node is its own /24 subnet, the result is that each destination address is
+mapped to the member of the daemonset that is running on the same node.
+This can be used to redirect traffic to a reverse-proxy that runs as a
+daemonset.
 
 This transformer assumes that there is a Kubernetes service for the daemonset
 which can be used to find all pods in the daemonset.
@@ -69,7 +70,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 
 ## Localnode (Kubernetes)
 
-kind: `io.l5d.localnode`
+kind: `io.l5d.k8s.localnode`
 
 The localnode transformer filters the list of addresses down to only addresses
 that are on the same /24 subnet as localhost.  Since each k8s node is its own

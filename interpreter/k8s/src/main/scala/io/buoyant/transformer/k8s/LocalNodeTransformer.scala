@@ -13,12 +13,16 @@ import java.net.InetAddress
 class LocalNodeTransformer(local: InetAddress) extends LocalhostTransformer {
 
   private[this] val localAddress = local.getAddress
+  assert(localAddress.size == 4, "LocalNodeTransformer only supports IPv4")
 
   override protected val isLocal: Address => Boolean = {
     case Address.Inet(addr, meta) =>
       val bytes = addr.getAddress.getAddress
+      assert(bytes.size == 4, "LocalNodeTransformer only supports IPv4")
       // examine only the first 3 bytes (24 bits)
-      localAddress.zip(bytes).take(3).forall(tupleEqual)
+      bytes(0) == localAddress(0) &&
+        bytes(1) == localAddress(1) &&
+        bytes(2) == localAddress(2)
     case address => true
   }
 }

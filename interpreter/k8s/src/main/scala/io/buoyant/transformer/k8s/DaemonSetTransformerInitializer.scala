@@ -10,7 +10,7 @@ import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInit
 
 class DaemonSetTransformerInitializer extends TransformerInitializer {
   val configClass = classOf[DaemonSetTransformerConfig]
-  override val configId = "io.l5d.daemonset"
+  override val configId = "io.l5d.k8s.daemonset"
 }
 
 case class DaemonSetTransformerConfig(
@@ -20,14 +20,14 @@ case class DaemonSetTransformerConfig(
   service: String,
   port: String
 ) extends TransformerConfig with ClientConfig {
-  assert(namespace != null, "io.l5d.daemonset: namespace property is required")
-  assert(service != null, "io.l5d.daemonset: service property is required")
-  assert(port != null, "io.l5d.daemonset: port property is required")
+  assert(namespace != null, "io.l5d.k8s.daemonset: namespace property is required")
+  assert(service != null, "io.l5d.k8s.daemonset: service property is required")
+  assert(port != null, "io.l5d.k8s.daemonset: port property is required")
 
   override def host: Option[String] = k8sHost
   override def portNum: Option[Int] = k8sPort.map(_.port)
 
-  override def mk: NameTreeTransformer = {
+  override def mk(): NameTreeTransformer = {
     val client = mkClient(Params.empty)
     def mkNs(ns: String) = Api(client.configured(Label("daemonsetTransformer"))
       .newService(dst))

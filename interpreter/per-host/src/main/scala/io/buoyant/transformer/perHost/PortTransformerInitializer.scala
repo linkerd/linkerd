@@ -9,5 +9,5 @@ class PortTransformerInitializer extends TransformerInitializer {
 }
 
 case class PortTransformerConfig(port: Port) extends TransformerConfig {
-  override def mk: NameTreeTransformer = new PortTransformer(port.port)
+  override def mk(): NameTreeTransformer = new PortTransformer(port.port)
 }

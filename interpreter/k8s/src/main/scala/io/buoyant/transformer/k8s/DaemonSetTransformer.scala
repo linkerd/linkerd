@@ -6,22 +6,29 @@ import com.twitter.util.{Var, Activity}
 import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
 
 /**
- * The DaemonSetTransformer maps each address in the NameTree to a member of
- * a given daemon set that is on the same /24 subnet.  Since each k8s node
- * is its own /24 subnet, the result is that each address is mapped to the
- * member of the daemon set that is running on the same node.  This can be used
- * to redirect traffic to a reverse-proxy that runs as a daemon set.
+ * The DaemonSetTransformer maps each address in the destination NameTree to a
+ * member of a given daemonset that is on the same /24 subnet.  Since each k8s
+ * node is its own /24 subnet, the result is that each destination address is
+ * mapped to the member of the daemonset that is running on the same node.
+ * This can be used to redirect traffic to a reverse-proxy that runs as a
+ * daemonset.
+ * @param daemonSet the addresses of the daemonset pods
  */
-class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]]) extends DelegatingNameTreeTransformer {
+class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]])
+  extends DelegatingNameTreeTransformer {
 
-  override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] = {
+  override protected def transformDelegate(
+    tree: DelegateTree[Bound]
+  ): Activity[DelegateTree[Bound]] = {
     daemonSet.map { daemonSet =>
       val daemons = flatten(daemonSet.eval.toSet.flatten)
       tree.map(mapBound(_, daemons))
     }
   }
 
-  override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] = {
+  override protected def transform(
+    tree: NameTree[Bound]
+  ): Activity[NameTree[Bound]] = {
     daemonSet.map { daemonSet =>
       val daemons = flatten(daemonSet.eval.toSet.flatten)
       tree.map(mapBound(_, daemons))
@@ -61,13 +68,13 @@ class DaemonSetTransformer(daemonSet: Activity[NameTree[Bound]]) extends Delegat
       case (Address.Inet(addr1, _), Address.Inet(addr2, _)) =>
         val b1 = addr1.getAddress.getAddress
         val b2 = addr2.getAddress.getAddress
+        assert(b1.size == 4, "DaemonSetTransformer only supports IPv4")
+        assert(b2.size == 4, "DaemonSetTransformer only supports IPv4")
         // examine only the first 3 bytes (24 bits)
-        b1.zip(b2).take(3).forall(tupleEqual)
+        b1(0) == b2(0) &&
+          b1(1) == b2(1) &&
+          b2(2) == b2(2)
       case _ => false
     }
-  }
-
-  private[this] val tupleEqual: Tuple2[Byte, Byte] => Boolean = {
-    case (b1, b2) => b1 == b2
   }
 }
