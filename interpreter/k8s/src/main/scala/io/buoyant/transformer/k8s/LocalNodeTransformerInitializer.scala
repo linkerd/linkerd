@@ -1,4 +1,5 @@
-package io.buoyant.transformer.k8s
+package io.buoyant.transformer
+package k8s
 
 import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.InetAddress
@@ -15,6 +16,8 @@ class LocalNodeTransformerConfig extends TransformerConfig {
       "POD_IP",
       throw new IllegalArgumentException("POD_IP env variable must be set to the pod's IP")
     )
-    new LocalNodeTransformer(InetAddress.getByName(ip))
+    val local = InetAddress.getByName(ip)
+    new SubnetLocalTransformer(local, Netmask("255.255.255.0"))
   }
+
 }

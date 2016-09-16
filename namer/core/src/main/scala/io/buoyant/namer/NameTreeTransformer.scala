@@ -46,3 +46,27 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
     override def dtab: Activity[Dtab] = underlying.dtab
   }
 }
+
+trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
+
+  /** Determine whether an address may be used. */
+  protected def predicate: Address => Boolean
+
+  private[this] val mapBound: Name.Bound => Name.Bound = { bound =>
+    val vaddr = bound.addr.map {
+      case Addr.Bound(addrs, meta) =>
+        addrs.filter(predicate) match {
+          case filtered if filtered.isEmpty => Addr.Neg
+          case filtered => Addr.Bound(filtered, meta)
+        }
+      case addr => addr
+    }
+    Name.Bound(vaddr, bound.id, bound.path)
+  }
+
+  override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
+    Activity.value(tree.map(mapBound))
+
+  override protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
+    Activity.value(tree.map(mapBound))
+}
