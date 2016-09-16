@@ -49,9 +49,18 @@ trait BaseApi extends Closable {
   private[v1] def mkreq(
     method: http.Method,
     path: String,
+    consistency: Option[ConsistencyMode],
     optParams: (String, Option[String])*
   ): http.Request = {
-    val params = optParams.collect { case (k, Some(v)) => (k, v) }
+    val consistencyMode = consistency.flatMap {
+      case ConsistencyMode.Consistent =>
+        Some("consistent" -> Some(true.toString))
+      case ConsistencyMode.Stale =>
+        Some("stale" -> Some(true.toString))
+      case ConsistencyMode.Default =>
+        None
+    }
+    val params = (consistencyMode ++ optParams).collect { case (k, Some(v)) => (k, v) }.toSeq
     val req = http.Request(path, params: _*)
     req.method = method
     req
