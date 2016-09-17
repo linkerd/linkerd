@@ -2,7 +2,6 @@ package io.buoyant.namerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.JsonMappingException
-import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.{Path, Dtab}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
@@ -39,7 +38,7 @@ class NamerdConfigTest extends FunSuite {
     assert(config.interfaces.head.addr.getAddress.isLoopbackAddress)
     assert(config.interfaces.head.addr.getPort == 1)
     // just check that this don't blow up
-    val _ = config.mk(NullStatsReceiver)
+    val _ = config.mk()
   }
 
   test("missing namers validation") {

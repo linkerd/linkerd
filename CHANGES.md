@@ -1,8 +1,37 @@
 ## 0.x.y
 
-* Upgrade to Finagle 6.37.0.
+* Allow routers to be configured with a list of identifiers.  If an identifier
+  cannot assign a dest to a request, it falls back to the next one in the list.
+  * **Breaking Change**: Identifier plugins must now return a
+    `RequestIdentification` object.
+* Improve shutdown ordering to facilitate graceful shutdown.
+* Require tracer configuration instead of falling back to
+  defaults, reducing logging noise.
+* The `debugTrace` tracer configuration flag has been removed in favor
+  of the `io.l5d.tracelog` telemeter.<<<<<<< HEAD
+* Add `io.l5d.header` identifier for naming requests based on an HTTP header
+* Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
+* Introduce transformers for post-processing the set of addresses returned by
+  an interpreter.
+* Add k8s transformers to support linkerd-to-linkerd deployments when linkerd
+  is deployed as a k8s daemonset.
+* Add `consistencyMode` option to `io.l5d.consul` namer
+* Add `readConsistencyMode` and `writeConsistencyMode` options to `io.l5d.consul` dtab storage
+
+## 0.7.5
+
+* Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
+* Fix query paramater encoding when rewriting proxied requests
+* Improve error handling and retry behavior of consul plugins.
+* Add `useHealthCheck` parameter to Consul Namer #589
+* The k8s namer will now resume watches if the connection is closed.
+* Improved the performance of the namerd HTTP API.
+* Configured namers are now available to other plugins
+* `enableProbation` is now disabled by default on clients. It leads to
+  unexpected behavior in environments that reuse IP:PORT pairs across
+  services in a close time proximity.
 
 ## 0.7.4
 

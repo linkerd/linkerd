@@ -7,7 +7,7 @@ import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Filter, http}
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.log
@@ -27,8 +27,10 @@ trait BaseApi extends Closable {
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
       case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
-      case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying consul catalog request on error $ex")
+      // Don't retry on interruption
+      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
+      case (req, Throw(NonFatal(ex))) =>
+        log.error(s"retrying consul request ${req.method} ${req.uri} on error $ex")
         true
     },
     HighResTimer.Default,
@@ -47,9 +49,18 @@ trait BaseApi extends Closable {
   private[v1] def mkreq(
     method: http.Method,
     path: String,
+    consistency: Option[ConsistencyMode],
     optParams: (String, Option[String])*
   ): http.Request = {
-    val params = optParams.collect { case (k, Some(v)) => (k, v) }
+    val consistencyMode = consistency.flatMap {
+      case ConsistencyMode.Consistent =>
+        Some("consistent" -> Some(true.toString))
+      case ConsistencyMode.Stale =>
+        Some("stale" -> Some(true.toString))
+      case ConsistencyMode.Default =>
+        None
+    }
+    val params = (consistencyMode ++ optParams).collect { case (k, Some(v)) => (k, v) }.toSeq
     val req = http.Request(path, params: _*)
     req.method = method
     req

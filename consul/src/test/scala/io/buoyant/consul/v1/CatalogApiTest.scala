@@ -1,11 +1,10 @@
 package io.buoyant.consul.v1
 
-import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.Buf
 import com.twitter.util.Future
-import io.buoyant.test.{Exceptions, Awaits}
+import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
 class CatalogApiTest extends FunSuite with Awaits with Exceptions {
@@ -42,12 +41,50 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
     assert(response.head.ServicePort == Some(8084))
   }
 
+  test("serviceNodes endpoint supports consistency parameter") {
+    val service = stubService(nodesBuf)
+    val api = CatalogApi(service)
+
+    await(api.serviceNodes("hosted_web"))
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceNodes("hosted_web", consistency = Some(ConsistencyMode.Default)))
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceNodes("hosted_web", consistency = Some(ConsistencyMode.Stale)))
+    assert(lastUri.contains("stale=true"))
+
+    await(api.serviceNodes("hosted_web", consistency = Some(ConsistencyMode.Consistent)))
+    assert(lastUri.contains("consistent=true"))
+  }
+
   test("serviceMap endpoint returns a map of serviceNames to tags") {
     val service = stubService(mapBuf)
 
     val response = await(CatalogApi(service).serviceMap()).value
     assert(response.get("consul") == Some(Seq.empty))
     assert(response.get("hosted_web") == Some(Seq("master")))
+  }
+
+  test("serviceMap endpoint supports consistency parameter") {
+    val service = stubService(mapBuf)
+    val api = CatalogApi(service)
+
+    await(api.serviceMap())
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceMap(consistency = Some(ConsistencyMode.Default)))
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceMap(consistency = Some(ConsistencyMode.Stale)))
+    assert(lastUri.contains("stale=true"))
+
+    await(api.serviceMap(consistency = Some(ConsistencyMode.Consistent)))
+    assert(lastUri.contains("consistent=true"))
   }
 
   test("blocking index returned from one call can be used to set index on subsequent calls") {

@@ -2,7 +2,7 @@ package io.buoyant.k8s.v1
 
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.k8s.{ObjectMeta, ObjectReference}
 import io.buoyant.test.{Awaits, Exceptions}
@@ -20,16 +20,28 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   val endpointsList = Buf.Utf8("""{"kind": "EndpointsList","apiVersion": "v1","metadata":{"selfLink":"/api/v1/namespaces/greg-test/endpoints","resourceVersion": "17575669"},"items":[{"metadata":{"name": "accounts","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/accounts","uid": "763fe50e-8d71-11e5-a206-42010af0004d","resourceVersion": "17147786","creationTimestamp": "2015-11-17T21:23:35Z"},"subsets":[{"addresses":[{"ip": "10.248.9.109","targetRef":{"kind":"Pod","namespace":"greg-test","name":"accounts-h5zht","uid": "0b598c6e-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147785"}}],"ports":[{"name":"josh","port":8080,"protocol":"TCP"}]}]},{"metadata":{"name": "auth","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/auth","uid": "772cde01-8d71-11e5-a206-42010af0004d","resourceVersion": "17147808","creationTimestamp": "2015-11-17T21:23:37Z"},"subsets":[{"addresses":[{"ip":"10.248.4.134","targetRef":{"kind": "Pod","namespace":"greg-test","name": "auth-54q3e","uid": "0d5d0a2d-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147807"}}],"ports":[{"name":"josh","port":8080,"protocol":"TCP"}]}]}]}""")
 
   test("namespace: get endpoints") {
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
     val service = Service.mk[Request, Response] { req =>
-      assert(req.uri == s"/api/v1/namespaces/srv/endpoints/accounts")
-      val rsp = Response()
-      rsp.version = req.version
-      rsp.setContentTypeJson()
-      rsp.headerMap("Transfer-Encoding") = "chunked"
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          try {
+            assert(req.uri == s"/api/v1/namespaces/srv/endpoints/accounts")
+            val rsp = Response()
+            rsp.version = req.version
+            rsp.setContentTypeJson()
+            rsp.headerMap("Transfer-Encoding") = "chunked"
+            rsp.writer.write(endpoints0) before rsp.writer.write(endpoints1) before rsp.writer.close()
+            Future.value(rsp)
+          } catch {
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
+          }
 
-      rsp.writer.write(endpoints0) before rsp.writer.write(endpoints1) before rsp.writer.close()
-
-      Future.value(rsp)
+        case _ => Future.never
+      }
     }
 
     val ns = Api(service).withNamespace("srv")
@@ -76,246 +88,288 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
         creationTimestamp = Some("2015-08-27T23:05:27Z")
       ))
     ))
+    if (failure != null) throw failure
   }
 
   test("watch endpoint list: one message") {
     val chunk = new Promise[Buf]
+    val rsp = Response()
+    @volatile var failure: Throwable = null
+    @volatile var reqCount = 0
     val service = Service.mk[Request, Response] { req =>
-      assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=1234567")
-      val rsp = Response()
-      rsp.version = req.version
-      chunk.flatMap(rsp.writer.write)
-      Future.value(rsp)
+      reqCount += 1
+      try {
+        reqCount match {
+          case 1 =>
+            assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=1234567")
+            val rsp = Response()
+            rsp.version = req.version
+            chunk.flatMap(rsp.writer.write)
+            Future.value(rsp)
+          case _ => Future.never
+        }
+      } catch {
+        case e: Throwable =>
+          failure = e
+          Future.exception(e)
+      }
     }
     val api = Api(service)
 
-    val (stream, _) = api.endpoints.watch(resourceVersion = Some("1234567"))
-    val hd = stream.head
-    assert(!hd.isDefined)
-    chunk.setValue(modified0)
-    assert(hd.isDefined)
+    val (stream, c) = api.endpoints.watch(resourceVersion = Some("1234567"))
+    try {
+      val hd = stream.head
+      assert(!hd.isDefined)
+      chunk.setValue(modified0)
+      assert(hd.isDefined)
+    } finally await(c.close())
+    if (failure != null) throw failure
   }
 
   test("watch endpoint list") {
     val rsp = Response()
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
     val service = Service.mk[Request, Response] { req =>
-      assert(req.path == "/api/v1/endpoints")
-      assert(req.params.getBoolean("watch") == Some(true))
-      rsp.version = req.version
-      Future.value(rsp)
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          try {
+            assert(req.path == "/api/v1/endpoints")
+            assert(req.params.getBoolean("watch") == Some(true))
+            rsp.version = req.version
+            Future.value(rsp)
+          } catch {
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
+          }
+        case _ => Future.never
+      }
     }
     val api = Api(service)
 
     val (stream, closable) = api.endpoints.watch()
-    val w = rsp.writer
-    await(w.write(modified2 concat added0))
-    await(stream.uncons) match {
-      case Some((Modified(eps), getStream)) =>
-        assert(eps.subsets.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
-          Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    try {
+      val w = rsp.writer
+      await(w.write(modified2 concat added0))
+      await(stream.uncons) match {
+        case Some((Modified(eps), getStream)) =>
+          assert(eps.subsets.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
+            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
 
-        await(getStream().uncons) match {
-          case Some((Added(eps), getStream)) =>
-            assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
-              Seq("104.154.78.240"))
+          await(getStream().uncons) match {
+            case Some((Added(eps), getStream)) =>
+              assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+                Seq("104.154.78.240"))
 
-            val next = getStream().uncons
-            assert(!next.isDefined)
-            await(w.write(modified1))
-            assert(next.isDefined)
-            await(next) match {
-              case Some((Modified(eps), getStream)) =>
-                assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
-                  Seq("10.248.3.3"))
+              val next = getStream().uncons
+              assert(!next.isDefined)
+              await(w.write(modified1))
+              assert(next.isDefined)
+              await(next) match {
+                case Some((Modified(eps), getStream)) =>
+                  assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+                    Seq("10.248.3.3"))
 
-                val next = getStream().uncons
-                assert(!next.isDefined)
-                await(w.write(modified0))
-                assert(next.isDefined)
-                await(next) match {
-                  case Some((Modified(eps), getStream)) =>
-                    assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
-                      Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-                    val next = getStream().uncons
-                    await(closable.close())
-                  case event =>
-                    fail(s"unexpected event: $event")
-                }
-              case event =>
-                fail(s"unexpected event: $event")
-            }
-          case event =>
-            fail(s"unexpected event: $event")
-        }
-      case event =>
-        fail(s"unexpected event: $event")
-    }
+                  val next = getStream().uncons
+                  assert(!next.isDefined)
+                  await(w.write(modified0))
+                  assert(next.isDefined)
+                  await(next) match {
+                    case Some((Modified(eps), getStream)) =>
+                      assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+                        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+                      val next = getStream().uncons
+                      await(closable.close())
+                    case event =>
+                      fail(s"unexpected event: $event")
+                  }
+                case event =>
+                  fail(s"unexpected event: $event")
+              }
+            case event =>
+              fail(s"unexpected event: $event")
+          }
+        case event =>
+          fail(s"unexpected event: $event")
+      }
+    } finally await(closable.close())
+    if (failure != null) throw failure
   }
 
   test("watch error") {
     val ver = "4659253"
-    var reqCount = 0
-    var finalResponse: Response = null
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
     val service = Service.mk[Request, Response] { req =>
       reqCount += 1
-      reqCount match {
-        case 1 =>
-          assert(req.uri == s"/api/v1/endpoints?watch=true&resourceVersion=$ver")
-          val rsp = Response()
-          rsp.version = req.version
-          val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
-          rsp.writer.write(msg).ensure {
-            val _ = rsp.writer.close()
-          }
-          Future.value(rsp)
-        case 2 =>
-          assert(req.uri == "/api/v1/endpoints")
-          val rsp = Response()
-          rsp.version = req.version
-          rsp.setContentTypeJson()
-          rsp.headerMap("Transfer-Encoding") = "chunked"
+      try {
+        reqCount match {
+          case 1 =>
+            assert(req.uri == s"/api/v1/endpoints?watch=true&resourceVersion=$ver")
+            val rsp = Response()
+            rsp.version = req.version
+            val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
+            rsp.writer.write(msg).ensure {
+              val _ = rsp.writer.close()
+            }
+            Future.value(rsp)
+          case 2 =>
+            assert(req.uri == "/api/v1/endpoints")
+            val rsp = Response()
+            rsp.version = req.version
+            rsp.setContentTypeJson()
+            rsp.headerMap("Transfer-Encoding") = "chunked"
 
-          rsp.writer.write(endpointsList) before rsp.writer.close()
-          Future.value(rsp)
-        case 3 =>
-          assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=17575669") // this is the top-level resource version
-          val rsp = Response()
-          rsp.version = req.version
-          rsp.setContentTypeJson()
-          rsp.headerMap("Transfer-Encoding") = "chunked"
-          finalResponse = rsp
-          Future.value(rsp)
+            rsp.writer.write(endpointsList) before rsp.writer.close()
+            Future.value(rsp)
+          case 3 =>
+            assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=17575669") // this is the top-level resource version
+            Future.never
 
-        case other =>
-          fail(s"unexpected number of requests $other")
+          case _ =>
+            Future.never
+        }
+      } catch {
+        case e: Throwable =>
+          failure = e
+          Future.exception(e)
       }
     }
     val api = Api(service)
 
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
-    await(stream.uncons) match {
-      case Some((Error(status), stream)) =>
-        assert(status.status == Some("Failure"))
-        await(stream().uncons) match {
-          case Some((Modified(mod), stream)) =>
-            assert(mod.metadata.get.resourceVersion.get == "17147786")
-            assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-            await(stream().uncons) match {
-              case Some((Modified(mod), stream)) =>
-                assert(mod.metadata.get.resourceVersion.get == "17147808")
-                assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-                val next = stream().uncons
-                await(closable.close())
-                assertThrows[Reader.ReaderDiscarded] {
-                  await(next)
-                }
+    try {
+      await(stream.uncons) match {
+        case Some((Error(status), stream)) =>
+          assert(status.status == Some("Failure"))
+          await(stream().uncons) match {
+            case Some((Modified(mod), stream)) =>
+              assert(mod.metadata.get.resourceVersion.get == "17147786")
+              assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+              await(stream().uncons) match {
+                case Some((Modified(mod), stream)) =>
+                  assert(mod.metadata.get.resourceVersion.get == "17147808")
+                  assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+                  val next = stream().uncons
+                  await(closable.close())
+                  assert(!next.isDefined)
 
-              case event =>
-                fail(s"unexpected event: $event")
-            }
-          case event =>
-            fail(s"unexpected event: $event")
-        }
-      case event =>
-        fail(s"unexpected event: $event")
-    }
+                case event =>
+                  fail(s"unexpected event: $event")
+              }
+            case event =>
+              fail(s"unexpected event: $event")
+          }
+        case event =>
+          fail(s"unexpected event: $event")
+      }
+    } finally await(closable.close())
+    if (failure != null) throw failure
   }
 
   test("watch close") {
     val rsp = Response()
-    val service = Service.mk[Request, Response] { req =>
-      assert(req.uri == "/api/v1/endpoints?watch=true")
-      rsp.version = req.version
-      Future.value(rsp)
-    }
-    val api = Api(service)
-
-    val (stream, closer) = api.endpoints.watch()
-    var uncons = stream.uncons
-    assert(!uncons.isDefined)
-
-    await(rsp.writer.write(modified0))
-    uncons = await(uncons) match {
-      case Some((_, rest)) => rest().uncons
-      case None => fail("chunk not read")
-    }
-    assert(!uncons.isDefined)
-
-    await {
-      closer.close()
-    }
-    assert(uncons.isDefined)
-    assertThrows[Reader.ReaderDiscarded] {
-      await(uncons)
-    }
-    assertThrows[Reader.ReaderDiscarded] {
-      await {
-        rsp.writer.write(added0)
-      }
-    }
-  }
-
-  test("watch too old") {
-    val ver = "4659253"
-    var reqCount = 0
-    var finalResponse: Response = null
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
     val service = Service.mk[Request, Response] { req =>
       reqCount += 1
       reqCount match {
         case 1 =>
-          assert(req.uri == s"/api/v1/endpoints?watch=true&resourceVersion=$ver")
-          val rsp = Response()
-          rsp.version = req.version
-          rsp.status = Status.Gone
-          val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
-          rsp.writer.write(msg).ensure {
-            val _ = rsp.writer.close()
+          try {
+            assert(req.uri == "/api/v1/endpoints?watch=true")
+            Future.value(rsp)
+          } catch {
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
           }
-          Future.value(rsp)
-        case 2 =>
-          assert(req.uri == "/api/v1/endpoints")
-          val rsp = Response()
-          rsp.version = req.version
-          rsp.setContentTypeJson()
-          rsp.headerMap("Transfer-Encoding") = "chunked"
+        case _ => Future.never
+      }
+    }
+    val api = Api(service)
 
-          rsp.writer.write(endpointsList) before rsp.writer.close()
-          Future.value(rsp)
-        case 3 =>
-          assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=17575669") // this is the top-level resource version
-          val rsp = Response()
-          rsp.version = req.version
-          rsp.setContentTypeJson()
-          rsp.headerMap("Transfer-Encoding") = "chunked"
-          finalResponse = rsp
-          Future.value(rsp)
+    val (stream, closable) = api.endpoints.watch()
+    try {
+      var uncons = stream.uncons
+      assert(!uncons.isDefined)
 
-        case other =>
-          fail(s"unexpected number of requests $other")
+      await(rsp.writer.write(modified0))
+      uncons = await(uncons) match {
+        case Some((_, rest)) => rest().uncons
+        case None => fail("chunk not read")
+      }
+      assert(!uncons.isDefined)
+      assert(reqCount == 1)
+
+      await(closable.close())
+      assert(!uncons.isDefined)
+    } finally await(closable.close())
+    if (failure != null) throw failure
+  }
+
+  test("watch too old") {
+    val ver = "4659253"
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
+    val service = Service.mk[Request, Response] { req =>
+      reqCount += 1
+      try {
+        reqCount match {
+          case 1 =>
+            assert(req.uri == s"/api/v1/endpoints?watch=true&resourceVersion=$ver")
+            val rsp = Response()
+            rsp.version = req.version
+            rsp.status = Status.Gone
+            val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
+            rsp.writer.write(msg).ensure {
+              val _ = rsp.writer.close()
+            }
+            Future.value(rsp)
+          case 2 =>
+            assert(req.uri == "/api/v1/endpoints")
+            val rsp = Response()
+            rsp.version = req.version
+            rsp.setContentTypeJson()
+            rsp.headerMap("Transfer-Encoding") = "chunked"
+
+            rsp.writer.write(endpointsList) before rsp.writer.close()
+            Future.value(rsp)
+          case 3 =>
+            assert(req.uri == "/api/v1/endpoints?watch=true&resourceVersion=17575669") // this is the top-level resource version
+            Future.never
+
+          case _ => // ignore
+            Future.never
+        }
+      } catch {
+        case e: Throwable =>
+          failure = e
+          Future.exception(e)
       }
     }
     val api = Api(service)
 
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
-    await(stream.uncons) match {
-      case Some((Modified(mod), stream)) =>
-        assert(mod.metadata.get.resourceVersion.get == "17147786")
-        assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-        await(stream().uncons) match {
-          case Some((Modified(mod), stream)) =>
-            assert(mod.metadata.get.resourceVersion.get == "17147808")
-            assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-            val next = stream().uncons
-            await(closable.close())
-            assertThrows[Reader.ReaderDiscarded] {
-              await(next)
-            }
+    try {
+      await(stream.uncons) match {
+        case Some((Modified(mod), stream)) =>
+          assert(mod.metadata.get.resourceVersion.get == "17147786")
+          assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+          await(stream().uncons) match {
+            case Some((Modified(mod), stream)) =>
+              assert(mod.metadata.get.resourceVersion.get == "17147808")
+              assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+              val next = stream().uncons
+              await(closable.close())
+              assert(!next.isDefined)
 
-          case event =>
-            fail(s"unexpected event: $event")
-        }
-      case event =>
-        fail(s"unexpected event: $event")
-    }
+            case event => fail(s"unexpected event: $event")
+          }
+        case event => fail(s"unexpected event: $event")
+      }
+    } finally await(closable.close())
+    if (failure != null) throw failure
   }
 }

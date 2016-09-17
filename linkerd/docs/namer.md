@@ -1,21 +1,5 @@
 # Namers
 
-*(for the [namers](config.md#namers) key)*
-
-A namer binds a concrete name to a physical address.
-http://twitter.github.io/finagle/guide/Names.html
-
-A namer config block has the following parameters:
-
-* *kind* -- The name of the namer plugin
-* *prefix* -- This namer will resolve names beginning with `/#/<prefix>`.  Some
-  namers may configure a default prefix; see the specific namer section for
-  details.
-* *experimental* -- Set this to `true` to enable the namer if it is experimental.
-* *namer-specific parameters*.
-
-### Example
-
 ```yaml
 namers:
 - kind: io.l5d.fs
@@ -23,10 +7,55 @@ namers:
   rootDir: disco
 ```
 
+A namer binds a [concrete name to a physical address](http://twitter.github.io/finagle/guide/Names.html).
+
+<aside class="notice">
+These parameters are available to the namer regardless of kind. Namers may also have kind-specific parameters.
+</aside>
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`.
+prefix | namer dependent | Resolves names with `/#/<prefix>`.
+experimental | `false` | Set this to `true` to enable the namer if it is experimental.
+
 <a name="fs"></a>
 ## File-based service discovery
 
-`io.l5d.fs`
+kind: `io.l5d.fs`
+
+### File-based Configuration
+
+> Example fs configuration:
+
+```yaml
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
+```
+
+> Then reference the namer in the dtab to use it:
+
+```
+baseDtab: |
+  /http/1.1/* => /#/io.l5d.fs
+```
+
+> With the filesystem directory:
+
+```bash
+$ ls disco/
+apps    users   web
+```
+
+> The contents of the files look similar to this:
+
+```bash
+$ cat config/web
+192.0.2.220 8080
+192.0.2.105 8080
+192.0.2.210 8080
+```
 
 linkerd ships with a simple file-based service discovery mechanism, called the
 *file-based namer*. This system is intended to act as a structured form of
@@ -47,59 +76,37 @@ corresponds to a service, where the name of the file is the service's _concrete
 name_, and the contents of the file must be a newline-delimited set of
 addresses.
 
-For example, the directory might look like this:
-
-```bash
-$ ls disco/
-apps    users   web
-```
-And the contents of the files might look like this:
-
-```bash
-$ cat config/web
-192.0.2.220 8080
-192.0.2.105 8080
-192.0.2.210 8080
-```
-
 linkerd watches all files in this directory, so files can be added, removed, or
 updated, and linkerd will pick up the changes automatically.
 
-The file-based namer is configured with kind `io.l5d.fs`, and these parameters:
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.fs` | Resolves names with `/#/<prefix>`.
+rootDir | _required_ | the directory containing name files as described above.
 
-* *rootDir* -- the directory containing name files as described above.
+### File-based Path Parameters
 
-For example:
+> Dtab Path Format:
+
 ```yaml
-namers:
-- kind: io.l5d.fs
-  rootDir: disco
+/#/<prefix>/<fileName>
 ```
 
-The default _prefix_ for the file-based namer is `io.l5d.fs`.
-
-Once configured, to use the file-based namer, you must reference it in
-the dtab. For example:
-```
-baseDtab: |
-  /http/1.1/* => /#/io.l5d.fs
-```
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the fs namer.
+fileName | yes | The file in `rootDir` to use when resolving this request.
 
 <a name="serversets"></a>
 ## ZooKeeper ServerSets service discovery
 
-`io.l5d.serversets`
+kind: `io.l5d.serversets`
 
-linkerd provides support for [ZooKeeper
-ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
-The ServerSets namer is configured with kind `io.l5d.serversets`, and these parameters:
+### ServerSets Configuration
 
-* *zkAddrs* -- list of ZooKeeper addresses:
-  * *host* --  the ZooKeeper host.
-  * *port* --  the ZooKeeper port.
+> Example ServerSets configuration:
 
-For example:
 ```yaml
 namers:
 - kind: io.l5d.serversets
@@ -108,38 +115,45 @@ namers:
     port: 2181
 ```
 
-The default _prefix_ is `io.l5d.serversets`.
+> Then reference the namer in the dtab to use it:
 
-Once configured, to use the ServerSets namer, you must reference it in
-the dtab. For example:
-```
+```yaml
 baseDtab: |
   /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
 ```
 
+linkerd provides support for [ZooKeeper
+ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.serversets` | Resolves names with `/#/<prefix>`.
+zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
+
+### ServerSets Path Parameters
+
+> Dtab Path Format:
+
+```yaml
+/#/<prefix>/<zkHosts>/<zkPath>[:<endpoint>]
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the serversets namer.
+zkHosts | yes | The ZooKeeper host to use for this request.
+zkPath | yes | The ZooKeeper path to use for this request.
+endpoint | no | The ZooKeeper endpoint to use for this request.
+
 <a name="consul"></a>
 ## Consul service discovery (experimental)
 
-`io.l5d.consul`
+kind: `io.l5d.consul`
 
-linkerd provides support for service discovery via
-[Consul](https://www.consul.io/). Note that this support is still considered
-experimental so you must set `experimental: true` to use this namer.
+### Consul Configuration
 
-The Consul namer is configured with kind `io.l5d.consul`, and these parameters:
+> Configure a consul namer:
 
-* *host* --  the Consul host. (default: localhost)
-* *port* --  the Consul port. (default: 8500)
-* *includeTag* -- whether to read a Consul tag from the path.  (default: false)
-* *token* -- Optional. The auth token to use when making API calls.
-* *setHost* --  if set to true (default: false) will instruct Linkerd
-                to override `Host` header value of forwarded HTTP
-                requests to `${name}.service.${datacenter}.${domain}`
-                when Consul concrete name is used to handle the request
-                (`$domain` fetched from Consul).
-
-
-For example:
 ```yaml
 namers:
 - kind: io.l5d.consul
@@ -147,36 +161,63 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
+  useHealthCheck: true
   setHost: true
+  consistencyMode: stale
 ```
 
-The default _prefix_ is `io.l5d.consul`.
-
-Once configured, to use the Consul namer, you must reference it in
-the dtab. The Consul namer takes two path components: `datacenter` and
-`serviceName`.  If `includeTag` is true, then it takes three path components:
-`datacenter`, `tag`, and `serviceName`.  For example:
+> Then reference the namer in the dtab to use it:
 
 ```
 baseDtab: |
   /http/1.1/* => /#/io.l5d.consul/dc1/prod;
 ```
 
+linker provides support for service discovery via [Consul](https://www.consul.io/).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+host | `localhost` | The Consul host.
+port | `8500` | The Consul port.
+includeTag | `false` | If `true`, read a Consul tag from the path.
+useHealthCheck | `false` | If `true`, rely on Consul health checks.
+token | no authentication | The auth token to use when making API calls.
+setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
+consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`. 
+
+### Consul Path Parameters
+
+> Dtab Path Format when includeTag is false
+
+```yaml
+/#/<prefix>/<datacenter>/<serviceName>
+```
+
+> Dtab Path Format when includeTag is true
+
+```yaml
+/#/<prefix>/<datacenter>/<tag>/<serviceName>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the consul namer.
+datacenter | yes | The Consul datacenter to use for this request.
+tag | yes if includeTag is `true` | The Consul tag to use for this request.
+serviceName | yes | The Consul service name to use for this request.
+
+
 <a name="k8s"></a>
 ## Kubernetes service discovery (experimental)
 
-`io.l5d.k8s`
+kind : `io.l5d.k8s`
 
-linkerd provides support for service discovery via
-[Kubernetes](https://k8s.io/). Note that this support is still considered
-experimental so you must set `experimental: true` to use this namer.
+### K8s Configuration
 
-The Kubernetes namer is configured with kind `io.l5d.k8s`, and these parameters:
+> Configure a K8s namer
 
-* *host* -- the Kubernetes master host. (default: localhost)
-* *port* -- the Kubernetes master port. (default: 8001)
-
-For example:
 ```yaml
 namers:
 - kind: io.l5d.k8s
@@ -185,46 +226,53 @@ namers:
   port: 8001
 ```
 
-The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API.
+> Then reference the namer in the dtab to use it:
 
-The default _prefix_ is `io.l5d.k8s`.
-
-The Kubernetes namer takes three path components: `namespace`, `port-name` and
-`svc-name`:
-
-* namespace: the Kubernetes namespace.
-* port-name: the port name.
-* svc-name: the name of the service.
-
-Once configured, to use the Kubernetes namer, you must reference it in
-the dtab.
 ```
 baseDtab: |
   /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
+linkerd provides support for service discovery via
+[Kubernetes](https://k8s.io/).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master post.
+
+<aside class="notice">
+The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
+
+### K8s Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<namespace>/<port-name>/<svc-name>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
+namespace | yes | The Kubernetes namespace.
+port-name | yes | The port name.
+svc-name | yes | The name of the service.
+
+
 <a name="marathon"></a>
 ## Marathon service discovery (experimental)
 
-`io.l5d.marathon`
+kind: `io.l5d.marathon`
 
-linkerd provides support for service discovery via
-[Marathon](https://mesosphere.github.io/marathon/). Note that this support is still considered
-experimental so you must set `experimental: true` to use this namer.
+### Marathon Configuration
 
-The Marathon namer is configured with kind `io.l5d.marathon`, and these parameters:
+> Configure a marathon namer
 
-* *host* -- the Marathon master host. (default: marathon.mesos)
-* *port* -- the Marathon master port. (default: 80)
-* *uriPrefix* -- the Marathon API prefix. (default: empty string). This prefix
-  depends on your Marathon configuration. For example, running Marathon
-  locally, the API is avaiable at `localhost:8080/v2/`, while the default setup
-  on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
-* *ttlMs* -- the polling timeout in milliseconds against the marathon API
-  (default: 5000)
-
-For example:
 ```yaml
 namers:
 - kind:         io.l5d.marathon
@@ -235,17 +283,8 @@ namers:
   uriPrefix:    /marathon
   ttlMs:        500
 ```
+> Then reference the namer in the dtab to use it:
 
-The default _prefix_ is `io.l5d.marathon`.
-
-The Marathon namer takes any number of path components. The path should
-correspond to the app id of a marathon application. For example, the app with
-id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app
-with id "/appgroup/usergroup/users" can be reached with
-`/#/io.l5d.marathon/appgroup/usergroup/users`.
-
-Once configured, to use the Marathon namer, you must reference it in
-the dtab.
 ```
 baseDtab: |
   /marathonId => /#/io.l5d.marathon;
@@ -253,17 +292,57 @@ baseDtab: |
   /http/1.1/* => /host;
 ```
 
+linkerd provides support for service discovery via
+[Marathon](https://mesosphere.github.io/marathon/).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+host | `marathon.mesos` | The Marathon master host.
+port | `80` | The Marathon master port.
+uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
+ttlMs | `500` | The polling timeout in milliseconds against the marathon API.
+
+### Marathon Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<appId>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+appId | yes | The app id of a marathon application. This id can be multiple path segments long. For example, the app with id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app with id "/appgroup/usergroup/users" can be reached with `/#/io.l5d.marathon/appgroup/usergroup/users`.
+
+
+
 <a name="zkLeader"></a>
 ## ZooKeeper Leader
 
-`io.l5d.zkLeader`
+kind: `io.l5d.zkLeader`
 
-A namer backed by ZooKeeper leader election. The path processed by this namer is treated as the
-ZooKeeper path of a leader group. The namer resolves to the address stored in the data of the
-leader.
+### ZK Leader Configuration
 
-The ZooKeeper Leader namer is configured with kind `io.l5d.zkLeader` and these parameters:
+A namer backed by ZooKeeper leader election.
 
-* *zkAddrs* -- list of ZooKeeper addresses:
-  * *host* --  the ZooKeeper host.
-  * *port* --  the ZooKeeper port.
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.zkLeader` | Resolves names with `/#/<prefix>`.
+zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
+
+### ZK Leader Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<zkPath>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
+

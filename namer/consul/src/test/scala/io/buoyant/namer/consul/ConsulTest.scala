@@ -4,6 +4,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
+import io.buoyant.consul.v1.ConsistencyMode
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import org.scalatest.FunSuite
 
@@ -40,6 +41,7 @@ class ConsulTest extends FunSuite {
                     |token: some-token
                     |includeTag: true
                     |setHost: true
+                    |consistencyMode: stale
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -49,6 +51,7 @@ class ConsulTest extends FunSuite {
     assert(consul.token == Some("some-token"))
     assert(consul.setHost == Some(true))
     assert(consul.includeTag == Some(true))
+    assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(!consul.disabled)
   }
 

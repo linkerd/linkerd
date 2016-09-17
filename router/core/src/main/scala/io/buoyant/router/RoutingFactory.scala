@@ -3,22 +3,47 @@ package io.buoyant.router
 import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
 import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Future, Time}
+import com.twitter.util.{Throw, Return, Future, Time}
 import scala.util.control.NoStackTrace
 
 object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
   val description = "Performs per-request name binding"
 
-  case class UnknownDst[Req](request: Req, cause: Throwable)
-    extends Exception(s"Unknown destination: $request / ${cause.getMessage}", cause)
-    with NoStackTrace
-
   /**
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst
    * destination]] for `Req`-typed requests.
    */
-  type Identifier[Req] = Req => Future[(Dst, Req)]
+  type Identifier[Req] = Req => Future[RequestIdentification[Req]]
+
+  /** The result of attempting to identify a request. */
+  sealed trait RequestIdentification[Req]
+
+  /**
+   * This indicates that a destination was successfully assigned.  The attached
+   * request should be sent to the destination.
+   * @param dst The destination of the request.
+   * @param request The request to send to the destination.  This allows
+   *                identifiers to effectively mutate requests that they
+   *                identify.
+   */
+  class IdentifiedRequest[Req](val dst: Dst, val request: Req) extends RequestIdentification[Req]
+
+  object IdentifiedRequest {
+    def unapply[Req](identified: IdentifiedRequest[Req]): Option[(Dst, Req)] =
+      Some((identified.dst, identified.request))
+  }
+
+  /**
+   * This indicates that the identifier could not assign a destination to the
+   * request.
+   */
+  class UnidentifiedRequest[Req](val reason: String) extends RequestIdentification[Req]
+
+  /** Indicates that no destination could be found for a request. */
+  case class UnknownDst[Req](request: Req, reason: String)
+    extends Exception(s"Unknown destination: $request / $reason")
+    with NoStackTrace
 
   /**
    * A prefix to be assigned to [[com.twitter.finagle.buoyant.Dst
@@ -97,10 +122,15 @@ class RoutingFactory[Req, Rsp](
       }
 
       for {
-        (dst, req1) <- getDst(req0).rescue {
-          case e: Throwable =>
-            Annotations.Failure.Identification.record(e)
-            Future.exception(UnknownDst(req0, e))
+        IdentifiedRequest(dst, req1) <- getDst(req0).transform {
+          case Return(identified: IdentifiedRequest[Req]) =>
+            Future.value(identified)
+          case Return(unidentified: UnidentifiedRequest[Req]) =>
+            Annotations.Failure.Identification.record(unidentified.reason)
+            Future.exception(UnknownDst(req0, unidentified.reason))
+          case Throw(e) =>
+            Annotations.Failure.Identification.record(e.getMessage)
+            Future.exception(UnknownDst(req0, e.getMessage))
         }
 
         // Client acquisition failures are recorded within the

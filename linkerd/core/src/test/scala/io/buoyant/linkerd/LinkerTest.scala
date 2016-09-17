@@ -12,8 +12,6 @@ import io.buoyant.test.Exceptions
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
-import com.twitter.finagle.tracing.{debugTrace => fDebugTrace}
-
 class LinkerTest extends FunSuite with Exceptions {
 
   def initializer(
@@ -185,7 +183,6 @@ class LinkerTest extends FunSuite with Exceptions {
     val yaml =
       """|tracers:
          |- kind: test
-         |  debugTrace: true
          |routers:
          |- protocol: plain
          |  servers:
@@ -195,14 +192,12 @@ class LinkerTest extends FunSuite with Exceptions {
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
     assert(tracer != DefaultTracer)
     assert(linker.tracer != DefaultTracer)
-    assert(fDebugTrace())
   }
 
   test("with namers & tracers & telemetry") {
     val yaml =
       """|tracers:
          |- kind: test
-         |  debugTrace: true
          |telemetry:
          |- kind: io.l5d.testTelemeter
          |  metrics: true
@@ -237,7 +232,7 @@ class LinkerTest extends FunSuite with Exceptions {
     val param.Stats(stats) = linker.routers.head.params[param.Stats]
     stats.counter("rad").incr()
     treceivers.foreach { r =>
-      assert(r.counters(Seq("rt", "rad")) == 1)
+      assert(r.counters == Map(Seq("rt", "rad") -> 1))
     }
 
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
@@ -247,8 +242,6 @@ class LinkerTest extends FunSuite with Exceptions {
     ttracers.foreach { t =>
       assert(t.size == 1)
     }
-
-    assert(fDebugTrace())
   }
 
   test("with admin") {
@@ -261,7 +254,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    assert(linker.admin.port.port == 9991)
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9991)
   }
 
   test("conflicting subtypes") {

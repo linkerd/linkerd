@@ -17,17 +17,6 @@ import io.buoyant.namer._
 
 object DelegateApiHandler {
 
-  private object PathStr {
-    def unapply(p: String) = Try(Path.read(p)).toOption
-  }
-
-  private object DtabStr {
-    def unapply(d: String) = if (d == null)
-      Some(Dtab.empty)
-    else
-      Try(Dtab.read(d)).toOption
-  }
-
   private def err(status: Status) = Future.value(Response(status))
 
   private def err(status: Status, content: String) = {
@@ -93,8 +82,8 @@ object DelegateApiHandler {
   sealed trait JsonDelegateTree
   object JsonDelegateTree {
     case class Empty(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
-    case class Fail(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
-    case class Neg(path: Path, dentry: Option[Dentry]) extends JsonDelegateTree
+    case class Fail(path: String, dentry: Option[Dentry]) extends JsonDelegateTree
+    case class Neg(path: String, dentry: Option[Dentry]) extends JsonDelegateTree
     case class Exception(path: Path, dentry: Option[Dentry], message: String) extends JsonDelegateTree
     case class Delegate(path: Path, dentry: Option[Dentry], delegate: JsonDelegateTree) extends JsonDelegateTree
     case class Leaf(path: Path, dentry: Option[Dentry], bound: Bound) extends JsonDelegateTree
@@ -102,15 +91,23 @@ object DelegateApiHandler {
     case class Union(path: Path, dentry: Option[Dentry], union: Seq[Weighted]) extends JsonDelegateTree
     case class Weighted(weight: Double, tree: JsonDelegateTree)
 
+    private[this] val fail = Path.read("/$/fail")
+
     def mk(d: DelegateTree[Name.Bound]): Future[JsonDelegateTree] = d match {
       case DelegateTree.Exception(p, d, e) =>
         Future.value(JsonDelegateTree.Exception(p, mkDentry(d), e.getMessage))
       case DelegateTree.Empty(p, d) =>
         Future.value(JsonDelegateTree.Empty(p, mkDentry(d)))
       case DelegateTree.Fail(p, d) =>
-        Future.value(JsonDelegateTree.Fail(p, mkDentry(d)))
+        val path = if (p == null) null
+        else if (p.startsWith(fail)) p.show
+        else "!"
+        Future.value(JsonDelegateTree.Fail(path, mkDentry(d)))
       case DelegateTree.Neg(p, d) =>
-        Future.value(JsonDelegateTree.Neg(p, mkDentry(d)))
+        val path = if (p == null) null
+        else if (p.isEmpty) "~"
+        else p.show
+        Future.value(JsonDelegateTree.Neg(path, mkDentry(d)))
       case DelegateTree.Delegate(p, d, t) =>
         mk(t).map(JsonDelegateTree.Delegate(p, mkDentry(d), _))
       case DelegateTree.Alt(p, d, ts@_*) =>
@@ -177,9 +174,11 @@ object DelegateApiHandler {
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
   }
 
-  def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] =
-    (dtab, path) match {
-      case (DtabStr(d), PathStr(p)) =>
+  def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
+    val dtabTry = if (dtab == null) Return(Dtab.empty) else Try(Dtab.read(dtab))
+    val pathTry = Try(Path.read(path))
+    (dtabTry, pathTry) match {
+      case (Return(d), Return(p)) =>
         delegator.delegate(d, p).values.toFuture()
           .flatMap(Future.const)
           .flatMap(JsonDelegateTree.mk).map { tree =>
@@ -188,8 +187,12 @@ object DelegateApiHandler {
             rsp.contentType = MediaType.Json
             rsp
           }
-      case _ => err(Status.BadRequest)
+      case (Throw(e), _) =>
+        err(Status.BadRequest, s"Invalid dtab: ${e.getMessage}")
+      case (_, Throw(e)) =>
+        err(Status.BadRequest, s"Invalid path: ${e.getMessage}")
     }
+  }
 }
 
 class DelegateApiHandler(

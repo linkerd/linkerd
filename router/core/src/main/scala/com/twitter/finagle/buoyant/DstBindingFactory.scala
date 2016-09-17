@@ -20,8 +20,6 @@ trait DstBindingFactory[-Req, +Rsp] extends Closable {
 
 object DstBindingFactory {
 
-  private[this] val log = Logger.get("rpcs")
-
   private[buoyant] class RefCount {
     // If non-None, refcount >= 0, indicating the number of active
     // references.  When None, the reference count may not change.
@@ -211,7 +209,9 @@ object DstBindingFactory {
     private[this] val caches: Seq[Cache[_]] =
       Seq(pathCache, treeCache, boundCache, clientCache)
 
-    def close(deadline: Time) = Closable.all(caches: _*).close(deadline)
+    def close(deadline: Time) =
+      Closable.sequence(caches: _*).close(deadline)
+
     def status = Status.worstOf[Cache[_]](caches, _.status)
   }
 }

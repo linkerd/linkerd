@@ -3,19 +3,18 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.google.common.cache.{CacheBuilder, CacheLoader}
-import com.twitter.finagle.Name.Bound
+import com.google.common.cache.{CacheBuilder, CacheLoader, RemovalListener, RemovalNotification}
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.util.{Rng, Drv}
+import com.twitter.finagle.util.{Drv, Rng}
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.admin.names.DelegateApiHandler.{Addr => JsonAddr, JsonDelegateTree}
+import io.buoyant.admin.names.DelegateApiHandler.{JsonDelegateTree, Addr => JsonAddr}
 import io.buoyant.namer.{DelegateTree, Delegator, EnumeratingNamer}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
-import io.buoyant.namerd.{DtabCodec => DtabModule, DtabStore, Ns, RichActivity, VersionedDtab}
+import io.buoyant.namerd.{DtabStore, Ns, RichActivity, VersionedDtab, DtabCodec => DtabModule}
 
 object HttpControlService {
 
@@ -341,21 +340,33 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
   private[this] def getBind(ns: String, path: Path, extraDtab: Option[String]): Activity[NameTree[Name.Bound]] =
     extraDtab match {
       case Some(dtab) => delegate(ns).bind(Dtab.read(dtab), path)
-      case _ => bindingCache.get((ns, path))
+      case _ => bindingCache.get(NsPath(ns, path)).activity
     }
+
+  private[this] case class NsPath(ns: Ns, path: Path)
+  private[this] case class NameActClose(activity: Activity[NameTree[Name.Bound]], closable: Closable)
 
   private[this] val bindingCache = CacheBuilder.newBuilder()
     .maximumSize(bindingCacheSize)
-    .build[(String, Path), Activity[NameTree[Name.Bound]]](
-      new CacheLoader[(String, Path), Activity[NameTree[Name.Bound]]] {
-        override def load(key: (String, Path)): Activity[NameTree[Bound]] =
-          delegate(key._1).bind(Dtab.empty, key._2)
+    .removalListener(new RemovalListener[NsPath, NameActClose] {
+      override def onRemoval(notification: RemovalNotification[NsPath, NameActClose]): Unit = {
+        val _ = notification.getValue.closable.close()
+      }
+    })
+    .build[NsPath, NameActClose](
+      new CacheLoader[NsPath, NameActClose] {
+        override def load(key: NsPath): NameActClose = {
+          val act = delegate(key.ns).bind(Dtab.empty, key.path)
+          // we want to keep the activity observed as long as it's in the cache
+          val closable = act.run.changes.respond(_ => ())
+          NameActClose(act, closable)
+        }
       }
     )
 
   private[this] def renderNameTree(tree: NameTree[Name.Bound]): Future[Buf] =
     JsonDelegateTree.mk(
-      DelegateTree.fromNameTree(null, Dentry.nop, tree)
+      DelegateTree.fromNameTree(tree)
     ).map(DelegateApiHandler.Codec.writeBuf).map(_.concat(Buf.Utf8("\n")))
 
   private[this] def handleGetBind(ns: String, path: Path, req: Request): Future[Response] = {
@@ -371,22 +382,33 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
     }
   }
 
+  private[this] case class AddrActClose(activity: Activity[Addr], closable: Closable)
+
   private[this] val addrCache = CacheBuilder.newBuilder()
     .maximumSize(addrCacheSize)
-    .build[(String, Path), Activity[Addr]](
-      new CacheLoader[(String, Path), Activity[Addr]] {
-        override def load(key: (String, Path)): Activity[Addr] =
-          bindAddrId(key._2).flatMap {
+    .removalListener(new RemovalListener[NsPath, AddrActClose] {
+      override def onRemoval(notification: RemovalNotification[NsPath, AddrActClose]): Unit = {
+        val _ = notification.getValue.closable.close()
+      }
+    })
+    .build[NsPath, AddrActClose](
+      new CacheLoader[NsPath, AddrActClose] {
+        override def load(key: NsPath): AddrActClose = {
+          val act = bindAddrId(key.path).flatMap {
             case NameTree.Leaf(bound) => Activity(bound.addr.map(Activity.Ok(_)))
             case NameTree.Empty => Activity.value(Addr.Bound())
             case NameTree.Fail => Activity.exception(new Exception("name tree failed"))
             case NameTree.Neg => Activity.value(Addr.Neg)
             case NameTree.Alt(_) | NameTree.Union(_) =>
-              Activity.exception(new Exception(s"${key._2.show} is not a concrete bound id"))
+              Activity.exception(new Exception(s"${key.path.show} is not a concrete bound id"))
           }.flatMap {
             case Addr.Pending => Activity.pending
             case addr => Activity.value(addr)
           }
+          // we want to keep the activity observed as long as it's in the cache
+          val closable = act.run.changes.respond(_ => ())
+          AddrActClose(act, closable)
+        }
       }
     )
 
@@ -400,9 +422,9 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
   private[this] def handleGetAddr(ns: String, path: Path, req: Request): Future[Response] = {
     if (isStreaming(req)) {
-      streamingResp(addrCache.get((ns, path)).values)(renderAddr)
+      streamingResp(addrCache.get(NsPath(ns, path)).activity.values)(renderAddr)
     } else {
-      addrCache.get((ns, path)).toFuture.map { addr =>
+      addrCache.get(NsPath(ns, path)).activity.toFuture.map { addr =>
         val rsp = Response()
         rsp.content = renderAddr(addr)
         rsp
@@ -450,7 +472,7 @@ class HttpControlService(storage: DtabStore, delegate: Ns => NameInterpreter, na
 
     val activity = getBind(ns, path, extraDtab).flatMap { tree =>
       flattenTree(tree) match {
-        case Some(p) => addrCache.get((ns, p))
+        case Some(p) => addrCache.get(NsPath(ns, p)).activity
         case None => Activity.value(Addr.Neg)
       }
     }
