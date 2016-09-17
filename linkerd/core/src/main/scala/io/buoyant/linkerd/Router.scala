@@ -165,6 +165,20 @@ trait RouterConfig {
   private def defaultBudget: Retries.Budget =
     Retries.Budget(RetryBudget(), Backoff.const(Duration.Zero))
 
+  /**
+   * This property must be set to true in order to use this router if it
+   * is experimental.
+   */
+  @JsonProperty("experimental")
+  var _experimentalEnabled: Option[Boolean] = None
+
+  /**
+   * If this protocol is experimental but has not set the
+   * `experimental` property.
+   */
+  @JsonIgnore
+  def disabled = protocol.experimentalRequired && !_experimentalEnabled.contains(true)
+
   @JsonIgnore
   def routerParams = (Stack.Params.empty + defaultBudget)
     .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))

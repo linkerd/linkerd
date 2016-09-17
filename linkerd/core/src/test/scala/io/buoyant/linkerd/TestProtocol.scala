@@ -147,5 +147,6 @@ object TestProtocol {
 
   object Fancy extends TestProtocol("fancy") {
     val configClass = classOf[Fancy]
+    override def experimentalRequired = true
   }
 }
