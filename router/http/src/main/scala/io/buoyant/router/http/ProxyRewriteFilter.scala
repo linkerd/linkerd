@@ -10,22 +10,6 @@ import java.net.URI
 object ProxyRewriteFilter {
 
   /**
-   * There are three well-known Proxy- headers must be removed from
-   * all requests.
-   */
-  object Headers {
-    val ProxyConnection = "proxy-connection"
-    val ProxyAuthenticate = "proxy-authenticate"
-    val ProxyAuthorization = "proxy-authorization"
-
-    def scrub(msg: Message): Unit = {
-      msg.headerMap.remove(ProxyConnection)
-      msg.headerMap.remove(ProxyAuthenticate)
-      val _ = msg.headerMap.remove(ProxyAuthorization)
-    }
-  }
-
-  /**
    * If the original URI is absolute
    * (e.g. scheme://host/path?query#fragment), drop the scheme, use
    * the authority to set the request's Host header, and rewrite the
@@ -61,7 +45,6 @@ object ProxyRewriteFilter {
   val filter: Filter[Request, Response, Request, Response] =
     new SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) = {
-        Headers.scrub(req)
         rewriteIfProxy(req)
         service(req)
       }

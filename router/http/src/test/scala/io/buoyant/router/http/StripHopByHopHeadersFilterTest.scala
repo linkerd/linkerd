@@ -17,7 +17,7 @@ class StripHopByHopHeadersFilterTest extends FunSuite with Awaits {
 
   test("strips all hop-by-hop headers from request") {
     val req = Request()
-    HopByHopHeaders.foreach(req.headerMap.set(_, "Some Value"))
+    HopByHopHeaders.Headers.foreach(req.headerMap.set(_, "Some Value"))
     await(service(req))
     assert(req.headerMap.isEmpty)
   }
@@ -25,7 +25,7 @@ class StripHopByHopHeadersFilterTest extends FunSuite with Awaits {
   test("strips all hop-by-hop headers from response") {
     val nextService = Service.mk[Request, Response] { req =>
       val resp: Response = Response()
-      HopByHopHeaders.foreach(resp.headerMap.set(_, "Some Value"))
+      HopByHopHeaders.Headers.foreach(resp.headerMap.set(_, "Some Value"))
       Future.value(resp)
     }
 

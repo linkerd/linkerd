@@ -1,44 +1,47 @@
 package io.buoyant.router.http
 
 import com.twitter.finagle.http.Fields._
-import com.twitter.finagle.http.{HeaderMap, Request, Response}
+import com.twitter.finagle.http.{Message, Request, Response}
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 object StripHopByHopHeadersFilter {
-  val HopByHopHeaders = Seq(
-    Connection,
-    ProxyAuthenticate,
-    ProxyAuthorization,
-    Te,
-    Trailer,
-    TransferEncoding,
-    Upgrade
-  )
+
+  object HopByHopHeaders {
+    val Headers = Seq(
+      Connection,
+      ProxyAuthenticate,
+      ProxyAuthorization,
+      Te,
+      Trailer,
+      TransferEncoding,
+      Upgrade
+    )
+
+    def scrub(msg: Message): Unit = {
+      Headers.foreach(h => {
+        h match {
+          case Connection =>
+            val headersListedInConnection: Seq[String] = msg.headerMap.remove(h) match {
+              case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
+              case None => Nil
+            }
+            headersListedInConnection.foreach(msg.headerMap.remove(_))
+          case _ => msg.headerMap.remove(h)
+        }
+      })
+    }
+  }
 
   /**
    * Removes all Hop-by-Hop headers and any header listed in `Connection` header from requests.
    */
   object filter extends SimpleFilter[Request, Response] {
     def apply(req: Request, svc: Service[Request, Response]) = {
-      removeHopByHopHeaders(req.headerMap)
+      HopByHopHeaders.scrub(req)
       svc(req) map { resp =>
-        removeHopByHopHeaders(resp.headerMap)
+        HopByHopHeaders.scrub(resp)
         resp
       }
-    }
-
-    private def removeHopByHopHeaders(headerMap: HeaderMap): Unit = {
-      HopByHopHeaders.foreach(h => {
-        h match {
-          case Connection =>
-            val headersListedInConnection: Seq[String] = headerMap.remove(h) match {
-              case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
-              case None => Nil
-            }
-            headersListedInConnection.foreach(headerMap.remove(_))
-          case _ => headerMap.remove(h)
-        }
-      })
     }
   }
 
