@@ -7,26 +7,21 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 object StripHopByHopHeadersFilter {
 
   object HopByHopHeaders {
-    val Headers = Seq(
-      Connection,
-      ProxyAuthenticate,
-      ProxyAuthorization,
-      Te,
-      Trailer,
-      TransferEncoding,
-      Upgrade
-    )
 
     def scrub(msg: Message): Unit = {
-      Headers.foreach {
-        case h@Connection =>
-          val headersListedInConnection: Seq[String] = msg.headerMap.remove(h) match {
-            case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
-            case None => Nil
-          }
-          headersListedInConnection.foreach(msg.headerMap.remove(_))
-        case h => msg.headerMap.remove(h)
+      val headers = msg.headerMap
+      headers.remove(ProxyAuthenticate)
+      headers.remove(ProxyAuthorization)
+      headers.remove(Te)
+      headers.remove(Trailer)
+      headers.remove(TransferEncoding)
+      headers.remove(Upgrade)
+
+      val headersListedInConnection: Seq[String] = headers.remove(Connection) match {
+        case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
+        case None => Nil
       }
+      headersListedInConnection.foreach(headers.remove(_))
     }
   }
 
@@ -34,12 +29,15 @@ object StripHopByHopHeadersFilter {
    * Removes all Hop-by-Hop headers and any header listed in `Connection` header from requests.
    */
   object filter extends SimpleFilter[Request, Response] {
+
     def apply(req: Request, svc: Service[Request, Response]) = {
       HopByHopHeaders.scrub(req)
-      svc(req) map { resp =>
-        HopByHopHeaders.scrub(resp)
-        resp
-      }
+      svc(req).map(scrubResponse)
+    }
+
+    private[this] val scrubResponse: Response => Response = { resp =>
+      HopByHopHeaders.scrub(resp)
+      resp
     }
   }
 

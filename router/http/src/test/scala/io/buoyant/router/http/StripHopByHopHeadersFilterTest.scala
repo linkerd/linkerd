@@ -1,6 +1,7 @@
 package io.buoyant.router.http
 
 import com.twitter.finagle.Service
+import com.twitter.finagle.http.Fields._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
 import io.buoyant.router.http.StripHopByHopHeadersFilter.HopByHopHeaders
@@ -8,6 +9,15 @@ import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
 class StripHopByHopHeadersFilterTest extends FunSuite with Awaits {
+  val HopByHopHeaders = Seq(
+    Connection,
+    ProxyAuthenticate,
+    ProxyAuthorization,
+    Te,
+    Trailer,
+    TransferEncoding,
+    Upgrade
+  )
 
   val Ok = Service.mk[Request, Response] { req =>
     Future.value(Response())
@@ -17,7 +27,7 @@ class StripHopByHopHeadersFilterTest extends FunSuite with Awaits {
 
   test("strips all hop-by-hop headers from request") {
     val req = Request()
-    HopByHopHeaders.Headers.foreach(req.headerMap.set(_, "Some Value"))
+    HopByHopHeaders.foreach(req.headerMap.set(_, "Some Value"))
     await(service(req))
     assert(req.headerMap.isEmpty)
   }
@@ -25,7 +35,7 @@ class StripHopByHopHeadersFilterTest extends FunSuite with Awaits {
   test("strips all hop-by-hop headers from response") {
     val nextService = Service.mk[Request, Response] { req =>
       val resp: Response = Response()
-      HopByHopHeaders.Headers.foreach(resp.headerMap.set(_, "Some Value"))
+      HopByHopHeaders.foreach(resp.headerMap.set(_, "Some Value"))
       Future.value(resp)
     }
 
