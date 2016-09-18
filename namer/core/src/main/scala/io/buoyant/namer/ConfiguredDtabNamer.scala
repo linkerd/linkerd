@@ -1,10 +1,9 @@
-package io.buoyant.namerd
+package io.buoyant.namer
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.Activity
-import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, Delegator}
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],

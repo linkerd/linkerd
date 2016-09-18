@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant.linkerd
 
-import com.twitter.finagle.{Deadline => FDeadline, Dtab => FDtab, Status => _, _}
+import com.twitter.finagle.{Dtab => FDtab, Status => _, _}
+import com.twitter.finagle.context.{Deadline => FDeadline}
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.http._
@@ -419,7 +420,7 @@ object Headers {
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
       val rsp = Response(status)
-      rsp.headerMap(Key) = URLEncoder.encode(msg, Charsets.Iso8859_1.toString)
+      rsp.headerMap(Key) = URLEncoder.encode(msg, java.nio.charset.StandardCharsets.ISO_8859_1.toString)
       rsp.contentType = MediaType.Txt
       rsp.contentString = msg
       rsp

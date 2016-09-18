@@ -95,13 +95,16 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
 
     val result: DelegateTree[Name.Path] = matches match {
       case Nil => DelegateTree.Neg(path, dentry)
-      case Seq(tree) => tree
+      case Seq(tree) => Delegate(path, dentry, tree)
       case trees => DelegateTree.Alt(path, dentry, trees: _*)
     }
 
     val lookup: Activity[DelegateTree[Name]] = result match {
       case DelegateTree.Neg(path, d) =>
-        this.lookup(path).map(fromNameTree(path, d, _))
+        this.lookup(path).map {
+          case NameTree.Neg => result
+          case tree => fromNameTree(path, d, tree)
+        }
       case tree => Activity.value(tree)
     }
 
@@ -128,7 +131,7 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
         // Resolve this leaf path through the dtab and bind the resulting tree.
         delegateLookup(dtab, dentry, path).flatMap { delegateTree =>
           delegateBind(dtab, depth + 1, delegateTree)
-        }.map(Delegate(path, dentry, _))
+        }
 
       case Delegate(path, dentry, tree) =>
         delegateBind(dtab, depth, tree).map(Delegate(path, dentry, _))

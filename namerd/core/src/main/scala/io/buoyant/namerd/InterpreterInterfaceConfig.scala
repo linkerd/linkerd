@@ -5,6 +5,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Dtab, Namer, Path}
 import io.buoyant.config.ConfigInitializer
+import io.buoyant.namer.ConfiguredDtabNamer
 
 trait InterpreterInterfaceConfig extends InterfaceConfig {
   @JsonIgnore

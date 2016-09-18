@@ -1,11 +1,13 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Http, Path, Stack}
-import io.buoyant.consul.{CatalogNamer, SetHostFilter, v1}
+import com.twitter.finagle._
+import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
+import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
@@ -18,6 +20,9 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   host: consul.site.biz
  *   port: 8600
  *   includeTag: true
+ *   useHealthCheck: false
+ *   setHost: true
+ *   token: some-consul-acl-token
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -30,7 +35,10 @@ object ConsulInitializer extends ConsulInitializer
 case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
-  includeTag: Option[Boolean]
+  includeTag: Option[Boolean],
+  useHealthCheck: Option[Boolean],
+  token: Option[String] = None,
+  setHost: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -49,15 +57,30 @@ case class ConsulConfig(
    * Build a Namer backed by Consul.
    */
   @JsonIgnore
-  def newNamer(params: Stack.Params): CatalogNamer = {
+  def newNamer(params: Stack.Params): ConsulNamer = {
+    val authFilter = token match {
+      case Some(t) => new SetAuthTokenFilter(t)
+      case None => Filter.identity[Request, Response]
+    }
+    val filters = new SetHostFilter(getHost, getPort) andThen authFilter
+    val interruptionMonitor = Monitor.mk {
+      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+    }
+
     val service = Http.client
+      .withMonitor(interruptionMonitor)
       .withParams(Http.client.params ++ params)
       .configured(Label("namer" + prefix))
       .withTracer(NullTracer)
-      .filtered(new SetHostFilter(getHost, getPort))
+      .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new CatalogNamer(prefix, v1.CatalogApi(service), includeTag.getOrElse(false))
+    new ConsulNamer(
+      prefix,
+      if (useHealthCheck.getOrElse(false)) v1.HealthApi(service) else v1.CatalogApi(service),
+      v1.AgentApi(service),
+      includeTag = includeTag.getOrElse(false),
+      setHost = setHost.getOrElse(false)
+    )
   }
 }
-

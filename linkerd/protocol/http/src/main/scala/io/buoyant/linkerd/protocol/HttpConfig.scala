@@ -6,10 +6,9 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.Http.{param => hparam}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
-import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.service.Retries
-import com.twitter.finagle.buoyant.TlsClientPrep
-import io.buoyant.linkerd.protocol.http.{ErrorResponder, AccessLogger, ResponseClassifiers}
+import io.buoyant.linkerd.protocol.http.{RewriteHostHeader, AccessLogger, ResponseClassifiers}
 import io.buoyant.router.{Http, RoutingFactory}
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -23,20 +22,14 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(Headers.Dst.PathFilter.module)
       .replace(StackClient.Role.prepFactory, DelayedRelease.module)
       .prepend(http.ErrorResponder.module)
-      .insertBefore(ErrorResponder.role, http.SplatResponder.module)
-      .insertAfter(Stack.Role("AcquisitionFailure"), http.SplatResponder.module)
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+      .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
       .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
-      .insertBefore(http.AccessLogger.module.role, http.SplatResponder.module)
-      .insertAfter(TlsClientPrep.role, http.SplatResponder.module)
-
-    System.err.format("pathStack: %s\n\n\n", pathStack.toString())
-    System.err.format("clientStack: %s\n\n\n", clientStack.toString())
 
     Http.router
       .withPathStack(pathStack)
@@ -44,6 +37,19 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .withClientStack(clientStack)
       .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
+
+  /**
+   * Apply the router's codec configuration parameters to a server.
+   */
+  override protected def configureServer(router: Router, server: Server): Server =
+    super.configureServer(router, server)
+      .configured(router.params[hparam.MaxChunkSize])
+      .configured(router.params[hparam.MaxHeaderSize])
+      .configured(router.params[hparam.MaxInitialLineSize])
+      .configured(router.params[hparam.MaxRequestSize])
+      .configured(router.params[hparam.MaxResponseSize])
+      .configured(router.params[hparam.Streaming])
+      .configured(router.params[hparam.CompressionLevel])
 
   protected val defaultServer = {
     val stk = Http.server.stack
@@ -97,6 +103,10 @@ case class HttpConfig(
   @JsonIgnore
   override def baseResponseClassifier =
     ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
+
+  @JsonIgnore
+  override def responseClassifier =
+    ResponseClassifiers.NonRetryableChunked(super.responseClassifier)
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer

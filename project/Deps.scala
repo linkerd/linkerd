@@ -12,7 +12,7 @@ object Deps {
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.36.0"
+    "com.twitter" %% s"finagle-$mod" % "6.38.0"
 
   def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
 

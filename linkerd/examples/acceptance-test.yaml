@@ -8,7 +8,11 @@ tracers:
   host: zipkincollector
   port: 9410
   sampleRate: 0.02
-  debugTrace: true
+
+telemetry:
+- kind: io.l5d.tracelog
+  sampleRate: 0.2
+  level: TRACE
 
 namers:
 - kind: io.l5d.fs
@@ -39,9 +43,10 @@ namers:
 routers:
 - protocol: http
   label: int
-  baseDtab: |
-    /http/1.1 => /$/inet/127.1/9999;
   dstPrefix: /http
+  interpreter:
+    kind: io.l5d.fs
+    dtabFile: linkerd/examples/example.dtab
   failFast: false
   timeoutMs: 1000
   httpAccessLog: logs/access.log
@@ -50,6 +55,12 @@ routers:
     httpUriInDst: true
   responseClassifier:
     kind: io.l5d.retryableIdempotent5XX
+  announcers:
+  - kind: io.l5d.serversets
+    zkAddrs:
+    - host: 127.0.0.1
+      port: 2181
+    pathPrefix: /discovery/prod
   client:
     engine:
       kind: netty4
@@ -64,6 +75,9 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
+    label: foo/bar
+    announce:
+    - /#/io.l5d.serversets/foo/bar
     maxConcurrentRequests: 1000
     engine:
       kind: netty3

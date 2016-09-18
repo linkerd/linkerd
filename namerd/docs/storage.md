@@ -83,5 +83,7 @@ Stores the dtab in Etcd.  Supports the following options
 Stores the dtab in Consul KV storage.  Supports the following options
 
 * *host* -- Optional. The location of the etcd API.  (default: localhost)
-* *port* -- Optional. The port used to connect to the etcd API.  (default: 8500)
-* *pathPrefix* -- Optional.  The key path under which dtabs should be stored.  (default: "/namerd/dtabs")
+* *port* -- Optional. The port used to connect to the consul API.  (default: 8500)
+* *pathPrefix* -- Optional. The key path under which dtabs should be stored. (default: "/namerd/dtabs")
+* *token* -- Optional. The auth token to use when making API calls.
+* *datacenter* -- Optional. The datacenter to forward requests to. (default: not set, use agent's datacenter)

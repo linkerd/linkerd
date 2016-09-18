@@ -7,7 +7,7 @@ import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Filter, http}
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.log
@@ -27,8 +27,10 @@ trait BaseApi extends Closable {
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
       case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      // Don't retry on interruption
+      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying consul catalog request on error $ex")
+        log.error(s"retrying consul request on error $ex")
         true
     },
     HighResTimer.Default,
@@ -37,7 +39,10 @@ trait BaseApi extends Closable {
   )
 
   def getClient(retry: Boolean) = {
-    val retryFilter = if (retry) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+    val retryFilter = if (retry)
+      infiniteRetryFilter
+    else
+      Filter.identity[http.Request, http.Response]
     retryFilter andThen apiErrorFilter andThen client
   }
 
@@ -61,7 +66,10 @@ trait BaseApi extends Closable {
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[v1] def executeJson[T: Manifest](req: http.Request, retry: Boolean): Future[Indexed[T]] = {
+  private[v1] def executeJson[T: Manifest](
+    req: http.Request,
+    retry: Boolean
+  ): Future[Indexed[T]] = {
     for {
       rsp <- Trace.letClear(getClient(retry)(req))
       value <- Future.const(parseJson[T](rsp.content))

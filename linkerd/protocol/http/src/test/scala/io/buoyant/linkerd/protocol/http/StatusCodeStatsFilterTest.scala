@@ -26,9 +26,7 @@ class StatusCodeStatsFilterTest extends FunSuite with Awaits {
     await(service(Request()))
     assert(stats.counters(Seq("status", "404")) == 1)
     assert(stats.counters(Seq("status", "4XX")) == 1)
-    assert(stats.stats.isDefinedAt(Seq("time", "404")))
     assert(stats.stats.isDefinedAt(Seq("time", "4XX")))
-    assert(stats.stats.isDefinedAt(Seq("response_size")))
   }
 
   test("treats exceptions as 500 failures") {
@@ -40,10 +38,7 @@ class StatusCodeStatsFilterTest extends FunSuite with Awaits {
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 
     intercept[Throwable] { await(service(Request())) }
-    assert(stats.counters(Seq("status", "500")) == 1)
-    assert(stats.counters(Seq("status", "5XX")) == 1)
-    assert(stats.stats.isDefinedAt(Seq("time", "500")))
-    assert(stats.stats.isDefinedAt(Seq("time", "5XX")))
-    assert(stats.stats.isDefinedAt(Seq("response_size")))
+    assert(stats.counters(Seq("status", "error")) == 1)
+    assert(stats.stats.isDefinedAt(Seq("time", "error")))
   }
 }

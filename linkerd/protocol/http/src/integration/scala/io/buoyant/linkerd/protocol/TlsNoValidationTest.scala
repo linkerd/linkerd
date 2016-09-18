@@ -10,8 +10,6 @@ import org.scalatest.FunSuite
 
 class TlsNoValidationTest extends FunSuite with Awaits {
 
-  override val defaultWait = 2.seconds
-
   test("tls router + plain upstream without validation") {
     withCerts("linkerd") { certs =>
       val dog = Downstream.constTls("dogs", "woof", certs.serviceCerts("linkerd").cert,

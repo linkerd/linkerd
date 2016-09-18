@@ -7,7 +7,7 @@ import com.twitter.util.{Activity, Future, Try}
 private object Match {
   // do very coarse host matching so that we can support dns names,
   // ipv4, and ipv6 without going crazy.
-  val host = """^[A-Za-z0-9.:-]+$""".r
+  val host = """^[A-Za-z0-9.:_-]+$""".r
   val method = "[A-Z]+".r
 
   def subdomain(domain: String, hostname: String): Option[String] = {

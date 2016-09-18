@@ -7,7 +7,7 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namer.{DelegateTree, Delegator}
+import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
 import io.buoyant.namerd.Ns
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
@@ -392,6 +392,17 @@ class ThriftNamerInterface(
   )
 
   /**
+   * Converts Addr.Metadata into Thrift AddrMeta
+   */
+  private[this] def convertMeta(scalaMeta: Addr.Metadata): Option[thrift.AddrMeta] = {
+    // TODO translate metadata (weight info, latency compensation, etc)
+    scalaMeta.get(Metadata.authority) match {
+      case Some(authority: String) => Some(thrift.AddrMeta(Some(authority)))
+      case _ => None
+    }
+  }
+
+  /**
    * Observe a bound address pool.
    *
    * Addresses are done by bound ID (Path), which must have been
@@ -418,15 +429,17 @@ class ThriftNamerInterface(
             val addr = thrift.Addr(TStamp(newStamp), thrift.AddrVal.Neg(TVoid))
             Future.value(addr)
 
-          case Return((newStamp, Some(bound@Addr.Bound(addrs, meta)))) =>
+          case Return((newStamp, Some(bound@Addr.Bound(addrs, boundMeta)))) =>
             Trace.recordBinary("namerd.srv/addr.result", bound.toString)
             val taddrs = addrs.collect {
-              case Address.Inet(isa, _) =>
-                // TODO translate metadata (weight info, latency compensation, etc)
+              case Address.Inet(isa, addressMeta) =>
                 val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
-                thrift.TransportAddress(ip, isa.getPort)
+                thrift.TransportAddress(ip, isa.getPort, convertMeta(addressMeta))
             }
-            val addr = thrift.Addr(TStamp(newStamp), thrift.AddrVal.Bound(thrift.BoundAddr(taddrs)))
+            val addr = thrift.Addr(
+              TStamp(newStamp),
+              thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, convertMeta(boundMeta)))
+            )
             Future.value(addr)
 
           case Throw(NonFatal(e)) =>

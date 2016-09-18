@@ -1,8 +1,7 @@
 package io.buoyant.consul.v1
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Failure, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, Exceptions}
@@ -11,11 +10,12 @@ import org.scalatest.FunSuite
 class KvApiTest extends FunSuite with Awaits with Exceptions {
   val listBuf = Buf.Utf8("""["foo/bar/", "foo/baz/"]""")
   val getBuf = Buf.Utf8("""foobar""")
+  val multiGetBuf = Buf.Utf8("""[{"LockIndex":0,"Key":"sample","Flags":0,"Value":"Zm9vYmFy","CreateIndex":10,"ModifyIndex":12}]""")
   val putOkBuf = Buf.Utf8("""true""")
   val putFailBuf = Buf.Utf8("""false""")
+  val deleteOkBuf = Buf.Utf8("""true""")
+  val deleteFailBuf = Buf.Utf8("""false""")
   var lastUri = ""
-
-  override val defaultWait = 2.seconds
 
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
@@ -77,6 +77,42 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     )
   }
 
+  test("multiGet returns an indexed seq of values") {
+    val service = stubService(multiGetBuf)
+
+    val result = await(KvApi(service).multiGet("/sample"))
+    assert(result.index == Some("4"))
+    assert(result.value.size == 1)
+    assert(result.value.head.decoded == Some("foobar"))
+  }
+
+  test("multiGet by default is non-recurse") {
+    val service = stubService(multiGetBuf)
+
+    await(KvApi(service).multiGet("/path/to/key"))
+    assert(!lastUri.contains("recurse"))
+  }
+
+  test("multiGet with recurse set to true adds a recurse parameter") {
+    val service = stubService(multiGetBuf)
+
+    await(KvApi(service).multiGet("/path/to/key", recurse = Some(true)))
+    assert(lastUri.contains("recurse"))
+  }
+
+  test("multiGet reports wrong paths with an error") {
+    val failureService = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.headerMap.set("X-Consul-Index", "42")
+      rsp.setStatusCode(404)
+      lastUri = req.uri
+      Future.value(rsp)
+    }
+    assertThrows[NotFound](
+      await(KvApi(failureService).multiGet("/wrong/path"))
+    )
+  }
+
   test("put returns true on success") {
     val service = stubService(putOkBuf)
 
@@ -125,6 +161,20 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     assert(!lastUri.contains(s"cas"))
   }
 
+  test("delete by default is non-recurse") {
+    val service = stubService(deleteOkBuf)
+
+    await(KvApi(service).delete("/path/to/key"))
+    assert(!lastUri.contains("recurse"))
+  }
+
+  test("delete with recurse set to true adds a recurse parameter") {
+    val service = stubService(deleteOkBuf)
+
+    await(KvApi(service).delete("/path/to/key", recurse = Some(true)))
+    assert(lastUri.contains("recurse"))
+  }
+
   test("blocking index returned from one call can be used to set index on subsequent calls") {
     val service = stubService(getBuf)
     val index = await(KvApi(service).get("/some/path")).index.get
@@ -159,6 +209,19 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     val result = await(KvApi(failureService).list("/some/path/", retry = true))
     assert(result.index == Some("4"))
     assert(result.value == List("foo/bar/", "foo/baz/"))
+  }
+
+  test("doesn't retry on Failure.Interrupted with retry = true") {
+    val failureService = Service.mk[Request, Response] { _ =>
+      Future.exception(
+        Failure("consul observation released", Failure.Interrupted)
+      )
+    }
+    val api = KvApi(failureService)
+    val result = api.list("/some/path/", retry = true)
+    assertThrows[Failure](
+      await(result)
+    )
   }
 
   test("reports invalid datacenter as an unexpected response") {

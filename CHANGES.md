@@ -1,4 +1,42 @@
-## x.x.x
+## 0.7.5
+
+* Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
+* HTTP response classifiers must not consider a request to be
+  retryable when it has a chunked request body.
+* Fix query paramater encoding when rewriting proxied requests
+* Improve error handling and retry behavior of consul plugins.
+* Add `useHealthCheck` parameter to Consul Namer #589
+* The k8s namer will now resume watches if the connection is closed.
+* Improved the performance of the namerd HTTP API.
+* Configured namers are now available to other plugins
+* `enableProbation` is now disabled by default on clients. It leads to
+  unexpected behavior in environments that reuse IP:PORT pairs across
+  services in a close time proximity.
+
+## 0.7.4
+
+* Dashboard: add toggling to the router clients to better handle large numbers of clients
+* namerd HTTP API:
+  * Add `resolve` endpoint
+  * All endpoints return json
+* Add `authority` metadata field to re-write HTTP host/:authority on demand
+* Consul improvements:
+  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+  * Add auth `token` parameter to Consul Namer & Dtab Store
+  * Add `datacenter` parameter to Consul Dtab Store
+* Add file-system based name interpreter.
+* Path identifier should only parse as many segments as requested
+* Introduce the _telemetry_ plugin subsystem to support arbitrary stats
+  exporters and to eventually supplant the `tracers` subsystem.
+* Add announcer support! linkerd can now announce to service discovery backends!
+  * Add zk announcer.
+
+## 0.7.3
+
+* Allow protocol-specific parameters to be inherited on servers #561.
+* Don't clear addr on k8s service deletion #567.
+* Modify namerd's `/delegate` http endpoint to return bound names #569.
+* Memoize status stats components #547.
 
 ## 0.7.2
 

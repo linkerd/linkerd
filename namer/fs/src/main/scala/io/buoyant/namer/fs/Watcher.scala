@@ -8,7 +8,7 @@ import java.nio.file.{Path => NioPath, _}
 import java.nio.file.StandardWatchEventKinds._
 import scala.collection.JavaConverters._
 
-private[fs] object Watcher {
+object Watcher {
 
   private[this] val log = Logger.get(getClass.getName)
 

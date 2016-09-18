@@ -3,7 +3,7 @@ package io.buoyant.namerd.iface
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.namer.DelegateTree
+import io.buoyant.namer.{Metadata, DelegateTree}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
 import java.net.{InetAddress, InetSocketAddress}
@@ -12,8 +12,6 @@ import org.scalatest.FunSuite
 
 class ThriftNamerClientTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
-
-  override def defaultWait: Duration = 2.seconds
 
   class Rsp[T] {
     val promise = new Promise[T]
@@ -181,12 +179,14 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
             }
             addrPromise.setValue(thrift.Addr(
               TStamp.mk(2),
-              thrift.AddrVal.Bound(thrift.BoundAddr(ips))
+              thrift.AddrVal.Bound(
+                thrift.BoundAddr(ips, Some(thrift.AddrMeta(Some("acme.co"))))
+              )
             ))
             val addrs = tidalIps.map { ip =>
               Address(new InetSocketAddress(ip, 80))
             }
-            assert(addr == Addr.Bound(addrs.toSet))
+            assert(addr == Addr.Bound(addrs.toSet, Addr.Metadata(Metadata.authority -> "acme.co")))
 
             service.addrsMu.synchronized {
               val key = (tidalPath, TStamp.mk(2))

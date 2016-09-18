@@ -9,7 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
-import io.buoyant.namer.{DelegateTree, Delegator}
+import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -146,6 +146,17 @@ class ThriftNamerClient(
     mk(ttree.root)
   }
 
+  /**
+   * Converts Thrift AddrMeta into Addr.Metadata
+   */
+  private[this] def convertMeta(thriftMeta: Option[thrift.AddrMeta]): Addr.Metadata = {
+    // TODO handle non-String metadata
+    thriftMeta match {
+      case Some(thrift.AddrMeta(Some(authority))) => Addr.Metadata(Metadata.authority -> authority)
+      case _ => Addr.Metadata.empty
+    }
+  }
+
   private[this] def watchAddr(id: TPath): Var[Addr] = {
     val idPath = mkPath(id).show
 
@@ -162,17 +173,16 @@ class ThriftNamerClient(
             Trace.record("namerd.client/addr.neg")
             loop(stamp1)
 
-          case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, _)))) =>
+          case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, boundMeta)))) =>
             val addrs = taddrs.map { taddr =>
-              val thrift.TransportAddress(ipbb, port, _) = taddr
+              val thrift.TransportAddress(ipbb, port, addressMeta) = taddr
               val ipBytes = Buf.ByteArray.Owned.extract(Buf.ByteBuffer.Owned(ipbb))
               val ip = InetAddress.getByAddress(ipBytes)
-              // TODO convert metadata
-              Address(new InetSocketAddress(ip, port))
+              Address.Inet(new InetSocketAddress(ip, port), convertMeta(addressMeta))
             }
             // TODO convert metadata
             Trace.recordBinary("namerd.client/addr.bound", addrs)
-            addr() = Addr.Bound(addrs.toSet)
+            addr() = Addr.Bound(addrs.toSet[Address], convertMeta(boundMeta))
             loop(stamp1)
 
           case Throw(e@thrift.AddrFailure(msg, retry, _)) =>

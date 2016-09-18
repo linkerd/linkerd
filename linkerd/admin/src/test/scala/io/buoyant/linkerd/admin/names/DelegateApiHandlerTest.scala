@@ -4,7 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.util.{Var, Activity}
+import com.twitter.util.Activity
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.linkerd._
 import io.buoyant.namer.{ErrorNamerInitializer, TestNamerInitializer}
@@ -34,6 +34,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     /foo => /bar ;
     /boo => /foo ;
     /meh => /heh ;
+    /neg => ~ ;
   """)
 
   test("/delegate response") {
@@ -43,21 +44,44 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     val rsp = await(web(req))
     assert(rsp.status == Status.Ok)
     assert(rsp.contentString == """{
-      |"type":"delegate","path":"/boo/humbug","dentry":null,"delegate":{
+      |"type":"delegate","path":"/boo/humbug","delegate":{
         |"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[
           |{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},
           |{"type":"delegate","path":"/bah/humbug",
           |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
             |"type":"leaf","path":"/$/inet/127.1/8080","dentry":{"prefix":"/bah/humbug",
               |"dst":"/$/inet/127.1/8080"},
-            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080}],"meta":{}},
+            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080,"meta":{}}],"meta":{}},
               |"id":"/$/inet/127.1/8080","path":"/"}}},
           |{"type":"delegate","path":"/beh/humbug",
             |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
               |"type":"exception","path":"/#/error/humbug","dentry":{"prefix":"/beh","dst":"/#/error"},
                 |"message":"error naming /#/error/humbug"}},
-          |{"type":"fail","path":"/$/fail/humbug",
-            |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
+          |{"type":"fail","path":"/$/fail/humbug","dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("delegates to neg when no matches found") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request()
+    req.uri = s"/delegate?namespace=plain&path=/meh&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    val rsp = await(web(req))
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/meh","delegate":{
+        |"type":"neg","path":"/heh","dentry":{"prefix":"/meh","dst":"/heh"}}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("delegation for explicit neg is shown") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request()
+    req.uri = s"/delegate?namespace=plain&path=/neg&dtab=${URLEncoder.encode(dtab.show, "UTF-8")}"
+    val rsp = await(web(req))
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/neg","delegate":{
+        |"type":"neg","path":"~","dentry":{"prefix":"/neg","dst":"~"}}}
       |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
@@ -81,6 +105,7 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     req.uri = s"/delegate?path=invalid-param&namespace=label"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
+    assert(rsp.contentString == "Invalid path: '/' expected but 'i' found at '[i]nvalid-param'")
   }
 
   test("invalid dtab results in 400") {
@@ -89,5 +114,6 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
     req.uri = s"/delegate?path=/boo/humbug&dtab=invalid-param"
     val rsp = await(web(req))
     assert(rsp.status == Status.BadRequest)
+    assert(rsp.contentString == "Invalid dtab: '/' expected but 'i' found at '[i]nvalid-param'")
   }
 }

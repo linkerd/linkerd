@@ -1,34 +1,26 @@
 # HTTP/1.1 protocol
 
-*(for the [routers](config.md#routers) key)*
+> Below: http-specific configuration options
 
-Router configuration options include:
+```yaml
+routers:
+- protocol: http
+  httpAccessLog: access.log
+  identifier:
+    kind: io.l5d.methodAndHost
+  maxChunkKB: 8KB
+  maxHeadersKB: 8KB
+  maxInitialLineKB: 4KB
+  maxRequestKB: 5MB
+  maxResponseKB: 5MB
+  servers:
+  - port: 5000
+```
 
-* *httpAccessLog* -- Sets the access log path.  If not specified, no
-access log is written.
-* *identifier* -- [Http-specific identifier](#protocol-http-identifiers) (default:
-io.l5d.methodAndHost)
-* *maxChunkKB* -- The maximum size of an HTTP chunk (default: 8KB)
-* *maxHeadersKB* -- The maximum size of all headers in an HTTP message (default: 8KB)
-* *maxInitialLineKB* -- The maximum size of an initial HTTP
-  message line (default: 4KB)
-* *maxRequestKB* -- The maximum size of a non-chunked HTTP request
-  payload (default: 5MB)
-* *maxResponseKB* -- The maximum size of a non-chunked HTTP response
-  payload (default: 5MB)
-* *compressionLevel* -- The compression level to use (on 0-9)
-  (default: -1, automatically compresses textual content types with
-  compression level 6)
-
-_Note_: These memory constraints are selected to allow reliable
-concurrent usage of linkerd. Changing these parameters may
-significantly alter linkerd's performance characteristics.
-
-The default _dstPrefix_ is `/http`
-The default server _port_ is 4140
-
-As an example, here's an http router config that routes all `POST`
-requests to 8091 and all other requests to 8081:
+> Below: an example HTTP router config that routes all `POST` requests to 8091
+and all other requests to 8081,
+using the default identifier of `io.l5d.methodAndHost`,
+listening on port 5000
 
 ```yaml
 routers:
@@ -39,84 +31,146 @@ routers:
     /method/POST => /$/inet/127.1/8091;
     /http/1.1    => /method;
   servers:
-    port: 5000
+  - port: 5000
 ```
+> The baseDtab above is written to work with the
+[`methodAndHost` identifier](#method-and-host-identifier).
+Using a different identifier would require a different set of dtab rules.
 
-<a name="protocol-http-identifiers"></a>
+protocol: `http`
+
+The HTTP/1.1 protocol is used when the *protocol* option of the
+[routers configuration block](#router-parameters) is set to *http*.
+This protocol has additional configuration options on the *routers* block.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
+httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
+identifier | `io.l5d.methodAndHost` | See [Http-specific identifiers](#http-1-1-identifiers).
+maxChunkKB | 8KB | The maximum size of an HTTP chunk.
+maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
+maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
+maxRequestKB | 5MB | The maximum size of a non-chunked HTTP request payload.
+maxResponseKB | 5MB | The maximum size of a non-chunked HTTP response payload.
+compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
+
+<aside class="warning">
+These memory constraints are selected to allow reliable
+concurrent usage of linkerd. Changing these parameters may
+significantly alter linkerd's performance characteristics.
+</aside>
+
+<a name="http-1-1-identifiers"></a>
 ## HTTP/1.1 Identifiers
 
-Identifiers are objects responsible for creating logical names from an incoming
-request with the following parameters:
+Identifiers are responsible for creating logical *names* from an incoming
+request; these names are then matched against the dtab. (See the [linkerd
+routing overview](https://linkerd.io/doc/latest/routing/) for more details on
+this.) All HTTP/1.1 identifiers have a `kind`.
 
-* *kind* -- One of the supported identifier plugins, by fully-qualified class
- name. Current plugins include:
-  * *io.l5d.methodAndHost*
-  * *io.l5d.path*
-* any other identifier-specific parameters
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier).
 
-### Method and Host
+<a name="method-and-host-identifier"></a>
+### Method and Host Identifier
 
-`io.l5d.methodAndHost`
+kind: `io.l5d.methodAndHost`.
 
-HTTP requests are routed by a combination of Host header, method, and URI.
+With this identifier, HTTP requests are turned into logical names using a
+combination of Host header, method, and (optionally) URI.
 
-* *httpUriInDst* -- If `true` http paths are appended to destinations. This
-  allows path-prefix routing. (default: false)
+#### Namer Configuration:
 
-Specifically, HTTP/1.0 logical names are of the form:
+> Configuration example
+
+```yaml
+identifier:
+  kind: io.l5d.methodAndHost
+  httpUriInDst: true
 ```
-  dstPrefix / "1.0" / method [/ uri* ]
+
+Key | Default Value | Description
+--- | ------------- | -----------
+httpUriInDst | `false` | If `true` http paths are appended to destinations. This allows a form of path-prefix routing. This option is **not** recommended as performance implications may be severe; Use the [path identifier](#path-identifier) instead.
+
+
+#### Namer Path Parameters:
+
+> Dtab Path Format for HTTP/1.1
+
 ```
-and HTTP/1.1 logical names are of the form:
-```
-  dstPrefix / "1.1" / method / host [/ uri* ]
+  / dstPrefix / "1.1" / method / host [/ uri* ]
 ```
 
-In both cases, `uri` is only considered a part
-of the logical name if the config option `httpUriInDst` is true.
+> Dtab Path Format for HTTP/1.0
 
-### Path
+```
+  / dstPrefix / "1.0" / method [/ uri* ]
+```
 
-`io.l5d.path`
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
+host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/BuoyantIO/linkerd/issues/106). Not used in HTTP/1.0.
+uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
 
-HTTP requests are routed based on a configurable number of "/" separated
+<a name="path-identifier"></a>
+### Path Identifier
+
+kind: `io.l5d.path`
+
+With this identifier, HTTP requests are turned into names based only on the
+path component of the URL, using a configurable number of "/" separated
 segments from the start of their HTTP path.
 
-* *segments* -- Number of segments from the path that are appended to
-  destinations. (default: 1)
-* *consume* -- Strip the read segments from the HTTP path.  (default: false)
+#### Namer Configuration:
 
-For instance, here's a router configured with an http path identifier:
+> With this configuration, a request to `:5000/true/love/waits.php` will be
+mapped to `/http/true/love` and will be routed based on this name by the
+corresponding dtab. Additionally, because `consume` is true, after routing,
+requests will be proxied to the destination service with `/waits.php` as the
+path component of the URL.
 
 ```yaml
 routers:
 - protocol: http
-  dstPrefix: /custom/prefix
   identifier:
     kind: io.l5d.path
     segments: 2
     consume: true
   servers:
-    port: 5000
+  - port: 5000
 ```
 
-A request to `:5000/true/love/waits.php` will be identified as
-`/custom/prefix/true/love` and will be forwarded with `/waits.php` as the URI.
+Key | Default Value | Description
+--- | ------------- | -----------
+segments | `1` | Number of segments from the path that are appended to destinations.
+consume | `false` | Whether to additionally strip the consumed segments from the HTTP request proxied to the final destination service. This only affects the request sent to the destination service; it does not affect identification or routing.
 
+#### Namer Path Parameters:
 
+> Dtab Path Format
+
+```
+  / dstPrefix [/ *urlPath ]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
+
+<a name="http-engines"></a>
 ## HTTP Engines
 
-An _engine_ may be configured on HTTP clients and servers, causing an
-alternate HTTP implementation to be used. Currently there are two
-supported HTTP implementations: _netty3_ (default) and _netty4_ (will
-become default in an upcoming release).
-
-For example, the following configures an HTTP router that uses the new
+> This configures an HTTP router that uses the new
 netty4 implementation on both the client and server:
 
 ```yaml
 - protocol: http
-  ...
   servers:
   - port: 4141
     ip: 0.0.0.0
@@ -127,76 +181,98 @@ netty4 implementation on both the client and server:
       kind: netty4
 ```
 
+An _engine_ may be configured on HTTP clients and servers, causing an
+alternate HTTP implementation to be used.
 
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | `netty3` | Either `netty3` or `netty4` (`netty4` will become default in an upcoming release).
+
+<a name="http-headers"></a>
 ## HTTP Headers
 
 linkerd reads and sets several headers prefixed by `l5d-`.
 
+<a name="context-headers"></a>
 ### Context Headers
 
 _Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
 instances. Applications should forward all context headers in order
-for all linkerd features to work. These headers include:
+for all linkerd features to work.
 
-- `dtab-local`: currently (until the next release of finagle), the
-  `dtab-local` header is used to propagate dtab context. In an
-  upcoming release this header will no longer be honored, in favor of
-  `l5d-ctx-dtab` and `l5d-dtab`.
-- `l5d-ctx-deadline`: describes time bounds within which a request is
-  expected to be satisfied. Currently deadlines are only advisory and
-  do not factor into request cancellation.
-- `l5d-ctx-trace`: encodes zipkin-style trace IDs and flags so that
-  trace annotations emitted by linkerd may be correlated.
+Header | Description
+------ | -----------
+`dtab-local` | Deprecated. Use `l5d-ctx-dtab` and `l5d-dtab`.
+`l5d-ctx-deadline` | Describes time bounds within which a request is expected to be satisfied. Currently deadlines are only advisory and do not factor into request cancellation.
+`l5d-ctx-trace` | Encodes Zipkin-style trace IDs and flags so that trace annotations emitted by linkerd may be correlated.
 
+<aside class="warning">
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
+</aside>
 
 ### User Headers
 
-_User headers_ are useful to allow user-overrides
+> Append a dtab override to the baseDtab for this request
 
-- `l5d-dtab`: a client-specified delegation override
-- `l5d-sample`: a client-specified trace sample rate override
+```shell
+curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"
+```
 
-Note that if linkerd processes incoming requests for applications
+_User headers_ enable user-overrides.
+
+Header | Description
+------ | -----------
+`l5d-dtab` | A client-specified delegation override.
+`l5d-sample` | A client-specified trace sample rate override.
+
+<aside class="notice">
+If linkerd processes incoming requests for applications
 (i.e. in linker-to-linker configurations), applications do not need to
-provide special treatment for these headers since linkerd does _not_
+provide special treatment for these headers since linkerd does <b>not</b>
 forward these headers (and instead translates them into context
-headers). If applications receive traffic directly, they _should_
+headers). If applications receive traffic directly, they <b>should</b>
 forward these headers.
+</aside>
 
+<aside class="warning">
 Edge services should take care to ensure these headers are not set
 from untrusted sources.
+</aside>
 
 ### Informational Request Headers
 
-In addition to the context headers, linkerd may emit the following
-headers on outgoing requests:
+The informational headers linkerd emits on outgoing requests.
 
-- `l5d-dst-logical`: the logical name of the request as identified by linkerd
-- `l5d-dst-concrete`: the concrete client name after delegation
-- `l5d-dst-residual`: an optional residual path remaining after delegation
-- `l5d-reqid`: a token that may be used to correlate requests in a
-               callgraph across services and linkerd instances
+Header | Description
+------ | -----------
+`l5d-dst-logical` | The logical name of the request as identified by linkerd.
+`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-residual` | An optional residual path remaining after delegation.
+`l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
 Applications are not required to forward these headers on downstream
 requests.
 
-The value of the _dst_ headers may include service discovery
+<aside class="notice">
+The value of the dst headers may include service discovery
 information including host names.  Operators may opt to remove these
 headers from requests sent to the outside world.
+</aside>
 
 ### Informational Response Headers
 
-linkerd may emit the following _informational_ headers on outgoing
-responses:
+The informational headers linkerd emits on outgoing responses.
 
-- `l5d-err`: indicates a linkerd-generated error. Error responses
-             that do not have this header are application errors.
+Header | Description
+------ | -----------
+`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
 
 Applications are not required to forward these headers on upstream
 responses.
 
+<aside class="notice">
 The value of this header may include service discovery information
 including host names. Operators may opt to remove this header from
 responses sent to the outside world.
+</aside>

@@ -83,3 +83,9 @@ Evaluate a path against an arbitrary dtab:
 ```
 $ curl -v "$NAMERD_URL/api/1/delegate?dtab=/foo=>/bar&path=/foo"
 ```
+
+Resolve a logic or concrete name against a known dtab namespace:
+
+```
+$ curl -v $NAMERD_URL/api/1/resolve/baz?path=/foo
+```
