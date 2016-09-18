@@ -12,7 +12,10 @@ object StripConnectionHeader {
    */
   object filter extends SimpleFilter[Request, Response] {
     def apply(req: Request, svc: Service[Request, Response]) = {
-      req.headerMap.remove(Key)
+      val connection = req.headerMap.get(Key).getOrElse("none")
+      if (!(connection.toLowerCase == "upgrade")) {
+        req.headerMap.remove(Key)
+      }
       svc(req)
     }
   }
