@@ -10,7 +10,7 @@ routers:
     dst: /$/inet/1.2.3.4/4180
 ```
 
-An interpreter determines how names are resolved.
+An interpreter determines how names are resolved.  
 
 <aside class="notice">
 These parameters are available to the identifier regardless of kind. Identifiers may also have kind-specific parameters.
@@ -19,6 +19,7 @@ These parameters are available to the identifier regardless of kind. Identifiers
 Key | Default Value | Description
 --- | ------------- | -----------
 kind | `default` | Either `default`, `io.l5d.namerd`, or `io.l5d.fs`.
+transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 ## Default
 

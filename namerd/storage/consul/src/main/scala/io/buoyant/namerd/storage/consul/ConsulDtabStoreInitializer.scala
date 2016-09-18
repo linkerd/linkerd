@@ -6,7 +6,7 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Failure, Filter, Http, Path}
 import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
-import io.buoyant.consul.v1.KvApi
+import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter}
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
@@ -15,7 +15,9 @@ case class ConsulConfig(
   port: Option[Port],
   pathPrefix: Option[Path],
   token: Option[String] = None,
-  datacenter: Option[String] = None
+  datacenter: Option[String] = None,
+  readConsistencyMode: Option[ConsistencyMode] = None,
+  writeConsistencyMode: Option[ConsistencyMode] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -44,7 +46,9 @@ case class ConsulConfig(
     new ConsulDtabStore(
       KvApi(service),
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
-      datacenter = datacenter
+      datacenter = datacenter,
+      readConsistency = readConsistencyMode,
+      writeConsistency = writeConsistencyMode
     )
   }
 }

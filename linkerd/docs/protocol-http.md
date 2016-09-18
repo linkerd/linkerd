@@ -47,7 +47,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
-identifier | `io.l5d.methodAndHost` | See [Http-specific identifiers](#http-1-1-identifiers).
+identifier | The `methodAndHost` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
 maxChunkKB | 8KB | The maximum size of an HTTP chunk.
 maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
@@ -67,7 +67,9 @@ significantly alter linkerd's performance characteristics.
 Identifiers are responsible for creating logical *names* from an incoming
 request; these names are then matched against the dtab. (See the [linkerd
 routing overview](https://linkerd.io/doc/latest/routing/) for more details on
-this.) All HTTP/1.1 identifiers have a `kind`.
+this.) All HTTP/1.1 identifiers have a `kind`.  If a list of identifiers is
+provided, each identifier is tried in turn until one successfully assigns a
+logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -79,7 +81,8 @@ kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier)
 kind: `io.l5d.methodAndHost`.
 
 With this identifier, HTTP requests are turned into logical names using a
-combination of Host header, method, and (optionally) URI.
+combination of `Host` header, method, and (optionally) URI. `Host`
+header value is lower-cased as per `RFC 2616`.
 
 #### Namer Configuration:
 
@@ -162,6 +165,47 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
+
+<a name="header-identifier"></a>
+### Header Identifier
+
+kind: `io.l5d.header`
+
+With this identifier, HTTP requests are turned into names based only on the
+value of an HTTP header.  If the header value is a valid path, that path is
+used.  Otherwise, the header value is converted to a path with one path segment.
+
+#### Namer Configuration:
+
+> With this configuration, the value of the `my-header` HTTP header will be used
+as the logical name.
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.header
+    header: my-header
+  servers:
+  - port: 5000
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `l5d-name` | The name of the HTTP header to use
+
+#### Namer Path Parameters:
+
+> Dtab Path Format
+
+```
+  / dstPrefix [/ *headerValue ]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+headerValue | N/A | The value of the HTTP header as a path.
 
 <a name="http-engines"></a>
 ## HTTP Engines

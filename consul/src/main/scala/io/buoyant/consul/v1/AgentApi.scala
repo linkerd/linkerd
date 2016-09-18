@@ -21,7 +21,7 @@ class AgentApi(
 
   // https://www.consul.io/docs/agent/http/agent.html#agent_self
   def localAgent(retry: Boolean = false): Future[LocalAgent] = {
-    val req = mkreq(http.Method.Get, s"$agentPrefix/self")
+    val req = mkreq(http.Method.Get, s"$agentPrefix/self", None)
     executeJson[LocalAgent](req, retry).map(_.value)
   }
 }

@@ -2,7 +2,6 @@ package io.buoyant.namerd.storage
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.Dtab
-import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.util.{Await, Activity}
 import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
 import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, RichActivity, VersionedDtab}
@@ -31,7 +30,7 @@ class InMemoryDtabStoreTest extends FunSuite with Exceptions {
         dtabStore = Seq(new InMemoryDtabStoreInitializer),
         iface = Seq(TestNamerInterfaceInitializer)
       ))
-    val namerd = config.mk(NullStatsReceiver)
+    val namerd = config.mk()
     val values = namerd.dtabStore.observe("test").values.map(_.get)
     val dtab = Await.result(values.toFuture(), 1.second)
     assert(dtab.get.dtab == Dtab.read("/foo => /bar"))

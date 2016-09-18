@@ -161,7 +161,9 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
+  useHealthCheck: true
   setHost: true
+  consistencyMode: stale
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -180,8 +182,10 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
+useHealthCheck | `false` | If `true`, rely on Consul health checks.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
+consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`. 
 
 ### Consul Path Parameters
 
