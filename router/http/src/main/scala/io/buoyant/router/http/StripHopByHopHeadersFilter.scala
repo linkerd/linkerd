@@ -18,17 +18,15 @@ object StripHopByHopHeadersFilter {
     )
 
     def scrub(msg: Message): Unit = {
-      Headers.foreach(h => {
-        h match {
-          case Connection =>
-            val headersListedInConnection: Seq[String] = msg.headerMap.remove(h) match {
-              case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
-              case None => Nil
-            }
-            headersListedInConnection.foreach(msg.headerMap.remove(_))
-          case _ => msg.headerMap.remove(h)
-        }
-      })
+      Headers.foreach {
+        case h@Connection =>
+          val headersListedInConnection: Seq[String] = msg.headerMap.remove(h) match {
+            case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
+            case None => Nil
+          }
+          headersListedInConnection.foreach(msg.headerMap.remove(_))
+        case h => msg.headerMap.remove(h)
+      }
     }
   }
 
