@@ -1,8 +1,7 @@
 package io.buoyant.namerd
 
 import com.twitter.util.{Await, Closable}
-import io.buoyant.admin.{AdminConfig, App}
-import io.buoyant.config.types.Port
+import io.buoyant.admin.App
 import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import scala.io.Source

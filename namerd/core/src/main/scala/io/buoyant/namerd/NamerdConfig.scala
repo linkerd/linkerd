@@ -64,7 +64,7 @@ private[namerd] case class NamerdConfig(
 private[namerd] object NamerdConfig {
 
   private def DefaultAdminPort = Port(9991)
-  private def DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort))
+  private def DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort), None)
 
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
     lazy val message =

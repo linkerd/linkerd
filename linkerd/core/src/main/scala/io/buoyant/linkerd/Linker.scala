@@ -32,7 +32,7 @@ object Linker {
   private[this] val log = Logger()
 
   private[this] val DefaultAdminPort = Port(9990)
-  private[this] val DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort))
+  private[this] val DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort), None)
 
   private[linkerd] case class Initializers(
     protocol: Seq[ProtocolInitializer] = Nil,

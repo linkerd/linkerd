@@ -4,7 +4,8 @@ import io.buoyant.config.types.Port
 import java.net.InetSocketAddress
 
 case class AdminConfig(
-  port: Option[Port]
+  port: Option[Port],
+  shutdownGraceMs: Option[Int]
 ) {
 
   def mk(defaultPort: Port): Admin = {

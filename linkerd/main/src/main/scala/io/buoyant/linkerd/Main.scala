@@ -1,12 +1,13 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
-import com.twitter.util.{Await, Awaitable, Closable, CloseAwaitably, Future, Return, Throw, Time}
+import com.twitter.util._
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import scala.io.Source
+import sun.misc.{Signal, SignalHandler}
 
 /**
  * linkerd main execution.
@@ -19,6 +20,8 @@ object Main extends App {
 
   private[this] val DefaultTelemeter =
     new CommonMetricsTelemeter
+  private[this] val DefaultShutdownGrace =
+    Duration.fromSeconds(10)
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
@@ -31,6 +34,9 @@ object Main extends App {
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))
+
+        log.info("linkerd initialized.")
+        registerTerminationSignalHandler(config.admin.flatMap(_.shutdownGraceMs))
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
           Closable.all(telemeters: _*),
@@ -102,6 +108,27 @@ object Main extends App {
         }
         Closable.all(closers: _*)
     }
+  }
+
+  /**
+   * Trap termination signals and triggers an App.close for a graceful shutdown.
+   * Shutdown hook is not used because it has, at least, the following problems:
+   * <ul>
+   *   <li>LogManager uses a shutdown hook which makes nothing to be logged during shutdown
+   *   <li>TracerCache uses a shutdown hook to flush
+   * </ul>
+   */
+  private def registerTerminationSignalHandler(shutdownGraceMs: Option[Int]): Unit = {
+    val shutdownHandler = new SignalHandler {
+      override def handle(sig: Signal): Unit = {
+        log.info("Received %s. Shutting down ...", sig)
+        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(DefaultShutdownGrace)
+        Await.result(close(closeTimeOut))
+      }
+    }
+
+    Signal.handle(new Signal("INT"), shutdownHandler)
+    val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
   }
 
 }
