@@ -2,11 +2,12 @@ package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.param.Label
+import com.twitter.finagle.param
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle._
+import com.twitter.finagle.{Failure, Filter, Http, Namer, Path, Stack}
 import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
+import io.buoyant.consul.v1.ConsistencyMode
 import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
@@ -38,7 +39,8 @@ case class ConsulConfig(
   includeTag: Option[Boolean],
   useHealthCheck: Option[Boolean],
   token: Option[String] = None,
-  setHost: Option[Boolean] = None
+  setHost: Option[Boolean] = None,
+  consistencyMode: Option[ConsistencyMode] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -57,7 +59,7 @@ case class ConsulConfig(
    * Build a Namer backed by Consul.
    */
   @JsonIgnore
-  def newNamer(params: Stack.Params): ConsulNamer = {
+  def newNamer(params: Stack.Params): Namer = {
     val authFilter = token match {
       case Some(t) => new SetAuthTokenFilter(t)
       case None => Filter.identity[Request, Response]
@@ -68,19 +70,30 @@ case class ConsulConfig(
     }
 
     val service = Http.client
-      .withMonitor(interruptionMonitor)
       .withParams(Http.client.params ++ params)
-      .configured(Label("namer" + prefix))
+      .withLabel(prefix.show.stripPrefix("/"))
+      .withMonitor(interruptionMonitor)
       .withTracer(NullTracer)
       .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    new ConsulNamer(
-      prefix,
-      if (useHealthCheck.getOrElse(false)) v1.HealthApi(service) else v1.CatalogApi(service),
-      v1.AgentApi(service),
-      includeTag = includeTag.getOrElse(false),
-      setHost = setHost.getOrElse(false)
-    )
+    val consul = useHealthCheck match {
+      case Some(true) => v1.HealthApi(service)
+      case _ => v1.CatalogApi(service)
+    }
+    val agent = v1.AgentApi(service)
+
+    val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
+
+    includeTag match {
+      case Some(true) =>
+        ConsulNamer.tagged(
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+        )
+      case _ =>
+        ConsulNamer.untagged(
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+        )
+    }
   }
 }

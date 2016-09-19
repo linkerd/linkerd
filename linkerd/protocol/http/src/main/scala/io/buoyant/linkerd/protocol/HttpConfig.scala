@@ -2,14 +2,21 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.core.{JsonParser, TreeNode}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.Http.{param => hparam}
-import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer, HttpEngine}
+import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
+import com.twitter.finagle.http.Request
 import com.twitter.finagle.service.Retries
-import io.buoyant.linkerd.protocol.http.{RewriteHostHeader, AccessLogger, ResponseClassifiers}
+import com.twitter.finagle.{Path, Stack}
+import com.twitter.util.Future
+import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
+import io.buoyant.router.RoutingFactory.{RequestIdentification, IdentifiedRequest, UnidentifiedRequest}
 import io.buoyant.router.{Http, RoutingFactory}
+import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
@@ -85,9 +92,23 @@ case class HttpServerConfig(
   }
 }
 
+// Cribbed from https://gist.github.com/Aivean/6bb90e3942f3bf966608
+class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpIdentifierConfig]]] {
+  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Option[Seq[HttpIdentifierConfig]] = {
+    val codec = p.getCodec
+    codec.readTree[TreeNode](p) match {
+      case n: JsonNode if n.isArray =>
+        Some(n.asScala.toList.map(codec.treeToValue(_, classOf[HttpIdentifierConfig])))
+      case node => Some(Seq(codec.treeToValue(node, classOf[HttpIdentifierConfig])))
+    }
+  }
+
+  override def getNullValue(ctxt: DeserializationContext): Option[Seq[HttpIdentifierConfig]] = None
+}
+
 case class HttpConfig(
   httpAccessLog: Option[String],
-  identifier: Option[HttpIdentifierConfig],
+  @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -112,9 +133,31 @@ case class HttpConfig(
   override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore
+  private[this] val combinedIdentifier = {
+    // use the first identifier that yields an IdentifiedRequest
+    def combine(identifiers: Seq[RoutingFactory.Identifier[Request]]): RoutingFactory.Identifier[Request] = { req =>
+      identifiers.foldLeft(HttpConfig.NilIdentification) { (identification, next) =>
+        identification.flatMap {
+          // the request has already been identified, just use that
+          case identified: IdentifiedRequest[Request] => Future.value(identified)
+          // the request has not yet been identified, try the next identifier
+          case unidentified: UnidentifiedRequest[Request] => next(req)
+        }
+      }
+    }
+
+    identifier.map { identifierConfigs =>
+      Http.param.HttpIdentifier { (prefix, dtab) =>
+        val identifiers = identifierConfigs.map(_.newIdentifier(prefix, dtab))
+        combine(identifiers)
+      }
+    }
+  }
+
+  @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
-    .maybeWith(identifier.map(id => Http.param.HttpIdentifier(id.newIdentifier)))
+    .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
@@ -123,4 +166,9 @@ case class HttpConfig(
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
 
+}
+
+object HttpConfig {
+  private val NilIdentification: Future[RequestIdentification[Request]] =
+    Future.value(new UnidentifiedRequest("no identifiers"))
 }

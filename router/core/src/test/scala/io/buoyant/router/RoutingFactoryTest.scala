@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant._
 import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.test.{Exceptions, Awaits}
 import org.scalatest.FunSuite
 
@@ -39,7 +40,8 @@ class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
     }
 
   def mkService(
-    pathMk: RoutingFactory.Identifier[Request] = (req: Request) => Future.value((Dst.Path.empty, req)),
+    pathMk: RoutingFactory.Identifier[Request] = (req: Request) =>
+      Future.value(new IdentifiedRequest[Request](Dst.Path.empty, req)),
     cache: DstBindingFactory[Request, Response] = mkClientFactory(),
     label: String = ""
   ) = new RoutingFactory(pathMk, cache, label).toService

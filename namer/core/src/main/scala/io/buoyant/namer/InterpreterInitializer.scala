@@ -9,8 +9,22 @@ import io.buoyant.config.ConfigInitializer
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 @JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 trait InterpreterConfig {
+
+  var transformers: Option[Seq[TransformerConfig]] = None
+
   @JsonIgnore
-  def newInterpreter(params: Stack.Params): NameInterpreter
+  protected def newInterpreter(params: Stack.Params): NameInterpreter
+
+  @JsonIgnore
+  final def interpreter(params: Stack.Params): NameInterpreter = {
+    transformers.toSeq.flatten.foldLeft(newInterpreter(params)) { (ni, transformerConfig) =>
+      (ni, transformerConfig.mk) match {
+        case (delegator: Delegator, transformer: DelegatingNameTreeTransformer) =>
+          transformer.delegatingWrap(delegator)
+        case (_, transformer) => transformer.wrap(ni)
+      }
+    }
+  }
 }
 
 abstract class InterpreterInitializer extends ConfigInitializer

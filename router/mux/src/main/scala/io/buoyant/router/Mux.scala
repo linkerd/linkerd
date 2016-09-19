@@ -7,6 +7,7 @@ import com.twitter.finagle.mux.{Request, Response}
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.util._
+import io.buoyant.router.RoutingFactory.{RequestIdentification, IdentifiedRequest}
 import java.net.SocketAddress
 
 object Mux extends Router[Request, Response] with Server[Request, Response] {
@@ -31,10 +32,10 @@ object Mux extends Router[Request, Response] with Server[Request, Response] {
       prefix: Path = Path.empty,
       dtab: () => Dtab = () => Dtab.base
     ) extends RoutingFactory.Identifier[Request] {
-      def apply(req: Request): Future[(Dst, Request)] =
-        Future.value(
-          (Dst.Path(prefix ++ req.destination, dtab(), Dtab.local), req)
-        )
+      def apply(req: Request): Future[RequestIdentification[Request]] = {
+        val dst = Dst.Path(prefix ++ req.destination, dtab(), Dtab.local)
+        Future.value(new IdentifiedRequest(dst, req))
+      }
     }
 
   }

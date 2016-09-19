@@ -13,7 +13,7 @@ import org.scalatest.FunSuite
 class ErrorResponderTest extends FunSuite with Awaits {
 
   val svc = Service.mk[Request, Response] { _ =>
-    Future.exception(RoutingFactory.UnknownDst(Request(), new Exception(s"foo\nbar")))
+    Future.exception(RoutingFactory.UnknownDst(Request(), s"foo\nbar"))
   }
   val stk = ErrorResponder.module.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
