@@ -30,6 +30,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  servers:
          |  - port: 1
          |- protocol: fancy
+         |  experimental: true
          |  servers:
          |  - port: 2
          |""".stripMargin
@@ -84,6 +85,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  servers:
          |  - port: 1
          |- protocol: fancy
+         |  experimental: true
          |  servers:
          |  - port: 2
          |""".stripMargin
@@ -153,6 +155,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  - ip: 127.0.0.2
          |    port: 3
          |- protocol: fancy
+         |  experimental: true
          |  servers:
          |  - port: 3
          |""".stripMargin
@@ -269,5 +272,20 @@ class LinkerTest extends FunSuite with Exceptions {
     assertThrows[ConflictingSubtypes] {
       initializer(namers = Seq(TestNamerInitializer, ConflictingNamerInitializer)).load(yaml)
     }
+  }
+
+  test("experimental required") {
+    val yaml =
+      """|routers:
+         |- protocol: fancy
+         |  servers:
+         |  - port: 1
+         |""".stripMargin
+    val iae = intercept[IllegalArgumentException] {
+      parse(yaml)
+    }
+    assert(iae.getMessage ==
+      "The fancy protocol is experimental and must be explicitly enabled by " +
+      "setting the `experimental' parameter to `true' on each router.")
   }
 }

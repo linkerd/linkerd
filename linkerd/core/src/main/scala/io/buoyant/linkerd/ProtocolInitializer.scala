@@ -35,6 +35,8 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   /** The default protocol-specific router configuration */
   protected def defaultRouter: StackRouter[RouterReq, RouterRsp]
 
+  def experimentalRequired: Boolean = false
+
   protected def configureServer(router: Router, server: Server): Server = {
     val ip = server.ip.getHostAddress
     val port = server.port

@@ -155,6 +155,14 @@ object Linker {
       for ((label, rts) <- routers.groupBy(_.label))
         if (rts.size > 1) throw ConflictingLabels(label)
 
+      for (r <- routers) {
+        if (r.disabled) {
+          val msg = s"The ${r.protocol.name} protocol is experimental and must be " +
+            "explicitly enabled by setting the `experimental' parameter to `true' on each router."
+          throw new IllegalArgumentException(msg) with NoStackTrace
+        }
+      }
+
       val impls = routers.map { router =>
         val interpreter = router.interpreter.interpreter(params)
         router.router(params + DstBindingFactory.Namer(interpreter))
