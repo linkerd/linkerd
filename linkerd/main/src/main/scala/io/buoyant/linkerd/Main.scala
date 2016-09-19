@@ -6,10 +6,8 @@ import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
-
-import sun.misc.{Signal, SignalHandler}
-
 import scala.io.Source
+import sun.misc.{Signal, SignalHandler}
 
 /**
  * linkerd main execution.
@@ -22,6 +20,8 @@ object Main extends App {
 
   private[this] val DefaultTelemeter =
     new CommonMetricsTelemeter
+  private[this] val DefaultShutdownGrace =
+    Duration.fromSeconds(10)
 
   def main() {
     val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
@@ -122,7 +122,7 @@ object Main extends App {
     val shutdownHandler = new SignalHandler {
       override def handle(sig: Signal): Unit = {
         log.info("Received %s. Shutting down ...", sig)
-        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(Duration.fromSeconds(10))
+        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(DefaultShutdownGrace)
         Await.result(close(closeTimeOut))
       }
     }
