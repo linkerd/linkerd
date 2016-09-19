@@ -6,9 +6,9 @@ import com.twitter.finagle.http.{Message, Request, Response}
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 /**
-  * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request.
-  *
-  */
+ * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request.
+ *
+ */
 object ViaHeaderAppenderFilter {
 
   object ViaLinkerd {
@@ -32,8 +32,8 @@ object ViaHeaderAppenderFilter {
   }
 
   /**
-    * Appends the [VIA] header.
-    */
+   * Appends the [VIA] header.
+   */
   object filter extends SimpleFilter[Request, Response] {
 
     def apply(req: Request, svc: Service[Request, Response]) = {
