@@ -186,6 +186,7 @@ useHealthCheck | `false` | If `true`, rely on Consul health checks.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`. 
+failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API 
 
 ### Consul Path Parameters
 

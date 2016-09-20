@@ -26,11 +26,13 @@ trait BaseApi extends Closable {
   private[this] val infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
-      case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      case (req, Return(rep)) if rep.status.code >= 500 && rep.status.code < 600 =>
+        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on ${UnexpectedResponse(rep)}")
+        true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (req, Throw(NonFatal(ex))) =>
-        log.error(s"retrying consul request ${req.method} ${req.uri} on error $ex")
+        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on NonFatal error: $ex")
         true
     },
     HighResTimer.Default,
