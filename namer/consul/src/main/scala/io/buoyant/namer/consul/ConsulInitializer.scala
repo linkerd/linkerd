@@ -1,14 +1,12 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.param
+import com.twitter.finagle._
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Failure, Filter, Http, Namer, Path, Stack}
-import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
+import io.buoyant.consul.utils.RichConsulClient
+import io.buoyant.consul.v1
 import io.buoyant.consul.v1.ConsistencyMode
-import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
@@ -40,7 +38,8 @@ case class ConsulConfig(
   useHealthCheck: Option[Boolean],
   token: Option[String] = None,
   setHost: Option[Boolean] = None,
-  consistencyMode: Option[ConsistencyMode] = None
+  consistencyMode: Option[ConsistencyMode] = None,
+  failFast: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -60,21 +59,14 @@ case class ConsulConfig(
    */
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer = {
-    val authFilter = token match {
-      case Some(t) => new SetAuthTokenFilter(t)
-      case None => Filter.identity[Request, Response]
-    }
-    val filters = new SetHostFilter(getHost, getPort) andThen authFilter
-    val interruptionMonitor = Monitor.mk {
-      case e: Failure if e.isFlagged(Failure.Interrupted) => true
-    }
-
     val service = Http.client
       .withParams(Http.client.params ++ params)
       .withLabel(prefix.show.stripPrefix("/"))
-      .withMonitor(interruptionMonitor)
+      .interceptInterrupts
+      .failFast(failFast)
+      .setAuthToken(token)
+      .ensureHost(host, port)
       .withTracer(NullTracer)
-      .filtered(filters)
       .newService(s"/$$/inet/$getHost/$getPort")
 
     val consul = useHealthCheck match {
