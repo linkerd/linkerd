@@ -6,7 +6,7 @@ import com.twitter.finagle.http.{Message, Request, Response}
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 /**
- * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request.
+ * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request and response.
  *
  */
 object ViaHeaderAppenderFilter {
@@ -49,7 +49,7 @@ object ViaHeaderAppenderFilter {
 
   object module extends Stack.Module0[ServiceFactory[Request, Response]] {
     val role = Stack.Role("ViaHeaderAppender")
-    val description = "Appends the [Via] header to the request."
+    val description = "Appends the Via header to the request and response."
 
     def make(next: ServiceFactory[Request, Response]) =
       filter andThen next
