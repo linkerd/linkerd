@@ -8,15 +8,16 @@
   * Improve performance by only watching services as necessary and tearing
     down watches when they are no longer needed.
   * Add `consistencyMode` option to `io.l5d.consul` namer
-  * Add `readConsistencyMode` and `writeConsistencyMode` options to `io.l5d.consul` dtab storage
+  * Add `readConsistencyMode` and `writeConsistencyMode` options to
+    `io.l5d.consul` dtab storage
   * Consul Namerd/DtabStore: `failFast` and `failureAccrual` is now
     disabled by default but can be enabled with the `failFast` option
 * Improve shutdown ordering to facilitate graceful shutdown.
   * Gracefully shutdown on SIGINT and SIGTERM.
 * Require tracer configuration instead of falling back to
   defaults, reducing logging noise.
-* The `debugTrace` tracer configuration flag has been removed in favor
-  of the `io.l5d.tracelog` telemeter.
+* **Breaking Change**: The `debugTrace` tracer configuration flag has been
+  removed in favor of the `io.l5d.tracelog` telemeter.
 * Add `io.l5d.header` identifier for naming requests based on an HTTP header
 * Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
 * Introduce transformers for post-processing the set of addresses returned by
