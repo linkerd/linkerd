@@ -17,7 +17,7 @@ object ViaHeaderAppenderFilter {
 
     def appendViaHeader(msg: Message): Unit = {
       val extendedVia = msg.headerMap.get(Via) match {
-        case Some(x) => x + ", " + viaLinkerd(msg)
+        case Some(x) => s"$x, ${viaLinkerd(msg)}"
         case None => viaLinkerd(msg)
       }
       val _ = msg.headerMap.set(Via, extendedVia)
@@ -49,7 +49,7 @@ object ViaHeaderAppenderFilter {
 
   object module extends Stack.Module0[ServiceFactory[Request, Response]] {
     val role = Stack.Role("ViaHeaderAppender")
-    val description = "Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request."
+    val description = "Appends the [Via] header to the request."
 
     def make(next: ServiceFactory[Request, Response]) =
       filter andThen next
