@@ -1,3 +1,8 @@
+## 0.8.1
+
+* Fix missing data on the linkerd admin dashboard
+* Allow a non-default port to be specified for the etcd storage plugin
+
 ## 0.8.0
 
 * Allow routers to be configured with a list of identifiers.  If an identifier
