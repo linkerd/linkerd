@@ -5,6 +5,7 @@ import com.twitter.common.metrics.Metrics
 import com.twitter.finagle.{SimpleFilter, Stack, http}
 import com.twitter.finagle.stats.MetricsStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
+import com.twitter.server.handler.MetricQueryHandler
 import io.buoyant.admin.Admin
 import io.buoyant.telemetry.commonMetrics._
 
@@ -31,7 +32,7 @@ class CommonMetricsTelemeter(registry: Metrics = Metrics.root)
   // XXX We should really be passing the registry through to handlers,
   // but this is tricky for the moment.
   val adminHandlers: Admin.Handlers = Seq(
-    "/admin/metrics" -> postToGetFilter.andThen(http.HttpMuxer),
+    "/admin/metrics" -> postToGetFilter.andThen(new MetricQueryHandler),
     "/admin/metrics.json" -> http.HttpMuxer,
     "/admin/metrics/prometheus" -> new PrometheusStatsHandler(registry)
   )
