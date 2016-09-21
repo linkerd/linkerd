@@ -20,14 +20,14 @@ case class EtcdConfig(
   override def mkDtabStore: DtabStore = {
     new EtcdDtabStore(new Key(
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
-      Http.newService(s"${host getOrElse DefaultHost}:${port getOrElse DefaultPort}")
+      Http.newService(s"${host getOrElse DefaultHost}:${(port getOrElse DefaultPort).port}")
     ))
   }
 }
 
 object EtcdConfig {
   val DefaultHost = "localhost"
-  val DefaultPort = 2379
+  val DefaultPort = Port(2379)
 }
 
 class EtcdDtabStoreInitializer extends DtabStoreInitializer {
