@@ -34,7 +34,9 @@ case class MethodAndServiceIdentifier(
     case Version.Http11 =>
       req.host match {
         case Some(host) if host.nonEmpty =>
-          val dst = mkPath(Path.Utf8("1.1", req.method.toString, host.split('.')(0)) ++ suffix(req))
+          val canary = req.headerMap.get("x-cisco-spark-canary-opts").getOrElse("disabled")
+          val dst = mkPath(Path.Utf8("1.1", req.method.toString, canary, host.split('.')(0)) ++ suffix(req))
+          System.err.format("MethodAndServiceIdentifier: returning path: %s\n\n", dst.toString)
           Future.value(new IdentifiedRequest(dst, req))
         case _ =>
           Future.value(
