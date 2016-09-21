@@ -12,19 +12,19 @@ import io.buoyant.consul.{SetAuthTokenFilter, SetHostFilter, v1}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
-  * Supports namer configurations in the form:
-  *
-  * <pre>
-  * namers:
-  * - kind: io.l5d.consulcanary
-  *   experimental: true
-  *   host: consul.site.biz
-  *   port: 8600
-  *   useHealthCheck: false
-  *   setHost: true
-  *   token: some-consul-acl-token
-  * </pre>
-  */
+ * Supports namer configurations in the form:
+ *
+ * <pre>
+ * namers:
+ * - kind: io.l5d.consulcanary
+ *   experimental: true
+ *   host: consul.site.biz
+ *   port: 8600
+ *   useHealthCheck: false
+ *   setHost: true
+ *   token: some-consul-acl-token
+ * </pre>
+ */
 class ConsulCanaryInitializer extends NamerInitializer {
   val configClass = classOf[ConsulCanaryConfig]
   override def configId = "io.l5d.consulcanary"
@@ -33,13 +33,13 @@ class ConsulCanaryInitializer extends NamerInitializer {
 object ConsulCanaryInitializer extends ConsulCanaryInitializer
 
 case class ConsulCanaryConfig(
-                         host: Option[String],
-                         port: Option[Port],
-                         useHealthCheck: Option[Boolean],
-                         token: Option[String] = None,
-                         setHost: Option[Boolean] = None,
-                         consistencyMode: Option[ConsistencyMode] = None
-                       ) extends NamerConfig {
+  host: Option[String],
+  port: Option[Port],
+  useHealthCheck: Option[Boolean],
+  token: Option[String] = None,
+  setHost: Option[Boolean] = None,
+  consistencyMode: Option[ConsistencyMode] = None
+) extends NamerConfig {
 
   @JsonIgnore
   override val experimentalRequired = true
@@ -54,8 +54,8 @@ case class ConsulCanaryConfig(
   }
 
   /**
-    * Build a Namer backed by Consul.
-    */
+   * Build a Namer backed by Consul.
+   */
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer = {
     val authFilter = token match {

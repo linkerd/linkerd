@@ -1,1 +1,2 @@
 io.buoyant.namer.consul.ConsulInitializer
+io.buoyant.namer.consul.ConsulCanaryInitializer

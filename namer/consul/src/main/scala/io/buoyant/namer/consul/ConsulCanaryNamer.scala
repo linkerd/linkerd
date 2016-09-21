@@ -8,13 +8,13 @@ import io.buoyant.consul.v1
 object ConsulCanaryNamer {
 
   def tagged(
-              prefix: Path,
-              consulApi: v1.ConsulApi,
-              agentApi: v1.AgentApi,
-              setHost: Boolean = false,
-              consistency: Option[v1.ConsistencyMode] = None,
-              stats: StatsReceiver = NullStatsReceiver
-            ): Namer = {
+    prefix: Path,
+    consulApi: v1.ConsulApi,
+    agentApi: v1.AgentApi,
+    setHost: Boolean = false,
+    consistency: Option[v1.ConsistencyMode] = None,
+    stats: StatsReceiver = NullStatsReceiver
+  ): Namer = {
     val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, stats)
     new TaggedNamer(lookup, prefix)
   }
