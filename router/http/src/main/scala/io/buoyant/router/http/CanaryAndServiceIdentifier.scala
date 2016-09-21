@@ -7,14 +7,14 @@ import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 
-object MethodAndServiceIdentifier {
+object CanaryAndServiceIdentifier {
   def mk(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
-  ): RoutingFactory.Identifier[Request] = MethodAndServiceIdentifier(prefix, false, baseDtab)
+  ): RoutingFactory.Identifier[Request] = CanaryAndServiceIdentifier(prefix, false, baseDtab)
 }
 
-case class MethodAndServiceIdentifier(
+case class CanaryAndServiceIdentifier(
   prefix: Path,
   uris: Boolean = false,
   baseDtab: () => Dtab = () => Dtab.base
@@ -35,8 +35,8 @@ case class MethodAndServiceIdentifier(
       req.host match {
         case Some(host) if host.nonEmpty =>
           val canary = req.headerMap.get("x-cisco-spark-canary-opts").getOrElse("disabled")
-          val dst = mkPath(Path.Utf8("1.1", req.method.toString, canary, host.split('.')(0)) ++ suffix(req))
-          System.err.format("MethodAndServiceIdentifier: returning path: %s\n\n", dst.toString)
+          val dst = mkPath(Path.Utf8("1.1", canary, host.split('.')(0)) ++ suffix(req))
+          System.err.format("CanaryAndServiceIdentifier: returning path: %s\n\n", dst.toString)
           Future.value(new IdentifiedRequest(dst, req))
         case _ =>
           Future.value(
