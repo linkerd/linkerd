@@ -17,7 +17,7 @@ import scoverage.ScoverageSbtPlugin
  * Base project configuration.
  */
 class Base extends Build {
-  val headVersion = "0.8.0"
+  val headVersion = "0.8.1"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
