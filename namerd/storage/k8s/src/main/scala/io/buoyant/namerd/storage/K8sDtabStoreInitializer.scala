@@ -8,9 +8,6 @@ import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 case class K8sConfig(
   host: Option[String],
   port: Option[Port],
-  tls: Option[Boolean],
-  tlsWithoutValidation: Option[Boolean],
-  authTokenFile: Option[String],
   namespace: Option[String]
 ) extends DtabStoreConfig with ClientConfig {
 
