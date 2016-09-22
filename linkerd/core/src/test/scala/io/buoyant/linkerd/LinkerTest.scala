@@ -1,12 +1,11 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.param
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.tracing._
 import io.buoyant.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import io.buoyant.namer.Param.Namers
-import io.buoyant.namer.{NamerInitializer, ConflictingNamerInitializer, TestNamerInitializer, TestNamer}
+import io.buoyant.namer.{ConflictingNamerInitializer, NamerInitializer, TestNamer, TestNamerInitializer}
 import io.buoyant.telemetry._
 import io.buoyant.test.Exceptions
 import java.net.{InetAddress, InetSocketAddress}
@@ -250,14 +249,28 @@ class LinkerTest extends FunSuite with Exceptions {
   test("with admin") {
     val yaml =
       """|admin:
-         |  port: 9991
+         |  ip: 127.0.0.1
+         |  port: 42000
          |routers:
          |- protocol: plain
          |  servers:
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9991)
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "127.0.0.1")
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 42000)
+  }
+
+  test("with admin default") {
+    val yaml =
+      """|routers:
+        |- protocol: plain
+        |  servers:
+        |  - port: 1
+        |""".stripMargin
+    val linker = parse(yaml)
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "0.0.0.0")
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9990)
   }
 
   test("conflicting subtypes") {

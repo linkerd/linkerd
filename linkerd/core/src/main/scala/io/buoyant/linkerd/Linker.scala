@@ -1,19 +1,18 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.{Service, http}
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{param, Path, Namer, Stack}
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
-import com.twitter.finagle.tracing.{DefaultTracer, BroadcastTracer, Tracer}
+import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.LoadService
+import com.twitter.finagle.{Namer, Path, Stack, param}
 import com.twitter.logging.Logger
-import io.buoyant.admin.{AdminConfig, Admin}
+import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
-import io.buoyant.config.types.Port
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
 import io.buoyant.telemetry._
+import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
 /**
@@ -31,8 +30,8 @@ trait Linker {
 object Linker {
   private[this] val log = Logger()
 
-  private[this] val DefaultAdminPort = Port(9990)
-  private[this] val DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort), None)
+  private[this] val DefaultAdminAddress = new InetSocketAddress(9990)
+  private[this] val DefaultAdminConfig = AdminConfig()
 
   private[linkerd] case class Initializers(
     protocol: Seq[ProtocolInitializer] = Nil,
@@ -121,7 +120,7 @@ object Linker {
 
       val routerImpls = mkRouters(params + Namers(namersByPrefix) + param.Stats(stats.scope("rt")))
 
-      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
+      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
 
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
     }

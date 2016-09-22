@@ -63,15 +63,17 @@ Key | Required | Description
 
 ```yaml
 admin:
+  ip: 127.0.0.1
   port: 9990
 ```
 
 linkerd supports an administrative interface, both as a web ui and a collection
-of json endpoints. The exposed admin port is configurable via a top-level
-`admin` section.
+of json endpoints. The exposed admin port and ip to listen on are configurable
+via a top-level `admin` section.
 
 Key | Default Value | Description
 --- | ------------- | -----------
+ip | `0.0.0.0` | IP for the admin interface.
 port | `9990` | Port for the admin interface.
 
 ### Routers
