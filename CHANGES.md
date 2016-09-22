@@ -1,6 +1,7 @@
 ## 0.x.y
 
 * Removed unused TLS options from the k8s storage plugin config
+* Add an `ip` option to admin configuration so that access to the admin server may be constrained
 
 ## 0.8.1
 

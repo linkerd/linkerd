@@ -43,11 +43,14 @@ Key | Required | Description
 
 ```yaml
 admin:
+  ip: 127.0.0.1
   port: 9991
 ```
 
-namerd supports an administrative interface. The exposed admin port is configurable via a top-level `admin` section.
+namerd supports an administrative interface. The exposed admin port and
+IP are configurable via a top-level `admin` section.
 
 Key | Default Value | Description
 --- | ------------- | -----------
+ip | `0.0.0.0` | IP for the admin interface.
 port | `9991` | Port for the admin interface.

@@ -1,15 +1,18 @@
 package io.buoyant.admin
 
 import io.buoyant.config.types.Port
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 
 case class AdminConfig(
-  port: Option[Port],
-  shutdownGraceMs: Option[Int]
+  ip: Option[InetAddress] = None,
+  port: Option[Port] = None,
+  shutdownGraceMs: Option[Int] = None
 ) {
 
-  def mk(defaultPort: Port): Admin = {
-    val addr = new InetSocketAddress(port.getOrElse(defaultPort).port)
+  def mk(defaultAddr: InetSocketAddress): Admin = {
+    val adminIp = ip.getOrElse(defaultAddr.getAddress)
+    val adminPort = port.map(_.port).getOrElse(defaultAddr.getPort)
+    val addr = new InetSocketAddress(adminIp, adminPort)
     new Admin(addr)
   }
 }
