@@ -1,3 +1,7 @@
+## 0.x.y
+
+* Removed unused TLS options from the k8s storage plugin config
+
 ## 0.8.1
 
 * Fix missing data on the linkerd admin dashboard
