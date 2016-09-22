@@ -32,12 +32,14 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
-host | `kubernetes.default.svc.cluster.local` | The location of the Kubernetes API.
-port | `443` | The port used to connect to the Kubernetes API.
-tls | `true` | Whether to connect to the Kubernetes API using TLS.
-tlsWithoutValidation | `false` | Whether to disable certificate checking against the Kubernetes API. Meaningless if `tls` is false.
-authTokenFile | no auth | The location of the token used to authenticate against the Kubernetes API, if any.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master post.
 namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
+
+<aside class="notice">
+The Kubernetes storage plugin does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
 
 **How to check ThirdPartyResource is enabled**  
     1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.  
