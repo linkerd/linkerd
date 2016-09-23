@@ -489,6 +489,16 @@ object LinkerdBuild extends Base {
       dockerTag := version.value
     )
 
+    val PluginBundle: Seq[ProjectReference] = Seq(
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
+      Protocol.mux, Protocol.thrift,
+      Announcer.serversets,
+      Telemetry.core, Telemetry.tracelog,
+      Tracer.zipkin,
+      tls
+    )
+
     val all = projectDir("linkerd")
       .settings(aggregateSettings)
       .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, Announcer.all, tls)
@@ -499,14 +509,7 @@ object LinkerdBuild extends Base {
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
-        Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
-        Protocol.mux, Protocol.thrift,
-        Announcer.serversets,
-        Telemetry.core, Telemetry.tracelog,
-        Tracer.zipkin,
-        tls)
+      .configDependsOn(Bundle)(PluginBundle: _*)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
         assembly <<= assembly in Bundle,
@@ -526,6 +529,7 @@ object LinkerdBuild extends Base {
 
     val examples = projectDir("linkerd/examples")
       .withExamples(Linkerd.all, exampleConfigs)
+      .withTests()
   }
 
   val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
