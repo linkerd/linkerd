@@ -636,8 +636,10 @@ object LinkerdBuild extends Base {
       testUtil,
       Interpreter.all,
       Linkerd.all,
+      Linkerd.examples,
       Namer.all,
       Namerd.all,
+      Namerd.examples,
       Router.all,
       Telemetry.all
     )
