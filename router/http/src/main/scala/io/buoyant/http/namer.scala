@@ -1,5 +1,6 @@
 package io.buoyant.http
 
+import com.twitter.finagle.http.path.Integer
 import com.twitter.finagle.{Name, NameTree, Namer, Path, Service, ServiceNamer}
 import com.twitter.finagle.http._
 import com.twitter.util.{Activity, Future, Try}
@@ -165,6 +166,27 @@ class domainToPathPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, host@Match.host()) =>
       Some(Path.Utf8(pfx +: host.split("\\.").reverse: _*) ++ path.drop(2))
+    case _ => None
+  }
+}
+
+/**
+ * A rewriting namer that accepts names in the form /<index>/<segment>/<rest*>
+ * and inserts <segment> at position <index> in <rest*>.  For example,
+ *
+ *   /2/foo/zero/one/two/three
+ *
+ * will insert foo at position 2, resulting in:
+ *
+ *   /zero/one/foo/two/three
+ */
+class insert extends RewritingNamer {
+  protected[this] def rewrite(path: Path) = path.take(2) match {
+    case Path.Utf8(Integer(index), segment) =>
+      val rest = path.drop(2)
+      val before = rest.take(index)
+      val after = rest.drop(index)
+      Some(before ++ Path.Utf8(segment) ++ after)
     case _ => None
   }
 }
