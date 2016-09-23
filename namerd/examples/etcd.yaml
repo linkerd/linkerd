@@ -2,7 +2,7 @@ admin:
   port: 9991
 storage:
   kind: io.l5d.etcd
-  key: /dtabs
+  pathPrefix: /dtabs
 namers: []
 interfaces:
 - kind: io.l5d.thriftNameInterpreter
