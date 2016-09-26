@@ -14,6 +14,15 @@ import com.twitter.util.{Closable, _}
 trait Resource extends Closable {
   def client: Client
   def close(deadline: Time) = client.close(deadline)
+
+  protected def parseResponse[O <: KubeObject: Manifest](rsp: http.Response): Future[O] = {
+    rsp.status match {
+      case http.Status.Successful(_) => Api.parse[O](rsp)
+      case http.Status.NotFound => Future.exception(Api.NotFound(rsp))
+      case http.Status.Conflict => Future.exception(Api.Conflict(rsp))
+      case _ => Future.exception(Api.UnexpectedResponse(rsp))
+    }
+  }
 }
 
 /**
@@ -166,7 +175,7 @@ private[k8s] class NsListResource[O <: KubeObject: Manifest, W <: Watch[O]: Mani
    */
   def post(toCreate: O): Future[O] = {
     val req = Api.mkreq(http.Method.Post, path, Some(Json.writeBuf[O](toCreate)))
-    Trace.letClear(client(req)).flatMap(Api.parse[O])
+    Trace.letClear(client(req)).flatMap(parseResponse(_)(implicitly[Manifest[O]]))
   }
 }
 
@@ -179,25 +188,24 @@ private[k8s] class NsObjectResource[O <: KubeObject: Manifest, W <: Watch[O]: Ma
 )(implicit od: ObjectDescriptor[O, W]) extends Resource {
   private[this] val path = s"$listPath/$objectName"
 
-  private[this] def parseResponse(rsp: http.Response): Future[O] = rsp.status match {
-    case http.Status.Successful(_) => Api.parse[O](rsp)
-    case http.Status.NotFound => Future.exception(Api.NotFound(rsp))
-    case http.Status.Conflict => Future.exception(Api.Conflict(rsp))
-    case _ => Future.exception(Api.UnexpectedResponse(rsp))
-  }
-
   def get: Future[O] = {
     val req = Api.mkreq(http.Method.Get, path, None)
-    Trace.letClear(client(req)).flatMap(Api.parse[O])
+    Trace.letClear(client(req)).flatMap { rsp =>
+      parseResponse(rsp)
+    }
   }
 
   def put(obj: O): Future[O] = {
     val req = Api.mkreq(http.Method.Put, path, Some(Json.writeBuf[O](obj)))
-    Trace.letClear(client(req)).flatMap(parseResponse)
+    Trace.letClear(client(req)).flatMap { rsp =>
+      parseResponse(rsp)
+    }
   }
 
   def delete: Future[O] = {
     val req = Api.mkreq(http.Method.Delete, path, None)
-    Trace.letClear(client(req)).flatMap(parseResponse)
+    Trace.letClear(client(req)).flatMap { rsp =>
+      parseResponse(rsp)
+    }
   }
 }

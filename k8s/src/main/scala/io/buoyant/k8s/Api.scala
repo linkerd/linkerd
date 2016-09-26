@@ -1,7 +1,7 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.http
+import com.twitter.finagle.{Failure, http}
 import com.twitter.finagle.http.MediaType
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
@@ -12,7 +12,7 @@ import com.twitter.util._
 object Api {
   val BufSize = 8 * 1024
 
-  object Closed extends Throwable
+  val Closed = Failure("k8s observation released").flagged(Failure.Interrupted)
   case class UnexpectedResponse(rsp: http.Response) extends Throwable
 
   /**
