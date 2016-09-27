@@ -22,7 +22,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     "tlop" -> Dtab.read("/yeezy => /pablo")
   )
 
-  val v1Stamp = HttpControlService.versionString(InMemoryDtabStore.InitialVersion)
+  val v1Stamp = DtabHandler.versionString(InMemoryDtabStore.InitialVersion)
 
   def newDtabStore(dtabs: Map[String, Dtab] = defaultDtabs): DtabStore =
     new InMemoryDtabStore(dtabs)
@@ -50,8 +50,8 @@ class HttpControlServiceTest extends FunSuite with Awaits {
   test("dtab round-trips through json") {
     val dtab = Dtab.read("/tshirt => /suit")
     val json = Buf.Utf8("""[{"prefix":"/tshirt","dst":"/suit"}]""")
-    assert(HttpControlService.Json.read[Seq[Dentry]](json) == Return(dtab))
-    assert(HttpControlService.Json.write(dtab) == json)
+    assert(Json.read[Seq[Dentry]](json) == Return(dtab))
+    assert(Json.write(dtab) == json)
   }
 
   test("GET /api/1/dtabs") {
@@ -61,7 +61,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    val expected = HttpControlService.Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
+    val expected = Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
     assert(rsp.content == expected)
   }
 
@@ -118,7 +118,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     val rsp = Await.result(service(req), 1.second)
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
-    val expected = HttpControlService.Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
+    val expected = Json.write(defaultDtabs.keys.toSeq.sorted).concat(HttpControlService.newline)
     assert(rsp.content == expected)
   }
 
@@ -138,7 +138,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
     assert(rsp.headerMap("ETag") == v1Stamp)
-    val expected = HttpControlService.Json.write(defaultDtabs("yeezus")).concat(HttpControlService.newline)
+    val expected = Json.write(defaultDtabs("yeezus")).concat(HttpControlService.newline)
     assert(rsp.content == expected)
   }
 
@@ -150,11 +150,11 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     assert(rsp.status == Status.Ok)
     assert(rsp.contentType == Some(MediaType.Json))
 
-    readAndAssert(rsp.reader, HttpControlService.Json.write(defaultDtabs("yeezus")))
+    readAndAssert(rsp.reader, Json.write(defaultDtabs("yeezus")))
 
     val newDtab = Dtab.read("/yeezy=>/kanye")
     await(store.put("yeezus", newDtab))
-    readAndAssert(rsp.reader, HttpControlService.Json.write(newDtab))
+    readAndAssert(rsp.reader, Json.write(newDtab))
 
     rsp.reader.discard()
   }
