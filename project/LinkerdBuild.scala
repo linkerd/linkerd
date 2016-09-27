@@ -260,10 +260,20 @@ object LinkerdBuild extends Base {
       unmanagedBase := baseDirectory.value / "plugins"
     )
 
+    val MinimalProjects = Seq[ProjectReference](
+      core, main, Namer.fs, Storage.inMemory, Router.http,
+      Iface.controlHttp, Iface.interpreterThrift
+    )
+
     val Bundle = config("bundle") extend Minimal
     val BundleSettings = MinimalSettings ++ Seq(
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       dockerTag := version.value
+    )
+
+    val BundleProjects = Seq[ProjectReference](
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
+      Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
     )
 
     /**
@@ -308,17 +318,11 @@ object LinkerdBuild extends Base {
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(
-        core, main, Namer.fs, Storage.inMemory, Router.http,
-        Iface.controlHttp, Iface.interpreterThrift
-      )
+      .configDependsOn(Minimal)(MinimalProjects: _*)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle includes all of the supported features:
-      .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets,
-        Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
-      )
+      .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
@@ -340,6 +344,8 @@ object LinkerdBuild extends Base {
 
     val examples = projectDir("namerd/examples")
       .withExamples(Namerd.all, exampleConfigs)
+      .configDependsOn(Test)(MinimalProjects ++ BundleProjects: _*)
+      .withTests()
   }
 
   object Interpreter {
@@ -484,9 +490,23 @@ object LinkerdBuild extends Base {
       unmanagedBase := baseDirectory.value / "plugins"
     )
 
+    val MinimalProjects = Seq[ProjectReference](
+      admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog
+    )
+
     val BundleSettings = MinimalSettings ++ Seq(
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       dockerTag := version.value
+    )
+
+    val BundleProjects = Seq[ProjectReference](
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
+      Protocol.mux, Protocol.thrift,
+      Announcer.serversets,
+      Telemetry.core, Telemetry.tracelog,
+      Tracer.zipkin,
+      tls
     )
 
     val all = projectDir("linkerd")
@@ -495,18 +515,11 @@ object LinkerdBuild extends Base {
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
-      .configDependsOn(Minimal)(admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog)
+      .configDependsOn(Minimal)(MinimalProjects: _*)
       .settings(inConfig(Minimal)(MinimalSettings))
       .withTwitterLib(Deps.finagle("stats") % Minimal)
       // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(
-        Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
-        Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
-        Protocol.mux, Protocol.thrift,
-        Announcer.serversets,
-        Telemetry.core, Telemetry.tracelog,
-        Tracer.zipkin,
-        tls)
+      .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
       .settings(
         assembly <<= assembly in Bundle,
@@ -526,6 +539,8 @@ object LinkerdBuild extends Base {
 
     val examples = projectDir("linkerd/examples")
       .withExamples(Linkerd.all, exampleConfigs)
+      .configDependsOn(Test)(MinimalProjects ++ BundleProjects: _*)
+      .withTests()
   }
 
   val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
@@ -621,8 +636,10 @@ object LinkerdBuild extends Base {
       testUtil,
       Interpreter.all,
       Linkerd.all,
+      Linkerd.examples,
       Namer.all,
       Namerd.all,
+      Namerd.examples,
       Router.all,
       Telemetry.all
     )
