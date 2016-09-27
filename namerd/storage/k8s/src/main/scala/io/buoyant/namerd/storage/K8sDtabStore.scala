@@ -68,7 +68,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
       case Return(dtabList) =>
         val initState: NsMap = dtabList.items.map(toDtabMap)(breakOut)
         state.update(Activity.Ok(initState))
-        val (stream, close) = watchApi.dtabs.watch(None, None, dtabList.apiVersion)
+        val (stream, close) = watchApi.dtabs.watch(None, None, dtabList.metadata.flatMap(_.resourceVersion))
         closeRef.set(close)
         val _ = stream.foldLeft(initState) { (nsMap, watchEvent) =>
           val newState: NsMap = watchEvent match {
