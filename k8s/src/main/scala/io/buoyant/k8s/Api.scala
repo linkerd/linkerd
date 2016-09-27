@@ -56,8 +56,14 @@ object Api {
     }
 
   private[k8s] def parse[T: Manifest](rsp: http.Response): Future[T] =
-    getContent(rsp).flatMap { content =>
-      Future.const(Json.read[T](content))
+    rsp.status match {
+      case http.Status.Successful(_) =>
+        getContent(rsp).flatMap { content =>
+          Future.const(Json.read[T](content))
+        }
+      case http.Status.NotFound => Future.exception(Api.NotFound(rsp))
+      case http.Status.Conflict => Future.exception(Api.Conflict(rsp))
+      case _ => Future.exception(Api.UnexpectedResponse(rsp))
     }
 }
 
