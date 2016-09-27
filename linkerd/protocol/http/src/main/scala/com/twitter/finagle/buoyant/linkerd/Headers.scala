@@ -5,9 +5,9 @@ import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
-import com.twitter.io.Charsets
 import com.twitter.util.{Future, Return, Throw, Time, Try}
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
 import scala.collection.breakOut
 
@@ -419,7 +419,7 @@ object Headers {
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
       val rsp = Response(status)
-      rsp.headerMap(Key) = URLEncoder.encode(msg, Charsets.Iso8859_1.toString)
+      rsp.headerMap(Key) = URLEncoder.encode(msg, ISO_8859_1.toString)
       rsp.contentType = MediaType.Txt
       rsp.contentString = msg
       rsp
