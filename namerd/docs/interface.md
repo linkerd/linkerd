@@ -48,11 +48,10 @@ Key | Default Value | Description
 ip | loopback | The local IP address on which to serve the namer interface.
 port | `4180` | The port number on which to serve the namer interface.
 
-### API Reference
-
-#### GET /api/1/dtabs
+### GET /api/1/dtabs
 
 > Sample response
+
 ```
 ["default"]
 ```
@@ -61,9 +60,10 @@ Returns a list of all dtab namespaces.
 
 Content-types: application/json
 
-#### GET /api/1/dtabs/<namespace>
+### GET /api/1/dtabs/&lt;namespace&gt;
 
 > Sample response
+
 ```
 [{"prefix":"/http/1.1/GET","dst":"/#/io.l5d.fs"}]
 ```
@@ -78,9 +78,9 @@ watch | uri | If true, updates are returned as a streaming response.
 
 Content-types: application/json, application/dtab
 
-#### POST /api/1/dtabs/<namespace>
+### POST /api/1/dtabs/&lt;namespace&gt;
 
-Sample response (204 NO CONTENT)
+> Sample response (204 NO CONTENT)
 
 Creates a new dtab with the given namespace.  The post body should contain the
 dtab to create and can be in json or dtab format.  Returns status code 400 for
@@ -90,9 +90,9 @@ Parameter | Type | Description
 --------- | ---- | -----------
 namespace | path | The dtab namespace to create.
 Content-Type | header | The content type of the provided dtab.
-          | post-body | The dtab to create.
+N/A | post-body | The dtab to create.
 
-#### PUT /api/1/dtabs/<namespace>
+### PUT /api/1/dtabs/&lt;namespace&gt;
 
 > Sample response (204 NO CONTENT)
 
@@ -108,9 +108,9 @@ Content-Type | header | The content type of the provided dtab.
 If-Match | header | If provided, the update will only be applied if the If-Match
                     header matches the current dtab version.  This can be used
                     to prevent conflicting updates.
-          | post-body | The dtab to create.
+N/A | post-body | The dtab to create.
 
-#### DELETE /api/1/dtabs/<namespace>
+### DELETE /api/1/dtabs/&lt;namespace&gt;
 
 > Sample response (204 NO CONTENT)
 
@@ -122,9 +122,10 @@ Parameter | Type | Description
 namespace | path | The dtab namespace to delete.
 
 
-#### GET /api/1/bind/<namespace>
+### GET /api/1/bind/&lt;namespace&gt;
 
 > Sample response
+
 ```
 {
    "bound" : {
@@ -158,9 +159,10 @@ watch | uri | If true, updates are returned as a streaming response.
 
 Content-types: application/json
 
-#### GET /api/1/addr/<namespace>
+### GET /api/1/addr/&lt;namespace&gt;
 
 > Sample response
+
 ```
 {
    "addrs" : [
@@ -185,9 +187,10 @@ watch | uri | If true, updates are returned as a streaming response.
 
 Content-types: application/json
 
-#### GET /api/1/resolve/<namespace>
+### GET /api/1/resolve/&lt;namespace&gt;
 
 > Sample response
+
 ```
 {
    "type" : "bound",
@@ -214,9 +217,10 @@ watch | uri | If true, updates are returned as a streaming response.
 
 Content-types: application/json
 
-#### GET /api/1/delegate/<namespace>
+### GET /api/1/delegate/&lt;namespace&gt;
 
 > Sample response
+
 ```
 {
    "path" : "/http/1.1/GET/default",
@@ -259,9 +263,10 @@ watch | uri | If true, updates are returned as a streaming response.
 
 Content-types: application/json
 
-#### GET /api/1/bound-names
+### GET /api/1/bound-names
 
 > Sample Response
+
 ```
 [
    "/#/io.l5d.fs/default"
