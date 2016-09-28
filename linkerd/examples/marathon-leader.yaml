@@ -1,3 +1,4 @@
+#notest
 namers:
 - kind:         io.l5d.marathon
   experimental: true
