@@ -7,6 +7,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -42,6 +43,8 @@ case class NamerdInterpreterConfig(
   tls: Option[ClientTlsConfig]
 ) extends InterpreterConfig {
 
+  private[this] val log = Logger.get("namerd")
+
   @JsonIgnore
   val defaultRetry = Retry(5, 10.minutes.inSeconds)
 
@@ -71,7 +74,11 @@ case class NamerdInterpreterConfig(
           def make(_stats: param.Stats, next: ServiceFactory[Req, Rsp]) = {
             val param.Stats(stats) = _stats
             val retry = new RetryFilter[Req, Rsp](
-              RetryPolicy.backoff(backoffs) { case (_, Throw(NonFatal(ex))) => true },
+              RetryPolicy.backoff(backoffs) {
+                case (_, Throw(NonFatal(ex))) =>
+                  log.error(ex, "namerd request failed")
+                  true
+              },
               HighResTimer.Default,
               stats,
               RetryBudget.Infinite

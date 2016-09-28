@@ -1,0 +1,16 @@
+admin:
+  port: 9991
+storage:
+  kind: io.l5d.inMemory
+  namespaces:
+    default: |
+      /http/1.1/GET => /#/io.l5d.fs;
+namers:
+- kind: io.l5d.fs
+  rootDir: namerd/examples/disco
+interfaces:
+- kind: io.l5d.thriftNameInterpreter
+  tls:
+    certPath: namerd/examples/certs/namerd-cert.pem
+    keyPath: namerd/examples/certs/namerd-key.pem
+- kind: io.l5d.httpController
