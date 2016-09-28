@@ -9,3 +9,5 @@ http.pid
 .idea
 .iml
 .DS_Store
+
+**/*.iml

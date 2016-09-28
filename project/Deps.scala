@@ -2,6 +2,10 @@ import sbt._
 
 object Deps {
 
+  val curatorFramework = "org.apache.curator" % "curator-framework" % "2.9.1"
+  val curatorClient = "org.apache.curator" % "curator-client" % "2.9.1"
+  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "2.9.1"
+
   // process lifecycle
   val twitterServer =
     ("com.twitter" %% "twitter-server" % "1.21.0")
@@ -25,7 +29,7 @@ object Deps {
   val jacksonDatabind =
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonScala =
-    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion 
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
   val jackson =
     jacksonCore :: jacksonAnnotations :: jacksonDatabind :: jacksonScala :: Nil
 
