@@ -25,6 +25,7 @@ port | `4100` | The port number on which to server the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
 cache | see [cache](#cache) | Binding and address cache size configuration.
+tls | no tls | The namer interface will serve over TLS if this parameter is provided. see [TLS](#namerd-server-tls).
 
 ### Cache
 
@@ -35,6 +36,14 @@ bindingCacheInactive | `100` | The size of the binding inactive cache.
 addrCacheActive | `1000` | The size of the address active cache.
 addrCacheInactive | `100` | The size of the address inactive cache.
 
+### namerd server tls
+
+In order to accept incoming tls traffic, the tls parameter must be defined.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+certPath | _required_ | File path to the TLS certificate file.
+keyPath | _required_ | File path to the TLS key file.
 
 ## Http Controller
 
