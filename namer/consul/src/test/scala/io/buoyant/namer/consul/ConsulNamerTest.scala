@@ -35,9 +35,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
     case state => fail(s"unexpected state: $state")
   }
 
-  class TestAgentApi(domain: String) extends AgentApi(null, "/v1") {
+  class TestAgentApi(domain: String, datacenter: Option[String] = None) extends AgentApi(null, "/v1") {
     override def localAgent(retry: Boolean): Future[LocalAgent] =
-      Future.value(LocalAgent(Config = Some(Config(Domain = Some(domain)))))
+      Future.value(LocalAgent(Config = Some(Config(Domain = Some(domain), Datacenter = datacenter))))
   }
 
   test("Namer stays pending while looking up datacenter for the first time") {
