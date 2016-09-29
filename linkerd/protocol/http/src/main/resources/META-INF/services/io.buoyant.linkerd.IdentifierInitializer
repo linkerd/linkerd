@@ -1,4 +1,4 @@
 io.buoyant.linkerd.protocol.http.HeaderIdentifierInitializer
 io.buoyant.linkerd.protocol.http.MethodAndHostIdentifierInitializer
-io.buoyant.linkerd.protocol.http.MethodAndServiceIdentifierInitializer
+io.buoyant.linkerd.protocol.http.CanaryAndServiceIdentifierInitializer
 io.buoyant.linkerd.protocol.http.PathIdentifierInitializer
