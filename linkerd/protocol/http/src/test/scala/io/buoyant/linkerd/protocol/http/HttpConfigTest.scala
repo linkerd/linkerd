@@ -23,15 +23,20 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |httpAccessLog: access.log
                   |identifier:
                   |  kind: io.l5d.methodAndHost
-                  |maxChunkKB: 8KB
-                  |maxHeadersKB: 8KB
-                  |maxInitialLineKB: 4KB
-                  |maxRequestKB: 5MB
-                  |maxResponseKB: 5MB
+                  |maxChunkKB: 8
+                  |maxHeadersKB: 8
+                  |maxInitialLineKB: 4
+                  |maxRequestKB: 5120
+                  |maxResponseKB: 5120
                   |servers:
                   |- port: 5000
       """.stripMargin
-    val _ = parse(yaml)
+    val config = parse(yaml)
+    assert(config.maxChunkKB.get == 8)
+    assert(config.maxHeadersKB.get == 8)
+    assert(config.maxInitialLineKB.get == 4)
+    assert(config.maxRequestKB.get == 5120)
+    assert(config.maxResponseKB.get == 5120)
   }
 
   test("default to methodAndHost identifier") {
