@@ -3,12 +3,15 @@ package io.buoyant.router
 import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
 import com.twitter.finagle.tracing.Trace
+import com.twitter.logging.Logger
 import com.twitter.util.{Throw, Return, Future, Time}
 import scala.util.control.NoStackTrace
 
 object RoutingFactory {
   val role = Stack.Role("RoutingFactory")
   val description = "Performs per-request name binding"
+
+  private val log = Logger.get(getClass.getName)
 
   /**
    * An Identifier determines a [[com.twitter.finagle.buoyant.Dst
@@ -135,12 +138,19 @@ class RoutingFactory[Req, Rsp](
 
         // Client acquisition failures are recorded within the
         // clientFactory's path stack.
-        service <- clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
+        service <- {
+          log.debug("obtaining client for %s", dst)
+          clientFactory(dst, conn).onFailure(Annotations.Failure.ClientAcquisition.record)
+        }
 
         // Service failures are recorded within the clientFactory's
         // path stack, too.
-        rsp <- service(req1).ensure {
-          val _ = service.close()
+        rsp <- {
+          log.debug("issuing request on %s %s", dst, req1)
+          service(req1).ensure {
+            log.debug("closing service for %s %s", dst, req1)
+            val _ = service.close()
+          }
         }
       } yield rsp
     }

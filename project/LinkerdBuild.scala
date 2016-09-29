@@ -396,7 +396,7 @@ object LinkerdBuild extends Base {
     object Protocol {
       val http = projectDir("linkerd/protocol/http")
         .withTests().withE2e().withIntegration()
-        .withTwitterLibs(Deps.finagle("netty4-http"))
+        .withTwitterLibs(Deps.finagle("netty4-http"), Deps.finagle("http2"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           tls % "integration",

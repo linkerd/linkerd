@@ -42,7 +42,7 @@ wait_for_running() {
 run_tests() {
   export LOG_LEVEL=DEBUG
 
-  curl -s localhost:9990/admin/shutdown || true
+  curl -sX POST localhost:9990/admin/shutdown || true
   ./sbt linkerd-examples/acceptance-test:run &
 
   # Wait for linkerd to initialize
@@ -58,7 +58,7 @@ run_tests() {
   http_test
 
   # Stop linkerd
-  curl -s localhost:9990/admin/shutdown
+  curl -sX POST localhost:9990/admin/shutdown
 
   if [ $request_failed = true ]; then
     # Report failure, leave tmp dir intact

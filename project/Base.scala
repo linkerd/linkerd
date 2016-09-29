@@ -107,6 +107,9 @@ class Base extends Build {
   val dockerTag = settingKey[String]("docker image tag")
   val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
 
+
+  private[this] val BuildFileRE = "^.*:BUILD$".r
+
   val appPackagingSettings = assemblySettings ++ baseDockerSettings ++ Seq(
     assemblyExecScript := defaultExecScript,
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(
@@ -116,6 +119,7 @@ class Base extends Build {
       }),
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     assemblyMergeStrategy in assembly := {
+      case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
       case path => (assemblyMergeStrategy in assembly).value(path)

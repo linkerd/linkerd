@@ -1,0 +1,26 @@
+telemetry:
+- kind: io.l5d.tracelog
+- kind: io.l5d.commonMetrics
+
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.path
+  dstPrefix: /h2
+  baseDtab: |
+    /srv => /#/io.l5d.fs;
+    /h2 => /srv;
+  client:
+    engine:
+      kind: h2
+      priorKnowledge: true
+  servers:
+  - port: 4142
+    ip: 0.0.0.0
+    engine:
+      kind: h2
+      priorKnowledge: true
