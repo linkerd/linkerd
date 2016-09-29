@@ -41,10 +41,10 @@ The Kubernetes storage plugin does not support TLS.  Instead, you should run `ku
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
 
-**How to check ThirdPartyResource is enabled**  
-    1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.  
+**How to check ThirdPartyResource is enabled**
+    1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
     2. Check that kind `ThirdPartyResource` exists in response:
-    
+
     ```
     {
       "kind": "APIResourceList",
@@ -60,7 +60,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
     }
     ```
 
-**Example of configuration for ThirdPartyResource in Kubernetes**  
+**Example of configuration for ThirdPartyResource in Kubernetes**
 
   ```yaml
   metadata:
@@ -71,8 +71,8 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
   versions:
     - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
   ```
---- 
-*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 services for sync with `Linkerd` and `Namerd API`:*  
+---
+*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 services for sync with `Linkerd` and `Namerd API`:*
 
 ```yaml
 apiVersion: v1
@@ -234,5 +234,5 @@ token | no auth | The auth token to use when making API calls.
 datacenter | uses agent's datacenter | The datacenter to forward requests to.
 readConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for reads.
 writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
-failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API
+failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 
