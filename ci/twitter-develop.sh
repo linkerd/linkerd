@@ -94,10 +94,11 @@ build finagle \
       finagle-http2/publishLocal \
       finagle-mux/publishLocal \
       finagle-ostrich4/publishLocal \
-      finagle-thrift/publishLocal \
-      finagle-thriftmux/publishLocal \
       finagle-stats/publishLocal \
       finagle-serversets/publishLocal \
+      finagle-thrift/publishLocal \
+      finagle-thriftmux/publishLocal \
+      finagle-toggle/publishLocal \
       finagle-zipkin-core/publishLocal \
       finagle-zipkin/publishLocal \
       finagle-benchmark/publishLocal

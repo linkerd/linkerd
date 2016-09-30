@@ -1,0 +1,2 @@
+io.buoyant.linkerd.protocol.h2.HeaderTokenIdentifierInitializer
+io.buoyant.linkerd.protocol.h2.HeaderPathIdentifierInitializer

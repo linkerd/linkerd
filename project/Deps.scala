@@ -14,6 +14,9 @@ object Deps {
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "6.39.0"
 
+  def netty4(mod: String) =
+    "io.netty" % s"netty-$mod" % "4.1.4.Final"
+
   def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
 
   // Jackson (parsing)
