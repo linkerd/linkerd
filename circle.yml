@@ -1,4 +1,6 @@
 machine:
+  environment:
+    TWITTER_DEVELOP: 1
   java:
     version: oraclejdk8
   node:
