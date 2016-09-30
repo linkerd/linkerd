@@ -205,7 +205,7 @@ failFast | `false` | If `false`, disable fail fast and failure accrual for Consu
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the consul namer.
-datacenter | yes | The Consul datacenter to use for this request.
+datacenter | yes | The Consul datacenter to use for this request. It can have a value `.local` (otherwise invalid datacenter name from Consul's perspective) in order to reference a datacenter of the agent namer is connected to.
 tag | yes if includeTag is `true` | The Consul tag to use for this request.
 serviceName | yes | The Consul service name to use for this request.
 
