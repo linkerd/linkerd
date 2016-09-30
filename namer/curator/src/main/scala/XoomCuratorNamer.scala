@@ -14,7 +14,7 @@ import org.apache.curator.x.discovery.details.{ServiceCacheListener, InstanceSer
 
 import scala.collection.JavaConverters._
 
-class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) extends Namer {
+class XoomCuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) extends Namer {
 
   private val log = Logger.get(getClass.getName)
 
@@ -49,19 +49,6 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
 
   serviceDiscovery.start
 
-  def isSSL(instance: ServiceInstance[Void]) = {
-    (instance.getSslPort != null)
-  }
-
-  def getAddress(instance: ServiceInstance[Void]) = {
-    var port = if (isSSL(instance)) {
-      instance.getSslPort
-    } else {
-      instance.getPort
-    }
-    Address(instance.getAddress, port)
-  }
-
   override def lookup(path: Path): Activity[NameTree[Name]] = {
 
     val pathString = path.drop(1).show.substring(1)
@@ -84,48 +71,93 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
 
     // TODO Register a callback to update the NameTree
 
-    val instances = serviceCache.getInstances.asScala
-    val ssl = instances.exists(isSSL)
+    var ssl = false;
 
     val addrs = serviceCache.getInstances.asScala.map((instance: ServiceInstance[Void]) => {
-      getAddress(instance)
+      val address = instance.getAddress
+      if (instance.getAddress.startsWith("http")) { // US SPECIFIC
+        val url = new URL(instance.getAddress)
+        if (address.startsWith("https")) ssl = true;
+        Address(url.getHost, url.getPort)
+      } else { // GENERAL SOLUTION
+        var port = 0
+        if (instance.getSslPort != null) {
+          ssl = true
+          port = instance.getSslPort
+        } else {
+          port = instance.getPort
+        }
+        Address(instance.getAddress, port)
+      }
     })
 
     val metadata = Addr.Metadata(("ssl", ssl))
-    val addrInit = Addr.Bound(addrs.toSet, metadata)
+    val addrVar = Var(Addr.Bound(addrs.toSet, metadata))
+    val activity = Activity.value(NameTree.Leaf(Name.Bound(addrVar, path, path)))
 
-    val addrVar = Var.async(addrInit) { update =>
+    // callback stuff
+    serviceCache.addListener(new ServiceCacheListener {
 
-      val listener = new ServiceCacheListener {
+      //      val myActivity: Activity[NameTree[Name]] = activity
+      val myNameTree = activity.sample
+      val myAddrVar = addrVar
 
-        override def cacheChanged(): Unit = {
-          val ssl = instances.exists(isSSL)
-          val addrs = serviceCache.getInstances.asScala.map((instance: ServiceInstance[Void]) => {
-            getAddress(instance)
-          })
+      override def cacheChanged(): Unit = {
+        var ssl = false;
 
-          val metadata = Addr.Metadata(("ssl", ssl))
-          update() = Addr.Bound(addrs.toSet, metadata)
-        }
+        val addrs = serviceCache.getInstances.asScala.map((instance: ServiceInstance[Void]) => {
+          val address = instance.getAddress
+          if (instance.getAddress.startsWith("http")) {
+            // US SPECIFIC
+            val url = new URL(instance.getAddress)
+            if (address.startsWith("https")) ssl = true;
+            Address(url.getHost, url.getPort)
+          } else {
+            // GENERAL SOLUTION
+            var port = 0
+            if (instance.getSslPort != null) {
+              ssl = true
+              port = instance.getSslPort
+            } else {
+              port = instance.getPort
+            }
+            Address(instance.getAddress, port)
+          }
+        })
 
-        override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {}
-
+        val metadata = Addr.Metadata(("ssl", ssl))
+        myAddrVar() = Addr.Bound(addrs.toSet, metadata)
       }
 
-      // callback stuff
-      serviceCache.addListener(listener)
+      override def stateChanged(client: CuratorFramework, newState: ConnectionState): Unit = {}
 
-      Closable.make { deadline =>
-        serviceCache.removeListener(listener)
-        Future.Unit
-      }
-    }
+    })
 
-    Activity.value(NameTree.Leaf(Name.Bound(addrVar, path, path)))
+    return activity
   }
+
+  //  def toAddress(instance: ServiceInstance[Void]) = {
+  //    val address = instance.getAddress
+  //    if (instance.getAddress.startsWith("http")) {
+  //      // US SPECIFIC
+  //      val url = new URL(instance.getAddress)
+  //      if (address.startsWith("https")) ssl = true;
+  //      Address(url.getHost, url.getPort)
+  //    } else {
+  //      // GENERAL SOLUTION
+  //      var port = 0
+  //      if (instance.getSslPort != null) {
+  //        ssl = true
+  //        port = instance.getSslPort
+  //      } else {
+  //        port = instance.getPort
+  //      }
+  //      Address(instance.getAddress, port)
+  //    }
+  //  }
 }
 
-object Curator {
+object XoomCurator {
   val NAME = "name"
   val ID = "id"
   val ADDRESS = "address"

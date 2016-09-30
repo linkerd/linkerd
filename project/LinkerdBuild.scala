@@ -22,7 +22,7 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  lazy val k8s = projectDir("k8s")
+  lazy val  k8s = projectDir("k8s")
     .dependsOn(Namer.core)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
@@ -90,7 +90,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val fs = projectDir("namer/fs")
-      .dependsOn(core % "compile->compile;test->test")
+      .dependsOn(core)
       .withTests()
 
     val k8s = projectDir("namer/k8s")
