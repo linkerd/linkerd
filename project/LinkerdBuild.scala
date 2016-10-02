@@ -162,7 +162,9 @@ object LinkerdBuild extends Base {
        |   -XX:+UseCMSInitiatingOccupancyOnly                \
        |   -XX:CMSInitiatingOccupancyFraction=70             \
        |   -XX:-TieredCompilation                            \
-       |   -XX:+UseStringDeduplication                       "
+       |   -XX:+UseStringDeduplication                       \
+       |   -Dcom.twitter.util.events.sinkEnabled=false       \
+       |   ${LOCAL_JVM_OPTIONS:-}                            "
        |""".stripMargin
 
   object Namerd {

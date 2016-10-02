@@ -28,17 +28,12 @@ object H2 extends Client[Request, Response]
    */
   private[buoyant] case class MinAccumFrames(count: Int)
   implicit private[buoyant] object MinAccumFrames extends Stack.Param[MinAccumFrames] {
-    val default = MinAccumFrames(Int.MaxValue)
+    val default = MinAccumFrames(2)
   }
 
   case class Identifier(mk: Stack.Params => RoutingFactory.Identifier[Request])
   implicit private[buoyant] object Identifier extends Stack.Param[Identifier] {
     val default = PathIdentifier.param
-  }
-
-  case class PriorKnowledge(enabled: Boolean)
-  implicit object PriorKnowledge extends Stack.Param[PriorKnowledge] {
-    val default = PriorKnowledge(true)
   }
 
   /*

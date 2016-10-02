@@ -36,7 +36,9 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     val bb = BufAsByteBuf.Owned(buf)
     val frame = new DefaultHttp2DataFrame(bb, eos)
     if (id >= 0) frame.setStreamId(id)
-    write(frame)
+    write(frame.retain()).ensure {
+      val _ = frame.release()
+    }
   }
 
   def updateWindow(id: Int, incr: Int): Future[Unit] = {

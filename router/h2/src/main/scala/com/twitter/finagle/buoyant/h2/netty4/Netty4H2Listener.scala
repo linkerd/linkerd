@@ -17,6 +17,8 @@ object Netty4H2Listener {
     PriorKnowledgeListener.mk(params)
   }
 
+  val CodecKey = "h2 codec"
+
   private[this] object PriorKnowledgeListener {
 
     def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
@@ -27,23 +29,25 @@ object Netty4H2Listener {
       )
 
     val PlaceholderKey = "prior knowledge placeholder"
-    private[this] object PlaceholderHandler extends ChannelDuplexHandler
 
     // we inject a dummy handler so we can replace it with the real stuff
     // after we get `init` in the setupMarshalling phase.
     private[this] val pipelineInit: ChannelPipeline => Unit = { pipeline =>
-      val _ = pipeline.addLast(PlaceholderKey, PlaceholderHandler)
+      val _ = pipeline.addLast(PlaceholderKey, new ChannelDuplexHandler {})
     }
 
     private[this] val setupMarshalling: ChannelInitializer[Channel] => ChannelHandler = { init =>
-      val initializer = new ChannelInitializer[Channel] {
+      val streamInitializer = new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
-          val _ = ch.pipeline.addLast(init)
+          ch.pipeline.addLast(init)
+          val _ = ch.pipeline.addLast(new DebugHandler("s.frame"))
         }
       }
+      val codec = new Http2Codec(true, streamInitializer)
       new ChannelInitializer[Channel] {
         def initChannel(ch: Channel): Unit = {
-          val _ = ch.pipeline.replace(PlaceholderKey, "h2Codec", new Http2Codec(true, initializer))
+          ch.pipeline.addLast(new DebugHandler("s.bytes"))
+          val _ = ch.pipeline.replace(PlaceholderKey, CodecKey, codec)
         }
       }
     }

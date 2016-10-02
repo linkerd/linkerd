@@ -12,6 +12,7 @@ import scala.util.control.NoStackTrace
 import java.util.concurrent.atomic.AtomicReference
 
 private[h2] object Netty4DataStream {
+  private val log = com.twitter.logging.Logger.get(getClass.getName)
 
   type Releaser = Int => Future[Unit]
 
@@ -50,7 +51,8 @@ private[h2] object Netty4DataStream {
     def buf = ByteBufAsBuf.Owned(frame.content)
     def isEnd = frame.isEndStream
     def release(): Future[Unit] = {
-      frame.content.release() // ???
+      // XXX this causes problems currently, but it seems like we should release things here...
+      // frame.content.release()
       releaser(windowIncrement)
     }
   }
@@ -87,7 +89,7 @@ private[h2] class Netty4DataStream(
   def onEnd: Future[Unit] = endP
 
   /** We need to process at least one frame. */
-  def isEmpty = state.get.isInstanceOf[Closed]
+  def isEmpty: Boolean = state.get.isInstanceOf[Closed]
 
   /** Fail the underlying queue and*/
   def fail(exn: Throwable): Unit =
@@ -96,15 +98,11 @@ private[h2] class Netty4DataStream(
       endP.setException(exn)
     }
 
-  def offer(frame: Http2StreamFrame): Boolean = {
-    val s = state.get
-    s match {
-      case Open =>
-        frameq.offer(frame)
-
+  def offer(frame: Http2StreamFrame): Boolean =
+    state.get match {
+      case Open => frameq.offer(frame)
       case _ => false
     }
-  }
 
   /**
    * Read a Data from the underlying queue.
@@ -143,10 +141,9 @@ private[h2] class Netty4DataStream(
         toData(f)
       } else throw expectedOpenException(state.get)
 
-    case f: Http2DataFrame if (frameq.size + 1) < minAccumFrames => toData(f)
-
     case f: Http2DataFrame =>
-      frameq.drain() match {
+      if (frameq.size + 1 < minAccumFrames) toData(f)
+      else frameq.drain() match {
         case Throw(_) => toData(f)
         case Return(q) => accumStream(f +: q)
       }
@@ -178,8 +175,7 @@ private[h2] class Netty4DataStream(
     val nFrames = frames.length
     val iter = frames.iterator
     while (!dataEos && trailers == null && iter.hasNext) {
-      val f = iter.next()
-      f match {
+      iter.next() match {
         case f: Http2DataFrame =>
           bytes += f.content.readableBytes + f.padding
           // Initialize content using the first frame's allocator
