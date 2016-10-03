@@ -35,8 +35,14 @@ private[consul] class LookupCache(
           NameTree.Neg
 
         case Some(addr) =>
-          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
-          NameTree.Leaf(Name.Bound(addr, id, residual))
+          addr.sample() match {
+            case Addr.Neg =>
+              log.debug("consul dc %s service %s missing", dc, key)
+              NameTree.Neg
+            case _ =>
+              log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+              NameTree.Leaf(Name.Bound(addr, id, residual))
+          }
       }
     }
   }

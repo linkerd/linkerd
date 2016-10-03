@@ -201,7 +201,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 2,
       Seq("dc", "adds") -> 4,
-      Seq("lookups") -> 1
+      Seq("lookups") -> 1,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+      Seq("service", "closes") -> 1
     ))
   }
 
@@ -253,9 +256,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 2,
+      Seq("service", "closes") -> 2,
       Seq("lookups") -> 1
     ))
   }
@@ -316,9 +319,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 2,
-      Seq("service", "updates") -> 4,
-      Seq("service", "closes") -> 2,
+      Seq("service", "opens") -> 3,
+      Seq("service", "updates") -> 6,
+      Seq("service", "closes") -> 3,
       Seq("lookups") -> 1
     ))
   }
@@ -375,9 +378,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 2,
+      Seq("service", "closes") -> 2,
       Seq("lookups") -> 1
     ))
   }
@@ -429,9 +432,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 2,
+      Seq("service", "closes") -> 2,
       Seq("lookups") -> 1
     ))
   }
@@ -491,9 +494,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
+      Seq("service", "opens") -> 2,
+      Seq("service", "updates") -> 2,
+      Seq("service", "closes") -> 2,
       Seq("lookups") -> 1
     ))
   }
