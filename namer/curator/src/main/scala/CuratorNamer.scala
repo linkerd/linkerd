@@ -1,6 +1,5 @@
 package io.buoyant.namer.curator
 
-import java.net.URL
 import java.util.concurrent.TimeUnit._
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.twitter.finagle._
@@ -28,6 +27,7 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
 
     override def serialize(instance: ServiceInstance[Void]): Array[Byte] = Array[Byte](0)
 
+    // Completely ignores a Curator service discovery payload object if it exists.
     override def deserialize(bytes: Array[Byte]): ServiceInstance[Void] = {
       val jsonNode = objectMapper.readTree(bytes)
 
@@ -37,7 +37,7 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
         jsonNode.get(Curator.ADDRESS).asText,
         if (!jsonNode.get(Curator.PORT).isNull) jsonNode.get(Curator.PORT).asInt else null,
         if (!jsonNode.get(Curator.SSL_PORT).isNull) jsonNode.get(Curator.SSL_PORT).asInt else null,
-        null, // TODO If payload exists return map
+        null,
         jsonNode.get(Curator.REG_TIME).asLong,
         ServiceType.DYNAMIC,
         null
@@ -54,7 +54,7 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
   }
 
   def getAddress(instance: ServiceInstance[Void]) = {
-    var port = if (isSSL(instance)) {
+    val port = if (isSSL(instance)) {
       instance.getSslPort
     } else {
       instance.getPort
@@ -62,27 +62,16 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
     Address(instance.getAddress, port)
   }
 
+  def getServiceName(path: Path): String = {
+    val Path.Utf8(serviceName, rest@_*) = path
+    serviceName
+  }
+
   override def lookup(path: Path): Activity[NameTree[Name]] = {
 
-    val pathString = path.drop(1).show.substring(1)
-    // TODO Assumes the Host: <name>.<custom-tld> pattern
-    val regex = "([\\w\\.-]+)\\.(\\w+):(\\d+)".r
-    val result = regex.findFirstMatchIn(pathString)
-    var serviceName = result.get.group(1).replace('.', ':') // US SPECIFIC character replacement
-
-    // DEBUG
-    if (!result.isEmpty) {
-      println(s"SERVICE NAME: ${result.get.group(1)}")
-      println(s"TLD: ${result.get.group(2)}")
-      println(s"PORT: ${result.get.group(3)}")
-    }
-
-    //    serviceDiscovery.queryForInstances(serviceName)
+    val serviceName = getServiceName(path)
     val serviceCache = serviceDiscovery.serviceCacheBuilder().name(serviceName).build();
-    // TODO What happens when there are no instances?
     serviceCache.start()
-
-    // TODO Register a callback to update the NameTree
 
     val instances = serviceCache.getInstances.asScala
     val ssl = instances.exists(isSSL)
@@ -112,7 +101,6 @@ class CuratorNamer(zookeeperConnectionString: String, baseZnodePath: String) ext
 
       }
 
-      // callback stuff
       serviceCache.addListener(listener)
 
       Closable.make { deadline =>
