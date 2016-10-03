@@ -48,7 +48,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     }
   }
 
-  test("streamRequest") {
+  test("writeStream") {
     val id = 6
     var recvq = Queue.empty[Http2StreamFrame]
     val writer = new Netty4H2Writer {
@@ -68,7 +68,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
       def read() = sendq.poll()
       def fail(exn: Throwable) = ???
     }
-    val w = stream.streamRequest(data)
+    val w = stream.writeStream(data)
     assert(!w.isDefined)
 
     val heyo = Buf.Utf8("heyo")

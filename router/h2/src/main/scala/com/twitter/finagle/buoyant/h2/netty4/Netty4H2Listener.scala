@@ -4,23 +4,49 @@ package netty4
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
 import com.twitter.finagle.server.Listener
+import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
+import io.netty.channel.socket.SocketChannel
 import io.netty.handler.codec.http2.{Http2Codec, Http2StreamFrame}
+import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
 
 /**
  * Based on com.twitter.finagle.http2.Http2Listener
  */
 object Netty4H2Listener {
 
-  def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] = {
-    PriorKnowledgeListener.mk(params)
-  }
+  def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
+    params[Transport.Tls] match {
+      case Transport.Tls(TlsConfig.Disabled) =>
+        params[param.PriorKnowledge] match {
+          case param.PriorKnowledge(false) =>
+            throw new IllegalArgumentException("param.PriorKnowledge must be true")
+          case param.PriorKnowledge(true) => PriorKnowledgeListener.mk(params)
+        }
+      case Transport.Tls(_) => TlsListener.mk(params)
+    }
 
   val CodecKey = "h2 codec"
 
-  private[this] object PriorKnowledgeListener {
+  val CodecPlaceholderKey = "h2 codec placeholder"
+  val CodecPlaceholder = new ChannelDuplexHandler
+  protected[this] val CodecPlaceholderInit: ChannelPipeline => Unit = { pipeline =>
+    val _ = pipeline.addLast(CodecPlaceholderKey, CodecPlaceholder)
+  }
 
+  private[this] def streamInitializer(init: ChannelInitializer[Channel]): ChannelHandler =
+    new ChannelInitializer[Channel] {
+      def initChannel(ch: Channel): Unit = {
+        ch.pipeline.addLast(init)
+        ch.pipeline.addLast(new DebugHandler("s.frame")); ()
+      }
+    }
+
+  private[this] def mkCodec(init: ChannelInitializer[Channel]) =
+    new Http2Codec(true /* server */ , streamInitializer(init))
+
+  private[this] trait ListenerMaker {
     def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
       Netty4Listener(
         pipelineInit = pipelineInit,
@@ -28,28 +54,46 @@ object Netty4H2Listener {
         setupMarshalling = setupMarshalling
       )
 
-    val PlaceholderKey = "prior knowledge placeholder"
+    protected[this] def pipelineInit: ChannelPipeline => Unit
+    protected[this] def setupMarshalling: ChannelInitializer[Channel] => ChannelHandler
+  }
 
-    // we inject a dummy handler so we can replace it with the real stuff
-    // after we get `init` in the setupMarshalling phase.
-    private[this] val pipelineInit: ChannelPipeline => Unit = { pipeline =>
-      val _ = pipeline.addLast(PlaceholderKey, new ChannelDuplexHandler {})
+  private[this] object PriorKnowledgeListener extends ListenerMaker {
+    override protected[this] val pipelineInit = CodecPlaceholderInit
+    override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
+      val codec = mkCodec(init)
+      new ChannelInitializer[SocketChannel] {
+        def initChannel(ch: SocketChannel): Unit = {
+          ch.pipeline.addLast(new DebugHandler("s.bytes"))
+          ch.pipeline.replace(CodecPlaceholderKey, CodecKey, codec); ()
+        }
+      }
+    }
+  }
+
+  private[this] object TlsListener extends ListenerMaker {
+    override protected[this] val pipelineInit = CodecPlaceholderInit
+    override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
+      val alpn = new Alpn(mkCodec(init))
+      new ChannelInitializer[SocketChannel] {
+        def initChannel(ch: SocketChannel): Unit = {
+          ch.pipeline.addLast(alpn); ()
+        }
+      }
     }
 
-    private[this] val setupMarshalling: ChannelInitializer[Channel] => ChannelHandler = { init =>
-      val streamInitializer = new ChannelInitializer[Channel] {
-        def initChannel(ch: Channel): Unit = {
-          ch.pipeline.addLast(init)
-          val _ = ch.pipeline.addLast(new DebugHandler("s.frame"))
+    class Alpn(codec: ChannelHandler)
+      extends ApplicationProtocolNegotiationHandler(ApplicationProtocolNames.HTTP_2) {
+
+      override protected def configurePipeline(ctx: ChannelHandlerContext, proto: String): Unit =
+        proto match {
+          case ApplicationProtocolNames.HTTP_2 =>
+            ctx.channel.config.setAutoRead(true) // xxx cargo cult
+            ctx.pipeline.replace(CodecPlaceholderKey, CodecKey, codec); ()
+
+          // TODO case ApplicationProtocolNames.HTTP_1_1 =>
+          case proto => throw new IllegalStateException(s"unknown protocol: $proto")
         }
-      }
-      val codec = new Http2Codec(true, streamInitializer)
-      new ChannelInitializer[Channel] {
-        def initChannel(ch: Channel): Unit = {
-          ch.pipeline.addLast(new DebugHandler("s.bytes"))
-          val _ = ch.pipeline.replace(PlaceholderKey, CodecKey, codec)
-        }
-      }
     }
   }
 

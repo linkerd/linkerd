@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2.{Request, Response, ServerDispatcher}
 import com.twitter.finagle.buoyant.h2.netty4._
+import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.param
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
@@ -26,10 +27,6 @@ object H2 extends Client[Request, Response]
    * Clients and servers may accumulate data frames into a single
    * combined data frame.
    */
-  private[buoyant] case class MinAccumFrames(count: Int)
-  implicit private[buoyant] object MinAccumFrames extends Stack.Param[MinAccumFrames] {
-    val default = MinAccumFrames(2)
-  }
 
   case class Identifier(mk: Stack.Params => RoutingFactory.Identifier[Request])
   implicit private[buoyant] object Identifier extends Stack.Param[Identifier] {
