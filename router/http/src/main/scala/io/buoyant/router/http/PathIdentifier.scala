@@ -21,7 +21,13 @@ case class PathIdentifier(
     req.path.split("/").drop(1) match {
       case path if path.size >= segments =>
         if (consume) {
-          req.uri = req.uri.split("/").drop(segments + 1).mkString("/", "/", "")
+          req.uri = req.uri.split("/").drop(segments + 1) match {
+            case Array() => "/"
+            case x => {
+              val endWithSlash = if (req.path.endsWith("/")) "/" else ""
+              x.mkString("/", "/", endWithSlash)
+            }
+          }
         }
         val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
         Future.value(new IdentifiedRequest[Request](dst, req))
