@@ -4,11 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.ssl.Ssl
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.ssl.OpenSSL
+import com.twitter.finagle.transport.{TlsConfig, Transport}
 import com.twitter.finagle.{Path, ListeningServer, Stack}
 import io.buoyant.config.types.Port
+import io.netty.handler.ssl.{ApplicationProtocolConfig, SslContextBuilder}
+import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
+import scala.collection.JavaConverters._
 
 /**
  * A Server configuration, describing a request-receiving interface
@@ -88,19 +91,41 @@ class ServerConfig { config =>
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
 
-  private[this] def requestSemaphore = maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
+  private[this] def requestSemaphore =
+    maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
-    .maybeWith(tls.map {
-      case TlsServerConfig(certPath, keyPath) => tlsParam(certPath, keyPath)
-    }) + RequestSemaphoreFilter.Param(requestSemaphore)
+    .maybeWith(tls.map(tlsParam(_))) +
+    RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def tlsParam(certificatePath: String, keyPath: String) =
-    Transport.TLSServerEngine(
-      Some(() => Ssl.server(certificatePath, keyPath, null, null, null))
-    )
+  private[this] def tlsParam(c: TlsServerConfig) = {
+    // val protocol = new ApplicationProtocolConfig(
+    //   ApplicationProtocolConfig.Protocol.ALPN,
+    //   // NO_ADVERTISE and ACCEPT are the only modes supported by both OpenSSL and JDK SSL.
+    //   ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+    //   ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+    //   alpnProtocols.map(_.asJava).orNull
+    // )
+    // val ctx = SslContextBuilder
+    //   .forServer(new File(c.certPath), new File(c.keyPath))
+    //   .trustManager(c.caCertPath.map(new File(_)).orNull)
+    //   .ciphers(c.ciphers.map(_.toIterable.asJava).orNull)
+    //   .applicationProtocolConfig(protocol)
+    //   .build()
+    // Transport.Tls(TlsConfig.ServerSslContext(ctx))
+    Transport.Tls(TlsConfig.ServerCertAndKey(
+      c.certPath,
+      c.keyPath,
+      c.caCertPath,
+      c.ciphers.map(_.mkString(":")),
+      alpnProtocols.map(_.mkString(","))
+    ))
+  }
+
+  @JsonIgnore
+  def alpnProtocols: Option[Seq[String]] = None
 
   @JsonIgnore
   def mk(pi: ProtocolInitializer, routerLabel: String) = Server.Impl(
@@ -114,4 +139,9 @@ class ServerConfig { config =>
   )
 }
 
-case class TlsServerConfig(certPath: String, keyPath: String)
+case class TlsServerConfig(
+  certPath: String,
+  keyPath: String,
+  caCertPath: Option[String],
+  ciphers: Option[Seq[String]]
+)

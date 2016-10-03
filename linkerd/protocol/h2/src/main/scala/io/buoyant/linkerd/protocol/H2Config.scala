@@ -5,6 +5,7 @@ import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.buoyant.router.{H2, RoutingFactory}
+import io.netty.handler.ssl.ApplicationProtocolNames
 
 class H2Initializer extends ProtocolInitializer.Simple {
   val name = "h2"
@@ -44,11 +45,18 @@ object H2Initializer extends H2Initializer
 class H2Config extends RouterConfig {
 
   var client: Option[ClientConfig] = None
-  var servers: Seq[ServerConfig] = Nil
+  var servers: Seq[H2ServerConfig] = Nil
 
   // @JsonIgnore
   // override def baseResponseClassifier = ...
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = H2Initializer
+}
+
+class H2ServerConfig extends ServerConfig {
+
+  @JsonIgnore
+  override val alpnProtocols: Option[Seq[String]] =
+    Some(Seq(ApplicationProtocolNames.HTTP_2))
 }

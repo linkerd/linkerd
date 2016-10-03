@@ -15,6 +15,7 @@ import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegoti
  * Based on com.twitter.finagle.http2.Http2Listener
  */
 object Netty4H2Listener {
+  private val log = com.twitter.logging.Logger.get(getClass.getName)
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
     params[Transport.Tls] match {
@@ -22,17 +23,20 @@ object Netty4H2Listener {
         params[param.PriorKnowledge] match {
           case param.PriorKnowledge(false) =>
             throw new IllegalArgumentException("param.PriorKnowledge must be true")
-          case param.PriorKnowledge(true) => PriorKnowledgeListener.mk(params)
+          case param.PriorKnowledge(true) =>
+            log.info("prior knowledge listener")
+            PriorKnowledgeListener.mk(params)
         }
-      case Transport.Tls(_) => TlsListener.mk(params)
+      case _ =>
+        log.info("tls listener")
+        TlsListener.mk(params)
     }
 
   val CodecKey = "h2 codec"
 
   val CodecPlaceholderKey = "h2 codec placeholder"
-  val CodecPlaceholder = new ChannelDuplexHandler
-  protected[this] val CodecPlaceholderInit: ChannelPipeline => Unit = { pipeline =>
-    val _ = pipeline.addLast(CodecPlaceholderKey, CodecPlaceholder)
+  protected[this] val CodecPlaceholderInit: ChannelPipeline => Unit = { p =>
+    p.addLast(CodecPlaceholderKey, new ChannelDuplexHandler); ()
   }
 
   private[this] def streamInitializer(init: ChannelInitializer[Channel]): ChannelHandler =
@@ -72,7 +76,11 @@ object Netty4H2Listener {
   }
 
   private[this] object TlsListener extends ListenerMaker {
-    override protected[this] val pipelineInit = CodecPlaceholderInit
+    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+      println(p)
+      // p.replace("tls init", "h2 tls init", )
+      CodecPlaceholderInit(p)
+    }
     override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
       val alpn = new Alpn(mkCodec(init))
       new ChannelInitializer[SocketChannel] {

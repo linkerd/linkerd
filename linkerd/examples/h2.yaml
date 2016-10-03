@@ -13,3 +13,6 @@ routers:
   servers:
   - port: 4142
     ip: 0.0.0.0
+    tls:
+      certPath: ./certificates/linkerdcertificate.pem
+      keyPath: ./certificates/private/linkerd.pkcs8
