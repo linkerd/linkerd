@@ -26,11 +26,13 @@ class KvApi(
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
     separator: Option[String] = Some("/"),
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[String]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
+      consistency,
       "keys" -> Some(true.toString),
       "separator" -> separator,
       "index" -> blockingIndex,
@@ -50,11 +52,13 @@ class KvApi(
     path: String,
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[String]] = {
     val req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
+      consistency,
       "raw" -> Some(true.toString),
       "index" -> blockingIndex,
       "dc" -> datacenter
@@ -74,11 +78,13 @@ class KvApi(
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
     recurse: Option[Boolean] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Indexed[Seq[Key]]] = {
     val req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
+      consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "recurse" -> recurse.map(_.toString)
@@ -98,11 +104,13 @@ class KvApi(
     value: String,
     datacenter: Option[String] = None,
     cas: Option[String] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Boolean] = {
     val req = mkreq(
       http.Method.Put,
       s"$kvPrefix$path",
+      consistency,
       "cas" -> cas,
       "dc" -> datacenter
     )
@@ -122,11 +130,13 @@ class KvApi(
     datacenter: Option[String] = None,
     cas: Option[String] = None,
     recurse: Option[Boolean] = None,
+    consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
   ): Future[Boolean] = {
     val req = mkreq(
       http.Method.Delete,
       s"$kvPrefix$path",
+      consistency,
       "cas" -> cas,
       "recurse" -> recurse.map(_.toString),
       "dc" -> datacenter

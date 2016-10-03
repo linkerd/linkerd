@@ -163,6 +163,7 @@ namers:
   includeTag: true
   useHealthCheck: true
   setHost: true
+  consistencyMode: stale
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -184,6 +185,8 @@ includeTag | `false` | If `true`, read a Consul tag from the path.
 useHealthCheck | `false` | If `true`, rely on Consul health checks.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
+consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
+failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 
 ### Consul Path Parameters
 
@@ -279,7 +282,7 @@ namers:
   host:         marathon.mesos
   port:         80
   uriPrefix:    /marathon
-  ttlMs:        500
+  ttlMs:        5000
 ```
 > Then reference the namer in the dtab to use it:
 
@@ -300,7 +303,7 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
-ttlMs | `500` | The polling timeout in milliseconds against the marathon API.
+ttlMs | `5000` | The polling interval in milliseconds against the marathon API.
 
 ### Marathon Path Parameters
 

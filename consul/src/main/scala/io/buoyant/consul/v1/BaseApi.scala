@@ -26,11 +26,13 @@ trait BaseApi extends Closable {
   private[this] val infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
-      case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      case (req, Return(rep)) if rep.status.code >= 500 && rep.status.code < 600 =>
+        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on ${UnexpectedResponse(rep)}")
+        true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (req, Throw(NonFatal(ex))) =>
-        log.error(s"retrying consul request ${req.method} ${req.uri} on error $ex")
+        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on NonFatal error: $ex")
         true
     },
     HighResTimer.Default,
@@ -49,9 +51,18 @@ trait BaseApi extends Closable {
   private[v1] def mkreq(
     method: http.Method,
     path: String,
+    consistency: Option[ConsistencyMode],
     optParams: (String, Option[String])*
   ): http.Request = {
-    val params = optParams.collect { case (k, Some(v)) => (k, v) }
+    val consistencyMode = consistency.flatMap {
+      case ConsistencyMode.Consistent =>
+        Some("consistent" -> Some(true.toString))
+      case ConsistencyMode.Stale =>
+        Some("stale" -> Some(true.toString))
+      case ConsistencyMode.Default =>
+        None
+    }
+    val params = (consistencyMode ++ optParams).collect { case (k, Some(v)) => (k, v) }.toSeq
     val req = http.Request(path, params: _*)
     req.method = method
     req

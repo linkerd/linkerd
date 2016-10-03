@@ -20,7 +20,8 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] =
-      StripConnectionHeader.module +:
+      ViaHeaderAppenderFilter.module +:
+        StripHopByHopHeadersFilter.module +:
         StackRouter.newPathStack[Request, Response]
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =

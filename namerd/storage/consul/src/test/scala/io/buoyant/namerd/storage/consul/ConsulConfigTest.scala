@@ -3,6 +3,7 @@ package io.buoyant.namerd.storage.consul
 import com.twitter.finagle.Path
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
+import io.buoyant.consul.v1.ConsistencyMode
 import io.buoyant.namerd.DtabStoreConfig
 import org.scalatest.{FunSuite, OptionValues}
 
@@ -20,6 +21,8 @@ class ConsulConfigTest extends FunSuite with OptionValues {
          |port: 80
          |token: some-token
          |datacenter: us-east-42
+         |readConsistencyMode: stale
+         |writeConsistencyMode: consistent
       """.stripMargin
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulDtabStoreInitializer)))
     val consul = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[ConsulConfig]
@@ -28,6 +31,8 @@ class ConsulConfigTest extends FunSuite with OptionValues {
     assert(consul.pathPrefix == Some(Path.read("/foo/bar")))
     assert(consul.token == Some("some-token"))
     assert(consul.datacenter == Some("us-east-42"))
+    assert(consul.readConsistencyMode == Some(ConsistencyMode.Stale))
+    assert(consul.writeConsistencyMode == Some(ConsistencyMode.Consistent))
   }
 
 }

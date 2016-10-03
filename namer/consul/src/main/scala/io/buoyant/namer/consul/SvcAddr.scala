@@ -32,6 +32,7 @@ private[consul] object SvcAddr {
     datacenter: String,
     key: SvcKey,
     domain: Option[String],
+    consistency: Option[v1.ConsistencyMode] = None,
     stats: Stats
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
@@ -42,6 +43,7 @@ private[consul] object SvcAddr {
         datacenter = Some(datacenter),
         tag = key.tag,
         blockingIndex = index,
+        consistency = consistency,
         retry = true
       ).map(indexedToAddresses)
 

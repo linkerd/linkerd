@@ -1,0 +1,11 @@
+admin:
+  port: 9991
+storage:
+  kind: io.l5d.inMemory
+  namespaces:
+    default: |
+      /http/1.1/GET/* => /$/inet/localhost/8080
+namers: []
+interfaces:
+- kind: io.l5d.thriftNameInterpreter
+- kind: io.l5d.httpController

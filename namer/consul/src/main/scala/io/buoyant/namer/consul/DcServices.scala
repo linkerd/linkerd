@@ -1,6 +1,5 @@
 package io.buoyant.namer.consul
 
-import com.twitter.finagle.http.{Response, Status}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Addr, Failure}
 import com.twitter.util._
@@ -37,6 +36,7 @@ private[consul] object DcServices {
     consulApi: v1.ConsulApi,
     name: String,
     domain: Option[String],
+    consistency: Option[v1.ConsistencyMode],
     stats: Stats
   ): Activity[Map[SvcKey, Var[Addr]]] = {
 
@@ -44,6 +44,7 @@ private[consul] object DcServices {
       consulApi.serviceMap(
         datacenter = Some(name),
         blockingIndex = index,
+        consistency = consistency,
         retry = true
       ).map(toServices)
 
@@ -87,7 +88,7 @@ private[consul] object DcServices {
                 case None =>
                   log.debug("consul added: %s", k)
                   stats.adds.incr()
-                  SvcAddr(consulApi, name, k, domain, stats.service)
+                  SvcAddr(consulApi, name, k, domain, consistency, stats.service)
               }
               k -> svc
             }.toMap

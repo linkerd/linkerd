@@ -1,23 +1,22 @@
 package io.buoyant.namerd
 
 import com.twitter.util.{Await, Closable}
-import io.buoyant.admin.{AdminConfig, AdminInitializer, App}
-import io.buoyant.config.types.Port
+import io.buoyant.admin.App
+import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import scala.io.Source
 
 object Main extends App {
 
+  private[this] val DefaultTelemeter = new CommonMetricsTelemeter
+
   def main(): Unit = {
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
-        val namerd = config.mk(statsReceiver)
+        val namerd = config.mk(DefaultTelemeter)
 
-        val admin = AdminInitializer.run(
-          config.admin.getOrElse(AdminConfig(Port(9991))),
-          new NamerdAdmin(this, config, namerd).adminMuxer
-        )
+        val admin = namerd.admin.serve(this, NamerdAdmin(config, namerd))
         log.info(s"serving http admin on ${admin.boundAddress}")
 
         val servers = namerd.interfaces.map { iface =>
@@ -49,4 +48,5 @@ object Main extends App {
 
     NamerdConfig.loadNamerd(configText)
   }
+
 }

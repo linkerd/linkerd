@@ -10,7 +10,7 @@ class InterpreterInitializerTest extends FunSuite {
   def parse(config: String): NameInterpreter = {
     val mapper = Parser.objectMapper(config, Iterable(Seq(TestInterpreterInitializer)))
     val interpCfg = mapper.readValue[InterpreterConfig](config)
-    interpCfg.newInterpreter(Stack.Params.empty)
+    interpCfg.interpreter(Stack.Params.empty)
   }
 
   test("parse and initialize") {

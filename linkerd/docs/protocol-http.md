@@ -8,11 +8,11 @@ routers:
   httpAccessLog: access.log
   identifier:
     kind: io.l5d.methodAndHost
-  maxChunkKB: 8KB
-  maxHeadersKB: 8KB
-  maxInitialLineKB: 4KB
-  maxRequestKB: 5MB
-  maxResponseKB: 5MB
+  maxChunkKB: 8
+  maxHeadersKB: 8
+  maxInitialLineKB: 4
+  maxRequestKB: 5120
+  maxResponseKB: 5120
   servers:
   - port: 5000
 ```
@@ -48,11 +48,11 @@ Key | Default Value | Description
 dstPrefix | `http` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
 identifier | The `methodAndHost` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
-maxChunkKB | 8KB | The maximum size of an HTTP chunk.
-maxHeadersKB | 8KB | The maximum size of all headers in an HTTP message.
-maxInitialLineKB | 4KB | The maximum size of an initial HTTP message line.
-maxRequestKB | 5MB | The maximum size of a non-chunked HTTP request payload.
-maxResponseKB | 5MB | The maximum size of a non-chunked HTTP response payload.
+maxChunkKB | 8 | The maximum size of an HTTP chunk.
+maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
+maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
+maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
+maxResponseKB | 5120 | The maximum size of a non-chunked HTTP response payload.
 compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
 
 <aside class="warning">
@@ -81,7 +81,8 @@ kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier)
 kind: `io.l5d.methodAndHost`.
 
 With this identifier, HTTP requests are turned into logical names using a
-combination of Host header, method, and (optionally) URI.
+combination of `Host` header, method, and (optionally) URI. `Host`
+header value is lower-cased as per `RFC 2616`.
 
 #### Namer Configuration:
 

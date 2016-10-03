@@ -30,4 +30,23 @@ class HealthApiTest extends FunSuite with Awaits {
     assert(response.head.ServiceAddress == Some(""))
     assert(response.head.ServicePort == Some(8084))
   }
+
+  test("serviceNodes endpoint supports consistency parameter") {
+    val service = stubService(nodesBuf)
+    val api = HealthApi(service)
+
+    await(api.serviceNodes("foo"))
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceNodes("foo", consistency = Some(ConsistencyMode.Default)))
+    assert(!lastUri.contains("consistent"))
+    assert(!lastUri.contains("stale"))
+
+    await(api.serviceNodes("foo", consistency = Some(ConsistencyMode.Stale)))
+    assert(lastUri.contains("stale=true"))
+
+    await(api.serviceNodes("foo", consistency = Some(ConsistencyMode.Consistent)))
+    assert(lastUri.contains("consistent=true"))
+  }
 }
