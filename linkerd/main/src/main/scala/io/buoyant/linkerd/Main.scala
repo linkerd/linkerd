@@ -35,7 +35,7 @@ object Main extends App {
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))
 
-        log.info("linkerd initialized.")
+        log.info("initialized")
         registerTerminationSignalHandler(config.admin.flatMap(_.shutdownGraceMs))
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
