@@ -26,7 +26,6 @@ case class PathIdentifier(
             case x =>
               val trailingSlash = if (req.path.endsWith("/")) "/" else ""
               x.mkString("/", "/", trailingSlash)
-
           }
         }
         val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
