@@ -10,6 +10,7 @@ import io.netty.handler.ssl.ApplicationProtocolNames
 class H2Initializer extends ProtocolInitializer.Simple {
   val name = "h2"
   val configClass = classOf[H2Config]
+  override val experimentalRequired = true
 
   protected type Req = Request
   protected type Rsp = Response
@@ -36,7 +37,6 @@ class H2Initializer extends ProtocolInitializer.Simple {
   }
 
   protected val defaultServer = H2.server
-
   override def defaultServerPort: Int = 4142
 }
 

@@ -6,6 +6,7 @@ namers:
 
 routers:
 - protocol: h2
+  experimental: true
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /h2/yo => /$/inet/127.1/8888;
