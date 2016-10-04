@@ -14,5 +14,13 @@ routers:
   - port: 4142
     ip: 0.0.0.0
     tls:
+      caCertPath: ./certificates/cacertificate.pem
       certPath: ./certificates/linkerdcertificate.pem
       keyPath: ./certificates/private/linkerd.pkcs8
+  client:
+    tls:
+      kind: io.l5d.boundPath
+      caCertPath: ./certificates/cacertificate.pem
+      names:
+      - prefix: "/#/io.l5d.fs/{service}"
+        commonNamePattern: "{service}"

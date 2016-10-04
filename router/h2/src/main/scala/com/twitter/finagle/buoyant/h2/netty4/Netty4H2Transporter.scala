@@ -5,7 +5,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
-import com.twitter.finagle.transport.TransportProxy
+import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.buoyant.router.H2
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2.{Http2FrameCodec, Http2StreamFrame}
@@ -22,11 +22,15 @@ object Netty4H2Transporter {
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
     val initializer: ChannelPipeline => Unit = { p =>
-      p.addLast(new DebugHandler("c.bytes"))
+      p.addLast(new DebugHandler("c.out"))
       p.addLast(new Http2FrameCodec(false /*server*/ ))
-      p.addLast(new BufferingConnectDelay)
-      val _ = p.addLast(new DebugHandler("c.frame"))
+      // buffering is only necessary when initiating with prior knowledge
+      if (params[Transport.Tls] == Transport.Tls(TlsConfig.Disabled)) {
+        p.addLast(new BufferingConnectDelay)
+      }
+      p.addLast(new DebugHandler("c.in")); ()
     }
+
     Netty4Transporter(initializer, params)
   }
 }
