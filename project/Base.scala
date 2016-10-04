@@ -29,7 +29,7 @@ class Base extends Build {
   }
 
   val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
-  val doDevelopTwitterDeps = developTwitterDeps ?? false
+  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
 
   val baseSettings = Seq(
     organization := "io.buoyant",
@@ -46,7 +46,7 @@ class Base extends Build {
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
     aggregate in assembly := false,
-    developTwitterDeps := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
+    (developTwitterDeps in Global) := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
 
     // Sonatype publishing
     publishArtifact in Test := false,
