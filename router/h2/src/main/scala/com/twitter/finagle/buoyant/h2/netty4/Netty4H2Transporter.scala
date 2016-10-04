@@ -21,14 +21,17 @@ object Netty4H2Transporter {
     // transports are not created) until a connection is fully
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
-    val initializer: ChannelPipeline => Unit = { p =>
-      // p.addLast(new DebugHandler("c.out"))
-      p.addLast(new Http2FrameCodec(false /*server*/ ))
-      // buffering is only necessary when initiating with prior knowledge
-      if (params[Transport.Tls] == Transport.Tls(TlsConfig.Disabled)) {
-        p.addLast(new BufferingConnectDelay); ()
-      }
-      // p.addLast(new DebugHandler("c.in"))
+    def framer = new Http2FrameCodec(false /*server*/ )
+    val Transport.Tls(tlsConfig) = params[Transport.Tls]
+    val initializer: ChannelPipeline => Unit = tlsConfig match {
+      case TlsConfig.Disabled =>
+        val param.ClientPriorKnowledge(pk) = params[param.ClientPriorKnowledge]
+        if (!pk) throw new IllegalArgumentException("client prior knowledge must be enabled")
+        p => { p.addLast(framer).addLast(new BufferingConnectDelay); () }
+
+      case _ =>
+        // TLS is configured by the transport, so just install a framer.
+        p => { p.addLast(framer); () }
     }
 
     Netty4Transporter(initializer, params)

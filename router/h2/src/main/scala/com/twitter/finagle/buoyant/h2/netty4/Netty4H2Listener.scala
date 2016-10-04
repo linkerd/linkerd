@@ -19,17 +19,8 @@ object Netty4H2Listener {
 
   def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
     params[Transport.Tls] match {
-      case Transport.Tls(TlsConfig.Disabled) =>
-        params[param.PriorKnowledge] match {
-          case param.PriorKnowledge(false) =>
-            throw new IllegalArgumentException("param.PriorKnowledge must be true")
-          case param.PriorKnowledge(true) =>
-            log.info("prior knowledge listener")
-            PriorKnowledgeListener.mk(params)
-        }
-      case _ =>
-        log.info("tls listener")
-        TlsListener.mk(params)
+      case Transport.Tls(TlsConfig.Disabled) => PlaintextListener.mk(params)
+      case _ => TlsListener.mk(params)
     }
 
   val CodecKey = "h2 codec"
@@ -62,10 +53,10 @@ object Netty4H2Listener {
     protected[this] def setupMarshalling: ChannelInitializer[Channel] => ChannelHandler
   }
 
-  private[this] object PriorKnowledgeListener extends ListenerMaker {
+  private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] val pipelineInit = CodecPlaceholderInit
     override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
-      val codec = mkCodec(init)
+      val codec = new ServerUpgradeHandler(streamInitializer(init))
       new ChannelInitializer[SocketChannel] {
         def initChannel(ch: SocketChannel): Unit = {
           // ch.pipeline.addLast(new DebugHandler("s.bytes"))
@@ -76,11 +67,7 @@ object Netty4H2Listener {
   }
 
   private[this] object TlsListener extends ListenerMaker {
-    override protected[this] val pipelineInit = { p: ChannelPipeline =>
-      println(p)
-      // p.replace("tls init", "h2 tls init", )
-      CodecPlaceholderInit(p)
-    }
+    override protected[this] val pipelineInit = CodecPlaceholderInit
     override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
       val alpn = new Alpn(mkCodec(init))
       new ChannelInitializer[SocketChannel] {

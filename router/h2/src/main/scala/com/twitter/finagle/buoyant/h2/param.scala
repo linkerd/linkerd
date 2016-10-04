@@ -9,8 +9,8 @@ package object param {
     val default = MinAccumFrames(2)
   }
 
-  case class PriorKnowledge(assumed: Boolean)
-  implicit object PriorKnowledge extends Stack.Param[PriorKnowledge] {
-    val default = PriorKnowledge(true)
+  case class ClientPriorKnowledge(assumed: Boolean)
+  implicit object ClientPriorKnowledge extends Stack.Param[ClientPriorKnowledge] {
+    val default = ClientPriorKnowledge(true)
   }
 }
