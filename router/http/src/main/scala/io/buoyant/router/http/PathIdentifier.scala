@@ -23,10 +23,10 @@ case class PathIdentifier(
         if (consume) {
           req.uri = req.uri.split("/").drop(segments + 1) match {
             case Array() => "/"
-            case x => {
-              val endWithSlash = if (req.path.endsWith("/")) "/" else ""
-              x.mkString("/", "/", endWithSlash)
-            }
+            case x =>
+              val trailingSlash = if (req.path.endsWith("/")) "/" else ""
+              x.mkString("/", "/", trailingSlash)
+
           }
         }
         val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
