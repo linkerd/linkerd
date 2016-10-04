@@ -30,7 +30,9 @@ class ServerUpgradeHandler(stream: ChannelHandler) extends ChannelDuplexHandler 
   private[this] val rawH2 = new Http2Codec(true /*server*/ , stream)
 
   private[this] val h1 = new HttpServerCodec
+
   private[this] val upgradedH2 = new HttpServerUpgradeHandler.UpgradeCodecFactory {
+    // TODO we could transparently upgrade h1 requests as h2 requests, couldn't we?
     override def newUpgradeCodec(proto: CharSequence): HttpServerUpgradeHandler.UpgradeCodec =
       if (isH2C(proto)) new Http2ServerUpgradeCodec(rawH2) else null
   }
@@ -39,7 +41,7 @@ class ServerUpgradeHandler(stream: ChannelHandler) extends ChannelDuplexHandler 
 
   /**
    * Detect the HTTP2 connection preface to support Prior Knowledge
-   * HTTP2 (i.e. gRPC). If that doesn't exist
+   * HTTP2 (i.e. gRPC). If that doesn't exist try to upgrade from HTTP/1.
    */
   override def channelRead(ctx: ChannelHandlerContext, obj: Any): Unit = {
     obj match {

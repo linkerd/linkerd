@@ -15,6 +15,8 @@ object Netty4H2Transporter {
   def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
     // We rely on flow control rather than socket-level backpressure.
     val params = params0 + Netty4Transporter.Backpressure(false)
+    val param.ClientPriorKnowledge(pk) = params[param.ClientPriorKnowledge]
+    val Transport.Tls(tlsConfig) = params[Transport.Tls]
 
     // Each client connection pipeline is framed into HTTP/2 stream
     // frames. The connect promise does not fire (and therefore
@@ -22,11 +24,13 @@ object Netty4H2Transporter {
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
     def framer = new Http2FrameCodec(false /*server*/ )
-    val Transport.Tls(tlsConfig) = params[Transport.Tls]
     val initializer: ChannelPipeline => Unit = tlsConfig match {
+      case TlsConfig.Disabled if !pk =>
+        // TODO support h1 upgrades
+        throw new IllegalArgumentException("client prior knowledge must be enabled")
+
       case TlsConfig.Disabled =>
-        val param.ClientPriorKnowledge(pk) = params[param.ClientPriorKnowledge]
-        if (!pk) throw new IllegalArgumentException("client prior knowledge must be enabled")
+        // Prior Knowledge: ensure messages are buffered until handshake completes.
         p => { p.addLast(framer).addLast(new BufferingConnectDelay); () }
 
       case _ =>
