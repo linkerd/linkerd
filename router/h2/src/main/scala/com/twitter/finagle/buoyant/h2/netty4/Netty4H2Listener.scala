@@ -42,8 +42,8 @@ object Netty4H2Listener {
   private[this] def streamInitializer(init: ChannelInitializer[Channel]): ChannelHandler =
     new ChannelInitializer[Channel] {
       def initChannel(ch: Channel): Unit = {
-        ch.pipeline.addLast(init)
-        ch.pipeline.addLast(new DebugHandler("s.frame")); ()
+        ch.pipeline.addLast(init); ()
+        // ch.pipeline.addLast(new DebugHandler("s.frame")); ()
       }
     }
 
@@ -68,7 +68,7 @@ object Netty4H2Listener {
       val codec = mkCodec(init)
       new ChannelInitializer[SocketChannel] {
         def initChannel(ch: SocketChannel): Unit = {
-          ch.pipeline.addLast(new DebugHandler("s.bytes"))
+          // ch.pipeline.addLast(new DebugHandler("s.bytes"))
           ch.pipeline.replace(CodecPlaceholderKey, CodecKey, codec); ()
         }
       }

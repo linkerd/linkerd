@@ -22,13 +22,13 @@ object Netty4H2Transporter {
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
     val initializer: ChannelPipeline => Unit = { p =>
-      p.addLast(new DebugHandler("c.out"))
+      // p.addLast(new DebugHandler("c.out"))
       p.addLast(new Http2FrameCodec(false /*server*/ ))
       // buffering is only necessary when initiating with prior knowledge
       if (params[Transport.Tls] == Transport.Tls(TlsConfig.Disabled)) {
-        p.addLast(new BufferingConnectDelay)
+        p.addLast(new BufferingConnectDelay); ()
       }
-      p.addLast(new DebugHandler("c.in")); ()
+      // p.addLast(new DebugHandler("c.in"))
     }
 
     Netty4Transporter(initializer, params)
