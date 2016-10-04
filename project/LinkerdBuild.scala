@@ -400,6 +400,7 @@ object LinkerdBuild extends Base {
 
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
+      .withLibs("io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
       .withTests()
 
     object Protocol {

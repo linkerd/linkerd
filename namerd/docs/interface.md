@@ -40,9 +40,351 @@ addrCacheInactive | `100` | The size of the address inactive cache.
 
 kind: `io.l5d.httpController`
 
-A read-write HTTP interface to the [storage](#storage).
+The HTTP controller provides APIs for reading and writing dtabs, as well as for
+viewing how names are resolved.  This API can also be accessed using the
+[namerctl](https://github.com/BuoyantIO/namerctl) command line tool.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback | The local IP address on which to serve the namer interface.
 port | `4180` | The port number on which to serve the namer interface.
+
+### GET /api/1/dtabs
+
+> Sample request
+
+```
+curl :4180/api/1/dtabs
+```
+
+> Sample response
+
+```
+["default"]
+```
+
+Returns a list of all dtab namespaces.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+
+Content-types: application/json
+
+### GET /api/1/dtabs/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl :4180/api/1/dtabs/default
+```
+
+> Sample response
+
+```
+[{"prefix":"/http/1.1/GET","dst":"/#/io.l5d.fs"}]
+```
+
+Returns the requested dtab.  The dtab version is returned in the Etag response
+header.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to retrieve.
+watch | uri | If true, updates are returned as a streaming response.
+Accept | header | The requested content type for the dtab ([`application/dtab`][dtab] or `application/json`).
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+404           | Dtab namespace does not exist
+
+Content-types: application/json, [application/dtab][dtab]
+
+### POST /api/1/dtabs/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl :4180/api/1/dtabs/pandoracorn -X POST -d '/foo => /bar' -H 'Content-Type: application/dtab'
+```
+
+> Sample response (204 NO CONTENT)
+
+Creates a new dtab with the given namespace.  The post body should contain the
+dtab to create and can be in json or dtab format.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to create.
+Content-Type | header | The content type of the provided dtab ([`application/dtab`][dtab] or `application/json`).
+N/A | post-body | The dtab to create.
+
+Response Code | Description
+------------- | -----------
+204           | Created
+400           | Dtab is malformed
+409           | Dtab namespace already exists
+
+### PUT /api/1/dtabs/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl :4180/api/1/dtabs/pandoracorn -X PUT -d '/bar => /bas' -H 'Content-Type: application/dtab'
+```
+
+> Sample response (204 NO CONTENT)
+
+Modifies an existing dtab.  The post body should contain the updated dtab.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to update.
+Content-Type | header | The content type of the provided dtab ([`application/dtab`][dtab] or `application/json`).
+If-Match | header | If provided, the update will only be applied if the If-Match header matches the current dtab version.  This can be used to prevent conflicting updates.
+N/A | post-body | The dtab to create.
+
+Response Code | Description
+------------- | -----------
+204           | Updated
+400           | Dtab is malformed
+404           | Dtab namespace does not exist
+409           | If-Match header is provided and does not match the current dtab version
+
+### DELETE /api/1/dtabs/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl :4180/api/1/dtabs/pandoracorn -X DELETE
+```
+
+> Sample response (204 NO CONTENT)
+
+Deletes an existing dtab with the given namespace.  Returns status code 404 if
+the dtab namespace does not exist.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to delete.
+
+Response Code | Description
+------------- | -----------
+204           | Deleted
+404           | Dtab namespace does not exist
+
+### GET /api/1/bind/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl ':4180/api/1/bind/default?path=/http/1.1/GET/default'
+```
+
+> Sample response
+
+```
+{
+   "bound" : {
+      "addr" : {
+         "type" : "bound",
+         "meta" : {},
+         "addrs" : [
+            {
+               "meta" : {},
+               "ip" : "127.0.0.1",
+               "port" : 9990
+            }
+         ]
+      },
+      "id" : "/#/io.l5d.fs/default",
+      "path" : "/"
+   },
+   "type" : "leaf"
+}
+```
+
+Returns the bound tree for the given logical name in the context of the given
+namespace.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to use.
+path | uri | The logical name to bind.
+dtab | uri | Additional dtab entries to use, in [application/dtab][dtab] format.
+watch | uri | If true, updates are returned as a streaming response.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+400           | Path is malformed
+
+Content-types: application/json
+
+### GET /api/1/addr/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl ':4180/api/1/addr/default?path=/%23/io.l5d.fs/default'
+```
+
+> Sample response
+
+```
+{
+   "addrs" : [
+      {
+         "meta" : {},
+         "ip" : "127.0.0.1",
+         "port" : 9990
+      }
+   ],
+   "meta" : {},
+   "type" : "bound"
+}
+```
+
+Returns the addresses for a given concrete name.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to use.
+path | uri | The logical name to bind.
+watch | uri | If true, updates are returned as a streaming response.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+400           | Path is malformed
+
+Content-types: application/json
+
+### GET /api/1/resolve/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl ':4180/api/1/bind/resolve?path=/http/1.1/GET/default'
+```
+
+> Sample response
+
+```
+{
+   "type" : "bound",
+   "meta" : {},
+   "addrs" : [
+      {
+         "ip" : "127.0.0.1",
+         "meta" : {},
+         "port" : 9990
+      }
+   ]
+}
+```
+
+Returns the addresses for a given logical name.  This is effectively  a
+combination of the bind and addr APIs.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to use.
+path | uri | The logical name to bind.
+dtab | uri | Additional dtab entries to use, in [application/dtab][dtab] format.
+watch | uri | If true, updates are returned as a streaming response.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+400           | Path is malformed
+
+Content-types: application/json
+
+### GET /api/1/delegate/&lt;namespace&gt;
+
+> Sample request
+
+```
+curl ':4180/api/1/bind/delegate?path=/http/1.1/GET/default'
+```
+
+> Sample response
+
+```
+{
+   "path" : "/http/1.1/GET/default",
+   "type" : "delegate",
+   "delegate" : {
+      "bound" : {
+         "path" : "/",
+         "addr" : {
+            "type" : "bound",
+            "addrs" : [
+               {
+                  "meta" : {},
+                  "ip" : "127.0.0.1",
+                  "port" : 9990
+               }
+            ],
+            "meta" : {}
+         },
+         "id" : "/#/io.l5d.fs/default"
+      },
+      "type" : "leaf",
+      "dentry" : {
+         "prefix" : "/http/1.1/GET",
+         "dst" : "/#/io.l5d.fs"
+      },
+      "path" : "/#/io.l5d.fs/default"
+   }
+}
+```
+
+Returns a delegation tree for a given logical name which shows each step of the
+delegation process.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+namespace | path | The dtab namespace to use.
+path | uri | The logical name to bind.
+dtab | uri | Additional dtab entries to use, in [application/dtab][dtab] format.
+watch | uri | If true, updates are returned as a streaming response.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+400           | Path is malformed
+
+Content-types: application/json
+
+### GET /api/1/bound-names
+
+> Sample Request
+
+```
+curl :4180/api/1/bound-names
+```
+
+> Sample Response
+
+```
+[
+   "/#/io.l5d.fs/default"
+]
+```
+
+Returns a list of concrete names that namerd knows about.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+watch | uri | If true, updates are returned as a streaming response.
+
+Response Code | Description
+------------- | -----------
+200           | Ok
+
+Content-types: application/json
+
+[dtab]: https://linkerd.io/in-depth/dtabs/

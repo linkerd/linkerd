@@ -4,11 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.ssl.OpenSSL
+import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.{TlsConfig, Transport}
 import com.twitter.finagle.{Path, ListeningServer, Stack}
 import io.buoyant.config.types.Port
-import io.netty.handler.ssl.{ApplicationProtocolConfig, SslContextBuilder}
 import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.JavaConverters._
@@ -96,25 +95,24 @@ class ServerConfig { config =>
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
-    .maybeWith(tls.map(tlsParam(_))) +
+    .maybeWith(tls.map(netty3Tls(_)))
+    .maybeWith(tls.map(netty4Tls(_))) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def tlsParam(c: TlsServerConfig) = {
-    // val protocol = new ApplicationProtocolConfig(
-    //   ApplicationProtocolConfig.Protocol.ALPN,
-    //   // NO_ADVERTISE and ACCEPT are the only modes supported by both OpenSSL and JDK SSL.
-    //   ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
-    //   ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
-    //   alpnProtocols.map(_.asJava).orNull
-    // )
-    // val ctx = SslContextBuilder
-    //   .forServer(new File(c.certPath), new File(c.keyPath))
-    //   .trustManager(c.caCertPath.map(new File(_)).orNull)
-    //   .ciphers(c.ciphers.map(_.toIterable.asJava).orNull)
-    //   .applicationProtocolConfig(protocol)
-    //   .build()
-    // Transport.Tls(TlsConfig.ServerSslContext(ctx))
+  private[this] def netty3Tls(c: TlsServerConfig) =
+    Transport.TLSServerEngine(
+      Some(() => Ssl.server(
+        c.certPath,
+        c.keyPath,
+        c.caCertPath.orNull,
+        c.ciphers.map(_.mkString(":")).orNull,
+        alpnProtocols.map(_.mkString(",")).orNull
+      ))
+    )
+
+  @JsonIgnore
+  private[this] def netty4Tls(c: TlsServerConfig) =
     Transport.Tls(TlsConfig.ServerCertAndKey(
       c.certPath,
       c.keyPath,
@@ -122,7 +120,6 @@ class ServerConfig { config =>
       c.ciphers.map(_.mkString(":")),
       alpnProtocols.map(_.mkString(","))
     ))
-  }
 
   @JsonIgnore
   def alpnProtocols: Option[Seq[String]] = None
