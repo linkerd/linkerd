@@ -11,6 +11,28 @@ import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
 import scala.collection.breakOut
 
+/*
+  Mapping from linkerd header names to medallia header names.
+ */
+object MedalliaHeaders {
+  val medalliaPrefix = "X-Medallia"
+  val mapHeaderNames = collection.immutable.HashMap(
+    "l5d-sample" -> "X-Medallia-Tracing-Enabled",
+    "l5d-reqid" -> "X-Medallia-Tracer-Request-Id",
+    "l5d-ctx-trace" -> "X-Medallia-Tracer-Span-Id",
+    "L5d-sample" -> "X-Medallia-Tracing-Enabled",
+    "L5d-reqId" -> "X-Medallia-Tracer-Request-Id",
+    "L5d-ctx-trace" -> "X-Medallia-Tracer-Span-Id"
+  )
+  def getMedalliaHeaderName(linkerdHeaderName: String): String = {
+    if (mapHeaderNames contains linkerdHeaderName)
+      mapHeaderNames(linkerdHeaderName)
+    else {
+      linkerdHeaderName.replace("l5d", medalliaPrefix).replace("L5d", medalliaPrefix)
+    }
+  }
+}
+
 /**
  * The finagle http stack manages a set of context headers that are
  * read from server requests and written to client requests. The
@@ -114,31 +136,31 @@ object Headers {
      * deadline. Otherwise, outgoing requests MAY have a deadline.
      */
     object Deadline {
-      val Key = Prefix + "deadline"
+      val Key = MedalliaHeaders.getMedalliaHeaderName(Prefix + "deadline")
 
-      def read(v: String): FDeadline = {
+      def read(v: String): context.Deadline = {
         val values = v.split(' ')
         val timestamp = Time.fromNanoseconds(values(0).toLong)
         val deadline = Time.fromNanoseconds(values(1).toLong)
-        FDeadline(timestamp, deadline)
+        context.Deadline(timestamp, deadline)
       }
 
       /**
        * Read all `l5d-ctx-deadline` headers and return the strictest
        * combination.
        */
-      def get(headers: HeaderMap): Option[FDeadline] =
-        headers.getAll(Key).foldLeft[Option[FDeadline]](None) { (d0, v) =>
+      def get(headers: HeaderMap): Option[context.Deadline] =
+        headers.getAll(Key).foldLeft[Option[context.Deadline]](None) { (d0, v) =>
           (d0, Try(read(v)).toOption) match {
-            case (Some(d0), Some(d1)) => Some(FDeadline.combined(d0, d1))
+            case (Some(d0), Some(d1)) => Some(context.Deadline.combined(d0, d1))
             case (d0, d1) => d0.orElse(d1)
           }
         }
 
-      def write(d: FDeadline): String =
+      def write(d: context.Deadline): String =
         s"${d.timestamp.inNanoseconds} ${d.deadline.inNanoseconds}"
 
-      def set(headers: HeaderMap, deadline: FDeadline): Unit = {
+      def set(headers: HeaderMap, deadline: context.Deadline): Unit = {
         val _ = headers.set(Key, write(deadline))
       }
 
@@ -159,11 +181,11 @@ object Headers {
             case None => service(req)
             case Some(reqDeadline) =>
               clear(req.headerMap)
-              val deadline = FDeadline.current match {
+              val deadline = context.Deadline.current match {
                 case None => reqDeadline
-                case Some(current) => FDeadline.combined(reqDeadline, current)
+                case Some(current) => context.Deadline.combined(reqDeadline, current)
               }
-              Contexts.broadcast.let(FDeadline, deadline) {
+              Contexts.broadcast.let(context.Deadline, deadline) {
                 service(req)
               }
           }
@@ -176,7 +198,7 @@ object Headers {
        */
       class ClientFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) =
-          FDeadline.current match {
+          context.Deadline.current match {
             case None => service(req)
             case Some(deadline) =>
               set(req.headerMap, deadline)
@@ -205,8 +227,8 @@ object Headers {
      * delegations take precdence.
      */
     object Dtab {
-      val CtxKey = Ctx.Prefix + "dtab"
-      val UserKey = Headers.Prefix + "dtab"
+      val CtxKey = MedalliaHeaders.getMedalliaHeaderName(Ctx.Prefix + "dtab")
+      val UserKey = MedalliaHeaders.getMedalliaHeaderName(Headers.Prefix + "dtab")
 
       private val EmptyReturn = Return(FDtab.empty)
 
@@ -267,7 +289,7 @@ object Headers {
     }
 
     object Trace {
-      val Key = Prefix + "trace"
+      val Key = MedalliaHeaders.getMedalliaHeaderName(Prefix + "trace")
 
       /**
        * Get a trace id from a base64 encoded buffer.
@@ -306,7 +328,7 @@ object Headers {
    * linkerd instances.
    */
   object RequestId {
-    val Key = Prefix + "reqid"
+    val Key = MedalliaHeaders.getMedalliaHeaderName(Prefix + "reqid")
 
     def set(headers: HeaderMap, traceId: TraceId): Unit = {
       val _ = headers.set(Key, traceId.traceId.toString)
@@ -326,7 +348,7 @@ object Headers {
    * sampled on all downstream requestes.
    */
   object Sample {
-    val Key = Prefix + "sample"
+    val Key = MedalliaHeaders.getMedalliaHeaderName(Prefix + "sample")
 
     def get(headers: HeaderMap): Option[Float] =
       headers.get(Key).flatMap { s =>
@@ -350,9 +372,9 @@ object Headers {
    * next hop.
    */
   object Dst {
-    val Path = Prefix + "dst-logical"
-    val Bound = Prefix + "dst-concrete"
-    val Residual = Prefix + "dst-residual"
+    val Path = MedalliaHeaders.getMedalliaHeaderName(Prefix + "dst-logical")
+    val Bound = MedalliaHeaders.getMedalliaHeaderName(Prefix + "dst-concrete")
+    val Residual = MedalliaHeaders.getMedalliaHeaderName(Prefix + "dst-residual")
 
     /** Encodes `l5d-dst-path` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
@@ -415,7 +437,7 @@ object Headers {
    * responses from application responses.
    */
   object Err {
-    val Key = Prefix + "err"
+    val Key = MedalliaHeaders.getMedalliaHeaderName(Prefix + "err")
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
       val rsp = Response(status)
