@@ -282,7 +282,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   }
 
   private[this] def withDisco(downstreams: Downstream*)(f: File => Unit): Unit = {
-    val disco = new File("mktemp -d -t disco".!!.stripLineEnd)
+    val disco = new File("mktemp -d -t disco.XXXXX".!!.stripLineEnd)
     try {
       for (ds <- downstreams) {
         val w = new java.io.PrintWriter(new File(disco, ds.name))
