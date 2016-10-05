@@ -2,23 +2,30 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 private[h2] object Netty4Message {
 
-  trait Netty4Headers { _: Headers =>
-    def netty4Headers: Http2Headers
+  class Netty4Headers(underlying: Http2Headers) extends Headers {
 
-    def headers = {
+    def toSeq = {
       val buf = ListBuffer.newBuilder[(String, String)]
-      buf.sizeHint(netty4Headers.size)
-      val iter = netty4Headers.iterator
+      buf.sizeHint(underlying.size)
+      val iter = underlying.iterator
       while (iter.hasNext) {
         val entry = iter.next()
         buf += entry.getKey.toString -> entry.getValue.toString
       }
       buf.result
     }
+
+
+    override def get(key: String): Seq[String] = underlying.getAll(key).asScala.map(_.toString)
+    override def add(key: String, value: String): Unit = { underlying.add(key, value); () }
+    override def set(key: String, value: String): Unit = { underlying.set(key, value); () }
+    override def remove(key: String): Boolean = underlying.remove(key)
+    override def copy(): Netty4Headers = {}
   }
 
   def extract(msg: Headers): Http2Headers = msg match {
@@ -29,9 +36,8 @@ private[h2] object Netty4Message {
       headers
   }
 
-  case class Request(netty4Headers: Http2Headers, dataStream: DataStream)
-    extends com.twitter.finagle.buoyant.h2.Request
-    with DataStream.Proxy with Netty4Headers {
+  case class Request(netty4Headers: Http2Headers, data: DataStream)
+    extends com.twitter.finagle.buoyant.h2.Request {
 
     require(netty4Headers.scheme != null)
     def scheme = netty4Headers.scheme.toString

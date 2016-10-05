@@ -17,9 +17,12 @@ import scala.util.control.NoStackTrace
  * However, it is hoped that other types may be built upon / adapated
  * to satisfy a broader set of use cases.
  */
-sealed trait Message extends Headers with DataStream {
+sealed trait Message {
+  def headers: Headers
+  def data: DataStream
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
+  def copy(): Message
 }
 
 /**
@@ -30,6 +33,7 @@ trait Request extends Message {
   def method: String
   def authority: String
   def path: String
+  override def copy(): Request
 }
 
 /**
@@ -38,17 +42,19 @@ trait Request extends Message {
  */
 trait Response extends Message {
   def status: Int
+  override def copy(): Response
 }
 
 /*
  * Both Messages and Trailers include headers...
  */
 sealed trait Headers {
-  def headers: Seq[(String, String)]
-
-  /** Get the headers with the given key. */
-  def get(key: String): Seq[String] =
-    headers.collect { case (k, v) if (k == key) => v }
+  def toSeq: Seq[(String, String)]
+  def get(key: String): Seq[String]
+  def add(key: String, value: String): Unit
+  def set(key: String, value: String): Unit
+  def remove(key: String): Unit
+  def copy(): Headers
 }
 
 /**
@@ -83,15 +89,6 @@ trait DataStream {
 object DataStream {
 
   class ClosedException extends Exception("DataStream is closed") with NoStackTrace
-
-  /** A DataStream that wraps an underlying DataStream. */
-  trait Proxy extends DataStream {
-    def dataStream: DataStream
-    def isEmpty = dataStream.isEmpty
-    def onEnd = dataStream.onEnd
-    def read() = dataStream.read()
-    def fail(exn: Throwable) = dataStream.fail(exn)
-  }
 
   /**
    * An empty stream. Useful, for instance, when a Message consists of
