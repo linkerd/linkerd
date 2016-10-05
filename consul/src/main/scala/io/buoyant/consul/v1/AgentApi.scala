@@ -36,5 +36,6 @@ case class LocalAgent(
 
 // Represents configuration of the local agent
 case class Config(
-  Domain: Option[String] // TLD for DNS zone handled by consul, e.g. consul.acme.co.
+  Domain: Option[String], // TLD for DNS zone handled by consul, e.g. consul.acme.co.
+  Datacenter: Option[String] // Name of agent's datacenter
 )

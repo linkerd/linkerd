@@ -1,5 +1,6 @@
 ## 0.x.y
 
+* Consul namer can use `.local` to reference local agent's datacenter
 * Removed unused TLS options from the k8s storage plugin config
 
 ## 0.8.1
