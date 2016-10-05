@@ -268,7 +268,7 @@ object Validator extends TwitterServer {
        |""".stripMargin
 
   def withTmpDir(f: String => Unit): Unit = {
-    val tmpdir = Process("mktemp" :: "-d" :: "-t" :: "v4l1d4t0r" :: Nil).!!.stripLineEnd
+    val tmpdir = Process("mktemp" :: "-d" :: "-t" :: "v4l1d4t0r.XXXXX" :: Nil).!!.stripLineEnd
     try f(tmpdir) finally Process("rm" :: "-rf" :: tmpdir :: Nil).!
   }
 

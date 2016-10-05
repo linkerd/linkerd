@@ -5,10 +5,12 @@ import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{TlsConfig, Transport}
 import com.twitter.finagle.{Path, ListeningServer, Stack}
 import io.buoyant.config.types.Port
+import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
+import scala.collection.JavaConverters._
 
 /**
  * A Server configuration, describing a request-receiving interface
@@ -88,19 +90,39 @@ class ServerConfig { config =>
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
 
-  private[this] def requestSemaphore = maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
+  private[this] def requestSemaphore =
+    maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
-    .maybeWith(tls.map {
-      case TlsServerConfig(certPath, keyPath) => tlsParam(certPath, keyPath)
-    }) + RequestSemaphoreFilter.Param(requestSemaphore)
+    .maybeWith(tls.map(netty3Tls(_)))
+    .maybeWith(tls.map(netty4Tls(_))) +
+    RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def tlsParam(certificatePath: String, keyPath: String) =
+  private[this] def netty3Tls(c: TlsServerConfig) =
     Transport.TLSServerEngine(
-      Some(() => Ssl.server(certificatePath, keyPath, null, null, null))
+      Some(() => Ssl.server(
+        c.certPath,
+        c.keyPath,
+        c.caCertPath.orNull,
+        c.ciphers.map(_.mkString(":")).orNull,
+        alpnProtocols.map(_.mkString(",")).orNull
+      ))
     )
+
+  @JsonIgnore
+  private[this] def netty4Tls(c: TlsServerConfig) =
+    Transport.Tls(TlsConfig.ServerCertAndKey(
+      c.certPath,
+      c.keyPath,
+      c.caCertPath,
+      c.ciphers.map(_.mkString(":")),
+      alpnProtocols.map(_.mkString(","))
+    ))
+
+  @JsonIgnore
+  def alpnProtocols: Option[Seq[String]] = None
 
   @JsonIgnore
   def mk(pi: ProtocolInitializer, routerLabel: String) = Server.Impl(
@@ -114,4 +136,9 @@ class ServerConfig { config =>
   )
 }
 
-case class TlsServerConfig(certPath: String, keyPath: String)
+case class TlsServerConfig(
+  certPath: String,
+  keyPath: String,
+  caCertPath: Option[String],
+  ciphers: Option[Seq[String]]
+)
