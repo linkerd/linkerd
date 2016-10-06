@@ -111,7 +111,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     assert(!rsp0f.isDefined)
     assert(rsp1f.isDefined)
     val rsp1 = await(rsp1f)
-    assert(rsp1.status == 222)
+    assert(rsp1.status == Status.Cowabunga)
     val data1 = rsp1.data match {
       case Stream.Nil => fail("empty stream")
       case r: Stream.Reader => r
@@ -120,12 +120,12 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     // We receive a response for req1 first:
     recvq.offer({
       val hs = new DefaultHttp2Headers
-      hs.status("223")
+      hs.status("222")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(3)
     })
     assert(rsp0f.isDefined)
     val rsp0 = await(rsp0f)
-    assert(rsp0.status == 223)
+    assert(rsp0.status == Status.Cowabunga)
     val data0 = rsp0.data match {
       case Stream.Nil => fail("empty stream")
       case r: Stream.Reader => r

@@ -116,7 +116,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     }
     val endf = data.onEnd
     assert(!endf.isDefined)
-    assert(rsp.status == 222)
+    assert(rsp.status == Status.Cowabunga)
 
     val dataf = data.read()
     assert(!dataf.isDefined)
@@ -172,7 +172,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     }
     val endf = data.onEnd
     assert(!endf.isDefined)
-    assert(rsp.status == 222)
+    assert(rsp.status == Status.Cowabunga)
 
     val dataf0 = data.read()
     assert(!dataf0.isDefined)

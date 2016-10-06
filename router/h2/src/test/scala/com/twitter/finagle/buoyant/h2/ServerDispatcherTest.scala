@@ -82,6 +82,7 @@ class ServerDispatcherTest extends FunSuite with Eventually {
         override val headers: Headers = new Headers {
           def toSeq = Nil
           def get(k: String) = Nil
+          def contains(k: String) = false
           def add(k: String, v: String) = {}
           def set(k: String, v: String) = {}
           def remove(k: String) = false
@@ -113,10 +114,11 @@ class ServerDispatcherTest extends FunSuite with Eventually {
 
       val rspEndP = new Promise[Unit]
       val rsp: Response = new Response {
-        override def status = 200
+        override def status = Status.Ok
         override val headers: Headers = new Headers {
           override def toSeq = Nil
           override def get(k: String) = Nil
+          override def contains(k: String) = false
           override def add(k: String, v: String) = {}
           override def set(k: String, v: String) = {}
           override def remove(k: String) = false

@@ -2,7 +2,8 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
 import com.twitter.finagle.Failure
-import com.twitter.util.Future
+import com.twitter.util.{Future, Promise}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * A generic HTTP2 message.
@@ -23,11 +24,9 @@ sealed trait Message {
   def dup(): Message
 }
 
-/*
- * Both 
- */
 trait Headers {
   def toSeq: Seq[(String, String)]
+  def contains(k: String): Boolean
   def get(k: String): Seq[String]
   def add(k: String, v: String): Unit
   def set(k: String, v: String): Unit
@@ -51,7 +50,7 @@ trait Request extends Message {
  * psuedo-header.
  */
 trait Response extends Message {
-  def status: Int
+  def status: Status
   override def dup(): Response
 }
 
@@ -94,6 +93,21 @@ object Stream {
     def read(): Future[Frame]
   }
 
+  def const(buf: Buf): Reader = new Reader {
+    private[this] val endP = new Promise[Unit]
+    private[this] val complete = new AtomicBoolean(false)
+    override def onEnd: Future[Unit] = endP
+    override def read(): Future[Frame] =
+      if (complete.getAndSet(true) == false) {
+        endP.setDone()
+        Future.value(Frame.Data.eos(buf))
+      } else Future.never
+    override def reset(cause: Throwable): Unit = {
+      complete.set(true)
+      endP.raise(cause)
+    }
+  }
+
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
@@ -123,6 +137,20 @@ object Frame {
   trait Data extends Frame {
     def buf: Buf
     def release(): Future[Unit]
+  }
+
+  object Data {
+    def apply(buf0: Buf, eos: Boolean): Data = new Data {
+      def buf = buf0
+      def release() = Future.Unit
+      def isEnd = eos
+    }
+
+    def apply(s: String, eos: Boolean): Data =
+      apply(Buf.Utf8(s), eos)
+
+    def eos(buf: Buf): Data = apply(buf, true)
+    def eos(s: String): Data = apply(s, true)
   }
 
   object Empty extends Data {

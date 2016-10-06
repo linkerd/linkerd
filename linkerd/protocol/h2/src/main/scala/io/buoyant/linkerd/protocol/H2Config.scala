@@ -15,25 +15,27 @@ class H2Initializer extends ProtocolInitializer.Simple {
   protected type Req = Request
   protected type Rsp = Response
 
-  // TODO
   protected val defaultRouter = {
-    // val pathStack = H2.router.pathStack
+    val pathStack = H2.router.pathStack
     //   .prepend(Headers.Dst.PathFilter.module)
     //   .replace(StackClient.Role.prepFactory, DelayedRelease.module)
     //   .prepend(http.ErrorResponder.module)
-    // val boundStack = H2.router.boundStack
+    //   // retries can't share header mutations
+    //   .insertAfter(RetryFilter.role, DupRequest.module)
+
+    val boundStack = H2.router.boundStack
     //   .prepend(Headers.Dst.BoundFilter.module)
-    // val clientStack = H2.router.clientStack
+
+    val clientStack = H2.router.clientStack
     //   .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
     //   .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
     //   .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
-    // H2.router
-    //   .withPathStack(pathStack)
-    //   .withBoundStack(boundStack)
-    //   .withClientStack(clientStack)
-    //   .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
 
-    H2.router.configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
+    H2.router
+      .withPathStack(pathStack)
+      .withBoundStack(boundStack)
+      .withClientStack(clientStack)
+      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   protected val defaultServer = H2.server
@@ -47,6 +49,7 @@ class H2Config extends RouterConfig {
   var client: Option[ClientConfig] = None
   var servers: Seq[H2ServerConfig] = Nil
 
+  // TODO: basic + gRPC (trailers-aware)
   // @JsonIgnore
   // override def baseResponseClassifier = ...
 

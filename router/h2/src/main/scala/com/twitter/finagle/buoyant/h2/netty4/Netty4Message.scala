@@ -25,6 +25,9 @@ private[h2] object Netty4Message {
     override def get(key: String): Seq[String] =
       underlying.getAll(key).asScala.map(_.toString)
 
+    override def contains(key: String): Boolean =
+      underlying.contains(key)
+
     override def add(key: String, value: String): Unit = {
       underlying.add(key, value); ()
     }
@@ -86,12 +89,20 @@ private[h2] object Netty4Message {
     extends H2Response {
 
     require(netty4Headers.status != null)
-    def status = netty4Headers.status.toString.toInt
+    def status = Status.fromCode(netty4Headers.status.toString.toInt)
 
     override val headers: Headers = Headers(netty4Headers)
 
     override def dup(): com.twitter.finagle.buoyant.h2.Response =
       copy(netty4Headers = Headers.extract(headers.dup()))
+  }
+
+  object Response {
+    def apply(status: Status, stream: Stream): Response = {
+      val h = new DefaultHttp2Headers
+      h.status(status.value)
+      Response(h, stream)
+    }
   }
 
   case class Trailers(underlying: Http2Headers)
