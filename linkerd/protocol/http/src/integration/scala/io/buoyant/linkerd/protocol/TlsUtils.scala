@@ -27,7 +27,7 @@ object TlsUtils {
   case class Certs(caCert: File, serviceCerts: Map[String, ServiceCert])
   def withCerts(names: String*)(f: Certs => Unit): Unit = {
     // First, we create a CA and get a cert/key for linker
-    val tmpdir = new File("mktemp -d -t linkerd-tls".!!.stripLineEnd)
+    val tmpdir = new File("mktemp -d -t linkerd-tls.XXXXXX".!!.stripLineEnd)
     try {
       val configFile = mkCaDirs (tmpdir)
 

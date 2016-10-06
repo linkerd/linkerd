@@ -43,7 +43,7 @@ class Base extends Build {
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
       "twitter-repo" at "https://maven.twttr.com",
-      "local-m2" at s"file:${Path.userHome.absolutePath}/.m2/repository",
+      Resolver.mavenLocal,
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
     aggregate in assembly := false,

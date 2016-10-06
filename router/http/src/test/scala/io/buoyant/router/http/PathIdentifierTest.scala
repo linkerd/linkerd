@@ -63,4 +63,42 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
         Dst.Path(Path.read("/http/mysvc/subsvc"))
     )
   }
+
+  test("preserve trailing slash with consume = true") {
+    case class ExpParsedPath(segment: String, path: String)
+    val testCaseConsume = Map(
+      "/mysvc/subsvc/" -> ExpParsedPath("/http/mysvc/subsvc", "/"),
+      "/mysvc/subsvc/path1/" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/"),
+      "/mysvc/subsvc/path1" -> ExpParsedPath("/http/mysvc/subsvc", "/path1"),
+      "/mysvc/subsvc/path1/path2" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/path2"),
+      "/mysvc/subsvc/path1/path2/" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/path2/")
+    )
+    val identifier = PathIdentifier(Path.Utf8("http"), 2, consume = true)
+    testCaseConsume foreach ((input) => {
+      val req0 = Request()
+      req0.uri = input._1
+      val identified = await(identifier(req0)).asInstanceOf[IdentifiedRequest[Request]]
+      assert(identified.dst == Dst.Path(Path.read(input._2.segment)))
+      assert(identified.request.uri == input._2.path)
+    })
+  }
+
+  test("preserve trailing slash with consume = false") {
+    case class ExpParsedPath(segment: String, path: String)
+    val testCaseConsume = Map(
+      "/mysvc/subsvc/" -> ExpParsedPath("/http/mysvc/subsvc", "/mysvc/subsvc/"),
+      "/mysvc/subsvc/path1/" -> ExpParsedPath("/http/mysvc/subsvc", "/mysvc/subsvc/path1/"),
+      "/mysvc/subsvc/path1" -> ExpParsedPath("/http/mysvc/subsvc", "/mysvc/subsvc/path1"),
+      "/mysvc/subsvc/path1/path2" -> ExpParsedPath("/http/mysvc/subsvc", "/mysvc/subsvc/path1/path2"),
+      "/mysvc/subsvc/path1/path2/" -> ExpParsedPath("/http/mysvc/subsvc", "/mysvc/subsvc/path1/path2/")
+    )
+    val identifier = PathIdentifier(Path.Utf8("http"), 2, consume = false)
+    testCaseConsume foreach ((input) => {
+      val req0 = Request()
+      req0.uri = input._1
+      val identified = await(identifier(req0)).asInstanceOf[IdentifiedRequest[Request]]
+      assert(identified.dst == Dst.Path(Path.read(input._2.segment)))
+      assert(identified.request.uri == input._2.path)
+    })
+  }
 }

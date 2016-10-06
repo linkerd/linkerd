@@ -17,6 +17,8 @@ private[consul] class LookupCache(
   stats: StatsReceiver = NullStatsReceiver
 ) {
 
+  private[this] val localDcMoniker = ".local"
+
   private[this] val lookupCounter = stats.counter("lookups")
 
   def apply(
@@ -28,7 +30,7 @@ private[consul] class LookupCache(
     log.debug("consul lookup: %s %s", id.show)
     lookupCounter.incr()
 
-    Dc.watch(dc).map { services =>
+    resolveDc(dc).flatMap(Dc.watch).map { services =>
       services.get(key) match {
         case None =>
           log.debug("consul dc %s service %s missing", dc, key)
@@ -41,16 +43,26 @@ private[consul] class LookupCache(
     }
   }
 
-  // Note that this activity is never recomputed.  We simply do a
+  private[this] def resolveDc(datacenter: String): Activity[String] =
+    if (datacenter == localDcMoniker)
+      localDc.map(_.getOrElse(datacenter))
+    else Activity.value(datacenter)
+
+  // Note that this 3 activities are never recomputed.  We simply do a
   // lookup for the domain and then wrap it an activity for
   // convenience.
+  private[this] lazy val agentConfig: Activity[Option[v1.Config]] =
+    Activity.future(agentApi.localAgent(retry = true)).map(_.Config)
+
   private[this] lazy val domain: Activity[Option[String]] =
     if (setHost) {
-      Activity.future(agentApi.localAgent(retry = true)).map { la =>
-        val dom = la.Config.flatMap(_.Domain).getOrElse("consul")
+      agentConfig.map { config =>
+        val dom = config.flatMap(_.Domain).getOrElse("consul")
         Some(dom.stripPrefix(".").stripSuffix("."))
       }
     } else Activity.value(None)
+
+  private[this] lazy val localDc = agentConfig.map(_.flatMap(_.Datacenter))
 
   /**
    * Contains all cached responses from the Consul API
