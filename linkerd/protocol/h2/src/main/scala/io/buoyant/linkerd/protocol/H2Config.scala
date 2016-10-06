@@ -17,9 +17,9 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
   protected val defaultRouter = {
     val pathStack = H2.router.pathStack
+      .prepend(h2.ErrorResponder.module)
     //   .prepend(Headers.Dst.PathFilter.module)
     //   .replace(StackClient.Role.prepFactory, DelayedRelease.module)
-    //   .prepend(http.ErrorResponder.module)
     //   // retries can't share header mutations
     //   .insertAfter(RetryFilter.role, DupRequest.module)
 
@@ -39,6 +39,9 @@ class H2Initializer extends ProtocolInitializer.Simple {
   }
 
   protected val defaultServer = H2.server
+    .withStack(H2.server.stack
+      .prepend(h2.ErrorResponder.module))
+
   override def defaultServerPort: Int = 4142
 }
 
