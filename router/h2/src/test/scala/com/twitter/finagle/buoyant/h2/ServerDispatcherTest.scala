@@ -74,22 +74,31 @@ class ServerDispatcherTest extends FunSuite with Eventually {
       clock.advance(10.millisecond)
 
       val reqEndP = new Promise[Unit]
-      val req = new Request {
-        val scheme = "http"
-        val method = "get"
-        val authority = "authoirtah"
-        val path = "/"
-        val isEmpty = false
-        val headers = Nil
-        def onEnd = reqEndP
-        def read() = reqEndP.map { _ =>
-          new DataStream.Data {
-            val buf = Buf.Empty
-            def release() = Future.Unit
-            def isEnd = true
-          }
+      val req: Request = new Request {
+        override val scheme = "http"
+        override val method = "get"
+        override val authority = "authoirtah"
+        override val path = "/"
+        override val headers: Headers = new Headers {
+          def toSeq = Nil
+          def get(k: String) = Nil
+          def add(k: String, v: String) = {}
+          def set(k: String, v: String) = {}
+          def remove(k: String) = false
+          def dup() = this
         }
-        def fail(e: Throwable): Unit = {}
+        override val data: Stream = new Stream.Reader {
+          def onEnd = reqEndP
+          def read() = reqEndP.map { _ =>
+            new Frame.Data {
+              val buf = Buf.Empty
+              def release() = Future.Unit
+              def isEnd = true
+            }
+          }
+          def reset(e: Throwable): Unit = {}
+        }
+        def dup() = this
       }
       streamReadP.setValue(req)
 
@@ -103,13 +112,22 @@ class ServerDispatcherTest extends FunSuite with Eventually {
       clock.advance(10.millisecond)
 
       val rspEndP = new Promise[Unit]
-      val rsp = new Response {
-        val status = 200
-        val isEmpty = true
-        val headers = Nil
-        def onEnd = rspEndP
-        def read() = Future.never
-        def fail(e: Throwable): Unit = {}
+      val rsp: Response = new Response {
+        override def status = 200
+        override val headers: Headers = new Headers {
+          override def toSeq = Nil
+          override def get(k: String) = Nil
+          override def add(k: String, v: String) = {}
+          override def set(k: String, v: String) = {}
+          override def remove(k: String) = false
+          override def dup() = this
+        }
+        override val data: Stream = new Stream.Reader {
+          override def onEnd = rspEndP
+          override def read() = Future.never
+          override def reset(e: Throwable): Unit = {}
+        }
+        override def dup() = this
       }
       serviceRspP.setValue(rsp)
 

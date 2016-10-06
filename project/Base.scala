@@ -37,7 +37,8 @@ class Base extends Build {
     homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.11.7",
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
-    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard"),
+    scalacOptions ++=
+      Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(

@@ -67,10 +67,10 @@ class Netty4ServerStreamTransport(
 
   private[this] val toRequest: Http2StreamFrame => Request = {
     case f: Http2HeadersFrame if f.isEndStream =>
-      Netty4Message.Request(f.headers, DataStream.Nil)
+      Netty4Message.Request(f.headers, Stream.Nil)
 
     case f: Http2HeadersFrame =>
-      val data = newDataStream()
+      val data = newStream()
       readStream(data)
       Netty4Message.Request(f.headers, data)
 
@@ -78,8 +78,8 @@ class Netty4ServerStreamTransport(
       throw new IllegalStateException(s"Read unexpected ${f.name}; expected HEADERS")
   }
 
-  private[this] def newDataStream() =
-    new Netty4DataStream(releaser, minAccumFrames, stats = streamStats)
+  private[this] def newStream() =
+    new Netty4Stream(releaser, minAccumFrames, stats = streamStats)
 
   private[this] val releaser: Int => Future[Unit] =
     incr => writer.updateWindow(StubStreamId, incr)
@@ -88,12 +88,10 @@ class Netty4ServerStreamTransport(
    * Read data (and trailer) frames from the transport to the recvq
    * until an end-of-stream frame is encountered.
    */
-  private[this] def readStream(stream: DataStream.Offerable[Http2StreamFrame]): Future[Unit] = {
+  private[this] def readStream(stream: Stream.Writer[Http2StreamFrame]): Future[Unit] = {
     lazy val enqueueLoop: Http2StreamFrame => Future[Unit] = { f =>
-      val eos = isEnd(f)
-      val offered = stream.offer(f)
-      if (!offered) Future.exception(OfferFailed)
-      else if (eos) Future.Unit
+      if (!stream.write(f)) Future.exception(OfferFailed)
+      else if (isEnd(f)) Future.Unit
       else transport.read().flatMap(enqueueLoop)
     }
 
@@ -104,37 +102,16 @@ class Netty4ServerStreamTransport(
   }
 
   def write(rsp: Response): Future[Future[Unit]] =
-    writeHeaders(rsp).map(_ => streamFrom(rsp))
+    writer.write(StubStreamId, rsp)
 
-  private[this] def streamFrom(data: DataStream): Future[Unit] =
-    if (data.isEmpty) Future.Unit
-    else {
-      lazy val loop: Boolean => Future[Unit] = { eos =>
-        if (data.isEmpty || eos) Future.Unit
-        else readFrame(data).flatMap(writeData).flatMap(loop)
-      }
-
-      val t0 = Stopwatch.start()
-      val looping = readFrame(data).flatMap(writeData).flatMap(loop)
-      looping.ensure(responseDurations.add(t0().inMillis))
-      looping
-    }
-
-  private[this] def readFrame(data: DataStream): Future[DataStream.Frame] = {
+  private[this] def readFrame(data: Stream.Reader): Future[Frame] = {
     val t0 = Stopwatch.start()
     val rx = data.read()
     rx.ensure(streamReadMicros.add(t0().inMicroseconds))
     rx
   }
 
-  private[this] def writeHeaders(msg: Message): Future[Boolean] =
-    writer.write(StubStreamId, msg).map(_ => msg.isEmpty)
-
-  private[this] val writeData: DataStream.Frame => Future[Boolean] = {
-    case data: DataStream.Data =>
-      writer.write(StubStreamId, data).before(data.release()).map(_ => data.isEnd)
-    case tlrs: DataStream.Trailers =>
-      writer.write(StubStreamId, tlrs).before(Future.True)
-  }
+  private[this] def writeHeaders(hs: Headers, eos: Boolean): Future[Unit] =
+    writer.write(StubStreamId, hs, eos)
 
 }

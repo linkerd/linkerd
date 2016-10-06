@@ -42,7 +42,7 @@ class Netty4ClientDispatcher(
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
-  private[this] def newStream(): Netty4ClientStreamTransport = {
+  private[this] def newStreamTransport(): Netty4ClientStreamTransport = {
     val id = nextId()
     val stream = new Netty4ClientStreamTransport(id, writer, minAccumFrames, streamStats)
     if (streams.putIfAbsent(id, stream) != null) {
@@ -86,21 +86,26 @@ class Netty4ClientDispatcher(
    * Write a request on the underlying connection and return its
    * response when it is received.
    */
-  def apply(req: Request): Future[Response] = {
-    val stream = newStream()
-    if (req.isEmpty) {
-      stream.writeHeaders(req, eos = true).before(stream.readResponse())
-    } else {
-      stream.writeHeaders(req).before {
+  def apply(req: Request): Future[Response] = req.data match {
+    case Stream.Nil =>
+      val st = newStreamTransport()
+      st.writeHeaders(req.headers, eos = true)
+        .before(st.readResponse())
+
+    case data: Stream.Reader =>
+      // Stream the request while receiving the response and
+      // continue streaming the request until it is complete,
+      // canceled,  or the response fails.
+      val st = newStreamTransport()
+      st.writeHeaders(req.headers).before {
         val t0 = Stopwatch.start()
-        val send = stream.writeStream(req)
-        val recv = stream.readResponse()
+        val send = st.writeStream(data)
+        val recv = st.readResponse()
         recv.onFailure(send.raise)
         send.onFailure(recv.raise)
         send.onSuccess(_ => requestMillis.add(t0().inMillis))
         recv
       }
-    }
   }
 
   override def close(d: Time): Future[Unit] = {

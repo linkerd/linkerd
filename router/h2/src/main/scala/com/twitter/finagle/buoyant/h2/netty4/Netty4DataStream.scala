@@ -11,7 +11,7 @@ import scala.collection.immutable.Queue
 import scala.util.control.NoStackTrace
 import java.util.concurrent.atomic.AtomicReference
 
-private[h2] object Netty4DataStream {
+private[h2] object Netty4Stream {
   private val log = com.twitter.logging.Logger.get(getClass.getName)
 
   type Releaser = Int => Future[Unit]
@@ -25,7 +25,7 @@ private[h2] object Netty4DataStream {
   private object Open extends State
 
   /** All data has been read to the user, but there is a pending trailers frame to be returned. */
-  private case class Draining(trailers: DataStream.Trailers) extends State
+  private case class Draining(trailers: Frame.Trailers) extends State
 
   /** The stream has been closed with a cause; all subsequent reads will fail */
   private case class Closed(cause: Throwable) extends State
@@ -46,7 +46,7 @@ private[h2] object Netty4DataStream {
     new IllegalStateException("No data or trailers available")
 
   /** A data frame that wraps an Http2DataFrame */
-  private class FrameData(frame: Http2DataFrame, releaser: Releaser) extends DataStream.Data {
+  private class FrameData(frame: Http2DataFrame, releaser: Releaser) extends Frame.Data {
     private[this] val windowIncrement = frame.content.readableBytes + frame.padding
     def buf = ByteBufAsBuf.Owned(frame.content)
     def isEnd = frame.isEndStream
@@ -69,14 +69,14 @@ private[h2] object Netty4DataStream {
  * pending in the queue. This allows the queue to be flushed more
  * quickly as it backs up. By default, frames are not accumulated.
  */
-private[h2] class Netty4DataStream(
-  releaser: Netty4DataStream.Releaser,
+private[h2] class Netty4Stream(
+  releaser: Netty4Stream.Releaser,
   minAccumFrames: Int = Int.MaxValue,
   frameq: AsyncQueue[Http2StreamFrame] = new AsyncQueue,
   stats: StatsReceiver = NullStatsReceiver
-) extends DataStream with DataStream.Offerable[Http2StreamFrame] {
+) extends Stream.Reader with Stream.Writer[Http2StreamFrame] {
 
-  import Netty4DataStream._
+  import Netty4Stream._
 
   private[this] val accumBytes = stats.stat("accum_bytes")
   private[this] val accumMicros = stats.stat("accum_us")
@@ -86,19 +86,16 @@ private[h2] class Netty4DataStream(
   private[this] val state: AtomicReference[State] = new AtomicReference(Open)
 
   private[this] val endP = new Promise[Unit]
-  def onEnd: Future[Unit] = endP
-
-  /** We need to process at least one frame. */
-  def isEmpty: Boolean = state.get.isInstanceOf[Closed]
+  override def onEnd: Future[Unit] = endP
 
   /** Fail the underlying queue and*/
-  def fail(exn: Throwable): Unit =
+  override def reset(exn: Throwable): Unit =
     if (state.compareAndSet(Open, Closed(exn))) {
       frameq.fail(exn, discard = true)
       endP.setException(exn)
     }
 
-  def offer(frame: Http2StreamFrame): Boolean =
+  override def write(frame: Http2StreamFrame): Boolean =
     state.get match {
       case Open => frameq.offer(frame)
       case _ => false
@@ -109,7 +106,7 @@ private[h2] class Netty4DataStream(
    *
    * If there are at least `minAccumFrames` in the queue, data frames may be combined
    */
-  def read(): Future[DataStream.Frame] = {
+  override def read(): Future[Frame] = {
     val start = Stopwatch.start()
     val f = state.get match {
       case Open =>
@@ -134,7 +131,7 @@ private[h2] class Netty4DataStream(
   // Try to read as much data as is available so that it may be
   // chunked. This is done after poll() returns because it's likely
   // that multiple items may have entered the queue.
-  private[this] val andDrainAccum: Http2StreamFrame => DataStream.Frame = {
+  private[this] val andDrainAccum: Http2StreamFrame => Frame = {
     case f: Http2DataFrame if f.isEndStream =>
       if (state.compareAndSet(Open, closedState)) {
         endP.setDone()
@@ -157,20 +154,22 @@ private[h2] class Netty4DataStream(
     case f => throw unexpectedFrame(f)
   }
 
-  private def toData(f: Http2DataFrame): DataStream.Data =
+  private def toData(f: Http2DataFrame): Frame.Data =
     new FrameData(f, releaser)
 
   /**
+   * Accumulate a queue of stream frames to a single frame.
    *
+   * If a trailers frame exists
    */
-  private val accumStream: Queue[Http2StreamFrame] => DataStream.Frame = { frames =>
+  private val accumStream: Queue[Http2StreamFrame] => Frame = { frames =>
     require(frames.nonEmpty)
     val start = Stopwatch.start()
 
     var content: CompositeByteBuf = null
     var bytes = 0
     var dataEos = false
-    var trailers: DataStream.Trailers = null
+    var trailers: Frame.Trailers = null
 
     val nFrames = frames.length
     val iter = frames.iterator
@@ -192,11 +191,11 @@ private[h2] class Netty4DataStream(
       }
     }
 
-    val data: DataStream.Data =
+    val data: Frame.Data =
       if (content == null) null
       else {
         accumBytes.add(bytes)
-        new DataStream.Data {
+        new Frame.Data {
           val buf = ByteBufAsBuf.Owned(content.retain())
           def isEnd = dataEos
           def release() =

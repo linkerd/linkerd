@@ -1,8 +1,8 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
+import com.twitter.finagle.Failure
 import com.twitter.util.Future
-import scala.util.control.NoStackTrace
 
 /**
  * A generic HTTP2 message.
@@ -19,10 +19,20 @@ import scala.util.control.NoStackTrace
  */
 sealed trait Message {
   def headers: Headers
-  def data: DataStream
-  def isEmpty: Boolean
-  final def nonEmpty: Boolean = !isEmpty
-  def copy(): Message
+  def data: Stream
+  def dup(): Message
+}
+
+/*
+ * Both 
+ */
+trait Headers {
+  def toSeq: Seq[(String, String)]
+  def get(k: String): Seq[String]
+  def add(k: String, v: String): Unit
+  def set(k: String, v: String): Unit
+  def remove(key: String): Boolean
+  def dup(): Headers
 }
 
 /**
@@ -33,7 +43,7 @@ trait Request extends Message {
   def method: String
   def authority: String
   def path: String
-  override def copy(): Request
+  override def dup(): Request
 }
 
 /**
@@ -42,106 +52,88 @@ trait Request extends Message {
  */
 trait Response extends Message {
   def status: Int
-  override def copy(): Response
-}
-
-/*
- * Both Messages and Trailers include headers...
- */
-sealed trait Headers {
-  def toSeq: Seq[(String, String)]
-  def get(key: String): Seq[String]
-  def add(key: String, value: String): Unit
-  def set(key: String, value: String): Unit
-  def remove(key: String): Unit
-  def copy(): Headers
+  override def dup(): Response
 }
 
 /**
- * A DataStream represents a stream of Data frames, optionally
+ * A Stream represents a stream of Data frames, optionally
  * followed by Trailers.
  *
- * A DataStream is not prescriptive as to how data is
- * produced. However, flow control semantics are built into teh
- * DataStream--consumers MUST release each data frame after it has
- * processed its contents.
+ * A Stream is not prescriptive as to how data is produced. However,
+ * flow control semantics are built into the Stream--consumers MUST
+ * release each data frame after it has processed its contents.
  */
-trait DataStream {
-  override def toString = s"DataStream(isEmpty=$isEmpty)"
-
-  /** True if read() is expecetd to return more data. */
+sealed trait Stream {
   def isEmpty: Boolean
-
-  /** Satisfied when the stream completes */
+  final def nonEmpty: Boolean = !isEmpty
   def onEnd: Future[Unit]
-
-  /**
-   * Read the next stream frame.
-   *
-   * Implementations may combined Data frames.
-   */
-  def read(): Future[DataStream.Frame]
-
-  /** Cancel processing of the stream with the given failure. */
-  def fail(exn: Throwable): Unit
 }
 
-object DataStream {
+/**
+ * A Stream of Frames
+ */
+object Stream {
 
-  class ClosedException extends Exception("DataStream is closed") with NoStackTrace
+  val ClosedFailure = Failure("Stream is closed")
 
   /**
    * An empty stream. Useful, for instance, when a Message consists of
    * only a headers frame with END_STREAM set.
    */
-  trait Nil extends DataStream {
-    override def toString = "DataStream.Nil"
-    def isEmpty = true
-    def onEnd = Future.Unit
-    def read() = Future.exception(new ClosedException)
-    def fail(exn: Throwable) = {}
+  object Nil extends Stream {
+    override def toString = "Stream.Nil"
+    override def isEmpty = true
+    override def onEnd = Future.Unit
   }
-  object Nil extends Nil
+
+  trait Reader extends Stream {
+    override def toString = s"Stream.Readable"
+    final override def isEmpty = false
+    def reset(cause: Throwable): Unit
+    def onEnd: Future[Unit]
+    def read(): Future[Frame]
+  }
 
   /**
-   * A single item in a DataStream.
+   * In order to create a stream, we need a mechanism to write to it.
    */
-  sealed trait Frame {
-
-    /**
-     * When `isEnd` is true, no further events will be returned on the
-     * DataStream.
-     */
-    def isEnd: Boolean
+  trait Writer[T] {
+    def write(frame: T): Boolean
   }
+}
 
+/**
+ * A single item in a Stream.
+ */
+sealed trait Frame {
+
+  /**
+   * When `isEnd` is true, no further events will be returned on the
+   * Stream.
+   */
+  def isEnd: Boolean
+}
+
+object Frame {
   /**
    * A frame containing aribtrary data.
    *
    * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
-    override def toString = s"DataStream.Data(buf=$buf, isEnd=$isEnd)"
     def buf: Buf
     def release(): Future[Unit]
   }
 
-  /** An empty, terminal DataStream frame. */
-  trait Eos extends Data {
-    override def toString = "DataStream.Eos"
+  object Empty extends Data {
     def buf = Buf.Empty
-    def isEnd = true
     def release() = Future.Unit
-  }
-  object Eos extends Eos
-
-  /** A terminal DataSTream frame including headers. */
-  trait Trailers extends Frame with Headers {
-    override def toString = s"DataStream.Trailers($headers)"
-    val isEnd = true
+    def isEnd = true
   }
 
-  trait Offerable[T] {
-    def offer(frame: T): Boolean
+  /** A terminal Frame including headers. */
+  trait Trailers extends Frame with Headers { headers =>
+    override def toString = s"Stream.Trailers(${headers.toSeq})"
+    final override def isEnd = true
   }
 }

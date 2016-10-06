@@ -32,7 +32,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
       hs.method("get")
       hs.path("/")
       hs.authority("a")
-      new Netty4Message.Request(hs, DataStream.Nil)
+      Netty4Message.Headers(hs)
     }
     val w = stream.writeHeaders(headers, true)
     assert(w.isDefined)
@@ -60,19 +60,18 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val stream = new Netty4ClientStreamTransport(id, writer, Int.MaxValue, stats)
 
-    val sendq = new AsyncQueue[DataStream.Frame]
+    val sendq = new AsyncQueue[Frame]
     val endP = new Promise[Unit]
-    val data = new DataStream {
-      def isEmpty = endP.isDefined
+    val data = new Stream.Reader {
       def onEnd = endP
       def read() = sendq.poll()
-      def fail(exn: Throwable) = ???
+      def reset(exn: Throwable) = ???
     }
     val w = stream.writeStream(data)
     assert(!w.isDefined)
 
     val heyo = Buf.Utf8("heyo")
-    sendq.offer(new DataStream.Data {
+    sendq.offer(new Frame.Data {
       def isEnd = false
       def buf = heyo
       def release() = Future.Unit
@@ -81,7 +80,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), false).setStreamId(id))
     recvq = recvq.tail
 
-    sendq.offer(new DataStream.Data {
+    sendq.offer(new Frame.Data {
       def isEnd = true
       def buf = heyo
       def release() = Future.Unit
@@ -111,12 +110,15 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
 
     assert(rspf.isDefined)
     val rsp = await(rspf)
-    assert(!rsp.isEmpty)
-    val endf = rsp.onEnd
+    val data = rsp.data match {
+      case Stream.Nil => fail("empty stream")
+      case r: Stream.Reader => r
+    }
+    val endf = data.onEnd
     assert(!endf.isDefined)
     assert(rsp.status == 222)
 
-    val dataf = rsp.read()
+    val dataf = data.read()
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
@@ -128,17 +130,17 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     })
     assert(dataf.isDefined)
     await(dataf) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
       case frame =>
         fail(s"unexpected frame: $frame")
     }
 
-    val trailf = rsp.read()
+    val trailf = data.read()
     assert(trailf.isDefined)
     await(trailf) match {
-      case trailers: DataStream.Trailers =>
-        assert(trailers.headers == Seq("trailers" -> "yea"))
+      case trailers: Frame.Trailers =>
+        assert(trailers.toSeq == Seq("trailers" -> "yea"))
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -164,12 +166,15 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
 
     assert(rspf.isDefined)
     val rsp = await(rspf)
-    assert(!rsp.isEmpty)
-    val endf = rsp.onEnd
+    val data = rsp.data match {
+      case Stream.Nil => fail("empty stream")
+      case data: Stream.Reader => data
+    }
+    val endf = data.onEnd
     assert(!endf.isDefined)
     assert(rsp.status == 222)
 
-    val dataf0 = rsp.read()
+    val dataf0 = data.read()
     assert(!dataf0.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
@@ -184,26 +189,26 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
 
     assert(dataf0.isDefined)
     await(dataf0) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
       case frame =>
         fail(s"unexpected frame: $frame")
     }
 
-    val dataf1 = rsp.read()
+    val dataf1 = data.read()
     assert(dataf1.isDefined)
     await(dataf1) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf.concat(buf))
       case frame =>
         fail(s"unexpected frame: $frame")
     }
 
-    val trailf = rsp.read()
+    val trailf = data.read()
     assert(trailf.isDefined)
     await(trailf) match {
-      case trailers: DataStream.Trailers =>
-        assert(trailers.headers == Seq("trailers" -> "yea"))
+      case trailers: Frame.Trailers =>
+        assert(trailers.toSeq == Seq("trailers" -> "yea"))
       case frame =>
         fail(s"unexpected frame: $frame")
     }

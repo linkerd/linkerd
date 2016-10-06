@@ -17,19 +17,38 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
    */
 
   def write(id: Int, msg: Headers, eos: Boolean): Future[Unit] = {
-    val headers = Netty4Message.extract(msg)
+    val headers = Netty4Message.Headers.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
     if (id >= 0) frame.setStreamId(id)
     write(frame)
   }
 
-  def write(id: Int, msg: Message): Future[Unit] =
-    write(id, msg, msg.isEmpty)
+  def write(id: Int, msg: Message): Future[Future[Unit]] =
+    msg.data match {
+      case Stream.Nil =>
+        write(id, msg.headers, true).map(_ => Future.Unit)
+      case data: Stream.Reader =>
+        write(id, msg.headers, false).map(_ => streamFrom(id, data))
+    }
 
-  def write(id: Int, data: DataStream.Data): Future[Unit] =
+  private[this] def streamFrom(id: Int, data: Stream.Reader): Future[Unit] =
+    if (data.isEmpty) Future.Unit
+    else {
+      val writeData: Frame => Future[Boolean] = {
+        case f: Frame.Data => write(id, f).map(_ => f.isEnd)
+        case f: Frame.Trailers => write(id, f).before(Future.True)
+      }
+      lazy val loop: Boolean => Future[Unit] = {
+        case true => Future.Unit
+        case false => data.read().flatMap(writeData).flatMap(loop)
+      }
+      data.read().flatMap(writeData).flatMap(loop)
+    }
+
+  def write(id: Int, data: Frame.Data): Future[Unit] =
     write(id, data.buf, data.isEnd)
 
-  def write(id: Int, tlrs: DataStream.Trailers): Future[Unit] =
+  def write(id: Int, tlrs: Frame.Trailers): Future[Unit] =
     write(id, tlrs, true /*eos*/ )
 
   def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {

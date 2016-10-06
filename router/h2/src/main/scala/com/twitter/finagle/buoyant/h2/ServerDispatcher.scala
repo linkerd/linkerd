@@ -38,7 +38,7 @@ class ServerDispatcher(
   private[this] val pending: Future[Unit] = {
     val startT = Stopwatch.start()
     val acting = stream.read().flatMap { req =>
-      val reading = req.onEnd
+      val reading = req.data.onEnd
       reading.onSuccess(_ => readMs.add(startT().inMillis))
 
       val serveT = Stopwatch.start()

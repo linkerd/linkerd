@@ -10,19 +10,19 @@ import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import org.scalatest.FunSuite
 
-class Netty4H2DataStreamTest extends FunSuite with Awaits {
+class Netty4H2StreamTest extends FunSuite with Awaits {
 
   private def mkFrame(buf: Buf, eos: Boolean = false) =
     new DefaultHttp2DataFrame(BufAsByteBuf.Shared(buf), eos)
 
   private class Ctx(minAccrual: Int) {
     var released = 0L
-    val releaser: Netty4DataStream.Releaser = { bytes =>
+    val releaser: Netty4Stream.Releaser = { bytes =>
       released += bytes
       Future.Unit
     }
 
-    val stream = new Netty4DataStream(releaser, minAccrual)
+    val stream = new Netty4Stream(releaser, minAccrual)
   }
 
   test("without accumulation") {
@@ -37,10 +37,10 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
 
     val buf = Buf.Utf8("hi my name is brak")
 
-    assert(stream.offer(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf)))
     assert(read0.isDefined)
     await(read0) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
         assert(released == 0)
         await(data.release())
@@ -51,12 +51,12 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     }
     assert(!endF.isDefined)
 
-    assert(stream.offer(mkFrame(buf, eos = true)))
+    assert(stream.write(mkFrame(buf, eos = true)))
     assert(!endF.isDefined)
     val read1 = stream.read()
     assert(read1.isDefined)
     await(read1) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
         assert(released == buf.length)
         await(data.release())
@@ -78,14 +78,14 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     val endF = stream.onEnd
     assert(!endF.isDefined)
 
-    assert(stream.offer(mkFrame(buf)))
-    assert(stream.offer(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf)))
 
     info("reading data")
     val read0 = stream.read()
     assert(read0.isDefined)
     await(read0) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
         assert(released == 0)
         await(data.release())
@@ -100,7 +100,7 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     val read1 = stream.read()
     assert(read1.isDefined)
     await(read1) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf)
         assert(released == buf.length)
         await(data.release())
@@ -111,16 +111,16 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     }
     assert(!endF.isDefined)
 
-    assert(stream.offer(mkFrame(buf)))
-    assert(stream.offer(mkFrame(buf)))
-    assert(stream.offer(mkFrame(buf, eos = true)))
+    assert(stream.write(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf, eos = true)))
     assert(!endF.isDefined)
 
     info("reading data")
     val read2 = stream.read()
     assert(read2.isDefined)
     await(read2) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf.concat(buf).concat(buf))
         assert(released == buf.length * 2)
         await(data.release())
@@ -142,9 +142,9 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     val endF = stream.onEnd
     assert(!endF.isDefined)
 
-    assert(stream.offer(mkFrame(buf)))
-    assert(stream.offer(mkFrame(buf)))
-    assert(stream.offer({
+    assert(stream.write(mkFrame(buf)))
+    assert(stream.write(mkFrame(buf)))
+    assert(stream.write({
       // Trailers
       val h = new DefaultHttp2Headers()
       h.set("me", "moltar")
@@ -155,7 +155,7 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     val read0 = stream.read()
     assert(read0.isDefined)
     await(read0) match {
-      case data: DataStream.Data =>
+      case data: Frame.Data =>
         assert(data.buf == buf.concat(buf))
         assert(released == 0)
         await(data.release())
@@ -169,8 +169,8 @@ class Netty4H2DataStreamTest extends FunSuite with Awaits {
     val read1 = stream.read()
     assert(read1.isDefined)
     await(read1) match {
-      case trailers: DataStream.Trailers =>
-        assert(trailers.headers == Seq("me" -> "moltar"))
+      case trailers: Frame.Trailers =>
+        assert(trailers.toSeq == Seq("me" -> "moltar"))
       case frame =>
         fail(s"unexpected frame: $frame")
     }

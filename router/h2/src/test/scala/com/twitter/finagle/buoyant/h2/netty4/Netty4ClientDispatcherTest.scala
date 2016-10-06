@@ -38,13 +38,13 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     val dispatcher = new Netty4ClientDispatcher(transport, Int.MaxValue, stats)
 
     var released = 0
-    def releaser: Netty4DataStream.Releaser = { bytes =>
+    def releaser: Netty4Stream.Releaser = { bytes =>
       released += bytes
       Future.Unit
     }
 
     // Issue req0
-    val req0q = new AsyncQueue[DataStream.Frame]
+    val req0q = new AsyncQueue[Frame]
     val req0EndP = new Promise[Unit]
     val req0 = {
       val hs = new DefaultHttp2Headers
@@ -52,11 +52,10 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       hs.method("sup")
       hs.path("/")
       hs.authority("auf")
-      val data = new DataStream {
-        def isEmpty = req0EndP.isDefined
+      val data = new Stream.Reader {
         def onEnd = req0EndP
         def read() = req0q.poll()
-        def fail(exn: Throwable) = req0q.fail(exn)
+        def reset(exn: Throwable) = req0q.fail(exn)
       }
       Netty4Message.Request(hs, data)
     }
@@ -69,7 +68,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       hs.method("sup")
       hs.path("/")
       hs.authority("auf")
-      Netty4Message.Request(hs, DataStream.Nil)
+      Netty4Message.Request(hs, Stream.Nil)
     }
     val rsp1f = dispatcher(req1)
     assert(!rsp1f.isDefined)
@@ -96,7 +95,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
         fail(s"unexpected frame: $f")
     }
 
-    req0q.offer(new DataStream.Data {
+    req0q.offer(new Frame.Data {
       def isEnd = true
       val buf = Buf.Utf8("how's it goin?")
       def release() = releaser(buf.length)
@@ -113,6 +112,10 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     assert(rsp1f.isDefined)
     val rsp1 = await(rsp1f)
     assert(rsp1.status == 222)
+    val data1 = rsp1.data match {
+      case Stream.Nil => fail("empty stream")
+      case r: Stream.Reader => r
+    }
 
     // We receive a response for req1 first:
     recvq.offer({
@@ -123,6 +126,10 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     assert(rsp0f.isDefined)
     val rsp0 = await(rsp0f)
     assert(rsp0.status == 223)
+    val data0 = rsp0.data match {
+      case Stream.Nil => fail("empty stream")
+      case r: Stream.Reader => r
+    }
 
     recvq.offer({
       val buf = Buf.Utf8("sup")
@@ -133,23 +140,23 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).setStreamId(5)
     })
 
-    val d0f = rsp0.read()
+    val d0f = data0.read()
     assert(d0f.isDefined)
-    assert(rsp0.onEnd.isDefined)
+    assert(data0.onEnd.isDefined)
 
-    val d1f = rsp1.read()
+    val d1f = data1.read()
     assert(d1f.isDefined)
-    assert(rsp1.onEnd.isDefined)
+    assert(data1.onEnd.isDefined)
 
     await(d0f) match {
-      case f: DataStream.Data =>
+      case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("sup"))
         assert(f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
     }
     await(d1f) match {
-      case f: DataStream.Data =>
+      case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("yo"))
         assert(f.isEnd)
       case f =>

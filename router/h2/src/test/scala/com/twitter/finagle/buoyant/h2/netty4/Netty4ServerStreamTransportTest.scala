@@ -54,21 +54,24 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     assert(req.method == "sup")
     assert(req.path == "/")
     assert(req.authority == "auf")
-    assert(!req.isEmpty)
+    val data = req.data match {
+      case Stream.Nil => fail("empty stream")
+      case d: Stream.Reader => d
+    }
 
-    val d0f = req.read()
+    val d0f = data.read()
     assert(!d0f.isDefined)
     trans.recvq.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), false))
     assert(d0f.isDefined)
     await(d0f) match {
-      case f: DataStream.Data =>
+      case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("data"))
         assert(!f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
     }
 
-    val d1f = req.read()
+    val d1f = data.read()
     assert(!d1f.isDefined)
     trans.recvq.offer({
       val hs = new DefaultHttp2Headers
@@ -77,8 +80,8 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     })
     assert(d1f.isDefined)
     await(d1f) match {
-      case f: DataStream.Trailers =>
-        assert(f.headers == Seq("trailers" -> "chya"))
+      case f: Frame.Trailers =>
+        assert(f.toSeq == Seq("trailers" -> "chya"))
         assert(f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
@@ -89,7 +92,7 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     val trans = new TestTransport
     val stream = new Netty4ServerStreamTransport(trans)
 
-    val rspdata = new Netty4DataStream(_ => Future.Unit)
+    val rspdata = new Netty4Stream(_ => Future.Unit)
     val rsp = {
       val hs = new DefaultHttp2Headers
       hs.status("202")
@@ -108,15 +111,15 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     })
 
     val buf = Buf.Utf8("Looks like some tests failed.")
-    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
     assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false))
 
-    rspdata.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
     assert(await(trans.sentq.poll()) == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false))
 
     val trailers = new DefaultHttp2Headers
     trailers.set("trailin", "yams")
-    rspdata.offer(new DefaultHttp2HeadersFrame(trailers, true))
+    rspdata.write(new DefaultHttp2HeadersFrame(trailers, true))
     assert(await(trans.sentq.poll()) == new DefaultHttp2HeadersFrame(trailers, true))
   }
 }
