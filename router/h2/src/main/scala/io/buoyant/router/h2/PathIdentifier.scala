@@ -21,7 +21,7 @@ class PathIdentifier(pfx: Path, baseDtab: () => Dtab)
   extends Identifier[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val dst = Dst.Path(pfx ++ reqPath(req), baseDtab(), Dtab.empty)
+    val dst = Dst.Path(pfx ++ reqPath(req), baseDtab(), Dtab.local)
     Future.value(new IdentifiedRequest(dst, req))
   }
 

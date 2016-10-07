@@ -93,12 +93,11 @@ object LinkerdHeaders {
         val role = Stack.Role("ClientContextFilter")
         val description = "Injects linkerd context into http headers"
 
-        // TODO use Dtab.ClientFilter once this module can replace
-        //      finagle's dtab encoding logic.
         val deadline = new Deadline.ClientFilter
+        val dtab = new Dtab.ClientFilter
 
         def make(next: ServiceFactory[Request, Response]) =
-          deadline.andThen(next)
+          deadline.andThen(dtab).andThen(next)
       }
 
     val Prefix = LinkerdHeaders.Prefix + "ctx-"

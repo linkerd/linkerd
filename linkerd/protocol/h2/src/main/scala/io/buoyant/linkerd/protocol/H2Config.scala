@@ -2,7 +2,8 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.finagle.Path
-import com.twitter.finagle.buoyant.h2.{Request, Response}
+import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.buoyant.h2.{Request, Response, LinkerdHeaders}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
@@ -18,20 +19,26 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
   protected val defaultRouter = {
 
+    // retries can't share header mutations
     val pathStack = H2.router.pathStack
-      // retries can't share header mutations
       .insertAfter(ClassifiedRetries.role, h2.DupRequest.module)
+      .prepend(LinkerdHeaders.Dst.PathFilter.module)
       .prepend(h2.ErrorResponder.module)
-    //   .prepend(Headers.Dst.PathFilter.module)
+
+    // I think we can safely ignore the DelayedRelease module (as
+    // applied by finagle-http), since we don't ever run in
+    // FactoryToService mode?
+    //
     //   .replace(StackClient.Role.prepFactory, DelayedRelease.module)
 
     val boundStack = H2.router.boundStack
-    //   .prepend(Headers.Dst.BoundFilter.module)
+      .prepend(LinkerdHeaders.Dst.BoundFilter.module)
 
     val clientStack = H2.router.clientStack
+      .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
+
     //   .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
     //   .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
-    //   .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
     H2.router
       .withPathStack(pathStack)
@@ -42,6 +49,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
   protected val defaultServer = {
     val stk = H2.server.stack
+      .prepend(LinkerdHeaders.Ctx.serverModule)
       .prepend(h2.ErrorResponder.module)
     H2.server.withStack(stk)
   }
@@ -61,7 +69,7 @@ class H2Config extends RouterConfig {
     ResponseClassifiers.NonRetryableServerFailures
       .orElse(super.baseResponseClassifier)
 
-  // TODO: basic + gRPC (trailers-aware)
+  // TODO: gRPC (trailers-aware)
   @JsonIgnore
   override def responseClassifier =
     ResponseClassifiers.NonRetryableStream(super.responseClassifier)
