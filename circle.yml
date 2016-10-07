@@ -7,6 +7,8 @@ machine:
     version: 6.1.0
   services:
     - docker
+  environment:
+    CI_TERRIBLENESS: 30.seconds
 
 dependencies:
   cache_directories:
