@@ -150,7 +150,7 @@ Response Code | Description
 204           | Updated
 400           | Dtab is malformed
 404           | Dtab namespace does not exist
-409           | If-Match header is provided and does not match the current dtab version
+412           | If-Match header is provided and does not match the current dtab version
 
 ### DELETE /api/1/dtabs/&lt;namespace&gt;
 
