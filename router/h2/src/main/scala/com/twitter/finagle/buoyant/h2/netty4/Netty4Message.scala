@@ -75,7 +75,7 @@ private[h2] object Netty4Message {
 
     def apply(status: Status, stream: Stream): Response = {
       val h = new DefaultHttp2Headers
-      h.status(status.value)
+      h.status(status.toString)
       apply(h, stream)
     }
   }
