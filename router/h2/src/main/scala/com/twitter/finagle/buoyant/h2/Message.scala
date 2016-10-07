@@ -34,6 +34,42 @@ trait Headers {
   def dup(): Headers
 }
 
+object Headers {
+  def apply(pairs: Seq[(String, String)]): Headers =
+    new Impl(pairs)
+
+  def apply(hd: (String, String), tl: (String, String)*): Headers =
+    apply(hd +: tl)
+
+  /**
+   * Typically, headers wrap underlying netty types; but since we
+   * don't want to bind user code to any netty APIs, we provide
+   * another header implementation that can be translated by
+   * transports.
+   */
+  private class Impl(orig: Seq[(String, String)]) extends Headers {
+    private[this] var current: Seq[(String, String)] = orig
+    def toSeq = synchronized(current)
+    override def toString = s"""Headers(toSeq.mkString(", "))"""
+    def contains(key: String) = toSeq.exists { case (k, _) => key == k }
+    def get(key: String) = toSeq.collect { case (k, v) if key == k => v }
+    def add(key: String, value: String) = synchronized {
+      current = current :+ (key -> value)
+    }
+    def set(key: String, v: String) = synchronized {
+      remove(key)
+      current = current :+ (key -> v)
+    }
+    def remove(key: String) = synchronized {
+      val filtered = current.filterNot { case (k, _) => key == k }
+      val isUnchanged = filtered.length == current.length
+      current = filtered
+      isUnchanged
+    }
+    def dup() = new Impl(synchronized(current))
+  }
+}
+
 /**
  * Request messages include helpers for accessing pseudo-headers.
  */
@@ -45,13 +81,59 @@ trait Request extends Message {
   override def dup(): Request
 }
 
-/**
- * Request messages includes a helper for accessing the response
- * psuedo-header.
- */
+object Request {
+  def apply(
+    scheme: String,
+    method: String,
+    authority: String,
+    path: String,
+    data: Stream
+  ): Request = Impl(
+    Headers(
+      ":scheme" -> scheme,
+      ":method" -> method,
+      ":authority" -> authority,
+      ":path" -> path
+    ),
+    data
+  )
+
+  def apply(headers: Headers, data: Stream): Request =
+    Impl(headers, data)
+
+  private case class Impl(headers: Headers, data: Stream) extends Request {
+    override def toString = s"Request($scheme, $method, $authority, $path)"
+    override def dup() = copy(headers = headers.dup())
+    override def scheme = headers.get(":scheme").headOption.getOrElse("")
+    override def method = headers.get(":method").headOption.getOrElse("")
+    override def authority = headers.get(":authority").headOption.getOrElse("")
+    override def path = headers.get(":path").headOption.getOrElse("")
+  }
+}
+
 trait Response extends Message {
   def status: Status
   override def dup(): Response
+}
+
+object Response {
+  def apply(status: Status, data: Stream): Response =
+    Impl(Headers(":status" -> status.code.toString), data)
+
+  def apply(headers: Headers, data: Stream): Response =
+    Impl(headers, data)
+
+  private case class Impl(
+    headers: Headers,
+    data: Stream
+  ) extends Response {
+    override def toString = s"Response($status)"
+    override def dup() = copy(headers = headers.dup())
+    override def status = headers.get(":status").headOption match {
+      case Some(code) => Status.fromCode(code.toInt)
+      case None => throw new IllegalArgumentException("missing :status header")
+    }
+  }
 }
 
 /**
@@ -72,8 +154,6 @@ sealed trait Stream {
  * A Stream of Frames
  */
 object Stream {
-
-  val ClosedFailure = Failure("Stream is closed")
 
   /**
    * An empty stream. Useful, for instance, when a Message consists of

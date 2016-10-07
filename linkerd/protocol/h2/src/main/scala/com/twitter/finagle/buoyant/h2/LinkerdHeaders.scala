@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.finagle.{Dtab => FDtab, Status => _, _}
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
-import com.twitter.finagle.buoyant.h2.netty4.Netty4Message
 import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
 import com.twitter.finagle.tracing._
 import com.twitter.io.Buf
@@ -418,7 +417,7 @@ object LinkerdHeaders {
     val Key = Prefix + "err"
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
-      val rsp = Netty4Message.Response(status, Stream.const(Buf.Utf8(msg)))
+      val rsp = Response(status, Stream.const(Buf.Utf8(msg)))
       rsp.headers.add(Key, msg)
       rsp.headers.set("content-type", "text/plain")
       rsp

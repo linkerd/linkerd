@@ -64,44 +64,19 @@ private[h2] object Netty4Message {
     }
   }
 
-  case class Request(netty4Headers: Http2Headers, data: Stream)
-    extends H2Request {
-
-    require(netty4Headers.scheme != null)
-    override def scheme = netty4Headers.scheme.toString
-
-    require(netty4Headers.method != null)
-    override def method = netty4Headers.method.toString
-
-    require(netty4Headers.path != null)
-    override def path = netty4Headers.path.toString
-
-    require(netty4Headers.authority != null)
-    override def authority = netty4Headers.authority.toString
-
-    override val headers: Headers = Headers(netty4Headers)
-
-    override def dup(): com.twitter.finagle.buoyant.h2.Request =
-      copy(netty4Headers = Headers.extract(headers.dup()))
-  }
-
-  case class Response(netty4Headers: Http2Headers, data: Stream)
-    extends H2Response {
-
-    require(netty4Headers.status != null)
-    def status = Status.fromCode(netty4Headers.status.toString.toInt)
-
-    override val headers: Headers = Headers(netty4Headers)
-
-    override def dup(): com.twitter.finagle.buoyant.h2.Response =
-      copy(netty4Headers = Headers.extract(headers.dup()))
+  object Request {
+    def apply(netty4Headers: Http2Headers, data: Stream): H2Request =
+      H2Request(Headers(netty4Headers), data)
   }
 
   object Response {
+    def apply(netty4Headers: Http2Headers, data: Stream): H2Response =
+      H2Response(Headers(netty4Headers), data)
+
     def apply(status: Status, stream: Stream): Response = {
       val h = new DefaultHttp2Headers
       h.status(status.value)
-      Response(h, stream)
+      apply(h, stream)
     }
   }
 

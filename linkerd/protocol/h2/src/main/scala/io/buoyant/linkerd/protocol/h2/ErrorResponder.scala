@@ -34,13 +34,13 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
 object ErrorResponder {
   private val log = Logger.get("ErrorResponder")
 
+  val filter = new ErrorResponder
+
   val role = Stack.Role("ErrorResponder")
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = ErrorResponder.role
       val description = "Crafts H2 responses for routing errors"
-      val filter = new ErrorResponder
-      def make(factory: ServiceFactory[Request, Response]) =
-        filter.andThen(factory)
+      def make(factory: ServiceFactory[Request, Response]) = filter.andThen(factory)
     }
 }
