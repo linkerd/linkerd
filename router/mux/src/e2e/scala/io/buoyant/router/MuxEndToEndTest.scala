@@ -12,19 +12,15 @@ import org.scalatest.FunSuite
 
 class MuxEndToEndTest extends FunSuite with Awaits {
 
-  // since this is dealing with open sockets we need to be somewhat
-  // tolerant to slow test environments (cough circleci).
-  override val defaultWait = 5.seconds
-
   /*
    * A bunch of utility/setup.  The test is configured as follows:
    *
    * - Downstreams are created. these are target services that serve
    *   requests.
-   * 
+   *
    * - A Router is created that is configured with a dtab that routes
    *   certain requests by name.
-   * 
+   *
    * - An Upstream is created connected to the router (or directly to
    *   the downstream).  As it is issued names, they are used to
    *   resolve a downstream through the router.

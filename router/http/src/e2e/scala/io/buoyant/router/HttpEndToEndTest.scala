@@ -14,8 +14,6 @@ import org.scalatest.FunSuite
 
 class HttpEndToEndTest extends FunSuite with Awaits {
 
-  override val defaultWait = 5.seconds
-
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
