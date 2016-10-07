@@ -50,7 +50,7 @@ object Headers {
   private class Impl(orig: Seq[(String, String)]) extends Headers {
     private[this] var current: Seq[(String, String)] = orig
     def toSeq = synchronized(current)
-    override def toString = s"""Headers(toSeq.mkString(", "))"""
+    override def toString = s"""Headers(${toSeq.mkString(", ")})"""
     def contains(key: String) = toSeq.exists { case (k, _) => key == k }
     def get(key: String) = toSeq.collect { case (k, v) if key == k => v }
     def add(key: String, value: String) = synchronized {

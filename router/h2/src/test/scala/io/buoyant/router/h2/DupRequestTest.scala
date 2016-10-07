@@ -1,0 +1,22 @@
+package io.buoyant.linkerd.protocol.h2
+
+import com.twitter.io.Buf
+import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.buoyant.h2._
+import com.twitter.util.Future
+import io.buoyant.test.Awaits
+import org.scalatest.FunSuite
+
+class DupRequestTest extends FunSuite with Awaits {
+
+  test("changes in service don't impact original") {
+    val service = DupRequest.filter.andThen(Service.mk[Request, Response] { req =>
+      req.headers.set("badness", "true")
+      Future.value(Response(Status.Ok, Stream.Nil))
+    })
+
+    val req = Request("http", "GET", "hihost", "/", Stream.Nil)
+    await(service(req))
+    assert(!req.headers.contains("badness"))
+  }
+}

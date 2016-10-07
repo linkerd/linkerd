@@ -4,7 +4,7 @@ package protocol
 import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.fasterxml.jackson.annotation.JsonIgnore
-import io.buoyant.router.{H2, RoutingFactory}
+import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 
 class H2Initializer extends ProtocolInitializer.Simple {
@@ -16,12 +16,13 @@ class H2Initializer extends ProtocolInitializer.Simple {
   protected type Rsp = Response
 
   protected val defaultRouter = {
+
     val pathStack = H2.router.pathStack
+      // retries can't share header mutations
+      .insertAfter(ClassifiedRetries.role, h2.DupRequest.module)
       .prepend(h2.ErrorResponder.module)
     //   .prepend(Headers.Dst.PathFilter.module)
     //   .replace(StackClient.Role.prepFactory, DelayedRelease.module)
-    //   // retries can't share header mutations
-    //   .insertAfter(RetryFilter.role, DupRequest.module)
 
     val boundStack = H2.router.boundStack
     //   .prepend(Headers.Dst.BoundFilter.module)
@@ -38,9 +39,11 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
-  protected val defaultServer = H2.server
-    .withStack(H2.server.stack
-      .prepend(h2.ErrorResponder.module))
+  protected val defaultServer = {
+    val stk = H2.server.stack
+      .prepend(h2.ErrorResponder.module)
+    H2.server.withStack(stk)
+  }
 
   override def defaultServerPort: Int = 4142
 }
