@@ -42,7 +42,7 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     trans.recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
-      hs.method("sup")
+      hs.method("SUP")
       hs.path("/")
       hs.authority("auf")
       new DefaultHttp2HeadersFrame(hs, false)
@@ -51,7 +51,7 @@ class Netty4ServerStreamTransportTest extends FunSuite with Awaits {
     assert(reqf.isDefined)
     val req = await(reqf)
     assert(req.scheme == "h2")
-    assert(req.method == "sup")
+    assert(req.method == Method("SUP"))
     assert(req.path == "/")
     assert(req.authority == "auf")
     val data = req.data match {

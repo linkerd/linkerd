@@ -15,7 +15,7 @@ class DupRequestTest extends FunSuite with Awaits {
       Future.value(Response(Status.Ok, Stream.Nil))
     })
 
-    val req = Request("http", "GET", "hihost", "/", Stream.Nil)
+    val req = Request("http", Method.Get, "hihost", "/", Stream.Nil)
     await(service(req))
     assert(!req.headers.contains("badness"))
   }

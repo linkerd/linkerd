@@ -4,6 +4,7 @@ package protocol
 import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.fasterxml.jackson.annotation.JsonIgnore
+import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 
@@ -55,9 +56,15 @@ class H2Config extends RouterConfig {
   var client: Option[ClientConfig] = None
   var servers: Seq[H2ServerConfig] = Nil
 
+  @JsonIgnore
+  override def baseResponseClassifier =
+    ResponseClassifiers.NonRetryableServerFailures
+      .orElse(super.baseResponseClassifier)
+
   // TODO: basic + gRPC (trailers-aware)
-  // @JsonIgnore
-  // override def baseResponseClassifier = ...
+  @JsonIgnore
+  override def responseClassifier =
+    ResponseClassifiers.NonRetryableStream(super.responseClassifier)
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = H2Initializer

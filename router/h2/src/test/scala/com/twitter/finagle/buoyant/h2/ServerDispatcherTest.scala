@@ -76,7 +76,7 @@ class ServerDispatcherTest extends FunSuite with Eventually {
       val reqEndP = new Promise[Unit]
       val req: Request = new Request {
         override val scheme = "http"
-        override val method = "get"
+        override val method = Method.Get
         override val authority = "authoirtah"
         override val path = "/"
         override val headers: Headers = new Headers {

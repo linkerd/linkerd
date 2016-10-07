@@ -89,7 +89,7 @@ object Status {
   val NotExtended = Status(510)
   val NetworkAuthenticationRequired = Status(511)
   val EatMyShorts = Status(555)
-  object ServertError {
+  object ServerError {
     def unapply(status: Status): Option[Status] = inRange(500, 600, status)
   }
 

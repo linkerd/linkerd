@@ -15,7 +15,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
       Future.exception(RoutingFactory.UnknownDst(req, "yodles"))
     })
 
-    val rsp = await(service(Request("http", "GET", "hihost", "/", Stream.Nil)))
+    val rsp = await(service(Request("http", Method.Get, "hihost", "/", Stream.Nil)))
     assert(rsp.status == Status.BadRequest)
     assert(rsp.headers.contains("l5d-err"))
     rsp.headers.get("l5d-err") match {
@@ -40,7 +40,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
       Future.exception(Failure("yodles"))
     })
 
-    val rsp = await(service(Request("http", "GET", "hihost", "/", Stream.Nil)))
+    val rsp = await(service(Request("http", Method.Get, "hihost", "/", Stream.Nil)))
     assert(rsp.status == Status.BadGateway)
     assert(rsp.headers.contains("l5d-err"))
     assert(rsp.headers.get("l5d-err") == Seq("yodles"))
@@ -61,7 +61,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
       Future.value(Response(Status.Cowabunga, Stream.Nil))
     })
 
-    val rsp = await(service(Request("http", "GET", "hihost", "/", Stream.Nil)))
+    val rsp = await(service(Request("http", Method.Get, "hihost", "/", Stream.Nil)))
     assert(rsp.status == Status.Cowabunga)
     assert(!rsp.headers.contains("l5d-err"))
     assert(rsp.data == Stream.Nil)

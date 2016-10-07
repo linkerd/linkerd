@@ -75,7 +75,7 @@ object Headers {
  */
 trait Request extends Message {
   def scheme: String
-  def method: String
+  def method: Method
   def authority: String
   def path: String
   override def dup(): Request
@@ -84,14 +84,14 @@ trait Request extends Message {
 object Request {
   def apply(
     scheme: String,
-    method: String,
+    method: Method,
     authority: String,
     path: String,
     data: Stream
   ): Request = Impl(
     Headers(
       ":scheme" -> scheme,
-      ":method" -> method,
+      ":method" -> method.toString,
       ":authority" -> authority,
       ":path" -> path
     ),
@@ -105,7 +105,10 @@ object Request {
     override def toString = s"Request($scheme, $method, $authority, $path)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(":scheme").headOption.getOrElse("")
-    override def method = headers.get(":method").headOption.getOrElse("")
+    override def method = headers.get(":method").headOption match {
+      case Some(name) => Method(name)
+      case None => throw new IllegalArgumentException("missing :method header")
+    }
     override def authority = headers.get(":authority").headOption.getOrElse("")
     override def path = headers.get(":path").headOption.getOrElse("")
   }
@@ -173,6 +176,12 @@ object Stream {
     def read(): Future[Frame]
   }
 
+  // TODO have a dedicated Const stream type that indicates the entire
+  // message is buffered (i.e. so that retries may be performed).
+
+  /**
+   * Does not support upstream flow control.
+   */
   def const(buf: Buf): Reader = new Reader {
     private[this] val endP = new Promise[Unit]
     private[this] val complete = new AtomicBoolean(false)
