@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.protocol.h2
 
+import com.twitter.io.Buf
 import com.twitter.finagle.{Failure, Service}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.util.Future
@@ -21,7 +22,17 @@ class ErrorResponderTest extends FunSuite with Awaits {
       case Seq(msg) => assert(msg.startsWith("Unknown destination: "))
       case msgs => fail(s"unexpected error header: $msgs")
     }
-    // todo check body
+    rsp.data match {
+      case Stream.Nil => fail("no body")
+      case stream: Stream.Reader =>
+        await(stream.read()) match {
+          case _: Frame.Trailers =>
+            fail("received trailers instead of data")
+          case data: Frame.Data =>
+            val Buf.Utf8(msg) = data.buf
+            assert(msg.startsWith("Unknown destination: "))
+        }
+    }
   }
 
   test("general exception") {
@@ -33,7 +44,16 @@ class ErrorResponderTest extends FunSuite with Awaits {
     assert(rsp.status == Status.BadGateway)
     assert(rsp.headers.contains("l5d-err"))
     assert(rsp.headers.get("l5d-err") == Seq("yodles"))
-    // todo check body
+    rsp.data match {
+      case Stream.Nil => fail("no body")
+      case stream: Stream.Reader =>
+        await(stream.read()) match {
+          case _: Frame.Trailers =>
+            fail("received trailers instead of data")
+          case data: Frame.Data =>
+            assert(data.buf == Buf.Utf8("yodles"))
+        }
+    }
   }
 
   test("success") {
@@ -44,6 +64,6 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(service(Request("http", "GET", "hihost", "/", Stream.Nil)))
     assert(rsp.status == Status.Cowabunga)
     assert(!rsp.headers.contains("l5d-err"))
-    // todo check body
+    assert(rsp.data == Stream.Nil)
   }
 }

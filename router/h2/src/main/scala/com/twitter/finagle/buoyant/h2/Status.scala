@@ -107,6 +107,7 @@ object Status {
     205 -> ResetContent,
     206 -> PartialContent,
     207 -> MultiStatus,
+    222 -> Cowabunga,
     300 -> MultipleChoices,
     301 -> MovedPermanently,
     302 -> Found,
