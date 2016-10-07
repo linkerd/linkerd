@@ -1,6 +1,4 @@
 machine:
-  environment:
-    TWITTER_DEVELOP: 1
   java:
     version: oraclejdk8
   node:
@@ -9,6 +7,7 @@ machine:
     - docker
   environment:
     CI_TERRIBLENESS: 30.seconds
+    TWITTER_DEVELOP: 1
 
 dependencies:
   cache_directories:
