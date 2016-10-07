@@ -8,7 +8,7 @@ import io.buoyant.router.RoutingFactory
 import java.net.URLEncoder
 
 class ErrorResponder extends SimpleFilter[Request, Response] {
-  import ErrorResponder.log
+  private[this] val log = ErrorResponder.log
 
   def apply(req: Request, service: Service[Request, Response]) =
     service(req).handle(handler)

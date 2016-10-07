@@ -88,6 +88,7 @@ object Status {
   val InsufficientStorage = Status(507)
   val NotExtended = Status(510)
   val NetworkAuthenticationRequired = Status(511)
+  val EatMyShorts = Status(555)
   object ServertError {
     def unapply(status: Status): Option[Status] = inRange(500, 600, status)
   }
@@ -153,7 +154,8 @@ object Status {
     506 -> VariantAlsoNegotiates,
     507 -> InsufficientStorage,
     510 -> NotExtended,
-    511 -> NetworkAuthenticationRequired
+    511 -> NetworkAuthenticationRequired,
+    555 -> EatMyShorts
   )
 
 }
