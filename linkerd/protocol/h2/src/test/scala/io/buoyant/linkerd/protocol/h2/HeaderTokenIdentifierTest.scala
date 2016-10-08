@@ -1,4 +1,4 @@
-package io.buoyant.router.h2
+package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.finagle.buoyant.Dst

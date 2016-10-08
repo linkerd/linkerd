@@ -30,7 +30,7 @@ trait Headers {
   def get(k: String): Seq[String]
   def add(k: String, v: String): Unit
   def set(k: String, v: String): Unit
-  def remove(key: String): Boolean
+  def remove(key: String): Seq[String]
   def dup(): Headers
 }
 
@@ -61,11 +61,11 @@ object Headers {
       current = current :+ (key -> v)
     }
     def remove(key: String) = synchronized {
-      val filtered = current.filterNot { case (k, _) => key == k }
-      val isUnchanged = filtered.length == current.length
-      current = filtered
-      isUnchanged
+      val isMatch: ((String, String)) => Boolean = { case (k, _) => key == k }
+      val (removed, updated) = current.partition(isMatch)
+      removed.map(toVal)
     }
+    private[this] val toVal: ((String, String)) => String = { case (_, v) => v }
     def dup() = new Impl(synchronized(current))
   }
 }

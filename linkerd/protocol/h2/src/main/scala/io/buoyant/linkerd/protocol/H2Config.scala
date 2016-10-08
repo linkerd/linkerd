@@ -71,11 +71,12 @@ class H2Config extends RouterConfig {
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
   var identifier: Option[Seq[H2IdentifierConfig]] = None
 
-  private[this] val combinedIdentifier: Option[H2.Identifier] = identifier.map { configs =>
-    H2.Identifier { params =>
-      RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(params)))
+  private[this] def combinedIdentifier: Option[H2.Identifier] =
+    identifier.map { configs =>
+      H2.Identifier { params =>
+        RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(params)))
+      }
     }
-  }
 
   @JsonIgnore
   override def baseResponseClassifier =
@@ -119,10 +120,11 @@ class H2IdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[H2Ident
     _c: DeserializationContext
   ): Option[Seq[H2IdentifierConfig]] = {
     val codec = p.getCodec
+    val klass = classOf[H2IdentifierConfig]
     codec.readTree[TreeNode](p) match {
       case n: JsonNode if n.isArray =>
-        Some(n.asScala.toList.map(codec.treeToValue(_, classOf[H2IdentifierConfig])))
-      case node => Some(Seq(codec.treeToValue(node, classOf[H2IdentifierConfig])))
+        Some(n.asScala.toList.map(codec.treeToValue(_, klass)))
+      case node => Some(Seq(codec.treeToValue(node, klass)))
     }
   }
 

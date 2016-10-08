@@ -85,7 +85,7 @@ class ServerDispatcherTest extends FunSuite with Eventually {
           def contains(k: String) = false
           def add(k: String, v: String) = {}
           def set(k: String, v: String) = {}
-          def remove(k: String) = false
+          def remove(k: String) = Nil
           def dup() = this
         }
         override val data: Stream = new Stream.Reader {
@@ -121,7 +121,7 @@ class ServerDispatcherTest extends FunSuite with Eventually {
           override def contains(k: String) = false
           override def add(k: String, v: String) = {}
           override def set(k: String, v: String) = {}
-          override def remove(k: String) = false
+          override def remove(k: String) = Nil
           override def dup() = this
         }
         override val data: Stream = new Stream.Reader {

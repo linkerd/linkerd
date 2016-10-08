@@ -88,7 +88,9 @@ object H2 extends Client[Request, Response]
 
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] =
-      StackRouter.newPathStack
+      h2.ViaHeaderFilter.module +:
+        h2.ScrubHopByHopHeadersFilter.module +:
+        StackRouter.newPathStack
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack
@@ -128,13 +130,14 @@ object H2 extends Client[Request, Response]
 
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = StackServer.newStack
+      .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
 
     val defaultParams = StackServer.defaultParams +
       param.ProtocolLibrary("h2")
   }
 
   case class Server(
-    stack: Stack[ServiceFactory[Request, Response]] = StackServer.newStack,
+    stack: Stack[ServiceFactory[Request, Response]] = Server.newStack,
     params: Stack.Params = Server.defaultParams
   ) extends StdStackServer[Request, Response, Server] {
 

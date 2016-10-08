@@ -35,7 +35,7 @@ class HeaderTokenIdentifier(header: String, pfx: Path, baseDtab: () => Dtab)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] =
     req.headers.get(header).lastOption match {
-      case None => Future.value(unidentified)
+      case None | Some("") => Future.value(unidentified)
       case Some(token) =>
         val path = pfx ++ Path.Utf8(token)
         val dst = Dst.Path(path, baseDtab(), Dtab.local)

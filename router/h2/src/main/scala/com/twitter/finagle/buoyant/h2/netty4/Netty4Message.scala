@@ -36,8 +36,11 @@ private[h2] object Netty4Message {
       underlying.set(key, value); ()
     }
 
-    override def remove(key: String): Boolean =
+    override def remove(key: String): Seq[String] = {
+      val removed = get(key)
       underlying.remove(key)
+      removed
+    }
 
     override def dup(): Headers = {
       val headers = new DefaultHttp2Headers
