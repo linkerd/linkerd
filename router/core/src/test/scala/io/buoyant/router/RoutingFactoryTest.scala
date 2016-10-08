@@ -118,4 +118,41 @@ class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
   //   }
   // }
 
+  test("Identifiers compose lazily") {
+    var checked: Seq[String] = Nil
+    def matching(s: String): RoutingFactory.Identifier[String] = {
+      case `s` =>
+        synchronized {
+          checked = checked :+ s
+        }
+        val dst = Dst.Path(Path.Utf8(s), Dtab.empty, Dtab.empty)
+        Future.value(new RoutingFactory.IdentifiedRequest(dst, s))
+      case _ =>
+        synchronized {
+          checked = checked :+ s
+        }
+        Future.value(new RoutingFactory.UnidentifiedRequest("nah"))
+    }
+    val composed = RoutingFactory.Identifier.compose[String](
+      matching("alpha"),
+      matching("bravo"),
+      matching("charlie")
+    )
+
+    assert(await(composed("alpha")).isInstanceOf[RoutingFactory.IdentifiedRequest[String]])
+    assert(checked == Seq("alpha"))
+    checked = Nil
+
+    assert(await(composed("bravo")).isInstanceOf[RoutingFactory.IdentifiedRequest[String]])
+    assert(checked == Seq("alpha", "bravo"))
+    checked = Nil
+
+    assert(await(composed("charlie")).isInstanceOf[RoutingFactory.IdentifiedRequest[String]])
+    assert(checked == Seq("alpha", "bravo", "charlie"))
+    checked = Nil
+
+    assert(await(composed("donnie")).isInstanceOf[RoutingFactory.UnidentifiedRequest[String]])
+    assert(checked == Seq("alpha", "bravo", "charlie"))
+    checked = Nil
+  }
 }
