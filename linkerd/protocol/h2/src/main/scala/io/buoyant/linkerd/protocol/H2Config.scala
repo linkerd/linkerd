@@ -91,8 +91,8 @@ class H2Config extends RouterConfig {
   override val protocol: ProtocolInitializer = H2Initializer
 
   @JsonIgnore
-  override def routerParams: Stack.Params = super.routerParams
-    .maybeWith(combinedIdentifier)
+  override def routerParams: Stack.Params = super.routerParams +
+    combinedIdentifier.getOrElse(h2.HeaderTokenIdentifier.param)
 }
 
 class H2ServerConfig extends ServerConfig {

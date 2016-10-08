@@ -52,14 +52,14 @@ class HeaderTokenIdentifierConfig extends H2IdentifierConfig {
       .maybeWith(header.map(HeaderTokenIdentifier.Header(_))))
 }
 
+object HeaderTokenIdentifierConfig {
+  val kind = "io.l5d.h2.headerToken"
+  val defaultHeaderToken = LinkerdHeaders.Prefix + "name"
+}
+
 class HeaderTokenIdentifierInitializer extends IdentifierInitializer {
   val configClass = classOf[HeaderTokenIdentifierConfig]
   override val configId = HeaderTokenIdentifierConfig.kind
 }
 
 object HeaderTokenIdentifierInitializer extends HeaderTokenIdentifierInitializer
-
-object HeaderTokenIdentifierConfig {
-  val kind = "io.l5d.h2.headerToken"
-  val defaultHeaderToken = LinkerdHeaders.Prefix + "name"
-}

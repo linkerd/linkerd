@@ -10,16 +10,6 @@ import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
 
-object PathIdentifier {
-  def mk(params: Stack.Params) = {
-    val DstPrefix(pfx) = params[DstPrefix]
-    val BaseDtab(baseDtab) = params[BaseDtab]
-    new PathIdentifier(pfx, baseDtab)
-  }
-
-  val param = H2.Identifier(mk)
-}
-
 class PathIdentifier(pfx: Path, baseDtab: () => Dtab)
   extends Identifier[Request] {
 
@@ -42,9 +32,24 @@ class PathIdentifier(pfx: Path, baseDtab: () => Dtab)
   }
 }
 
+object PathIdentifier {
+  def mk(params: Stack.Params) = {
+    val DstPrefix(pfx) = params[DstPrefix]
+    val BaseDtab(baseDtab) = params[BaseDtab]
+    new PathIdentifier(pfx, baseDtab)
+  }
+
+  val param = H2.Identifier(mk)
+}
+
 class PathIdentifierConfig extends H2IdentifierConfig {
   @JsonIgnore
   override def newIdentifier(params: Stack.Params) = PathIdentifier.mk(params)
+}
+
+object PathIdentifierConfig {
+  val kind = "io.l5d.h2.path"
+  val defaultPath = LinkerdHeaders.Prefix + "name"
 }
 
 class PathIdentifierInitializer extends IdentifierInitializer {
@@ -53,8 +58,3 @@ class PathIdentifierInitializer extends IdentifierInitializer {
 }
 
 object PathIdentifierInitializer extends PathIdentifierInitializer
-
-object PathIdentifierConfig {
-  val kind = "io.l5d.h2.path"
-  val defaultPath = LinkerdHeaders.Prefix + "name"
-}
