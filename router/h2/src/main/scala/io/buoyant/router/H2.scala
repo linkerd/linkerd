@@ -10,7 +10,6 @@ import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Closable, Future}
-import io.buoyant.router.h2.PathIdentifier
 import io.netty.handler.codec.http2.Http2StreamFrame
 import java.net.SocketAddress
 
@@ -30,7 +29,10 @@ object H2 extends Client[Request, Response]
 
   case class Identifier(mk: Stack.Params => RoutingFactory.Identifier[Request])
   implicit private[buoyant] object Identifier extends Stack.Param[Identifier] {
-    val default = PathIdentifier.param
+    private[this] val nilF =
+      Future.value(new RoutingFactory.UnidentifiedRequest[Request]("no request identifier"))
+    private[this] val nil = (_req: Request) => nilF
+    val default = Identifier(params => nil)
   }
 
   /*

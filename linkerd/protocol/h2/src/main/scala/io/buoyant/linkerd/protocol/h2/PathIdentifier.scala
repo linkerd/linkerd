@@ -1,8 +1,11 @@
-package io.buoyant.router.h2
+package io.buoyant.linkerd
+package protocol
+package h2
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request}
 import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
@@ -37,4 +40,21 @@ class PathIdentifier(pfx: Path, baseDtab: () => Dtab)
         case idx => Some(uri.substring(idx + 1).stripSuffix("/"))
       }
   }
+}
+
+class PathIdentifierConfig extends H2IdentifierConfig {
+  @JsonIgnore
+  override def newIdentifier(params: Stack.Params) = PathIdentifier.mk(params)
+}
+
+class PathIdentifierInitializer extends IdentifierInitializer {
+  val configClass = classOf[PathIdentifierConfig]
+  override val configId = PathIdentifierConfig.kind
+}
+
+object PathIdentifierInitializer extends PathIdentifierInitializer
+
+object PathIdentifierConfig {
+  val kind = "io.l5d.h2.path"
+  val defaultPath = LinkerdHeaders.Prefix + "name"
 }

@@ -1,8 +1,11 @@
-package io.buoyant.router.h2
+package io.buoyant.linkerd
+package protocol
+package h2
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request}
 import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
@@ -34,7 +37,29 @@ class HeaderTokenIdentifier(header: String, pfx: Path, baseDtab: () => Dtab)
     req.headers.get(header).lastOption match {
       case None => Future.value(unidentified)
       case Some(token) =>
-        val dst = Dst.Path(pfx ++ Path.Utf8(token), baseDtab(), Dtab.local)
+        val path = pfx ++ Path.Utf8(token)
+        val dst = Dst.Path(path, baseDtab(), Dtab.local)
         Future.value(new IdentifiedRequest(dst, req))
     }
+}
+
+class HeaderTokenIdentifierConfig extends H2IdentifierConfig {
+  var header: Option[String] = None
+
+  @JsonIgnore
+  override def newIdentifier(params: Stack.Params) =
+    HeaderTokenIdentifier.mk(params
+      .maybeWith(header.map(HeaderTokenIdentifier.Header(_))))
+}
+
+class HeaderTokenIdentifierInitializer extends IdentifierInitializer {
+  val configClass = classOf[HeaderTokenIdentifierConfig]
+  override val configId = HeaderTokenIdentifierConfig.kind
+}
+
+object HeaderTokenIdentifierInitializer extends HeaderTokenIdentifierInitializer
+
+object HeaderTokenIdentifierConfig {
+  val kind = "io.l5d.h2.headerToken"
+  val defaultHeaderToken = LinkerdHeaders.Prefix + "name"
 }

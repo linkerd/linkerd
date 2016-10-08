@@ -1,13 +1,17 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.finagle.Path
+import com.fasterxml.jackson.core.{JsonParser, TreeNode}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
+import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.buoyant.h2.{Request, Response, LinkerdHeaders}
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
+import scala.collection.JavaConverters._
 
 class H2Initializer extends ProtocolInitializer.Simple {
   val name = "h2"
@@ -37,8 +41,8 @@ class H2Initializer extends ProtocolInitializer.Simple {
     val clientStack = H2.router.clientStack
       .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
 
-    //   .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
-    //   .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
+    //  .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+    //  .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
 
     H2.router
       .withPathStack(pathStack)
@@ -64,6 +68,15 @@ class H2Config extends RouterConfig {
   var client: Option[ClientConfig] = None
   var servers: Seq[H2ServerConfig] = Nil
 
+  @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
+  var identifier: Option[Seq[H2IdentifierConfig]] = None
+
+  private[this] val combinedIdentifier: Option[H2.Identifier] = identifier.map { configs =>
+    H2.Identifier { params =>
+      RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(params)))
+    }
+  }
+
   @JsonIgnore
   override def baseResponseClassifier =
     ResponseClassifiers.NonRetryableServerFailures
@@ -76,6 +89,10 @@ class H2Config extends RouterConfig {
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = H2Initializer
+
+  @JsonIgnore
+  override def routerParams: Stack.Params = super.routerParams
+    .maybeWith(combinedIdentifier)
 }
 
 class H2ServerConfig extends ServerConfig {
@@ -83,4 +100,31 @@ class H2ServerConfig extends ServerConfig {
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
+}
+
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY,
+  property = "kind"
+)
+trait H2IdentifierConfig {
+
+  @JsonIgnore
+  def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]
+}
+
+class H2IdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[H2IdentifierConfig]]] {
+  override def deserialize(
+    p: JsonParser,
+    _c: DeserializationContext
+  ): Option[Seq[H2IdentifierConfig]] = {
+    val codec = p.getCodec
+    codec.readTree[TreeNode](p) match {
+      case n: JsonNode if n.isArray =>
+        Some(n.asScala.toList.map(codec.treeToValue(_, classOf[H2IdentifierConfig])))
+      case node => Some(Seq(codec.treeToValue(node, classOf[H2IdentifierConfig])))
+    }
+  }
+
+  override def getNullValue(_c: DeserializationContext): Option[Seq[H2IdentifierConfig]] = None
 }

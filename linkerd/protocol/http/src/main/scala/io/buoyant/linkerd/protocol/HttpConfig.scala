@@ -133,24 +133,9 @@ case class HttpConfig(
   override val protocol: ProtocolInitializer = HttpInitializer
 
   @JsonIgnore
-  private[this] val combinedIdentifier = {
-    // use the first identifier that yields an IdentifiedRequest
-    def combine(identifiers: Seq[RoutingFactory.Identifier[Request]]): RoutingFactory.Identifier[Request] = { req =>
-      identifiers.foldLeft(HttpConfig.NilIdentification) { (identification, next) =>
-        identification.flatMap {
-          // the request has already been identified, just use that
-          case identified: IdentifiedRequest[Request] => Future.value(identified)
-          // the request has not yet been identified, try the next identifier
-          case unidentified: UnidentifiedRequest[Request] => next(req)
-        }
-      }
-    }
-
-    identifier.map { identifierConfigs =>
-      Http.param.HttpIdentifier { (prefix, dtab) =>
-        val identifiers = identifierConfigs.map(_.newIdentifier(prefix, dtab))
-        combine(identifiers)
-      }
+  private[this] val combinedIdentifier = identifier.map { configs =>
+    Http.param.HttpIdentifier { (prefix, dtab) =>
+      RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
     }
   }
 
@@ -166,9 +151,4 @@ case class HttpConfig(
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
 
-}
-
-object HttpConfig {
-  private val NilIdentification: Future[RequestIdentification[Request]] =
-    Future.value(new UnidentifiedRequest("no identifiers"))
 }
