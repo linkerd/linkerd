@@ -35,6 +35,12 @@ trait Headers {
 }
 
 object Headers {
+  val Authority = ":authority"
+  val Method = ":method"
+  val Path = ":path"
+  val Scheme = ":scheme"
+  val Status = ":status"
+
   def apply(pairs: Seq[(String, String)]): Headers =
     new Impl(pairs)
 
@@ -90,10 +96,10 @@ object Request {
     data: Stream
   ): Request = Impl(
     Headers(
-      ":scheme" -> scheme,
-      ":method" -> method.toString,
-      ":authority" -> authority,
-      ":path" -> path
+      Headers.Scheme -> scheme,
+      Headers.Method -> method.toString,
+      Headers.Authority -> authority,
+      Headers.Path -> path
     ),
     data
   )
@@ -104,13 +110,13 @@ object Request {
   private case class Impl(headers: Headers, data: Stream) extends Request {
     override def toString = s"Request($scheme, $method, $authority, $path)"
     override def dup() = copy(headers = headers.dup())
-    override def scheme = headers.get(":scheme").headOption.getOrElse("")
-    override def method = headers.get(":method").headOption match {
+    override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
+    override def method = headers.get(Headers.Method).headOption match {
       case Some(name) => Method(name)
       case None => throw new IllegalArgumentException("missing :method header")
     }
-    override def authority = headers.get(":authority").headOption.getOrElse("")
-    override def path = headers.get(":path").headOption.getOrElse("")
+    override def authority = headers.get(Headers.Authority).headOption.getOrElse("")
+    override def path = headers.get(Headers.Path).headOption.getOrElse("/")
   }
 }
 
@@ -121,7 +127,7 @@ trait Response extends Message {
 
 object Response {
   def apply(status: Status, data: Stream): Response =
-    Impl(Headers(":status" -> status.code.toString), data)
+    Impl(Headers(Headers.Status -> status.code.toString), data)
 
   def apply(headers: Headers, data: Stream): Response =
     Impl(headers, data)
@@ -132,9 +138,9 @@ object Response {
   ) extends Response {
     override def toString = s"Response($status)"
     override def dup() = copy(headers = headers.dup())
-    override def status = headers.get(":status").headOption match {
+    override def status = headers.get(Headers.Status).headOption match {
       case Some(code) => Status.fromCode(code.toInt)
-      case None => throw new IllegalArgumentException("missing :status header")
+      case None => throw new IllegalArgumentException(s"missing ${Headers.Status} header")
     }
   }
 }

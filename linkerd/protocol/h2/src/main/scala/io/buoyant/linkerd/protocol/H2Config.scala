@@ -51,12 +51,9 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
-  protected val defaultServer = {
-    val stk = H2.server.stack
-      .prepend(LinkerdHeaders.Ctx.serverModule)
-      .prepend(h2.ErrorResponder.module)
-    H2.server.withStack(stk)
-  }
+  protected val defaultServer = H2.server.withStack(H2.server.stack
+    .prepend(LinkerdHeaders.Ctx.serverModule)
+    .prepend(h2.ErrorResponder.module))
 
   override def defaultServerPort: Int = 4142
 }
@@ -70,13 +67,6 @@ class H2Config extends RouterConfig {
 
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
   var identifier: Option[Seq[H2IdentifierConfig]] = None
-
-  private[this] def combinedIdentifier: Option[H2.Identifier] =
-    identifier.map { configs =>
-      H2.Identifier { params =>
-        RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(params)))
-      }
-    }
 
   @JsonIgnore
   override def baseResponseClassifier =
@@ -92,8 +82,18 @@ class H2Config extends RouterConfig {
   override val protocol: ProtocolInitializer = H2Initializer
 
   @JsonIgnore
-  override def routerParams: Stack.Params = super.routerParams +
-    combinedIdentifier.getOrElse(h2.HeaderTokenIdentifier.param)
+  override def routerParams: Stack.Params =
+    super.routerParams +
+      identifierParam
+
+  private[this] def identifierParam: H2.Identifier = identifier match {
+    case None => h2.HeaderTokenIdentifier.param
+    case Some(configs) =>
+      H2.Identifier { params =>
+        val identifiers = configs.map(_.newIdentifier(params))
+        RoutingFactory.Identifier.compose(identifiers)
+      }
+  }
 }
 
 class H2ServerConfig extends ServerConfig {

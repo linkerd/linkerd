@@ -1,7 +1,7 @@
 package io.buoyant.router.h2
 
 import com.twitter.finagle.{Filter, Service, ServiceFactory, SimpleFilter, Stack, Stackable}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Message}
+import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Message}
 import java.net.URI
 
 /**
@@ -23,8 +23,8 @@ object ProxyRewriteFilter {
         log.warning(s"proxy rewrite: not absolute ${req.path}")
       case uri if uri.isAbsolute =>
         log.warning(s"proxy rewrite: absolute ${req.path}")
-        req.headers.set(":authority", uri.getAuthority)
-        req.headers.set(":path", unproxifyUri(uri))
+        req.headers.set(Headers.Authority, uri.getAuthority)
+        req.headers.set(Headers.Path, unproxifyUri(uri))
       case _ => // wasn't actually absolute after all
         log.warning(s"proxy rewrite: not absolute? ${req.path}")
     }
