@@ -5,7 +5,7 @@ package h2
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request}
+import com.twitter.finagle.buoyant.h2.{Headers, LinkerdHeaders, Request}
 import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
@@ -14,7 +14,7 @@ object HeaderTokenIdentifier {
 
   case class Header(key: String)
   implicit object Header extends Stack.Param[Header] {
-    val default = Header(":authority")
+    val default = Header(Headers.Authority)
   }
 
   def mk(params: Stack.Params): Identifier[Request] = {

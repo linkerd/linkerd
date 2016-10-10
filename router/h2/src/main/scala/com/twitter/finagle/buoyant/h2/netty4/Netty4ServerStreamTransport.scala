@@ -102,7 +102,7 @@ class Netty4ServerStreamTransport(
   }
 
   def write(rsp: Response): Future[Future[Unit]] =
-    writer.write(StubStreamId, rsp)
+    writer.writeAll(StubStreamId, rsp)
 
   private[this] def readFrame(data: Stream.Reader): Future[Frame] = {
     val t0 = Stopwatch.start()

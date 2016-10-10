@@ -23,7 +23,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     write(frame)
   }
 
-  def write(id: Int, msg: Message): Future[Future[Unit]] =
+  def writeAll(id: Int, msg: Message): Future[Future[Unit]] =
     msg.data match {
       case Stream.Nil =>
         write(id, msg.headers, true).map(_ => Future.Unit)
@@ -35,7 +35,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     if (data.isEmpty) Future.Unit
     else {
       val writeData: Frame => Future[Boolean] = {
-        case f: Frame.Data => write(id, f).map(_ => f.isEnd)
+        case f: Frame.Data => write(id, f).before(f.release()).map(_ => f.isEnd)
         case f: Frame.Trailers => write(id, f).before(Future.True)
       }
       lazy val loop: Boolean => Future[Unit] = {
@@ -56,7 +56,8 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     val frame = new DefaultHttp2DataFrame(bb, eos)
     if (id >= 0) frame.setStreamId(id)
     write(frame.retain()).ensure {
-      val _ = frame.release()
+      // just for reference-counting, not flow control.
+      frame.release(); ()
     }
   }
 

@@ -182,13 +182,18 @@ object Stream {
     def read(): Future[Frame]
   }
 
-  // TODO have a dedicated Const stream type that indicates the entire
-  // message is buffered (i.e. so that retries may be performed).
+  // TODO have a dedicated Static stream type that indicates the
+  // entire message is buffered (i.e. so that retries may be
+  // performed).  This would require some form of buffering, ideally
+  // in the dispatcher and server stream
 
   /**
    * Does not support upstream flow control.
    */
-  def const(buf: Buf): Reader = new Reader {
+  def const(buf: Buf): Reader =
+    new Const(buf)
+
+  private[this] class Const(buf: Buf) extends Reader {
     private[this] val endP = new Promise[Unit]
     private[this] val complete = new AtomicBoolean(false)
     override def onEnd: Future[Unit] = endP

@@ -9,7 +9,8 @@ object H2Transport {
    * A codec-agnostic interface supporting writes of H2 messages to a transport.
    */
   trait Writer {
-    def write(id: Int, msg: Message): Future[Future[Unit]]
+    def writeAll(id: Int, msg: Message): Future[Future[Unit]]
+
     def write(id: Int, orig: Headers, eos: Boolean): Future[Unit]
     def write(id: Int, buf: Buf, eos: Boolean): Future[Unit]
     def write(id: Int, data: Frame.Data): Future[Unit]
