@@ -3,7 +3,6 @@ package io.buoyant.k8s
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.service.Backoff
-import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
@@ -29,7 +28,7 @@ class EndpointsNamer(
     case id@Path.Utf8(nsName, portName, serviceName) =>
       val residual = path.drop(PrefixLen)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      Ns.get(nsName).services.flatMap { services =>
+      endpointNs.get(nsName).services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
         services.get(serviceName) match {
           case None =>
@@ -56,93 +55,31 @@ class EndpointsNamer(
       Activity.value(NameTree.Neg)
   }
 
+  private[this] val endpointNs = new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
+    override protected def mkResource(name: String): NsListResource[Endpoints, EndpointsWatch, EndpointsList] =
+      mkApi(name).endpoints
+
+    override protected def mkCache(name: String): NsCache = new NsCache(name)
+
+    override protected def update(cache: NsCache)(event: EndpointsWatch): Unit =
+      cache.update(event)
+
+    override protected def initialize(
+      cache: NsCache,
+      list: EndpointsList
+    ): Unit = cache.initialize(list)
+  }
+
   override val getAllNames: Activity[Set[Path]] = {
     // explicit type annotations are required for scala to pick the right
     // versions of flatMap and map
-    val namespaces: ActSet[String] = Activity(Ns.namespaces.map(Activity.Ok(_)))
+    val namespaces: ActSet[String] = Activity(endpointNs.namespaces.map(Activity.Ok(_)))
     namespaces.flatMap { namespace: String =>
-      val services: ActSet[SvcCache] = Ns.get(namespace).services.map(_.values.toSet)
+      val services: ActSet[SvcCache] = endpointNs.get(namespace).services.map(_.values.toSet)
       services.flatMap { service: SvcCache =>
         val ports: ActSet[Port] = service.ports.map(_.values.toSet)
         ports.map { port: Port =>
           idPrefix ++ Path.Utf8(namespace, port.name, service.name)
-        }
-      }
-    }
-  }
-
-  private[this] object Ns {
-    // note that caches must be updated with synchronized
-    private[this] val caches = Var[Map[String, NsCache]](Map.empty[String, NsCache])
-    // XXX once a namespace is watched, it is watched forever.
-    private[this] var _watches = Map.empty[String, Activity[Closable]]
-    def watches = _watches
-
-    /**
-     * Returns an Activity backed by a Future.  The resultant Activity is pending until the
-     * original future is satisfied.  When the Future is successful, the Activity becomes
-     * an Activity.Ok with a fixed value from the Future.  If the Future fails, the Activity
-     * becomes an Activity.Failed and the Future is retried with the given backoff schedule.
-     * Therefore, the legal state transitions are:
-     *
-     * Pending -> Ok
-     * Pending -> Failed
-     * Failed -> Failed
-     * Failed -> Ok
-     */
-    private[this] def retryToActivity[T](go: => Future[T]): Activity[T] = {
-      val state = Var[Activity.State[T]](Activity.Pending)
-      _retryToActivity(backoff, state)(go)
-      Activity(state)
-    }
-
-    private[this] def _retryToActivity[T](
-      remainingBackoff: Stream[Duration],
-      state: Var[Activity.State[T]] with Updatable[Activity.State[T]] = Var[Activity.State[T]](Activity.Pending)
-    )(go: => Future[T]): Unit = {
-      val _ = go.respond {
-        case Return(t) =>
-          state() = Activity.Ok(t)
-        case Throw(e) =>
-          state() = Activity.Failed(e)
-          remainingBackoff match {
-            case delay #:: rest =>
-              val _ = Future.sleep(delay).onSuccess { _ => _retryToActivity(rest, state)(go) }
-            case Stream.Empty =>
-          }
-      }
-    }
-
-    def get(name: String): NsCache = synchronized {
-      caches.sample.get(name) match {
-        case Some(ns) => ns
-        case None =>
-          val ns = new NsCache(name)
-          val closable = retryToActivity { watch(name, ns) }
-          _watches += (name -> closable)
-          caches() = caches.sample + (name -> ns)
-          ns
-      }
-    }
-
-    val namespaces: Var[Set[String]] = caches.map(_.keySet)
-
-    private[this] def watch(namespace: String, services: NsCache): Future[Closable] = {
-      val ns = mkApi(namespace)
-      val endpointsApi = ns.endpoints
-
-      Trace.letClear {
-        log.debug("k8s initializing %s", namespace)
-        endpointsApi.get().map { list =>
-          services.initialize(list)
-          val (updates, closable) = endpointsApi.watch(
-            resourceVersion = list.metadata.flatMap(_.resourceVersion)
-          )
-          // fire-and-forget this traversal over an AsyncStream that updates the services state
-          val _ = updates.foreach(services.update)
-          closable
-        }.onFailure { e =>
-          log.error(e, "k8s failed to list endpoints")
         }
       }
     }
@@ -278,10 +215,10 @@ private object EndpointsNamer {
     }
 
     def update(watch: EndpointsWatch): Unit = watch match {
-      case Error(e) => log.error("k8s watch error: %s", e)
-      case Added(endpoints) => add(endpoints)
-      case Modified(endpoints) => modify(endpoints)
-      case Deleted(endpoints) => delete(endpoints)
+      case EndpointsError(e) => log.error("k8s watch error: %s", e)
+      case EndpointsAdded(endpoints) => add(endpoints)
+      case EndpointsModified(endpoints) => modify(endpoints)
+      case EndpointsDeleted(endpoints) => delete(endpoints)
     }
 
     private[this] def getName(endpoints: v1.Endpoints) =
