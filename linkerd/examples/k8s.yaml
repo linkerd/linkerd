@@ -6,6 +6,10 @@ namers:
   experimental: true
   host: localhost
   port: 8001
+- kind: io.l5d.k8s-external
+  experimental: true
+  host: localhost
+  port: 8001
 
 routers:
 - protocol: http

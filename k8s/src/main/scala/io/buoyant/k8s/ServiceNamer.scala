@@ -8,6 +8,13 @@ import com.twitter.util._
 import io.buoyant.k8s.v1._
 import java.net.InetSocketAddress
 
+/**
+ * Accepts names in the form:
+ *   /<namespace>/<port-name>/<svc-name>/residual/path
+ *
+ * and attempts to bind an Addr by resolving to the external load balancer
+ * for the given service and port.
+ */
 class ServiceNamer(
   idPrefix: Path,
   mkApi: String => NsApi,
