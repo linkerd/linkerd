@@ -9,8 +9,6 @@ import java.net.URI
  */
 object ProxyRewriteFilter {
 
-  private[this] val log = com.twitter.logging.Logger.get(getClass.getSimpleName)
-
   /**
    * If the original URI is absolute
    * (e.g. scheme://host/path?query#fragment), drop the scheme, use
@@ -20,13 +18,10 @@ object ProxyRewriteFilter {
   private def rewriteIfProxy(req: Request): Unit =
     guessAbsolute(req.path) match {
       case null => // not absolute, nothing to do
-        log.warning(s"proxy rewrite: not absolute ${req.path}")
       case uri if uri.isAbsolute =>
-        log.warning(s"proxy rewrite: absolute ${req.path}")
         req.headers.set(Headers.Authority, uri.getAuthority)
         req.headers.set(Headers.Path, unproxifyUri(uri))
       case _ => // wasn't actually absolute after all
-        log.warning(s"proxy rewrite: not absolute? ${req.path}")
     }
 
   /**
@@ -50,7 +45,6 @@ object ProxyRewriteFilter {
   val filter: Filter[Request, Response, Request, Response] =
     new SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) = {
-        log.warning(s"proxy rewrite: $req")
         rewriteIfProxy(req)
         service(req)
       }
@@ -63,9 +57,7 @@ object ProxyRewriteFilter {
       val description = "Rewrites proxied requests as direct requests, " +
         "overriding the Host header and removing canonical proxy headers"
 
-      def make(next: ServiceFactory[Request, Response]) = {
-        log.warning("installing proxy rewrite filter")
+      def make(next: ServiceFactory[Request, Response]) =
         filter.andThen(next)
-      }
     }
 }
