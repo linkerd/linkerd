@@ -276,7 +276,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries")) == Some(1))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
         }
@@ -303,7 +303,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(0.0)))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries")) == Some(0))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
         }
