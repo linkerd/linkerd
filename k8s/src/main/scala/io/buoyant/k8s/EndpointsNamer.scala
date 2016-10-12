@@ -55,20 +55,11 @@ class EndpointsNamer(
       Activity.value(NameTree.Neg)
   }
 
-  private[this] val endpointNs = new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
-    override protected def mkResource(name: String): NsListResource[Endpoints, EndpointsWatch, EndpointsList] =
-      mkApi(name).endpoints
-
-    override protected def mkCache(name: String): NsCache = new NsCache(name)
-
-    override protected def update(cache: NsCache)(event: EndpointsWatch): Unit =
-      cache.update(event)
-
-    override protected def initialize(
-      cache: NsCache,
-      list: EndpointsList
-    ): Unit = cache.initialize(list)
-  }
+  private[this] val endpointNs =
+    new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
+      override protected def mkResource(name: String) = mkApi(name).endpoints
+      override protected def mkCache(name: String) = new NsCache(name)
+    }
 
   override val getAllNames: Activity[Set[Path]] = {
     // explicit type annotations are required for scala to pick the right
@@ -193,7 +184,7 @@ private object EndpointsNamer {
       }
   }
 
-  class NsCache(name: String) {
+  class NsCache(namespace: String) extends Ns.ObjectCache[Endpoints, EndpointsWatch, EndpointsList] {
 
     private[this] val state = Var[Activity.State[Map[String, SvcCache]]](Activity.Pending)
 
@@ -232,7 +223,7 @@ private object EndpointsNamer {
 
     private[this] def add(endpoints: v1.Endpoints): Unit =
       for (svc <- mkSvc(endpoints)) synchronized {
-        log.debug("k8s added: %s", svc.name)
+        log.debug("k8s ns %s added: %s", namespace, svc.name)
         val svcs = state.sample() match {
           case Activity.Ok(svcs) => svcs
           case _ => Map.empty[String, SvcCache]
@@ -242,12 +233,12 @@ private object EndpointsNamer {
 
     private[this] def modify(endpoints: v1.Endpoints): Unit =
       for (name <- getName(endpoints)) synchronized {
-        log.debug("k8s modified: %s", name)
+        log.debug("k8s ns %s modified: %s", namespace, name)
         state.sample() match {
           case Activity.Ok(snap) =>
             snap.get(name) match {
               case None =>
-                log.warning("received modified watch for unknown service %s", name)
+                log.warning("k8s ns %s received modified watch for unknown service %s", namespace, name)
               case Some(svc) =>
                 svc() = endpoints.subsets
             }
@@ -257,7 +248,7 @@ private object EndpointsNamer {
 
     private[this] def delete(endpoints: v1.Endpoints): Unit =
       for (name <- getName(endpoints)) synchronized {
-        log.debug("k8s deleted: %s", name)
+        log.debug("k8s ns %s deleted: %s", namespace, name)
         state.sample() match {
           case Activity.Ok(snap) =>
             for (svc <- snap.get(name)) {

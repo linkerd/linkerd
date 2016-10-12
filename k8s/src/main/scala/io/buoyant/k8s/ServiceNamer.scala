@@ -5,6 +5,7 @@ import com.twitter.finagle.{Service => _, _}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
+import io.buoyant.k8s.Ns.ObjectCache
 import io.buoyant.k8s.v1._
 import java.net.InetSocketAddress
 
@@ -45,29 +46,19 @@ class ServiceNamer(
       port <- spec.ports.find(_.name == portName)
     } yield port.port
 
-  val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
-    override protected def mkResource(name: String): NsListResource[Service, ServiceWatch, ServiceList] =
-      mkApi(name).services
-
-    override protected def mkCache(name: String): ServiceCache =
-      new ServiceCache(name)
-
-    override protected def update(cache: ServiceCache)(event: ServiceWatch): Unit =
-      cache.update(event)
-
-    override protected def initialize(
-      cache: ServiceCache,
-      list: ServiceList
-    ): Unit = cache.initialize(list)
+  private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
+    override protected def mkResource(name: String) = mkApi(name).services
+    override protected def mkCache(name: String) = new ServiceCache(name)
   }
 }
 
-class ServiceCache(namespace: String) {
+class ServiceCache(namespace: String)
+  extends ObjectCache[Service, ServiceWatch, ServiceList] {
 
   def get(serviceName: String, portName: String): Var[Option[Var[Address]]] = synchronized {
     // we call this unstable because every change to the Address will cause
     // the entire Var[Option[Address]] to update.
-    val unstable = cache.get(serviceName) match {
+    val unstable: Var[Option[Address]] = cache.get(serviceName) match {
       case Some(ports) => ports.map(_.get(portName))
       case None =>
         val ports = Var(Map.empty[String, Address])
@@ -104,25 +95,12 @@ class ServiceCache(namespace: String) {
 
   private[this] var cache = Map.empty[String, VarUp[Map[String, Address]]]
 
-  private[this] def extractPorts(service: Service): Map[String, Address] = {
-    val ports = for {
-      meta <- service.metadata.toSeq
-      name <- meta.name.toSeq
-      status <- service.status.toSeq
-      lb <- status.loadBalancer.toSeq
-      ingress <- lb.ingress.toSeq.flatten
-      spec <- service.spec.toSeq
-      port <- spec.ports
-    } yield port.name -> Address(new InetSocketAddress(ingress.ip, port.port))
-    ports.toMap
-  }
-
   def initialize(list: ServiceList): Unit = synchronized {
     val services = for {
       service <- list.items
       meta <- service.metadata
       name <- meta.name
-    } yield name -> Var(extractPorts(service))
+    } yield name -> Var(ServiceCache.extractPorts(service))
     cache = services.toMap
   }
 
@@ -133,12 +111,12 @@ class ServiceCache(namespace: String) {
           meta <- service.metadata
           name <- meta.name
         } {
-          log.info("k8s added service: %s", name)
+          log.info("k8s ns %s added service: %s", namespace, name)
           cache.get(name) match {
             case Some(ports) =>
-              ports() = extractPorts(service)
+              ports() = ServiceCache.extractPorts(service)
             case None =>
-              cache += (name -> Var(extractPorts(service)))
+              cache += (name -> Var(ServiceCache.extractPorts(service)))
           }
         }
       case ServiceModified(service) =>
@@ -148,10 +126,10 @@ class ServiceCache(namespace: String) {
         } {
           cache.get(name) match {
             case Some(ports) =>
-              log.info("k8s modified service: %s", name)
-              ports() = extractPorts(service)
+              log.info("k8s ns %s modified service: %s", namespace, name)
+              ports() = ServiceCache.extractPorts(service)
             case None =>
-              log.warning("k8s received modified watch for unknown service %s", name)
+              log.warning("k8s ns %s received modified watch for unknown service %s", namespace, name)
           }
         }
       case ServiceDeleted(service) =>
@@ -159,7 +137,7 @@ class ServiceCache(namespace: String) {
           meta <- service.metadata
           name <- meta.name
         } {
-          log.debug("k8s deleted service : %s", name)
+          log.debug("k8s ns %s deleted service : %s", namespace, name)
           cache.get(name) match {
             case Some(ports) =>
               ports() = Map.empty
@@ -168,7 +146,22 @@ class ServiceCache(namespace: String) {
           }
         }
       case ServiceError(status) =>
-        log.error("k8s service port watch error %s", status)
+        log.error("k8s ns %s service port watch error %s", namespace, status)
     }
+  }
+}
+
+object ServiceCache {
+  private def extractPorts(service: Service): Map[String, Address] = {
+    val ports = for {
+      meta <- service.metadata.toSeq
+      name <- meta.name.toSeq
+      status <- service.status.toSeq
+      lb <- status.loadBalancer.toSeq
+      ingress <- lb.ingress.toSeq.flatten
+      spec <- service.spec.toSeq
+      port <- spec.ports
+    } yield port.name -> Address(new InetSocketAddress(ingress.ip, port.port))
+    ports.toMap
   }
 }

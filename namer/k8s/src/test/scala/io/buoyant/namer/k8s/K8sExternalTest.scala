@@ -20,7 +20,7 @@ class K8sExternalTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""
-                  |kind: io.l5d.k8s-external
+                  |kind: io.l5d.k8s.external
                   |experimental: true
                   |host: k8s-master.site.biz
                   |port: 80
@@ -35,7 +35,7 @@ class K8sExternalTest extends FunSuite {
 
   test("parse config without experimental param") {
     val yaml = s"""
-                  |kind: io.l5d.k8s-external
+                  |kind: io.l5d.k8s.external
                   |host: k8s-master.site.biz
                   |port: 80
       """.stripMargin

@@ -264,13 +264,13 @@ namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
 
-### K8s-External Configuration
+### K8s External Configuration
 
-> Configure a K8s-External namer
+> Configure a K8s External namer
 
 ```yaml
 namers:
-- kind: io.l5d.k8s-external
+- kind: io.l5d.k8s.external
   experimental: true
   host: localhost
   port: 8001
@@ -280,7 +280,7 @@ namers:
 
 ```
 baseDtab: |
-  /http/1.1/* => /#/io.l5d.k8s-external/prod/http;
+  /http/1.1/* => /#/io.l5d.k8s.external/prod/http;
 ```
 
 The [Kubernetes](https://k8s.io/) External namer looks up the IP of the external
@@ -289,7 +289,7 @@ linkerd instances running outside of k8s to route to services running in k8s.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-prefix | `io.l5d.k8s-external` | Resolves names with `/#/<prefix>`.
+prefix | `io.l5d.k8s.external` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
@@ -299,7 +299,7 @@ The Kubernetes namer does not support TLS.  Instead, you should run `kubectl pro
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
 
-### K8s-External Path Parameters
+### K8s External Path Parameters
 
 > Dtab Path Format
 
@@ -309,7 +309,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the k8s-external namer.
+prefix | yes | Tells linkerd to resolve the request path using the k8s external namer.
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.

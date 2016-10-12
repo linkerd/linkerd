@@ -12,7 +12,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *
  * <pre>
  * namers:
- * - kind: io.l5d.k8s-external
+ * - kind: io.l5d.k8s.external
  *   exerimental: true
  *   host: localhost
  *   port: 8001
@@ -20,7 +20,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  */
 class K8sExternalInitializer extends NamerInitializer {
   val configClass = classOf[K8sExternalConfig]
-  override def configId = "io.l5d.k8s-external"
+  override def configId = "io.l5d.k8s.external"
 }
 
 object K8sExternalInitializer extends K8sExternalInitializer
@@ -34,7 +34,7 @@ case class K8sExternalConfig(
   override val experimentalRequired = true
 
   @JsonIgnore
-  override def defaultPrefix: Path = Path.read("/io.l5d.k8s-external")
+  override def defaultPrefix: Path = Path.read("/io.l5d.k8s.external")
 
   @JsonIgnore
   def portNum = port.map(_.port)

@@ -5,8 +5,9 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
+import io.buoyant.k8s.Ns.ObjectCache
 
-abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, Cache](
+abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, Cache <: ObjectCache[O, W, L]](
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds),
   timer: Timer = DefaultTimer.twitter
 ) {
@@ -14,7 +15,6 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
   private[this] val caches = Var[Map[String, Cache]](Map.empty[String, Cache])
   // XXX once a namespace is watched, it is watched forever.
   private[this] var _watches = Map.empty[String, Activity[Closable]]
-  def watches = _watches
 
   /**
    * Returns an Activity backed by a Future.  The resultant Activity is pending until the
@@ -55,10 +55,6 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
 
   protected def mkCache(name: String): Cache
 
-  protected def initialize(cache: Cache, list: L): Unit
-
-  protected def update(cache: Cache)(event: W): Unit
-
   def get(name: String): Cache = synchronized {
     caches.sample.get(name) match {
       case Some(ns) => ns
@@ -78,16 +74,23 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
     Trace.letClear {
       log.info("k8s initializing %s", namespace)
       resource.get().map { list =>
-        initialize(cache, list)
+        cache.initialize(list)
         val (updates, closable) = resource.watch(
           resourceVersion = list.metadata.flatMap(_.resourceVersion)
         )
         // fire-and-forget this traversal over an AsyncStream that updates the services state
-        val _ = updates.foreach(update(cache))
+        val _ = updates.foreach(cache.update)
         closable
       }.onFailure { e =>
         log.error(e, "k8s failed to list endpoints")
       }
     }
+  }
+}
+
+object Ns {
+  abstract class ObjectCache[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest] {
+    def initialize(list: L): Unit
+    def update(event: W): Unit
   }
 }
