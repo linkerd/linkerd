@@ -8,6 +8,7 @@ import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import org.scalatest.FunSuite
 
 class ErrorResponderTest extends FunSuite with Awaits {
@@ -29,6 +30,6 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(service(Request()))
     val headerErr = rsp.headerMap(Headers.Err.Key)
     assert(!headerErr.contains("\n"))
-    assert(headerErr.contains(URLEncoder.encode("\n", Charsets.Iso8859_1.toString)))
+    assert(headerErr.contains(URLEncoder.encode("\n", ISO_8859_1.toString)))
   }
 }

@@ -41,7 +41,8 @@ class Base extends Build {
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
-      "twitter-repo" at "https://maven.twttr.com",
+      // com.twitter dependencies used to be hosted here:
+      // "twitter-repo" at "https://maven.twttr.com",
       Resolver.mavenLocal,
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
