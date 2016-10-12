@@ -32,7 +32,9 @@ class RetryFilter[Req, Rep](
     RetryBudget()
   )
 
-  private[this] val retriesStat = statsReceiver.counter("retries")
+  private[this] val retriesStat = statsReceiver.stat("retries")
+
+  private[this] val totalRetries = statsReceiver.scope("retries").counter("total")
 
   private[this] val budgetExhausted =
     statsReceiver.scope("retries").counter("budget_exhausted")
@@ -61,15 +63,16 @@ class RetryFilter[Req, Rep](
           if (retryBudget.tryWithdraw()) {
             schedule(howlong) {
               Trace.record("finagle.retry")
+              totalRetries.incr()
               dispatch(req, service, nextPolicy, count + 1)
             }
           } else {
             budgetExhausted.incr()
-            retriesStat.incr(count)
+            retriesStat.add(count)
             svcRep
           }
         case None =>
-          retriesStat.incr(count)
+          retriesStat.add(count)
           svcRep
       }
     }
