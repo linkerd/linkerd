@@ -52,12 +52,26 @@ accordingly. Note that gRPC may be configured over TLS as well.
 
 protocol: `h2`
 
-linkerd now has _experimental_ support for HTTP/2.
+linkerd now has _experimental_ support for HTTP/2. There are a number
+of
+[open issues](https://github.com/BuoyantIO/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
+that are being addressed. Please
+[report](https://github.com/BuoyantIO/linkerd/issues/new) any
+additional issues with this protocol!
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `h2` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
 experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
+
+When TLS is configured, h2 routers negotiate to communicate over
+HTTP/2 via ALPN.
+
+When TLS is not configured, h2 servers accept both
+[prior knowledge](https://http2.github.io/http2-spec/#known-http) and
+[HTTP Upgrade](https://http2.github.io/http2-spec/#discover-http)
+requests.  Plaintext clients are currently only capable of issuing
+prior-knowledge requests.
 
 <a name="h2-identifiers"></a>
 ## HTTP/2 Identifiers
