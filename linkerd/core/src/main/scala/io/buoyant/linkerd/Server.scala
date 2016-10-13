@@ -105,9 +105,9 @@ class ServerConfig { config =>
       Some(() => Ssl.server(
         c.certPath,
         c.keyPath,
-        c.caCertPath.orNull,
-        c.ciphers.map(_.mkString(":")).orNull,
-        alpnProtocols.map(_.mkString(",")).orNull
+        null,
+        null,
+        null
       ))
     )
 
