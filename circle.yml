@@ -7,7 +7,6 @@ machine:
     - docker
   environment:
     CI_TERRIBLENESS: 30.seconds
-    TWITTER_DEVELOP: 1
 
 dependencies:
   cache_directories:
