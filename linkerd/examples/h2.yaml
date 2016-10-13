@@ -13,13 +13,13 @@ routers:
     /h2 => /srv;
   servers:
   - port: 4142
-    ip: 0.0.0.0
-    tls:
-      caCertPath: ./certificates/cacertificate.pem
-      certPath: ./certificates/linkerdcertificate.pem
-      keyPath: ./certificates/private/linkerd.pkcs8
-  - port: 4242
-    ip: 0.0.0.0
+    # tls:
+    #   caCertPath: ./certificates/cacertificate.pem
+    #   certPath: ./certificates/linkerdcertificate.pem
+    #   keyPath: ./certificates/private/linkerd.pkcs8
+  identifier:
+    kind: io.l5d.headerPath
+    header: ":authority"
   # client:
   #   tls:
   #     kind: io.l5d.boundPath
