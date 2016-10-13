@@ -53,7 +53,7 @@ class HeaderTokenIdentifierConfig extends H2IdentifierConfig {
 }
 
 object HeaderTokenIdentifierConfig {
-  val kind = "io.l5d.h2.headerToken"
+  val kind = "io.l5d.headerToken"
   val defaultHeaderToken = LinkerdHeaders.Prefix + "name"
 }
 

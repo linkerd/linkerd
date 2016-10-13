@@ -15,7 +15,7 @@ routers:
       keyPath: .../private/linkerd.pem
       caCertPath: .../ca.pem
   identifier:
-    kind: io.l5d.h2.headerToken
+    kind: io.l5d.headerToken
     header: ":authority"
   baseDtab: |
     /srv => /#/io.l5d.fs ;
@@ -39,12 +39,13 @@ routers:
   servers:
   - port: 4142
   identifier:
-    kind: io.l5d.h2.path
+    kind: io.l5d.headerPath
+    segments: 2
   baseDtab: |
     /srv => /#/io.l5d.fs ;
     /h2 => /srv ;
 ```
-> because gRPC encodes URLs as `/_serviceName_/_methodName_`, we can
+> because gRPC encodes URLs as /_serviceName_/_methodName_, we can
 simply register service names into a discovery system and route
 accordingly. Note that gRPC may be configured over TLS as well.
 
@@ -85,12 +86,12 @@ logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | The name of an identifier plugin, such as [`io.l5d.h2.headerToken`](#header-token-identifier) or [`io.l5d.h2.path`](#path-identifier).
+kind | _required_ | The name of an identifier plugin, such as [`io.l5d.headerToken`](#header-token-identifier) or [`io.l5d.headerPath`](#headerpath-identifier).
 
 <a name="header-token-identifier"></a>
 ### Header Token identifier
 
-kind: `io.l5d.h2.headerToken`.
+kind: `io.l5d.headerToken`.
 
 With this identifier, requests are turned into logical names using the
 value of the named header. By default, the `:authority` psuedo-header
@@ -106,7 +107,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.h2.headerToken
+    kind: io.l5d.headerToken
     header: my-header
   servers:
   - port: 5000
@@ -114,7 +115,7 @@ routers:
 
 Key | Default Value | Description
 --- | ------------- | -----------
-header | `:authority` | The name of the header to use
+header | `:path` | The name of the header to extract a token from.  If there are multiple headers with this name, the last one is used.
 
 #### Namer Path Parameters:
 
@@ -129,30 +130,35 @@ Key | Default Value | Description
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the header.
 
-<a name="path-identifier"></a>
-### Path Identifier
+<a name="header-path-identifier"></a>
+### Header Path Identifier
 
-kind: `io.l5d.h2.path`
+kind: `io.l5d.headerPath`
 
-With this identifier, requests are turned into names based only on the
-path component of the URL.  This is currently intended only for use
-with gRPC.
+With this identifier, requests are identified using a path read from a
+header.  This is useful for routing gRPC requests.
 
 #### Namer Configuration:
 
-> With this configuration, a request to `:5000/ServiceName/MethodName`
-will be mapped to `/h2/ServiceName/MethodName` and will be routed
-based on this name by the corresponding dtab.
+> With this configuration, a request to
+`:5000/true/love/waits.php?thing=1` will be mapped to `/h2/true/love`
+and will be routed based on this name by the corresponding Dtab.
 
 ```yaml
 routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.h2.path
+    kind: io.l5d.headerPath
+    segments: 2
   servers:
   - port: 5000
 ```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `:path` | The name of the header to extract a Path from.  If there are multiple headers with this name, the last one is used.
+segments | None | If specified, the number of path segments that are required extracted from each request.
 
 
 #### Namer Path Parameters:
@@ -166,7 +172,7 @@ routers:
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `h2` | The `dstPrefix` as set in the routers block.
-urlPath | N/A | A path from the URL.
+urlPath | N/A | The first `segments` elements of the path from the URL
 
 <a name="h2-headers"></a>
 ## Headers
