@@ -181,7 +181,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
+        case Some("0") | None =>
+          val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888))
+          Future.value(Indexed(Seq(node), Some("1")))
         case _ => Future.never //don't respond to blocking index calls
       }
     }
@@ -201,6 +203,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 2,
       Seq("dc", "adds") -> 4,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -255,7 +259,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -313,7 +316,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "adds") -> 3,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -365,18 +367,14 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     blockingCallResponder.setDone()
 
-    state match {
-      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Neg)
-      case _ => assert(false)
-    }
+    assert(state == Activity.Ok(NameTree.Neg))
 
     assert(stats.counters == Map(
       Seq("dc", "opens") -> 1,
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
-      Seq("service", "opens") -> 2,
-      Seq("service", "updates") -> 4,
-      Seq("service", "closes") -> 2,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 2,
       Seq("lookups") -> 1
     ))
   }
@@ -435,7 +433,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -489,7 +486,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -551,7 +547,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-      Seq("service", "closes") -> 1,
       Seq("lookups") -> 1
     ))
   }
