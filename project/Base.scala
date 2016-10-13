@@ -29,7 +29,7 @@ class Base extends Build {
   }
 
   val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
-  val doDevelopTwitterDeps = developTwitterDeps ?? false
+  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
 
   val baseSettings = Seq(
     organization := "io.buoyant",
@@ -37,7 +37,8 @@ class Base extends Build {
     homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.11.7",
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
-    scalacOptions ++= Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard"),
+    scalacOptions ++=
+      Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
@@ -47,7 +48,7 @@ class Base extends Build {
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
     aggregate in assembly := false,
-    developTwitterDeps := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
+    (developTwitterDeps in Global) := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
 
     // Sonatype publishing
     publishArtifact in Test := false,
@@ -117,6 +118,7 @@ class Base extends Build {
       }),
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     assemblyMergeStrategy in assembly := {
+      case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
       case path => (assemblyMergeStrategy in assembly).value(path)
