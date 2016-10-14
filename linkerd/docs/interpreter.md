@@ -41,6 +41,7 @@ Key | Default Value | Description
 dst | _required_ | A Finagle path locating the namerd service.
 namespace | `default` | The name of the namerd dtab to use.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
+tls | no tls | Requests to namerd will be made using TLS if this parameter is provided.  It must be a [namerd client TLS](#namerd-client-tls) object.
 
 ### namerd retry
 
@@ -48,6 +49,13 @@ Key | Default Value | Description
 --- | ------------- | -----------
 baseSeconds | 5 seconds | The base number of seconds to wait before retrying.
 maxSeconds | 10 minutes | The maximum number of seconds to wait before retrying.
+
+### namerd client tls
+
+Key | Default Value | Description
+--- | ------------- | -----------
+commonName | _required_ | The common name to use for namerd requests.
+caCert | N/A | The path to the CA cert used for common name validation.
 
 ## File-System
 

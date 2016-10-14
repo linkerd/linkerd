@@ -353,7 +353,7 @@ object LinkerdBuild extends Base {
   object Interpreter {
     val namerd = projectDir("interpreter/namerd")
       .withTests()
-      .dependsOn(Namer.core, Namerd.Iface.interpreterThrift)
+      .dependsOn(Namer.core, Namerd.Iface.interpreterThrift, Router.core)
 
     val fs = projectDir("interpreter/fs")
       .withTests()
