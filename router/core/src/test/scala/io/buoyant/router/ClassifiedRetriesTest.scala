@@ -50,7 +50,8 @@ class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
     // issuing a normal request works as expected
     nextValue = Return(0)
     assert(await(svc("ok")) == 0)
-    assert(stats.stats == Map(Seq("retries") -> Seq(0.0)))
+    assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(0.0)))
+    assert(!stats.counters.contains(Seq("retries", "total")))
     assert(tracer.iterator.map(_.annotation).toSeq == Seq.empty)
   }
 
@@ -61,7 +62,8 @@ class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
     // issuing a normal request works as expected
     nextValue = Throw(new Badness)
     assertThrows[Badness] { await(svc("ok")) }
-    assert(stats.stats == Map(Seq("retries") -> Seq(0.0)))
+    assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(0.0)))
+    assert(!stats.counters.contains(Seq("retries", "total")))
     assert(tracer.iterator.map(_.annotation).toSeq == Seq.empty)
   }
 
@@ -90,7 +92,8 @@ class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
       timer.tick()
       assert(f.isDefined)
       assert(await(f) == 2)
-      assert(stats.stats == Map(Seq("retries") -> Seq(2.0)))
+      assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(2.0)))
+      assert(stats.counters(Seq("retries", "total")) == 2)
       assert(tracer.iterator.map(_.annotation).toSeq ==
         Seq(Annotation.Message("finagle.retry"), Annotation.Message("finagle.retry")))
     }
@@ -119,7 +122,8 @@ class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
       clock.advance(1.millisecond)
       timer.tick()
       assertThrows[Badness] { await(f) }
-      assert(stats.stats == Map(Seq("retries") -> Seq(2.0)))
+      assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(2.0)))
+      assert(stats.counters(Seq("retries", "total")) == 2)
       assert(tracer.iterator.map(_.annotation).toSeq ==
         Seq(Annotation.Message("finagle.retry"), Annotation.Message("finagle.retry")))
     }
@@ -146,7 +150,8 @@ class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
       timer.tick()
       assert(f.isDefined)
       assertThrows[Badness] { await(f) }
-      assert(stats.stats == Map(Seq("retries") -> Seq(2.0)))
+      assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(2.0)))
+      assert(stats.counters(Seq("retries", "total")) == 2)
       assert(tracer.iterator.map(_.annotation).toSeq ==
         Seq(Annotation.Message("finagle.retry"), Annotation.Message("finagle.retry")))
     }
