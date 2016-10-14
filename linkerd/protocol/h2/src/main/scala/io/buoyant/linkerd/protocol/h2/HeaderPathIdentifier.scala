@@ -30,11 +30,18 @@ class HeaderPathIdentifier(
         }
         (req: Request) => reqPath(req) match {
           case p if p.size < segments => tooShort
-          case p => identified(p, req)
+          case p => identified(p.take(segments), req)
         }
 
       case None =>
-        (req: Request) => identified(reqPath(req), req)
+        lazy val noPath = {
+          val msg = s"Missing destination path"
+          Future.value(new UnidentifiedRequest[Request](msg))
+        }
+        (req: Request) => reqPath(req) match {
+          case Path.empty => noPath
+          case p => identified(p, req)
+        }
     }
 
   private[this] def reqPath(req: Request): Path =
