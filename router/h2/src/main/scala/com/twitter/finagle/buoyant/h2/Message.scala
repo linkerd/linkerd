@@ -11,7 +11,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The message itself includes the Headers that initiated the message
  * (comprising all HEADERS frames sent to initiate the message).
  *
- * Furthermore, messages have an (optional)
+ * Furthermore, messages have an (optional) Stream of data and trailer
+ * frames.
  *
  * These types are only intended to satisfy session layer concerned
  * and are not intended to provide a rish programming interface.
@@ -21,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 sealed trait Message {
   def headers: Headers
   def data: Stream
+
+  /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
 }
 
@@ -31,6 +34,8 @@ trait Headers {
   def add(k: String, v: String): Unit
   def set(k: String, v: String): Unit
   def remove(key: String): Seq[String]
+
+  /** Create a deep copy. */
   def dup(): Headers
 }
 
