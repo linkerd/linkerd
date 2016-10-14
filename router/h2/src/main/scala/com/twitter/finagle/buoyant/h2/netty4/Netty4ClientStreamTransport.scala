@@ -35,7 +35,45 @@ private[h2] class Netty4ClientStreamTransport(
     if (isClosed) { closeP.setDone(); () }
   }
 
-  def offer(f: Http2StreamFrame): Boolean = recvq.offer(f)
+  private[this] val responseP = new Promise[Response]
+
+  private[this] var responseWriter: Stream.Writer[Http2StreamFrame] = null
+  val response: Future[Response] = responseP
+
+  /**
+   * Frames are read from the transport by the ClientDispatcher and
+   * written to the stream to be sent upstream.
+   *
+   * If an initial Headers frame is offered, the reponse future is satisfied.
+   */
+  def offerResponseFrame(frame: Http2StreamFrame): Boolean =
+    if (isResponseFinished) false
+    else synchronized {
+      responseWriter match {
+        case null =>
+          frame match {
+            case frame: Http2HeadersFrame =>
+              val stream =
+                if (frame.isEndStream) {
+                  setResponseFinished()
+                  Stream.Nil
+                } else {
+                  val stream = newStream()
+                  stream.onEnd.ensure(setResponseFinished())
+                  responseWriter = stream
+                  stream
+                }
+              val rsp = Netty4Message.Response(frame.headers, stream)
+              responseP.updateIfEmpty(Return(rsp))
+              true
+
+            case _ => false
+          }
+
+        case stream =>
+          stream.write(frame)
+      }
+    }
 
   def writeHeaders(hdrs: Headers, eos: Boolean = false) = {
     val tx = transport.write(streamId, hdrs, eos)
@@ -67,35 +105,10 @@ private[h2] class Netty4ClientStreamTransport(
     writeF
   }
 
-  /** Write a response from the underlying transport */
-  def readResponse(): Future[Response] = {
-    require(!isResponseFinished)
-    recvq.poll().map(frameToResponse)
-  }
+  private[this] def newStream(): Stream.Reader with Stream.Writer[Http2StreamFrame] =
+    new Netty4Stream(releaser, minAccumFrames, statsReceiver)
 
-  // Start out by reading response headers from the stream
-  // queue. Once a response is initialized, if data is expected,
-  // continue reading from the queue until an end stream message is
-  // encounetered.
-  private[this] val frameToResponse: Http2StreamFrame => Response = {
-    case f: Http2HeadersFrame if f.isEndStream =>
-      setResponseFinished()
-      Netty4Message.Response(f.headers, Stream.Nil)
-
-    case f: Http2HeadersFrame =>
-      val rsp = Netty4Message.Response(f.headers, newStream())
-      rsp.data.onEnd.ensure(setResponseFinished())
-      rsp
-
-    case f =>
-      setResponseFinished()
-      throw new IllegalArgumentException(s"Expected response HEADERS; received ${f.name}")
-  }
-
-  protected[this] def newStream(): Stream =
-    new Netty4Stream(releaser, minAccumFrames, recvq, statsReceiver)
-
-  protected[this] val releaser: Int => Future[Unit] = { incr =>
+  private[this] val releaser: Int => Future[Unit] = { incr =>
     transport.updateWindow(streamId, incr)
   }
 }
