@@ -32,7 +32,7 @@ class RetryFilter[Req, Rep](
     RetryBudget()
   )
 
-  private[this] val retriesStat = statsReceiver.stat("retries")
+  private[this] val retriesStat = statsReceiver.scope("retries").stat("per_request")
 
   private[this] val totalRetries = statsReceiver.scope("retries").counter("total")
 
