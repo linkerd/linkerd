@@ -14,6 +14,7 @@ import org.scalatest.FunSuite
 
 class H2EndToEndTest extends FunSuite with Awaits {
   // For posterity, this is how you enable logging in a test:
+  // TODO move io.buoyant.test as a utility?
   // Logger.configure(List(LoggerFactory(
   //   node = "",
   //   level = Some(Level.DEBUG),
