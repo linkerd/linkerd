@@ -216,8 +216,15 @@ object Stream {
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
-  trait Writer[T] {
-    def write(frame: T): Boolean
+  trait Writer[In] {
+
+    /**
+     * Write an object to a Stream so that it may be read as a Frame
+     * (i.e. onto an underlying transport).
+     *
+     * Returns `false` if the input could not be accepted.
+     */
+    def write(in: In): Boolean
   }
 }
 
