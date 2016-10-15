@@ -12,7 +12,7 @@ safe and sane by transparently adding service discovery, load balancing,
 failure handling, instrumentation, and routing to all inter-service
 communication.
 
-linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift proxy,
+linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc proxy,
 and can usually be dropped into existing applications with a minimum of
 configuration, regardles of what language they're written in. It works with
 many common protocols and service discovery backends, including scheduled
