@@ -14,9 +14,9 @@ object H2Transport {
      * Write an entire message and its Stream.
      *
      * The outer Future is satisfied when the message's headers have
-     * been written to the transport.  The inner Future, provided once
-     * headers are written, is satisfied when the message's stream has
-     * been written to the transport.
+     * been written to the transport.  This Future is satisfied with a
+     * second, inner Future that is satisfied when the message's
+     * stream has been completely written to the transport.
      */
     def writeAll(id: Int, msg: Message): Future[Future[Unit]]
 
