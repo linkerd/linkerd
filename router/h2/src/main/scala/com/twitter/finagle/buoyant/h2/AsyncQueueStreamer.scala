@@ -40,7 +40,7 @@ object AsyncQueueStreamer {
 }
 
 /**
- * An Http2 Data stream that serves values from a queue of `In`
+ * An Http2 Data stream that serves values from a queue of `T`-typed
  * frames.
  *
  * Useful when reading a Message from a Transport. The transport can
@@ -50,14 +50,14 @@ object AsyncQueueStreamer {
  * pending in the queue. This allows the queue to be flushed more
  * quickly as it backs up. By default, frames are not accumulated.
  */
-private[h2] abstract class AsyncQueueStreamer[In](
+private[h2] abstract class AsyncQueueStreamer[-T](
   minAccumFrames: Int = Int.MaxValue,
   stats: StatsReceiver = NullStatsReceiver
-) extends Stream.Reader with Stream.Writer[In] {
+) extends Stream.Reader with Stream.Writer[T] {
 
   import AsyncQueueStreamer._
 
-  private[this] val inq: AsyncQueue[In] = new AsyncQueue
+  private[this] val recvq: AsyncQueue[T] = new AsyncQueue
 
   private[this] val accumMicros = stats.stat("accum_us")
   private[this] val readQlens = stats.stat("read_qlen")
@@ -71,13 +71,13 @@ private[h2] abstract class AsyncQueueStreamer[In](
   /** Fail the underlying queue and*/
   override def reset(exn: Throwable): Unit =
     if (state.compareAndSet(Open, Closed(exn))) {
-      inq.fail(exn, discard = true)
+      recvq.fail(exn, discard = true)
       endP.setException(exn)
     }
 
-  override def write(in: In): Boolean =
+  override def write(t: T): Boolean =
     state.get match {
-      case Open => inq.offer(in)
+      case Open => recvq.offer(t)
       case _ => false
     }
 
@@ -90,16 +90,16 @@ private[h2] abstract class AsyncQueueStreamer[In](
     val start = Stopwatch.start()
     val f = state.get match {
       case Open =>
-        val sz = inq.size
+        val sz = recvq.size
         readQlens.add(sz)
-        if (sz < minAccumFrames) inq.poll().map(toFrameAndUpdate)
-        else Future.const(inq.drain()).map(accumStreamAndUpdate)
+        if (sz < minAccumFrames) recvq.poll().map(toFrameAndUpdate)
+        else Future.const(recvq.drain()).map(accumStreamAndUpdate)
 
       case Closed(cause) => Future.exception(cause)
 
       case s@Draining(trailers) =>
         if (state.compareAndSet(s, closedState)) {
-          inq.fail(closedException)
+          recvq.fail(closedException)
           endP.setDone()
           Future.value(trailers)
         } else Future.exception(closedException)
@@ -108,8 +108,8 @@ private[h2] abstract class AsyncQueueStreamer[In](
     f
   }
 
-  private[this] val toFrameAndUpdate: In => Frame = { in =>
-    val f = toFrame(in)
+  private[this] val toFrameAndUpdate: T => Frame = { t =>
+    val f = toFrame(t)
     if (f.isEnd) {
       if (state.compareAndSet(Open, closedState)) endP.setDone()
       else throw expectedOpenException(state.get)
@@ -117,14 +117,14 @@ private[h2] abstract class AsyncQueueStreamer[In](
     f
   }
 
-  protected[this] def toFrame(in: In): Frame
+  protected[this] def toFrame(t: T): Frame
 
   /**
    * Accumulate a queue of stream frames to a single frame.
    *
    * If a trailers frame exists
    */
-  private val accumStreamAndUpdate: Queue[In] => Frame = { frames =>
+  private val accumStreamAndUpdate: Queue[T] => Frame = { frames =>
     require(frames.nonEmpty)
     val start = Stopwatch.start()
 
@@ -163,5 +163,5 @@ private[h2] abstract class AsyncQueueStreamer[In](
   }
 
   /** May return null items. */
-  protected[this] def accumStream(frames: Queue[In]): StreamAccum
+  protected[this] def accumStream(frames: Queue[T]): StreamAccum
 }

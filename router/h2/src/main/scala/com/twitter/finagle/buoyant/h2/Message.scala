@@ -217,7 +217,7 @@ object Stream {
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
-  trait Writer[In] {
+  trait Writer[-T] {
 
     /**
      * Write an object to a Stream so that it may be read as a Frame
@@ -225,7 +225,7 @@ object Stream {
      *
      * Returns `false` if the input could not be accepted.
      */
-    def write(in: In): Boolean
+    def write(frame: T): Boolean
   }
 
   def apply(minAccumFrames: Int = Int.MaxValue): Reader with Writer[Frame] =
