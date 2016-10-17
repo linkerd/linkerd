@@ -1,3 +1,6 @@
+## X.X.X
+* Enable namer zkLeader in namerd
+
 ## 0.8.2
 
 * Consul namer can use `.local` to reference local agent's datacenter.
