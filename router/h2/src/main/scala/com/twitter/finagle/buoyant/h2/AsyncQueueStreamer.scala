@@ -68,7 +68,7 @@ private[h2] abstract class AsyncQueueStreamer[-T](
   private[this] val endP = new Promise[Unit]
   override def onEnd: Future[Unit] = endP
 
-  /** Fail the underlying queue and*/
+  /** Fail the underlying queue and onEnd promise. */
   override def reset(exn: Throwable): Unit =
     if (state.compareAndSet(Open, Closed(exn))) {
       recvq.fail(exn, discard = true)
@@ -120,9 +120,11 @@ private[h2] abstract class AsyncQueueStreamer[-T](
   protected[this] def toFrame(t: T): Frame
 
   /**
-   * Accumulate a queue of stream frames to a single frame.
+   * Accumulate a queue of Data frames to a single frame.
    *
-   * If a trailers frame exists
+   * If the queue consists of 1 or more Data frames followed by a
+   * Trailers frame, the trailers frame is saved to be returned in a
+   * subsequent read.
    */
   private val accumStreamAndUpdate: Queue[T] => Frame = { frames =>
     require(frames.nonEmpty)
