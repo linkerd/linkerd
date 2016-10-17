@@ -1,10 +1,20 @@
-## 0.x.y
+## 0.8.2
 
-* Consul namer can use `.local` to reference local agent's datacenter
-* Removed unused TLS options from the k8s storage plugin config
-* Add an `ip` option to admin configuration so that access to the admin server may be constrained
-* Add k8s external namer for routing to k8s ingress services
+* Consul namer can use `.local` to reference local agent's datacenter.
+* Add an `ip` option to admin configuration so that access to the
+  admin server may be constrained.
+* Kubernetes integration:
+  * Remove unused TLS options from the k8s storage plugin config.
+  * Add k8s external namer for routing to k8s ingress services.
+  * Improve error-handling behavior in k8s API clients.
 * Support serving the namerd namer interface over TLS.
+* Improve retry metrics to include a total counter of all retry requests.
+* Fix a path-parsing bug in the io.l5d.path namer.
+* Provide a default log4j configuration so that netty logging is managed properly.
+* Improve HTTP server behavior with short-lived connections.
+* The `netty4` HTTP engine now works with TLS, supporting configurable
+  ciphers, backed by BoringSSL!
+* Introduce experimental support for the `h2` protocol, supporting gRPC! :balloon:
 
 ## 0.8.1
 
