@@ -8,6 +8,7 @@
   * Add k8s external namer for routing to k8s ingress services.
   * Improve error-handling behavior in k8s API clients.
 * Support serving the namerd namer interface over TLS.
+* Document namerd's HTTP API.
 * Improve retry metrics to include a total counter of all retry requests.
 * Fix a path-parsing bug in the io.l5d.path namer.
 * Provide a default log4j configuration so that netty logging is managed properly.
