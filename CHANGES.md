@@ -12,6 +12,8 @@
 * Fix a path-parsing bug in the io.l5d.path namer.
 * Provide a default log4j configuration so that netty logging is managed properly.
 * Improve HTTP server behavior with short-lived connections.
+* Add `io.buoyant.rinet` namer which is like `inet` but with the order
+  of host and port reversed
 * The `netty4` HTTP engine now works with TLS, supporting configurable
   ciphers, backed by BoringSSL!
 * Introduce experimental support for the `h2` protocol, supporting gRPC! :balloon:
