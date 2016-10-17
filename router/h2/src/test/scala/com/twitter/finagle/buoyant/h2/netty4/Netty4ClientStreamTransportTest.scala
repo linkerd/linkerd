@@ -99,10 +99,10 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val stream = new Netty4ClientStreamTransport(id, writer, Int.MaxValue, stats)
 
-    val rspf = stream.readResponse()
+    val rspf = stream.response
     assert(!rspf.isDefined)
 
-    stream.offer(new DefaultHttp2HeadersFrame({
+    stream.offerResponseFrame(new DefaultHttp2HeadersFrame({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       hs
@@ -122,8 +122,8 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offer({
+    stream.offerResponseFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerResponseFrame({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
@@ -146,7 +146,7 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     }
   }
 
-  test("readResponse, with accumulation") {
+  test("response, with accumulation") {
     val id = 8
     var recvq = Queue.empty[Http2StreamFrame]
     val writer = new Netty4H2Writer {
@@ -155,10 +155,10 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val stream = new Netty4ClientStreamTransport(id, writer, 2, stats)
 
-    val rspf = stream.readResponse()
+    val rspf = stream.response
     assert(!rspf.isDefined)
 
-    stream.offer(new DefaultHttp2HeadersFrame({
+    stream.offerResponseFrame(new DefaultHttp2HeadersFrame({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       hs
@@ -178,10 +178,10 @@ class Netty4ClientStreamTransportTest extends FunSuite with Awaits {
     assert(!dataf0.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offer(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offer({
+    stream.offerResponseFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerResponseFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerResponseFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerResponseFrame({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)

@@ -69,7 +69,7 @@ class Netty4ClientDispatcher(
               case null => log.error(s"dropping ${frame.name} message on unknown stream ${id}")
               case stream =>
                 log.trace("client stream %d offering %s", id, frame)
-                val offered = stream.offer(frame)
+                val offered = stream.offerResponseFrame(frame)
                 if (!offered) log.error(s"failed to offer ${frame.name} on stream ${id}")
             }
         }
@@ -90,7 +90,7 @@ class Netty4ClientDispatcher(
     case Stream.Nil =>
       val st = newStreamTransport()
       st.writeHeaders(req.headers, eos = true)
-        .before(st.readResponse())
+        .before(st.response)
 
     case data: Stream.Reader =>
       // Stream the request while receiving the response and
@@ -100,7 +100,7 @@ class Netty4ClientDispatcher(
       st.writeHeaders(req.headers).before {
         val t0 = Stopwatch.start()
         val send = st.writeStream(data)
-        val recv = st.readResponse()
+        val recv = st.response
         recv.onFailure(send.raise)
         send.onFailure(recv.raise)
         send.onSuccess(_ => requestMillis.add(t0().inMillis))

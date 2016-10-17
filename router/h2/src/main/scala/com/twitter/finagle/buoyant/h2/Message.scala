@@ -1,9 +1,10 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
-import com.twitter.finagle.Failure
 import com.twitter.util.{Future, Promise}
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.collection.immutable.Queue
+import scala.collection.mutable
 
 /**
  * A generic HTTP2 message.
@@ -216,7 +217,7 @@ object Stream {
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
-  trait Writer[In] {
+  trait Writer[-T] {
 
     /**
      * Write an object to a Stream so that it may be read as a Frame
@@ -224,7 +225,50 @@ object Stream {
      *
      * Returns `false` if the input could not be accepted.
      */
-    def write(in: In): Boolean
+    def write(frame: T): Boolean
+  }
+
+  def apply(minAccumFrames: Int = Int.MaxValue): Reader with Writer[Frame] =
+    new FrameStream(minAccumFrames)
+
+  /**
+   * A default implementation of an Http2 stream that is backed by an
+   * AsyncQueue of Frames.
+   */
+  private class FrameStream(minAccumFrames: Int)
+    extends AsyncQueueStreamer[Frame](minAccumFrames = minAccumFrames) {
+
+    @inline
+    protected[this] def toFrame(f: Frame): Frame = f
+
+    protected[this] def accumStream(frames: Queue[Frame]): StreamAccum = {
+      var dataq = mutable.Queue.empty[Frame.Data]
+      var dataEos = false
+      var trailers: Frame.Trailers = null
+
+      val iter = frames.iterator
+      while (!dataEos && trailers == null && iter.hasNext) {
+        iter.next() match {
+          case d: Frame.Data =>
+            dataq.enqueue(d)
+            dataEos = d.isEnd
+
+          case t: Frame.Trailers =>
+            trailers = t
+        }
+      }
+
+      val data: Frame.Data =
+        if (dataq.isEmpty) null
+        else new Frame.Data {
+          def buf: Buf = dataq.foldLeft(Buf.Empty) { (buf, f) => buf.concat(f.buf) }
+          def release() = Future.collect(dataq.map(_.release())).unit
+          def isEnd = dataEos
+        }
+
+      mkStreamAccum(data, trailers)
+    }
+
   }
 }
 
