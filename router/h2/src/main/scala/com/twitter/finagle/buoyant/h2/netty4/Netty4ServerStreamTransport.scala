@@ -81,8 +81,10 @@ class Netty4ServerStreamTransport(
   private[this] def newStream() =
     new Netty4Stream(releaser, minAccumFrames, stats = streamStats)
 
-  private[this] val releaser: Int => Future[Unit] =
-    incr => writer.updateWindow(StubStreamId, incr)
+  private[this] val releaser: Int => Future[Unit] = { incr =>
+    log.debug(new Exception, "server.updateWindow(%d)", incr)
+    writer.updateWindow(StubStreamId, incr)
+  }
 
   /**
    * Read data (and trailer) frames from the transport to the recvq

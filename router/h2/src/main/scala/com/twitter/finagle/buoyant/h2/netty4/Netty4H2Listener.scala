@@ -34,7 +34,7 @@ object Netty4H2Listener {
     new ChannelInitializer[Channel] {
       def initChannel(ch: Channel): Unit = {
         ch.pipeline.addLast(init); ()
-        // ch.pipeline.addLast(new DebugHandler("s.frame")); ()
+        ch.pipeline.addLast(new DebugHandler("s.frame")); ()
       }
     }
 

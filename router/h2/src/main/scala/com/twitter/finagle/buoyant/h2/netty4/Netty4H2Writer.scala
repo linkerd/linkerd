@@ -5,10 +5,12 @@ import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Stopwatch, Time}
 import io.netty.handler.codec.http2._
 
 private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
+  import Netty4H2Writer.log
 
   protected[this] def write(f: Http2StreamFrame): Future[Unit]
 
@@ -62,6 +64,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   }
 
   def updateWindow(id: Int, incr: Int): Future[Unit] = {
+    log.debug("transport.updateWindow(%d, %d)", id, incr)
     val frame = new DefaultHttp2WindowUpdateFrame(incr)
     if (id >= 0) frame.setStreamId(id)
     write(frame)
@@ -69,6 +72,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 }
 
 private[netty4] object Netty4H2Writer {
+  private val log = Logger.get(getClass.getName)
 
   def apply(transport: Transport[Http2StreamFrame, Http2StreamFrame]): H2Transport.Writer =
     new Netty4H2Writer {

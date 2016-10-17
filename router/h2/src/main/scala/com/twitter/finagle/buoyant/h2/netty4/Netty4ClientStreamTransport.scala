@@ -17,8 +17,6 @@ private[h2] class Netty4ClientStreamTransport(
 ) {
   require(minAccumFrames >= 2)
 
-  private[this] val recvq = new AsyncQueue[Http2StreamFrame]
-
   @volatile private[this] var isRequestFinished, isResponseFinished = false
   def isClosed = isRequestFinished && isResponseFinished
 

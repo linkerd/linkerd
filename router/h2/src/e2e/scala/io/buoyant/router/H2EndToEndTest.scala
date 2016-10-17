@@ -10,16 +10,19 @@ import com.twitter.logging._
 import com.twitter.util._
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FunSuite
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 class H2EndToEndTest extends FunSuite with Awaits {
   // For posterity, this is how you enable logging in a test:
   // TODO move io.buoyant.test as a utility?
-  // Logger.configure(List(LoggerFactory(
-  //   node = "",
-  //   level = Some(Level.DEBUG),
-  //   handlers = List(ConsoleHandler())
-  // )))
+  Logger.configure(List(LoggerFactory(
+    node = "",
+    level = Some(Level.DEBUG),
+    handlers = List(ConsoleHandler())
+  )))
   val log = Logger.get()
 
   case class Downstream(name: String, server: ListeningServer) {
@@ -62,6 +65,8 @@ class H2EndToEndTest extends FunSuite with Awaits {
 
   case class Upstream(service: Service[Request, Response]) extends Closable {
 
+    def apply(req: Request): Future[Response] = service(req)
+
     def get(host: String, path: String = "/")(check: Option[String] => Boolean): Unit = {
       val req = Request("http", Method.Get, host, path, Stream.Nil)
 
@@ -100,16 +105,8 @@ class H2EndToEndTest extends FunSuite with Awaits {
     Upstream(client)
   }
 
-  // TODO
-  // test("simple flow control between client and server") {
-  //   val stream = Stream()
-  //   val server = Downstream.mk("server") { req =>
-  //     Response(Status.Ok, stream)
-  //   }
-  //   val client = upstream()
-  // }
-
-  test("end-to-end routing, with prior knowledge") {
+  test("router with prior knowledge") {
+    cancel
     val stats = NullStatsReceiver
     val tracer = NullTracer
     // val tracer = new BufferingTracer
@@ -165,4 +162,136 @@ class H2EndToEndTest extends FunSuite with Awaits {
     }
   }
 
+  test("client/server request flow control") {
+    val streamP = new Promise[Stream]
+    val server = Downstream.mk("server") { req =>
+      streamP.setValue(req.data)
+      Response(Status.Ok, Stream.Nil)
+    }
+    val client = upstream(server.server)
+
+    try {
+      val writer = Stream()
+      val rsp = await {
+        val req = Request("http", Method.Get, "host", "/path", writer)
+        client(req)
+      }
+      assert(rsp.status == Status.Ok)
+      await(streamP) match {
+        case Stream.Nil => fail(s"empty request stream")
+        case reader: Stream.Reader => testFlowControl(reader, writer)
+      }
+    } finally {
+      await(client.close())
+      await(server.server.close())
+    }
+  }
+
+  test("client/server response flow control") {
+    val writer = Stream()
+    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
+    val client = upstream(server.server)
+
+    try {
+      val rsp = await {
+        val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
+        client(req)
+      }
+      assert(rsp.status == Status.Ok)
+      rsp.data match {
+        case Stream.Nil => fail(s"empty response stream")
+        case reader: Stream.Reader => testFlowControl(reader, writer)
+      }
+    } finally {
+      await(client.close())
+      await(server.server.close())
+    }
+  }
+
+  val WindowSize = 65535
+  def mkBuf(sz: Int): Buf = Buf.ByteArray.Owned(Array.fill[Byte](sz)(1.toByte))
+
+  def testFlowControl(reader: Stream.Reader, writer: Stream.Writer[Frame]) = {
+    // Put two windows' worth of data on the stream
+    val release0, release1 = new Promise[Unit]
+    def releaser(n: Int, p: Promise[Unit]) = () => {
+      log.debug(new Exception, s"writer releasing $n")
+      p.setDone()
+      Future.Unit
+    }
+
+    // The first frame is too large to fit in a window. It should not
+    // be released until all of the data has been flushed.  This
+    // cannot happen until the reader reads and erleases some of the
+    // data.
+    val frame0 = Frame.Data(mkBuf(WindowSize + 1024), false, releaser(0, release0))
+    val frame1 = Frame.Data(mkBuf(WindowSize - 1024), true, releaser(1, release1))
+    assert(!release0.isDefined && !release1.isDefined)
+    log.debug("offering frames to stream")
+    assert(writer.write(frame0))
+    assert(writer.write(frame1))
+    assert(!release0.isDefined && !release1.isDefined)
+
+    // Read a full window, without releasing anything.
+    var read = 0
+    val frames = ListBuffer.empty[Frame.Data]
+    while (read < WindowSize)
+      await(reader.read()) match {
+        case _: Frame.Trailers => fail("unexpected trailers")
+        case d: Frame.Data =>
+          frames += d
+          read += d.buf.length
+      }
+    assert(frames.nonEmpty)
+    assert(frames.map(_.buf.length).sum == read)
+    assert(read == WindowSize)
+    assert(!release0.isDefined && !release1.isDefined)
+
+    // At this point, we've read an entire window of data from
+    // the stream without releasing any of it.  Subsequent reads
+    // should not complete until data is released.
+    val rf0 = reader.read()
+    for (_ <- 0 to 10000) assert(!rf0.isDefined)
+
+    // Then, we release all of the pending data so that the window
+    // updates. (Note that WINDOW_UPDATE messages are aggregated so
+    // that they are not sent for each individual release().)
+    log.debug("reader releasing %dB from %d frames", read, frames.length)
+    await(Future.collect(frames.map(_.release())).unit)
+    frames.clear()
+
+    // Now that we've released an entire window, we expect that the
+    // first written frame is now released:
+    assert(release0.isDefined)
+    assert(!release1.isDefined)
+
+    // Furthermore, our pending read can complete now that more data
+    // has been written.
+    await(rf0) match {
+      case _: Frame.Trailers => fail("unexpected trailers")
+      case d: Frame.Data =>
+        read += d.buf.length
+        // Just release it immediately.
+        log.debug("reader releasing %dB from 1 frame", d.buf.length)
+        await(d.release())
+    }
+
+    // Read the remaining data
+    while (read < 2 * WindowSize)
+      await(reader.read()) match {
+        case _: Frame.Trailers => fail("unexpected trailers")
+        case d: Frame.Data =>
+          read += d.buf.length
+          log.debug("reader releasing %dB from 1 frame", d.buf.length)
+          await(d.release())
+      }
+    assert(read == 2 * WindowSize)
+    assert(release1.isDefined)
+
+    // There should be no remaining data (in fact, this should
+    // probably throw an IllegalStateException or something, since an
+    // EOS has already been served).
+    val rf1 = reader.read()
+    for (_ <- 0 to 10000) assert(!rf1.isDefined)
+  }
 }

@@ -261,8 +261,16 @@ object Stream {
       val data: Frame.Data =
         if (dataq.isEmpty) null
         else new Frame.Data {
-          def buf: Buf = dataq.foldLeft(Buf.Empty) { (buf, f) => buf.concat(f.buf) }
-          def release() = Future.collect(dataq.map(_.release())).unit
+          private[this] var _buf = Buf.Empty
+          private[this] var _release = () => Future.Unit
+          private[this] val iter = dataq.iterator
+          while (iter.hasNext) {
+            val f = iter.next()
+            _buf = _buf.concat(f.buf)
+            _release = () => _release().before(f.release())
+          }
+          def buf: Buf = _buf
+          def release() = _release()
           def isEnd = dataEos
         }
 
@@ -296,11 +304,18 @@ object Frame {
   }
 
   object Data {
-    def apply(buf0: Buf, eos: Boolean): Data = new Data {
+
+    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
       def buf = buf0
-      def release() = Future.Unit
+      def release() = release0()
       def isEnd = eos
     }
+
+    def apply(buf: Buf, eos: Boolean): Data =
+      apply(buf, eos, () => Future.Unit)
+
+    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
+      apply(Buf.Utf8(s), eos, release)
 
     def apply(s: String, eos: Boolean): Data =
       apply(Buf.Utf8(s), eos)
