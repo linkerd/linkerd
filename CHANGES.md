@@ -5,6 +5,8 @@
 * Add an `ip` option to admin configuration so that access to the admin server may be constrained
 * Add k8s external namer for routing to k8s ingress services
 * Support serving the namerd namer interface over TLS.
+* Add `io.buoyant.rinet` namer which is like `inet` but with the order
+  of host and port reversed
 
 ## 0.8.1
 
