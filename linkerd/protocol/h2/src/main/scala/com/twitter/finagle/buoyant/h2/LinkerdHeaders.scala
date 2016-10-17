@@ -14,8 +14,8 @@ import scala.collection.breakOut
 /**
  * The finagle http stack manages a set of context headers that are
  * read from server requests and written to client requests. The
- * [[Headers]] module replaces these headers with linkerd-specific
- * headers (prefixed by l5d-).
+ * [[LinkerdHeaders]] module replaces these headers with
+ * linkerd-specific headers (prefixed by l5d-).
  *
  * Context headers, read and written by each linkerd instance, include:
  *
@@ -60,8 +60,7 @@ object LinkerdHeaders {
      * `dtab-local` header should be considered deprecated in favor of
      * `l5d-dtab`, and will not be supported in the future.
      *
-     * Note that trace configuration is handled by
-     * [[HttpTraceInitializer.serverModule]].
+     * Note that trace configuration is handled separately.
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {
@@ -85,8 +84,7 @@ object LinkerdHeaders {
      * `dtab-local` header. In a future release, Dtabs will be encoded
      * into the `l5d-ctx-dtab` header.
      *
-     * Note that trace configuration is handled by
-     * [[HttpTraceInitializer.clientModule]].
+     * Note that trace configuration is handled separately.
      */
     val clientModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {

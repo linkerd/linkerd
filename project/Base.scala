@@ -23,7 +23,7 @@ class Base extends Build {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
     val headRevision = git("rev-parse", "--short", "HEAD").!!.trim
     val version = git("name-rev", "--tags", "--name-only", headRevision).!!.trim match {
-      case tag if tag == headVersion => tag
+      case tag if tag == headVersion || tag == s"${headVersion}^0" => headVersion
       case _ => s"$headVersion-SNAPSHOT"
     }
   }
