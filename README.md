@@ -7,15 +7,15 @@
 
 :balloon: Welcome to linkerd! :wave:
 
-linkerd is transparent *service mesh*, designed to make modern applications
+linkerd is a transparent *service mesh*, designed to make modern applications
 safe and sane by transparently adding service discovery, load balancing,
 failure handling, instrumentation, and routing to all inter-service
 communication.
 
-linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc proxy,
-and can usually be dropped into existing applications with a minimum of
-configuration, regardles of what language they're written in. It works with
-many common protocols and service discovery backends, including scheduled
+linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
+proxy, and can usually be dropped into existing applications with a minimum of
+configuration, regardles of what language they're written in. It works with many
+common protocols and service discovery backends, including scheduled
 environments like Mesos and Kubernetes.
 
 linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
@@ -260,7 +260,8 @@ the following command:
 $ docker run -p 4140:4140 -p 9990:9990 -v /absolute/path/to/myapp:/myapp buoyantio/linkerd:0.0.10-SNAPSHOT /myapp/linkerd.yml
 ```
 
-For local testing convenience, we supply a config that routes to a single backend on _localhost:8080_.
+For local testing convenience, we supply a config that routes to a single
+backend on _localhost:8080_.
 
 ```
 $ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.8.1-SNAPSHOT /config/static_namer.yaml
