@@ -46,4 +46,7 @@ object Deps {
 
   // guava
   val guava = "com.google.guava" % "guava" % "19.0"
+
+  // jwt for Marathon API
+  val jwt = "com.pauldijou" %% "jwt-core" % "0.9.0"
 }

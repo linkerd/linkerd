@@ -65,7 +65,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAppIds endpoint returns a seq of app names") {
     val service = stubService(appsBuf)
 
-    val response = await(Api(service, "host", "prefix").getAppIds())
+    val response = await(Api(service, "prefix").getAppIds())
     assert(response == Set(
       Path.read("/foo"),
       Path.read("/bar"),
@@ -76,14 +76,14 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAppIds endpoint returns an empty seq when there are no apps") {
     val service = stubService(noApps)
 
-    val response = await(Api(service, "host", "prefix").getAppIds())
+    val response = await(Api(service, "prefix").getAppIds())
     assert(response.size == 0)
   }
 
   test("getAddrs endpoint returns a seq of addresses") {
     val service = stubService(appBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
+    val response = await(Api(service, "prefix").getAddrs(Path.Utf8("foo")))
     assert(response == Set(
       Address("1.2.3.4", 7000),
       Address("5.6.7.8", 7003)
@@ -93,7 +93,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAddrs endpoint returns an empty set of addresses if app not found") {
     val service = stubService(appNotFoundBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
+    val response = await(Api(service, "prefix").getAddrs(Path.Utf8("foo")))
     assert(response.size == 0)
   }
 
@@ -104,7 +104,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       Future.exception(new ClientFailure)
     }
     assertThrows[ClientFailure] {
-      await(Api(failureService, "host", "prefix").getAppIds())
+      await(Api(failureService, "prefix").getAppIds())
     }
   }
 }

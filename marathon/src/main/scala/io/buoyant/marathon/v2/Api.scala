@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Address, Path, Service, SimpleFilter, http}
+import com.twitter.finagle.{Address, Path, Service, http}
 import com.twitter.io.Buf
 import com.twitter.util.{Closable, Future, Time, Try}
 
@@ -25,17 +25,10 @@ object Api {
 
   val versionString = "v2"
 
-  private[this] case class SetHost(host: String)
-    extends SimpleFilter[http.Request, http.Response] {
+  case class UnexpectedResponse(rsp: http.Response) extends Throwable
 
-    def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
-      req.host = host
-      service(req)
-    }
-  }
-
-  def apply(client: Client, host: String, uriPrefix: String): Api =
-    new AppIdApi(SetHost(host).andThen(client), s"$uriPrefix/$versionString")
+  def apply(client: Client, uriPrefix: String): Api =
+    new AppIdApi(client, s"$uriPrefix/$versionString")
 
   private[v2] def rspToApps(rsp: http.Response): Future[Api.AppIds] =
     rsp.status match {
@@ -55,12 +48,10 @@ object Api {
         Future.exception(UnexpectedResponse(rsp))
     }
 
-  private[this] case class UnexpectedResponse(rsp: http.Response) extends Throwable
-
   private[this] val mapper = new ObjectMapper with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-  private[this] def readJson[T: Manifest](buf: Buf): Try[T] = {
+  def readJson[T: Manifest](buf: Buf): Try[T] = {
     val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
