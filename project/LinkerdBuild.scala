@@ -505,7 +505,7 @@ object LinkerdBuild extends Base {
     )
 
     val BundleProjects = Seq[ProjectReference](
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.mux, Protocol.thrift,
       Announcer.serversets,

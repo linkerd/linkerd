@@ -1,6 +1,7 @@
 ## 0.x.y
 
 * Removed unused TLS options from the k8s storage plugin config
+* Add Curator namer
 
 ## 0.8.1
 
