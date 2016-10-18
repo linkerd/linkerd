@@ -10,6 +10,7 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.io.Charsets
 import com.twitter.util.Future
 import java.net.SocketAddress
+import java.nio.charset.StandardCharsets.UTF_8
 import org.jboss.netty.channel._
 import org.jboss.netty.handler.codec.frame.{DelimiterBasedFrameDecoder, Delimiters}
 import org.jboss.netty.handler.codec.string.{StringDecoder, StringEncoder}
@@ -48,8 +49,8 @@ object Echo extends Client[String, String] with Server[String, String] {
   private object StringClientPipeline extends ChannelPipelineFactory {
     def getPipeline = {
       val pipeline = Channels.pipeline()
-      pipeline.addLast("stringEncode", new StringEncoder(Charsets.Utf8))
-      pipeline.addLast("stringDecode", new StringDecoder(Charsets.Utf8))
+      pipeline.addLast("stringEncode", new StringEncoder(UTF_8))
+      pipeline.addLast("stringDecode", new StringDecoder(UTF_8))
       pipeline.addLast("line", new DelimEncoder('\n'))
       pipeline
     }
@@ -96,8 +97,8 @@ object Echo extends Client[String, String] with Server[String, String] {
     def getPipeline = {
       val pipeline = Channels.pipeline()
       pipeline.addLast("line", new DelimiterBasedFrameDecoder(100, Delimiters.lineDelimiter: _*))
-      pipeline.addLast("stringDecoder", new StringDecoder(Charsets.Utf8))
-      pipeline.addLast("stringEncoder", new StringEncoder(Charsets.Utf8))
+      pipeline.addLast("stringDecoder", new StringDecoder(UTF_8))
+      pipeline.addLast("stringEncoder", new StringEncoder(UTF_8))
       pipeline
     }
   }

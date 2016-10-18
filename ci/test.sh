@@ -9,7 +9,7 @@ unitTests() {
 # we can't compute coverage on e2e tests because it
 # conflicts/overwrites unit coverage for some modules.
 e2eTests() {
-  ./sbt e2e:test integration:compile
+  ./sbt e2e:test integration:compile linkerd-protocol-http/integration:test
 }
 
 case "${CIRCLE_NODE_TOTAL:-1}" in

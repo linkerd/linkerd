@@ -16,6 +16,42 @@ object RoutingFactory {
    */
   type Identifier[Req] = Req => Future[RequestIdentification[Req]]
 
+  object Identifier {
+
+    def compose[Req](hd: Identifier[Req], tl: Identifier[Req]*): Identifier[Req] =
+      (req: Req) => fold(req, hd, tl)
+
+    /**
+     * Apply each identifier in order until the request is identified.
+     *
+     * Identifier list must not be empty.
+     */
+    def compose[Req](all: Seq[Identifier[Req]]): Identifier[Req] = all match {
+      case Nil => throw new IllegalArgumentException("empty identifier list")
+      case Seq(identifier) => identifier
+      case Seq(hd, tl@_*) => (req: Req) => fold(req, hd, tl)
+    }
+
+    /**
+     * Apply each identifier to the request in order until the request
+     * is identified or identifiers are exhausted.
+     */
+    private[this] def fold[Req](
+      req: Req,
+      hd: Identifier[Req],
+      tl: Seq[Identifier[Req]]
+    ): Future[RequestIdentification[Req]] =
+      tl match {
+        case Nil => hd(req)
+        case Seq(nextHd, nextTl@_*) =>
+          hd(req).flatMap {
+            case id: IdentifiedRequest[Req] => Future.value(id)
+            case _: UnidentifiedRequest[Req] => fold(req, nextHd, nextTl)
+          }
+      }
+
+  }
+
   /** The result of attempting to identify a request. */
   sealed trait RequestIdentification[Req]
 

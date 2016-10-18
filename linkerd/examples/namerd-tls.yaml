@@ -1,0 +1,13 @@
+routers:
+- protocol: http
+  interpreter:
+    kind: io.l5d.namerd
+    dst: /$/inet/localhost/4100
+    namespace: default
+    tls:
+      commonName: namerdee
+      caCert: namerd/examples/certs/namerd-cacert.pem
+      
+  servers:
+  - port: 4140
+    ip: 0.0.0.0

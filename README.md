@@ -7,20 +7,33 @@
 
 :balloon: Welcome to linkerd! :wave:
 
-linkerd is an out-of-process network stack for microservices. It
-functions as a transparent RPC proxy, handling everything needed to
-make inter-service RPC safe and sane--including load-balancing,
-service discovery, instrumentation, and routing.
+linkerd is a transparent *service mesh*, designed to make modern applications
+safe and sane by transparently adding service discovery, load balancing,
+failure handling, instrumentation, and routing to all inter-service
+communication.
 
-linkerd is designed to drop into existing applications with a minimum
-of configuration, and works with many common RPC formats and service
-discovery backends.
+linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
+proxy, and can usually be dropped into existing applications with a minimum of
+configuration, regardles of what language they're written in. It works with many
+common protocols and service discovery backends, including scheduled
+environments like Mesos and Kubernetes.
 
-linkerd is built on top of [Finagle][finagle], a production-tested RPC
-framework used by high-traffic companies like Twitter, Pinterest,
-Tumblr, PagerDuty, and others.
+linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
+production-tested RPC framework used by high-traffic companies like Twitter,
+Pinterest, Tumblr, PagerDuty, and others.
 
-For more information, please see [linkerd.io](https://linkerd.io).
+## Want to try it? ##
+
+We distribute binaries which you can download from
+the [linkerd releases page](releases).
+
+For instructions on how to configure and run linkerd, see the [user
+documentation on linkerd.io](https://linkerd.io).
+
+## Want to build it? ##
+
+The rest of this document will help you build linkerd from source and how to
+contribute code.
 
 This repo contains two main projects: linkerd itself and namerd, a service for
 centrally managing routing policy and fronting service discovery.
@@ -28,7 +41,7 @@ centrally managing routing policy and fronting service discovery.
 * [linkerd](linkerd/README.md)
 * [namerd](namerd/README.md)
 
-## Quickstart ##
+## Development quickstart ##
 
 ### Boot linkerd ###
 
@@ -247,10 +260,11 @@ the following command:
 $ docker run -p 4140:4140 -p 9990:9990 -v /absolute/path/to/myapp:/myapp buoyantio/linkerd:0.0.10-SNAPSHOT /myapp/linkerd.yml
 ```
 
-For local testing convenience, we supply a config that routes to a single backend on _localhost:8080_.
+For local testing convenience, we supply a config that routes to a single
+backend on _localhost:8080_.
 
 ```
-$ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.8.1-SNAPSHOT /config/static_namer.yaml
+$ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.8.2-SNAPSHOT /config/static_namer.yaml
 ```
 
 The list of image names may be changed with a command like:
@@ -285,14 +299,14 @@ The assembly script executes two commands serially:
 
 ```bash
 $ ./sbt namerd/dcos:assembly
-$ namerd/target/scala-2.11/namerd-0.8.1-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+$ namerd/target/scala-2.11/namerd-0.8.2-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
 ```
 
 ##### Run assembly script in docker #####
 
 ```bash
 $ ./sbt namerd/dcos:docker
-$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.8.1-SNAPSHOT-dcos namerd/examples/zk.yaml
+$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.8.2-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```
 
 ### Contributing ###
@@ -330,6 +344,8 @@ specific language governing permissions and limitations under the License.
 [l5d-ci]: https://circleci.com/gh/BuoyantIO/linkerd
 [l5d-ci-status]: https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
 [l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
+[netty]: https://netty.io/
 [sbt]: http://www.scala-sbt.org/
 [scalatest]: http://www.scalatest.org/
 [ssg]: http://docs.scala-lang.org/style/scaladoc.html
+[releases]: https://github.com/BuoyantIO/linkerd/releases

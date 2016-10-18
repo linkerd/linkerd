@@ -1,14 +1,13 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Path, Namer, Stack}
-import com.twitter.finagle.stats.LoadedStatsReceiver
+import com.twitter.finagle.stats.{LoadedStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.LoadService
+import com.twitter.finagle.{Namer, Path, Stack}
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
-import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import io.buoyant.telemetry.{Telemeter, NullTelemeter}
+import io.buoyant.telemetry.{NullTelemeter, Telemeter}
+import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
 private[namerd] case class NamerdConfig(
@@ -35,7 +34,7 @@ private[namerd] case class NamerdConfig(
     val dtabStore = storage.mkDtabStore
     val namersByPfx = mkNamers()
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
-    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminPort)
+    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
     val telemeters = Seq(defaultTelemeter)
     new Namerd(ifaces, dtabStore, namersByPfx, adminImpl, telemeters)
   }
@@ -63,8 +62,8 @@ private[namerd] case class NamerdConfig(
 
 private[namerd] object NamerdConfig {
 
-  private def DefaultAdminPort = Port(9991)
-  private def DefaultAdminConfig = AdminConfig(Some(DefaultAdminPort), None)
+  private def DefaultAdminAddress = new InetSocketAddress(9991)
+  private def DefaultAdminConfig = AdminConfig()
 
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
     lazy val message =

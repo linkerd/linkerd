@@ -17,8 +17,6 @@ import org.scalatest.FunSuite
 
 class HttpEndToEndTest extends FunSuite with Awaits {
 
-  override val defaultWait = 5.seconds
-
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
@@ -278,7 +276,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(1.0)))
+        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries", "per_request")) == Some(Seq(1.0)))
+        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
         }
@@ -305,7 +304,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries")) == Some(Seq(0.0)))
+        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries", "per_request")) == Some(Seq(0.0)))
+        assert(!stats.counters.contains(Seq("http", "dst", "path", name, "retries", "total")))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
         }

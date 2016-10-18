@@ -1,8 +1,10 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Path, Namer, ThriftMux}
+import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.{Stack, Path, Namer, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.scrooge.ThriftService
 import com.twitter.util.Duration
@@ -15,7 +17,8 @@ import scala.util.Random
 case class ThriftInterpreterInterfaceConfig(
   retryBaseSecs: Option[Int] = None,
   retryJitterSecs: Option[Int] = None,
-  cache: Option[CapacityConfig] = None
+  cache: Option[CapacityConfig] = None,
+  tls: Option[TlsServerConfig] = None
 ) extends InterpreterInterfaceConfig {
   @JsonIgnore
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
@@ -40,7 +43,11 @@ case class ThriftInterpreterInterfaceConfig(
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
       stats
     )
-    ThriftServable(addr, iface)
+    val params = tls match {
+      case Some(tlsConfig) => Stack.Params.empty + tlsConfig.param
+      case None => Stack.Params.empty
+    }
+    ThriftServable(addr, iface, params)
   }
 }
 
@@ -54,9 +61,10 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
   val configClass = classOf[ThriftInterpreterInterfaceConfig]
 }
 
-case class ThriftServable(addr: InetSocketAddress, iface: ThriftService) extends Servable {
+case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, params: Stack.Params) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
-  def serve() = ThriftMux.server.serveIface(addr, iface)
+  val thriftMux = ThriftMux.server
+  def serve() = thriftMux.withParams(thriftMux.params ++ params).serveIface(addr, iface)
 }
 
 case class CapacityConfig(
@@ -72,5 +80,11 @@ case class CapacityConfig(
     bindingCacheInactive = bindingCacheInactive.getOrElse(default.bindingCacheInactive),
     addrCacheActive = addrCacheActive.getOrElse(default.addrCacheActive),
     addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive)
+  )
+}
+
+case class TlsServerConfig(certPath: String, keyPath: String) {
+  val param = Transport.TLSServerEngine(
+    Some(() => Ssl.server(certPath, keyPath, null, null, null))
   )
 }

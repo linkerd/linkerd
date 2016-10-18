@@ -112,6 +112,7 @@ metadata:
 data:
   config.yml: |-
     admin:
+      ip: 127.0.0.1
       port: 9991
     storage:
       kind: io.l5d.k8s

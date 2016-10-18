@@ -1,0 +1,29 @@
+tracers: []
+
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: h2
+  experimental: true
+  baseDtab: |
+    /srv => /#/io.l5d.fs;
+    /h2/yo => /$/inet/127.1/8888;
+    /h2 => /srv;
+  servers:
+  - port: 4142
+    # tls:
+    #   caCertPath: ./certificates/cacertificate.pem
+    #   certPath: ./certificates/linkerdcertificate.pem
+    #   keyPath: ./certificates/private/linkerd.pkcs8
+  identifier:
+    kind: io.l5d.headerPath
+    header: ":authority"
+  # client:
+  #   tls:
+  #     kind: io.l5d.boundPath
+  #     caCertPath: ./certificates/cacertificate.pem
+  #     names:
+  #     - prefix: "/#/io.l5d.fs/{service}"
+  #       commonNamePattern: "{service}"

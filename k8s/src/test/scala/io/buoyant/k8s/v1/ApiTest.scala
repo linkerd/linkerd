@@ -1,6 +1,6 @@
 package io.buoyant.k8s.v1
 
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Service => FService}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -22,7 +22,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("namespace: get endpoints") {
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       reqCount match {
         case 1 =>
@@ -96,7 +96,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val rsp = Response()
     @volatile var failure: Throwable = null
     @volatile var reqCount = 0
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       try {
         reqCount match {
@@ -130,7 +130,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val rsp = Response()
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       reqCount match {
         case 1 =>
@@ -154,12 +154,12 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       val w = rsp.writer
       await(w.write(modified2 concat added0))
       await(stream.uncons) match {
-        case Some((Modified(eps), getStream)) =>
+        case Some((EndpointsModified(eps), getStream)) =>
           assert(eps.subsets.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
             Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
 
           await(getStream().uncons) match {
-            case Some((Added(eps), getStream)) =>
+            case Some((EndpointsAdded(eps), getStream)) =>
               assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
                 Seq("104.154.78.240"))
 
@@ -168,7 +168,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               await(w.write(modified1))
               assert(next.isDefined)
               await(next) match {
-                case Some((Modified(eps), getStream)) =>
+                case Some((EndpointsModified(eps), getStream)) =>
                   assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
                     Seq("10.248.3.3"))
 
@@ -177,7 +177,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
                   await(w.write(modified0))
                   assert(next.isDefined)
                   await(next) match {
-                    case Some((Modified(eps), getStream)) =>
+                    case Some((EndpointsModified(eps), getStream)) =>
                       assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
                         Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
                       val next = getStream().uncons
@@ -202,7 +202,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val ver = "4659253"
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       try {
         reqCount match {
@@ -242,14 +242,14 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
     try {
       await(stream.uncons) match {
-        case Some((Error(status), stream)) =>
+        case Some((EndpointsError(status), stream)) =>
           assert(status.status == Some("Failure"))
           await(stream().uncons) match {
-            case Some((Modified(mod), stream)) =>
+            case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147786")
               assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
               await(stream().uncons) match {
-                case Some((Modified(mod), stream)) =>
+                case Some((EndpointsModified(mod), stream)) =>
                   assert(mod.metadata.get.resourceVersion.get == "17147808")
                   assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                   val next = stream().uncons
@@ -273,7 +273,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val rsp = Response()
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       reqCount match {
         case 1 =>
@@ -313,7 +313,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val ver = "4659253"
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
-    val service = Service.mk[Request, Response] { req =>
+    val service = FService.mk[Request, Response] { req =>
       reqCount += 1
       try {
         reqCount match {
@@ -354,11 +354,11 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val (stream, closable) = api.endpoints.watch(resourceVersion = Some(ver))
     try {
       await(stream.uncons) match {
-        case Some((Modified(mod), stream)) =>
+        case Some((EndpointsModified(mod), stream)) =>
           assert(mod.metadata.get.resourceVersion.get == "17147786")
           assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
           await(stream().uncons) match {
-            case Some((Modified(mod), stream)) =>
+            case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147808")
               assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
               val next = stream().uncons

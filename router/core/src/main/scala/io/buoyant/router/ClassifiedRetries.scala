@@ -1,7 +1,8 @@
 package io.buoyant.router
 
 import com.twitter.finagle.{Stack, Stackable, ServiceFactory, param}
-import com.twitter.finagle.service._
+import com.twitter.finagle.buoyant.RetryFilter
+import com.twitter.finagle.service.{RetryFilter => _, _}
 import com.twitter.util.{Duration, Try}
 
 object ClassifiedRetries {
