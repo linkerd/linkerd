@@ -114,7 +114,7 @@ object Request {
     Impl(headers, data)
 
   private case class Impl(headers: Headers, data: Stream) extends Request {
-    override def toString = s"Request($scheme, $method, $authority, $path)"
+    override def toString = s"Request($scheme, $method, $authority, $path, $data)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
     override def method = headers.get(Headers.Method).headOption match {
@@ -142,7 +142,7 @@ object Response {
     headers: Headers,
     data: Stream
   ) extends Response {
-    override def toString = s"Response($status)"
+    override def toString = s"Response($status, $data)"
     override def dup() = copy(headers = headers.dup())
     override def status = headers.get(Headers.Status).headOption match {
       case Some(code) => Status.fromCode(code.toInt)
@@ -181,7 +181,7 @@ object Stream {
   }
 
   trait Reader extends Stream {
-    override def toString = s"Stream.Readable"
+    override def toString = s"Stream.Reader()"
     final override def isEmpty = false
     def reset(cause: Throwable): Unit
     def onEnd: Future[Unit]
@@ -261,8 +261,16 @@ object Stream {
       val data: Frame.Data =
         if (dataq.isEmpty) null
         else new Frame.Data {
-          def buf: Buf = dataq.foldLeft(Buf.Empty) { (buf, f) => buf.concat(f.buf) }
-          def release() = Future.collect(dataq.map(_.release())).unit
+          private[this] var _buf = Buf.Empty
+          private[this] var _release = () => Future.Unit
+          private[this] val iter = dataq.iterator
+          while (iter.hasNext) {
+            val f = iter.next()
+            _buf = _buf.concat(f.buf)
+            _release = () => _release().before(f.release())
+          }
+          def buf: Buf = _buf
+          def release() = _release()
           def isEnd = dataEos
         }
 
@@ -291,16 +299,24 @@ object Frame {
    * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
+    override def toString = s"Frame.Data(length=${buf.length}, eos=$isEnd)"
     def buf: Buf
     def release(): Future[Unit]
   }
 
   object Data {
-    def apply(buf0: Buf, eos: Boolean): Data = new Data {
+
+    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
       def buf = buf0
-      def release() = Future.Unit
+      def release() = release0()
       def isEnd = eos
     }
+
+    def apply(buf: Buf, eos: Boolean): Data =
+      apply(buf, eos, () => Future.Unit)
+
+    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
+      apply(Buf.Utf8(s), eos, release)
 
     def apply(s: String, eos: Boolean): Data =
       apply(Buf.Utf8(s), eos)
