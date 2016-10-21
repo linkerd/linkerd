@@ -27,7 +27,7 @@ private[consul] class LookupCache(
     id: Path,
     residual: Path
   ): Activity[NameTree[Name]] = {
-    log.debug("consul lookup: %s %s", id.show)
+    log.debug("consul lookup: %s %s", dc, id.show)
     lookupCounter.incr()
 
     resolveDc(dc).flatMap(Dc.watch).map { services =>
