@@ -6,7 +6,9 @@ import org.scalatest.BeforeAndAfter
 
 trait Logging extends BeforeAndAfter { _: org.scalatest.FunSuite =>
 
-  var logLevel: Level = Level.OFF
+  val log = Logger.get(getClass.getName)
+
+  def logLevel: Level = Level.OFF
 
   before {
     Logger.configure(List(LoggerFactory(
@@ -17,6 +19,10 @@ trait Logging extends BeforeAndAfter { _: org.scalatest.FunSuite =>
   }
 
   after {
-    Logger.reset()
+    Logger.configure(List(LoggerFactory(
+      node = "",
+      level = Some(Level.OFF),
+      handlers = List(ConsoleHandler())
+    )))
   }
 }
