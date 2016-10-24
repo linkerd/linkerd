@@ -183,7 +183,6 @@ object Stream {
   trait Reader extends Stream {
     override def toString = s"Stream.Reader()"
     final override def isEmpty = false
-    def reset(cause: Throwable): Unit
     def onEnd: Future[Unit]
     def read(): Future[Frame]
   }
@@ -208,80 +207,29 @@ object Stream {
         endP.setDone()
         Future.value(Frame.Data.eos(buf))
       } else Future.never
-    override def reset(cause: Throwable): Unit = {
-      complete.set(true)
-      endP.raise(cause)
-    }
   }
 
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
-  trait Writer[-T] {
+  trait Writer {
 
     /**
      * Write an object to a Stream so that it may be read as a Frame
      * (i.e. onto an underlying transport).
-     *
-     * Returns `false` if the input could not be accepted.
      */
-    def write(frame: T): Boolean
+    def write(frame: Frame): Future[Unit]
   }
 
-  def apply(minAccumFrames: Int = Int.MaxValue): Reader with Writer[Frame] =
-    new FrameStream(minAccumFrames)
+  def apply(): Reader with Writer =
+    new AsyncQueueStreamer()
 
-  /**
-   * A default implementation of an Http2 stream that is backed by an
-   * AsyncQueue of Frames.
-   */
-  private class FrameStream(minAccumFrames: Int)
-    extends AsyncQueueStreamer[Frame](minAccumFrames = minAccumFrames) {
-
-    @inline
-    protected[this] def toFrame(f: Frame): Frame = f
-
-    protected[this] def accumStream(frames: Queue[Frame]): StreamAccum = {
-      var dataq = mutable.Queue.empty[Frame.Data]
-      var dataEos = false
-      var trailers: Frame.Trailers = null
-
-      val iter = frames.iterator
-      while (!dataEos && trailers == null && iter.hasNext) {
-        iter.next() match {
-          case d: Frame.Data =>
-            dataq.enqueue(d)
-            dataEos = d.isEnd
-
-          case t: Frame.Trailers =>
-            trailers = t
-        }
-      }
-
-      val data: Frame.Data =
-        if (dataq.isEmpty) null
-        else new Frame.Data {
-          private[this] var _buf = Buf.Empty
-          private[this] var _release = () => Future.Unit
-          private[this] val iter = dataq.iterator
-          while (iter.hasNext) {
-            val f = iter.next()
-            _buf = _buf.concat(f.buf)
-            _release = () => _release().before(f.release())
-          }
-          def buf: Buf = _buf
-          def release() = _release()
-          def isEnd = dataEos
-        }
-
-      mkStreamAccum(data, trailers)
-    }
-
-  }
 }
 
 /**
  * A single item in a Stream.
+ *
+ * `release()` MUST be called so that the producer may manage flow control.
  */
 sealed trait Frame {
 
@@ -290,26 +238,34 @@ sealed trait Frame {
    * Stream.
    */
   def isEnd: Boolean
+
+  def release(): Future[Unit]
+  def onRelease: Future[Unit]
 }
 
 object Frame {
   /**
    * A frame containing aribtrary data.
-   *
-   * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
     override def toString = s"Frame.Data(length=${buf.length}, eos=$isEnd)"
     def buf: Buf
-    def release(): Future[Unit]
   }
 
   object Data {
 
-    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
-      def buf = buf0
-      def release() = release0()
-      def isEnd = eos
+    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = {
+      val releaseP = new Promise[Unit]
+      new Data {
+        override def buf = buf0
+        override def isEnd = eos
+        override def onRelease: Future[Unit] = releaseP
+        override def release() = {
+          val f = release0()
+          releaseP.become(f)
+          f
+        }
+      }
     }
 
     def apply(buf: Buf, eos: Boolean): Data =
@@ -323,12 +279,6 @@ object Frame {
 
     def eos(buf: Buf): Data = apply(buf, true)
     def eos(s: String): Data = apply(s, true)
-  }
-
-  object Empty extends Data {
-    def buf = Buf.Empty
-    def release() = Future.Unit
-    def isEnd = true
   }
 
   /** A terminal Frame including headers. */

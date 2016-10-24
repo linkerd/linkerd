@@ -21,7 +21,7 @@ object AsyncQueueStreamer {
   private object Open extends State
 
   /** All data has been read to the user, but there is a pending trailers frame to be returned. */
-  private case class Draining(trailers: Frame.Trailers) extends State
+  // private case class Draining(trailers: Frame.Trailers) extends State
 
   /** The stream has been closed with a cause; all subsequent reads will fail */
   private case class Closed(cause: Throwable) extends State
@@ -37,6 +37,9 @@ object AsyncQueueStreamer {
 
   private val illegalReadException =
     new IllegalStateException("No data or trailers available")
+
+  private val writeFailure: Future[Unit] =
+    Future.exception(Failure("write failed"))
 }
 
 /**
@@ -50,35 +53,27 @@ object AsyncQueueStreamer {
  * pending in the queue. This allows the queue to be flushed more
  * quickly as it backs up. By default, frames are not accumulated.
  */
-private[h2] abstract class AsyncQueueStreamer[-T](
-  minAccumFrames: Int = Int.MaxValue,
-  stats: StatsReceiver = NullStatsReceiver
-) extends Stream.Reader with Stream.Writer[T] {
+private[h2] class AsyncQueueStreamer
+  extends Stream.Reader
+  with Stream.Writer {
 
   import AsyncQueueStreamer._
 
-  private[this] val recvq: AsyncQueue[T] = new AsyncQueue
-
-  private[this] val accumMicros = stats.stat("accum_us")
-  private[this] val readQlens = stats.stat("read_qlen")
-  private[this] val readMicros = stats.stat("read_us")
-
+  private[this] val recvq: AsyncQueue[Frame] = new AsyncQueue
   private[this] val state: AtomicReference[State] = new AtomicReference(Open)
 
   private[this] val endP = new Promise[Unit]
   override def onEnd: Future[Unit] = endP
 
-  /** Fail the underlying queue and onEnd promise. */
-  override def reset(exn: Throwable): Unit =
-    if (state.compareAndSet(Open, Closed(exn))) {
-      recvq.fail(exn, discard = true)
-      endP.setException(exn)
-    }
-
-  override def write(t: T): Boolean =
+  override def write(f: Frame): Future[Unit] =
     state.get match {
-      case Open => recvq.offer(t)
-      case _ => false
+      case Closed(exn) => Future.exception(exn)
+      case Open =>
+        // If writing an EOS, note that the stream is closed (so that
+        // further writes fail).
+        if (f.isEnd && !state.compareAndSet(Open, closedState)) writeFailure
+        else if (recvq.offer(f)) f.onRelease
+        else writeFailure
     }
 
   /**
@@ -87,83 +82,10 @@ private[h2] abstract class AsyncQueueStreamer[-T](
    * If there are at least `minAccumFrames` in the queue, data frames may be combined
    */
   override def read(): Future[Frame] = {
-    val start = Stopwatch.start()
-    val f = state.get match {
-      case Open =>
-        val sz = recvq.size
-        readQlens.add(sz)
-        if (sz < minAccumFrames) recvq.poll().map(toFrameAndUpdate)
-        else Future.const(recvq.drain()).map(accumStreamAndUpdate)
-
-      case Closed(cause) => Future.exception(cause)
-
-      case s@Draining(trailers) =>
-        if (state.compareAndSet(s, closedState)) {
-          recvq.fail(closedException)
-          endP.setDone()
-          Future.value(trailers)
-        } else Future.exception(closedException)
-    }
-    f.onSuccess(_ => readMicros.add(start().inMicroseconds))
-    f
-  }
-
-  private[this] val toFrameAndUpdate: T => Frame = { t =>
-    val f = toFrame(t)
-    if (f.isEnd) {
-      if (state.compareAndSet(Open, closedState)) endP.setDone()
-      else throw expectedOpenException(state.get)
+    val f = recvq.poll()
+    f.onSuccess { f =>
+      if (f.isEnd) f.onRelease.proxyTo(endP)
     }
     f
   }
-
-  protected[this] def toFrame(t: T): Frame
-
-  /**
-   * Accumulate a queue of Data frames to a single frame.
-   *
-   * If the queue consists of 1 or more Data frames followed by a
-   * Trailers frame, the trailers frame is saved to be returned in a
-   * subsequent read.
-   */
-  private val accumStreamAndUpdate: Queue[T] => Frame = { frames =>
-    require(frames.nonEmpty)
-    val start = Stopwatch.start()
-
-    val accum = accumStream(frames)
-    val next = accum.data match {
-      case null =>
-        accum.trailers match {
-          case null => throw illegalReadException
-          case trls => trls
-        }
-      case data =>
-        accum.trailers match {
-          case null => data
-          case trls =>
-            if (state.compareAndSet(Open, Draining(trls))) data
-            else throw expectedOpenException(state.get)
-        }
-    }
-    if (next.isEnd) endP.setDone()
-
-    accumMicros.add(start().inMicroseconds)
-    next
-  }
-
-  protected[this] class StreamAccum {
-    var data: Frame.Data = null
-    var trailers: Frame.Trailers = null
-  }
-
-  @inline
-  protected[this] def mkStreamAccum(data: Frame.Data, trailers: Frame.Trailers): StreamAccum = {
-    val sa = new StreamAccum
-    sa.data = data
-    sa.trailers = trailers
-    sa
-  }
-
-  /** May return null items. */
-  protected[this] def accumStream(frames: Queue[T]): StreamAccum
 }

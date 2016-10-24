@@ -45,7 +45,7 @@ class LargeStreamEndToEndTest
 
   def testStream(
     reader: Stream.Reader,
-    writer: Stream.Writer[Frame],
+    writer: Stream.Writer,
     streamLen: Long,
     frameSize: Int
   ): Future[Unit] = {
@@ -66,16 +66,13 @@ class LargeStreamEndToEndTest
           val frame = Frame.Data(mkBuf(len.toInt), eos)
           d.release().before {
             if (ending) Future.Unit
-            else {
-              assert(writer.write(frame), s"failed to give frame $frame")
-              loop(bytesWritten + len, eos)
-            }
+            else writer.write(frame).before(loop(bytesWritten + len, eos))
           }
       }
     }
 
-    assert(writer.write(Frame.Data(mkBuf(frameSize), false)))
-    loop(frameSize, false)
+    writer.write(Frame.Data(mkBuf(frameSize), false))
+      .before(loop(frameSize, false))
   }
 
 }

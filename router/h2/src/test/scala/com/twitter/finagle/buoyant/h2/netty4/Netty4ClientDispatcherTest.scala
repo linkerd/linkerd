@@ -6,19 +6,14 @@ import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
+import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Time}
-import io.buoyant.test.Awaits
+import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
-import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
 
-class Netty4ClientDispatchTest extends FunSuite with Awaits {
-  // import com.twitter.logging._
-  // Logger.configure(List(LoggerFactory(
-  //   node = "",
-  //   level = Some(Level.ALL),
-  //   handlers = List(ConsoleHandler())
-  // )))
+class Netty4ClientDispatchTest extends FunSuite {
+  override def logLevel = Level.DEBUG
 
   test("dispatches multiple concurrent requests on underlying transport") {
     val recvq, sentq = new AsyncQueue[Http2Frame]
@@ -44,7 +39,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
     val dispatcher = new Netty4ClientDispatcher(transport, Int.MaxValue, stats)
 
     var released = 0
-    def releaser: Netty4Stream.Releaser = { bytes =>
+    def releaser: Int => Future[Unit] = { bytes =>
       released += bytes
       Future.Unit
     }
@@ -65,6 +60,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       }
       Netty4Message.Request(hs, data)
     }
+    log.debug("dispatching req0")
     val rsp0f = dispatcher(req0)
     assert(!rsp0f.isDefined)
 
@@ -76,6 +72,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       hs.authority("auf")
       Netty4Message.Request(hs, Stream.Nil)
     }
+    log.debug("dispatching req1")
     val rsp1f = dispatcher(req1)
     assert(!rsp1f.isDefined)
 
@@ -89,6 +86,7 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       case f =>
         fail(s"unexpected frame: $f")
     }
+    log.debug("headers were sent for req0")
 
     // Initial headers were sent to the server for req1
     val req1InitF = sentq.poll()
@@ -100,22 +98,22 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       case f =>
         fail(s"unexpected frame: $f")
     }
+    log.debug("headers were sent for req1")
 
-    req0q.offer(new Frame.Data {
-      def isEnd = true
-      val buf = Buf.Utf8("how's it goin?")
-      def release() = releaser(buf.length)
-    })
+    log.debug("writing a data frame to req0")
+    val buf = Buf.Utf8("how's it goin?")
+    req0q.offer(Frame.Data(buf, true, () => releaser(buf.length)))
 
     // We receive a response for req1 first:
+    log.debug("offering response headers for req1")
     recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(5)
     })
 
-    assert(!rsp0f.isDefined)
-    // assert(rsp1f.isDefined)
+    log.debug("waiting to receive response headers for req1")
+    eventually { assert(rsp1f.isDefined) }
     val rsp1 = await(rsp1f)
     assert(rsp1.status == Status.Cowabunga)
     val data1 = rsp1.data match {
@@ -123,13 +121,14 @@ class Netty4ClientDispatchTest extends FunSuite with Awaits {
       case r: Stream.Reader => r
     }
 
-    // We receive a response for req1 first:
+    log.debug("offering response headers for req0")
+    assert(!rsp0f.isDefined)
     recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(3)
     })
-    assert(rsp0f.isDefined)
+    eventually { assert(rsp0f.isDefined) }
     val rsp0 = await(rsp0f)
     assert(rsp0.status == Status.Cowabunga)
     val data0 = rsp0.data match {

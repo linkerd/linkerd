@@ -1,8 +1,10 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import com.twitter.finagle.netty4.ByteBufAsBuf
 import com.twitter.finagle.buoyant.h2.{Request => H2Request, Response => H2Response, Headers => H2Headers}
-import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
+import com.twitter.util.{Future, Promise}
+import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers, Http2DataFrame}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -83,6 +85,32 @@ private[h2] object Netty4Message {
     }
   }
 
+  /** Makes data frames that wrap Http2DataFrame */
+  object Data {
+
+    def apply(frame: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
+      val window = frame.content.readableBytes + frame.padding
+      val buf = ByteBufAsBuf.Owned(frame.content.retain())
+      val eos = frame.isEndStream
+      val releaser: () => Future[Unit] = () => {
+        // XXX this causes problems currently, but it seems like we
+        // should release things here...
+        //
+        //   frame.content.release()
+        updateWindow(window)
+      }
+      Frame.Data(buf, eos, releaser)
+    }
+  }
+
   case class Trailers(underlying: Http2Headers)
-    extends Frame.Trailers with Headers
+    extends Frame.Trailers with Headers {
+
+    private[this] val releaseP = new Promise[Unit]
+    override def onRelease: Future[Unit] = releaseP
+    def release(): Future[Unit] = {
+      releaseP.setDone()
+      Future.Unit
+    }
+  }
 }

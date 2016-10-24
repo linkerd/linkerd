@@ -41,7 +41,7 @@ class FlowControlEndToEndTest
 
   val WindowSize = 65535
 
-  def testFlowControl(reader: Stream.Reader, writer: Stream.Writer[Frame]) = {
+  def testFlowControl(reader: Stream.Reader, writer: Stream.Writer) = {
     // Put two windows' worth of data on the stream
     val release0, release1 = new Promise[Unit]
     def releaser(p: Promise[Unit]) = () => {
@@ -57,8 +57,8 @@ class FlowControlEndToEndTest
     val frame1 = Frame.Data(mkBuf(WindowSize - 1024), true, releaser(release1))
     assert(!release0.isDefined && !release1.isDefined)
     log.debug("offering 2 frames with %d", 2 * WindowSize)
-    assert(writer.write(frame0))
-    assert(writer.write(frame1))
+    val w0 = writer.write(frame0)
+    val w1 = writer.write(frame1)
     assert(!release0.isDefined && !release1.isDefined)
 
     // Read a full window, without releasing anything.

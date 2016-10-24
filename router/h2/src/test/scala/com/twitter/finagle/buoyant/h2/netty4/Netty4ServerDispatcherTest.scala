@@ -110,11 +110,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = false
-    }))
+    await(bartmanStream.write(Frame.Data(Buf.Utf8("0"), false)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -126,11 +122,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(elBartoStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = true
-    }))
+    await(elBartoStream.write(Frame.Data(Buf.Utf8("0"), true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -142,11 +134,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = true
-    }))
+    await(bartmanStream.write(Frame.Data(Buf.Utf8("0"), true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>

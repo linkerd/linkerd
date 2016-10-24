@@ -64,7 +64,7 @@ class ConcurrentStreamsEndToEndTest
     }
   }
 
-  case class Streamer(reader: Stream.Reader, writer: Stream.Writer[Frame]) {
+  case class Streamer(reader: Stream.Reader, writer: Stream.Writer) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
       def readMore(remaining: Int): Future[Unit] =
         reader.read().flatMap {
@@ -83,7 +83,7 @@ class ConcurrentStreamsEndToEndTest
             Future.Unit
         }
 
-      assert(writer.write(Frame.Data(buf, eos)))
+      await(writer.write(Frame.Data(buf, eos)))
       readMore(buf.length)
     }
   }

@@ -48,15 +48,15 @@ class Netty4ServerDispatcher(
 
   override def close(deadline: Time): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      serving.raise(Failure("closed").flagged(Failure.Interrupted))
+      reading.raise(Failure("closed").flagged(Failure.Interrupted))
       writer.close(deadline)
     } else Future.Unit
 
   /**
    * Continually read from the transport, creating new streams
    */
-  private[this] val serving: Future[Unit] = {
-    lazy val processLoop: Http2Frame => Future[Unit] = {
+  private[this] val reading: Future[Unit] = {
+    lazy val readLoop: Http2Frame => Future[Unit] = {
       case _: Http2GoAwayFrame =>
         if (closed.compareAndSet(false, true)) transport.close()
         else Future.Unit
@@ -82,7 +82,7 @@ class Netty4ServerDispatcher(
               // response stream.
               stream.remote.flatMap(service(_)).flatMap(stream.write(_).flatten)
               if (closed.get) Future.Unit
-              else transport.read().flatMap(processLoop)
+              else transport.read().flatMap(readLoop)
             } else {
               log.error(s"server dispatcher failed to offer ${frame.name} on stream ${id}")
               stream.close()
@@ -97,7 +97,7 @@ class Netty4ServerDispatcher(
               case stream =>
                 if (stream.offerRemote(frame)) {
                   if (closed.get) Future.Unit
-                  else transport.read().flatMap(processLoop)
+                  else transport.read().flatMap(readLoop)
                 } else {
                   log.error(s"server dispathcher failed to offer ${frame.name} on stream ${id}")
                   stream.close()
@@ -108,10 +108,10 @@ class Netty4ServerDispatcher(
       case frame =>
         log.warning(s"server dispatcher ignoring ${frame.name} message on the connection")
         if (closed.get) Future.Unit
-        else transport.read().flatMap(processLoop)
+        else transport.read().flatMap(readLoop)
     }
 
-    transport.read().flatMap(processLoop).onFailure {
+    transport.read().flatMap(readLoop).onFailure {
       case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
       case e => log.error(e, "server dispatcher")
     }

@@ -73,20 +73,12 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!w.isDefined)
 
     val heyo = Buf.Utf8("heyo")
-    sendq.offer(new Frame.Data {
-      def isEnd = false
-      def buf = heyo
-      def release() = Future.Unit
-    })
+    sendq.offer(Frame.Data(heyo, false))
     assert(writeq.head ==
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), false).setStreamId(id))
     writeq = writeq.tail
 
-    sendq.offer(new Frame.Data {
-      def isEnd = true
-      def buf = heyo
-      def release() = Future.Unit
-    })
+    sendq.offer(Frame.Data(heyo, true))
     assert(writeq.head ==
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), true).setStreamId(id))
     writeq = writeq.tail
@@ -286,7 +278,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     }
     val stream = Netty4StreamTransport.server(3, writer, Int.MaxValue)
 
-    val rspdata = new Netty4Stream(_ => Future.Unit)
+    val rspdata = Stream()
     val rsp = {
       val hs = new DefaultHttp2Headers
       hs.status("202")
@@ -306,17 +298,17 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     writeq = writeq.tail
 
     val buf = Buf.Utf8("Looks like some tests failed.")
-    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    await(rspdata.write(Frame.Data(buf, false)))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
 
-    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    await(rspdata.write(Frame.Data(buf, false)))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
 
     val trailers = new DefaultHttp2Headers
     trailers.set("trailin", "yams")
-    rspdata.write(new DefaultHttp2HeadersFrame(trailers, true).setStreamId(3))
+    await(rspdata.write(Netty4Message.Trailers(trailers)))
     assert(writeq.head == new DefaultHttp2HeadersFrame(trailers, true).setStreamId(3))
     writeq = writeq.tail
   }
