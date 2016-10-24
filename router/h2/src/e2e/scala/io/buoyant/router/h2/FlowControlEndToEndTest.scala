@@ -16,35 +16,26 @@ class FlowControlEndToEndTest
 
   test("client/server request flow control") {
     val streamP = new Promise[Stream]
-    val server = Downstream.mk("server") { req =>
+    val server = { req: Request =>
       streamP.setValue(req.data)
       Response(Status.Ok, Stream.Nil)
     }
-    val client = upstream(server.server)
-    try {
+    withClient(server) { client =>
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       testFlowControl(reader(await(streamP)), writer)
-    } finally {
-      await(client.close())
-      await(server.server.close())
     }
   }
 
   test("client/server response flow control") {
     val writer = Stream()
-    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
-    val client = upstream(server.server)
-    try {
+    withClient(_ => Response(Status.Ok, writer)) { client =>
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       testFlowControl(reader(rsp.data), writer)
-    } finally {
-      await(client.close())
-      await(server.server.close())
     }
   }
 

@@ -16,12 +16,11 @@ class LargeStreamEndToEndTest
 
   test("client/server large request stream") {
     val streamP = new Promise[Stream]
-    val server = Downstream.mk("server") { req =>
+    def serve(req: Request) = {
       streamP.setValue(req.data)
       Response(Status.Ok, Stream.Nil)
     }
-    val client = upstream(server.server)
-    try {
+    withClient(serve) { client =>
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
@@ -29,26 +28,18 @@ class LargeStreamEndToEndTest
       await(defaultWait * 100) {
         testStream(reader(await(streamP)), writer, LargeStreamLen, 16 * 1024)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
     }
   }
 
   test("client/server large response stream") {
     val writer = Stream()
-    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
-    val client = upstream(server.server)
-    try {
+    withClient(_ => Response(Status.Ok, writer)) { client =>
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       await(defaultWait * 100) {
         testStream(reader(rsp.data), writer, LargeStreamLen, 16 * 1024)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
     }
   }
 

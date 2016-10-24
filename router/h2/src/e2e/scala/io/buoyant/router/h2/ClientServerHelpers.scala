@@ -19,6 +19,16 @@ trait ClientServerHelpers { _: FunSuite =>
   def mkBuf(sz: Int): Buf =
     Buf.ByteArray.Owned(Array.fill[Byte](sz)(1.toByte))
 
+  def withClient(srv: Request => Response)(f: Upstream => Unit): Unit = {
+    val server = Downstream.mk("srv")(srv)
+    val client = upstream(server.server)
+    try f(client)
+    finally {
+      await(client.close())
+      await(server.server.close())
+    }
+  }
+
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
@@ -77,7 +87,7 @@ trait ClientServerHelpers { _: FunSuite =>
     def close(d: Time) = service.close(d)
   }
 
-  def upstream(server: ListeningServer) = {
+  def upstream(server: ListeningServer): Upstream = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
     val client = H2.client.newClient(name, "upstream").toService
