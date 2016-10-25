@@ -7,11 +7,17 @@ import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
 import io.netty.handler.codec.http2._
 
 /**
+ * Models a single HTTP/2 stream.
  *
+ * Transports send a `Local`-typed message via an underlying
+ * [[H2Transport.Writer]]. A dispatcher, which models a single HTTP/2
+ * connection, provides the transport with `Http2StreamFrame`
+ * instances that are used to build a `Remote`-typed message.
  */
 private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
   import Netty4StreamTransport.log
 
+  /** The HTTP/2 STREAM_ID of this stream. */
   def streamId: Int
 
   protected[this] def transport: H2Transport.Writer
