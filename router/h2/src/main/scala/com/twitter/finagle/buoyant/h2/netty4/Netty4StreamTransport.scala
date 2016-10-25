@@ -13,11 +13,21 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
-private[h2] trait Netty4StreamTransport[Local <: Message, RemoteMsg <: Message] {
+/**
+ * Models a single HTTP/2 stream.
+ *
+ * Transports send a `Local`-typed message via an underlying
+ * [[H2Transport.Writer]]. A dispatcher, which models a single HTTP/2
+ * connection, provides the transport with `Http2StreamFrame`
+ * instances that are used to build a `Remote`-typed message.
+ */
+private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Message] {
 
   import Netty4StreamTransport._
 
+  /** The HTTP/2 STREAM_ID of this stream. */
   def streamId: Int
+
   protected[this] def transport: H2Transport.Writer
   protected[this] def minAccumFrames: Int
   protected[this] def statsReceiver: StatsReceiver
@@ -282,7 +292,7 @@ private[this] lazy val remoteMsgF: Pending => RemoteMsg =
 
   private[this] val mapFutureUnit = (_: Any) => Future.Unit
 
-  def write(msg: Local): Future[Future[Unit]] = msg.data match {
+  def write(msg: LocalMsg): Future[Future[Unit]] = msg.data match {
     case Stream.Nil =>
       writeHeaders(msg.headers, false).map(mapFutureUnit)
     case data: Stream.Reader =>
