@@ -2,10 +2,12 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.util._
+import collection.JavaConversions.enumerationAsScalaIterator
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
+import java.net.{InetSocketAddress, NetworkInterface}
 import scala.io.Source
 import sun.misc.{Signal, SignalHandler}
 
@@ -95,17 +97,33 @@ object Main extends App {
     server: Server.Initializer,
     name: Path
   ): Closable = {
+    val addrs = if (server.ip.getHostAddress == "0.0.0.0") {
+      val a = for {
+        interface <- NetworkInterface.getNetworkInterfaces
+        if interface.isUp
+        inet <- interface.getInetAddresses
+        if !inet.isLoopbackAddress
+      } yield new InetSocketAddress(inet.getHostAddress, server.port)
+      a.toSeq
+    } else {
+      Seq(server.addr)
+    }
+
     announcers0.filter { case (pfx, _) => name.startsWith(pfx) } match {
       case Nil =>
         log.warning("no announcer found for %s", name.show)
         Closable.nop
 
       case announcers =>
-        val closers = announcers.map {
+        val closers = announcers.flatMap {
           case (prefix, announcer) =>
-            log.info("announcing %s as %s to %s", server.addr, name.show, announcer.scheme)
-            announcer.announce(server.addr, name.drop(prefix.size))
-        }
+            for {
+              addr <- addrs
+            } yield {
+              log.info("announcing %s as %s to %s", addr, name.show, announcer.scheme)
+              announcer.announce(addr, name.drop(prefix.size))
+            }
+          }
         Closable.all(closers: _*)
     }
   }
