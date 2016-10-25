@@ -5,14 +5,15 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
+import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Time}
-import io.buoyant.test.Awaits
+import io.buoyant.test.FunSuite
 import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
-import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
 
-class Netty4StreamTransportTest extends FunSuite with Awaits {
+class Netty4StreamTransportTest extends FunSuite {
+  override val logLevel = Level.OFF
 
   test("client: request writeHeaders") {
     val id = 4
@@ -88,7 +89,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     val id = 8
     val writer = new Netty4H2Writer {
       def close(d: Time) = ???
-      def write(f: Http2Frame) = ???
+      def write(f: Http2Frame) = Future.Unit
     }
     val stats = new InMemoryStatsReceiver
     val stream = Netty4StreamTransport.client(id, writer, Int.MaxValue, stats)
@@ -126,6 +127,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     await(dataf) match {
       case data: Frame.Data =>
         assert(data.buf == buf)
+        await(data.release())
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -135,6 +137,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     await(trailf) match {
       case trailers: Frame.Trailers =>
         assert(trailers.toSeq == Seq("trailers" -> "yea"))
+        await(trailers.release())
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -145,7 +148,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     var writeq = Queue.empty[Http2Frame]
     val writer = new Netty4H2Writer {
       def close(d: Time) = ???
-      def write(f: Http2Frame) = ???
+      def write(f: Http2Frame) = Future.Unit
     }
     val stats = new InMemoryStatsReceiver
     val stream = Netty4StreamTransport.client(id, writer, 2, stats)
@@ -186,6 +189,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     await(dataf0) match {
       case data: Frame.Data =>
         assert(data.buf == buf)
+        await(data.release())
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -195,6 +199,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     await(dataf1) match {
       case data: Frame.Data =>
         assert(data.buf == buf.concat(buf))
+        await(data.release())
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -204,6 +209,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     await(trailf) match {
       case trailers: Frame.Trailers =>
         assert(trailers.toSeq == Seq("trailers" -> "yea"))
+        await(trailers.release())
       case frame =>
         fail(s"unexpected frame: $frame")
     }
@@ -212,7 +218,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
   test("server: provides a remote request") {
     val writer = new Netty4H2Writer {
       def close(d: Time) = ???
-      def write(f: Http2Frame) = ???
+      def write(f: Http2Frame) = Future.Unit
     }
     val stream = Netty4StreamTransport.server(3, writer, Int.MaxValue)
     val reqf = stream.remote
@@ -246,6 +252,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("data"))
         assert(!f.isEnd)
+        await(f.release())
       case f =>
         fail(s"unexpected frame: $f")
     }
@@ -257,11 +264,12 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       hs.set("trailers", "chya")
       new DefaultHttp2HeadersFrame(hs, true)
     })
-    assert(d1f.isDefined)
+    eventually { assert(d1f.isDefined) }
     await(d1f) match {
       case f: Frame.Trailers =>
         assert(f.toSeq == Seq("trailers" -> "chya"))
         assert(f.isEnd)
+        await(f.release())
       case f =>
         fail(s"unexpected frame: $f")
     }
@@ -298,13 +306,17 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     writeq = writeq.tail
 
     val buf = Buf.Utf8("Looks like some tests failed.")
-    await(rspdata.write(Frame.Data(buf, false)))
+    val d0 = Frame.Data(buf, false, () => { log.debug("I AM RELEASED"); Future.Unit })
+    await(rspdata.write(d0))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
+    await(d0.onRelease)
 
-    await(rspdata.write(Frame.Data(buf, false)))
+    val d1 = Frame.Data(buf, false)
+    await(rspdata.write(d1))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
+    await(d1.onRelease)
 
     val trailers = new DefaultHttp2Headers
     trailers.set("trailin", "yams")

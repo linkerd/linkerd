@@ -16,7 +16,7 @@ class ConcurrentStreamsEndToEndTest
   test("client/server concurrent streams") {
     // Tunable parameters:
     case class Spec(len: Long, frameSize: Int, concurrency: Int)
-    val specs = Seq(2, 8, 64, 256, 1024).map { concurrency =>
+    val specs = Seq(2, 8, 64, 256 /*, 1024*/).map { concurrency =>
       val frameSize = 64 * 1024 / (concurrency / 2)
       val len = 128 * 1024
       Spec(len, frameSize, concurrency)

@@ -13,9 +13,6 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
-/**
- *
- */
 private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
 
   import Netty4StreamTransport.{RemoteState, log}
@@ -62,39 +59,53 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
    */
   def offerRemote(frame: Http2StreamFrame): Boolean =
     remoteState.get match {
-      case RemoteState.Closed => false
+      case RemoteState.Closed =>
+        log.debug("stream %d discarding: %s", streamId, frame.name)
+        false
       case RemoteState.Init(q) =>
-        val ok = q.offer(frame)
-        log.debug("%d OFFERED REMOTE FRAME: INIT: %s %d %s", streamId, ok, q.size, frame)
-        ok
+        log.debug("stream %d init offer: %s", streamId, frame.name)
+        q.offer(frame)
       case RemoteState.Streaming(q, _) =>
-        val ok = q.offer(frame)
-        log.debug("%d OFFERED REMOTE FRAME: STREAMING: %s %d %s", streamId, ok, q.size, frame)
-        ok
+        log.debug("stream %d streaming offer: %s", streamId, frame.name)
+        q.offer(frame)
     }
 
   private[this] val readRemoteFrame: Http2StreamFrame => Future[Unit] =
     frame => readRemoteFrame0(frame)
 
+  private[this] val accumRemoteFrames: Queue[Http2StreamFrame] => Future[Unit] =
+    frames => accumRemoteFrames0(frames)
+
+  /**
+   * Immediately start reading from the remote queue.
+   */
   private[this] val readingRemote: Future[Unit] = {
     def loop(): Future[Unit] = remoteState.get match {
       case RemoteState.Init(q) =>
-        q.poll().flatMap(readRemoteFrame).before(loop)
+        log.debug("stream %d init poll", streamId)
+        q.poll().flatMap(readRemoteFrame).before(loop())
+
+      case RemoteState.Streaming(q, _) if q.size >= minAccumFrames =>
+        log.debug("stream %d streaming drain", streamId)
+        Future.const(q.drain()).flatMap(accumRemoteFrames).before(loop())
 
       case RemoteState.Streaming(q, _) =>
-        if (q.size < minAccumFrames) q.poll().flatMap(readRemoteFrame).before(loop)
-        else Future.const(q.drain()).flatMap(accumRemoteFrames).before(loop)
+        log.debug("stream %d streaming poll", streamId)
+        q.poll().flatMap(readRemoteFrame).before(loop())
 
       case RemoteState.Closed => Future.Unit
     }
 
-    loop()
+    loop().respond {
+      case Return(_) => log.debug("stream %d finished reading", streamId)
+      case Throw(e) => log.error(e, "stream %d read error", streamId)
+    }
   }
 
   @tailrec private[this] def readRemoteFrame0(frame: Http2StreamFrame): Future[Unit] =
     remoteState.get match {
       case init@RemoteState.Init(q) =>
-        log.debug("%d READ REMOTE FRAME: INIT: %s", streamId, frame)
+        log.debug("stream %d init read: %s", streamId, frame.name)
         frame match {
           case f: Http2HeadersFrame if f.isEndStream =>
             if (!remoteState.compareAndSet(init, RemoteState.Closed)) readRemoteFrame0(f)
@@ -119,23 +130,26 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
         }
 
       case streaming@RemoteState.Streaming(_, stream) =>
-        log.debug("READ REMOTE FRAME: STREAMING: %s", frame)
-        val f = frame match {
-          case df: Http2DataFrame => Netty4Message.Data(df, updateWindow)
-          case tf: Http2HeadersFrame if tf.isEndStream => Netty4Message.Trailers(tf.headers)
-          case frame => throw new IllegalArgumentException(s"unexpected frame: $frame")
+        log.debug("stream %d streaming read: %s", streamId, frame.name)
+        def close() = remoteState.compareAndSet(streaming, RemoteState.Closed)
+        frame match {
+          case df: Http2DataFrame =>
+            if (df.isEndStream && !close()) readRemoteFrame0(frame)
+            else stream.write(Netty4Message.Data(df, updateWindow))
+
+          case tf: Http2HeadersFrame if tf.isEndStream =>
+            if (!close()) readRemoteFrame0(frame)
+            else stream.write(Netty4Message.Trailers(tf.headers))
+
+          case frame => Future.exception(new IllegalArgumentException(s"unexpected frame: $frame"))
         }
-        if (f.isEnd) {
-          if (!remoteState.compareAndSet(streaming, RemoteState.Closed)) readRemoteFrame0(frame)
-          else stream.write(f)
-        } else stream.write(f)
 
       case RemoteState.Closed =>
-        log.debug("READ REMOTE FRAME: CLOSED: %s", frame)
+        log.debug("stream %d closed read: %s", streamId, frame.name)
         Future.exception(new IllegalStateException(s"read frame while closed: $frame"))
     }
 
-  private val accumRemoteFrames: Queue[Http2StreamFrame] => Future[Unit] = { frames =>
+  @tailrec private[this] def accumRemoteFrames0(frames: Queue[Http2StreamFrame]): Future[Unit] = {
     require(frames.nonEmpty)
     remoteState.get match {
       case streaming@RemoteState.Streaming(q, stream) =>
@@ -166,13 +180,13 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
         }
 
         if ((dataEos || trailers != null) && !remoteState.compareAndSet(streaming, RemoteState.Closed)) {
-          accumRemoteFrames(frames)
+          accumRemoteFrames0(frames)
         } else {
           val dataWritten =
             if (content == null) Future.Unit
             else {
               val buf = ByteBufAsBuf.Owned(content.retain())
-              def release: () => Future[Unit] =
+              val release: () => Future[Unit] =
                 if (bytes > 0) () => updateWindow(bytes)
                 else () => Future.Unit
               stream.write(Frame.Data(buf, dataEos, release))
@@ -220,6 +234,7 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
   }
 
   private[this] val writeFrame: Frame => Future[Boolean] = { v =>
+
     val writeF = v match {
       case data: Frame.Data =>
         transport.write(streamId, data)
@@ -228,6 +243,7 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
 
       case tlrs: Frame.Trailers =>
         transport.write(streamId, tlrs)
+          .before(tlrs.release())
           .before(Future.True)
     }
     if (v.isEnd) writeF.ensure(setLocalClosed())

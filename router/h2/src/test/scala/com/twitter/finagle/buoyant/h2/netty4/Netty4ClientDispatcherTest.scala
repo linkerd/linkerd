@@ -13,7 +13,7 @@ import io.netty.handler.codec.http2._
 import scala.collection.immutable.Queue
 
 class Netty4ClientDispatchTest extends FunSuite {
-  override def logLevel = Level.DEBUG
+  override def logLevel = Level.OFF
 
   test("dispatches multiple concurrent requests on underlying transport") {
     val recvq, sentq = new AsyncQueue[Http2Frame]
@@ -147,10 +147,12 @@ class Netty4ClientDispatchTest extends FunSuite {
 
     val d0f = data0.read()
     assert(d0f.isDefined)
+    await(await(d0f).release())
     assert(data0.onEnd.isDefined)
 
     val d1f = data1.read()
     assert(d1f.isDefined)
+    await(await(d1f).release())
     assert(data1.onEnd.isDefined)
 
     await(d0f) match {

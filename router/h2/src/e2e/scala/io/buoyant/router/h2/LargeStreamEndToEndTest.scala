@@ -12,9 +12,10 @@ class LargeStreamEndToEndTest
 
   override val logLevel = Level.OFF
 
-  val LargeStreamLen = 100L * 1024 * 1024 // == 100MB
+  val Megs = 100
+  val LargeStreamLen = Megs.toLong * 1024 * 1024
 
-  test("client/server large request stream") {
+  test(s"client/server ${Megs}MB request stream") {
     val streamP = new Promise[Stream]
     def serve(req: Request) = {
       streamP.setValue(req.data)
@@ -31,7 +32,7 @@ class LargeStreamEndToEndTest
     }
   }
 
-  test("client/server large response stream") {
+  test(s"client/server ${Megs}MB response stream") {
     val writer = Stream()
     withClient(_ => Response(Status.Ok, writer)) { client =>
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
