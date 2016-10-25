@@ -9,75 +9,151 @@ import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
 import io.netty.buffer.CompositeByteBuf
 import io.netty.handler.codec.http2._
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
-private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
+private[h2] trait Netty4StreamTransport[Local <: Message, RemoteMsg <: Message] {
 
-  import Netty4StreamTransport.{Pending, RemoteState, log}
+  import Netty4StreamTransport._
 
   def streamId: Int
   protected[this] def transport: H2Transport.Writer
   protected[this] def minAccumFrames: Int
   protected[this] def statsReceiver: StatsReceiver
-  protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Remote
+  protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): RemoteMsg
 
+  /**
+   * Remote frames are offered to the StreamTransport from a
+   * Dispatcher. They are immediately enqueued in `remoteQ` and are
+   * dequeued as the remote message/stream is read from the transport.
+   */
+  private[this] val remoteQ = new AsyncQueue[Pending]
   private[this] val remoteQUsec = statsReceiver.stat("remoteq_usec")
   private[this] val remoteReadMsec = statsReceiver.stat("remote_read_msec")
 
-  @volatile private[this] var isLocalClosed = false
-  def isClosed = isLocalClosed && remoteState.get == RemoteState.Closed
+  /**
+   * The transport must be in a valid HTTP/2 State (RFC7540§5.1).
+   *
+   * The `Idle` state does not apply to transports, since Transports
+   * are only created as a stream is opened.
+   *
+   * The `Reserved` state does not apply, since PUSH_PROMISE is not
+   * supported.
+   */
+  private sealed trait TransportState
+  private object Open extends TransportState
+  private object HalfClosedLocal extends TransportState
+  private object HalfClosedRemote extends TransportState
+  private object Closed extends TransportState
+
+  @volatile private[this] val state = new AtomicReference[TransportState](Open)
+  def isClosed = state.get == Closed
 
   private[this] val closeP = new Promise[Unit]
   def onClose: Future[Unit] = closeP
 
-  private[this] def setLocalClosed(): Unit = {
-    isLocalClosed = true
-    if (isClosed) { closeP.setDone(); () }
+  /** Close a stream, sending a RST_STREAM if appropriate. */
+  @tailrec final def close(): Future[Unit] = state.get match {
+    case Closed => Future.Unit
+    case s0 =>
+      state.compareAndSet(s0, Closed) match {
+        case false => close()
+        case true =>
+          val resetF = transport.resetNoError(streamId)
+          closeP.become(resetF)
+          resetF
+      }
   }
 
-  def close(): Future[Unit] =
-    if (isClosed) Future.Unit
-    else {
-      setLocalClosed()
-      remoteState.set(RemoteState.Closed)
-      closeP.setDone()
-      transport.resetNoError(streamId)
-    }
+  /** Mark the local stream as closed, firing closeP if appropriate. */
+  @tailrec private[this] def setLocalClosed(): Unit = state.get match {
+    case HalfClosedLocal | Closed =>
+    case Open =>
+      state.compareAndSet(Open, HalfClosedLocal) match {
+        case false => setLocalClosed()
+        case true =>
+      }
+    case HalfClosedRemote =>
+      state.compareAndSet(HalfClosedRemote, Closed) match {
+        case false => setLocalClosed()
+        case true => closeP.setDone(); ()
+      }
+  }
 
-  private[this] val remoteP = new Promise[Remote]
-  def remote: Future[Remote] = remoteP
-
-  /**
-   * Supports writing frames _FROM_ the remote transport to the `remote` stream.
-   */
-  private[this] val remoteState =
-    new AtomicReference[RemoteState](RemoteState.Init(new AsyncQueue))
+  /** Mark the remote stream as closed, firing closeP if appropriate. */
+  @tailrec private[this] def setRemoteClosed(): Unit = state.get match {
+    case HalfClosedRemote | Closed =>
+    case Open =>
+      state.compareAndSet(Open, HalfClosedRemote) match {
+        case false => setRemoteClosed()
+        case true =>
+      }
+    case HalfClosedLocal =>
+      state.compareAndSet(HalfClosedLocal, Closed) match {
+        case false => setRemoteClosed()
+        case true => closeP.setDone(); ()
+      }
+  }
 
   /**
    * A Dispatcher reads frames from the remote and offers them into the stream.
    *
    * If an initial Headers frame is offered, the `remote` future is satisfied.
    */
-  def offerRemote(frame: Http2StreamFrame): Boolean =
-    remoteState.get match {
-      case RemoteState.Closed => false
-      case RemoteState.Init(q) =>
-        q.offer(Pending(frame, Stopwatch.start()))
-      case RemoteState.Streaming(q, _) =>
-        q.offer(Pending(frame, Stopwatch.start()))
-    }
+  def offerRemoteFrame(frame: Http2StreamFrame): Boolean =
+    remoteQ.offer(frame)
+
+  def readRemoteMsg(): Future[RemoteMsg] = {
+  }
+
+private[this] lazy val remoteMsgF: Pending => RemoteMsg =
+  remoteState.get match {
+    case RemoteState.Init(q) =>
+      q.poll().flatMap {
+        case p@Pending(f: Http2HeadersFrame, t0) if f.isEndStream =>
+          remoteQUsec.add(t0().inMicroseconds)
+          remoteState.get match {
+            case init@RemoteState.Init(q) =>
+              remoteState.set(RemoteState.Closed)
+              if (isClosed) closeP.setDone()
+              q.fail(closedException, discard = true)
+              mkRemoteMsg(f.headers, Stream.Nil)
+
+            case state => throw new IllegalStateException("unexpected state: $state")
+          }
+
+        case p@Pending(f: Http2HeadersFrame, t0) =>
+          remoteQUsec.add(t0().inMicroseconds)
+          remoteState.get match {
+            case init@RemoteState.Init(q) =>
+              val stream = Stream()
+              remoteState.set(RemoteState.Streaming(q, stream))
+
+            case state => throw new IllegalStateException("unexpected state: $state")
+          }
+
+          val msg = mkRemoteMsg(f.headers, stream)
+          msg.data.onEnd.onSuccess(_ => remoteReadMsec.add(t0().inMicroseconds))
+          msg
+
+        case Pending(frame, _) =>
+          throw new IllegalArgumentException(s"unexpected frame: $frame")
+      }
+
+    case _ => Future.exception(new IllegalStateException(s"expected Init state; found $s"))
+  }
+
+  private[this] val readRemoteFrame: Pending => Future[Unit] =
+      frame => readRemoteFrame0(frame)
+
+  private[this] val accumRemoteFrames: Queue[Pending] => Future[Unit] =
+    frames => accumRemoteFrames0(frames)
 
   /**
    * Immediately start reading from the remote queue.
    */
   private[this] val readingRemote: Future[Unit] = {
-    val readRemoteFrame: Pending => Future[Unit] =
-      frame => readRemoteFrame0(frame)
-
-    val accumRemoteFrames: Queue[Pending] => Future[Unit] =
-      frames => accumRemoteFrames0(frames)
 
     def loop(): Future[Unit] = remoteState.get match {
       case RemoteState.Init(q) =>
@@ -102,32 +178,6 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
     remoteState.get match {
       case init@RemoteState.Init(q) =>
         p match {
-          case Pending(f: Http2HeadersFrame, t0) if f.isEndStream =>
-            remoteQUsec.add(t0().inMicroseconds)
-            if (!remoteState.compareAndSet(init, RemoteState.Closed)) readRemoteFrame0(p)
-            else {
-              remoteReadMsec.add(t0().inMicroseconds)
-              val msg = mkRemote(f.headers, Stream.Nil)
-              remoteP.setValue(msg)
-              if (isLocalClosed) closeP.setDone()
-              Future.Unit
-            }
-
-          case Pending(f: Http2HeadersFrame, t0) =>
-            remoteQUsec.add(t0().inMicroseconds)
-            val stream = Stream()
-            val streaming = RemoteState.Streaming(q, stream)
-            if (!remoteState.compareAndSet(init, streaming)) readRemoteFrame0(p)
-            else {
-              remoteReadMsec.add(t0().inMicroseconds)
-              val msg = mkRemote(f.headers, stream)
-              remoteP.setValue(msg)
-              Future.Unit
-            }
-
-          case Pending(frame, t0) =>
-            remoteQUsec.add(t0().inMicroseconds)
-            Future.exception(new IllegalArgumentException(s"unexpected frame: $frame"))
         }
 
       case streaming@RemoteState.Streaming(_, stream) =>
@@ -288,9 +338,13 @@ object Netty4StreamTransport {
   private sealed trait RemoteState
   private object RemoteState {
     case class Init(q: AsyncQueue[Pending]) extends RemoteState
-    case class Streaming(q: AsyncQueue[Pending], stream: Stream.Writer) extends RemoteState
+    case class Streaming(q: AsyncQueue[Pending]) extends RemoteState
     object Closed extends RemoteState
   }
+
+  /*
+   * Concrete transport implementations & constructors:
+   */
 
   private[this] class Client(
     override val streamId: Int,
@@ -301,7 +355,7 @@ object Netty4StreamTransport {
 
     override protected[this] def prefix: String = s"client: stream $streamId"
 
-    override protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Response =
+    override protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): Response =
       Response(Netty4Message.Headers(headers), stream)
   }
 
@@ -314,7 +368,7 @@ object Netty4StreamTransport {
 
     override protected[this] def prefix: String = s"server: stream $streamId"
 
-    override protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Request =
+    override protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): Request =
       Request(Netty4Message.Headers(headers), stream)
   }
 
