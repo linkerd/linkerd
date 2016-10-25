@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import scala.collection.JavaConversions._
 import com.twitter.finagle.Path
 import com.twitter.util._
+import collection.JavaConversions.enumerationAsScalaIterator
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.telemetry.CommonMetricsTelemeter
@@ -98,13 +99,13 @@ object Main extends App {
     name: Path
   ): Closable = {
     val addrs = if (server.ip.getHostAddress == "0.0.0.0") {
-      val addresses = for {
+      val a = for {
         interface <- NetworkInterface.getNetworkInterfaces
         if interface.isUp
         inet <- interface.getInetAddresses
         if !inet.isLoopbackAddress
       } yield new InetSocketAddress(inet.getHostAddress, server.port)
-      addresses.toSeq
+      a.toSeq
     } else {
       Seq(server.addr)
     }
@@ -117,11 +118,13 @@ object Main extends App {
       case announcers =>
         val closers = announcers.flatMap {
           case (prefix, announcer) =>
-            for (addr <- addrs) yield {
+            for {
+              addr <- addrs
+            } yield {
               log.info("announcing %s as %s to %s", addr, name.show, announcer.scheme)
               announcer.announce(addr, name.drop(prefix.size))
             }
-        }
+          }
         Closable.all(closers: _*)
     }
   }
