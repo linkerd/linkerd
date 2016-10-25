@@ -10,10 +10,9 @@ import io.buoyant.test.FunSuite
 class ConcurrentStreamsEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
-  setLogLevel(Level.OFF)
 
   // Tunable parameters:
-  val concurrencies = Seq(2, 4, 8, 16, 32, 64)
+  val concurrencies = Seq(2, 4, 8, 16, 32, 64, 256)
 
   val FrameSize = 16 * 1024
   val WindowSize = 4 * FrameSize
@@ -67,7 +66,7 @@ class ConcurrentStreamsEndToEndTest
     }
   }
 
-  case class Streamer(reader: Stream.Reader, writer: Stream.Writer) {
+  case class Streamer(reader: Stream.Reader, writer: Stream.Writer[Frame]) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
       def read(remaining: Int): Future[Unit] =
         reader.read().flatMap {
@@ -86,7 +85,8 @@ class ConcurrentStreamsEndToEndTest
             Future.Unit
         }
 
-      writer.write(Frame.Data(buf, eos)).before(read(buf.length))
+      assert(writer.write(Frame.Data(buf, eos)))
+      read(buf.length)
     }
   }
 }
