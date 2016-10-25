@@ -64,7 +64,6 @@ class Netty4ClientDispatcher(
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
     stream.onClose.ensure {
-      log.debug("Client dispatcher removing stream %d", id)
       streams.remove(id, stream); ()
     }
     stream
