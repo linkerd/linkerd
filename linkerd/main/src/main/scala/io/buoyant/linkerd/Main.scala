@@ -1,6 +1,5 @@
 package io.buoyant.linkerd
 
-import scala.collection.JavaConversions._
 import com.twitter.finagle.Path
 import com.twitter.util._
 import collection.JavaConversions.enumerationAsScalaIterator
