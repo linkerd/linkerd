@@ -14,6 +14,11 @@ trait NameTreeTransformer {
 
   protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]]
 
+  def andThen(next: NameTreeTransformer): NameTreeTransformer = new NameTreeTransformer {
+    override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
+      transform(tree).flatMap(next.transform)
+  }
+
   /**
    * Create a new NameInterpreter by applying this transformer to the output of
    * an existing one.
@@ -22,6 +27,32 @@ trait NameTreeTransformer {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
   }
+
+  def wrap(underlying: Namer): Namer = new Namer {
+    private[this] def isBound(tree: NameTree[Name]): Boolean = {
+      tree match {
+        case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
+        case NameTree.Alt(trees@_*) => trees.forall(isBound)
+        case NameTree.Union(trees@_*) => trees.map(_.tree).forall(isBound)
+        case NameTree.Leaf(_: Name.Bound) => true
+        case NameTree.Leaf(_) => false
+      }
+    }
+
+    override def lookup(path: Path): Activity[NameTree[Name]] = {
+      underlying.lookup(path).flatMap { tree =>
+        if (isBound(tree))
+          transform(tree.asInstanceOf[NameTree[Name.Bound]])
+        else
+          Activity.value(tree)
+      }
+    }
+  }
+}
+
+object NameTreeTransformer {
+  def combine(transformers: Seq[NameTreeTransformer]): NameTreeTransformer =
+    transformers.reduce(_ andThen _)
 }
 
 /**

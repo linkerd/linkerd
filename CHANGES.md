@@ -1,5 +1,6 @@
 ## X.X.X
 * Enable namer zkLeader in namerd
+* Allow transformers to be applied to namers.
 
 ## 0.8.2
 
