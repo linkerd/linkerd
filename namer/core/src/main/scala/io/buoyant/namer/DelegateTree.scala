@@ -1,7 +1,6 @@
 package io.buoyant.namer
 
-import com.twitter.finagle.{Dentry, NameTree, Path}
-import com.twitter.util.Try
+import com.twitter.finagle.{NameTree, Dentry, Path}
 
 sealed trait DelegateTree[+T] {
   def path: Path

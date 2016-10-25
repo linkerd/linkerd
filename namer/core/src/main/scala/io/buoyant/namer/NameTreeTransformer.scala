@@ -14,11 +14,6 @@ trait NameTreeTransformer {
 
   protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]]
 
-  def andThen(next: NameTreeTransformer): NameTreeTransformer = new NameTreeTransformer {
-    override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
-      transform(tree).flatMap(next.transform)
-  }
-
   /**
    * Create a new NameInterpreter by applying this transformer to the output of
    * an existing one.
@@ -48,11 +43,6 @@ trait NameTreeTransformer {
       }
     }
   }
-}
-
-object NameTreeTransformer {
-  def combine(transformers: Seq[NameTreeTransformer]): NameTreeTransformer =
-    transformers.reduce(_ andThen _)
 }
 
 /**
