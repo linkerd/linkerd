@@ -11,62 +11,64 @@ class ConcurrentStreamsEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
 
-  override val logLevel = Level.OFF
+  // Tunable parameters:
+  val concurrencies = Seq(2, 4, 8, 16, 32, 64, 256)
 
-  test("client/server concurrent streams") {
-    // Tunable parameters:
-    case class Spec(len: Long, frameSize: Int, concurrency: Int)
-    val specs = Seq(2, 8, 64, 256, 1024).map { concurrency =>
-      val frameSize = 64 * 1024 / (concurrency / 2)
-      val len = 128 * 1024
+  val FrameSize = 16 * 1024
+  val WindowSize = 4 * FrameSize
+  val lengths = Seq(1, WindowSize * 2 - WindowSize / 2)
+
+  case class Spec(len: Long, frameSize: Int, concurrency: Int)
+  val specs = lengths.flatMap { len =>
+    concurrencies.map { concurrency =>
+      val frameSize = math.min(WindowSize / concurrency, FrameSize)
       Spec(len, frameSize, concurrency)
     }
+  }
 
-    // The server simply echos the request stream into the response:
-    val server = Downstream.service("server") { req =>
-      Future(reader(req.data)).map(Response(Status.Ok, _))
-    }
-    val client = upstream(server.server)
-    def send(stream: Stream.Reader) =
-      client(Request("http", Method.Post, "host", "/", stream))
+  val pfx = "client/server concurrent streams"
+  for (Spec(streamLen, frameSize, concurrency) <- specs) {
+    test(s"$pfx: concurrency=${concurrency} len=${streamLen}B frame=${frameSize}B") {
+      // The server simply echos the request stream into the response:
+      val server = Downstream.service("server") { req =>
+        Future(reader(req.data)).map(Response(Status.Ok, _))
+      }
+      val client = upstream(server.server)
+      def send(stream: Stream) =
+        client(Request("http", Method.Post, "host", "/", stream))
 
-    try {
-      for (Spec(streamLen, frameSize, concurrency) <- specs) {
+      // Send the same data through all streams simultaneously, one frame at a time:
+      def streamFrameToAll(streamers: Seq[Streamer], remaining: Long): Future[Unit] = {
+        require(remaining > 0)
+        val len = math.min(frameSize, remaining).toInt
+        val buf = mkBuf(len)
+        val eos = len == remaining
+        val f = Future.collect(streamers.map(_.stream(buf, eos))).unit
+        if (eos) f
+        else f.before(streamFrameToAll(streamers, remaining - len))
+      }
+
+      try {
         val clock = Stopwatch.start()
-
-        // Open `concurrency` streams at once:
-        val streamers = await(defaultWait * concurrency) {
-          val fs = (0 until concurrency).map { _ =>
+        await(defaultWait * concurrency) {
+          val opens = (0 until concurrency).map { _ =>
             val s = Stream()
             send(s).map { r => Streamer(reader(r.data), s) }
           }
-          Future.collect(fs)
+          Future.collect(opens)
+            .flatMap(streamFrameToAll(_, streamLen))
         }
-
-        // Send the same data through all streams simultaneously, one frame at a time:
-        def streamFrameToAll(remaining: Long): Unit = {
-          require(remaining > 0)
-          val len = math.min(frameSize, remaining).toInt
-          val buf = mkBuf(len)
-          val eos = len == remaining
-          await(defaultWait * concurrency) {
-            Future.collect(streamers.map(_.stream(buf, eos))).unit
-          }
-          if (!eos) streamFrameToAll(remaining - len)
-        }
-        streamFrameToAll(streamLen)
-
-        info(s"concurrency=${concurrency} len=${streamLen}B frame=${frameSize}B duration=${clock().inMillis}ms")
+        info(s"duration=${clock().inMillis}ms")
+      } finally {
+        await(client.close())
+        await(server.server.close())
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
     }
   }
 
   case class Streamer(reader: Stream.Reader, writer: Stream.Writer[Frame]) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
-      def readMore(remaining: Int): Future[Unit] =
+      def read(remaining: Int): Future[Unit] =
         reader.read().flatMap {
           case d: Frame.Data =>
             (remaining - d.buf.length) match {
@@ -75,7 +77,7 @@ class ConcurrentStreamsEndToEndTest
                 d.release()
               case remaining =>
                 assert(!d.isEnd)
-                d.release().before(readMore(remaining))
+                d.release().join(read(remaining)).unit
             }
 
           case t: Frame.Trailers =>
@@ -84,7 +86,7 @@ class ConcurrentStreamsEndToEndTest
         }
 
       assert(writer.write(Frame.Data(buf, eos)))
-      readMore(buf.length)
+      read(buf.length)
     }
   }
 }
