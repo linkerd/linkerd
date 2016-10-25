@@ -7,18 +7,11 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
-import io.buoyant.test.Awaits
+import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
-import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
 
-class Netty4ClientDispatchTest extends FunSuite with Awaits {
-  // import com.twitter.logging._
-  // Logger.configure(List(LoggerFactory(
-  //   node = "",
-  //   level = Some(Level.ALL),
-  //   handlers = List(ConsoleHandler())
-  // )))
+class Netty4ClientDispatchTest extends FunSuite {
 
   test("dispatches multiple concurrent requests on underlying transport") {
     val recvq, sentq = new AsyncQueue[Http2Frame]
