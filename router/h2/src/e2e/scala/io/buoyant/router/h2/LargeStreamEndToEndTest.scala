@@ -9,8 +9,7 @@ import io.buoyant.test.FunSuite
 class LargeStreamEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
-
-  override val logLevel = Level.OFF
+  setLogLevel(Level.OFF)
 
   val Megs = 100
   val LargeStreamLen = Megs.toLong * 1024 * 1024

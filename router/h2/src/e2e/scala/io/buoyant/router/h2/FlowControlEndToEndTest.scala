@@ -11,8 +11,7 @@ import scala.collection.mutable.ListBuffer
 class FlowControlEndToEndTest
     extends FunSuite
     with ClientServerHelpers {
-
-  override val logLevel = Level.OFF
+  setLogLevel(Level.OFF)
 
   test("client/server request flow control") {
     val streamP = new Promise[Stream]

@@ -3,13 +3,23 @@ package h2
 
 import com.twitter.finagle.{Status => _, param => fparam, _}
 import com.twitter.finagle.buoyant.h2._
+import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
+import org.scalatest.BeforeAndAfter
 import scala.collection.JavaConverters._
 
-trait ClientServerHelpers { _: FunSuite =>
+trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
+
+  val statsReceiver = new InMemoryStatsReceiver
+  before {
+    statsReceiver.clear()
+  }
+  after {
+    statsReceiver.clear()
+  }
 
   def reader(s: Stream) = s match {
     case Stream.Nil => fail("empty response stream")
@@ -46,6 +56,7 @@ trait ClientServerHelpers { _: FunSuite =>
       }
       val server = H2.server
         .configured(fparam.Label(name))
+        .configured(fparam.Stats(statsReceiver.scope("srv")))
         .serve(":*", factory)
       Downstream(name, server)
     }
@@ -90,7 +101,9 @@ trait ClientServerHelpers { _: FunSuite =>
   def upstream(server: ListeningServer): Upstream = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    val client = H2.client.newClient(name, "upstream").toService
+    val client = H2.client
+      .configured(fparam.Stats(statsReceiver.scope("client")))
+      .newClient(name, "upstream").toService
     Upstream(client)
   }
 

@@ -13,7 +13,6 @@ import io.netty.handler.codec.http2._
 import scala.collection.immutable.Queue
 
 class Netty4ClientDispatchTest extends FunSuite {
-  override def logLevel = Level.OFF
 
   test("dispatches multiple concurrent requests on underlying transport") {
     val recvq, sentq = new AsyncQueue[Http2Frame]

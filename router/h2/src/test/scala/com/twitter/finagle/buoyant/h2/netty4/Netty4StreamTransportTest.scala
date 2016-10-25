@@ -13,7 +13,7 @@ import io.netty.handler.codec.http2._
 import scala.collection.immutable.Queue
 
 class Netty4StreamTransportTest extends FunSuite {
-  override val logLevel = Level.OFF
+  setLogLevel(Level.OFF)
 
   test("client: request writeHeaders") {
     val id = 4
