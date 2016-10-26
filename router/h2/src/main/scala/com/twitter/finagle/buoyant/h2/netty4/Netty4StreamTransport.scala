@@ -27,7 +27,6 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
   def streamId: Int
 
   protected[this] def transport: H2Transport.Writer
-  protected[this] def minAccumFrames: Int
   protected[this] def statsReceiver: StatsReceiver
 
   @volatile private[this] var isRemoteClosed, isLocalClosed = false
@@ -167,7 +166,6 @@ object Netty4StreamTransport {
   private class Client(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
-    override protected[this] val minAccumFrames: Int,
     override protected[this] val statsReceiver: StatsReceiver
   ) extends Netty4StreamTransport[Request, Response] {
 
@@ -180,7 +178,6 @@ object Netty4StreamTransport {
   private class Server(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
-    override protected[this] val minAccumFrames: Int,
     override protected[this] val statsReceiver: StatsReceiver = NullStatsReceiver
   ) extends Netty4StreamTransport[Response, Request] {
 
@@ -193,17 +190,15 @@ object Netty4StreamTransport {
   def client(
     id: Int,
     writer: H2Transport.Writer,
-    minAccumFrames: Int,
     stats: StatsReceiver = NullStatsReceiver
   ): Netty4StreamTransport[Request, Response] =
-    new Client(id, writer, minAccumFrames, stats)
+    new Client(id, writer, stats)
 
   def server(
     id: Int,
     writer: H2Transport.Writer,
-    minAccumFrames: Int,
     stats: StatsReceiver = NullStatsReceiver
   ): Netty4StreamTransport[Response, Request] =
-    new Server(id, writer, minAccumFrames, stats)
+    new Server(id, writer, stats)
 
 }

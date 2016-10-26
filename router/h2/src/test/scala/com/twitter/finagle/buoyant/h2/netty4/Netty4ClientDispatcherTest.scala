@@ -34,7 +34,7 @@ class Netty4ClientDispatchTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ClientDispatcher(transport, Int.MaxValue, stats)
+    val dispatcher = new Netty4ClientDispatcher(transport, stats)
 
     var released = 0
     def releaser: Int => Future[Unit] = { bytes =>

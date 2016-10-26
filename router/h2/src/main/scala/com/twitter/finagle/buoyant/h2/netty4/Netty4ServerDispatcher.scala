@@ -18,7 +18,6 @@ object Netty4ServerDispatcher {
 class Netty4ServerDispatcher(
   transport: Transport[Http2Frame, Http2Frame],
   service: Service[Request, Response],
-  minAccumFrames: Int,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Closable {
 
@@ -36,7 +35,7 @@ class Netty4ServerDispatcher(
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
   private[this] def newStreamTransport(id: Int): Netty4StreamTransport[Response, Request] = {
-    val stream = Netty4StreamTransport.server(id, writer, minAccumFrames, streamStats)
+    val stream = Netty4StreamTransport.server(id, writer, streamStats)
     if (streams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }

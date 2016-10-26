@@ -61,7 +61,7 @@ class Netty4ServerDispatchTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ServerDispatcher(transport, service, Int.MaxValue, stats)
+    val dispatcher = new Netty4ServerDispatcher(transport, service, stats)
 
     assert(!bartmanCalled.get)
     assert(recvq.offer({

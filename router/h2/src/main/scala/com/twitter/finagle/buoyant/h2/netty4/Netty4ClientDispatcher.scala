@@ -26,7 +26,6 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   transport: Transport[Http2Frame, Http2Frame],
-  minAccumFrames: Int,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
@@ -61,7 +60,7 @@ class Netty4ClientDispatcher(
   // demultiplexed to it.
   private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
-    val stream = Netty4StreamTransport.client(id, writer, minAccumFrames, streamStats)
+    val stream = Netty4StreamTransport.client(id, writer, streamStats)
     if (streams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
