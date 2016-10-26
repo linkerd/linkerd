@@ -11,9 +11,9 @@ class LargeStreamEndToEndTest
   with ClientServerHelpers {
   setLogLevel(Level.OFF)
 
-  val Megs = 1
-  val LargeStreamLen = Megs.toLong * 1024 * 1024
+  val WindowLen = 64 * 1024
   val FrameLen = 16 * 1024
+  val LargeStreamLen = WindowLen * 2
 
   test(s"client/server ${LargeStreamLen}B request stream") {
     val streamP = new Promise[Stream]
