@@ -9,8 +9,8 @@ import io.buoyant.test.FunSuite
 import scala.collection.mutable.ListBuffer
 
 class FlowControlEndToEndTest
-    extends FunSuite
-    with ClientServerHelpers {
+  extends FunSuite
+  with ClientServerHelpers {
   setLogLevel(Level.OFF)
 
   test("client/server request flow control") {
@@ -43,7 +43,7 @@ class FlowControlEndToEndTest
   def testFlowControl(reader: Stream.Reader, writer: Stream.Writer) = {
     // The first frame is too large to fit in a window. It should not
     // be released until all of the data has been flushed.  This
-    // cannot happen until the reader reads and erleases some of the
+    // cannot happen until the reader reads and releases some of the
     // data.
     val frame0 = Frame.Data(mkBuf(WindowSize + 1024), false)
     val frame1 = Frame.Data(mkBuf(WindowSize - 1024), false)
@@ -70,7 +70,8 @@ class FlowControlEndToEndTest
       }
     }
     assert(read == WindowSize)
-    assert(!wrote0.isDefined && !wrote1.isDefined && !wrote2.isDefined)
+    await(wrote0)
+    assert(!wrote2.isDefined)
 
     // Read the remaining data and ensure that the second frame is released.
     while (read < 2 * WindowSize) {
@@ -86,7 +87,7 @@ class FlowControlEndToEndTest
       }
     }
     assert(read == 2 * WindowSize)
-    assert(wrote0.isDefined && wrote1.isDefined && !wrote2.isDefined)
+    await(wrote1)
 
     // Read the remaining data and ensure that the second frame is released.
     while (read < 3 * WindowSize) {

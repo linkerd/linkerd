@@ -99,7 +99,7 @@ class Netty4ClientDispatcher(
             writer.resetStreamClosed(id)
 
           case stream =>
-            if (stream.offerRemote(f)) {
+            if (stream.offerRemoteFrame(f)) {
               if (closed.get) Future.Unit
               else transport.read().flatMap(loop)
             } else {
@@ -128,7 +128,7 @@ class Netty4ClientDispatcher(
     val st = newStreamTransport()
     req.data match {
       case Stream.Nil =>
-        st.writeHeaders(req.headers, eos = true).before(st.remote)
+        st.writeHeaders(req.headers, eos = true).before(st.remoteMsg)
 
       case data: Stream.Reader =>
         // Stream the request while receiving the response and
@@ -136,10 +136,10 @@ class Netty4ClientDispatcher(
         // canceled,  or the response fails.
         val t0 = Stopwatch.start()
         st.write(req).flatMap { send =>
-          st.remote.onFailure(send.raise)
-          send.onFailure(st.remote.raise)
+          st.remoteMsg.onFailure(send.raise)
+          send.onFailure(st.remoteMsg.raise)
           send.onSuccess(_ => requestMillis.add(t0().inMillis))
-          st.remote
+          st.remoteMsg
         }
     }
   }

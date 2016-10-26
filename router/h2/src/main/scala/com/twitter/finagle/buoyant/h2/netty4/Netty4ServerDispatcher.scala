@@ -76,11 +76,11 @@ class Netty4ServerDispatcher(
         frame match {
           case frame: Http2HeadersFrame =>
             val stream = newStreamTransport(id)
-            if (stream.offerRemote(frame)) {
+            if (stream.offerRemoteFrame(frame)) {
               // Read the request from the stream, pass it to the
               // service to get the response, and then write the
               // response stream.
-              stream.remote.flatMap(service(_)).flatMap(stream.write(_).flatten)
+              stream.remoteMsg.flatMap(service(_)).flatMap(stream.write(_).flatten)
               if (closed.get) Future.Unit
               else transport.read().flatMap(readLoop)
             } else {
@@ -95,7 +95,7 @@ class Netty4ServerDispatcher(
                 writer.resetStreamClosed(id)
 
               case stream =>
-                if (stream.offerRemote(frame)) {
+                if (stream.offerRemoteFrame(frame)) {
                   if (closed.get) Future.Unit
                   else transport.read().flatMap(readLoop)
                 } else {

@@ -94,10 +94,10 @@ class Netty4StreamTransportTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val stream = Netty4StreamTransport.client(id, writer, Int.MaxValue, stats)
 
-    val rspf = stream.remote
+    val rspf = stream.remoteMsg
     assert(!rspf.isDefined)
 
-    stream.offerRemote(new DefaultHttp2HeadersFrame({
+    stream.offerRemoteFrame(new DefaultHttp2HeadersFrame({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       hs
@@ -117,8 +117,8 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote({
+    stream.offerRemoteFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerRemoteFrame({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
@@ -153,10 +153,10 @@ class Netty4StreamTransportTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val stream = Netty4StreamTransport.client(id, writer, 2, stats)
 
-    val rspf = stream.remote
+    val rspf = stream.remoteMsg
     assert(!rspf.isDefined)
 
-    stream.offerRemote(new DefaultHttp2HeadersFrame({
+    stream.offerRemoteFrame(new DefaultHttp2HeadersFrame({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       hs
@@ -176,10 +176,10 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!dataf0.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote({
+    stream.offerRemoteFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerRemoteFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerRemoteFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    stream.offerRemoteFrame({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
@@ -221,10 +221,10 @@ class Netty4StreamTransportTest extends FunSuite {
       def write(f: Http2Frame) = Future.Unit
     }
     val stream = Netty4StreamTransport.server(3, writer, Int.MaxValue)
-    val reqf = stream.remote
+    val reqf = stream.remoteMsg
     assert(!reqf.isDefined)
 
-    stream.offerRemote({
+    stream.offerRemoteFrame({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
       hs.method("SUP")
@@ -246,7 +246,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val d0f = data.read()
     assert(!d0f.isDefined)
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), false).setStreamId(3))
+    stream.offerRemoteFrame(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), false).setStreamId(3))
     assert(d0f.isDefined)
     await(d0f) match {
       case f: Frame.Data =>
@@ -259,7 +259,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val d1f = data.read()
     assert(!d1f.isDefined)
-    stream.offerRemote({
+    stream.offerRemoteFrame({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "chya")
       new DefaultHttp2HeadersFrame(hs, true)

@@ -3,7 +3,7 @@ package h2
 
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Future, Promise, Stopwatch}
 import io.buoyant.test.FunSuite
 
 class LargeStreamEndToEndTest
@@ -11,8 +11,9 @@ class LargeStreamEndToEndTest
   with ClientServerHelpers {
   setLogLevel(Level.OFF)
 
-  val Megs = 100
+  val Megs = 1
   val LargeStreamLen = Megs.toLong * 1024 * 1024
+  val FrameLen = 16 * 1024
 
   test(s"client/server ${Megs}MB request stream") {
     val streamP = new Promise[Stream]
@@ -21,25 +22,29 @@ class LargeStreamEndToEndTest
       Response(Status.Ok, Stream.Nil)
     }
     withClient(serve) { client =>
+      val elapsed = Stopwatch.start()
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(await(streamP)), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait * (LargeStreamLen / FrameLen)) {
+        testStream(reader(await(streamP)), writer, LargeStreamLen, FrameLen)
       }
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
   test(s"client/server ${Megs}MB response stream") {
     val writer = Stream()
     withClient(_ => Response(Status.Ok, writer)) { client =>
+      val elapsed = Stopwatch.start()
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(rsp.data), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait * (LargeStreamLen / FrameLen)) {
+        testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
       }
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
