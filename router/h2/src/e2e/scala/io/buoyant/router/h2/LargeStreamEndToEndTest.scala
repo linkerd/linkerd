@@ -12,7 +12,8 @@ class LargeStreamEndToEndTest
 
   override val logLevel = Level.OFF
 
-  val LargeStreamLen = 100L * 1024 * 1024 // == 100MB
+  val LargeStreamLen = 10 * 1024 * 1024 // == 10MB
+  val FrameLen = 16 * 1024
 
   test("client/server large request stream") {
     val streamP = new Promise[Stream]
@@ -43,8 +44,8 @@ class LargeStreamEndToEndTest
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(rsp.data), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait) {
+        testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
       }
     } finally {
       await(client.close())
@@ -54,7 +55,7 @@ class LargeStreamEndToEndTest
 
   def testStream(
     reader: Stream.Reader,
-    writer: Stream.Writer[Frame],
+    writer: Stream.Writer,
     streamLen: Long,
     frameSize: Int
   ): Future[Unit] = {
@@ -75,16 +76,13 @@ class LargeStreamEndToEndTest
           val frame = Frame.Data(mkBuf(len.toInt), eos)
           d.release().before {
             if (ending) Future.Unit
-            else {
-              assert(writer.write(frame), s"failed to give frame $frame")
-              loop(bytesWritten + len, eos)
-            }
+            else writer.write(frame).before(loop(bytesWritten + len, eos))
           }
       }
     }
 
-    assert(writer.write(Frame.Data(mkBuf(frameSize), false)))
-    loop(frameSize, false)
+    writer.write(Frame.Data(mkBuf(frameSize), false))
+      .before(loop(frameSize, false))
   }
 
 }

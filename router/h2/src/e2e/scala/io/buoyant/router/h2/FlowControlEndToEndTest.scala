@@ -1,6 +1,7 @@
 package io.buoyant.router
 package h2
 
+import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.io.Buf
 import com.twitter.logging.Level
@@ -22,11 +23,11 @@ class FlowControlEndToEndTest
     }
     val client = upstream(server.server)
     try {
-      val writer = Stream()
-      val req = Request("http", Method.Get, "host", "/path", writer)
+      val q = new AsyncQueue[Frame]
+      val req = Request("http", Method.Get, "host", "/path", Stream(q))
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      testFlowControl(reader(await(streamP)), writer)
+      testFlowControl(reader(await(streamP)), q)
     } finally {
       await(client.close())
       await(server.server.close())
@@ -34,14 +35,14 @@ class FlowControlEndToEndTest
   }
 
   test("client/server response flow control") {
-    val writer = Stream()
-    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
+    val q = new AsyncQueue[Frame]
+    val server = Downstream.mk("server") { _ => Response(Status.Ok, Stream(q)) }
     val client = upstream(server.server)
     try {
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      testFlowControl(reader(rsp.data), writer)
+      testFlowControl(reader(rsp.data), q)
     } finally {
       await(client.close())
       await(server.server.close())
@@ -50,7 +51,7 @@ class FlowControlEndToEndTest
 
   val WindowSize = 65535
 
-  def testFlowControl(reader: Stream.Reader, writer: Stream.Writer[Frame]) = {
+  def testFlowControl(reader: Stream.Reader, writeQ: AsyncQueue[Frame]) = {
     // Put two windows' worth of data on the stream
     val release0, release1 = new Promise[Unit]
     def releaser(p: Promise[Unit]) = () => {
@@ -66,8 +67,8 @@ class FlowControlEndToEndTest
     val frame1 = Frame.Data(mkBuf(WindowSize - 1024), true, releaser(release1))
     assert(!release0.isDefined && !release1.isDefined)
     log.debug("offering 2 frames with %d", 2 * WindowSize)
-    assert(writer.write(frame0))
-    assert(writer.write(frame1))
+    assert(writeQ.offer(frame0))
+    assert(writeQ.offer(frame1))
     assert(!release0.isDefined && !release1.isDefined)
 
     // Read a full window, without releasing anything.

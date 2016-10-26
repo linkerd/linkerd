@@ -75,17 +75,17 @@ class Netty4ServerDispatcher(
         val id = frame.streamId
         frame match {
           case frame: Http2HeadersFrame =>
-            val stream = newStreamTransport(id)
-            if (stream.offerRemote(frame)) {
+            val st = newStreamTransport(id)
+            if (st.offerRemote(frame)) {
               // Read the request from the stream, pass it to the
               // service to get the response, and then write the
               // response stream.
-              stream.remote.flatMap(service(_)).flatMap(stream.write(_).flatten)
+              st.remoteMsg.flatMap(service(_)).flatMap(st.write(_).flatten)
               if (closed.get) Future.Unit
               else transport.read().flatMap(processLoop)
             } else {
               log.error(s"server dispatcher failed to offer ${frame.name} on stream ${id}")
-              stream.close()
+              st.close()
             }
 
           case frame =>

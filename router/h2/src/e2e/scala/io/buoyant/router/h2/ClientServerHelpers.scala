@@ -1,6 +1,7 @@
 package io.buoyant.router
 package h2
 
+import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.{Status => _, param => fparam, _}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.io.Buf
@@ -47,7 +48,11 @@ trait ClientServerHelpers { _: FunSuite =>
       service(name) { req => Future(f(req)) }
 
     def const(name: String, value: String): Downstream =
-      mk(name) { _ => Response(Status.Ok, Stream.const(Buf.Utf8(value))) }
+      mk(name) { _ =>
+        val q = new AsyncQueue[Frame]
+        q.offer(Frame.Data.eos(Buf.Utf8(value)))
+        Response(Status.Ok, Stream(q))
+      }
   }
 
   case class Upstream(service: Service[Request, Response]) extends Closable {

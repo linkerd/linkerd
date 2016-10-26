@@ -1,10 +1,16 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import com.twitter.concurrent.AsyncQueue
+import com.twitter.finagle.Failure
 import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
+import io.netty.buffer.CompositeByteBuf
 import io.netty.handler.codec.http2._
+import java.util.concurrent.atomic.AtomicReference
+import scala.annotation.tailrec
+import scala.collection.immutable.Queue
 
 /**
  * Models a single HTTP/2 stream.
@@ -12,9 +18,9 @@ import io.netty.handler.codec.http2._
  * Transports send a `Local`-typed message via an underlying
  * [[H2Transport.Writer]]. A dispatcher, which models a single HTTP/2
  * connection, provides the transport with `Http2StreamFrame`
- * instances that are used to build a `Remote`-typed message.
+ * instances that are used to build a `RemoteMsg`-typed message.
  */
-private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
+private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message] {
   import Netty4StreamTransport.log
 
   /** The HTTP/2 STREAM_ID of this stream. */
@@ -48,51 +54,65 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
       transport.resetNoError(streamId)
     }
 
-  private[this] val remoteP = new Promise[Remote]
-  def remote: Future[Remote] = remoteP
+  protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): RemoteMsg
 
-  /**
-   * Supports writing frames _FROM_ the remote transport to the `remote` stream.
-   */
-  private[this] var remoteWriter: Stream.Writer[Http2StreamFrame] = null
+  private[this] sealed trait RemoteState
+  private[this] case class RemoteInit(p: Promise[RemoteMsg]) extends RemoteState
+  private[this] case class RemoteStreaming(q: AsyncQueue[Frame]) extends RemoteState
+  private[this] object RemoteClosed extends RemoteState
 
-  protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Remote
+  private[this] val _remoteMsgP = new Promise[RemoteMsg]
+  def remoteMsg: Future[RemoteMsg] = _remoteMsgP
+  private[this] val remoteState: AtomicReference[RemoteState] =
+    new AtomicReference(RemoteInit(_remoteMsgP))
 
   /**
    * A Dispatcher reads frames from the remote and offers them into the stream.
    *
    * If an initial Headers frame is offered, the `remote` future is satisfied.
    */
-  def offerRemote(frame: Http2StreamFrame): Boolean =
-    if (isRemoteClosed) false
-    else synchronized {
-      remoteWriter match {
-        case null =>
-          frame match {
-            case frame: Http2HeadersFrame =>
-              val stream =
-                if (frame.isEndStream) {
-                  setRemoteClosed()
-                  Stream.Nil
-                } else {
-                  val stream = newStream()
-                  stream.onEnd.ensure(setRemoteClosed())
-                  remoteWriter = stream
-                  stream
-                }
-              remoteP.setValue(mkRemote(frame.headers, stream))
-              true
+  @tailrec final def offerRemote(in: Http2StreamFrame): Boolean = remoteState.get match {
+    case s0@RemoteInit(p) =>
+      in match {
+        case f: Http2HeadersFrame if f.isEndStream =>
+          if (remoteState.compareAndSet(s0, RemoteClosed)) {
+            p.setValue(mkRemoteMsg(f.headers, Stream.Nil))
+            setRemoteClosed()
+            true
+          } else offerRemote(in)
 
-            case _ => false
-          }
+        case f: Http2HeadersFrame =>
+          val outQ = new AsyncQueue[Frame]
+          if (remoteState.compareAndSet(s0, RemoteStreaming(outQ))) {
+            val msg = mkRemoteMsg(f.headers, Stream(outQ))
+            p.setValue(msg)
+            true
+          } else offerRemote(in)
 
-        case stream => stream.write(frame)
+        case f => false
       }
-    }
+
+    case s0@RemoteStreaming(outQ) =>
+      val out = toFrame(in)
+      if (out.isEnd) {
+        if (remoteState.compareAndSet(s0, RemoteClosed)) {
+          setRemoteClosed()
+          outQ.offer(out)
+        } else offerRemote(in)
+      } else outQ.offer(out)
+
+    case RemoteClosed => false
+  }
+
+  private[this] def toFrame(f: Http2StreamFrame): Frame = f match {
+    case f: Http2DataFrame => Netty4Message.Data(f, updateWindow)
+    case f: Http2HeadersFrame if f.isEndStream => Netty4Message.Trailers(f.headers)
+    case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
+  }
 
   private[this] val mapFutureUnit = (_: Any) => Future.Unit
 
-  def write(msg: Local): Future[Future[Unit]] = msg.data match {
+  def write(msg: LocalMs): Future[Future[Unit]] = msg.data match {
     case Stream.Nil =>
       writeHeaders(msg.headers, false).map(mapFutureUnit)
     case data: Stream.Reader =>
@@ -118,8 +138,8 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
     }
   }
 
-  private[this] val writeFrame: Frame => Future[Boolean] = { v =>
-    val writeF = v match {
+  private[this] val writeFrame: Frame => Future[Boolean] = { f =>
+    val writeF = f match {
       case data: Frame.Data =>
         transport.write(streamId, data)
           .before(data.release())
@@ -127,18 +147,16 @@ private[h2] trait Netty4StreamTransport[Local <: Message, Remote <: Message] {
 
       case tlrs: Frame.Trailers =>
         transport.write(streamId, tlrs)
+          .before(tlrs.release())
           .before(Future.True)
     }
-    if (v.isEnd) writeF.ensure(setLocalClosed())
+    if (f.isEnd) writeF.ensure(setLocalClosed())
     writeF
   }
 
   protected[this] def prefix: String
 
-  private[this] def newStream(): Stream.Reader with Stream.Writer[Http2StreamFrame] =
-    new Netty4Stream(releaser, minAccumFrames, statsReceiver)
-
-  private[this] val releaser: Int => Future[Unit] = { incr =>
+  private[this] val updateWindow: Int => Future[Unit] = { incr =>
     transport.updateWindow(streamId, incr)
   }
 }
@@ -155,7 +173,7 @@ object Netty4StreamTransport {
 
     override protected[this] def prefix: String = s"client: stream $streamId"
 
-    override protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Response =
+    override protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): Response =
       Response(Netty4Message.Headers(headers), stream)
   }
 
@@ -168,7 +186,7 @@ object Netty4StreamTransport {
 
     override protected[this] def prefix: String = s"server: stream $streamId"
 
-    override protected[this] def mkRemote(headers: Http2Headers, stream: Stream): Request =
+    override protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): Request =
       Request(Netty4Message.Headers(headers), stream)
   }
 
