@@ -3,53 +3,48 @@ package h2
 
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Future, Promise, Stopwatch}
 import io.buoyant.test.FunSuite
 
 class LargeStreamEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
+  setLogLevel(Level.OFF)
 
-  override val logLevel = Level.OFF
-
-  val LargeStreamLen = 10 * 1024 * 1024 // == 10MB
+  val Megs = 1
+  val LargeStreamLen = Megs.toLong * 1024 * 1024
   val FrameLen = 16 * 1024
 
-  test("client/server large request stream") {
+  test(s"client/server ${Megs}MB request stream") {
     val streamP = new Promise[Stream]
-    val server = Downstream.mk("server") { req =>
+    def serve(req: Request) = {
       streamP.setValue(req.data)
       Response(Status.Ok, Stream.Nil)
     }
-    val client = upstream(server.server)
-    try {
+    withClient(serve) { client =>
+      val elapsed = Stopwatch.start()
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(await(streamP)), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait * 2) {
+        testStream(reader(await(streamP)), writer, LargeStreamLen, FrameLen)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
-  test("client/server large response stream") {
+  test(s"client/server ${Megs}MB response stream") {
     val writer = Stream()
-    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
-    val client = upstream(server.server)
-    try {
+    withClient(_ => Response(Status.Ok, writer)) { client =>
+      val elapsed = Stopwatch.start()
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait) {
+      await(defaultWait * 2) {
         testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 

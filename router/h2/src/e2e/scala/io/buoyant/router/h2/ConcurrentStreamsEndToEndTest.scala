@@ -12,7 +12,7 @@ class ConcurrentStreamsEndToEndTest
   with ClientServerHelpers {
 
   // Tunable parameters:
-  val concurrencies = Seq(2, 4, 8, 16, 32, 64, 256)
+  val concurrencies = Seq(8)
 
   val FrameSize = 16 * 1024
   val WindowSize = 4 * FrameSize
@@ -26,45 +26,42 @@ class ConcurrentStreamsEndToEndTest
     }
   }
 
-  val pfx = "client/server concurrent streams"
-  for (Spec(streamLen, frameSize, concurrency) <- specs) {
+  val pfx = "client/server concurrent echos"
+
+  for (Spec(streamLen, frameSize, concurrency) <- specs)
     test(s"$pfx: concurrency=${concurrency} len=${streamLen}B frame=${frameSize}B") {
       // The server simply echos the request stream into the response:
       val server = Downstream.service("server") { req =>
         Future(reader(req.data)).map(Response(Status.Ok, _))
       }
       val client = upstream(server.server)
-      def send(stream: Stream) =
-        client(Request("http", Method.Post, "host", "/", stream))
+      def open(): Future[Streamer] = {
+        val s = Stream()
+        client(Request("http", Method.Post, "host", "/", s))
+          .map(r => Streamer(reader(r.data), s))
+      }
 
       // Send the same data through all streams simultaneously, one frame at a time:
-      def streamFrameToAll(streamers: Seq[Streamer], remaining: Long): Future[Unit] = {
+      def streamToAllInStep(streamers: Seq[Streamer], remaining: Long): Future[Unit] = {
         require(remaining > 0)
         val len = math.min(frameSize, remaining).toInt
         val buf = mkBuf(len)
         val eos = len == remaining
         val f = Future.collect(streamers.map(_.stream(buf, eos))).unit
         if (eos) f
-        else f.before(streamFrameToAll(streamers, remaining - len))
+        else f.before(streamToAllInStep(streamers, remaining - len))
       }
 
       try {
-        val clock = Stopwatch.start()
-        await(defaultWait * concurrency) {
-          val opens = (0 until concurrency).map { _ =>
-            val s = Stream()
-            send(s).map { r => Streamer(reader(r.data), s) }
-          }
-          Future.collect(opens)
-            .flatMap(streamFrameToAll(_, streamLen))
-        }
-        info(s"duration=${clock().inMillis}ms")
+        val elapsed = Stopwatch.start()
+        val streamers = Future.collect((0 until concurrency).map(_ => open()))
+        await(streamers.flatMap(streamToAllInStep(_, streamLen)))
+        info(s"duration=${elapsed().inMillis}ms")
       } finally {
         await(client.close())
         await(server.server.close())
       }
     }
-  }
 
   case class Streamer(reader: Stream.Reader, writer: Stream.Writer) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
@@ -82,7 +79,6 @@ class ConcurrentStreamsEndToEndTest
 
           case t: Frame.Trailers =>
             fail(s"unexpected trailers $t")
-            Future.Unit
         }
 
       writer.write(Frame.Data(buf, eos)).before(read(buf.length))
