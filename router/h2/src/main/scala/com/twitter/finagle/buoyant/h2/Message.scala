@@ -206,12 +206,6 @@ object Stream {
     def write(frame: Frame): Future[Unit]
   }
 
-  def apply(q: AsyncQueue[Frame]): Reader =
-    new AsyncQueueReader { override protected[this] val frameQ = q }
-
-  def apply(): Reader with Writer =
-    new AsyncQueueReaderWriter
-
   private trait AsyncQueueReader extends Reader {
     protected[this] val frameQ: AsyncQueue[Frame]
 
@@ -236,6 +230,21 @@ object Stream {
       else Future.exception(Failure("write failed").flagged(Failure.Rejected))
     }
   }
+
+  def apply(q: AsyncQueue[Frame]): Reader =
+    new AsyncQueueReader { override protected[this] val frameQ = q }
+
+  def apply(): Reader with Writer =
+    new AsyncQueueReaderWriter
+
+  def const(buf: Buf): Reader = {
+    val q = new AsyncQueue[Frame]
+    q.offer(Frame.Data.eos(buf))
+    apply(q)
+  }
+
+  def const(s: String): Reader =
+    const(Buf.Utf8(s))
 }
 
 /**

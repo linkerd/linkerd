@@ -15,7 +15,7 @@ class LargeStreamEndToEndTest
   val LargeStreamLen = Megs.toLong * 1024 * 1024
   val FrameLen = 16 * 1024
 
-  test(s"client/server ${Megs}MB request stream") {
+  test(s"client/server ${LargeStreamLen}B request stream") {
     val streamP = new Promise[Stream]
     def serve(req: Request) = {
       streamP.setValue(req.data)
@@ -34,7 +34,7 @@ class LargeStreamEndToEndTest
     }
   }
 
-  test(s"client/server ${Megs}MB response stream") {
+  test(s"client/server ${LargeStreamLen}B response stream") {
     val writer = Stream()
     withClient(_ => Response(Status.Ok, writer)) { client =>
       val elapsed = Stopwatch.start()
