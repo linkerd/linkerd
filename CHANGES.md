@@ -1,5 +1,6 @@
 ## X.X.X
 * Enable namer zkLeader in namerd
+* Add Const and Replace transformers.
 
 ## 0.8.2
 
