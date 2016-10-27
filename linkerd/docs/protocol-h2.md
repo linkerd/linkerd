@@ -94,8 +94,7 @@ kind | _required_ | The name of an identifier plugin, such as [`io.l5d.headerTok
 kind: `io.l5d.headerToken`.
 
 With this identifier, requests are turned into logical names using the
-value of the named header. By default, the `:authority` pseudo-header
-is used to provide host-based routing.
+value of the named header.
 
 #### Namer Configuration:
 
@@ -115,7 +114,7 @@ routers:
 
 Key | Default Value | Description
 --- | ------------- | -----------
-header | `:path` | The name of the header to extract a token from.  If there are multiple headers with this name, the last one is used.
+header | _required_ | The name of the header to extract a token from.  If there are multiple headers with this name, the last one is used.
 
 #### Namer Path Parameters:
 
@@ -135,8 +134,9 @@ headerValue | N/A | The value of the header.
 
 kind: `io.l5d.headerPath`
 
-With this identifier, requests are identified using a path read from a
-header.  This is useful for routing gRPC requests.
+With this identifier, requests are identified using a path read from a header.
+This is useful for routing gRPC requests.  By default, the `:path` psuedo-header
+is used.
 
 #### Namer Configuration:
 
