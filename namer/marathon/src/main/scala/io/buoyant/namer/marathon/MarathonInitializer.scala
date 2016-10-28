@@ -7,8 +7,8 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import io.buoyant.marathon.v2.{Api, AppIdNamer}
+import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
  * Supports namer configurations in the form:
@@ -50,7 +50,12 @@ case class MarathonConfig(
     case None => 80
   }
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
-  private[this] def getTtl = ttlMs.getOrElse(5000).millis
+  @JsonIgnore
+  private[this] def getRandomJitterMs: Int = {
+    val jitterMsConfig = ttlMs.getOrElse(5000) * 0.10.toInt //10% jitter from ttl
+    if(jitterMsConfig == 0) 0 else scala.util.Random.nextInt() % jitterMsConfig
+  }
+  private[this] def getTtl = (ttlMs.getOrElse(5000) - getRandomJitterMs).millis
 
   private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")
 
@@ -62,7 +67,6 @@ case class MarathonConfig(
       .withParams(params)
       .configured(Label("namer" + prefix.show))
       .withTracer(NullTracer)
-      .withRetryBackoff(Backoff.exponentialJittered(2.seconds, 32.seconds))
       .newService(getDst)
 
     new AppIdNamer(Api(service, getHost, getUriPrefix), prefix, getTtl)
