@@ -2,9 +2,10 @@ package io.buoyant.test
 
 import com.twitter.conversions.time._
 import com.twitter.util.{Await, Duration, Future, Time, TimeoutException}
+import org.scalatest.concurrent.Eventually
 import org.scalatest.exceptions.TestFailedException
 
-trait Awaits {
+trait Awaits extends Eventually {
 
   def defaultWait: Duration =
     sys.env.get("CI_TERRIBLENESS").map(Duration.parse(_)).getOrElse(2.seconds)

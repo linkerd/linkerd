@@ -1,6 +1,8 @@
 package com.twitter.finagle.buoyant.h2
 
+import com.twitter.concurrent.AsyncQueue
 import com.twitter.io.Buf
+import com.twitter.finagle.Failure
 import com.twitter.util.{Future, Promise}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
@@ -114,7 +116,7 @@ object Request {
     Impl(headers, data)
 
   private case class Impl(headers: Headers, data: Stream) extends Request {
-    override def toString = s"Request($scheme, $method, $authority, $path)"
+    override def toString = s"Request($scheme, $method, $authority, $path, $data)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
     override def method = headers.get(Headers.Method).headOption match {
@@ -142,7 +144,7 @@ object Response {
     headers: Headers,
     data: Stream
   ) extends Response {
-    override def toString = s"Response($status)"
+    override def toString = s"Response($status, $data)"
     override def dup() = copy(headers = headers.dup())
     override def status = headers.get(Headers.Status).headOption match {
       case Some(code) => Status.fromCode(code.toInt)
@@ -181,9 +183,8 @@ object Stream {
   }
 
   trait Reader extends Stream {
-    override def toString = s"Stream.Readable"
+    override def toString = s"Stream.Reader()"
     final override def isEmpty = false
-    def reset(cause: Throwable): Unit
     def onEnd: Future[Unit]
     def read(): Future[Frame]
   }
@@ -194,82 +195,56 @@ object Stream {
   // in the dispatcher and server stream
 
   /**
-   * Does not support upstream flow control.
-   */
-  def const(buf: Buf): Reader =
-    new Const(buf)
-
-  private[this] class Const(buf: Buf) extends Reader {
-    private[this] val endP = new Promise[Unit]
-    private[this] val complete = new AtomicBoolean(false)
-    override def onEnd: Future[Unit] = endP
-    override def read(): Future[Frame] =
-      if (complete.getAndSet(true) == false) {
-        endP.setDone()
-        Future.value(Frame.Data.eos(buf))
-      } else Future.never
-    override def reset(cause: Throwable): Unit = {
-      complete.set(true)
-      endP.raise(cause)
-    }
-  }
-
-  /**
    * In order to create a stream, we need a mechanism to write to it.
    */
-  trait Writer[-T] {
+  trait Writer {
 
     /**
      * Write an object to a Stream so that it may be read as a Frame
      * (i.e. onto an underlying transport).
-     *
-     * Returns `false` if the input could not be accepted.
      */
-    def write(frame: T): Boolean
+    def write(frame: Frame): Future[Unit]
   }
 
-  def apply(minAccumFrames: Int = Int.MaxValue): Reader with Writer[Frame] =
-    new FrameStream(minAccumFrames)
+  private trait AsyncQueueReader extends Reader {
+    protected[this] val frameQ: AsyncQueue[Frame]
 
-  /**
-   * A default implementation of an Http2 stream that is backed by an
-   * AsyncQueue of Frames.
-   */
-  private class FrameStream(minAccumFrames: Int)
-    extends AsyncQueueStreamer[Frame](minAccumFrames = minAccumFrames) {
-
-    @inline
-    protected[this] def toFrame(f: Frame): Frame = f
-
-    protected[this] def accumStream(frames: Queue[Frame]): StreamAccum = {
-      var dataq = mutable.Queue.empty[Frame.Data]
-      var dataEos = false
-      var trailers: Frame.Trailers = null
-
-      val iter = frames.iterator
-      while (!dataEos && trailers == null && iter.hasNext) {
-        iter.next() match {
-          case d: Frame.Data =>
-            dataq.enqueue(d)
-            dataEos = d.isEnd
-
-          case t: Frame.Trailers =>
-            trailers = t
-        }
-      }
-
-      val data: Frame.Data =
-        if (dataq.isEmpty) null
-        else new Frame.Data {
-          def buf: Buf = dataq.foldLeft(Buf.Empty) { (buf, f) => buf.concat(f.buf) }
-          def release() = Future.collect(dataq.map(_.release())).unit
-          def isEnd = dataEos
-        }
-
-      mkStreamAccum(data, trailers)
+    private[this] val endP = new Promise[Unit]
+    private[this] val endOnReleaseIfEnd: Frame => Unit = { f =>
+      if (f.isEnd) endP.become(f.onRelease)
     }
 
+    override def onEnd: Future[Unit] = endP
+    override def read(): Future[Frame] = {
+      val f = frameQ.poll()
+      f.onSuccess(endOnReleaseIfEnd)
+      f
+    }
   }
+
+  private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
+    override protected[this] val frameQ = new AsyncQueue[Frame]
+
+    override def write(f: Frame): Future[Unit] = {
+      if (frameQ.offer(f)) f.onRelease
+      else Future.exception(Failure("write failed").flagged(Failure.Rejected))
+    }
+  }
+
+  def apply(q: AsyncQueue[Frame]): Reader =
+    new AsyncQueueReader { override protected[this] val frameQ = q }
+
+  def apply(): Reader with Writer =
+    new AsyncQueueReaderWriter
+
+  def const(buf: Buf): Reader = {
+    val q = new AsyncQueue[Frame]
+    q.offer(Frame.Data.eos(buf))
+    apply(q)
+  }
+
+  def const(s: String): Reader =
+    const(Buf.Utf8(s))
 }
 
 /**
@@ -282,6 +257,9 @@ sealed trait Frame {
    * Stream.
    */
   def isEnd: Boolean
+
+  def onRelease: Future[Unit]
+  def release(): Future[Unit]
 }
 
 object Frame {
@@ -291,28 +269,35 @@ object Frame {
    * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
+    override def toString = s"Frame.Data(length=${buf.length}, eos=$isEnd)"
     def buf: Buf
-    def release(): Future[Unit]
   }
 
   object Data {
-    def apply(buf0: Buf, eos: Boolean): Data = new Data {
+
+    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
       def buf = buf0
-      def release() = Future.Unit
+      private[this] val releaseP = new Promise[Unit]
+      def onRelease = releaseP
+      def release() = {
+        val f = release0()
+        releaseP.become(f)
+        f
+      }
       def isEnd = eos
     }
+
+    def apply(buf: Buf, eos: Boolean): Data =
+      apply(buf, eos, () => Future.Unit)
+
+    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
+      apply(Buf.Utf8(s), eos, release)
 
     def apply(s: String, eos: Boolean): Data =
       apply(Buf.Utf8(s), eos)
 
     def eos(buf: Buf): Data = apply(buf, true)
     def eos(s: String): Data = apply(s, true)
-  }
-
-  object Empty extends Data {
-    def buf = Buf.Empty
-    def release() = Future.Unit
-    def isEnd = true
   }
 
   /** A terminal Frame including headers. */
