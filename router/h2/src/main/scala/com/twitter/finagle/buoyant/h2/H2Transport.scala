@@ -1,14 +1,14 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
-import com.twitter.util.Future
+import com.twitter.util.{Closable, Future, Time}
 
 object H2Transport {
 
   /**
    * A codec-agnostic interface supporting writes of H2 messages to a transport.
    */
-  trait Writer {
+  trait Writer extends Closable {
 
     /**
      * Write an entire message and its Stream.
@@ -29,5 +29,25 @@ object H2Transport {
      * Update the flow control window by `incr` bytes.
      */
     def updateWindow(id: Int, incr: Int): Future[Unit]
+
+    /*
+     * Connection errors: emit GOAWAY and close connection.
+     */
+
+    def goAwayNoError(deadline: Time): Future[Unit]
+    def goAwayProtocolError(deadline: Time): Future[Unit]
+    def goAwayInternalError(deadline: Time): Future[Unit]
+    def goAwayChillBro(deadline: Time): Future[Unit]
+
+    /*
+     * Stream errors
+     */
+
+    def resetNoError(id: Int): Future[Unit]
+    def resetInternalError(id: Int): Future[Unit]
+    def resetRefused(id: Int): Future[Unit]
+    def resetStreamClosed(id: Int): Future[Unit]
+    def resetCancel(id: Int): Future[Unit]
+    def resetChillBro(id: Int): Future[Unit]
   }
 }
