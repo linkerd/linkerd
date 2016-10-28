@@ -8,14 +8,14 @@ import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.JavaConverters._
 import scala.util.control.NoStackTrace
 
 object Netty4ClientDispatcher {
   private val log = Logger.get(getClass.getName)
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
-  private val MaxStreamId = Int.MaxValue
+  private val MaxStreamId = (math.pow(2, 31) - 1).toInt
 }
 
 /**
@@ -34,10 +34,10 @@ class Netty4ClientDispatcher(
 
   private[this] val writer = Netty4H2Writer(transport)
 
-  private[this] val _id = new AtomicLong(BaseStreamId)
+  private[this] val _id = new AtomicInteger(BaseStreamId)
   private[this] def nextId(): Int = {
     val id = _id.getAndAdd(2)
-    if (id > MaxStreamId) {
+    if (id < BaseStreamId || MaxStreamId < id) {
       // If the ID overflows, we can't use this connection anymore, so
       // we try to indicate to the server by sending a GO_AWAY in
       // accordance with the RFC.
@@ -46,7 +46,7 @@ class Netty4ClientDispatcher(
       }
       throw new IllegalArgumentException("stream id overflow")
     }
-    id.toInt
+    id
   }
 
   private[this] val streams =
