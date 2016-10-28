@@ -86,7 +86,14 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
   }
 
   override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
-    Activity.value(tree.map(mapBound))
+    Activity.value(tree.flatMap { leaf =>
+      DelegateTree.Transformation(
+        leaf.path,
+        getClass.getSimpleName,
+        leaf.value,
+        leaf.copy(value = mapBound(leaf.value))
+      )
+    })
 
   override protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
     Activity.value(tree.map(mapBound))
