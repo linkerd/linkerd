@@ -3,58 +3,54 @@ package h2
 
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Future, Promise, Stopwatch}
 import io.buoyant.test.FunSuite
 
 class LargeStreamEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
+  setLogLevel(Level.OFF)
 
-  override val logLevel = Level.OFF
+  val WindowLen = 64 * 1024
+  val FrameLen = 16 * 1024
+  val LargeStreamLen = WindowLen * 2
 
-  val LargeStreamLen = 100L * 1024 * 1024 // == 100MB
-
-  test("client/server large request stream") {
+  test(s"client/server ${LargeStreamLen}B request stream") {
     val streamP = new Promise[Stream]
-    val server = Downstream.mk("server") { req =>
+    def serve(req: Request) = {
       streamP.setValue(req.data)
       Response(Status.Ok, Stream.Nil)
     }
-    val client = upstream(server.server)
-    try {
+    withClient(serve) { client =>
+      val elapsed = Stopwatch.start()
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(await(streamP)), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait * 2) {
+        testStream(reader(await(streamP)), writer, LargeStreamLen, FrameLen)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
-  test("client/server large response stream") {
+  test(s"client/server ${LargeStreamLen}B response stream") {
     val writer = Stream()
-    val server = Downstream.mk("server") { _ => Response(Status.Ok, writer) }
-    val client = upstream(server.server)
-    try {
+    withClient(_ => Response(Status.Ok, writer)) { client =>
+      val elapsed = Stopwatch.start()
       val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      await(defaultWait * 100) {
-        testStream(reader(rsp.data), writer, LargeStreamLen, 16 * 1024)
+      await(defaultWait * 2) {
+        testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
       }
-    } finally {
-      await(client.close())
-      await(server.server.close())
+      info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
   def testStream(
     reader: Stream.Reader,
-    writer: Stream.Writer[Frame],
+    writer: Stream.Writer,
     streamLen: Long,
     frameSize: Int
   ): Future[Unit] = {
@@ -75,16 +71,13 @@ class LargeStreamEndToEndTest
           val frame = Frame.Data(mkBuf(len.toInt), eos)
           d.release().before {
             if (ending) Future.Unit
-            else {
-              assert(writer.write(frame), s"failed to give frame $frame")
-              loop(bytesWritten + len, eos)
-            }
+            else writer.write(frame).before(loop(bytesWritten + len, eos))
           }
       }
     }
 
-    assert(writer.write(Frame.Data(mkBuf(frameSize), false)))
-    loop(frameSize, false)
+    writer.write(Frame.Data(mkBuf(frameSize), false))
+      .before(loop(frameSize, false))
   }
 
 }

@@ -1,15 +1,26 @@
 package io.buoyant.router
 package h2
 
+import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.{Status => _, param => fparam, _}
 import com.twitter.finagle.buoyant.h2._
+import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
+import org.scalatest.BeforeAndAfter
 import scala.collection.JavaConverters._
 
-trait ClientServerHelpers { _: FunSuite =>
+trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
+
+  val statsReceiver = new InMemoryStatsReceiver
+  before {
+    statsReceiver.clear()
+  }
+  after {
+    statsReceiver.clear()
+  }
 
   def reader(s: Stream) = s match {
     case Stream.Nil => fail("empty response stream")
@@ -18,6 +29,16 @@ trait ClientServerHelpers { _: FunSuite =>
 
   def mkBuf(sz: Int): Buf =
     Buf.ByteArray.Owned(Array.fill[Byte](sz)(1.toByte))
+
+  def withClient(srv: Request => Response)(f: Upstream => Unit): Unit = {
+    val server = Downstream.mk("srv")(srv)
+    val client = upstream(server.server)
+    try f(client)
+    finally {
+      await(client.close())
+      await(server.server.close())
+    }
+  }
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -36,6 +57,7 @@ trait ClientServerHelpers { _: FunSuite =>
       }
       val server = H2.server
         .configured(fparam.Label(name))
+        .configured(fparam.Stats(statsReceiver.scope("srv")))
         .serve(":*", factory)
       Downstream(name, server)
     }
@@ -47,7 +69,11 @@ trait ClientServerHelpers { _: FunSuite =>
       service(name) { req => Future(f(req)) }
 
     def const(name: String, value: String): Downstream =
-      mk(name) { _ => Response(Status.Ok, Stream.const(Buf.Utf8(value))) }
+      mk(name) { _ =>
+        val q = new AsyncQueue[Frame]
+        q.offer(Frame.Data.eos(Buf.Utf8(value)))
+        Response(Status.Ok, Stream(q))
+      }
   }
 
   case class Upstream(service: Service[Request, Response]) extends Closable {
@@ -77,10 +103,12 @@ trait ClientServerHelpers { _: FunSuite =>
     def close(d: Time) = service.close(d)
   }
 
-  def upstream(server: ListeningServer) = {
+  def upstream(server: ListeningServer): Upstream = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    val client = H2.client.newClient(name, "upstream").toService
+    val client = H2.client
+      .configured(fparam.Stats(statsReceiver.scope("client")))
+      .newClient(name, "upstream").toService
     Upstream(client)
   }
 
