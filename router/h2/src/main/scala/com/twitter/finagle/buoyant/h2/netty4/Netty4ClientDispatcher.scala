@@ -26,7 +26,6 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   transport: Transport[Http2Frame, Http2Frame],
-  minAccumFrames: Int,
   statsReceiver: StatsReceiver = NullStatsReceiver
 ) extends Service[Request, Response] {
 
@@ -61,7 +60,7 @@ class Netty4ClientDispatcher(
   // demultiplexed to it.
   private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
-    val stream = Netty4StreamTransport.client(id, writer, minAccumFrames, streamStats)
+    val stream = Netty4StreamTransport.client(id, writer, streamStats)
     if (streams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
@@ -128,7 +127,7 @@ class Netty4ClientDispatcher(
     val st = newStreamTransport()
     req.data match {
       case Stream.Nil =>
-        st.writeHeaders(req.headers, eos = true).before(st.remote)
+        st.writeHeaders(req.headers, eos = true).before(st.remoteMsg)
 
       case data: Stream.Reader =>
         // Stream the request while receiving the response and
@@ -136,10 +135,10 @@ class Netty4ClientDispatcher(
         // canceled,  or the response fails.
         val t0 = Stopwatch.start()
         st.write(req).flatMap { send =>
-          st.remote.onFailure(send.raise)
-          send.onFailure(st.remote.raise)
+          st.remoteMsg.onFailure(send.raise)
+          send.onFailure(st.remoteMsg.raise)
           send.onSuccess(_ => requestMillis.add(t0().inMillis))
-          st.remote
+          st.remoteMsg
         }
     }
   }

@@ -34,10 +34,10 @@ class Netty4ClientDispatchTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ClientDispatcher(transport, Int.MaxValue, stats)
+    val dispatcher = new Netty4ClientDispatcher(transport, stats)
 
     var released = 0
-    def releaser: Netty4Stream.Releaser = { bytes =>
+    def releaser: Int => Future[Unit] = { bytes =>
       released += bytes
       Future.Unit
     }
@@ -94,18 +94,16 @@ class Netty4ClientDispatchTest extends FunSuite {
         fail(s"unexpected frame: $f")
     }
 
-    req0q.offer(new Frame.Data {
-      def isEnd = true
+    assert(req0q.offer({
       val buf = Buf.Utf8("how's it goin?")
-      def release() = releaser(buf.length)
-    })
-
+      Frame.Data(buf, false, () => releaser(buf.length))
+    }))
     // We receive a response for req1 first:
-    recvq.offer({
+    assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(5)
-    })
+    }))
 
     assert(!rsp0f.isDefined)
     // assert(rsp1f.isDefined)
@@ -117,11 +115,11 @@ class Netty4ClientDispatchTest extends FunSuite {
     }
 
     // We receive a response for req1 first:
-    recvq.offer({
+    assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(3)
-    })
+    }))
     assert(rsp0f.isDefined)
     val rsp0 = await(rsp0f)
     assert(rsp0.status == Status.Cowabunga)
@@ -130,36 +128,39 @@ class Netty4ClientDispatchTest extends FunSuite {
       case r: Stream.Reader => r
     }
 
-    recvq.offer({
+    assert(recvq.offer({
       val buf = Buf.Utf8("sup")
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).setStreamId(3)
-    })
-    recvq.offer({
+    }))
+    assert(recvq.offer({
       val buf = Buf.Utf8("yo")
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).setStreamId(5)
-    })
+    }))
 
     val d0f = data0.read()
     assert(d0f.isDefined)
-    assert(data0.onEnd.isDefined)
 
     val d1f = data1.read()
     assert(d1f.isDefined)
-    assert(data1.onEnd.isDefined)
 
     await(d0f) match {
       case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("sup"))
         assert(f.isEnd)
+        await(f.release())
       case f =>
         fail(s"unexpected frame: $f")
     }
+    assert(data0.onEnd.isDefined)
+
     await(d1f) match {
       case f: Frame.Data =>
         assert(f.buf == Buf.Utf8("yo"))
         assert(f.isEnd)
+        await(f.release())
       case f =>
         fail(s"unexpected frame: $f")
     }
+    assert(data1.onEnd.isDefined)
   }
 }

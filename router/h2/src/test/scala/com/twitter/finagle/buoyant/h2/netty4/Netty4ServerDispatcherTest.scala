@@ -8,13 +8,12 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
-import io.buoyant.test.Awaits
+import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicBoolean
-import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
 
-class Netty4ServerDispatchTest extends FunSuite with Awaits {
+class Netty4ServerDispatchTest extends FunSuite {
   import com.twitter.logging._
   Logger.configure(List(LoggerFactory(
     node = "",
@@ -44,10 +43,10 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
 
     val bartmanCalled = new AtomicBoolean(false)
-    val bartmanStreamP = new Promise[Stream]
+    val bartmanStreamP = new Promise[Stream.Reader]
 
     val elBartoCalled = new AtomicBoolean(false)
-    val elBartoStreamP = new Promise[Stream]
+    val elBartoStreamP = new Promise[Stream.Reader]
 
     val service = Service.mk[Request, Response] { req =>
       req.authority match {
@@ -62,7 +61,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ServerDispatcher(transport, service, Int.MaxValue, stats)
+    val dispatcher = new Netty4ServerDispatcher(transport, service, stats)
 
     assert(!bartmanCalled.get)
     assert(recvq.offer({
@@ -88,8 +87,8 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
 
     assert(sentq.isEmpty)
 
-    val bartmanStream = Stream()
-    bartmanStreamP.setValue(bartmanStream)
+    val bartmanStream = new AsyncQueue[Frame]
+    bartmanStreamP.setValue(Stream(bartmanStream))
     eventually {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
@@ -99,8 +98,8 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    val elBartoStream = Stream()
-    elBartoStreamP.setValue(elBartoStream)
+    val elBartoStream = new AsyncQueue[Frame]
+    elBartoStreamP.setValue(Stream(elBartoStream))
     eventually {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
@@ -110,11 +109,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = false
-    }))
+    assert(bartmanStream.offer(Frame.Data(Buf.Utf8("0"), false)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -126,11 +121,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(elBartoStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = true
-    }))
+    assert(elBartoStream.offer(Frame.Data(Buf.Utf8("0"), true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -142,11 +133,7 @@ class Netty4ServerDispatchTest extends FunSuite with Awaits {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.write(new Frame.Data {
-      def buf = Buf.Utf8("0")
-      def release() = Future.Unit
-      def isEnd = true
-    }))
+    assert(bartmanStream.offer(Frame.Data(Buf.Utf8("0"), true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>

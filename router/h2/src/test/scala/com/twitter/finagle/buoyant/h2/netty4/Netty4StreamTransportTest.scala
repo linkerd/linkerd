@@ -25,7 +25,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       }
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, Int.MaxValue, stats)
+    val stream = Netty4StreamTransport.client(id, writer, stats)
 
     val headers: Headers = {
       val hs = new DefaultHttp2Headers
@@ -60,7 +60,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       }
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, Int.MaxValue, stats)
+    val stream = Netty4StreamTransport.client(id, writer, stats)
 
     val sendq = new AsyncQueue[Frame]
     val endP = new Promise[Unit]
@@ -73,20 +73,12 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!w.isDefined)
 
     val heyo = Buf.Utf8("heyo")
-    sendq.offer(new Frame.Data {
-      def isEnd = false
-      def buf = heyo
-      def release() = Future.Unit
-    })
+    assert(sendq.offer(Frame.Data(heyo, false)))
     assert(writeq.head ==
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), false).setStreamId(id))
     writeq = writeq.tail
 
-    sendq.offer(new Frame.Data {
-      def isEnd = true
-      def buf = heyo
-      def release() = Future.Unit
-    })
+    assert(sendq.offer(Frame.Data(heyo, true)))
     assert(writeq.head ==
       new DefaultHttp2DataFrame(BufAsByteBuf.Owned(heyo), true).setStreamId(id))
     writeq = writeq.tail
@@ -99,9 +91,9 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       def write(f: Http2Frame) = ???
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, Int.MaxValue, stats)
+    val stream = Netty4StreamTransport.client(id, writer, stats)
 
-    val rspf = stream.remote
+    val rspf = stream.remoteMsg
     assert(!rspf.isDefined)
 
     stream.offerRemote(new DefaultHttp2HeadersFrame({
@@ -148,82 +140,13 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     }
   }
 
-  test("client: response, with accumulation") {
-    val id = 8
-    var writeq = Queue.empty[Http2Frame]
-    val writer = new Netty4H2Writer {
-      def close(d: Time) = ???
-      def write(f: Http2Frame) = ???
-    }
-    val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, 2, stats)
-
-    val rspf = stream.remote
-    assert(!rspf.isDefined)
-
-    stream.offerRemote(new DefaultHttp2HeadersFrame({
-      val hs = new DefaultHttp2Headers
-      hs.status("222")
-      hs
-    }))
-
-    assert(rspf.isDefined)
-    val rsp = await(rspf)
-    val data = rsp.data match {
-      case Stream.Nil => fail("empty stream")
-      case data: Stream.Reader => data
-    }
-    val endf = data.onEnd
-    assert(!endf.isDefined)
-    assert(rsp.status == Status.Cowabunga)
-
-    val dataf0 = data.read()
-    assert(!dataf0.isDefined)
-
-    val buf = Buf.Utf8("space ghost coast to coast")
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.offerRemote({
-      val hs = new DefaultHttp2Headers
-      hs.set("trailers", "yea")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
-    })
-
-    assert(dataf0.isDefined)
-    await(dataf0) match {
-      case data: Frame.Data =>
-        assert(data.buf == buf)
-      case frame =>
-        fail(s"unexpected frame: $frame")
-    }
-
-    val dataf1 = data.read()
-    assert(dataf1.isDefined)
-    await(dataf1) match {
-      case data: Frame.Data =>
-        assert(data.buf == buf.concat(buf))
-      case frame =>
-        fail(s"unexpected frame: $frame")
-    }
-
-    val trailf = data.read()
-    assert(trailf.isDefined)
-    await(trailf) match {
-      case trailers: Frame.Trailers =>
-        assert(trailers.toSeq == Seq("trailers" -> "yea"))
-      case frame =>
-        fail(s"unexpected frame: $frame")
-    }
-  }
-
   test("server: provides a remote request") {
     val writer = new Netty4H2Writer {
       def close(d: Time) = ???
       def write(f: Http2Frame) = ???
     }
-    val stream = Netty4StreamTransport.server(3, writer, Int.MaxValue)
-    val reqf = stream.remote
+    val stream = Netty4StreamTransport.server(3, writer)
+    val reqf = stream.remoteMsg
     assert(!reqf.isDefined)
 
     stream.offerRemote({
@@ -284,13 +207,13 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
         Future.Unit
       }
     }
-    val stream = Netty4StreamTransport.server(3, writer, Int.MaxValue)
+    val stream = Netty4StreamTransport.server(3, writer)
 
-    val rspdata = new Netty4Stream(_ => Future.Unit)
+    val rspdataQ = new AsyncQueue[Frame]
     val rsp = {
       val hs = new DefaultHttp2Headers
       hs.status("202")
-      Netty4Message.Response(hs, rspdata)
+      Netty4Message.Response(hs, Stream(rspdataQ))
     }
 
     val wf = stream.write(rsp)
@@ -305,18 +228,18 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     })
     writeq = writeq.tail
 
-    val buf = Buf.Utf8("Looks like some tests failed.")
-    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    val buf = Buf.Utf8("Looks like some tests were totally excellent")
+    assert(rspdataQ.offer(Frame.Data(buf, false)))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
 
-    rspdata.write(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf).retain(), false))
+    assert(rspdataQ.offer(Frame.Data(buf, false)))
     assert(writeq.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(3))
     writeq = writeq.tail
 
     val trailers = new DefaultHttp2Headers
     trailers.set("trailin", "yams")
-    rspdata.write(new DefaultHttp2HeadersFrame(trailers, true).setStreamId(3))
+    assert(rspdataQ.offer(Netty4Message.Trailers(trailers)))
     assert(writeq.head == new DefaultHttp2HeadersFrame(trailers, true).setStreamId(3))
     writeq = writeq.tail
   }
