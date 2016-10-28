@@ -103,7 +103,7 @@ supports the following options:
 Key | Default Value | Description
 --- | ------------- | -----------
 caCertPath | ? | The path to the CA cert used for common name validation.
-names | _required_ | A list of [name matchers]("#bound-path-name-matchers").
+names | _required_ | A list of [name matchers](#bound-path-name-matchers).
 strict | true | When true, paths that fail to match any prefixes throw an exception.
 
 #### Bound Path Name Matchers

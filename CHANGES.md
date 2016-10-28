@@ -1,5 +1,6 @@
 ## X.X.X
 * Enable namer zkLeader in namerd
+* Add authentication support to marathon namer
 * Add Const and Replace transformers.
 
 ## 0.8.2
@@ -80,7 +81,7 @@
   * All endpoints return json
 * Add `authority` metadata field to re-write HTTP host/:authority on demand
 * Consul improvements:
-  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata
   * Add auth `token` parameter to Consul Namer & Dtab Store
   * Add `datacenter` parameter to Consul Dtab Store
 * Add file-system based name interpreter.

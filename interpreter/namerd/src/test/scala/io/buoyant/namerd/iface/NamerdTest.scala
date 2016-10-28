@@ -25,6 +25,7 @@ class NamerdTest extends FunSuite {
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(NamerdInterpreterInitializer)))
     val namerd = mapper.readValue[InterpreterConfig](yaml).asInstanceOf[NamerdInterpreterConfig]
+    mapper.writeValueAsString(namerd) // ensure serialization doesn't blow up
     assert(namerd.dst == Some(Path.read("/$/inet/127.1/4100")))
     assert(namerd.namespace == Some("name"))
   }
