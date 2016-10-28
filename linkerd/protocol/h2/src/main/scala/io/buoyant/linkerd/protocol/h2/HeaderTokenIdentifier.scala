@@ -5,7 +5,7 @@ package h2
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers, LinkerdHeaders, Request}
+import com.twitter.finagle.buoyant.h2.{Headers, Request}
 import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
@@ -54,7 +54,6 @@ class HeaderTokenIdentifierConfig extends H2IdentifierConfig {
 
 object HeaderTokenIdentifierConfig {
   val kind = "io.l5d.headerToken"
-  val defaultHeaderToken = LinkerdHeaders.Prefix + "name"
 }
 
 class HeaderTokenIdentifierInitializer extends IdentifierInitializer {
