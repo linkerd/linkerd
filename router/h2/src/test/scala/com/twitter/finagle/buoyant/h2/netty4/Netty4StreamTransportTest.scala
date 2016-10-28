@@ -25,7 +25,8 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       }
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, stats)
+    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
+    val stream = Netty4StreamTransport.client(id, writer, tstats)
 
     val headers: Headers = {
       val hs = new DefaultHttp2Headers
@@ -60,7 +61,8 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       }
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, stats)
+    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
+    val stream = Netty4StreamTransport.client(id, writer, tstats)
 
     val sendq = new AsyncQueue[Frame]
     val endP = new Promise[Unit]
@@ -91,7 +93,8 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
       def write(f: Http2Frame) = ???
     }
     val stats = new InMemoryStatsReceiver
-    val stream = Netty4StreamTransport.client(id, writer, stats)
+    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
+    val stream = Netty4StreamTransport.client(id, writer, tstats)
 
     val rspf = stream.remoteMsg
     assert(!rspf.isDefined)
