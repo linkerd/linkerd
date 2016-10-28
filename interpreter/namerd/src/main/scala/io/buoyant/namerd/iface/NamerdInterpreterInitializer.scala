@@ -43,6 +43,7 @@ case class NamerdInterpreterConfig(
   tls: Option[ClientTlsConfig]
 ) extends InterpreterConfig {
 
+  @JsonIgnore
   private[this] val log = Logger.get("namerd")
 
   @JsonIgnore
