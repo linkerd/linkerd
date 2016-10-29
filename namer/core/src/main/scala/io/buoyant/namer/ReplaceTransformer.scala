@@ -1,13 +1,17 @@
 package io.buoyant.namer
 
 import com.twitter.finagle.Name.Bound
-import com.twitter.finagle.{NameTree, Namer, Path}
+import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.{Dtab, NameTree, Path}
 import com.twitter.util.Activity
 
 /** Bind the given path and replace all bound names in the tree with it. */
 class ReplaceTransformer(path: Path) extends NameTreeTransformer {
+
+  private[this] lazy val bound = NameInterpreter.global.bind(Dtab.empty, path)
+
   override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] = {
-    Namer.global.bind(NameTree.Leaf(path)).map { replacement =>
+    bound.map { replacement =>
       replace(tree, replacement)
     }
   }
