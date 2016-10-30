@@ -35,7 +35,7 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] val pipelineInit = { p: ChannelPipeline =>
-      p.addLast(new Http2FrameCodec(true)); ()
+      p.addLast(new ServerUpgradeHandler); ()
     }
   }
 
