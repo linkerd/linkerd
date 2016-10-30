@@ -23,14 +23,6 @@ object Netty4H2Listener {
       case _ => TlsListener.mk(params)
     }
 
-  def mkCodec(framer: Http2FrameCodec): ChannelHandler = new ChannelInitializer[Channel] {
-    def initChannel(ch: Channel): Unit = {
-      // ch.pipeline.addLast("debug bytes", new DebugHandler("s.bytes"))
-      ch.pipeline.addLast("h2 codec", framer); ()
-      // ch.pipeline.addLast("debug frames", new DebugHandler("s.framed"))
-    }
-  }
-
   private[this] trait ListenerMaker {
     def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
       Netty4Listener(
@@ -43,23 +35,25 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] val pipelineInit = { p: ChannelPipeline =>
-      p.addLast(mkCodec(new Http2FrameCodec(true))); ()
+      p.addLast(new Http2FrameCodec(true)); ()
     }
   }
 
   private[this] object TlsListener extends ListenerMaker {
+    val PlaceholderKey = "h2 framer placeholder"
     override protected[this] val pipelineInit = { p: ChannelPipeline =>
-      p.addLast("alpn", new Alpn(mkCodec(new Http2FrameCodec(true)))); ()
+      p.addLast(PlaceholderKey, new ChannelDuplexHandler)
+        .addLast("alpn", new Alpn); ()
     }
 
-    private class Alpn(codec: ChannelHandler)
+    private class Alpn
       extends ApplicationProtocolNegotiationHandler(ApplicationProtocolNames.HTTP_2) {
 
       override protected def configurePipeline(ctx: ChannelHandlerContext, proto: String): Unit =
         proto match {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
-            ctx.pipeline.addLast(codec); ()
+            ctx.pipeline.replace(PlaceholderKey, "h2 framer", new Http2FrameCodec(true)); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>
           case proto => throw new IllegalStateException(s"unknown protocol: $proto")
