@@ -368,7 +368,26 @@ Key | Required | Description
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 appId | yes | The app id of a marathon application. This id can be multiple path segments long. For example, the app with id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app with id "/appgroup/usergroup/users" can be reached with `/#/io.l5d.marathon/appgroup/usergroup/users`.
 
+### Marathon Authentication
 
+> Example environment variable
+
+```json
+{
+  "login_endpoint": "https://leader.mesos/acs/api/v1/auth/login",
+  "private_key": "<private-key-value>",
+  "scheme": "RS256",
+  "uid": "service-acct"
+}
+```
+
+The Marathon namer supports loading authentication data from a
+`DCOS_SERVICE_ACCOUNT_CREDENTIAL` environment variable at boot time.
+
+Further reading:
+
+* [Mesosphere Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>
 ## ZooKeeper Leader

@@ -9,21 +9,10 @@ routers:
   experimental: true
   baseDtab: |
     /srv => /#/io.l5d.fs;
-    /h2/yo => /$/inet/127.1/8888;
+    /h2/localhost:4142 => /$/inet/127.1/8888;
     /h2 => /srv;
   servers:
   - port: 4142
-    # tls:
-    #   caCertPath: ./certificates/cacertificate.pem
-    #   certPath: ./certificates/linkerdcertificate.pem
-    #   keyPath: ./certificates/private/linkerd.pkcs8
   identifier:
-    kind: io.l5d.headerPath
+    kind: io.l5d.headerToken
     header: ":authority"
-  # client:
-  #   tls:
-  #     kind: io.l5d.boundPath
-  #     caCertPath: ./certificates/cacertificate.pem
-  #     names:
-  #     - prefix: "/#/io.l5d.fs/{service}"
-  #       commonNamePattern: "{service}"

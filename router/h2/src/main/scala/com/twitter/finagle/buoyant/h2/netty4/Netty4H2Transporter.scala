@@ -8,11 +8,11 @@ import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
 import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.buoyant.router.H2
 import io.netty.channel.ChannelPipeline
-import io.netty.handler.codec.http2.{Http2FrameCodec, Http2StreamFrame}
+import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
 
 object Netty4H2Transporter {
 
-  def mk(params0: Stack.Params): Transporter[Http2StreamFrame, Http2StreamFrame] = {
+  def mk(params0: Stack.Params): Transporter[Http2Frame, Http2Frame] = {
     // We rely on flow control rather than socket-level backpressure.
     val params = params0 + Netty4Transporter.Backpressure(false)
     val param.ClientPriorKnowledge(pk) = params[param.ClientPriorKnowledge]
