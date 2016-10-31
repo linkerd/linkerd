@@ -1,8 +1,7 @@
 ## 0.x.y
 
 * Enable namer zkLeader in namerd
-* Removed unused TLS options from the k8s storage plugin config
-* Add Apache Curator namer
+* Add experimental Apache Curator namer
 
 ## 0.8.2
 

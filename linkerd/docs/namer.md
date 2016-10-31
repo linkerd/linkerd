@@ -406,6 +406,8 @@ kind: `io.l5d.curator`
 
 A namer that uses the Curator discovery library to resolve names.
 
+Note: If you have registered Curator services with a custom payload object, that class file must be on the classpath. Otherwise you will get a `java.lang.IllegalArgumentException: Invalid type id '<some-payload-class'` error. 
+
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.curator` | Resolves names with `/#/<prefix>`.
