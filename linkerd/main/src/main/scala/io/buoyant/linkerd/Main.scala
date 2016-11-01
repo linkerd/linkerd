@@ -2,12 +2,12 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.util._
-import collection.JavaConversions.enumerationAsScalaIterator
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import java.net.{InetSocketAddress, NetworkInterface}
+import scala.collection.JavaConverters._
 import scala.io.Source
 import sun.misc.{Signal, SignalHandler}
 
@@ -99,9 +99,9 @@ object Main extends App {
   ): Closable = {
     val addrs = if (server.ip.getHostAddress == "0.0.0.0") {
       val a = for {
-        interface <- NetworkInterface.getNetworkInterfaces
+        interface <- NetworkInterface.getNetworkInterfaces.asScala
         if interface.isUp
-        inet <- interface.getInetAddresses
+        inet <- interface.getInetAddresses.asScala
         if !inet.isLoopbackAddress
       } yield new InetSocketAddress(inet.getHostAddress, server.port)
       a.toSeq

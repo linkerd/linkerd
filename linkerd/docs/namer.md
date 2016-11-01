@@ -18,6 +18,7 @@ Key | Default Value | Description
 kind | _required_ | Either `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`.
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
+transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 <a name="fs"></a>
 ## File-based service discovery

@@ -56,7 +56,7 @@ class FsTest extends FunSuite with NamerTestUtil {
 
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(FsInitializer)))
       val fs = mapper.readValue[NamerConfig](yaml)
-      val namer = fs.newNamer(Stack.Params.empty)
+      val namer = fs.mk(Stack.Params.empty)
 
       assertBoundIdAutobinds(namer, path, fs.prefix)
 

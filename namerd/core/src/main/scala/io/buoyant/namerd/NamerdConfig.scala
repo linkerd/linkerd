@@ -49,7 +49,7 @@ private[namerd] case class NamerdConfig(
           if (prefix.startsWith(config.prefix) || config.prefix.startsWith(prefix))
             throw NamerdConfig.ConflictingNamers(prefix, config.prefix)
 
-        namers + (config.prefix -> config.newNamer(Stack.Params.empty))
+        namers + (config.prefix -> config.mk(Stack.Params.empty))
     }
 
   private[this] def mkInterfaces(
