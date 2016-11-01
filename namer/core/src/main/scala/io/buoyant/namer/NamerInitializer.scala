@@ -31,6 +31,8 @@ abstract class NamerConfig {
   @JsonProperty("experimental")
   var _experimentalEnabled: Option[Boolean] = None
 
+  var transformers: Option[Seq[TransformerConfig]] = None
+
   /**
    * Indicates whether this is an experimental namer.  Experimental namers must have the
    * `experimental` property set to true to be used
@@ -49,7 +51,16 @@ abstract class NamerConfig {
   def prefix = NamerConfig.hash ++ _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
-  def newNamer(params: Stack.Params): Namer
+  protected def newNamer(params: Stack.Params): Namer
+
+  @JsonIgnore
+  def mk(params: Stack.Params): Namer = {
+    val underlying = newNamer(params)
+
+    transformers.toSeq.flatten.map(_.mk()).foldLeft(underlying) { (namer, transformer) =>
+      transformer.wrap(namer)
+    }
+  }
 }
 
 object NamerConfig {

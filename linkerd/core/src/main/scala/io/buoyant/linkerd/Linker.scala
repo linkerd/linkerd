@@ -145,7 +145,7 @@ object Linker {
             "explicitly enabled by setting the `experimental' parameter to `true'."
           throw new IllegalArgumentException(msg) with NoStackTrace
 
-        case n => n.prefix -> n.newNamer(params)
+        case n => n.prefix -> n.mk(params)
       }
     }
 
