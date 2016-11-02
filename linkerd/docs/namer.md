@@ -419,3 +419,54 @@ Key | Required | Description
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 
+<a name="rewritingNamers"></a>
+## Rewriting Namers
+
+In addition to service discovery namers, linkerd supplies a number of utility
+namers. These namers assist in path rewriting when the transformation is more
+complicated than just prefix substitution.
+
+### domainToPathPfx
+
+```
+/marathonId => /#/io.l5d.marathon;
+/host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
+/http/1.1/* => /host;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.http.domainToPathPfx/<prefix>/<host>
+```
+
+Rewrites the path's prefix with `<prefix>` first, followed by each subdomain of
+`<host>` separated and in reverse order. This is most useful when using marathon
+application groups, whose ids are represented as domains.
+
+For example,
+`/$/io.buoyant.http.domainToPathPfx/pfx/foo.buoyant.io/resource/name` would be
+rewritten to `pfx/io/buoyant/foo/resource/name`.
+
+### subdomainOfPfx
+
+```
+/consulSvc => /#/io.l5d.consul/.local
+/host       => /$/io.buoyant.http.subdomainOfPfx/service.consul/consulSvc;
+/http/1.1/* => /host;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.http.subdomainOfPfx/<domain>/<prefix>/<host>
+```
+
+Rewrites the path's prefix with `<prefix>` first, followed by `<host>` with the
+`<domain>` dropped. This is most useful when using consul, whose dns interface
+has the service's name as the subdomain.
+
+For example,
+`/$/io.buoyant.http.subdomainOfPfx/buoyant.io/pfx/foo.buoyant.io/resource/name`
+would be rewritten to `/pfx/foo/resource/name`
+
