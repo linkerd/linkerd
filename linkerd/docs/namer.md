@@ -441,17 +441,16 @@ complicated than just prefix substitution.
 ```
 
 Rewrites the path's prefix with `<prefix>` first, followed by each subdomain of
-`<host>` separated and in reverse order. This is most useful when using marathon
-application groups, whose ids are represented as domains.
+`<host>` separated and in reverse order.
 
 For example,
 `/$/io.buoyant.http.domainToPathPfx/pfx/foo.buoyant.io/resource/name` would be
-rewritten to `pfx/io/buoyant/foo/resource/name`.
+rewritten to `/pfx/io/buoyant/foo/resource/name`.
 
 ### subdomainOfPfx
 
 ```
-/consulSvc => /#/io.l5d.consul/.local
+/consulSvc  => /#/io.l5d.consul/.local
 /host       => /$/io.buoyant.http.subdomainOfPfx/service.consul/consulSvc;
 /http/1.1/* => /host;
 ```
@@ -463,8 +462,7 @@ rewritten to `pfx/io/buoyant/foo/resource/name`.
 ```
 
 Rewrites the path's prefix with `<prefix>` first, followed by `<host>` with the
-`<domain>` dropped. This is most useful when using consul, whose dns interface
-has the service's name as the subdomain.
+`<domain>` dropped.
 
 For example,
 `/$/io.buoyant.http.subdomainOfPfx/buoyant.io/pfx/foo.buoyant.io/resource/name`
