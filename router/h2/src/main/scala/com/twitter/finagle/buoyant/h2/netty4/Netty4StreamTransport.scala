@@ -3,12 +3,12 @@ package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Failure
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver, NullStatsReceiver => FNullStatsReceiver}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw}
 import io.netty.buffer.CompositeByteBuf
 import io.netty.handler.codec.http2._
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
@@ -21,12 +21,13 @@ import scala.collection.immutable.Queue
  * instances that are used to build a `RemoteMsg`-typed message.
  */
 private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message] {
-  import Netty4StreamTransport.log
+  import Netty4StreamTransport._
 
   /** The HTTP/2 STREAM_ID of this stream. */
   def streamId: Int
 
   protected[this] def transport: H2Transport.Writer
+
   protected[this] def statsReceiver: StatsReceiver
 
   @volatile private[this] var isRemoteClosed, isLocalClosed = false
@@ -96,9 +97,13 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
       if (out.isEnd) {
         if (remoteState.compareAndSet(s0, RemoteClosed)) {
           setRemoteClosed()
+          statsReceiver.recordRemoteFrame(out)
           outQ.offer(out)
         } else offerRemote(in)
-      } else outQ.offer(out)
+      } else {
+        statsReceiver.recordRemoteFrame(out)
+        outQ.offer(out)
+      }
 
     case RemoteClosed => false
   }
@@ -138,6 +143,7 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
   }
 
   private[this] val writeFrame: Frame => Future[Boolean] = { f =>
+    statsReceiver.recordLocalFrame(f)
     val writeF = f match {
       case data: Frame.Data =>
         transport.write(streamId, data)
@@ -163,6 +169,27 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
 object Netty4StreamTransport {
   private val log = Logger.get(getClass.getName)
 
+  class StatsReceiver(underlying: FStatsReceiver) {
+    private[this] val local = underlying.scope("local")
+    private[this] val localDataBytes = local.stat("data", "bytes")
+    private[this] val localTrailersCount = local.counter("trailers")
+    val recordLocalFrame: Frame => Unit = {
+      case d: Frame.Data => localDataBytes.add(d.buf.length)
+      case t: Frame.Trailers => localTrailersCount.incr()
+    }
+
+    private[this] val remote = underlying.scope("remote")
+    private[this] val remoteDataBytes = remote.stat("data", "bytes")
+    private[this] val remoteTrailersCount = remote.counter("trailers")
+    val recordRemoteFrame: Frame => Unit = {
+      case d: Frame.Data => remoteDataBytes.add(d.buf.length)
+      case t: Frame.Trailers => remoteTrailersCount.incr()
+    }
+
+  }
+
+  object NullStatsReceiver extends StatsReceiver(FNullStatsReceiver)
+
   private class Client(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
@@ -178,7 +205,7 @@ object Netty4StreamTransport {
   private class Server(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
-    override protected[this] val statsReceiver: StatsReceiver = NullStatsReceiver
+    override protected[this] val statsReceiver: StatsReceiver
   ) extends Netty4StreamTransport[Response, Request] {
 
     override protected[this] def prefix: String = s"server: stream $streamId"

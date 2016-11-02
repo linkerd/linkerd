@@ -2,7 +2,7 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.{Failure, Service}
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
@@ -26,7 +26,7 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   transport: Transport[Http2Frame, Http2Frame],
-  statsReceiver: StatsReceiver = NullStatsReceiver
+  streamStats: Netty4StreamTransport.StatsReceiver
 ) extends Service[Request, Response] {
 
   import Netty4ClientDispatcher._
@@ -50,9 +50,6 @@ class Netty4ClientDispatcher(
 
   private[this] val streams =
     new ConcurrentHashMap[Int, Netty4StreamTransport[Request, Response]]
-
-  private[this] val requestMillis = statsReceiver.stat("latency_ms")
-  private[this] val streamStats = statsReceiver.scope("stream")
 
   private[this] val closed = new AtomicBoolean(false)
 
@@ -137,7 +134,6 @@ class Netty4ClientDispatcher(
         st.write(req).flatMap { send =>
           st.remoteMsg.onFailure(send.raise)
           send.onFailure(st.remoteMsg.raise)
-          send.onSuccess(_ => requestMillis.add(t0().inMillis))
           st.remoteMsg
         }
     }
