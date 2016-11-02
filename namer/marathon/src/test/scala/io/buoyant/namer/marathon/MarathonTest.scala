@@ -12,7 +12,7 @@ class MarathonTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
     // We use a name that resolves here
-    val _ = MarathonConfig(Some("localhost"), None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = MarathonConfig(Some("localhost"), None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -21,13 +21,14 @@ class MarathonTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""
-                  |kind:      io.l5d.marathon
-                  |experimental: true
-                  |prefix:    /io.l5d.marathon
-                  |host:      localhost
-                  |port:      80
-                  |uriPrefix: /marathon
-                  |ttlMs:     300
+                  |kind:           io.l5d.marathon
+                  |experimental:   true
+                  |prefix:         /io.l5d.marathon
+                  |host:           localhost
+                  |port:           80
+                  |uriPrefix:      /marathon
+                  |ttlMs:          300
+                  |useHealthCheck: false
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
@@ -42,12 +43,13 @@ class MarathonTest extends FunSuite {
 
   test("parse config without experimental param") {
     val yaml = s"""
-                  |kind:      io.l5d.marathon
-                  |prefix:    /io.l5d.marathon
-                  |host:      localhost
-                  |port:      80
-                  |uriPrefix: /marathon
-                  |ttlMs:     300
+                  |kind:           io.l5d.marathon
+                  |prefix:         /io.l5d.marathon
+                  |host:           localhost
+                  |port:           80
+                  |uriPrefix:      /marathon
+                  |ttlMs:          300
+                  |useHealthCheck: false
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))

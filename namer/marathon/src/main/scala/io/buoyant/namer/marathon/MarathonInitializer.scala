@@ -17,13 +17,14 @@ import io.buoyant.marathon.v2.{Api, AppIdNamer}
  *
  * <pre>
  * namers:
- * - kind:      io.l5d.marathon
- *   experimental: true
- *   prefix:    /io.l5d.marathon
- *   host:      marathon.mesos
- *   port:      80
- *   uriPrefix: /marathon
- *   ttlMs:     5000
+ * - kind:           io.l5d.marathon
+ *   experimental:   true
+ *   prefix:         /io.l5d.marathon
+ *   host:           marathon.mesos
+ *   port:           80
+ *   uriPrefix:      /marathon
+ *   ttlMs:          5000
+ *   useHealthCheck: false
  * </pre>
  */
 class MarathonInitializer extends NamerInitializer {
@@ -45,7 +46,8 @@ case class MarathonConfig(
   port: Option[Port],
   dst: Option[String],
   uriPrefix: Option[String],
-  ttlMs: Option[Int]
+  ttlMs: Option[Int],
+  useHealthCheck: Option[Boolean]
 ) extends NamerConfig {
 
   private[this] val log = Logger.get(getClass.getName)
@@ -63,6 +65,7 @@ case class MarathonConfig(
   }
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
   private[this] def getTtl = ttlMs.getOrElse(5000).millis
+  private[this] def getMarathonHealth = useHealthCheck.getOrElse(false)
 
   private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")
 
@@ -118,6 +121,6 @@ case class MarathonConfig(
       case None => client
     }
 
-    new AppIdNamer(Api(service, getUriPrefix), prefix, getTtl)
+    new AppIdNamer(Api(service, getUriPrefix, getMarathonHealth), prefix, getTtl)
   }
 }

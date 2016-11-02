@@ -39,6 +39,7 @@ namers:
   host: localhost
   port: 80
   uriPrefix: /marathon
+  useHealthCheck: false
 
 routers:
 - protocol: http
