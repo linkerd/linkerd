@@ -90,3 +90,29 @@ env:
       fieldRef:
         fieldPath: status.podIP
 ```
+
+## Replace
+
+kind: `io.l5d.replace`
+
+The replace transformer replaces all bound names with a configurable path.
+This differs from the Const transformer in that if the original NameTree is
+`Neg` then the result will be `Neg` as well.  This is useful if you want to
+use a namer to check the validity of a name but then actually route to a
+different name.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+path | _required_ | Bound names will be replaced with this path.
+
+## Const
+
+kind: `io.l5d.const`
+
+The const transformer ignores the input and always returns a constant
+configurable path.  This differs from the Replace transformer in that it always
+returns the configured path, even when the original NameTree is `Neg`.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+path | _required_ | Ignore the input and return this path.

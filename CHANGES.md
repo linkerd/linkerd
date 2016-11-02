@@ -2,6 +2,7 @@
 * Enable namer zkLeader in namerd
 * Add authentication support to marathon namer
 * Allow transformers to be applied to namers.
+* Add Const and Replace transformers.
 
 ## 0.8.2
 
