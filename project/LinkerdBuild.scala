@@ -293,7 +293,7 @@ object LinkerdBuild extends Base {
      * 3) boots namerd
      */
     val dcosExecScript = (
-      """|#!/bin/sh
+      """|#!/bin/bash
          |
          |jars="$0"
          |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
@@ -303,10 +303,16 @@ object LinkerdBuild extends Base {
          |fi
          |""" +
       execScriptJvmOptions +
-      """|${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+      """|if read -t 0; then
+         |  CONFIG_INPUT=`cat`
+         |fi
+         |
+         |echo $CONFIG_INPUT | \
+         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
+         |echo $CONFIG_INPUT | \
          |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
          |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |io.buoyant.namerd.Main "$@"
