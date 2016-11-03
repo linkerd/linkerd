@@ -52,12 +52,12 @@ class ServerUpgradeHandler extends ChannelDuplexHandler {
       case bb: ByteBuf if isPreface(bb) =>
         // If the connection starts with the magical prior-knowledge
         // preface, just assume we're speaking plain h2c.
-        ctx.pipeline.addLast("h2 framer", framer)
+        ctx.pipeline.addAfter(ctx.name, "h2 framer", framer)
 
       case bb: ByteBuf =>
         // Otherwise, Upgrade from h1 to h2
-        ctx.pipeline.addLast("h1 codec", h1Codec)
-        ctx.pipeline.addLast("h1 upgrade h2", upgrader)
+        ctx.pipeline.addAfter(ctx.name, "h1 codec", h1Codec)
+        ctx.pipeline.addAfter("h1 codec", "h1 upgrade h2", upgrader)
       // TODO silently translate native h1 to h2
 
       case _ => // Fall through and pass on the read.

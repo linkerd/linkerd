@@ -3,6 +3,7 @@ package h2
 
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.finagle.buoyant.Dst
+import com.twitter.logging.Level
 import com.twitter.util.Future
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
@@ -11,9 +12,8 @@ class RouterEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
 
-  // logLevel = Level.DEBUG
-
   test("router with prior knowledge") {
+    // setLogLevel(Level.DEBUG)
     val cat = Downstream.const("cat", "meow")
     val dog = Downstream.const("dog", "woof")
     val dtab = Dtab.read(s"""
@@ -37,6 +37,7 @@ class RouterEndToEndTest
       client.get("felix")(_ == Some("meow"))
       client.get("clifford", "/the/big/red/dog")(_ == Some("woof"))
     } finally {
+      setLogLevel(Level.OFF)
       await(client.close())
       await(cat.server.close())
       await(dog.server.close())
