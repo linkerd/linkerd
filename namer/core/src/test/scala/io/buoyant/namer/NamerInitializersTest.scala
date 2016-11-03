@@ -11,7 +11,7 @@ class NamerInitializersTest extends FunSuite {
     val mapper = Parser.objectMapper(config, Iterable(Seq(booNamerInitializer, booUrnsNamerInitializer)))
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
     ConfiguredNamersInterpreter(cfg.reverse.map { c =>
-      c.prefix -> c.newNamer(Stack.Params.empty)
+      c.prefix -> c.mk(Stack.Params.empty)
     })
   }
 

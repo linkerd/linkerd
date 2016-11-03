@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.{Failure, Service}
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Stopwatch, Time}
@@ -18,7 +17,7 @@ object Netty4ServerDispatcher {
 class Netty4ServerDispatcher(
   transport: Transport[Http2Frame, Http2Frame],
   service: Service[Request, Response],
-  statsReceiver: StatsReceiver = NullStatsReceiver
+  streamStats: Netty4StreamTransport.StatsReceiver
 ) extends Closable {
 
   import Netty4ServerDispatcher._
@@ -28,9 +27,6 @@ class Netty4ServerDispatcher(
   private[this] val closed = new AtomicBoolean(false)
 
   private[this] val streams = new ConcurrentHashMap[Int, Netty4StreamTransport[Response, Request]]
-
-  private[this] val requestMillis = statsReceiver.stat("latency_ms")
-  private[this] val streamStats = statsReceiver.scope("stream")
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.

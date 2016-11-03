@@ -1,7 +1,10 @@
-## 0.x.y
+## X.X.X
 
 * Enable namer zkLeader in namerd
 * Add authentication support to marathon namer
+* Allow transformers to be applied to namers
+* Add Const and Replace transformers
+* Add `useHealthCheck` option to marathon namer
 * Add experimental Apache Curator namer
 
 ## 0.8.2

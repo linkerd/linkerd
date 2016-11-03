@@ -18,6 +18,7 @@ Key | Default Value | Description
 kind | _required_ | Either `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`.
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
+transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 <a name="fs"></a>
 ## File-based service discovery
@@ -182,7 +183,7 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
-useHealthCheck | `false` | If `true`, rely on Consul health checks.
+useHealthCheck | `false` | If `true`, exclude app instances that are failing Consul health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
@@ -326,13 +327,14 @@ kind: `io.l5d.marathon`
 
 ```yaml
 namers:
-- kind:         io.l5d.marathon
-  experimental: true
-  prefix:       /#/io.l5d.marathon
-  host:         marathon.mesos
-  port:         80
-  uriPrefix:    /marathon
-  ttlMs:        5000
+- kind:           io.l5d.marathon
+  experimental:   true
+  prefix:         /io.l5d.marathon
+  host:           marathon.mesos
+  port:           80
+  uriPrefix:      /marathon
+  ttlMs:          5000
+  useHealthCheck: false
 ```
 > Then reference the namer in the dtab to use it:
 
@@ -353,7 +355,8 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
-ttlMs | `5000` | The polling interval in milliseconds against the marathon API.
+ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
+useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
 
 ### Marathon Path Parameters
 
