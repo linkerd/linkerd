@@ -92,6 +92,11 @@ object LinkerdBuild extends Base {
       .dependsOn(LinkerdBuild.consul, core)
       .withTests()
 
+    val curator = projectDir("namer/curator")
+      .dependsOn(core)
+      .withLibs(Deps.curatorFramework, Deps.curatorClient, Deps.curatorDiscovery)
+      .withTests()
+
     val fs = projectDir("namer/fs")
       .dependsOn(core % "compile->compile;test->test")
       .withTests()
@@ -117,7 +122,7 @@ object LinkerdBuild extends Base {
 
     val all = projectDir("namer")
       .settings(aggregateSettings)
-      .aggregate(core, consul, fs, k8s, marathon, serversets, zkLeader)
+      .aggregate(core, consul, curator, fs, k8s, marathon, serversets, zkLeader)
   }
 
   val admin = projectDir("admin")
@@ -525,7 +530,7 @@ object LinkerdBuild extends Base {
     )
 
     val BundleProjects = Seq[ProjectReference](
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
@@ -602,6 +607,7 @@ object LinkerdBuild extends Base {
   val namer = Namer.all
   val namerCore = Namer.core
   val namerConsul = Namer.consul
+  val namerCurator = Namer.curator
   val namerFs = Namer.fs
   val namerK8s = Namer.k8s
   val namerMarathon = Namer.marathon
