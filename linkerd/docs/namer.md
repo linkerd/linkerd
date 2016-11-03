@@ -424,7 +424,9 @@ zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple p
 
 In addition to service discovery namers, linkerd supplies a number of utility
 namers. These namers assist in path rewriting when the transformation is more
-complicated than just prefix substitution.
+complicated than just prefix substitution. They are prefixed with `/$/` instead
+of `/#/`, and can be used without explicitly adding them to the
+[`namers`](#namers-and-service-discovery) section of the config.
 
 ### domainToPathPfx
 
