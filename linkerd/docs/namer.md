@@ -419,3 +419,33 @@ Key | Required | Description
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 
+<a name="curator"></a>
+## Curator
+
+kind: `io.l5d.curator`
+
+### Curator Configuration
+
+A namer that uses the Curator discovery library to resolve names.
+
+Note: If you have registered Curator services with a custom payload object, that class file must be on the classpath. Otherwise you will get a `java.lang.IllegalArgumentException: Invalid type id '<some-payload-class'` error. 
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.curator` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
+basePath | `/` | The ZooKeeper path for Curator discovery.
+
+### Curator Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<serviceName>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the curator namer.
+serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
