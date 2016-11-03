@@ -23,7 +23,7 @@ class CuratorNamer(zkConnect: String, basePath: String, idPrefix: Path) extends 
 
   private[this] val log = Logger.get(getClass.getName)
 
-  private[this] val curator: Future[CuratorFramework] = {
+  private[this] lazy val curator: Future[CuratorFramework] = {
     val client = CuratorFrameworkFactory.newClient(zkConnect, new ExponentialBackoffRetry(1000, 3))
     client.start()
 
@@ -43,7 +43,7 @@ class CuratorNamer(zkConnect: String, basePath: String, idPrefix: Path) extends 
     promise
   }
 
-  private[this] val serviceDiscovery: Future[ServiceDiscovery[Void]] =
+  private[this] lazy val serviceDiscovery: Future[ServiceDiscovery[Void]] =
     curator.map { client =>
       val disco = ServiceDiscoveryBuilder.builder(classOf[Void]).basePath(basePath)
         .client(client).build
