@@ -11,6 +11,7 @@ import scala.collection.mutable
 
 class EndpointsNamer(
   idPrefix: Path,
+  labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
@@ -24,11 +25,28 @@ class EndpointsNamer(
    * and attempts to bind an Addr by resolving named endpoint from the
    * kubernetes master.
    */
-  def lookup(path: Path): Activity[NameTree[Name]] = path.take(PrefixLen) match {
-    case id@Path.Utf8(nsName, portName, serviceName) =>
-      val residual = path.drop(PrefixLen)
+  def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
+    case (id@Path.Utf8(nsName, _, _), None) =>
+      val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      endpointNs.get(nsName).services.flatMap { services =>
+      lookupServices(endpointNs.get(nsName, None), id, residual)
+
+    case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
+      val residual = path.drop(variablePrefixLength)
+      log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
+      lookupServices(endpointNs.get(nsName, Some(s"${label}=${labelValue}")), id.take(PrefixLen), residual)
+
+    case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
+      log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
+      Activity.value(NameTree.Neg)
+
+    case _ =>
+      Activity.value(NameTree.Neg)
+  }
+
+  private[this] def lookupServices(cache: NsCache, id: Path, residual: Path): Activity[NameTree[Name]] = id match {
+    case id@Path.Utf8(nsName, portName, serviceName) =>
+      cache.services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
         services.get(serviceName) match {
           case None =>
@@ -50,10 +68,9 @@ class EndpointsNamer(
             }
         }
       }
-
-    case _ =>
-      Activity.value(NameTree.Neg)
   }
+
+  private[this] val variablePrefixLength = if (labelName.isEmpty) PrefixLen else PrefixLen + 1
 
   private[this] val endpointNs =
     new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
@@ -66,7 +83,7 @@ class EndpointsNamer(
     // versions of flatMap and map
     val namespaces: ActSet[String] = Activity(endpointNs.namespaces.map(Activity.Ok(_)))
     namespaces.flatMap { namespace: String =>
-      val services: ActSet[SvcCache] = endpointNs.get(namespace).services.map(_.values.toSet)
+      val services: ActSet[SvcCache] = endpointNs.get(namespace, None).services.map(_.values.toSet)
       services.flatMap { service: SvcCache =>
         val ports: ActSet[Port] = service.ports.map(_.values.toSet)
         ports.map { port: Port =>

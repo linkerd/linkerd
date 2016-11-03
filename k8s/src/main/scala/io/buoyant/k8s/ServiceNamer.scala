@@ -18,16 +18,29 @@ import java.net.InetSocketAddress
  */
 class ServiceNamer(
   idPrefix: Path,
+  labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   private[this] val PrefixLen = 3
+  private[this] val variablePrefixLength = if (labelName.isEmpty) PrefixLen else PrefixLen + 1
 
-  override def lookup(path: Path): Activity[NameTree[Name]] = path.take(PrefixLen) match {
-    case id@Path.Utf8(nsName, portName, serviceName) =>
+  def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
+    case (id@Path.Utf8(nsName, portName, serviceName), None) =>
+      val residual = path.drop(variablePrefixLength)
+      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map {
+        case Some(address) =>
+          val bound = address.map(Addr.Bound(_))
+          NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, path.drop(PrefixLen)))
+        case None =>
+          NameTree.Neg
+      }
+      Activity(nameTree.map(Activity.Ok(_)))
 
-      val nameTree = serviceNs.get(nsName).get(serviceName, portName).map {
+    case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
+      val residual = path.drop(variablePrefixLength)
+      val nameTree = serviceNs.get(nsName, Some(s"${label}=${labelValue}")).get(serviceName, portName).map {
         case Some(address) =>
           val bound = address.map(Addr.Bound(_))
           NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, path.drop(PrefixLen)))
