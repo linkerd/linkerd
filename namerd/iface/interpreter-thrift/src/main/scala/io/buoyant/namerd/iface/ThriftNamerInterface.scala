@@ -282,7 +282,7 @@ object ThriftNamerInterface {
             }
           case path: Name.Path => thrift.BoundName(TPath(path.path))
         }
-        (thrift.DelegateNode(TPath(path), name, thrift.DelegateContents.Transformation(boundName, nextNextId)),
+        (thrift.DelegateNode(TPath(path), name, thrift.DelegateContents.Transformation(thrift.Transformation(bound, nextNextId))),
           childNodes + (nextNextId -> node), nextNextId + 1)
     }
 
@@ -318,6 +318,8 @@ object ThriftNamerInterface {
           throw new IllegalArgumentException("delegation cannot accept bound names")
         case thrift.DelegateContents.UnknownUnionField(_) =>
           throw new IllegalArgumentException("unknown union field")
+        case thrift.DelegateContents.Transformation(transformation) =>
+          throw new IllegalArgumentException("delegation cannot accept transformations")
       }
     }
     parseDelegateNode(dt.root)

@@ -20,8 +20,6 @@ class AppIdNamer(
 
   import AppIdNamer._
 
-  Backoff.decorrelatedJittered()
-
   private[this] implicit val _timer = timer
 
   /**
