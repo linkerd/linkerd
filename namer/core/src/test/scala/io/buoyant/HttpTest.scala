@@ -1,11 +1,9 @@
-package io.buoyant.http
+package io.buoyant
 
-import com.twitter.finagle.http.{Http => _, _}
-import com.twitter.finagle.{Status => SvcStatus, _}
-import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import com.twitter.finagle._
+import io.buoyant.test.FunSuite
 
-class NamerTest extends FunSuite with Awaits {
+class HttpTest extends FunSuite {
 
   def lookup(path: Path) =
     await(Namer.global.lookup(path).values.toFuture()).get
@@ -78,22 +76,6 @@ class NamerTest extends FunSuite with Awaits {
   test("domainToPathPfx") {
     val path = Path.read("/$/io.buoyant.http.domainToPathPfx/pfx/foo.buoyant.io")
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("pfx", "io", "buoyant", "foo"))))
-  }
-
-  test("status") {
-    val client = Http.newService("/$/io.buoyant.http.status/401/foo/bar.a.b/bah")
-    val rsp = await(client(Request()))
-    assert(rsp.status == Status.Unauthorized)
-  }
-
-  test("status: invalid") {
-    val path = Path.read("/$/io.buoyant.http.status/foo/bar.a.b/bah")
-    assert(lookup(path) == NameTree.Neg)
-  }
-
-  test("status: no code") {
-    val path = Path.read("/$/io.buoyant.http.status")
-    assert(lookup(path) == NameTree.Neg)
   }
 
 }
