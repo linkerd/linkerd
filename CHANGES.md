@@ -5,6 +5,7 @@
 * Allow transformers to be applied to namers
 * Add Const and Replace transformers
 * Add `useHealthCheck` option to marathon namer
+* Add `labelSelector` option to k8s and k8s.external namers.
 
 ## 0.8.2
 

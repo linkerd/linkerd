@@ -226,6 +226,7 @@ namers:
   experimental: true
   host: localhost
   port: 8001
+  labelSelector: version
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -244,6 +245,7 @@ prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
+labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -255,7 +257,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 > Dtab Path Format
 
 ```yaml
-/#/<prefix>/<namespace>/<port-name>/<svc-name>
+/#/<prefix>/<namespace>/<port-name>/<svc-name>[/<label-value>]
 ```
 
 Key | Required | Description
@@ -264,6 +266,7 @@ prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The value used to filter services.
 
 ### K8s External Configuration
 
@@ -275,6 +278,7 @@ namers:
   experimental: true
   host: localhost
   port: 8001
+  labelSelector: version
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -294,6 +298,7 @@ prefix | `io.l5d.k8s.external` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
+labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -305,7 +310,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 > Dtab Path Format
 
 ```yaml
-/#/<prefix>/<namespace>/<port-name>/<svc-name>
+/#/<prefix>/<namespace>/<port-name>/<svc-name>[/<label-value>]
 ```
 
 Key | Required | Description
@@ -314,6 +319,7 @@ prefix | yes | Tells linkerd to resolve the request path using the k8s external 
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
 
 <a name="marathon"></a>
