@@ -53,12 +53,13 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new EndpointsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val _ = namer.lookup(Path.read("/srv/http/sessions")).states.respond { s =>
       state = s
     }
+
     def assertHas(n: Int): Unit =
       state match {
         case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
@@ -120,7 +121,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), api.withNamespace)
+    val namer = new EndpointsNamer(Path.read("/test"), None, api.withNamespace)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val _ = namer.lookup(Path.read("/srv/thrift/sessions")).states respond { s =>
@@ -146,5 +147,23 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       doScaleDown.setDone()
       assertHas(3)
     }
+  }
+
+  test("sets labelSelector if not None ") {
+    @volatile var req: Request = null
+
+    val service = Service.mk[Request, Response] {
+      case r =>
+        req = r
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+    }
+
+    val api = v1.Api(service)
+    val namer = new EndpointsNamer(Path.read("/test"), Some("versionLabel"), api.withNamespace)
+    namer.lookup(Path.read("/srv/thrift/sessions/d3adb33f"))
+
+    assert(req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&labelSelector=versionLabel%3Dd3adb33f&resourceVersion=5319481")
   }
 }

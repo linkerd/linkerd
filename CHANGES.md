@@ -7,6 +7,7 @@
 * Add `useHealthCheck` option to marathon namer
 * Add experimental Apache Curator namer
 * Show transformers in the delegate UI
+* Add `labelSelector` option to k8s and k8s.external namers.
 
 ## 0.8.2
 

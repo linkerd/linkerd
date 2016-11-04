@@ -55,12 +55,12 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
 
   protected def mkCache(name: String): Cache
 
-  def get(name: String): Cache = synchronized {
+  def get(name: String, labelSelector: Option[String]): Cache = synchronized {
     caches.sample.get(name) match {
       case Some(ns) => ns
       case None =>
         val ns = mkCache(name)
-        val closable = retryToActivity { watch(name, ns) }
+        val closable = retryToActivity { watch(name, labelSelector, ns) }
         _watches += (name -> closable)
         caches() = caches.sample + (name -> ns)
         ns
@@ -69,13 +69,14 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
 
   val namespaces: Var[Set[String]] = caches.map(_.keySet)
 
-  private[this] def watch(namespace: String, cache: Cache): Future[Closable] = {
+  private[this] def watch(namespace: String, labelSelector: Option[String], cache: Cache): Future[Closable] = {
     val resource = mkResource(namespace)
     Trace.letClear {
       log.info("k8s initializing %s", namespace)
       resource.get().map { list =>
         cache.initialize(list)
         val (updates, closable) = resource.watch(
+          labelSelector = labelSelector,
           resourceVersion = list.metadata.flatMap(_.resourceVersion)
         )
         // fire-and-forget this traversal over an AsyncStream that updates the services state

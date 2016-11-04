@@ -34,7 +34,7 @@ case class DaemonSetTransformerConfig(
   override def mk(): NameTreeTransformer = {
     val client = mkClient(Params.empty).configured(Label("daemonsetTransformer"))
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
-    val namer = new EndpointsNamer(Path.empty, mkNs)
+    val namer = new EndpointsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     new SubnetGatewayTransformer(daemonSet, Netmask("255.255.255.0"))
   }

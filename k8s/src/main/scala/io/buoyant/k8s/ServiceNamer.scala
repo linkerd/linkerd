@@ -18,26 +18,39 @@ import java.net.InetSocketAddress
  */
 class ServiceNamer(
   idPrefix: Path,
+  labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   private[this] val PrefixLen = 3
+  private[this] val variablePrefixLength = PrefixLen + labelName.size
 
-  override def lookup(path: Path): Activity[NameTree[Name]] = path.take(PrefixLen) match {
-    case id@Path.Utf8(nsName, portName, serviceName) =>
+  def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
+    case (id@Path.Utf8(nsName, portName, serviceName), None) =>
+      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map(toNameTree(path, _))
+      Activity(nameTree.map(Activity.Ok(_)))
 
-      val nameTree = serviceNs.get(nsName).get(serviceName, portName).map {
-        case Some(address) =>
-          val bound = address.map(Addr.Bound(_))
-          NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, path.drop(PrefixLen)))
-        case None =>
-          NameTree.Neg
-      }
+    case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
+      val nameTree = serviceNs
+        .get(nsName, Some(s"$label=$labelValue"))
+        .get(serviceName, portName)
+        .map(toNameTree(path, _))
+
       Activity(nameTree.map(Activity.Ok(_)))
 
     case _ =>
       Activity.value(NameTree.Neg)
+  }
+
+  private[this] def toNameTree(path: Path, svcAddress: Option[Var[Address]]): NameTree[Name.Bound] = svcAddress match {
+    case Some(address) =>
+      val residual = path.drop(variablePrefixLength)
+      val id = path.take(variablePrefixLength)
+      val bound = address.map(Addr.Bound(_))
+      NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, residual))
+    case None =>
+      NameTree.Neg
   }
 
   private[this] def getPort(service: Service, portName: String): Option[Int] =
