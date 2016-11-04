@@ -13,6 +13,11 @@ import java.net.InetAddress
 class SubnetGatewayTransformer(
   gatewayTree: Activity[NameTree[Bound]],
   netmask: Netmask
+) extends GatewayTransformer(gatewayTree, netmask.local)
+
+class GatewayTransformer(
+  gatewayTree: Activity[NameTree[Bound]],
+  gatewayPredicate: (Address, Address) => Boolean
 ) extends DelegatingNameTreeTransformer {
 
   override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
@@ -46,7 +51,7 @@ class SubnetGatewayTransformer(
       case List(Addr.Bound(addrs, meta), Addr.Bound(gatewayAddrs, _)) =>
         val selected = addrs.flatMap { addr =>
           // select the gateway addresses that share a subnet with addr
-          gatewayAddrs.filter(netmask.local(addr, _))
+          gatewayAddrs.filter(gatewayPredicate(addr, _))
         }
         Addr.Bound(selected, meta)
       case List(addr, _) => addr

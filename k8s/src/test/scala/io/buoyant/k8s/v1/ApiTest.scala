@@ -50,21 +50,21 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       subsets = Seq(
         EndpointSubset(
           addresses = Some(Seq(
-            EndpointAddress("10.248.1.6", Some(ObjectReference(
+            EndpointAddress("10.248.1.6", None, Some(ObjectReference(
               kind = Some("Pod"),
               namespace = Some("srv"),
               name = Some("accounts-63f7n"),
               uid = Some("1a91058a-4d10-11e5-9859-42010af01815"),
               resourceVersion = Some("4430526")
             ))),
-            EndpointAddress("10.248.5.6", Some(ObjectReference(
+            EndpointAddress("10.248.5.6", None, Some(ObjectReference(
               kind = Some("Pod"),
               namespace = Some("srv"),
               name = Some("accounts-rvgf2"),
               uid = Some("1a90f98c-4d10-11e5-9859-42010af01815"),
               resourceVersion = Some("4430498")
             ))),
-            EndpointAddress("10.248.8.6", Some(ObjectReference(
+            EndpointAddress("10.248.8.6", None, Some(ObjectReference(
               kind = Some("Pod"),
               namespace = Some("srv"),
               name = Some("accounts-is3is"),
@@ -247,11 +247,11 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147786")
-              assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+              assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
               await(stream().uncons) match {
                 case Some((EndpointsModified(mod), stream)) =>
                   assert(mod.metadata.get.resourceVersion.get == "17147808")
-                  assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+                  assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                   val next = stream().uncons
                   await(closable.close())
                   assert(!next.isDefined)
@@ -356,11 +356,11 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       await(stream.uncons) match {
         case Some((EndpointsModified(mod), stream)) =>
           assert(mod.metadata.get.resourceVersion.get == "17147786")
-          assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+          assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147808")
-              assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+              assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
               val next = stream().uncons
               await(closable.close())
               assert(!next.isDefined)
