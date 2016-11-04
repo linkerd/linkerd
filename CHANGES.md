@@ -6,6 +6,7 @@
 * Add Const and Replace transformers
 * Add `useHealthCheck` option to marathon namer
 * Add experimental Apache Curator namer
+* Show transformers in the delegate UI
 
 ## 0.8.2
 
