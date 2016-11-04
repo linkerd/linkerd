@@ -1,7 +1,6 @@
 package io.buoyant.marathon.v2
 
-import com.twitter.finagle.service.Backoff
-import com.twitter.finagle.{Addr, Name, NameTree, Namer, Path}
+import com.twitter.finagle.{Addr, Name, Namer, NameTree, Path}
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
