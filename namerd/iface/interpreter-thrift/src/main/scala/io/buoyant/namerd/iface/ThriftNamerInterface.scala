@@ -272,6 +272,18 @@ object ThriftNamerInterface {
       case DelegateTree.Union(path, dentry, trees@_*) =>
         val agg = trees.foldLeft(DelegateUnionAgg(nextId))(_ + _)
         (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Weighted(agg.trees)), agg.nodes, agg.nextId)
+      case DelegateTree.Transformation(path, name, value, tree) =>
+        val (node, childNodes, nextNextId) = mkDelegateTree(tree, nextId)
+        val bound = value match {
+          case bound: Name.Bound =>
+            bound.id match {
+              case id: Path => thrift.BoundName(TPath(id))
+              case _ => thrift.BoundName(TPath(Path.empty))
+            }
+          case path: Name.Path => thrift.BoundName(TPath(path.path))
+        }
+        (thrift.DelegateNode(TPath(path), name, thrift.DelegateContents.Transformation(thrift.Transformation(bound, nextNextId))),
+          childNodes + (nextNextId -> node), nextNextId + 1)
     }
 
   def parseDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Path] = {
@@ -306,6 +318,8 @@ object ThriftNamerInterface {
           throw new IllegalArgumentException("delegation cannot accept bound names")
         case thrift.DelegateContents.UnknownUnionField(_) =>
           throw new IllegalArgumentException("unknown union field")
+        case thrift.DelegateContents.Transformation(transformation) =>
+          throw new IllegalArgumentException("delegation cannot accept transformations")
       }
     }
     parseDelegateNode(dt.root)
