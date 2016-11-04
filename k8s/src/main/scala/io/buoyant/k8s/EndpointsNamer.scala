@@ -34,7 +34,7 @@ class EndpointsNamer(
     case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
       val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-      lookupServices(endpointNs.get(nsName, Some(s"${label}=${labelValue}")), id.take(PrefixLen), residual)
+      lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
 
     case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
       log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -44,7 +44,11 @@ class EndpointsNamer(
       Activity.value(NameTree.Neg)
   }
 
-  private[this] def lookupServices(cache: NsCache, id: Path, residual: Path): Activity[NameTree[Name]] = id match {
+  private[this] def lookupServices(
+    cache: NsCache,
+    id: Path,
+    residual: Path
+  ): Activity[NameTree[Name]] = id.take(PrefixLen) match {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       cache.services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
@@ -70,7 +74,7 @@ class EndpointsNamer(
       }
   }
 
-  private[this] val variablePrefixLength = if (labelName.isEmpty) PrefixLen else PrefixLen + 1
+  private[this] val variablePrefixLength = PrefixLen + labelName.size
 
   private[this] val endpointNs =
     new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {

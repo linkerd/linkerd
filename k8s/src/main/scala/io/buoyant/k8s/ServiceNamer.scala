@@ -24,33 +24,33 @@ class ServiceNamer(
 )(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   private[this] val PrefixLen = 3
-  private[this] val variablePrefixLength = if (labelName.isEmpty) PrefixLen else PrefixLen + 1
+  private[this] val variablePrefixLength = PrefixLen + labelName.size
 
   def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
     case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-      val residual = path.drop(variablePrefixLength)
-      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map {
-        case Some(address) =>
-          val bound = address.map(Addr.Bound(_))
-          NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, path.drop(PrefixLen)))
-        case None =>
-          NameTree.Neg
-      }
+      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map(toNameTree(path, _))
       Activity(nameTree.map(Activity.Ok(_)))
 
     case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
-      val residual = path.drop(variablePrefixLength)
-      val nameTree = serviceNs.get(nsName, Some(s"${label}=${labelValue}")).get(serviceName, portName).map {
-        case Some(address) =>
-          val bound = address.map(Addr.Bound(_))
-          NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, path.drop(PrefixLen)))
-        case None =>
-          NameTree.Neg
-      }
+      val nameTree = serviceNs
+        .get(nsName, Some(s"$label=$labelValue"))
+        .get(serviceName, portName)
+        .map(toNameTree(path, _))
+
       Activity(nameTree.map(Activity.Ok(_)))
 
     case _ =>
       Activity.value(NameTree.Neg)
+  }
+
+  private[this] def toNameTree(path: Path, svcAddress: Option[Var[Address]]): NameTree[Name.Bound] = svcAddress match {
+    case Some(address) =>
+      val residual = path.drop(variablePrefixLength)
+      val id = path.take(variablePrefixLength)
+      val bound = address.map(Addr.Bound(_))
+      NameTree.Leaf(Name.Bound(bound, idPrefix ++ id, residual))
+    case None =>
+      NameTree.Neg
   }
 
   private[this] def getPort(service: Service, portName: String): Option[Int] =
