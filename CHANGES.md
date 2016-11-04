@@ -6,6 +6,7 @@
 * Add Const and Replace transformers
 * Add `useHealthCheck` option to marathon namer
 * Add experimental Apache Curator namer
+* Add `hostNetwork` option to k8s transformers to support CNI environments
 
 ## 0.8.2
 

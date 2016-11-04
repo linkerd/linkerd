@@ -62,6 +62,7 @@ k8sPort | `8001` | The Kubernetes master post.
 namespace | _required_ | The Kubernetes namespace of the daemonset.
 service | _required_ | The Kubernetes service name for the daemonset.
 port | _required_ | The name of the daemonset port to use.
+hostNetwork | `false` | If true, use nodeName instead of /24 subnet to determine which daemonset pod is on the destination node.  Set this to true if the daemonset is running with `hostNetwork: true`.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -90,6 +91,10 @@ env:
       fieldRef:
         fieldPath: status.podIP
 ```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+hostNetwork | `false` | If true, use nodeName to determine which pods are on the local node.  This adds the requirement that the `NODE_NAME` environment variable be set with the node name.  Set this to true if the pod is running with `hostNetwork: true`.
 
 ## Replace
 
