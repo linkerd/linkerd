@@ -15,6 +15,14 @@ class SubnetGatewayTransformer(
   netmask: Netmask
 ) extends GatewayTransformer(gatewayTree, netmask.local)
 
+class MetadataGatewayTransformer(
+  gatewayTree: Activity[NameTree[Bound]],
+  metadataField: String
+) extends GatewayTransformer(gatewayTree, {
+  case (Address.Inet(_, a), Address.Inet(_, b)) => a.get(metadataField) == b.get(metadataField)
+  case _ => true
+})
+
 class GatewayTransformer(
   gatewayTree: Activity[NameTree[Bound]],
   gatewayPredicate: (Address, Address) => Boolean

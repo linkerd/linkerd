@@ -98,3 +98,11 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
   override protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
     Activity.value(tree.map(mapBound))
 }
+
+class MetadataFiltertingNameTreeTransformer(metadataKey: String, metadataValue: Any) extends FilteringNameTreeTransformer {
+  protected val predicate: Address => Boolean = {
+    case a@Address.Inet(_, meta) =>
+      meta.get(metadataKey).contains(metadataValue)
+    case _ => true
+  }
+}
