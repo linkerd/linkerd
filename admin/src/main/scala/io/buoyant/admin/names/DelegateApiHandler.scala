@@ -77,7 +77,8 @@ object DelegateApiHandler {
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Delegate], name = "delegate"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Leaf], name = "leaf"),
     new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Alt], name = "alt"),
-    new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Union], name = "union")
+    new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Union], name = "union"),
+    new JsonSubTypes.Type(value = classOf[JsonDelegateTree.Transformation], name = "transformation")
   ))
   sealed trait JsonDelegateTree
   object JsonDelegateTree {
@@ -90,6 +91,7 @@ object DelegateApiHandler {
     case class Alt(path: Path, dentry: Option[Dentry], alt: Seq[JsonDelegateTree]) extends JsonDelegateTree
     case class Union(path: Path, dentry: Option[Dentry], union: Seq[Weighted]) extends JsonDelegateTree
     case class Weighted(weight: Double, tree: JsonDelegateTree)
+    case class Transformation(path: Path, name: String, bound: Bound, tree: JsonDelegateTree) extends JsonDelegateTree
 
     private[this] val fail = Path.read("/$/fail")
 
@@ -117,6 +119,11 @@ object DelegateApiHandler {
         Future.collect(weights).map(JsonDelegateTree.Union(p, mkDentry(d), _))
       case DelegateTree.Leaf(p, d, b) =>
         Bound.mk(p, b).map(JsonDelegateTree.Leaf(p, mkDentry(d), _))
+      case DelegateTree.Transformation(p, n, b, t) =>
+        mk(t).join(Bound.mk(p, b)).map {
+          case (tree, bound) =>
+            JsonDelegateTree.Transformation(p, n, bound, tree)
+        }
     }
 
     def mkDentry(d: Dentry): Option[Dentry] = Some(d).filterNot(Dentry.equiv.equiv(Dentry.nop, _))

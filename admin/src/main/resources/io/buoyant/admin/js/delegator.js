@@ -10,6 +10,15 @@ var Delegator = (function() {
   function renderNode(obj, weight){
     switch(obj.type) {
       case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate); break;
+      case "transformation":
+        obj.isLeaf = true;
+        obj.dentry = obj.tree.dentry;
+        obj.tree.dentry = null;
+        obj.tree.transformation = obj.name;
+        obj.tree.isTransformation = true;
+        obj.bound.transformed = renderNode(obj.tree);
+        obj.child = renderNode(obj.bound);
+        break;
       case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,_i){ return renderNode(e); }).join(""); break;
       case "union": obj.isUnion = true; obj.child = obj.union.map(function(e,_i){ return renderNode(e.tree, e.weight); }).join(""); break;
       case "neg": obj.isNeg = true; break;

@@ -117,6 +117,11 @@ exception AddrFailure {
 
 typedef i32 DelegateNodeId
 
+struct Transformation {
+  1: BoundName value
+  2: DelegateNodeId tree
+}
+
 union DelegateContents {
   1: string excpetion
   2: Void empty
@@ -127,6 +132,7 @@ union DelegateContents {
   7: Path pathLeaf
   8: list<DelegateNodeId> alt
   9: list<WeightedNodeId> weighted
+  10: Transformation transformation
 }
 
 struct DelegateNode {
