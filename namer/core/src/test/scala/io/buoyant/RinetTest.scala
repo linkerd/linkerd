@@ -2,10 +2,9 @@ package io.buoyant
 
 import com.twitter.finagle._
 import com.twitter.util.Future
-import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
-class RinetTest extends FunSuite with Awaits {
+class RinetTest extends FunSuite {
 
   test("rinet binds") {
     val path = Path.read("/$/io.buoyant.rinet/12345/localhost")
