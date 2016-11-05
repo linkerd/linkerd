@@ -13,7 +13,7 @@ object AppIdNamer {
 class AppIdNamer(
   api: Api,
   prefix: Path,
-  ttl: Duration,
+  ttl: Stream[Duration],
   timer: Timer = DefaultTimer.twitter
 ) extends Namer {
 
@@ -70,7 +70,7 @@ class AppIdNamer(
             state() = Activity.Ok(apps)
             Trace.recordBinary("marathon.apps", apps.map(_.show).mkString(","))
             if (!stopped) {
-              pending = Future.sleep(ttl).onSuccess(_ => loop())
+              pending = Future.sleep(ttl.head).onSuccess(_ => loop())
             }
 
           case Throw(NonFatal(e)) =>
@@ -78,7 +78,7 @@ class AppIdNamer(
               state() = Activity.Failed(e)
             }
             if (!stopped) {
-              pending = Future.sleep(ttl).onSuccess(_ => loop())
+              pending = Future.sleep(ttl.head).onSuccess(_ => loop())
             }
 
           case Throw(e) =>
@@ -111,7 +111,7 @@ class AppIdNamer(
                 initialized = true
                 addr() = Addr.Bound(addrs)
                 if (!stopped) {
-                  pending = Future.sleep(ttl).onSuccess(_ => loop())
+                  pending = Future.sleep(ttl.head).onSuccess(_ => loop())
                 }
 
               case Throw(NonFatal(e)) =>
@@ -119,7 +119,7 @@ class AppIdNamer(
                   addr() = Addr.Failed(e)
                 }
                 if (!stopped) {
-                  pending = Future.sleep(ttl).onSuccess(_ => loop())
+                  pending = Future.sleep(ttl.head).onSuccess(_ => loop())
                 }
 
               case Throw(e) =>

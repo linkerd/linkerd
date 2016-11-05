@@ -3,9 +3,9 @@ package io.buoyant.namer.marathon
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path, Stack}
+import com.twitter.util.Duration
 import io.buoyant.config.types.Port
 import io.buoyant.marathon.v2.{Api, AppIdNamer}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
@@ -22,6 +22,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   port:      80
  *   uriPrefix: /marathon
  *   ttlMs:     5000
+ *   jitterMs:  50
  * </pre>
  */
 class MarathonInitializer extends NamerInitializer {
@@ -36,7 +37,8 @@ case class MarathonConfig(
   port: Option[Port],
   dst: Option[String],
   uriPrefix: Option[String],
-  ttlMs: Option[Int]
+  ttlMs: Option[Int],
+  jitterMs: Option[Int]
 ) extends NamerConfig {
   @JsonIgnore
   override val experimentalRequired = true
@@ -50,12 +52,18 @@ case class MarathonConfig(
     case None => 80
   }
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
+
   @JsonIgnore
-  private[this] def getRandomJitterMs: Int = {
-    val jitterMsConfig = ttlMs.getOrElse(5000) * 0.10.toInt //10% jitter from ttl
-    if(jitterMsConfig == 0) 0 else scala.util.Random.nextInt() % jitterMsConfig
+  private[this] def getJitteredNextTtl(ttlMs: Int, jitterMsConf: Int): Stream[Duration] = {
+    require(ttlMs > jitterMsConf, "TTL should be greater than jitter")
+    val jitter = if (jitterMsConf == 0) ttlMs
+    else ttlMs - scala.util.Random.nextInt() % jitterMsConf
+    Stream.cons(jitter.millis, getJitteredNextTtl(ttlMs, jitterMsConf))
   }
-  private[this] def getTtl = (ttlMs.getOrElse(5000) - getRandomJitterMs).millis
+  private[this] def getTtl: Stream[Duration] = {
+    val jitterMsConfig = jitterMs.getOrElse(0)
+    getJitteredNextTtl(ttlMs.getOrElse(5000), jitterMsConfig)
+  }
 
   private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")
 

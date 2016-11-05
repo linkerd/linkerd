@@ -6,6 +6,7 @@ namers:
   port:         80
   uriPrefix:    /marathon
   ttlMs:        300
+  jitterMs:     50
 
 routers:
 - protocol: http
