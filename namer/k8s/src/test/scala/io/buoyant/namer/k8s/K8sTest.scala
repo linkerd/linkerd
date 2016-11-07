@@ -11,7 +11,7 @@ class K8sTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = K8sConfig(None, None).newNamer(Stack.Params.empty)
+    val _ = K8sConfig(None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -24,12 +24,14 @@ class K8sTest extends FunSuite {
                   |experimental: true
                   |host: k8s-master.site.biz
                   |port: 80
+                  |labelSelector: version
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(K8sInitializer)))
     val k8s = mapper.readValue[NamerConfig](yaml).asInstanceOf[K8sConfig]
     assert(k8s.host == Some("k8s-master.site.biz"))
     assert(k8s.port == Some(Port(80)))
+    assert(k8s.labelSelector == Some("version"))
     assert(!k8s.disabled)
   }
 

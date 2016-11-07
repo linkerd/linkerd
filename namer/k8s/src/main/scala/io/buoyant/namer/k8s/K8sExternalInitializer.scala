@@ -27,7 +27,8 @@ object K8sExternalInitializer extends K8sExternalInitializer
 
 case class K8sExternalConfig(
   host: Option[String],
-  port: Option[Port]
+  port: Option[Port],
+  labelSelector: Option[String]
 ) extends NamerConfig with ClientConfig {
 
   @JsonIgnore
@@ -49,6 +50,6 @@ case class K8sExternalConfig(
       val label = param.Label(s"namer${prefix.show}/$ns")
       Api(client.configured(label).newService(dst)).withNamespace(ns)
     }
-    new ServiceNamer(prefix, mkNs)
+    new ServiceNamer(prefix, labelSelector, mkNs)
   }
 }
