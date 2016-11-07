@@ -7,6 +7,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
 import io.buoyant.namer.EnumeratingNamer
+import java.net.InetSocketAddress
 import scala.collection.mutable
 
 class EndpointsNamer(
@@ -115,7 +116,7 @@ private object EndpointsNamer {
     for (subset <- subsets) {
       val ips = subset.addresses match {
         case None => Set.empty
-        case Some(addrs) => addrs.map(_.ip).toSet
+        case Some(addrs) => addrs.map { addr => (addr.ip, addr.nodeName) }.toSet
       }
 
       for {
@@ -125,7 +126,11 @@ private object EndpointsNamer {
         val proto = port.protocol.map(_.toUpperCase).getOrElse("TCP")
         (proto, port.name) match {
           case ("TCP", Some(name)) =>
-            val addrs: Set[Address] = ips.map(ip => Address(ip, port.port))
+            val addrs: Set[Address] = ips.map {
+              case (ip, nodeName) =>
+                val isa = new InetSocketAddress(ip, port.port)
+                Address.Inet(isa, Map("nodeName" -> nodeName))
+            }
             addrsByPort(name) = addrsByPort.getOrElse(name, Set.empty) ++ addrs
 
           case _ =>

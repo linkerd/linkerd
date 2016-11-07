@@ -8,6 +8,7 @@
 * Add experimental Apache Curator namer
 * Show transformers in the delegate UI
 * Add `labelSelector` option to k8s and k8s.external namers.
+* Add `hostNetwork` option to k8s transformers to support CNI environments
 
 ## 0.8.2
 

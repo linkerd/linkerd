@@ -20,7 +20,8 @@ case class DaemonSetTransformerConfig(
   k8sPort: Option[Port],
   namespace: String,
   service: String,
-  port: String
+  port: String,
+  hostNetwork: Option[Boolean]
 ) extends TransformerConfig with ClientConfig {
   assert(namespace != null, "io.l5d.k8s.daemonset: namespace property is required")
   assert(service != null, "io.l5d.k8s.daemonset: service property is required")
@@ -36,6 +37,9 @@ case class DaemonSetTransformerConfig(
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
     val namer = new EndpointsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
-    new SubnetGatewayTransformer(daemonSet, Netmask("255.255.255.0"))
+    if (hostNetwork.getOrElse(false))
+      new MetadataGatewayTransformer(daemonSet, NodeNameMetaKey)
+    else
+      new SubnetGatewayTransformer(daemonSet, Netmask("255.255.255.0"))
   }
 }
