@@ -64,6 +64,6 @@ case class ThriftClientConfig(
   @JsonIgnore
   override def clientParams: Params = super.clientParams
     .maybeWith(thriftFramed.map(param.Framed(_)))
-    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
-    .maybeWith(attemptTTwitterUpgrade.map(AttemptTTwitterUpgrade(_)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory))) +
+    AttemptTTwitterUpgrade(attemptTTwitterUpgrade.getOrElse(false))
 }
