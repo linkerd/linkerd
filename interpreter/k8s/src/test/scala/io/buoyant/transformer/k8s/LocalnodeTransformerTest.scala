@@ -4,7 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
-import io.buoyant.namer.MetadataFiltertingNameTreeTransformer
+import io.buoyant.namer.{Metadata, MetadataFiltertingNameTreeTransformer}
 import io.buoyant.test.FunSuite
 import io.buoyant.transformer.{Netmask, SubnetLocalTransformer}
 import java.net.{InetAddress, InetSocketAddress}
@@ -43,7 +43,7 @@ class LocalnodeTransformerTest extends FunSuite {
   }
 
   test("localnode transformer with host network") {
-    val transformer = new MetadataFiltertingNameTreeTransformer(NodeNameMetaKey, Some("7.7.7.7"))
+    val transformer = new MetadataFiltertingNameTreeTransformer(Metadata.nodeName, "7.7.7.7")
 
     val interpreter = new NameInterpreter {
       override def bind(
@@ -51,10 +51,10 @@ class LocalnodeTransformerTest extends FunSuite {
         path: Path
       ): Activity[NameTree[Bound]] = Activity.value(
         NameTree.Leaf(Name.Bound(Var(Addr.Bound(
-          Address.Inet(new InetSocketAddress("1.1.1.1", 8888), Map(NodeNameMetaKey -> Some("7.7.7.7"))),
-          Address.Inet(new InetSocketAddress("1.1.1.2", 8888), Map(NodeNameMetaKey -> Some("7.7.7.7"))),
-          Address.Inet(new InetSocketAddress("1.1.1.3", 8888), Map(NodeNameMetaKey -> Some("7.7.7.8"))),
-          Address.Inet(new InetSocketAddress("1.1.1.4", 8888), Map(NodeNameMetaKey -> Some("7.7.7.8")))
+          Address.Inet(new InetSocketAddress("1.1.1.1", 8888), Map(Metadata.nodeName -> "7.7.7.7")),
+          Address.Inet(new InetSocketAddress("1.1.1.2", 8888), Map(Metadata.nodeName -> "7.7.7.7")),
+          Address.Inet(new InetSocketAddress("1.1.1.3", 8888), Map(Metadata.nodeName -> "7.7.7.8")),
+          Address.Inet(new InetSocketAddress("1.1.1.4", 8888), Map(Metadata.nodeName -> "7.7.7.8"))
         )), path, Path.empty))
       )
     }
@@ -71,8 +71,8 @@ class LocalnodeTransformerTest extends FunSuite {
     }
 
     assert(addrs == Set(
-      Address.Inet(new InetSocketAddress("1.1.1.1", 8888), Map(NodeNameMetaKey -> Some("7.7.7.7"))),
-      Address.Inet(new InetSocketAddress("1.1.1.2", 8888), Map(NodeNameMetaKey -> Some("7.7.7.7")))
+      Address.Inet(new InetSocketAddress("1.1.1.1", 8888), Map(Metadata.nodeName -> "7.7.7.7")),
+      Address.Inet(new InetSocketAddress("1.1.1.2", 8888), Map(Metadata.nodeName -> "7.7.7.7"))
     ))
   }
 }

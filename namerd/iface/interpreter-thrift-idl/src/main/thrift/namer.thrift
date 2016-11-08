@@ -82,6 +82,7 @@ struct AddrReq {
 
 struct AddrMeta {
   1: optional string authority // HTTP/1.1 Host or HTTP/2.0 :authority
+  2: optional string nodeName
 }
 
 struct TransportAddress {
