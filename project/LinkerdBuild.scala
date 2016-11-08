@@ -131,8 +131,6 @@ object LinkerdBuild extends Base {
       .dependsOn(configCore)
       .withTwitterLib(Deps.finagle("core"))
       .withTwitterLib(Deps.finagle("stats") % Test)
-      .withTwitterLib(Deps.finagle("zipkin-core"))
-      .withTwitterLib(Deps.finagle("zipkin"))
       .withTests()
 
     val commonMetrics = projectDir("telemetry/common-metrics")
@@ -144,7 +142,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core, Router.core)
       .withTests()
 
-    val tracekafka = projectDir("telemetry/trace-kafka")
+    val zipkinKafka = projectDir("telemetry/trace-kafka")
       .dependsOn(core)
       .withTwitterLib(Deps.finagle("zipkin-core"))
       .withTwitterLib(Deps.finagle("zipkin"))
@@ -152,7 +150,7 @@ object LinkerdBuild extends Base {
 
     val all = projectDir("telemetry")
       .settings(aggregateSettings)
-      .aggregate(core, commonMetrics, tracelog, tracekafka)
+      .aggregate(core, commonMetrics, tracelog, zipkinKafka)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -476,7 +474,7 @@ object LinkerdBuild extends Base {
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, configCore, core, Telemetry.commonMetrics, Telemetry.tracekafka)
+      .dependsOn(admin, configCore, core, Telemetry.commonMetrics, Telemetry.zipkinKafka)
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
@@ -600,7 +598,7 @@ object LinkerdBuild extends Base {
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
   val telemetryTracelog = Telemetry.tracelog
-  val telemetryTracekafka = Telemetry.tracekafka
+  val telemetryTracekafka = Telemetry.zipkinKafka
 
   val namer = Namer.all
   val namerCore = Namer.core
