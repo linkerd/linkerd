@@ -1,3 +1,7 @@
+## x.x.x
+
+* Change default value of `attemptTTwitterUpgrade` to `false`
+
 ## 0.8.3
 
 * Make several namers available to namerd that were missing
