@@ -47,4 +47,18 @@ class ThriftInitializerTest extends FunSuite with Exceptions {
       Linker.Initializers(Seq(ThriftInitializer)).load(config)
     }
   }
+
+  test("attemptTTwitterUpgrade defaults false") {
+    val config = """
+                   |routers:
+                   |- protocol: thrift
+                   |  servers:
+                   |  - thriftFramed: true
+                   |    thriftProtocol: compact
+                 """.stripMargin
+
+    val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
+    val router = linker.routers.head
+    assert(!router.params[AttemptTTwitterUpgrade].upgrade)
+  }
 }
