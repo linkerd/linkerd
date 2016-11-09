@@ -4,6 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
+import io.buoyant.namer.Metadata
 import io.buoyant.test.FunSuite
 import io.buoyant.transformer.{MetadataGatewayTransformer, Netmask, SubnetGatewayTransformer}
 import java.net.InetSocketAddress
@@ -57,13 +58,13 @@ class DaemonSetTransformerTest extends FunSuite {
   test("daemonset transformer with hostNetwork") {
     val daemonset = Activity.value(
       NameTree.Leaf(Name.Bound(Var(Addr.Bound(
-        Address.Inet(new InetSocketAddress("7.7.7.1", 4141), Map(NodeNameMetaKey -> Some("7.7.7.1"))),
-        Address.Inet(new InetSocketAddress("7.7.7.2", 4141), Map(NodeNameMetaKey -> Some("7.7.7.2"))),
-        Address.Inet(new InetSocketAddress("7.7.7.3", 4141), Map(NodeNameMetaKey -> Some("7.7.7.3")))
+        Address.Inet(new InetSocketAddress("7.7.7.1", 4141), Map(Metadata.nodeName -> "7.7.7.1")),
+        Address.Inet(new InetSocketAddress("7.7.7.2", 4141), Map(Metadata.nodeName -> "7.7.7.2")),
+        Address.Inet(new InetSocketAddress("7.7.7.3", 4141), Map(Metadata.nodeName -> "7.7.7.3"))
       )), Path.read("/#/io.l5d.k8s/default/incoming/l5d"), Path.empty))
     )
 
-    val transformer = new MetadataGatewayTransformer(daemonset, NodeNameMetaKey)
+    val transformer = new MetadataGatewayTransformer(daemonset, Metadata.nodeName)
 
     val interpreter = new NameInterpreter {
       override def bind(
@@ -73,7 +74,7 @@ class DaemonSetTransformerTest extends FunSuite {
         val Path.Utf8(ip, nodeName) = path
         Activity.value(
           NameTree.Leaf(Name.Bound(Var(Addr.Bound(
-            Address.Inet(new InetSocketAddress(ip, 8888), Map(NodeNameMetaKey -> Some(nodeName)))
+            Address.Inet(new InetSocketAddress(ip, 8888), Map(Metadata.nodeName -> nodeName))
           )), path, Path.empty))
         )
       }
@@ -97,7 +98,7 @@ class DaemonSetTransformerTest extends FunSuite {
         addresses
       }
 
-      assert(addrs == Set(Address.Inet(new InetSocketAddress(expected, 4141), Map(NodeNameMetaKey -> Some(expected)))))
+      assert(addrs == Set(Address.Inet(new InetSocketAddress(expected, 4141), Map(Metadata.nodeName -> expected))))
     }
   }
 }

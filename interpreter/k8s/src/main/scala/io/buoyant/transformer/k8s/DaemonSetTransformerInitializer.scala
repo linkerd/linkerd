@@ -7,7 +7,7 @@ import com.twitter.finagle.{NameTree, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1.Api
 import io.buoyant.k8s.{ClientConfig, EndpointsNamer}
-import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
+import io.buoyant.namer.{Metadata, NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.InetAddress
 
 class DaemonSetTransformerInitializer extends TransformerInitializer {
@@ -38,7 +38,7 @@ case class DaemonSetTransformerConfig(
     val namer = new EndpointsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     if (hostNetwork.getOrElse(false))
-      new MetadataGatewayTransformer(daemonSet, NodeNameMetaKey)
+      new MetadataGatewayTransformer(daemonSet, Metadata.nodeName)
     else
       new SubnetGatewayTransformer(daemonSet, Netmask("255.255.255.0"))
   }

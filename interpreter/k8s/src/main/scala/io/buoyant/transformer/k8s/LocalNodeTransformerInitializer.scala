@@ -1,7 +1,6 @@
 package io.buoyant.transformer
 package k8s
 
-import com.twitter.finagle.Address
 import io.buoyant.namer._
 import java.net.InetAddress
 
@@ -21,7 +20,7 @@ case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
           "NODE_NAME env variable must be set to the node's name"
         )
       )
-      new MetadataFiltertingNameTreeTransformer(NodeNameMetaKey, Some(nodeName))
+      new MetadataFiltertingNameTreeTransformer(Metadata.nodeName, nodeName)
     } else {
       val ip = sys.env.getOrElse(
         "POD_IP",

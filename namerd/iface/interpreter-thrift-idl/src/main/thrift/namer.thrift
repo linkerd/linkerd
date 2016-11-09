@@ -82,6 +82,8 @@ struct AddrReq {
 
 struct AddrMeta {
   1: optional string authority // HTTP/1.1 Host or HTTP/2.0 :authority
+  2: optional string nodeName // In scheduled environments, the name of the node
+                              // that this address is scheduled on.
 }
 
 struct TransportAddress {
