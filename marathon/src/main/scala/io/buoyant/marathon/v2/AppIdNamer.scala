@@ -63,14 +63,14 @@ class AppIdNamer(
       @volatile var initialized, stopped = false
       @volatile var pending: Future[_] = Future.never
 
-      def loop(): Unit = if (!stopped) {
+      def loop(ttl: Stream[Duration]): Unit = if (!stopped) {
         pending = api.getAppIds().respond {
           case Return(apps) =>
             initialized = true
             state() = Activity.Ok(apps)
             Trace.recordBinary("marathon.apps", apps.map(_.show).mkString(","))
             if (!stopped) {
-              pending = Future.sleep(ttl.head).onSuccess(_ => loop())
+              pending = Future.sleep(ttl.head).onSuccess(_ => loop(ttl.tail))
             }
 
           case Throw(NonFatal(e)) =>
@@ -78,7 +78,7 @@ class AppIdNamer(
               state() = Activity.Failed(e)
             }
             if (!stopped) {
-              pending = Future.sleep(ttl.head).onSuccess(_ => loop())
+              pending = Future.sleep(ttl.head).onSuccess(_ => loop(ttl.tail))
             }
 
           case Throw(e) =>
@@ -86,7 +86,7 @@ class AppIdNamer(
         }
       }
 
-      loop()
+      loop(ttl)
       Closable.make { deadline =>
         stopped = true
         pending.raise(Closed)
@@ -105,13 +105,13 @@ class AppIdNamer(
           @volatile var initialized, stopped = false
           @volatile var pending: Future[_] = Future.never
 
-          def loop(): Unit = if (!stopped) {
+          def loop(ttl: Stream[Duration]): Unit = if (!stopped) {
             pending = api.getAddrs(app).respond {
               case Return(addrs) =>
                 initialized = true
                 addr() = Addr.Bound(addrs)
                 if (!stopped) {
-                  pending = Future.sleep(ttl.head).onSuccess(_ => loop())
+                  pending = Future.sleep(ttl.head).onSuccess(_ => loop(ttl.tail))
                 }
 
               case Throw(NonFatal(e)) =>
@@ -119,7 +119,7 @@ class AppIdNamer(
                   addr() = Addr.Failed(e)
                 }
                 if (!stopped) {
-                  pending = Future.sleep(ttl.head).onSuccess(_ => loop())
+                  pending = Future.sleep(ttl.head).onSuccess(_ => loop(ttl.tail))
                 }
 
               case Throw(e) =>
@@ -127,7 +127,7 @@ class AppIdNamer(
             }
           }
 
-          loop()
+          loop(ttl)
           Closable.make { deadline =>
             stopped = true
             synchronized {

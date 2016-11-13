@@ -123,7 +123,7 @@ object Main extends App {
               log.info("announcing %s as %s to %s", addr, name.show, announcer.scheme)
               announcer.announce(addr, name.drop(prefix.size))
             }
-          }
+        }
         Closable.all(closers: _*)
     }
   }

@@ -54,15 +54,13 @@ case class MarathonConfig(
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
 
   @JsonIgnore
-  private[this] def getJitteredNextTtl(ttlMs: Int, jitterMsConf: Int): Stream[Duration] = {
-    require(ttlMs > jitterMsConf, "TTL should be greater than jitter")
-    val jitter = if (jitterMsConf == 0) ttlMs
-    else ttlMs - scala.util.Random.nextInt() % jitterMsConf
-    Stream.cons(jitter.millis, getJitteredNextTtl(ttlMs, jitterMsConf))
+  private[this] def getJitteredTtl(ttl: Int, jitterConf: Int): Stream[Duration] = {
+    require(ttl > jitterConf, "TTL should be greater than jitter")
+    val jitter = (ttl + (scala.util.Random.nextDouble() * 2 - 1) * jitterConf).toInt
+    Stream.continually(jitter.millis)
   }
   private[this] def getTtl: Stream[Duration] = {
-    val jitterMsConfig = jitterMs.getOrElse(0)
-    getJitteredNextTtl(ttlMs.getOrElse(5000), jitterMsConfig)
+    getJitteredTtl(ttlMs.getOrElse(5000), jitterMs.getOrElse(0))
   }
 
   private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")
