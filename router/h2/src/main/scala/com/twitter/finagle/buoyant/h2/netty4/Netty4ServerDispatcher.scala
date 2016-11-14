@@ -87,7 +87,7 @@ class Netty4ServerDispatcher(
             streams.get(id) match {
               case null =>
                 log.error(s"server dispatcher dropping ${frame.name} message on unknown stream ${id}")
-                writer.resetStreamClosed(id)
+                writer.write(id, Frame.Reset(Error.StreamClosed))
 
               case stream =>
                 if (stream.offerRemote(frame)) {

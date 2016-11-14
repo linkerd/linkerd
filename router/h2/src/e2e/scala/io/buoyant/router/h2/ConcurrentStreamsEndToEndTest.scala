@@ -77,8 +77,7 @@ class ConcurrentStreamsEndToEndTest
                 d.release().join(read(remaining)).unit
             }
 
-          case t: Frame.Trailers =>
-            fail(s"unexpected trailers $t")
+          case f => fail(s"unexpected frame $f")
         }
 
       writer.write(Frame.Data(buf, eos)).before(read(buf.length))

@@ -67,9 +67,9 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     val sendq = new AsyncQueue[Frame]
     val endP = new Promise[Unit]
     val data = new Stream.Reader {
-      def onEnd = endP
-      def read() = sendq.poll()
-      def reset(exn: Throwable) = ???
+      override def onEnd = endP
+      override def read() = sendq.poll()
+      override def reset(e: Error.StreamError) = ???
     }
     val w = stream.writeStream(data)
     assert(!w.isDefined)

@@ -61,12 +61,13 @@ class FlowControlEndToEndTest
     while (read < WindowSize) {
       log.debug("~~~ reading %d/%d", read, WindowSize)
       await(reader.read()) match {
-        case _: Frame.Trailers => fail("unexpected trailers")
         case d: Frame.Data =>
           // frames += d
           read += d.buf.length
           log.debug("~~~ read %d = %d/%d", d.buf.length, read, WindowSize)
           await(d.release())
+
+        case f => fail(s"unexpected frame: $f")
       }
     }
     assert(read == WindowSize)
@@ -79,11 +80,12 @@ class FlowControlEndToEndTest
         read, 2 * WindowSize, wrote1.isDefined)
       if (read > WindowSize + 1024) assert(wrote0.isDefined)
       await(reader.read()) match {
-        case _: Frame.Trailers => fail("unexpected trailers")
         case d: Frame.Data =>
           read += d.buf.length
           log.debug("reader releasing %dB from 1 frame", d.buf.length)
           await(d.release())
+
+        case f => fail(s"unexpected frame: $f")
       }
     }
     assert(read == 2 * WindowSize)
@@ -94,12 +96,13 @@ class FlowControlEndToEndTest
       log.debug("reader reading more after %dB/%dB, released=%s",
         read, 3 * WindowSize, wrote2.isDefined)
       await(reader.read()) match {
-        case _: Frame.Trailers => fail("unexpected trailers")
         case d: Frame.Data =>
           read += d.buf.length
           log.debug("reader releasing %dB from 1 frame", d.buf.length)
           await(d.release())
           assert(d.isEnd == (read == 3 * WindowSize))
+
+        case f => fail(s"unexpected frame: $f")
       }
     }
     assert(read == 3 * WindowSize)

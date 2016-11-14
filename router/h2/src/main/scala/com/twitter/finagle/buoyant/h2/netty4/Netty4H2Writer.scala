@@ -39,6 +39,8 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
       val writeData: Frame => Future[Boolean] = {
         case f: Frame.Data => write(id, f).before(f.release()).map(_ => f.isEnd)
         case f: Frame.Trailers => write(id, f).before(Future.True)
+        case f: Frame.Reset => write(id, f).before(Future.True)
+
       }
       lazy val loop: Boolean => Future[Unit] = {
         case true => Future.Unit
@@ -47,11 +49,20 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
       data.read().flatMap(writeData).flatMap(loop)
     }
 
-  override def write(id: Int, data: Frame.Data): Future[Unit] =
-    write(id, data.buf, data.isEnd)
-
-  override def write(id: Int, tlrs: Frame.Trailers): Future[Unit] =
-    write(id, tlrs, true /*eos*/ )
+  override def write(id: Int, f: Frame): Future[Unit] = f match {
+    case data: Frame.Data => write(id, data.buf, data.isEnd)
+    case tlrs: Frame.Trailers => write(id, tlrs, true /*eos*/ )
+    case rst: Frame.Reset =>
+      val code = rst.error match {
+        case Error.Cancel => Http2Error.CANCEL
+        case Error.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
+        case Error.InternalError => Http2Error.INTERNAL_ERROR
+        case Error.NoError => Http2Error.NO_ERROR
+        case Error.RefusedStream => Http2Error.REFUSED_STREAM
+        case Error.StreamClosed => Http2Error.STREAM_CLOSED
+      }
+      writeReset(id, code)
+  }
 
   override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
     val bb = BufAsByteBuf.Owned(buf)
@@ -89,28 +100,6 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     write(new DefaultHttp2GoAwayFrame(code))
       .before(close(deadline))
   }
-
-  /*
-   * Stream errors
-   */
-
-  override def resetNoError(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.NO_ERROR)
-
-  override def resetInternalError(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.INTERNAL_ERROR)
-
-  override def resetRefused(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.REFUSED_STREAM)
-
-  override def resetStreamClosed(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.STREAM_CLOSED)
-
-  override def resetCancel(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.CANCEL)
-
-  override def resetChillBro(id: Int): Future[Unit] =
-    writeReset(id, Http2Error.ENHANCE_YOUR_CALM)
 
   private[this] def writeReset(id: Int, code: Http2Error): Future[Unit] = {
     require(id > 0)

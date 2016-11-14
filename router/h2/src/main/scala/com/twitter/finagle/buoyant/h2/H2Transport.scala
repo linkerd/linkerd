@@ -22,8 +22,8 @@ object H2Transport {
 
     def write(id: Int, orig: Headers, eos: Boolean): Future[Unit]
     def write(id: Int, buf: Buf, eos: Boolean): Future[Unit]
-    def write(id: Int, data: Frame.Data): Future[Unit]
-    def write(id: Int, tlrs: Frame.Trailers): Future[Unit]
+
+    def write(id: Int, frame: Frame): Future[Unit]
 
     /**
      * Update the flow control window by `incr` bytes.
@@ -38,16 +38,5 @@ object H2Transport {
     def goAwayProtocolError(deadline: Time): Future[Unit]
     def goAwayInternalError(deadline: Time): Future[Unit]
     def goAwayChillBro(deadline: Time): Future[Unit]
-
-    /*
-     * Stream errors
-     */
-
-    def resetNoError(id: Int): Future[Unit]
-    def resetInternalError(id: Int): Future[Unit]
-    def resetRefused(id: Int): Future[Unit]
-    def resetStreamClosed(id: Int): Future[Unit]
-    def resetCancel(id: Int): Future[Unit]
-    def resetChillBro(id: Int): Future[Unit]
   }
 }

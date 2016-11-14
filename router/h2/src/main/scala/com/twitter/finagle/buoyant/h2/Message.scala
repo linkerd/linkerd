@@ -7,6 +7,7 @@ import com.twitter.util.{Future, Promise}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 import scala.collection.mutable
+import scala.util.control.NoStackTrace
 
 /**
  * A generic HTTP2 message.
@@ -187,9 +188,10 @@ object Stream {
     final override def isEmpty = false
     def onEnd: Future[Unit]
     def read(): Future[Frame]
+    def reset(e: Error.StreamError): Future[Unit]
   }
 
-  // TODO have a dedicated Static stream type that indicates the
+  // TODO Create a dedicated Static stream type that indicates the
   // entire message is buffered (i.e. so that retries may be
   // performed).  This would require some form of buffering, ideally
   // in the dispatcher and server stream
@@ -219,6 +221,11 @@ object Stream {
       val f = frameQ.poll()
       f.onSuccess(endOnReleaseIfEnd)
       f
+    }
+
+    override def reset(e: Error.StreamError): Future[Unit] = {
+      frameQ.fail(Error.ResetException(e), discard = true)
+      Future.Unit
     }
   }
 
@@ -302,7 +309,57 @@ object Frame {
 
   /** A terminal Frame including headers. */
   trait Trailers extends Frame with Headers { headers =>
-    override def toString = s"Stream.Trailers(${headers.toSeq})"
+    override def toString = s"Frame.Trailers(${headers.toSeq})"
     final override def isEnd = true
   }
+
+  /** A terminal Frame ending the stream abruptly. */
+  case class Reset(error: Error.StreamError) extends Frame {
+    override def toString = s"Frame.Reset(${error})"
+    final override def isEnd = true
+
+    private[this] val releaseP = new Promise[Unit]
+    override def onRelease: Future[Unit] = releaseP
+    override def release() = {
+      releaseP.setDone()
+      Future.Unit
+    }
+  }
+}
+
+sealed trait Error
+object Error {
+  sealed trait ConnectionError { _: Error => }
+  sealed trait StreamError { _: Error => }
+
+  object NoError extends Error with ConnectionError with StreamError {
+    override def toString = "Error.NoError"
+  }
+
+  object ProtocolError extends Error with ConnectionError {
+    override def toString = "Error.ProtocolError"
+  }
+
+  object InternalError extends Error with ConnectionError with StreamError {
+    override def toString = "Error.InternalError"
+  }
+
+  object EnhanceYourCalm extends Error with ConnectionError with StreamError {
+    override def toString = "Error.EnhanceYourCalm"
+  }
+
+  object RefusedStream extends Error with StreamError {
+    override def toString = "Error.RefusedStream"
+  }
+
+  object StreamClosed extends Error with StreamError {
+    override def toString = "Error.StreamClosed"
+  }
+
+  object Cancel extends Error with StreamError {
+    override def toString = "Error.Cancel"
+  }
+
+  case class ResetException(error: StreamError)
+    extends Exception(s"Error.Reset($error)") with NoStackTrace
 }

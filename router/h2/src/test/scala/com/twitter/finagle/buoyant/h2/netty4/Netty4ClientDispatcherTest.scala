@@ -53,9 +53,9 @@ class Netty4ClientDispatchTest extends FunSuite {
       hs.path("/")
       hs.authority("auf")
       val data = new Stream.Reader {
-        def onEnd = req0EndP
-        def read() = req0q.poll()
-        def reset(exn: Throwable) = req0q.fail(exn)
+        override def onEnd = req0EndP
+        override def read() = req0q.poll()
+        override def reset(e: Error.StreamError) = ???
       }
       Netty4Message.Request(hs, data)
     }

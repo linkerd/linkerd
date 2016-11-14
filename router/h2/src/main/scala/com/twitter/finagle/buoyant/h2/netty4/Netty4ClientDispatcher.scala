@@ -77,30 +77,23 @@ class Netty4ClientDispatcher(
         if (closed.compareAndSet(false, true)) transport.close()
         else Future.Unit
 
-      case f: Http2ResetFrame =>
+      case f: Http2StreamFrame =>
         f.streamId match {
           case 0 => writer.goAwayProtocolError(Time.Top)
           case id =>
             streams.get(id) match {
-              case null => Future.Unit
-              case stream => stream.close()
-            }
-        }
+              case null =>
+                log.error(s"client dispatcher dropping ${f.name} message on unknown stream ${id}")
+                writer.write(id, Frame.Reset(Error.StreamClosed))
 
-      case f: Http2StreamFrame if f.streamId > 0 =>
-        val id = f.streamId
-        streams.get(id) match {
-          case null =>
-            log.error(s"client dispatcher dropping ${f.name} message on unknown stream ${id}")
-            writer.resetStreamClosed(id)
-
-          case stream =>
-            if (stream.offerRemote(f)) {
-              if (closed.get) Future.Unit
-              else transport.read().flatMap(loop)
-            } else {
-              log.error(s"client dispatcher failed to offer ${f.name} on stream ${id}")
-              writer.resetStreamClosed(id)
+              case stream =>
+                if (stream.offerRemote(f)) {
+                  if (closed.get) Future.Unit
+                  else transport.read().flatMap(loop)
+                } else {
+                  log.error(s"client dispatcher failed to offer ${f.name} on stream ${id}")
+                  writer.write(id, Frame.Reset(Error.StreamClosed))
+                }
             }
         }
 
