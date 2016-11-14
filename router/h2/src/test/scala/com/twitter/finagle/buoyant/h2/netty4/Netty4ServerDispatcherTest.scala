@@ -10,16 +10,12 @@ import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
+import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 
 class Netty4ServerDispatchTest extends FunSuite {
-  import com.twitter.logging._
-  Logger.configure(List(LoggerFactory(
-    node = "",
-    level = Some(Level.DEBUG),
-    handlers = List(ConsoleHandler())
-  )))
+  setLogLevel(com.twitter.logging.Level.OFF)
 
   test("serves multiple concurrent requests ") {
     val recvq = new AsyncQueue[Http2Frame]
@@ -27,9 +23,9 @@ class Netty4ServerDispatchTest extends FunSuite {
     val closeP = new Promise[Throwable]
     val transport = new Transport[Http2Frame, Http2Frame] {
       def status = ???
-      def localAddress = ???
-      def remoteAddress = ???
-      def peerCertificate = ???
+      def localAddress = new SocketAddress {}
+      def remoteAddress = new SocketAddress {}
+      def peerCertificate = None
       def read(): Future[Http2Frame] = recvq.poll()
       def write(f: Http2Frame): Future[Unit] = {
         sentq = sentq :+ f
@@ -43,10 +39,10 @@ class Netty4ServerDispatchTest extends FunSuite {
     }
 
     val bartmanCalled = new AtomicBoolean(false)
-    val bartmanStreamP = new Promise[Stream.Reader]
+    val bartmanStreamP = new Promise[Stream]
 
     val elBartoCalled = new AtomicBoolean(false)
-    val elBartoStreamP = new Promise[Stream.Reader]
+    val elBartoStreamP = new Promise[Stream]
 
     val service = Service.mk[Request, Response] { req =>
       req.authority match {
@@ -56,7 +52,8 @@ class Netty4ServerDispatchTest extends FunSuite {
         case "elbarto" if elBartoCalled.compareAndSet(false, true) =>
           elBartoStreamP.map(Response(Status.Cowabunga, _))
 
-        case _ => Future.value(Response(Status.EatMyShorts, Stream.Nil))
+        case _ =>
+          Future.value(Response(Status.EatMyShorts, Stream.empty()))
       }
     }
 

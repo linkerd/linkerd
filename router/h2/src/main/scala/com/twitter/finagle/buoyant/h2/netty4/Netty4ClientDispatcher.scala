@@ -1,11 +1,11 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.{Service, Status => SvcStatus}
 import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
+import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -19,101 +19,62 @@ object Netty4ClientDispatcher {
 }
 
 /**
- * Expose a single HTTP2 connection as a Service.
+ * A dispatcher that exposes a `Service[Request, Response]`.
  *
- * The provided Transport[Http2Frame, Http2Frame] models a single
- * HTTP2 connection.xs
+ * Requests are issued onto the dispatcher to be written on a (new)
+ * remote stream, and the response is returned and streamed upstream
+ * from the remote.
  */
 class Netty4ClientDispatcher(
-  transport: Transport[Http2Frame, Http2Frame],
+  override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   streamStats: Netty4StreamTransport.StatsReceiver
-) extends Service[Request, Response] {
-
+) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
 
-  private[this] val writer = Netty4H2Writer(transport)
+  override protected[this] val log = Netty4ClientDispatcher.log
+
+  override protected[this] val prefix =
+    s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+
+  transport.onClose.onSuccess(onTransportClose)
+
+  override def close(deadline: Time): Future[Unit] =
+    goAway(GoAway.NoError, deadline)
 
   private[this] val _id = new AtomicInteger(BaseStreamId)
-  private[this] def nextId(): Int = {
-    val id = _id.getAndAdd(2)
-    if (id < BaseStreamId || MaxStreamId < id) {
+  private[this] def nextId(): Int = _id.getAndAdd(2) match {
+    case id if id < BaseStreamId || MaxStreamId < id =>
       // If the ID overflows, we can't use this connection anymore, so
       // we try to indicate to the server by sending a GO_AWAY in
       // accordance with the RFC.
-      if (closed.compareAndSet(false, true)) {
-        writer.goAwayProtocolError(Time.Top)
-      }
+      goAway(GoAway.ProtocolError)
       throw new IllegalArgumentException("stream id overflow")
-    }
-    id
+
+    case id => id
   }
-
-  private[this] val streams =
-    new ConcurrentHashMap[Int, Netty4StreamTransport[Request, Response]]
-
-  private[this] val closed = new AtomicBoolean(false)
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
   private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
     val stream = Netty4StreamTransport.client(id, writer, streamStats)
-    if (streams.putIfAbsent(id, stream) != null) {
-      throw new IllegalStateException(s"stream ${stream.streamId} already exists")
-    }
-    stream.onClose.ensure {
-      streams.remove(id, stream); ()
-    }
+    registerStream(id, stream)
     stream
   }
+
+  override def status: SvcStatus =
+    if (isClosed) SvcStatus.Closed
+    else SvcStatus.Open
 
   /**
    * Continually read frames from the HTTP2 transport. Demultiplex
    * frames from the transport onto a per-stream receive queue.
    */
-  private[this] val reading = {
-    lazy val loop: Http2Frame => Future[Unit] = {
-      case _: Http2GoAwayFrame =>
-        if (closed.compareAndSet(false, true)) transport.close()
-        else Future.Unit
+  override protected[this] val demuxing = demux()
 
-      case f: Http2ResetFrame =>
-        f.streamId match {
-          case 0 => writer.goAwayProtocolError(Time.Top)
-          case id =>
-            streams.get(id) match {
-              case null => Future.Unit
-              case stream => stream.close()
-            }
-        }
-
-      case f: Http2StreamFrame if f.streamId > 0 =>
-        val id = f.streamId
-        streams.get(id) match {
-          case null =>
-            log.error(s"client dispatcher dropping ${f.name} message on unknown stream ${id}")
-            writer.resetStreamClosed(id)
-
-          case stream =>
-            if (stream.offerRemote(f)) {
-              if (closed.get) Future.Unit
-              else transport.read().flatMap(loop)
-            } else {
-              log.error(s"client dispatcher failed to offer ${f.name} on stream ${id}")
-              writer.resetStreamClosed(id)
-            }
-        }
-
-      case unknown =>
-        log.error(s"client dispatcher ignoring ${unknown.name} message on the connection")
-        if (closed.get) Future.Unit
-        else transport.read().flatMap(loop)
-    }
-
-    transport.read().flatMap(loop).onFailure {
-      case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-      case e => log.error(e, "client dispatcher")
-    }
+  override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = {
+    val e = new IllegalArgumentException(s"unexpected frame on new stream: ${f.name}")
+    goAway(GoAway.ProtocolError).before(Future.exception(e))
   }
 
   /**
@@ -122,26 +83,22 @@ class Netty4ClientDispatcher(
    */
   override def apply(req: Request): Future[Response] = {
     val st = newStreamTransport()
-    req.data match {
-      case Stream.Nil =>
-        st.writeHeaders(req.headers, eos = true).before(st.remoteMsg)
+    // Stream the request while receiving the response and
+    // continue streaming the request until it is complete,
+    // canceled,  or the response fails.
+    val initF = st.write(req)
 
-      case data: Stream.Reader =>
-        // Stream the request while receiving the response and
-        // continue streaming the request until it is complete,
-        // canceled,  or the response fails.
-        val t0 = Stopwatch.start()
-        st.write(req).flatMap { send =>
-          st.remoteMsg.onFailure(send.raise)
-          send.onFailure(st.remoteMsg.raise)
-          st.remoteMsg
-        }
+    // Compose the response future and the stream write so that we
+    // cancel the entire pipeline on reset.
+    val writeF = initF.flatten
+
+    // If the stream is reset prematurely, cancel the pending write
+    st.onReset.onFailure {
+      case StreamError.Remote(rst: Reset) => writeF.raise(rst)
+      case StreamError.Remote(e) => writeF.raise(Reset.Cancel)
+      case e => writeF.raise(e)
     }
-  }
 
-  override def close(d: Time): Future[Unit] =
-    if (closed.compareAndSet(false, true)) {
-      reading.raise(Failure("closed").flagged(Failure.Interrupted))
-      writer.close(d)
-    } else Future.Unit
+    initF.unit.before(st.onRemoteMessage)
+  }
 }

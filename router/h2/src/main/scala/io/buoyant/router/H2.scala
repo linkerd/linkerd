@@ -2,7 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Request, Response}
+import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.param
@@ -10,7 +10,7 @@ import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Closable, Future}
+import com.twitter.util.{Closable, Future, Monitor}
 import io.netty.handler.codec.http2.Http2Frame
 import java.net.SocketAddress
 
@@ -36,6 +36,8 @@ object H2 extends Client[Request, Response]
     val default = Identifier(params => nil)
   }
 
+  private[this] val ResetMonitor = Monitor.mk { case _: Reset => true }
+
   /*
    * Client
    */
@@ -46,7 +48,8 @@ object H2 extends Client[Request, Response]
         .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
 
     val defaultParams = StackClient.defaultParams +
-      param.ProtocolLibrary("h2")
+      param.ProtocolLibrary("h2") +
+      param.Monitor(ResetMonitor)
   }
 
   case class Client(
@@ -99,7 +102,8 @@ object H2 extends Client[Request, Response]
       StackRouter.Client.mkStack(H2.client.stack)
 
     val defaultParams = StackRouter.defaultParams +
-      param.ProtocolLibrary("h2")
+      param.ProtocolLibrary("h2") +
+      param.Monitor(ResetMonitor)
   }
 
   case class Router(
@@ -134,7 +138,8 @@ object H2 extends Client[Request, Response]
       .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
 
     val defaultParams = StackServer.defaultParams +
-      param.ProtocolLibrary("h2")
+      param.ProtocolLibrary("h2") +
+      param.Monitor(ResetMonitor)
   }
 
   case class Server(

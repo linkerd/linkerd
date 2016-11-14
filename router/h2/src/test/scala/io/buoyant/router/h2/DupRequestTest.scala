@@ -12,10 +12,10 @@ class DupRequestTest extends FunSuite with Awaits {
   test("changes in service don't impact original") {
     val service = DupRequest.filter.andThen(Service.mk[Request, Response] { req =>
       req.headers.set("badness", "true")
-      Future.value(Response(Status.Ok, Stream.Nil))
+      Future.value(Response(Status.Ok, Stream.empty()))
     })
 
-    val req = Request("http", Method.Get, "hihost", "/", Stream.Nil)
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     await(service(req))
     assert(!req.headers.contains("badness"))
   }

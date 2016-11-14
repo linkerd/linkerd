@@ -28,7 +28,7 @@ class TlsEndToEndTest extends FunSuite {
   }
 
   val service = Service.mk[h2.Request, h2.Response] { req =>
-    Future.value(h2.Response(h2.Status.Ok, h2.Stream.Nil))
+    Future.value(h2.Response(h2.Status.Ok, h2.Stream.empty()))
   }
 
   test("client/server works with TLS") {
@@ -59,7 +59,7 @@ class TlsEndToEndTest extends FunSuite {
     val client = H2.client.configured(Transport.Tls(clientTls)).newService(srvName, "")
 
     try {
-      val rsp = await(client(h2.Request("http", h2.Method.Get, "auforiteh", "/a/parf", h2.Stream.Nil)))
+      val rsp = await(client(h2.Request("http", h2.Method.Get, "auforiteh", "/a/parf", h2.Stream.empty())))
       assert(rsp.status == h2.Status.Ok)
 
     } finally await(client.close().before(srv.close()))
