@@ -145,7 +145,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     }
   }
 
-  test("client: remote reset with open stream") {
+  test("client: remote reset on open stream") {
     val id = 8
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -186,7 +186,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!closed.get)
   }
 
-  test("client: remote reset with half-open remote stream") {
+  test("client: remote reset on half-open remote stream") {
     val id = 8
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -230,7 +230,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!closed.get)
   }
 
-  test("client: remote reset with half-open local stream") {
+  test("client: remote reset on half-open local stream") {
     val id = 8
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -268,7 +268,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(stream.offerRemote({
       val hs = new DefaultHttp2Headers
       hs.status("200")
-      new DefaultHttp2HeadersFrame(hs, true)
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
     }))
     assert(synchronized(written).length == 1)
     assert(rspF.isDefined)
@@ -287,7 +287,65 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!closed.get)
   }
 
-  test("client: canceled response causes  qlocal reset") {
+  test("client: local reset on half-open local stream") {
+    val id = 8
+    val closed = new AtomicBoolean(false)
+    var written = Queue.empty[Http2Frame]
+    val writer = new Netty4H2Writer {
+      override def close(d: Time) =
+        if (closed.compareAndSet(false, true)) Future.Unit
+        else Future.exception(new Exception("double close"))
+
+      override def write(f: Http2Frame) = synchronized {
+        written = written :+ f
+        Future.Unit
+      }
+    }
+    val stats = new InMemoryStatsReceiver
+    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
+    val stream = Netty4StreamTransport.client(id, writer, tstats)
+
+    val rspF = stream.remoteMsg
+    assert(synchronized(written).isEmpty)
+    assert(!rspF.isDefined)
+    assert(!stream.onClose.isDefined)
+    assert(!closed.get)
+
+    assert(stream.offerRemote({
+      val hs = new DefaultHttp2Headers
+      hs.status("200")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+    assert(rspF.isDefined)
+    val rsp = await(rspF)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.data == Stream.Nil)
+
+    val localStream = Stream()
+    await(stream.write(Request("http", Method.Get, "host", "/path", localStream)))
+    assert(synchronized(written).length == 1)
+    assert(synchronized(written).last.isInstanceOf[Http2HeadersFrame])
+    assert(!stream.isClosed)
+    assert(!stream.onClose.isDefined)
+    assert(!closed.get)
+
+    await(localStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
+    assert(synchronized(written).length == 2)
+    assert(synchronized(written).last.isInstanceOf[Http2DataFrame])
+    assert(!stream.isClosed)
+    assert(!stream.onClose.isDefined)
+    assert(!closed.get)
+
+    await(localStream.write(Frame.Reset(Error.InternalError)))
+    assert(synchronized(written).length == 3)
+    assert(synchronized(written).last.isInstanceOf[Http2ResetFrame])
+    assert(stream.isClosed)
+    assert(stream.onClose.isDefined)
+    assert(await(stream.onClose) == Error.InternalError)
+    assert(!closed.get)
+  }
+
+  test("client: canceled response causes local reset") {
     val id = 8
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -328,64 +386,6 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(stream.isClosed)
     assert(stream.onClose.isDefined)
     assert(await(stream.onClose) == Error.Cancel)
-    assert(!closed.get)
-  }
-
-  test("client: local reset sent on stream") {
-    val id = 8
-    val closed = new AtomicBoolean(false)
-    var written = Queue.empty[Http2Frame]
-    val writer = new Netty4H2Writer {
-      override def close(d: Time) =
-        if (closed.compareAndSet(false, true)) Future.Unit
-        else Future.exception(new Exception("double close"))
-
-      override def write(f: Http2Frame) = synchronized {
-        written = written :+ f
-        Future.Unit
-      }
-    }
-    val stats = new InMemoryStatsReceiver
-    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
-    val stream = Netty4StreamTransport.client(id, writer, tstats)
-
-    val rspF = stream.remoteMsg
-    assert(synchronized(written).isEmpty)
-    assert(!rspF.isDefined)
-    assert(!stream.onClose.isDefined)
-    assert(!closed.get)
-
-    assert(stream.offerRemote({
-      val hs = new DefaultHttp2Headers
-      hs.status("200")
-      new DefaultHttp2HeadersFrame(hs, true)
-    }))
-    assert(rspF.isDefined)
-    val rsp = await(rspF)
-    assert(rsp.status == Status.Ok)
-    assert(rsp.data == Stream.Nil)
-
-    val localStream = Stream()
-    await(stream.write(Request("http", Method.Get, "host", "/path", localStream)))
-    assert(synchronized(written).length == 1)
-    assert(synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onClose.isDefined)
-    assert(!closed.get)
-
-    await(localStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
-    assert(synchronized(written).length == 2)
-    assert(synchronized(written).last.isInstanceOf[Http2DataFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onClose.isDefined)
-    assert(!closed.get)
-
-    await(localStream.write(Frame.Reset(Error.InternalError)))
-    assert(synchronized(written).length == 3)
-    assert(synchronized(written).last.isInstanceOf[Http2ResetFrame])
-    assert(stream.isClosed)
-    assert(stream.onClose.isDefined)
-    assert(await(stream.onClose) == Error.InternalError)
     assert(!closed.get)
   }
 
@@ -493,7 +493,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     writeq = writeq.tail
   }
 
-  test("server: remote reset with open stream") {
+  test("server: remote reset on open stream") {
     val id = 6
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -541,7 +541,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!closed.get)
   }
 
-  test("server: remote reset with half-open remote stream") {
+  test("server: remote reset on half-open remote stream") {
     val id = 6
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]
@@ -596,7 +596,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(!closed.get)
   }
 
-  test("server: remote reset with half-open local stream") {
+  test("server: remote reset on half-open local stream") {
     val id = 6
     val closed = new AtomicBoolean(false)
     var written = Queue.empty[Http2Frame]

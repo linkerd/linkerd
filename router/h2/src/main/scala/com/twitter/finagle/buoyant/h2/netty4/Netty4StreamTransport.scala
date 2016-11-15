@@ -56,10 +56,6 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
    *
    * (Note that SERVER_PUSH is not supported or represented in this
    * version of the state diagram).
-   *
-   * Because remote reads and local writes may occur concurrently,
-   * this state is stored in the `stateRef` atomic reference. Writes
-   * and reads are performed without locking stateRef (instead, callers )
    */
 
   private[this] sealed trait StreamState
@@ -75,21 +71,26 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
   private[this] val _remoteMsgP = new Promise[RemoteMsg]
   def remoteMsg: Future[RemoteMsg] = _remoteMsgP
 
-  // When the remote message is canceled, close the transport, sending
-  // a RST_STREAM as appropriate.
+  // When the remote message--especially a client's repsonse--is
+  // canceled, close the transport, sending a RST_STREAM as
+  // appropriate.
   _remoteMsgP.setInterruptHandler {
     case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
       close(Error.Cancel)
       _remoteMsgP.updateIfEmpty(Throw(Error.ResetException(Error.Cancel))); ()
   }
 
+  /**
+   * Because remote reads and local writes may occur concurrently,
+   * this state is stored in the `stateRef` atomic reference. Writes
+   * and reads are performed without locking stateRef (instead, callers )
+   */
   private[this] val stateRef: AtomicReference[StreamState] =
     new AtomicReference(Open(RemoteInit(_remoteMsgP)))
 
-  def isClosed = stateRef.get == Closed
-
   private[this] val closeP = new Promise[Error.StreamError]
   def onClose: Future[Error.StreamError] = closeP
+  def isClosed = stateRef.get == Closed
 
   @tailrec
   final def close(err: Error.StreamError = Error.NoError): Future[Unit] = stateRef.get match {
@@ -100,12 +101,16 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
       else close(err)
 
     case open@Open(RemoteInit(p)) =>
-      if (stateRef.compareAndSet(open, Closed)) reset(err)
-      else close(err)
+      if (stateRef.compareAndSet(open, Closed)) {
+        p.setException(Error.ResetException(err))
+        reset(err)
+      } else close(err)
 
     case lc@LocalClosed(RemoteInit(p)) =>
-      if (stateRef.compareAndSet(lc, Closed)) reset(err)
-      else close(err)
+      if (stateRef.compareAndSet(lc, Closed)) {
+        p.setException(Error.ResetException(err))
+        reset(err)
+      } else close(err)
 
     case open@Open(RemoteStreaming(q)) =>
       if (stateRef.compareAndSet(open, Closed)) {
@@ -120,29 +125,26 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
       } else close(err)
   }
 
-  private[this] def reset(err: Error.StreamError = Error.NoError): Future[Unit] = {
-    val f = transport.write(streamId, Frame.Reset(err))
-    f.respond {
-      case Return(_) =>
-        closeP.setValue(err); ()
-      case Throw(e) =>
-        closeP.setException(e); ()
-    }
-    f
-  }
-
   protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): RemoteMsg
 
   /**
-   * A Dispatcher reads frames from the remote and offers them into the stream.
+   * Optionally accept a frame from the remote side of a connection.
    *
-   * If an initial Headers frame is offered, the `remote` future is satisfied.
+   * `offerRemote` returns false to indicate that a frame cold not be
+   * accepted.  This may occur, for example, when a message is
+   * received on a closed stream.
+   *
+   * Remote frames that are received and demultiplexed by a Dispatcher
+   * are offered onto the stream. Each frame
    */
   @tailrec final def offerRemote(in: Http2StreamFrame): Boolean = {
     stateRef.get match {
       case Closed => false
 
       case RemoteClosed =>
+        // If the remote side is closed, we can't receive any remote
+        // frames.  Actually, that's not true: the remote may still
+        // send a reset to tell the client to stfu.
         in match {
           case f: Http2ResetFrame =>
             if (stateRef.compareAndSet(RemoteClosed, Closed)) {
@@ -154,6 +156,8 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         }
 
       case open@Open(RemoteInit(msgP)) =>
+        // The first remote frame must be either a HEADERS or RESET
+        // frame.
         in match {
           case f: Http2ResetFrame =>
             if (stateRef.compareAndSet(open, Closed)) {
@@ -182,6 +186,8 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         }
 
       case lc@LocalClosed(RemoteInit(msgP)) =>
+        // The first remote frame must be either a HEADERS or RESET
+        // frame.
         in match {
           case f: Http2ResetFrame =>
             if (stateRef.compareAndSet(lc, Closed)) {
@@ -211,6 +217,8 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         }
 
       case open@Open(RemoteStreaming(outQ)) =>
+        // Just processing a normal stream frame.  Resets are passed
+        // along into the stream with data and trailers.
         toFrame(in) match {
           case out@Frame.Reset(err) =>
             if (stateRef.compareAndSet(open, Closed)) {
@@ -231,6 +239,8 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         }
 
       case lc@LocalClosed(RemoteStreaming(outQ)) =>
+        // Just processing a normal stream frame.  Resets are passed
+        // along into the stream with data and trailers.
         val out = toFrame(in)
         if (out.isEnd) {
           if (stateRef.compareAndSet(lc, Closed)) {
@@ -339,6 +349,17 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
       }
       reader.read().flatMap(writeFrame).flatMap(loop)
     }
+  }
+
+  private[this] def reset(err: Error.StreamError = Error.NoError): Future[Unit] = {
+    val f = transport.write(streamId, Frame.Reset(err))
+    f.respond {
+      case Return(_) =>
+        closeP.setValue(err); ()
+      case Throw(e) =>
+        closeP.setException(e); ()
+    }
+    f
   }
 
   private[this] val updateWindow: Int => Future[Unit] = { incr =>
