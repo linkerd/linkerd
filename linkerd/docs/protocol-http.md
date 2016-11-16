@@ -207,6 +207,40 @@ Key | Default Value | Description
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path.
 
+<a name="static-identifier"></a>
+### Static Identifier
+
+kind: `io.l5d.static`
+
+This identifier always assigns the same static name to all requests.
+
+#### Namer Configuration:
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.static
+    path: /foo/bar
+```
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+path | _required_    | The name to assign to all requests
+
+#### Namer Path Parameters
+
+> Dtab Path Format
+
+```
+  / dstPrefix / *path
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+path | N/A | The path given in the configuration.
+
 <a name="http-engines"></a>
 ## HTTP Engines
 
