@@ -245,10 +245,11 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         if (out.isEnd) {
           if (stateRef.compareAndSet(lc, Closed)) {
             statsReceiver.recordRemoteFrame(out)
-            closeP.setValue(out match {
+            val err = out match {
               case Frame.Reset(err) => err
               case _ => Error.NoError
-            })
+            }
+            closeP.setValue(err)
             outQ.offer(out)
           } else offerRemote(in)
         } else {
@@ -314,6 +315,7 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
         } else _writeFrame(rst)
 
       case (_, frame) if !frame.isEnd =>
+        statsReceiver.recordLocalFrame(frame)
         transport.write(streamId, frame)
           .before(frame.release())
           .before(Future.False)
@@ -384,20 +386,26 @@ object Netty4StreamTransport {
   class StatsReceiver(underlying: FStatsReceiver) {
     private[this] val local = underlying.scope("local")
     private[this] val localDataBytes = local.stat("data", "bytes")
+    private[this] val localDataFrames = local.counter("data", "frames")
     private[this] val localTrailersCount = local.counter("trailers")
     private[this] val localResetCount = local.counter("reset")
     val recordLocalFrame: Frame => Unit = {
-      case d: Frame.Data => localDataBytes.add(d.buf.length)
+      case d: Frame.Data =>
+        localDataFrames.incr()
+        localDataBytes.add(d.buf.length)
       case t: Frame.Trailers => localTrailersCount.incr()
       case Frame.Reset(_) => localResetCount.incr()
     }
 
     private[this] val remote = underlying.scope("remote")
     private[this] val remoteDataBytes = remote.stat("data", "bytes")
+    private[this] val remoteDataFrames = remote.counter("data", "frames")
     private[this] val remoteTrailersCount = remote.counter("trailers")
     private[this] val remoteResetCount = remote.counter("reset")
     val recordRemoteFrame: Frame => Unit = {
-      case d: Frame.Data => remoteDataBytes.add(d.buf.length)
+      case d: Frame.Data =>
+        remoteDataFrames.incr()
+        remoteDataBytes.add(d.buf.length)
       case _: Frame.Trailers => remoteTrailersCount.incr()
       case Frame.Reset(_) => remoteResetCount.incr()
     }
