@@ -107,6 +107,7 @@ package object v1 {
 
   case class EndpointAddress(
     ip: String,
+    nodeName: Option[String] = None,
     targetRef: Option[ObjectReference] = None
   )
 

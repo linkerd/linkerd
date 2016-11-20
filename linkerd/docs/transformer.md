@@ -62,6 +62,7 @@ k8sPort | `8001` | The Kubernetes master post.
 namespace | _required_ | The Kubernetes namespace of the daemonset.
 service | _required_ | The Kubernetes service name for the daemonset.
 port | _required_ | The name of the daemonset port to use.
+hostNetwork | `false` | If true, use nodeName instead of /24 subnet to determine which daemonset pod is on the destination node.  Set this to true if the daemonset is running with `hostNetwork: true`.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -90,3 +91,33 @@ env:
       fieldRef:
         fieldPath: status.podIP
 ```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+hostNetwork | `false` | If true, use nodeName to determine which pods are on the local node.  This adds the requirement that the `NODE_NAME` environment variable be set with the node name.  Set this to true if the pod is running with `hostNetwork: true`.
+
+## Replace
+
+kind: `io.l5d.replace`
+
+The replace transformer replaces all bound names with a configurable path.
+This differs from the Const transformer in that if the original NameTree is
+`Neg` then the result will be `Neg` as well.  This is useful if you want to
+use a namer to check the validity of a name but then actually route to a
+different name.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+path | _required_ | Bound names will be replaced with this path.
+
+## Const
+
+kind: `io.l5d.const`
+
+The const transformer ignores the input and always returns a constant
+configurable path.  This differs from the Replace transformer in that it always
+returns the configured path, even when the original NameTree is `Neg`.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+path | _required_ | Ignore the input and return this path.

@@ -18,6 +18,7 @@ Key | Default Value | Description
 kind | _required_ | Either `io.l5d.fs`, `io.l5d.serversets`, `io.l5d.consul`, `io.l5d.k8s`, `io.l5d.marathon`, or `io.l5d.zkLeader`.
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
+transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 <a name="fs"></a>
 ## File-based service discovery
@@ -182,7 +183,7 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
-useHealthCheck | `false` | If `true`, rely on Consul health checks.
+useHealthCheck | `false` | If `true`, exclude app instances that are failing Consul health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
@@ -225,6 +226,7 @@ namers:
   experimental: true
   host: localhost
   port: 8001
+  labelSelector: version
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -243,6 +245,7 @@ prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
+labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -254,7 +257,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 > Dtab Path Format
 
 ```yaml
-/#/<prefix>/<namespace>/<port-name>/<svc-name>
+/#/<prefix>/<namespace>/<port-name>/<svc-name>[/<label-value>]
 ```
 
 Key | Required | Description
@@ -263,6 +266,7 @@ prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The value used to filter services.
 
 ### K8s External Configuration
 
@@ -274,6 +278,7 @@ namers:
   experimental: true
   host: localhost
   port: 8001
+  labelSelector: version
 ```
 
 > Then reference the namer in the dtab to use it:
@@ -293,6 +298,7 @@ prefix | `io.l5d.k8s.external` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
+labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -304,7 +310,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 > Dtab Path Format
 
 ```yaml
-/#/<prefix>/<namespace>/<port-name>/<svc-name>
+/#/<prefix>/<namespace>/<port-name>/<svc-name>[/<label-value>]
 ```
 
 Key | Required | Description
@@ -313,6 +319,7 @@ prefix | yes | Tells linkerd to resolve the request path using the k8s external 
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
 
 <a name="marathon"></a>
@@ -326,13 +333,14 @@ kind: `io.l5d.marathon`
 
 ```yaml
 namers:
-- kind:         io.l5d.marathon
-  experimental: true
-  prefix:       /#/io.l5d.marathon
-  host:         marathon.mesos
-  port:         80
-  uriPrefix:    /marathon
-  ttlMs:        5000
+- kind:           io.l5d.marathon
+  experimental:   true
+  prefix:         /io.l5d.marathon
+  host:           marathon.mesos
+  port:           80
+  uriPrefix:      /marathon
+  ttlMs:          5000
+  useHealthCheck: false
 ```
 > Then reference the namer in the dtab to use it:
 
@@ -353,7 +361,8 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
-ttlMs | `5000` | The polling interval in milliseconds against the marathon API.
+ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
+useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
 
 ### Marathon Path Parameters
 
@@ -368,7 +377,26 @@ Key | Required | Description
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 appId | yes | The app id of a marathon application. This id can be multiple path segments long. For example, the app with id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app with id "/appgroup/usergroup/users" can be reached with `/#/io.l5d.marathon/appgroup/usergroup/users`.
 
+### Marathon Authentication
 
+> Example environment variable
+
+```json
+{
+  "login_endpoint": "https://leader.mesos/acs/api/v1/auth/login",
+  "private_key": "<private-key-value>",
+  "scheme": "RS256",
+  "uid": "service-acct"
+}
+```
+
+The Marathon namer supports loading authentication data from a
+`DCOS_SERVICE_ACCOUNT_CREDENTIAL` environment variable at boot time.
+
+Further reading:
+
+* [Mesosphere Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>
 ## ZooKeeper Leader
@@ -397,3 +425,84 @@ Key | Required | Description
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
 zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 
+<a name="curator"></a>
+## Curator
+
+kind: `io.l5d.curator`
+
+### Curator Configuration
+
+A namer that uses the Curator discovery library to resolve names.
+
+Note: If you have registered Curator services with a custom payload object, that class file must be on the classpath. Otherwise you will get a `java.lang.IllegalArgumentException: Invalid type id '<some-payload-class'` error.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.curator` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
+basePath | `/` | The ZooKeeper path for Curator discovery.
+
+### Curator Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<serviceName>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the curator namer.
+serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
+
+<a name="rewritingNamers"></a>
+## Rewriting Namers
+
+In addition to service discovery namers, linkerd supplies a number of utility
+namers. These namers assist in path rewriting when the transformation is more
+complicated than just prefix substitution. They are prefixed with `/$/` instead
+of `/#/`, and can be used without explicitly adding them to the
+[`namers`](#namers-and-service-discovery) section of the config.
+
+### domainToPathPfx
+
+```
+/marathonId => /#/io.l5d.marathon;
+/host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
+/http/1.1/* => /host;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.http.domainToPathPfx/<prefix>/<host>
+```
+
+Rewrites the path's prefix with `<prefix>` first, followed by each subdomain of
+`<host>` separated and in reverse order.
+
+For example,
+`/$/io.buoyant.http.domainToPathPfx/pfx/foo.buoyant.io/resource/name` would be
+rewritten to `/pfx/io/buoyant/foo/resource/name`.
+
+### subdomainOfPfx
+
+```
+/consulSvc  => /#/io.l5d.consul/.local
+/host       => /$/io.buoyant.http.subdomainOfPfx/service.consul/consulSvc;
+/http/1.1/* => /host;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.http.subdomainOfPfx/<domain>/<prefix>/<host>
+```
+
+Rewrites the path's prefix with `<prefix>` first, followed by `<host>` with the
+`<domain>` dropped.
+
+For example,
+`/$/io.buoyant.http.subdomainOfPfx/buoyant.io/pfx/foo.buoyant.io/resource/name`
+would be rewritten to `/pfx/foo/resource/name`

@@ -121,4 +121,4 @@ tracers:
 
 Requests that are routed by linkerd are also traceable using Finagle's built-in
 tracing instrumentation. Trace data can be exported from a linkerd process by
-configuring tracers via a top-level `tracers` section. See [tracers](#tracers10).
+configuring tracers via a top-level `tracers` section. See [tracers](#tracers13).

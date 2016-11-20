@@ -1,8 +1,12 @@
 package io.buoyant.http
 
-import com.twitter.finagle.{Name, NameTree, Namer, Path, Service, ServiceNamer}
-import com.twitter.finagle.http._
-import com.twitter.util.{Activity, Future, Try}
+import com.twitter.finagle.{Name, NameTree, Namer, Path}
+import com.twitter.util.{Activity, Try}
+
+/**
+ * A set of utility namers that aren't _actually_ HTTP-specific (at
+ * least in terms of types).
+ */
 
 private object Match {
   // do very coarse host matching so that we can support dns names,
@@ -165,35 +169,6 @@ class domainToPathPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, host@Match.host()) =>
       Some(Path.Utf8(pfx +: host.split("\\.").reverse: _*) ++ path.drop(2))
-    case _ => None
-  }
-}
-
-/**
- * A service namer that accepts names in the form:
- *
- *   /400/resource/name
- *
- * and binds the name to an Http service that always responds with the
- * given status code (i.e. 400).
- */
-class status extends ServiceNamer[Request, Response] {
-
-  private[this] object Code {
-    def unapply(s: String): Option[Status] =
-      Try(s.toInt).toOption.filter { s => 100 <= s && s < 600 } map (Status.fromCode)
-  }
-
-  private[this] case class StatusService(code: Status) extends Service[Request, Response] {
-    def apply(req: Request): Future[Response] = {
-      val rsp = Response()
-      rsp.status = code
-      Future.value(rsp)
-    }
-  }
-
-  def lookupService(path: Path): Option[Service[Request, Response]] = path.take(1) match {
-    case Path.Utf8(Code(status)) => Some(StatusService(status))
     case _ => None
   }
 }

@@ -2,7 +2,9 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.buoyant.h2.{Request => H2Request, Response => H2Response, Headers => H2Headers}
-import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers}
+import com.twitter.finagle.netty4.ByteBufAsBuf
+import com.twitter.util.{Future, Promise}
+import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers, Http2DataFrame}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -83,6 +85,27 @@ private[h2] object Netty4Message {
     }
   }
 
+  object Data {
+
+    def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
+      val sz = f.content.readableBytes + f.padding
+      val buf = ByteBufAsBuf.Owned(f.content.retain())
+      val releaser: () => Future[Unit] =
+        if (sz > 0) () => updateWindow(sz)
+        else () => Future.Unit
+      Frame.Data(buf, f.isEndStream, releaser)
+    }
+  }
+
   case class Trailers(underlying: Http2Headers)
-    extends Frame.Trailers with Headers
+    extends Frame.Trailers
+    with Headers {
+
+    private[this] val releaseP = new Promise[Unit]
+    override def onRelease: Future[Unit] = releaseP
+    override def release() = {
+      releaseP.setDone()
+      Future.Unit
+    }
+  }
 }

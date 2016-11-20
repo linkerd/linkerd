@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
@@ -37,7 +37,10 @@ case class ThriftConfig(
 ) extends RouterConfig {
 
   var servers: Seq[ThriftServerConfig] = Nil
-  var client: Option[ThriftClientConfig] = None
+  @JsonProperty("client")
+  var _client: Option[ThriftClientConfig] = None
+
+  def client: Option[ThriftClientConfig] = _client.orElse(Some(ThriftClientConfig()))
 
   @JsonIgnore
   override def protocol = ThriftInitializer
@@ -57,13 +60,13 @@ case class ThriftServerConfig(
 }
 
 case class ThriftClientConfig(
-  thriftFramed: Option[Boolean],
-  thriftProtocol: Option[ThriftProtocol],
-  attemptTTwitterUpgrade: Option[Boolean]
+  thriftFramed: Option[Boolean] = None,
+  thriftProtocol: Option[ThriftProtocol] = None,
+  attemptTTwitterUpgrade: Option[Boolean] = None
 ) extends ClientConfig {
   @JsonIgnore
   override def clientParams: Params = super.clientParams
     .maybeWith(thriftFramed.map(param.Framed(_)))
-    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
-    .maybeWith(attemptTTwitterUpgrade.map(AttemptTTwitterUpgrade(_)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory))) +
+    AttemptTTwitterUpgrade(attemptTTwitterUpgrade.getOrElse(false))
 }

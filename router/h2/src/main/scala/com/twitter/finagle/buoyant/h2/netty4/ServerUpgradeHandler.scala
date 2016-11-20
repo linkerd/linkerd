@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.server.Listener
+import com.twitter.logging.Logger
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.handler.codec.http.{HttpServerCodec, HttpServerUpgradeHandler}
@@ -9,6 +9,7 @@ import io.netty.handler.codec.http2._
 import io.netty.util.AsciiString
 
 object ServerUpgradeHandler {
+  private val log = Logger.get(getClass.getName)
 
   private val PrefaceBuf = Http2CodecUtil.connectionPrefaceBuf
   private val PrefaceLen = PrefaceBuf.readableBytes
@@ -24,20 +25,23 @@ object ServerUpgradeHandler {
  * Accept either H2C requests (beginning with a Connection preface)
  * or HTTP requests with h2c protocol upgrading.
  */
-class ServerUpgradeHandler(stream: ChannelHandler) extends ChannelDuplexHandler {
+class ServerUpgradeHandler extends ChannelDuplexHandler {
   import ServerUpgradeHandler._
 
-  private[this] val rawH2 = new Http2Codec(true /*server*/ , stream)
+  // Parses HTTP/1 objects.
+  private[this] val h1Codec = new HttpServerCodec
 
-  private[this] val h1 = new HttpServerCodec
+  // Parses HTTP/2 frames
+  private[this] val framer = new Http2FrameCodec(true /*server*/ )
 
-  private[this] val upgradedH2 = new HttpServerUpgradeHandler.UpgradeCodecFactory {
-    // TODO we could transparently upgrade h1 requests as h2 requests, couldn't we?
-    override def newUpgradeCodec(proto: CharSequence): HttpServerUpgradeHandler.UpgradeCodec =
-      if (isH2C(proto)) new Http2ServerUpgradeCodec(rawH2) else null
-  }
-
-  private[this] val upgrader = new HttpServerUpgradeHandler(h1, upgradedH2)
+  // Intercepts HTTP/1 requests with the HTTP2-Settings headers and
+  // initiate protocol upgrade.
+  private[this] val upgrader =
+    new HttpServerUpgradeHandler(h1Codec, new HttpServerUpgradeHandler.UpgradeCodecFactory {
+      override def newUpgradeCodec(proto: CharSequence): HttpServerUpgradeHandler.UpgradeCodec =
+        if (isH2C(proto)) new Http2FrameCodecServerUpgrader(framer)
+        else null
+    })
 
   /**
    * Detect the HTTP2 connection preface to support Prior Knowledge
@@ -48,18 +52,20 @@ class ServerUpgradeHandler(stream: ChannelHandler) extends ChannelDuplexHandler 
       case bb: ByteBuf if isPreface(bb) =>
         // If the connection starts with the magical prior-knowledge
         // preface, just assume we're speaking plain h2c.
-        ctx.pipeline.addLast("h2", rawH2)
+        ctx.pipeline.addAfter(ctx.name, "h2 framer", framer)
 
       case bb: ByteBuf =>
         // Otherwise, Upgrade from h1 to h2
-        ctx.pipeline.addLast("h1", h1)
-        ctx.pipeline.addLast("h2 upgrader", upgrader)
+        ctx.pipeline.addAfter(ctx.name, "h1 codec", h1Codec)
+        ctx.pipeline.addAfter("h1 codec", "h1 upgrade h2", upgrader)
+      // TODO silently translate native h1 to h2
 
       case _ => // Fall through and pass on the read.
     }
 
     // Stop trying to upgrade the protocol.
     ctx.pipeline.remove(this)
+    log.debug(s"h2 server pipeline: installing framer: ${ctx.pipeline}")
 
     // Pass it on.
     ctx.fireChannelRead(obj); ()

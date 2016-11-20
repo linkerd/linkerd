@@ -272,6 +272,18 @@ object ThriftNamerInterface {
       case DelegateTree.Union(path, dentry, trees@_*) =>
         val agg = trees.foldLeft(DelegateUnionAgg(nextId))(_ + _)
         (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Weighted(agg.trees)), agg.nodes, agg.nextId)
+      case DelegateTree.Transformation(path, name, value, tree) =>
+        val (node, childNodes, nextNextId) = mkDelegateTree(tree, nextId)
+        val bound = value match {
+          case bound: Name.Bound =>
+            bound.id match {
+              case id: Path => thrift.BoundName(TPath(id))
+              case _ => thrift.BoundName(TPath(Path.empty))
+            }
+          case path: Name.Path => thrift.BoundName(TPath(path.path))
+        }
+        (thrift.DelegateNode(TPath(path), name, thrift.DelegateContents.Transformation(thrift.Transformation(bound, nextNextId))),
+          childNodes + (nextNextId -> node), nextNextId + 1)
     }
 
   def parseDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Path] = {
@@ -306,6 +318,8 @@ object ThriftNamerInterface {
           throw new IllegalArgumentException("delegation cannot accept bound names")
         case thrift.DelegateContents.UnknownUnionField(_) =>
           throw new IllegalArgumentException("unknown union field")
+        case thrift.DelegateContents.Transformation(transformation) =>
+          throw new IllegalArgumentException("delegation cannot accept transformations")
       }
     }
     parseDelegateNode(dt.root)
@@ -396,10 +410,17 @@ class ThriftNamerInterface(
    */
   private[this] def convertMeta(scalaMeta: Addr.Metadata): Option[thrift.AddrMeta] = {
     // TODO translate metadata (weight info, latency compensation, etc)
-    scalaMeta.get(Metadata.authority) match {
-      case Some(authority: String) => Some(thrift.AddrMeta(Some(authority)))
-      case _ => None
-    }
+
+    val authority = scalaMeta.get(Metadata.authority).map(_.toString)
+    val nodeName = scalaMeta.get(Metadata.nodeName).map(_.toString)
+
+    if (authority.isDefined || nodeName.isDefined)
+      Some(thrift.AddrMeta(
+        authority = authority,
+        nodeName = nodeName
+      ))
+    else
+      None
   }
 
   /**

@@ -4,8 +4,8 @@ import com.twitter.finagle.{NameTree, Dentry, Path}
 
 sealed trait DelegateTree[+T] {
   def path: Path
-  def dentry: Dentry
   def map[U](f: T => U): DelegateTree[U] = DelegateTree.map(this, f)
+  def flatMap[U >: T](f: DelegateTree.Leaf[T] => DelegateTree[U]) = DelegateTree.flatMap(this, f)
   def simplified: DelegateTree[T] = DelegateTree.simplify(this)
   def toNameTree: NameTree[T] = DelegateTree.toNameTree(this)
   def withDentry(dentry: Dentry) = DelegateTree.withDentry(this, dentry)
@@ -23,7 +23,9 @@ object DelegateTree {
   case class Union[+T](path: Path, dentry: Dentry, trees: Weighted[T]*) extends DelegateTree[T]
   case class Weighted[+T](weight: Double, tree: DelegateTree[T]) {
     def map[U](f: T => U): Weighted[U] = copy(tree = tree.map(f))
+    def flatMap[U >: T](f: Leaf[T] => DelegateTree[U]): Weighted[U] = copy(tree = DelegateTree.flatMap(tree, f))
   }
+  case class Transformation[+T](path: Path, name: String, value: T, tree: DelegateTree[T]) extends DelegateTree[T]
 
   private def withDentry[T](orig: DelegateTree[T], dentry: Dentry): DelegateTree[T] = orig match {
     case tree: Exception => tree.copy(dentry = dentry)
@@ -34,6 +36,7 @@ object DelegateTree {
     case Leaf(path, _, v) => Leaf(path, dentry, v)
     case Alt(path, _, trees@_*) => Alt(path, dentry, trees: _*)
     case Union(path, _, trees@_*) => Union(path, dentry, trees: _*)
+    case t: Transformation[_] => t
   }
 
   private def map[T, U](orig: DelegateTree[T], f: T => U): DelegateTree[U] = orig match {
@@ -45,6 +48,19 @@ object DelegateTree {
     case Leaf(path, dentry, v) => Leaf(path, dentry, f(v))
     case Alt(path, dentry, trees@_*) => Alt(path, dentry, trees.map(_.map(f)): _*)
     case Union(path, dentry, trees@_*) => Union(path, dentry, trees.map(_.map(f)): _*)
+    case Transformation(path, name, v, tree) => Transformation(path, name, f(v), tree.map(f))
+  }
+
+  private def flatMap[T, U >: T](orig: DelegateTree[T], f: Leaf[T] => DelegateTree[U]): DelegateTree[U] = orig match {
+    case tree: Exception => tree
+    case tree: Empty => tree
+    case tree: Fail => tree
+    case tree: Neg => tree
+    case Delegate(path, dentry, tree) => Delegate(path, dentry, flatMap(tree, f))
+    case leaf@Leaf(_, _, _) => f(leaf)
+    case Alt(path, dentry, trees@_*) => Alt(path, dentry, trees.map(flatMap(_, f)): _*)
+    case Union(path, dentry, trees@_*) => Union(path, dentry, trees.map(_.flatMap(f)): _*)
+    case Transformation(path, name, v, tree) => Transformation(path, name, v, flatMap(tree, f))
   }
 
   private def simplify[T](tree: DelegateTree[T]): DelegateTree[T] = tree match {
@@ -91,6 +107,7 @@ object DelegateTree {
     case Leaf(_, _, v) => NameTree.Leaf(v)
     case Alt(_, _, delegates@_*) => NameTree.Alt(delegates.map(toNameTree): _*)
     case Union(_, _, delegates@_*) => NameTree.Union(delegates.map(toNameTreeWeighted): _*)
+    case Transformation(_, _, _, tree) => toNameTree(tree)
   }
 
   private def toNameTreeWeighted[T](delegate: DelegateTree.Weighted[T]): NameTree.Weighted[T] =

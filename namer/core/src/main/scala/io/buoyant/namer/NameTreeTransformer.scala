@@ -22,6 +22,27 @@ trait NameTreeTransformer {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
   }
+
+  def wrap(underlying: Namer): Namer = new Namer {
+    private[this] def isBound(tree: NameTree[Name]): Boolean = {
+      tree match {
+        case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
+        case NameTree.Alt(trees@_*) => trees.forall(isBound)
+        case NameTree.Union(trees@_*) => trees.map(_.tree).forall(isBound)
+        case NameTree.Leaf(_: Name.Bound) => true
+        case NameTree.Leaf(_) => false
+      }
+    }
+
+    override def lookup(path: Path): Activity[NameTree[Name]] = {
+      underlying.lookup(path).flatMap { tree =>
+        if (isBound(tree))
+          transform(tree.asInstanceOf[NameTree[Name.Bound]])
+        else
+          Activity.value(tree)
+      }
+    }
+  }
 }
 
 /**
@@ -65,8 +86,23 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
   }
 
   override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
-    Activity.value(tree.map(mapBound))
+    Activity.value(tree.flatMap { leaf =>
+      DelegateTree.Transformation(
+        leaf.path,
+        getClass.getSimpleName,
+        leaf.value,
+        leaf.copy(value = mapBound(leaf.value))
+      )
+    })
 
   override protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
     Activity.value(tree.map(mapBound))
+}
+
+class MetadataFiltertingNameTreeTransformer(metadataKey: String, metadataValue: Any) extends FilteringNameTreeTransformer {
+  protected val predicate: Address => Boolean = {
+    case a@Address.Inet(_, meta) =>
+      meta.get(metadataKey).contains(metadataValue)
+    case _ => true
+  }
 }

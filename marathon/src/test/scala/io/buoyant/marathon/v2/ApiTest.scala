@@ -38,12 +38,28 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
           {
             "id": "booksId",
             "host": "1.2.3.4",
-            "ports": [7000, 7001, 7002]
+            "ports": [7000, 7001, 7002],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": true
+              }
+            ]
           },
           {
             "id": "booksId2",
             "host": "5.6.7.8",
-            "ports": [7003, 7004, 7005]
+            "ports": [7003, 7004, 7005],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": false
+              }
+            ]
           }
         ]
       }
@@ -65,7 +81,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAppIds endpoint returns a seq of app names") {
     val service = stubService(appsBuf)
 
-    val response = await(Api(service, "host", "prefix").getAppIds())
+    val response = await(Api(service, "prefix", false).getAppIds())
     assert(response == Set(
       Path.read("/foo"),
       Path.read("/bar"),
@@ -76,14 +92,14 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAppIds endpoint returns an empty seq when there are no apps") {
     val service = stubService(noApps)
 
-    val response = await(Api(service, "host", "prefix").getAppIds())
+    val response = await(Api(service, "prefix", false).getAppIds())
     assert(response.size == 0)
   }
 
   test("getAddrs endpoint returns a seq of addresses") {
     val service = stubService(appBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
+    val response = await(Api(service, "prefix", false).getAddrs(Path.Utf8("foo")))
     assert(response == Set(
       Address("1.2.3.4", 7000),
       Address("5.6.7.8", 7003)
@@ -93,8 +109,17 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
   test("getAddrs endpoint returns an empty set of addresses if app not found") {
     val service = stubService(appNotFoundBuf)
 
-    val response = await(Api(service, "host", "prefix").getAddrs(Path.Utf8("foo")))
+    val response = await(Api(service, "prefix", false).getAddrs(Path.Utf8("foo")))
     assert(response.size == 0)
+  }
+
+  test("getAddrs endpoint returns a seq of healthly addresses when useHealthCheck is enabled") {
+    val service = stubService(appBuf)
+
+    val response = await(Api(service, "prefix", true).getAddrs(Path.Utf8("foo")))
+    assert(response == Set(
+      Address("1.2.3.4", 7000)
+    ))
   }
 
   class ClientFailure extends Exception("I have no idea who to talk to")
@@ -104,7 +129,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       Future.exception(new ClientFailure)
     }
     assertThrows[ClientFailure] {
-      await(Api(failureService, "host", "prefix").getAppIds())
+      await(Api(failureService, "prefix", false).getAppIds())
     }
   }
 }

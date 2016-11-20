@@ -2,15 +2,16 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Request, Response, ServerDispatcher}
+import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.param
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
+import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Closable, Future}
-import io.netty.handler.codec.http2.Http2StreamFrame
+import io.netty.handler.codec.http2.Http2Frame
 import java.net.SocketAddress
 
 object H2 extends Client[Request, Response]
@@ -19,8 +20,8 @@ object H2 extends Client[Request, Response]
 
   private[this] val log = com.twitter.logging.Logger.get(getClass.getName)
 
-  private[this]type Http2StreamFrameTransporter = Transporter[Http2StreamFrame, Http2StreamFrame]
-  private[this]type Http2StreamFrameTransport = Transport[Http2StreamFrame, Http2StreamFrame]
+  private[this]type Http2FrameTransporter = Transporter[Http2Frame, Http2Frame]
+  private[this]type Http2FrameTransport = Transport[Http2Frame, Http2Frame]
 
   /**
    * Clients and servers may accumulate data frames into a single
@@ -42,6 +43,7 @@ object H2 extends Client[Request, Response]
   object Client {
     val newStack: Stack[ServiceFactory[Request, Response]] =
       StackClient.newStack
+        .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
 
     val defaultParams = StackClient.defaultParams +
       param.ProtocolLibrary("h2")
@@ -52,10 +54,10 @@ object H2 extends Client[Request, Response]
     params: Stack.Params = Client.defaultParams
   ) extends StdStackClient[Request, Response, Client] {
 
-    protected type In = Http2StreamFrame
-    protected type Out = Http2StreamFrame
+    protected type In = Http2Frame
+    protected type Out = Http2Frame
 
-    protected def newTransporter(): Http2StreamFrameTransporter =
+    protected def newTransporter(): Http2FrameTransporter =
       Netty4H2Transporter.mk(params)
 
     protected def copy1(
@@ -64,14 +66,11 @@ object H2 extends Client[Request, Response]
     ): Client = copy(stack, params)
 
     private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
-    private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
+    private[this] lazy val streamStats =
+      new Netty4StreamTransport.StatsReceiver(statsReceiver.scope("stream"))
 
-    protected def newDispatcher(trans: Http2StreamFrameTransport): Service[Request, Response] =
-      new Netty4ClientDispatcher(
-        trans,
-        minAccumFrames = params[MinAccumFrames].count,
-        statsReceiver = dispatchStats
-      )
+    protected def newDispatcher(trans: Http2FrameTransport): Service[Request, Response] =
+      new Netty4ClientDispatcher(trans, streamStats)
   }
 
   val client = Client()
@@ -87,10 +86,11 @@ object H2 extends Client[Request, Response]
    */
 
   object Router {
-    val pathStack: Stack[ServiceFactory[Request, Response]] =
-      h2.ViaHeaderFilter.module +:
-        h2.ScrubHopByHopHeadersFilter.module +:
-        StackRouter.newPathStack
+    val pathStack: Stack[ServiceFactory[Request, Response]] = {
+      val stk = StackRouter.newPathStack
+        .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
+      h2.ViaHeaderFilter.module +: h2.ScrubHopByHopHeadersFilter.module +: stk
+    }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack
@@ -131,6 +131,7 @@ object H2 extends Client[Request, Response]
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = StackServer.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
+      .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
 
     val defaultParams = StackServer.defaultParams +
       param.ProtocolLibrary("h2")
@@ -141,8 +142,8 @@ object H2 extends Client[Request, Response]
     params: Stack.Params = Server.defaultParams
   ) extends StdStackServer[Request, Response, Server] {
 
-    protected type In = Http2StreamFrame
-    protected type Out = Http2StreamFrame
+    protected type In = Http2Frame
+    protected type Out = Http2Frame
 
     protected def copy1(
       stack: Stack[ServiceFactory[Request, Response]] = this.stack,
@@ -153,20 +154,19 @@ object H2 extends Client[Request, Response]
      * Creates a Listener that creates a new Transport for each
      * incoming HTTP/2 *stream*.
      */
-    protected def newListener(): Listener[Http2StreamFrame, Http2StreamFrame] =
+    protected def newListener(): Listener[Http2Frame, Http2Frame] =
       Netty4H2Listener.mk(params)
 
     private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
-    private[this] lazy val dispatchStats = statsReceiver.scope("dispatch")
-    private[this] lazy val transportStats = statsReceiver.scope("transport")
+    private[this] lazy val streamStats =
+      new Netty4StreamTransport.StatsReceiver(statsReceiver.scope("stream"))
 
-    /** A dispatcher is created for each outbound HTTP/2 stream. */
+    /** A dispatcher is created for each inbound HTTP/2 connection. */
     protected def newDispatcher(
-      trans: Http2StreamFrameTransport,
+      trans: Http2FrameTransport,
       service: Service[Request, Response]
     ): Closable = {
-      val stream = new Netty4ServerStreamTransport(trans, params[MinAccumFrames].count, transportStats)
-      new ServerDispatcher(stream, service, dispatchStats)
+      new Netty4ServerDispatcher(trans, service, streamStats)
     }
   }
 

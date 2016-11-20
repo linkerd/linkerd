@@ -8,7 +8,7 @@ import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
-import io.netty.handler.codec.http2.{Http2Codec, Http2StreamFrame}
+import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
 import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
 
 /**
@@ -17,74 +17,43 @@ import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegoti
 object Netty4H2Listener {
   private val log = com.twitter.logging.Logger.get(getClass.getName)
 
-  def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
+  def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
     params[Transport.Tls] match {
       case Transport.Tls(TlsConfig.Disabled) => PlaintextListener.mk(params)
       case _ => TlsListener.mk(params)
     }
 
-  val CodecKey = "h2 codec"
-
-  val CodecPlaceholderKey = "h2 codec placeholder"
-  protected[this] val CodecPlaceholderInit: ChannelPipeline => Unit = { p =>
-    p.addLast(CodecPlaceholderKey, new ChannelDuplexHandler); ()
-  }
-
-  private[this] def streamInitializer(init: ChannelInitializer[Channel]): ChannelHandler =
-    new ChannelInitializer[Channel] {
-      def initChannel(ch: Channel): Unit = {
-        ch.pipeline.addLast(init); ()
-        // ch.pipeline.addLast(new DebugHandler("s.frame")); ()
-      }
-    }
-
-  private[this] def mkCodec(init: ChannelInitializer[Channel]) =
-    new Http2Codec(true /* server */ , streamInitializer(init))
-
   private[this] trait ListenerMaker {
-    def mk(params: Stack.Params): Listener[Http2StreamFrame, Http2StreamFrame] =
+    def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
       Netty4Listener(
         pipelineInit = pipelineInit,
-        params = params + Netty4Listener.BackPressure(false),
-        setupMarshalling = setupMarshalling
+        params = params + Netty4Listener.BackPressure(false)
       )
 
     protected[this] def pipelineInit: ChannelPipeline => Unit
-    protected[this] def setupMarshalling: ChannelInitializer[Channel] => ChannelHandler
   }
 
   private[this] object PlaintextListener extends ListenerMaker {
-    override protected[this] val pipelineInit = CodecPlaceholderInit
-    override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
-      val codec = new ServerUpgradeHandler(streamInitializer(init))
-      new ChannelInitializer[SocketChannel] {
-        def initChannel(ch: SocketChannel): Unit = {
-          // ch.pipeline.addLast(new DebugHandler("s.bytes"))
-          ch.pipeline.replace(CodecPlaceholderKey, CodecKey, codec); ()
-        }
-      }
+    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+      p.addLast(new ServerUpgradeHandler); ()
     }
   }
 
   private[this] object TlsListener extends ListenerMaker {
-    override protected[this] val pipelineInit = CodecPlaceholderInit
-    override protected[this] val setupMarshalling = { init: ChannelInitializer[Channel] =>
-      val alpn = new Alpn(mkCodec(init))
-      new ChannelInitializer[SocketChannel] {
-        def initChannel(ch: SocketChannel): Unit = {
-          ch.pipeline.addLast(alpn); ()
-        }
-      }
+    val PlaceholderKey = "h2 framer placeholder"
+    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+      p.addLast(PlaceholderKey, new ChannelDuplexHandler)
+        .addLast("alpn", new Alpn); ()
     }
 
-    class Alpn(codec: ChannelHandler)
+    private class Alpn
       extends ApplicationProtocolNegotiationHandler(ApplicationProtocolNames.HTTP_2) {
 
       override protected def configurePipeline(ctx: ChannelHandlerContext, proto: String): Unit =
         proto match {
           case ApplicationProtocolNames.HTTP_2 =>
-            ctx.channel.config.setAutoRead(true) // xxx cargo cult
-            ctx.pipeline.replace(CodecPlaceholderKey, CodecKey, codec); ()
+            ctx.channel.config.setAutoRead(true)
+            ctx.pipeline.replace(PlaceholderKey, "h2 framer", new Http2FrameCodec(true)); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>
           case proto => throw new IllegalStateException(s"unknown protocol: $proto")

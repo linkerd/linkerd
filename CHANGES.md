@@ -1,5 +1,23 @@
-## X.X.X
-* Enable namer zkLeader in namerd
+## x.x.x
+
+* Change default value of `attemptTTwitterUpgrade` to `false`
+
+## 0.8.3
+
+* Make several namers available to namerd that were missing
+* Fix crash when viewing the dtab playground
+* Announce to all routable addresses when announcing 0.0.0.0
+* Add experimental Apache Curator namer
+* Marathon:
+  * Add authentication support to marathon namer
+  * Add `useHealthCheck` option to marathon namer
+* Transformers:
+  * Allow transformers to be applied to namers
+  * Add Const and Replace transformers
+  * Show transformers in the delegate UI
+* Kubernetes:
+  * Add `labelSelector` option to k8s and k8s.external namers
+  * Add `hostNetwork` option to k8s transformers to support CNI environments
 
 ## 0.8.2
 
@@ -79,7 +97,7 @@
   * All endpoints return json
 * Add `authority` metadata field to re-write HTTP host/:authority on demand
 * Consul improvements:
-  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata 
+  * Add `setHost` parameter for Consul CatalogNamer to set `authority` metadata
   * Add auth `token` parameter to Consul Namer & Dtab Store
   * Add `datacenter` parameter to Consul Dtab Store
 * Add file-system based name interpreter.

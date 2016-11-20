@@ -150,11 +150,9 @@ class ThriftNamerClient(
    * Converts Thrift AddrMeta into Addr.Metadata
    */
   private[this] def convertMeta(thriftMeta: Option[thrift.AddrMeta]): Addr.Metadata = {
-    // TODO handle non-String metadata
-    thriftMeta match {
-      case Some(thrift.AddrMeta(Some(authority))) => Addr.Metadata(Metadata.authority -> authority)
-      case _ => Addr.Metadata.empty
-    }
+    val authority = thriftMeta.flatMap(_.authority).map(Metadata.authority -> _)
+    val nodeName = thriftMeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
+    (authority ++ nodeName).toMap
   }
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {

@@ -69,9 +69,11 @@ private[h2] class DebugHandler(prefix: String)
 
     log.debug(s"$reqid $prefix.write ${ctx.channel} [$objstr]")
     p.addListener(new ChannelFutureListener {
-      override def operationComplete(cf: ChannelFuture): Unit = cf.cause match {
-        case null => log.debug(s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
-        case e => log.debug(e, s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
+      override def operationComplete(cf: ChannelFuture): Unit = {
+        cf.cause match {
+          case null => log.debug(s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
+          case e => log.debug(e, s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
+        }
       }
     })
 

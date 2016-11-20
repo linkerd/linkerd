@@ -8,10 +8,10 @@ import org.scalatest.FunSuite
 class NamerInitializerTest extends FunSuite {
 
   def parse(config: String): NameInterpreter = {
-    val mapper = Parser.objectMapper(config, Iterable(Seq(TestNamerInitializer)))
+    val mapper = Parser.objectMapper(config, Iterable(Seq(TestNamerInitializer), Seq(TestTransformerInitializer)))
     TestNamerInitializer.registerSubtypes(mapper)
     val cfg = mapper.readValue[Seq[NamerConfig]](config)
-    ConfiguredNamersInterpreter(cfg.map { c => c.prefix -> c.newNamer(Stack.Params.empty) })
+    ConfiguredNamersInterpreter(cfg.map { c => c.prefix -> c.mk(Stack.Params.empty) })
   }
 
   val kind = "test"
@@ -50,4 +50,15 @@ class NamerInitializerTest extends FunSuite {
     assert(buh.path == Path.read("/buh"))
   }
 
+  test("applies transformer") {
+    val yaml =
+      s"""
+        |- kind: $kind
+        |  transformers:
+        |  - kind: io.l5d.empty
+      """.stripMargin
+
+    val parsed = parse(yaml)
+    assert(parsed.bind(Dtab.empty, Path.read("/#/foo/buh")).sample() == NameTree.Empty)
+  }
 }

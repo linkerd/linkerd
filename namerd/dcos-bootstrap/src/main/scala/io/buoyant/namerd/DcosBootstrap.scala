@@ -13,11 +13,8 @@ object DcosBootstrap extends App {
 
   val defaultNs = "default"
   val defaultDtab = Dtab.read(
-    """|/srv        => /#/io.l5d.marathon ;
-       |/http/1.0/* => /srv/web ;
-       |/host/*     => /srv/web ;
-       |/host       => /srv ;
-       |/http/1.1/* => /host ;
+    """|/marathonId => /#/io.l5d.marathon ;
+       |/http/1.1/* => /$/io.buoyant.http.domainToPathPfx/marathonId ;
        |""".stripMargin
   )
 

@@ -10,6 +10,8 @@
           Several Possible Resolution Paths
         {{else if isUnion}}
           Several Simultaneous Resolution Paths
+        {{else if isTransformation}}
+          Transformation
         {{else if isLeaf}}
           Namer Match
         {{/if}}
@@ -21,6 +23,9 @@
       {{#with dentry}}
         <span class='node-dentry'>{{prefix}} => {{dst}}</span>
       {{/with}}
+      {{#if transformation}}
+        <span class='node-dentry'>{{transformation}}</span>
+      {{/if}}
     </div>
     <ul class='list-group'>{{{child}}}</ul>
   </div>
@@ -66,4 +71,7 @@
       <span class='node-dentry'>{{prefix}} => {{dst}}</span>
     {{/with}}
   </li>
+  {{#if transformed}}
+  <ul class='list-group'>{{{transformed}}}</ul>
+  {{/if}}
 {{/if}}
