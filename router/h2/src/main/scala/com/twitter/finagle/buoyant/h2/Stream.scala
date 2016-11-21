@@ -3,7 +3,7 @@ package com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Failure
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 /**
  * A Stream represents a stream of Data frames, optionally
@@ -12,10 +12,26 @@ import com.twitter.util.{Future, Promise}
  * A Stream is not prescriptive as to how data is produced. However,
  * flow control semantics are built into the Stream--consumers MUST
  * release each data frame after it has processed its contents.
+ *
+ * Consumers SHOULD call `read()` until it fails (i.e. when the
+ * stream is fullt closed).
+ *
+ * If a consumer cancels a `read()` Future, the stream is reset.
  */
 sealed trait Stream {
+  override def toString = s"Stream.Reader()"
+
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
+
+  def read(): Future[Frame]
+
+  /**
+   * Satisfied when an end-of-stream frame has been read from this
+   * stream.
+   *
+   * If the stream is reset prematurely, onEnd fails with a [[Reset]].
+   */
   def onEnd: Future[Unit]
 }
 
@@ -23,24 +39,6 @@ sealed trait Stream {
  * A Stream of Frames
  */
 object Stream {
-
-  /**
-   * An empty stream. Useful, for instance, when a Message consists of
-   * only a headers frame with END_STREAM set.
-   */
-  object Nil extends Stream {
-    override def toString = "Stream.Nil"
-    override def isEmpty = true
-    override def onEnd = Future.Unit
-  }
-
-  trait Reader extends Stream {
-    override def toString = s"Stream.Reader()"
-    final override def isEmpty = false
-    def onEnd: Future[Unit]
-    def read(): Future[Frame]
-    def reset(e: Error.StreamError): Future[Unit]
-  }
 
   // TODO Create a dedicated Static stream type that indicates the
   // entire message is buffered (i.e. so that retries may be
@@ -54,29 +52,32 @@ object Stream {
 
     /**
      * Write an object to a Stream so that it may be read as a Frame
-     * (i.e. onto an underlying transport).
+     * (i.e. onto an underlying transport). The returned future is not
+     * satisfied until the frame is written and released.
      */
     def write(frame: Frame): Future[Unit]
+
+    def reset(err: Reset): Unit
+    def close(): Unit
   }
 
-  private trait AsyncQueueReader extends Reader {
+  private trait AsyncQueueReader extends Stream {
     protected[this] val frameQ: AsyncQueue[Frame]
 
+    override def isEmpty = false
+
     private[this] val endP = new Promise[Unit]
-    private[this] val endOnReleaseIfEnd: Frame => Unit = { f =>
-      if (f.isEnd) endP.become(f.onRelease)
+    override def onEnd: Future[Unit] = endP
+
+    private[this] val endOnReleaseIfEnd: Try[Frame] => Unit = {
+      case Return(f) => if (f.isEnd) endP.become(f.onRelease)
+      case Throw(e) => endP.updateIfEmpty(Throw(e)); ()
     }
 
-    override def onEnd: Future[Unit] = endP
     override def read(): Future[Frame] = {
       val f = frameQ.poll()
-      f.onSuccess(endOnReleaseIfEnd)
+      f.respond(endOnReleaseIfEnd)
       f
-    }
-
-    override def reset(e: Error.StreamError): Future[Unit] = {
-      frameQ.fail(Error.ResetException(e), discard = true)
-      Future.Unit
     }
   }
 
@@ -85,24 +86,42 @@ object Stream {
 
     override def write(f: Frame): Future[Unit] = {
       if (frameQ.offer(f)) f.onRelease
-      else Future.exception(Failure("write failed").flagged(Failure.Rejected))
+      else Future.exception(Reset.Closed)
     }
+
+    override def reset(err: Reset): Unit =
+      frameQ.fail(err, discard = true)
+
+    override def close(): Unit =
+      frameQ.fail(Reset.NoError, discard = false)
   }
 
-  def apply(q: AsyncQueue[Frame]): Reader =
+  def apply(q: AsyncQueue[Frame]): Stream =
     new AsyncQueueReader { override protected[this] val frameQ = q }
 
-  def apply(): Reader with Writer =
+  def apply(): Stream with Writer =
     new AsyncQueueReaderWriter
 
-  def const(buf: Buf): Reader = {
+  def const(buf: Buf): Stream = {
     val q = new AsyncQueue[Frame]
     q.offer(Frame.Data.eos(buf))
     apply(q)
   }
 
-  def const(s: String): Reader =
+  def const(s: String): Stream =
     const(Buf.Utf8(s))
+
+  def empty(q: AsyncQueue[Frame]): Stream =
+    new AsyncQueueReader {
+      override protected[this] val frameQ = q
+      override def isEmpty = true
+    }
+
+  object Nil extends Stream {
+    override def isEmpty = true
+    override def onEnd = Future.Unit
+    override def read(): Future[Frame] = Future.exception(Reset.NoError)
+  }
 }
 
 /**
@@ -164,16 +183,4 @@ object Frame {
     final override def isEnd = true
   }
 
-  /** A terminal Frame ending the stream abruptly. */
-  case class Reset(error: Error.StreamError) extends Frame {
-    override def toString = s"Frame.Reset(${error})"
-    final override def isEnd = true
-
-    private[this] val releaseP = new Promise[Unit]
-    override def onRelease: Future[Unit] = releaseP
-    override def release() = {
-      releaseP.setDone()
-      Future.Unit
-    }
-  }
 }

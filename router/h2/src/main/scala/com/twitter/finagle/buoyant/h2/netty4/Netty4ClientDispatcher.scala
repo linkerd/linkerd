@@ -40,9 +40,7 @@ class Netty4ClientDispatcher(
       // If the ID overflows, we can't use this connection anymore, so
       // we try to indicate to the server by sending a GO_AWAY in
       // accordance with the RFC.
-      if (closed.compareAndSet(false, true)) {
-        writer.goAwayProtocolError(Time.Top)
-      }
+      if (closed.compareAndSet(false, true)) writer.goAway(GoAway.ProtocolError)
       throw new IllegalArgumentException("stream id overflow")
     }
     id
@@ -79,20 +77,20 @@ class Netty4ClientDispatcher(
 
       case f: Http2StreamFrame =>
         f.streamId match {
-          case 0 => writer.goAwayProtocolError(Time.Top)
+          case 0 => writer.goAway(GoAway.ProtocolError)
           case id =>
             streams.get(id) match {
               case null =>
                 log.error(s"client dispatcher dropping ${f.name} message on unknown stream ${id}")
-                writer.write(id, Frame.Reset(Error.StreamClosed))
+                writer.reset(id, Reset.Closed)
 
               case stream =>
-                if (stream.offerRemote(f)) {
+                if (stream.admitRemote(f)) {
                   if (closed.get) Future.Unit
                   else transport.read().flatMap(loop)
                 } else {
                   log.error(s"client dispatcher failed to offer ${f.name} on stream ${id}")
-                  writer.write(id, Frame.Reset(Error.StreamClosed))
+                  stream.reset(Reset.Closed)
                 }
             }
         }
@@ -115,26 +113,22 @@ class Netty4ClientDispatcher(
    */
   override def apply(req: Request): Future[Response] = {
     val st = newStreamTransport()
-    req.data match {
-      case Stream.Nil =>
-        st.writeHeaders(req.headers, eos = true).before(st.remoteMsg)
-
-      case data: Stream.Reader =>
-        // Stream the request while receiving the response and
-        // continue streaming the request until it is complete,
-        // canceled,  or the response fails.
-        val t0 = Stopwatch.start()
-        st.write(req).flatMap { send =>
-          st.remoteMsg.onFailure(send.raise)
-          send.onFailure(st.remoteMsg.raise)
-          st.remoteMsg
-        }
+    // Stream the request while receiving the response and
+    // continue streaming the request until it is complete,
+    // canceled,  or the response fails.
+    val t0 = Stopwatch.start()
+    val writeF = st.write(req)
+    writeF.onFailure(st.remoteMsg.raise(_))
+    writeF.flatMap { send =>
+      send.onFailure(st.remoteMsg.raise)
+      st.remoteMsg.onFailure(send.raise)
+      st.remoteMsg
     }
   }
 
   override def close(d: Time): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
       reading.raise(Failure("closed").flagged(Failure.Interrupted))
-      writer.close(d)
+      writer.goAway(GoAway.NoError, d)
     } else Future.Unit
 }

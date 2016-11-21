@@ -20,7 +20,7 @@ import scala.collection.immutable.Queue
  * connection, provides the transport with `Http2StreamFrame`
  * instances that are used to build a `RemoteMsg`-typed message.
  */
-private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message] {
+private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Message] {
   import Netty4StreamTransport._
 
   /** The HTTP/2 STREAM_ID of this stream. */
@@ -61,23 +61,48 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
   private[this] sealed trait StreamState
   private[this] case class Open(remote: RemoteState) extends StreamState
   private[this] case class LocalClosed(remote: RemoteState) extends StreamState
-  private[this] object RemoteClosed extends StreamState
-  private[this] object Closed extends StreamState
+  private[this] case class RemoteClosed(q: AsyncQueue[Frame]) extends StreamState
+  private[this] case class Closed(error: Reset) extends StreamState
 
   private[this] sealed trait RemoteState
-  private[this] case class RemoteInit(p: Promise[RemoteMsg]) extends RemoteState
+  private[this] case class RemotePending(p: Promise[RemoteMsg]) extends RemoteState
   private[this] case class RemoteStreaming(q: AsyncQueue[Frame]) extends RemoteState
+  private[this] object RemoteOpen {
+    def unapply(s: StreamState): Option[RemoteState] = s match {
+      case Open(r) => Some(r)
+      case LocalClosed(r) => Some(r)
+      case _ => None
+    }
+  }
 
-  private[this] val _remoteMsgP = new Promise[RemoteMsg]
-  def remoteMsg: Future[RemoteMsg] = _remoteMsgP
+  private[this] val remoteMsgP = new Promise[RemoteMsg]
+  private[this] val localResetP = new Promise[Reset]
+
+  def remoteMsg: Future[RemoteMsg] = remoteMsgP
 
   // When the remote message--especially a client's repsonse--is
   // canceled, close the transport, sending a RST_STREAM as
   // appropriate.
-  _remoteMsgP.setInterruptHandler {
+  remoteMsgP.setInterruptHandler {
+    case err: Reset =>
+      remoteMsgP.updateIfEmpty(Throw(err))
+      reset(err); ()
+
+    case Failure(Some(err: Reset)) =>
+      remoteMsgP.updateIfEmpty(Throw(err))
+      reset(err); ()
+
     case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-      close(Error.Cancel)
-      _remoteMsgP.updateIfEmpty(Throw(Error.ResetException(Error.Cancel))); ()
+      remoteMsgP.updateIfEmpty(Throw(Reset.Cancel))
+      reset(Reset.Cancel); ()
+
+    case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
+      remoteMsgP.updateIfEmpty(Throw(Reset.Refused))
+      reset(Reset.Refused); ()
+
+    case e =>
+      remoteMsgP.updateIfEmpty(Throw(e))
+      reset(Reset.InternalError); ()
   }
 
   /**
@@ -86,282 +111,307 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
    * and reads are performed without locking stateRef (instead, callers )
    */
   private[this] val stateRef: AtomicReference[StreamState] =
-    new AtomicReference(Open(RemoteInit(_remoteMsgP)))
+    new AtomicReference(Open(RemotePending(remoteMsgP)))
 
-  private[this] val closeP = new Promise[Error.StreamError]
-  def onClose: Future[Error.StreamError] = closeP
-  def isClosed = stateRef.get == Closed
-
-  @tailrec
-  final def close(err: Error.StreamError = Error.NoError): Future[Unit] = stateRef.get match {
-    case Closed => Future.Unit
-
-    case RemoteClosed =>
-      if (stateRef.compareAndSet(RemoteClosed, Closed)) reset(err)
-      else close(err)
-
-    case open@Open(RemoteInit(p)) =>
-      if (stateRef.compareAndSet(open, Closed)) {
-        p.setException(Error.ResetException(err))
-        reset(err)
-      } else close(err)
-
-    case lc@LocalClosed(RemoteInit(p)) =>
-      if (stateRef.compareAndSet(lc, Closed)) {
-        p.setException(Error.ResetException(err))
-        reset(err)
-      } else close(err)
-
-    case open@Open(RemoteStreaming(q)) =>
-      if (stateRef.compareAndSet(open, Closed)) {
-        q.fail(Error.ResetException(err))
-        reset(err)
-      } else close(err)
-
-    case lc@LocalClosed(RemoteStreaming(q)) =>
-      if (stateRef.compareAndSet(lc, Closed)) {
-        q.fail(Error.ResetException(err))
-        reset(err)
-      } else close(err)
+  private[this] val closeP = new Promise[Reset]
+  def onClose: Future[Reset] = closeP
+  def isClosed = stateRef.get match {
+    case Closed(_) => true
+    case _ => false
   }
 
   protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): RemoteMsg
 
   /**
    * Optionally accept a frame from the remote side of a connection.
-   *
-   * `offerRemote` returns false to indicate that a frame cold not be
+   * s   *
+   * `admitRemote` returns false to indicate that a frame cold not be
    * accepted.  This may occur, for example, when a message is
    * received on a closed stream.
    *
    * Remote frames that are received and demultiplexed by a Dispatcher
    * are offered onto the stream. Each frame
    */
-  @tailrec final def offerRemote(in: Http2StreamFrame): Boolean = {
-    stateRef.get match {
-      case Closed => false
+  @tailrec final def admitRemote(in: Http2StreamFrame): Boolean = in match {
+    case rst: Http2ResetFrame =>
+      stateRef.get match {
+        case Closed(_) => false
 
-      case RemoteClosed =>
-        // If the remote side is closed, we can't receive any remote
-        // frames.  Actually, that's not true: the remote may still
-        // send a reset to tell the client to stfu.
-        in match {
-          case f: Http2ResetFrame =>
-            if (stateRef.compareAndSet(RemoteClosed, Closed)) {
-              closeP.setValue(toStreamError(f.errorCode))
-              true
-            } else offerRemote(in)
-
-          case _ => false
-        }
-
-      case open@Open(RemoteInit(msgP)) =>
-        // The first remote frame must be either a HEADERS or RESET
-        // frame.
-        in match {
-          case f: Http2ResetFrame =>
-            if (stateRef.compareAndSet(open, Closed)) {
-              val err = toStreamError(f.errorCode)
-              msgP.setException(Error.ResetException(err))
-              closeP.setValue(err)
-              true
-            } else offerRemote(in)
-
-          case f: Http2HeadersFrame if f.isEndStream =>
-            if (stateRef.compareAndSet(open, RemoteClosed)) {
-              val msg = mkRemoteMsg(f.headers, Stream.Nil)
-              msgP.setValue(msg)
-              true
-            } else offerRemote(in)
-
-          case f: Http2HeadersFrame =>
-            val outQ = new AsyncQueue[Frame]
-            if (stateRef.compareAndSet(open, Open(RemoteStreaming(outQ)))) {
-              val msg = mkRemoteMsg(f.headers, Stream(outQ))
-              msgP.setValue(msg)
-              true
-            } else offerRemote(in)
-
-          case f => false
-        }
-
-      case lc@LocalClosed(RemoteInit(msgP)) =>
-        // The first remote frame must be either a HEADERS or RESET
-        // frame.
-        in match {
-          case f: Http2ResetFrame =>
-            if (stateRef.compareAndSet(lc, Closed)) {
-              val err = toStreamError(f.errorCode)
-              msgP.setException(Error.ResetException(err))
-              closeP.setValue(err)
-              true
-            } else offerRemote(in)
-
-          case f: Http2HeadersFrame if f.isEndStream =>
-            if (stateRef.compareAndSet(lc, Closed)) {
-              val msg = mkRemoteMsg(f.headers, Stream.Nil)
-              msgP.setValue(msg)
-              closeP.setValue(Error.NoError)
-              true
-            } else offerRemote(in)
-
-          case f: Http2HeadersFrame =>
-            val outQ = new AsyncQueue[Frame]
-            if (stateRef.compareAndSet(lc, LocalClosed(RemoteStreaming(outQ)))) {
-              val msg = mkRemoteMsg(f.headers, Stream(outQ))
-              msgP.setValue(msg)
-              true
-            } else offerRemote(in)
-
-          case f => false
-        }
-
-      case open@Open(RemoteStreaming(outQ)) =>
-        // Just processing a normal stream frame.  Resets are passed
-        // along into the stream with data and trailers.
-        toFrame(in) match {
-          case out@Frame.Reset(err) =>
-            if (stateRef.compareAndSet(open, Closed)) {
-              statsReceiver.recordRemoteFrame(out)
-              closeP.setValue(err)
-              outQ.offer(out)
-            } else offerRemote(in)
-
-          case out if out.isEnd =>
-            if (stateRef.compareAndSet(open, RemoteClosed)) {
-              statsReceiver.recordRemoteFrame(out)
-              outQ.offer(out)
-            } else offerRemote(in)
-
-          case out =>
-            statsReceiver.recordRemoteFrame(out)
-            outQ.offer(out)
-        }
-
-      case lc@LocalClosed(RemoteStreaming(outQ)) =>
-        // Just processing a normal stream frame.  Resets are passed
-        // along into the stream with data and trailers.
-        val out = toFrame(in)
-        if (out.isEnd) {
-          if (stateRef.compareAndSet(lc, Closed)) {
-            statsReceiver.recordRemoteFrame(out)
-            val err = out match {
-              case Frame.Reset(err) => err
-              case _ => Error.NoError
+        case open@RemoteOpen(remote) =>
+          val err = toReset(rst.errorCode)
+          if (stateRef.compareAndSet(open, Closed(err))) {
+            statsReceiver.remoteResetCount.incr()
+            remote match {
+              case RemotePending(remoteP) =>
+                remoteP.updateIfEmpty(Throw(err))
+              case RemoteStreaming(remoteQ) =>
+                remoteQ.fail(err, discard = true)
             }
             closeP.setValue(err)
-            outQ.offer(out)
-          } else offerRemote(in)
-        } else {
-          statsReceiver.recordRemoteFrame(out)
-          outQ.offer(out)
+            true
+          } else admitRemote(rst)
+
+        case rc@RemoteClosed(remoteQ) =>
+          val err = toReset(rst.errorCode)
+          if (stateRef.compareAndSet(rc, Closed(err))) {
+            remoteQ.fail(err, discard = true)
+            true
+          } else admitRemote(rst)
+      }
+
+    case hdrs: Http2HeadersFrame if hdrs.isEndStream =>
+      stateRef.get match {
+        case Closed(_) | RemoteClosed(_) => false
+
+        case open@Open(remote) => remote match {
+          case RemotePending(remoteP) =>
+            val remoteQ = new AsyncQueue[Frame]
+            if (stateRef.compareAndSet(open, RemoteClosed(remoteQ))) {
+              val msg = mkRemoteMsg(hdrs.headers, Stream.empty(remoteQ))
+              remoteP.setValue(msg)
+              true
+            } else admitRemote(hdrs)
+
+          case RemoteStreaming(remoteQ) =>
+            if (stateRef.compareAndSet(open, RemoteClosed(remoteQ))) {
+              val f = toFrame(hdrs)
+              statsReceiver.recordRemoteFrame(f)
+              remoteQ.offer(f)
+            } else admitRemote(hdrs)
         }
-    }
+
+        case lc@LocalClosed(remote) => remote match {
+          case RemotePending(remoteP) =>
+            if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+              val msg = mkRemoteMsg(hdrs.headers, Stream.Nil)
+              remoteP.setValue(msg)
+              true
+            } else admitRemote(hdrs)
+
+          case RemoteStreaming(remoteQ) =>
+            if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+              val f = toFrame(hdrs)
+              statsReceiver.recordRemoteFrame(f)
+              val ok = remoteQ.offer(f)
+              if (ok) remoteQ.fail(Reset.NoError, discard = false)
+              ok
+            } else admitRemote(hdrs)
+        }
+      }
+
+    case hdrs: Http2HeadersFrame =>
+      // A HEADERS frame without END_STREAM may only be received to
+      // initiate a message (i.e. when the remote is still pending).
+      stateRef.get match {
+        case open@Open(RemotePending(remoteP)) =>
+          val remoteQ = new AsyncQueue[Frame]
+          if (stateRef.compareAndSet(open, Open(RemoteStreaming(remoteQ)))) {
+            val msg = mkRemoteMsg(hdrs.headers, Stream(remoteQ))
+            remoteP.setValue(msg)
+            true
+          } else admitRemote(hdrs)
+
+        case lc@LocalClosed(RemotePending(remoteP)) =>
+          val remoteQ = new AsyncQueue[Frame]
+          if (stateRef.compareAndSet(lc, LocalClosed(RemoteStreaming(remoteQ)))) {
+            val msg = mkRemoteMsg(hdrs.headers, Stream(remoteQ))
+            remoteP.setValue(msg)
+            true
+          } else admitRemote(hdrs)
+
+        case _ => false
+      }
+
+    case data: Http2DataFrame if data.isEndStream =>
+      stateRef.get match {
+        case open@Open(RemoteStreaming(remoteQ)) =>
+          if (stateRef.compareAndSet(open, RemoteClosed(remoteQ))) {
+            val f = toFrame(data)
+            statsReceiver.recordRemoteFrame(f)
+            remoteQ.offer(f)
+          } else admitRemote(data)
+
+        case lc@LocalClosed(RemoteStreaming(remoteQ)) =>
+          if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+            val f = toFrame(data)
+            statsReceiver.recordRemoteFrame(f)
+            closeP.setValue(Reset.NoError)
+
+            val ok = remoteQ.offer(f)
+            if (ok) remoteQ.fail(Reset.NoError, discard = false)
+            ok
+          } else admitRemote(data)
+
+        case _ => false
+      }
+
+    case data: Http2DataFrame =>
+      stateRef.get match {
+        case RemoteOpen(RemoteStreaming(remoteQ)) =>
+          val f = toFrame(data)
+          statsReceiver.recordRemoteFrame(f)
+          remoteQ.offer(f)
+
+        case _ => false
+      }
   }
 
   private[this] def toFrame(f: Http2StreamFrame): Frame = f match {
     case f: Http2DataFrame => Netty4Message.Data(f, updateWindow)
     case f: Http2HeadersFrame if f.isEndStream => Netty4Message.Trailers(f.headers)
-    case f: Http2ResetFrame => Frame.Reset(toStreamError(f.errorCode))
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
 
-  private[this] val mapFutureUnit = (_: Any) => Future.Unit
+  def write(msg: LocalMsg): Future[Future[Unit]] = {
+    val f =
+      if (msg.stream.isEmpty) writeHeadersInit(msg.headers)
+      else writeHeadersEos(msg.headers)
 
-  def write(msg: LocalMs): Future[Future[Unit]] = msg.data match {
-    case Stream.Nil =>
-      writeHeaders(msg.headers, false).map(mapFutureUnit)
-    case data: Stream.Reader =>
-      writeHeaders(msg.headers, false).map(_ => writeStream(data))
+    f.map(_ => writeStream(msg.stream))
   }
 
-  @tailrec final def writeHeaders(hdrs: Headers, eos: Boolean = false): Future[Unit] =
-    (stateRef.get, eos) match {
-      case (Closed | LocalClosed(_), _) =>
-        Future.exception(new IllegalStateException("Writing headers on closed stream"))
+  private[this] def writeHeaders(hdrs: Headers, eos: Boolean): Future[Unit] = {
+    val p = new Promise[Unit]
+    val f = transport.write(streamId, hdrs, false)
+    f.proxyTo(p)
+    p.setInterruptHandler {
+      case err: Reset =>
+        f.raise(err)
+        p.updateIfEmpty(Throw(err)); ()
+    }
+    p
+  }
 
-      case (_, false) =>
-        transport.write(streamId, hdrs, false)
-
-      case (open@Open(remote), true) =>
-        if (stateRef.compareAndSet(open, LocalClosed(remote))) transport.write(streamId, hdrs, true)
-        else writeHeaders(hdrs, true)
-
-      case (RemoteClosed, true) =>
-        if (stateRef.compareAndSet(RemoteClosed, Closed)) {
-          val f = transport.write(streamId, hdrs, true)
-          f.respond {
-            case Return(_) =>
-              closeP.setValue(Error.NoError); ()
-            case Throw(e) =>
-              closeP.setException(e); ()
-          }
-          f
-        } else writeHeaders(hdrs, true)
+  private[this] def writeHeadersInit(hdrs: Headers): Future[Unit] =
+    stateRef.get match {
+      case Closed(err) => Future.exception(err)
+      case LocalClosed(_) => Future.exception(Reset.Closed)
+      case _ => writeHeaders(hdrs, false)
     }
 
-  @tailrec private[this] def _writeFrame(frame: Frame): Future[Boolean] =
-    (stateRef.get, frame) match {
-      case (Closed | LocalClosed(_), _) =>
-        Future.exception(new IllegalStateException("Writing frame on closed stream"))
+  @tailrec private[this] def writeHeadersEos(hdrs: Headers): Future[Unit] =
+    stateRef.get match {
+      case Closed(err) => Future.exception(err)
 
-      case (s0, rst@Frame.Reset(err)) =>
-        if (stateRef.compareAndSet(s0, Closed)) {
-          statsReceiver.recordLocalFrame(frame)
-          closeP.setValue(err)
-          transport.write(streamId, rst)
-            .before(rst.release())
-            .before(Future.True)
-        } else _writeFrame(rst)
+      case LocalClosed(_) =>
+        Future.exception(Reset.Closed)
 
-      case (_, frame) if !frame.isEnd =>
+      case open@Open(remote) =>
+        if (stateRef.compareAndSet(open, LocalClosed(remote))) writeHeaders(hdrs, true)
+        else writeHeadersEos(hdrs)
+
+      case rc@RemoteClosed(remoteQ) =>
+        if (stateRef.compareAndSet(rc, Closed(Reset.NoError))) {
+          remoteQ.fail(Reset.NoError, discard = false)
+          closeP.setValue(Reset.NoError)
+          writeHeaders(hdrs, true)
+        } else writeHeadersEos(hdrs)
+    }
+
+  @tailrec private[this] def _writeFrame(frame: Frame): Future[Unit] =
+    stateRef.get match {
+      case Closed(err) => Future.exception(err)
+
+      case lc@LocalClosed(remote) =>
+        if (stateRef.compareAndSet(lc, Closed(Reset.Closed))) {
+          val err = remote match {
+            case RemotePending(p) =>
+              p.setException(Reset.Closed); ()
+            case RemoteStreaming(q) => q.fail(Reset.Closed, discard = true)
+          }
+          Future.exception(Reset.Closed)
+        } else _writeFrame(frame)
+
+      case _ =>
         statsReceiver.recordLocalFrame(frame)
-        transport.write(streamId, frame)
-          .before(frame.release())
-          .before(Future.False)
+        transport.write(streamId, frame).before(frame.release())
+    }
 
-      case (open@Open(remote), frame) =>
+  @tailrec private[this] def _writeFrameEos(frame: Frame): Future[Unit] =
+    stateRef.get match {
+      case Closed(err) => Future.exception(err)
+
+      case lc@LocalClosed(remote) =>
+        if (stateRef.compareAndSet(lc, Closed(Reset.Closed))) {
+          val err = remote match {
+            case RemotePending(p) =>
+              p.setException(Reset.Closed); ()
+            case RemoteStreaming(q) => q.fail(Reset.Closed, discard = true)
+          }
+          Future.exception(Reset.Closed)
+        } else _writeFrameEos(frame)
+
+      case open@Open(remote) =>
         if (stateRef.compareAndSet(open, LocalClosed(remote))) {
           statsReceiver.recordLocalFrame(frame)
-          transport.write(streamId, frame)
-            .before(frame.release())
-            .before(Future.True)
-        } else _writeFrame(frame)
+          transport.write(streamId, frame).before(frame.release())
+        } else _writeFrameEos(frame)
 
-      case (RemoteClosed, frame) =>
-        if (stateRef.compareAndSet(RemoteClosed, Closed)) {
+      case rc@RemoteClosed(remoteQ) =>
+        if (stateRef.compareAndSet(rc, Closed(Reset.NoError))) {
           statsReceiver.recordLocalFrame(frame)
-          closeP.setValue(Error.NoError)
-          transport.write(streamId, frame)
-            .before(frame.release())
-            .before(Future.True)
-        } else _writeFrame(frame)
+          remoteQ.fail(Reset.NoError, discard = false)
+          closeP.setValue(Reset.NoError)
+          transport.write(streamId, frame).before(frame.release())
+        } else _writeFrameEos(frame)
     }
 
-  private[this] val writeFrame: Frame => Future[Boolean] =
-    f => _writeFrame(f)
-
-  /** Write a request stream to the underlying transport */
-  def writeStream(reader: Stream.Reader): Future[Unit] = {
-    if (reader.isEmpty) Future.Unit
-    else {
-      lazy val loop: Boolean => Future[Unit] = { eos =>
-        if (eos) Future.Unit
-        else reader.read().flatMap(writeFrame).flatMap(loop)
-      }
-      reader.read().flatMap(writeFrame).flatMap(loop)
-    }
+  private[this] val writeFrame: Frame => Future[Unit] = {
+    case f if !f.isEnd => _writeFrame(f)
+    case f => _writeFrameEos(f)
   }
 
-  private[this] def reset(err: Error.StreamError = Error.NoError): Future[Unit] = {
-    val f = transport.write(streamId, Frame.Reset(err))
-    f.respond {
-      case Return(_) =>
-        closeP.setValue(err); ()
-      case Throw(e) =>
-        closeP.setException(e); ()
+  /** Write a request stream to the underlying transport */
+  private[this] def writeStream(stream: Stream): Future[Unit] = {
+    // Read from the stream until it fails.
+    def loop(): Future[Unit] =
+      stream.read().flatMap(writeFrame).before(loop())
+
+    val streamP = new Promise[Unit]
+    val doneF = loop()
+    doneF.proxyTo(streamP)
+    streamP.setInterruptHandler {
+      case rst: Reset =>
+        reset(rst)
+        streamP.updateIfEmpty(Throw(rst))
+        doneF.raise(rst)
     }
-    f
+    streamP
+  }
+
+  /**
+   * Signals a reset from Local to Remote by setting the stream state
+   * to Closed and writing a reset to the remote.
+   */
+  @tailrec final def reset(err: Reset): Future[Unit] =
+    stateRef.get match {
+      case Closed(_) => Future.Unit
+
+      case state@RemoteOpen(remote) => remote match {
+        case RemotePending(remoteP) =>
+          if (stateRef.compareAndSet(state, Closed(err))) {
+            remoteP.setException(err)
+            writeResetAndClose(err)
+          } else reset(err)
+
+        case RemoteStreaming(remoteQ) =>
+          if (stateRef.compareAndSet(state, Closed(err))) {
+            remoteQ.fail(err, discard = true)
+            writeResetAndClose(err)
+          } else reset(err)
+      }
+
+      case rc@RemoteClosed(remoteQ) =>
+        if (stateRef.compareAndSet(rc, Closed(err))) {
+          remoteQ.fail(err, discard = true)
+          writeResetAndClose(err)
+        } else reset(err)
+    }
+
+  private[this] def writeResetAndClose(err: Reset = Reset.NoError): Future[Unit] = {
+    log.info("stream=%s writeResetAndClose %s", streamId, err)
+    closeP.setValue(err)
+    transport.reset(streamId, err)
   }
 
   private[this] val updateWindow: Int => Future[Unit] = { incr =>
@@ -372,14 +422,14 @@ private[h2] trait Netty4StreamTransport[LocalMs <: Message, RemoteMsg <: Message
 object Netty4StreamTransport {
   private val log = Logger.get(getClass.getName)
 
-  private def toStreamError(code: Long): Error.StreamError =
+  private def toReset(code: Long): Reset =
     Http2Error.valueOf(code) match {
-      case Http2Error.NO_ERROR => Error.NoError
-      case Http2Error.INTERNAL_ERROR => Error.InternalError
-      case Http2Error.ENHANCE_YOUR_CALM => Error.EnhanceYourCalm
-      case Http2Error.REFUSED_STREAM => Error.RefusedStream
-      case Http2Error.STREAM_CLOSED => Error.StreamClosed
-      case Http2Error.CANCEL => Error.Cancel
+      case Http2Error.NO_ERROR => Reset.NoError
+      case Http2Error.INTERNAL_ERROR => Reset.InternalError
+      case Http2Error.ENHANCE_YOUR_CALM => Reset.EnhanceYourCalm
+      case Http2Error.REFUSED_STREAM => Reset.Refused
+      case Http2Error.STREAM_CLOSED => Reset.Closed
+      case Http2Error.CANCEL => Reset.Cancel
       case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
     }
 
@@ -388,26 +438,24 @@ object Netty4StreamTransport {
     private[this] val localDataBytes = local.stat("data", "bytes")
     private[this] val localDataFrames = local.counter("data", "frames")
     private[this] val localTrailersCount = local.counter("trailers")
-    private[this] val localResetCount = local.counter("reset")
+    val localResetCount = local.counter("reset")
     val recordLocalFrame: Frame => Unit = {
       case d: Frame.Data =>
         localDataFrames.incr()
         localDataBytes.add(d.buf.length)
       case t: Frame.Trailers => localTrailersCount.incr()
-      case Frame.Reset(_) => localResetCount.incr()
     }
 
     private[this] val remote = underlying.scope("remote")
     private[this] val remoteDataBytes = remote.stat("data", "bytes")
     private[this] val remoteDataFrames = remote.counter("data", "frames")
     private[this] val remoteTrailersCount = remote.counter("trailers")
-    private[this] val remoteResetCount = remote.counter("reset")
+    val remoteResetCount = remote.counter("reset")
     val recordRemoteFrame: Frame => Unit = {
       case d: Frame.Data =>
         remoteDataFrames.incr()
         remoteDataBytes.add(d.buf.length)
       case _: Frame.Trailers => remoteTrailersCount.incr()
-      case Frame.Reset(_) => remoteResetCount.incr()
     }
 
   }

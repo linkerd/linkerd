@@ -18,7 +18,7 @@ import com.twitter.util.{Future, Promise}
  */
 sealed trait Message {
   def headers: Headers
-  def data: Stream
+  def stream: Stream
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
@@ -95,7 +95,7 @@ object Request {
     method: Method,
     authority: String,
     path: String,
-    data: Stream
+    stream: Stream
   ): Request = Impl(
     Headers(
       Headers.Scheme -> scheme,
@@ -103,14 +103,14 @@ object Request {
       Headers.Authority -> authority,
       Headers.Path -> path
     ),
-    data
+    stream
   )
 
-  def apply(headers: Headers, data: Stream): Request =
-    Impl(headers, data)
+  def apply(headers: Headers, stream: Stream): Request =
+    Impl(headers, stream)
 
-  private case class Impl(headers: Headers, data: Stream) extends Request {
-    override def toString = s"Request($scheme, $method, $authority, $path, $data)"
+  private case class Impl(headers: Headers, stream: Stream) extends Request {
+    override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
     override def method = headers.get(Headers.Method).headOption match {
@@ -128,17 +128,18 @@ trait Response extends Message {
 }
 
 object Response {
-  def apply(status: Status, data: Stream): Response =
-    Impl(Headers(Headers.Status -> status.code.toString), data)
 
-  def apply(headers: Headers, data: Stream): Response =
-    Impl(headers, data)
+  def apply(status: Status, stream: Stream): Response =
+    Impl(Headers(Headers.Status -> status.code.toString), stream)
+
+  def apply(headers: Headers, stream: Stream): Response =
+    Impl(headers, stream)
 
   private case class Impl(
     headers: Headers,
-    data: Stream
+    stream: Stream
   ) extends Response {
-    override def toString = s"Response($status, $data)"
+    override def toString = s"Response($status, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def status = headers.get(Headers.Status).headOption match {
       case Some(code) => Status.fromCode(code.toInt)
