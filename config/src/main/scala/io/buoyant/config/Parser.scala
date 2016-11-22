@@ -75,7 +75,6 @@ object Parser {
     mapper.registerModule(customTypes)
     mapper.setSerializationInclusion(Include.NON_NULL)
     mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
-    mapper.setVisibility(PropertyAccessor.FIELD, Visibility.PUBLIC_ONLY)
 
     // Subtypes must not conflict
     for (kinds <- configInitializers) {
