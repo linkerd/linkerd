@@ -32,13 +32,13 @@ class ConcurrentStreamsEndToEndTest
     test(s"$pfx: concurrency=${concurrency} len=${streamLen}B frame=${frameSize}B") {
       // The server simply echos the request stream into the response:
       val server = Downstream.service("server") { req =>
-        Future(reader(req.data)).map(Response(Status.Ok, _))
+        Future(req.stream).map(Response(Status.Ok, _))
       }
       val client = upstream(server.server)
       def open(): Future[Streamer] = {
         val s = Stream()
         client(Request("http", Method.Post, "host", "/", s))
-          .map(r => Streamer(reader(r.data), s))
+          .map(r => Streamer(r.stream, s))
       }
 
       // Send the same data through all streams simultaneously, one frame at a time:
@@ -63,7 +63,7 @@ class ConcurrentStreamsEndToEndTest
       }
     }
 
-  case class Streamer(reader: Stream.Reader, writer: Stream.Writer) {
+  case class Streamer(reader: Stream, writer: Stream.Writer) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
       def read(remaining: Int): Future[Unit] =
         reader.read().flatMap {

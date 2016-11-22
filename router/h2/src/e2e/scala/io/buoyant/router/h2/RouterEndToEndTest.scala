@@ -53,7 +53,7 @@ class RouterEndToEndTest
     @volatile var serverRemoteStream: Stream = null
     val clientLocalStream, serverLocalStream = Stream()
     val dog = Downstream.mk("dog") { req =>
-      serverRemoteStream = req.data
+      serverRemoteStream = req.stream
       Response(Status.Ok, serverLocalStream)
     }
 
@@ -76,7 +76,6 @@ class RouterEndToEndTest
       val rsp = await(client(req))
       assert(serverRemoteStream != null)
 
-      
     } finally {
       setLogLevel(Level.OFF)
       await(client.close())

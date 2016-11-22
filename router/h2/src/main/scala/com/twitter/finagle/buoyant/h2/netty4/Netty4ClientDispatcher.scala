@@ -34,16 +34,16 @@ class Netty4ClientDispatcher(
   private[this] val writer = Netty4H2Writer(transport)
 
   private[this] val _id = new AtomicInteger(BaseStreamId)
-  private[this] def nextId(): Int = {
-    val id = _id.getAndAdd(2)
-    if (id < BaseStreamId || MaxStreamId < id) {
+
+  private[this] def nextId(): Int = _id.getAndAdd(2) match {
+    case id if id < BaseStreamId || MaxStreamId < id =>
       // If the ID overflows, we can't use this connection anymore, so
       // we try to indicate to the server by sending a GO_AWAY in
       // accordance with the RFC.
       if (closed.compareAndSet(false, true)) writer.goAway(GoAway.ProtocolError)
       throw new IllegalArgumentException("stream id overflow")
-    }
-    id
+
+    case id => id
   }
 
   private[this] val streams =
@@ -72,33 +72,34 @@ class Netty4ClientDispatcher(
   private[this] val reading = {
     lazy val loop: Http2Frame => Future[Unit] = {
       case _: Http2GoAwayFrame =>
-        if (closed.compareAndSet(false, true)) transport.close()
-        else Future.Unit
+        if (closed.compareAndSet(false, true)) {
+          streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
+        }
+        Future.Unit
 
       case f: Http2StreamFrame =>
         f.streamId match {
           case 0 => writer.goAway(GoAway.ProtocolError)
           case id =>
             streams.get(id) match {
-              case null =>
-                log.error(s"client dispatcher dropping ${f.name} message on unknown stream ${id}")
-                writer.reset(id, Reset.Closed)
-
+              case null => writer.goAway(GoAway.ProtocolError)
               case stream =>
-                if (stream.admitRemote(f)) {
-                  if (closed.get) Future.Unit
-                  else transport.read().flatMap(loop)
-                } else {
-                  log.error(s"client dispatcher failed to offer ${f.name} on stream ${id}")
-                  stream.reset(Reset.Closed)
+                stream.admitRemote(f) match {
+                  case Some(err: GoAway) =>
+                    writer.goAway(err)
+
+                  case Some(err: Reset) =>
+                    println(s"client dispatcher resetting stream $id")
+                    writer.reset(id, err).before(transport.read().flatMap(loop))
+
+                  case None =>
+                    if (closed.get) Future.Unit
+                    else transport.read().flatMap(loop)
                 }
             }
         }
 
-      case unknown =>
-        log.error(s"client dispatcher ignoring ${unknown.name} message on the connection")
-        if (closed.get) Future.Unit
-        else transport.read().flatMap(loop)
+      case unknown => writer.goAway(GoAway.ProtocolError)
     }
 
     transport.read().flatMap(loop).onFailure {
@@ -117,9 +118,7 @@ class Netty4ClientDispatcher(
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
     val t0 = Stopwatch.start()
-    val writeF = st.write(req)
-    writeF.onFailure(st.remoteMsg.raise(_))
-    writeF.flatMap { send =>
+    st.write(req).flatMap { send =>
       send.onFailure(st.remoteMsg.raise)
       st.remoteMsg.onFailure(send.raise)
       st.remoteMsg
@@ -128,7 +127,8 @@ class Netty4ClientDispatcher(
 
   override def close(d: Time): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      reading.raise(Failure("closed").flagged(Failure.Interrupted))
+      reading.raise(Failure(GoAway.NoError).flagged(Failure.Interrupted))
+      streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
       writer.goAway(GoAway.NoError, d)
     } else Future.Unit
 }

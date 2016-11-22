@@ -18,8 +18,8 @@ class LargeStreamEndToEndTest
   test(s"client/server ${LargeStreamLen}B request stream") {
     val streamP = new Promise[Stream]
     def serve(req: Request) = {
-      streamP.setValue(req.data)
-      Response(Status.Ok, Stream.Nil)
+      streamP.setValue(req.stream)
+      Response(Status.Ok, Stream.empty())
     }
     withClient(serve) { client =>
       val elapsed = Stopwatch.start()
@@ -28,7 +28,7 @@ class LargeStreamEndToEndTest
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       await(defaultWait * 2) {
-        testStream(reader(await(streamP)), writer, LargeStreamLen, FrameLen)
+        testStream(await(streamP), writer, LargeStreamLen, FrameLen)
       }
       info(s"duration=${elapsed().inMillis}ms")
     }
@@ -38,18 +38,18 @@ class LargeStreamEndToEndTest
     val writer = Stream()
     withClient(_ => Response(Status.Ok, writer)) { client =>
       val elapsed = Stopwatch.start()
-      val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
+      val req = Request("http", Method.Get, "host", "/path", Stream.empty())
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       await(defaultWait * 2) {
-        testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
+        testStream(rsp.stream, writer, LargeStreamLen, FrameLen)
       }
       info(s"duration=${elapsed().inMillis}ms")
     }
   }
 
   def testStream(
-    reader: Stream.Reader,
+    reader: Stream,
     writer: Stream.Writer,
     streamLen: Long,
     frameSize: Int

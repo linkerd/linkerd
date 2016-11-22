@@ -41,24 +41,6 @@ class Netty4ServerDispatcher(
     stream
   }
 
-  // If the connection is lost, reset active streams.
-  transport.onClose.onSuccess { e =>
-    if (closed.compareAndSet(false, true)) {
-      log.info(e, "%s %s: transport onClose", transport.localAddress, transport.remoteAddress)
-      serving.raise(Failure("closed").flagged(Failure.Interrupted))
-      streams.asScala.values.foreach(_.reset(Reset.Cancel))
-    }
-  }
-
-  override def close(deadline: Time): Future[Unit] =
-    if (closed.compareAndSet(false, true)) {
-      // TODO send GO_AWAY?
-      log.info("%s %s: dispatcher close", transport.localAddress, transport.remoteAddress)
-      serving.raise(Failure("closed").flagged(Failure.Interrupted))
-      Future.join(streams.values.asScala.toSeq.map(_.reset(Reset.Cancel)))
-        .before(transport.close(deadline))
-    } else Future.Unit
-
   private[this] val serve: Request => Future[Response] =
     req => service(req)
 
@@ -75,35 +57,38 @@ class Netty4ServerDispatcher(
             frame match {
               case frame: Http2HeadersFrame =>
                 val stream = newStreamTransport(frame.streamId)
-                if (stream.admitRemote(frame)) {
-                  // Read the request from the stream, pass it to the
-                  // service to get the response, and then write the
-                  // response stream.
-                  val reqF = stream.remoteMsg
-                  val rspF = reqF.flatMap(serve)
-                  val endF = rspF.flatMap(stream.write(_).flatten)
-                  // If the service fails to process the request or
-                  // the response stream fails, the stream is reset.
-                  endF.respond {
-                    case Return(_) => // TODO record stats here?
-                    case Throw(exc) =>
-                      val err = exc match {
-                        case err: Reset => err
-                        case Failure(Some(err: Reset)) => err
-                        case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
-                        case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused
-                        case e =>
-                          log.error(e, "%s %s: stream %d: serving error", transport.localAddress, transport.remoteAddress, frame.streamId)
-                          Reset.InternalError
-                      }
-                      stream.reset(err); ()
-                  }
+                stream.admitRemote(frame) match {
+                  case Some(err: GoAway) => writer.goAway(err)
+                  case Some(err: Reset) => writer.reset(stream.streamId, err)
+                  case None =>
+                    // Read the request from the stream, pass it to the
+                    // service to get the response, and then write the
+                    // response stream.
+                    val reqF = stream.remoteMsg
+                    val rspF = reqF.flatMap(serve)
+                    val endF = rspF.flatMap(stream.write(_).flatten)
 
-                  if (closed.get) Future.Unit
-                  else transport.read().flatMap(processLoop)
-                } else {
-                  log.error(s"server dispatcher failed to offer ${frame.name} on stream ${frame.streamId}")
-                  stream.reset(Reset.Closed)
+                    // If the service fails to process the request or
+                    // the response stream fails, the stream is reset.
+                    endF.respond {
+                      case Return(_) => // TODO record stats here?
+                      case Throw(exc) =>
+                        val err = exc match {
+                          case err: Reset => err
+                          case Failure(Some(err: Reset)) => err
+                          case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
+                          case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused
+                          case e =>
+                            log.error(e, "%s %s: stream %d: serving error", transport.localAddress, transport.remoteAddress, frame.streamId)
+                            Reset.InternalError
+                        }
+                        if (stream.reset(err)) {
+                          writer.reset(stream.streamId, err); ()
+                        }
+                    }
+
+                    if (closed.get) Future.Unit
+                    else transport.read().flatMap(processLoop)
                 }
 
               case frame =>
@@ -112,35 +97,48 @@ class Netty4ServerDispatcher(
             }
 
           case stream =>
-            if (stream.admitRemote(frame)) {
-              if (closed.get) Future.Unit
-              else transport.read().flatMap(processLoop)
-            } else {
-              log.error(s"server dispathcher failed to offer ${frame.name} on stream ${frame.streamId}")
-              stream.reset(Reset.Closed)
+            stream.admitRemote(frame) match {
+              case Some(err: GoAway) => writer.goAway(err)
+              case Some(err: Reset) => writer.reset(frame.streamId, err)
+              case None =>
+                if (closed.get) Future.Unit
+                else transport.read().flatMap(processLoop)
             }
         }
 
       case frame =>
-        // TODO send a GO_AWAY?
-        val id = frame match {
-          case frame: Http2StreamFrame => frame.streamId
-          case _ => 0
-        }
-        log.warning("%s %s: stream=%d: ignoring %s", transport.localAddress, transport.remoteAddress, id, frame.name)
-        if (closed.get) Future.Unit
-        else transport.read().flatMap(processLoop)
+        log.warning("%s %s: unexpected frame: %s", transport.localAddress, transport.remoteAddress, frame.name)
+        goAway(GoAway.ProtocolError)
     }
 
     transport.read().flatMap(processLoop).onFailure {
-      case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-
-      case WriteException(_: ChannelClosedException) =>
-        log.info("%s %s: channel closed", transport.localAddress, transport.remoteAddress)
-        close(); ()
-
+      // TODO more error handling
       case e =>
         log.error(e, "server dispatcher")
     }
   }
+
+  // If the connection is lost, reset active streams.
+  transport.onClose.onSuccess { e =>
+    if (closed.compareAndSet(false, true)) {
+      log.debug(e, "%s %s: transport onClose", transport.localAddress, transport.remoteAddress)
+      serving.raise(Failure("closed").flagged(Failure.Interrupted))
+      streams.asScala.values.foreach(_.reset(Reset.Cancel))
+    }
+  }
+
+  private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
+    if (closed.compareAndSet(false, true)) {
+      log.info("%s %s: dispatcher close", transport.localAddress, transport.remoteAddress)
+      serving.raise(err)
+      val resets = streams.values.asScala.toSeq.map { s =>
+        if (s.reset(Reset.Cancel)) writer.reset(s.streamId, Reset.Cancel)
+        else Future.Unit
+      }
+      Future.join(resets).before(writer.goAway(err, deadline))
+    } else Future.Unit
+
+  override def close(deadline: Time): Future[Unit] =
+    goAway(GoAway.NoError, deadline)
+
 }

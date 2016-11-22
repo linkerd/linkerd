@@ -16,31 +16,31 @@ class FlowControlEndToEndTest
   test("client/server request flow control") {
     val streamP = new Promise[Stream]
     val server = { req: Request =>
-      streamP.setValue(req.data)
-      Response(Status.Ok, Stream.Nil)
+      streamP.setValue(req.stream)
+      Response(Status.Ok, Stream.empty())
     }
     withClient(server) { client =>
       val writer = Stream()
       val req = Request("http", Method.Get, "host", "/path", writer)
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      testFlowControl(reader(await(streamP)), writer)
+      testFlowControl(await(streamP), writer)
     }
   }
 
   test("client/server response flow control") {
     val writer = Stream()
     withClient(_ => Response(Status.Ok, writer)) { client =>
-      val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
+      val req = Request("http", Method.Get, "host", "/path", Stream.empty())
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
-      testFlowControl(reader(rsp.data), writer)
+      testFlowControl(rsp.stream, writer)
     }
   }
 
   val WindowSize = 65535
 
-  def testFlowControl(reader: Stream.Reader, writer: Stream.Writer) = {
+  def testFlowControl(reader: Stream, writer: Stream.Writer) = {
     // The first frame is too large to fit in a window. It should not
     // be released until all of the data has been flushed.  This
     // cannot happen until the reader reads and releases some of the

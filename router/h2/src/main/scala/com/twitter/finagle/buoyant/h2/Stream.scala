@@ -18,7 +18,7 @@ import com.twitter.util.{Future, Promise, Return, Throw, Try}
  *
  * If a consumer cancels a `read()` Future, the stream is reset.
  */
-sealed trait Stream {
+trait Stream {
   override def toString = s"Stream.Reader()"
 
   def isEmpty: Boolean
@@ -117,11 +117,20 @@ object Stream {
       override def isEmpty = true
     }
 
-  object Nil extends Stream {
-    override def isEmpty = true
-    override def onEnd = Future.Unit
-    override def read(): Future[Frame] = Future.exception(Reset.NoError)
-  }
+  def empty(): Stream with Writer =
+    new Stream with Writer {
+      private[this] val frameQ = new AsyncQueue[Frame](1)
+      override def isEmpty = true
+      override def onEnd = Future.Unit
+      override def read(): Future[Frame] = frameQ.poll()
+      override def write(f: Frame): Future[Unit] = {
+        frameQ.fail(Reset.Closed, discard = true)
+        Future.exception(Reset.Closed)
+      }
+      override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+      override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
+    }
+
 }
 
 /**

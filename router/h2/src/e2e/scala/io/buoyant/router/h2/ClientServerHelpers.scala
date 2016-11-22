@@ -22,11 +22,6 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
     statsReceiver.clear()
   }
 
-  def reader(s: Stream) = s match {
-    case Stream.Nil => fail("empty response stream")
-    case r: Stream.Reader => r
-  }
-
   def mkBuf(sz: Int): Buf =
     Buf.ByteArray.Owned(Array.fill[Byte](sz)(1.toByte))
 
@@ -81,22 +76,16 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
     def apply(req: Request): Future[Response] = service(req)
 
     def get(host: String, path: String = "/")(check: Option[String] => Boolean): Unit = {
-      val req = Request("http", Method.Get, host, path, Stream.Nil)
+      val req = Request("http", Method.Get, host, path, Stream.empty())
       val rsp = await(service(req))
       assert(rsp.status == Status.Ok)
-      rsp.data match {
-        case Stream.Nil =>
-          assert(check(None))
+      await(rsp.stream.read()) match {
+        case f: Frame.Data if f.isEnd =>
+          val Buf.Utf8(data) = f.buf
+          assert(check(Some(data)))
+          await(f.release())
 
-        case stream: Stream.Reader =>
-          await(stream.read()) match {
-            case f: Frame.Data if f.isEnd =>
-              val Buf.Utf8(data) = f.buf
-              assert(check(Some(data)))
-              await(f.release())
-
-            case f => fail(s"unexpected frame: $f")
-          }
+        case f => fail(s"unexpected frame: $f")
       }
     }
 

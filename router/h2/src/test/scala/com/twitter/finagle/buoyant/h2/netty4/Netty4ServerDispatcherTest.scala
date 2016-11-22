@@ -43,10 +43,10 @@ class Netty4ServerDispatchTest extends FunSuite {
     }
 
     val bartmanCalled = new AtomicBoolean(false)
-    val bartmanStreamP = new Promise[Stream.Reader]
+    val bartmanStreamP = new Promise[Stream]
 
     val elBartoCalled = new AtomicBoolean(false)
-    val elBartoStreamP = new Promise[Stream.Reader]
+    val elBartoStreamP = new Promise[Stream]
 
     val service = Service.mk[Request, Response] { req =>
       req.authority match {
@@ -56,7 +56,7 @@ class Netty4ServerDispatchTest extends FunSuite {
         case "elbarto" if elBartoCalled.compareAndSet(false, true) =>
           elBartoStreamP.map(Response(Status.Cowabunga, _))
 
-        case _ => Future.value(Response(Status.EatMyShorts, Stream.Nil))
+        case _ => Future.value(Response(Status.EatMyShorts, Stream.empty()))
       }
     }
 
