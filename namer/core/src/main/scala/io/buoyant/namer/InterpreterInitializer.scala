@@ -7,7 +7,6 @@ import com.twitter.finagle.naming.NameInterpreter
 import io.buoyant.config.ConfigInitializer
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-@JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 trait InterpreterConfig {
 
   var transformers: Option[Seq[TransformerConfig]] = None

@@ -1,6 +1,8 @@
 package io.buoyant.config
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.JsonInclude.Include
+import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -72,6 +74,8 @@ object Parser {
     mapper.registerModule(DefaultScalaModule)
     mapper.registerModule(customTypes)
     mapper.setSerializationInclusion(Include.NON_NULL)
+    mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
+    mapper.setVisibility(PropertyAccessor.FIELD, Visibility.PUBLIC_ONLY)
 
     // Subtypes must not conflict
     for (kinds <- configInitializers) {
