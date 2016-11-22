@@ -1,6 +1,7 @@
 ## x.x.x
 
 * Change default value of `attemptTTwitterUpgrade` to `false`
+* Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
 
 ## 0.8.3
 
