@@ -5,7 +5,7 @@ import com.twitter.finagle.{Failure, Service}
 import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Future, Return, Stopwatch, Time, Throw}
+import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Time, Throw}
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -112,15 +112,25 @@ class Netty4ClientDispatcher(
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
+    println(s"client dispatcher request $req")
     val st = newStreamTransport()
     // Stream the request while receiving the response and
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
     val t0 = Stopwatch.start()
     st.write(req).flatMap { send =>
+      println(s"client dispatcher sending")
       send.onFailure(st.remoteMsg.raise)
       st.remoteMsg.onFailure(send.raise)
-      st.remoteMsg
+      val p = new Promise[Response]
+      st.remoteMsg.proxyTo(p)
+      p.setInterruptHandler {
+        case e =>
+          println(s"client dispatcher interrupt $e")
+          st.remoteMsg.raise(e)
+      }
+      p.respond(v => println(s"client dispatcher sent: $v"))
+      p
     }
   }
 

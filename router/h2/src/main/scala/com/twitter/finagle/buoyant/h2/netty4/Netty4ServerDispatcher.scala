@@ -91,6 +91,7 @@ class Netty4ServerDispatcher(
                       case Throw(exc) =>
                         val err = exc match {
                           case err: Reset => err
+                          case _: GoAway => Reset.Cancel
                           case Failure(Some(err: Reset)) => err
                           case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
                           case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused

@@ -1,11 +1,11 @@
 package io.buoyant.router
 package h2
 
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
-import com.twitter.util.Future
+import com.twitter.util.{Future, Promise}
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
 
@@ -14,6 +14,7 @@ class RouterEndToEndTest
   with ClientServerHelpers {
 
   test("router with prior knowledge") {
+    cancel
     // setLogLevel(Level.DEBUG)
     val cat = Downstream.const("cat", "meow")
     val dog = Downstream.const("dog", "woof")
@@ -46,15 +47,16 @@ class RouterEndToEndTest
     }
   }
 
-  test("router with prior knowledge: propagates reset") {
+  test("router with prior knowledge: resets downstream on upstream cancelation") {
 
     // setLogLevel(Level.DEBUG)
 
-    @volatile var serverRemoteStream: Stream = null
-    val clientLocalStream, serverLocalStream = Stream()
-    val dog = Downstream.mk("dog") { req =>
-      serverRemoteStream = req.stream
-      Response(Status.Ok, serverLocalStream)
+    val dogReqP, dogRspP = new Promise[Stream]
+    @volatile var serverInterrupted: Option[Throwable] = None
+    dogRspP.setInterruptHandler { case e => serverInterrupted = Some(e) }
+    val dog = Downstream.service("dog") { req =>
+      dogReqP.setValue(req.stream)
+      dogRspP.map(Response(Status.Ok, _))
     }
 
     val dtab = Dtab.read(s"""
@@ -72,9 +74,13 @@ class RouterEndToEndTest
       .factory())
     val client = upstream(router)
     try {
+      setLogLevel(Level.ALL)
+      val clientLocalStream, serverLocalStream = Stream()
       val req = Request("http", Method.Get, "clifford", "/path", clientLocalStream)
-      val rsp = await(client(req))
-      assert(serverRemoteStream != null)
+      val rspF = client(req)
+      val reqStream = await(dogReqP)
+      rspF.raise(Failure("failz").flagged(Failure.Interrupted))
+      eventually(assert(serverInterrupted == Some(Reset.Cancel)))
 
     } finally {
       await(client.close())

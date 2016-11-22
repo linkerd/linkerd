@@ -19,7 +19,7 @@ import com.twitter.util.{Future, Promise, Return, Throw, Try}
  * If a consumer cancels a `read()` Future, the stream is reset.
  */
 trait Stream {
-  override def toString = s"Stream.Reader()"
+  override def toString = s"Stream(empty=$isEmpty, onEnd=$onEnd)"
 
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
