@@ -11,7 +11,6 @@ import scala.collection.mutable.ListBuffer
 class FlowControlEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
-  setLogLevel(Level.OFF)
 
   test("client/server request flow control") {
     val streamP = new Promise[Stream]
@@ -29,13 +28,15 @@ class FlowControlEndToEndTest
   }
 
   test("client/server response flow control") {
-    val writer = Stream()
-    withClient(_ => Response(Status.Ok, writer)) { client =>
-      val req = Request("http", Method.Get, "host", "/path", Stream.empty())
-      val rsp = await(client(req))
-      assert(rsp.status == Status.Ok)
-      testFlowControl(rsp.stream, writer)
-    }
+    try {
+      val writer = Stream()
+      withClient(_ => Response(Status.Ok, writer)) { client =>
+        val req = Request("http", Method.Get, "host", "/path", Stream.empty())
+        val rsp = await(client(req))
+        assert(rsp.status == Status.Ok)
+        testFlowControl(rsp.stream, writer)
+      }
+    } finally setLogLevel(Level.OFF)
   }
 
   val WindowSize = 65535
@@ -51,8 +52,8 @@ class FlowControlEndToEndTest
 
     log.debug("offering 2 frames with %d", 2 * WindowSize)
     val wrote0 = writer.write(frame0)
-    val wrote1 = writer.write(frame1)
-    val wrote2 = writer.write(frame2)
+    val wrote1 = wrote0.before(writer.write(frame1))
+    val wrote2 = wrote1.before(writer.write(frame2))
     assert(!wrote0.isDefined && !wrote1.isDefined && !wrote2.isDefined)
 
     // Read a full window, without releasing anything.

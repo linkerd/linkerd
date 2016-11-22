@@ -77,10 +77,10 @@ class RouterEndToEndTest
       assert(serverRemoteStream != null)
 
     } finally {
-      setLogLevel(Level.OFF)
       await(client.close())
       await(dog.server.close())
       await(router.close())
+      setLogLevel(Level.OFF)
     }
   }
 }

@@ -7,7 +7,7 @@ import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, Stopwatch, Time}
+import com.twitter.util.{Future, NonFatal, Stopwatch, Time}
 import io.netty.handler.codec.http2._
 
 private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
@@ -66,19 +66,22 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
    * Connection errors
    */
 
-  private[this] def goAwayFrame(err: GoAway): Http2GoAwayFrame = {
-    val code = err match {
-      case GoAway.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
-      case GoAway.InternalError => Http2Error.INTERNAL_ERROR
-      case GoAway.NoError => Http2Error.NO_ERROR
-      case GoAway.ProtocolError => Http2Error.PROTOCOL_ERROR
-    }
-    new DefaultHttp2GoAwayFrame(code)
+  // private[this] def goAwayFrame(err: GoAway): Http2GoAwayFrame = {
+  //   val code = err match {
+  //     case GoAway.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
+  //     case GoAway.InternalError => Http2Error.INTERNAL_ERROR
+  //     case GoAway.NoError => Http2Error.NO_ERROR
+  //     case GoAway.ProtocolError => Http2Error.PROTOCOL_ERROR
+  //   }
+  //   new DefaultHttp2GoAwayFrame(code)
+  // }
+
+  override def goAway(err: GoAway, deadline: Time): Future[Unit] = {
+    // Our version of netty has a bug that prevents us from sending
+    // AWAYs, so just close until that's fixed.
+    // write(goAwayFrame(err))
+    close(deadline)
   }
-
-  override def goAway(err: GoAway, deadline: Time): Future[Unit] =
-    write(goAwayFrame(err)).before(close(deadline))
-
 }
 
 private[netty4] object Netty4H2Writer {

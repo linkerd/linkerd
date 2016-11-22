@@ -49,7 +49,23 @@ class Netty4ServerDispatcher(
    */
   private[this] val serving: Future[Unit] = {
     lazy val processLoop: Http2Frame => Future[Unit] = {
-      case _: Http2GoAwayFrame => close()
+      case goAway: Http2GoAwayFrame =>
+        if (closed.compareAndSet(false, true)) {
+          val err = Http2Error.valueOf(goAway.errorCode) match {
+            case Http2Error.NO_ERROR => GoAway.NoError
+            case Http2Error.PROTOCOL_ERROR => GoAway.ProtocolError
+            case Http2Error.INTERNAL_ERROR => GoAway.InternalError
+            case Http2Error.ENHANCE_YOUR_CALM => GoAway.EnhanceYourCalm
+            case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
+          }
+          log.debug(err, "%s %s: server dispatcher", transport.localAddress, transport.remoteAddress)
+          serving.raise(err)
+          val resetFs = streams.values.asScala.toSeq.map { s =>
+            if (s.reset(Reset.Cancel)) writer.reset(s.streamId, Reset.Cancel)
+            else Future.Unit
+          }
+          Future.join(resetFs)
+        } else Future.Unit
 
       case frame: Http2StreamFrame if frame.streamId > 0 =>
         streams.get(frame.streamId) match {
@@ -58,7 +74,7 @@ class Netty4ServerDispatcher(
               case frame: Http2HeadersFrame =>
                 val stream = newStreamTransport(frame.streamId)
                 stream.admitRemote(frame) match {
-                  case Some(err: GoAway) => writer.goAway(err)
+                  case Some(err: GoAway) => goAway(err)
                   case Some(err: Reset) => writer.reset(stream.streamId, err)
                   case None =>
                     // Read the request from the stream, pass it to the
@@ -98,7 +114,7 @@ class Netty4ServerDispatcher(
 
           case stream =>
             stream.admitRemote(frame) match {
-              case Some(err: GoAway) => writer.goAway(err)
+              case Some(err: GoAway) => goAway(err)
               case Some(err: Reset) => writer.reset(frame.streamId, err)
               case None =>
                 if (closed.get) Future.Unit
@@ -129,13 +145,13 @@ class Netty4ServerDispatcher(
 
   private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      log.info("%s %s: dispatcher close", transport.localAddress, transport.remoteAddress)
+      log.info("%s %s: server dispatcher: %s", transport.localAddress, transport.remoteAddress, err)
       serving.raise(err)
-      val resets = streams.values.asScala.toSeq.map { s =>
+      val resetFs = streams.values.asScala.toSeq.map { s =>
         if (s.reset(Reset.Cancel)) writer.reset(s.streamId, Reset.Cancel)
         else Future.Unit
       }
-      Future.join(resets).before(writer.goAway(err, deadline))
+      Future.join(resetFs).before(writer.goAway(err, deadline))
     } else Future.Unit
 
   override def close(deadline: Time): Future[Unit] =

@@ -40,7 +40,7 @@ class Netty4ClientDispatcher(
       // If the ID overflows, we can't use this connection anymore, so
       // we try to indicate to the server by sending a GO_AWAY in
       // accordance with the RFC.
-      if (closed.compareAndSet(false, true)) writer.goAway(GoAway.ProtocolError)
+      goAway(GoAway.ProtocolError)
       throw new IllegalArgumentException("stream id overflow")
 
     case id => id
@@ -79,14 +79,13 @@ class Netty4ClientDispatcher(
 
       case f: Http2StreamFrame =>
         f.streamId match {
-          case 0 => writer.goAway(GoAway.ProtocolError)
+          case 0 => goAway(GoAway.ProtocolError)
           case id =>
             streams.get(id) match {
-              case null => writer.goAway(GoAway.ProtocolError)
+              case null => goAway(GoAway.ProtocolError)
               case stream =>
                 stream.admitRemote(f) match {
-                  case Some(err: GoAway) =>
-                    writer.goAway(err)
+                  case Some(err: GoAway) => goAway(err)
 
                   case Some(err: Reset) =>
                     println(s"client dispatcher resetting stream $id")
@@ -99,7 +98,7 @@ class Netty4ClientDispatcher(
             }
         }
 
-      case unknown => writer.goAway(GoAway.ProtocolError)
+      case unknown => goAway(GoAway.ProtocolError)
     }
 
     transport.read().flatMap(loop).onFailure {
@@ -125,10 +124,14 @@ class Netty4ClientDispatcher(
     }
   }
 
-  override def close(d: Time): Future[Unit] =
+  private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      reading.raise(Failure(GoAway.NoError).flagged(Failure.Interrupted))
+      log.info("%s %s: client dispatcher: %s", transport.localAddress, transport.remoteAddress, err)
+      reading.raise(Failure(err).flagged(Failure.Interrupted))
       streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
-      writer.goAway(GoAway.NoError, d)
+      writer.goAway(err, deadline)
     } else Future.Unit
+
+  override def close(d: Time): Future[Unit] = goAway(GoAway.NoError, d)
+
 }

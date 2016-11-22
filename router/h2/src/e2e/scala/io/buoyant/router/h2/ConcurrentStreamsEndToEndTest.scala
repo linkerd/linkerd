@@ -72,6 +72,7 @@ class ConcurrentStreamsEndToEndTest
               case 0 =>
                 assert(d.isEnd == eos)
                 d.release()
+
               case remaining =>
                 assert(!d.isEnd)
                 d.release().join(read(remaining)).unit
