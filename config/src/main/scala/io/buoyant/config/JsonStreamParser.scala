@@ -1,38 +1,30 @@
-package io.buoyant.k8s
+package io.buoyant.config
 
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.core.{JsonParser, JsonProcessingException}
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.util.LoadService
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Return, Throw, Try}
 import scala.collection.mutable
-import scala.reflect.classTag
 import scala.util.control.NonFatal
 
-object Json {
+class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
 
-  private[this] val log = Logger.get("k8s")
+  private[this] val log = Logger.get
 
-  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-  LoadService[SerializationModule].foreach { svc => mapper.registerModule(svc.module) }
-
-  def read[T: Manifest](buf: Buf): Try[T] = {
+  def read[T: TypeReference](buf: Buf): Try[T] = {
     val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)
-    Try(mapper.readValue[T](bytes, begin, end - begin))
+    Try(mapper.readValue[T](bytes, begin, end - begin, implicitly[TypeReference[T]]))
   }
 
-  def writeBuf[T: Manifest](t: T) = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
+  def writeBuf[T: TypeReference](t: T) = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
 
   /*
    * JSON Streaming
    */
-
   object EndOfStream extends Throwable
 
   private[this] object Incomplete {
@@ -53,7 +45,7 @@ object Json {
   /**
    * Given a chunk of bytes, read a stream of objects, and return the remaining unread buffer.
    */
-  def readChunked[T: Manifest](chunk: Buf): (Seq[T], Buf) = {
+  def readChunked[T: TypeReference](chunk: Buf): (Seq[T], Buf) = {
     var objs = mutable.Buffer.empty[T]
     var offset = 0L
     parse(chunk) { json =>
@@ -65,8 +57,8 @@ object Json {
         }
 
         try {
-          json.readValueAs(classTag[T].runtimeClass) match {
-            case obj: T if obj != null =>
+          json.readValueAs[T](implicitly[TypeReference[T]]) match {
+            case obj if obj != null =>
               objs.append(obj)
 
               val prior = offset
@@ -101,7 +93,7 @@ object Json {
     (objs, rest)
   }
 
-  def readStream[T: Manifest](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
+  def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
     def chunks(init: Buf): AsyncStream[T] =
       for {
         chunk <- {

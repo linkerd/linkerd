@@ -1,43 +1,30 @@
 package io.buoyant.namerd.iface
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
-import com.twitter.util._
+import com.twitter.util.{NonFatal, Throw}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
-import io.buoyant.namerd.iface.{thriftscala => thrift}
-import com.twitter.finagle.buoyant.TlsClientPrep
 
 /**
  * The namerd interpreter offloads the responsibilities of name resolution to
- * the namerd service via the namerd thrift API.  Any namers configured in this
- * linkerd are not used.
+ * the namerd service via the namerd HTTP streaming API.  Any namers configured
+ * in this linkerd are not used.
  */
-class NamerdInterpreterInitializer extends InterpreterInitializer {
-  val configClass = classOf[NamerdInterpreterConfig]
-  override def configId: String = "io.l5d.namerd"
+class NamerdHttpInterpreterInitializer extends InterpreterInitializer {
+  val configClass = classOf[NamerdHttpInterpreterConfig]
+  override def configId: String = "io.l5d.namerd.http"
 }
 
-object NamerdInterpreterInitializer extends NamerdInterpreterInitializer
+object NamerdHttpInterpreterInitializer extends NamerdHttpInterpreterInitializer
 
-case class Retry(
-  baseSeconds: Int,
-  maxSeconds: Int
-) {
-  if (baseSeconds <= 0 || maxSeconds <= 0 || baseSeconds > maxSeconds) {
-    val msg = s"illegal retry values: baseSeconds=$baseSeconds maxSeconds=$maxSeconds"
-    throw new IllegalArgumentException(msg)
-  }
-}
-
-case class ClientTlsConfig(commonName: String, caCert: Option[String])
-
-case class NamerdInterpreterConfig(
+case class NamerdHttpInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
   retry: Option[Retry],
@@ -45,7 +32,7 @@ case class NamerdInterpreterConfig(
 ) extends InterpreterConfig {
 
   @JsonIgnore
-  private[this] val log = Logger.get("namerd")
+  private[this] val log = Logger.get("namerd-http")
 
   @JsonIgnore
   val defaultRetry = Retry(5, 10.minutes.inSeconds)
@@ -59,7 +46,7 @@ case class NamerdInterpreterConfig(
       case None => throw new IllegalArgumentException("`dst` is a required field")
       case Some(dst) => Name.Path(dst)
     }
-    val label = s"namer/${NamerdInterpreterConfig.kind}"
+    val label = s"namer/${NamerdHttpInterpreterInitializer.configId}"
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
@@ -100,18 +87,14 @@ case class NamerdInterpreterConfig(
       }
     }
 
-    val client = ThriftMux.client
-      .withParams(ThriftMux.client.params ++ params)
-      .transformed(retryTransformer)
-      .transformed(tlsTransformer)
+    val client = Http.client
+      .withParams(Http.client.params ++ params)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
+      .withStreaming(true)
+      .transformed(retryTransformer)
+      .transformed(tlsTransformer)
 
-    val iface = client.newIface[thrift.Namer.FutureIface](name, label)
-    new ThriftNamerClient(iface, namespace.getOrElse("default"))
+    new StreamingNamerClient(client.newService(name, label), namespace.getOrElse("default"))
   }
-}
-
-object NamerdInterpreterConfig {
-  def kind = classOf[NamerdInterpreterConfig].getCanonicalName
 }

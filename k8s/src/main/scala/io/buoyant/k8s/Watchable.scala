@@ -1,5 +1,6 @@
 package io.buoyant.k8s
 
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle.{Failure, http}
 import com.twitter.finagle.param.HighResTimer
@@ -10,11 +11,12 @@ import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable[O <: KubeObject: Manifest, W <: Watch[O]: Manifest]
+private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference]
   extends Resource {
   import Watchable._
 

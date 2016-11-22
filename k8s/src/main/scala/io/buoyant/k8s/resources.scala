@@ -1,5 +1,6 @@
 package io.buoyant.k8s
 
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
@@ -42,7 +43,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
 
   def withNamespace(ns: String) = new NsVersion[O](client, group, version, ns)
 
-  def listResource[T <: O: Manifest, W <: Watch[T]: Manifest, L <: KubeList[T]: Manifest](
+  def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](client, path, backoffs, stats)
@@ -68,7 +69,7 @@ private[k8s] class NsVersion[O <: KubeObject](
   extends Resource {
   val path = s"/$group/$version/namespaces/$ns"
 
-  def listResource[T <: O: Manifest, W <: Watch[T]: Manifest, L <: KubeList[T]: Manifest](
+  def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, path, backoffs, stats)
@@ -111,14 +112,13 @@ class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerV
  * Represents the functionality for a  kubernetes API resource serving a list of objects, for example:
  * `/api/v1/namespaces/{namespace}/endpoints`.
  */
-private[k8s] class ListResource[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest](
+private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
   val client: Client,
   basePath: String,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends Watchable[O, W] with Resource {
   val name = implicitly[ObjectDescriptor[O, W]].listName
-  val watchManifest = implicitly[Manifest[W]]
   val path = s"$basePath/$name"
 
   def get(
@@ -149,7 +149,7 @@ private[k8s] class ListResource[O <: KubeObject: Manifest, W <: Watch[O]: Manife
  * Namespaced list resources support more operations than non-namespaced, including POST, DELETE, and
  * retrieval of individual items in the list. (We don't have a full implementation yet).
  */
-private[k8s] class NsListResource[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest](
+private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
   client: Client,
   basePath: String,
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
@@ -172,7 +172,7 @@ private[k8s] class NsListResource[O <: KubeObject: Manifest, W <: Watch[O]: Mani
   }
 }
 
-private[k8s] class NsObjectResource[O <: KubeObject: Manifest, W <: Watch[O]: Manifest](
+private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference](
   val client: Client,
   listPath: String,
   objectName: String,
