@@ -9,6 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
+import java.net.SocketAddress
 import scala.collection.immutable.Queue
 
 class Netty4ClientDispatchTest extends FunSuite {
@@ -18,8 +19,8 @@ class Netty4ClientDispatchTest extends FunSuite {
     val closeP = new Promise[Throwable]
     val transport = new Transport[Http2Frame, Http2Frame] {
       def status = ???
-      def localAddress = ???
-      def remoteAddress = ???
+      def localAddress = new SocketAddress {}
+      def remoteAddress = new SocketAddress {}
       def peerCertificate = ???
       def read(): Future[Http2Frame] = recvq.poll()
       def write(f: Http2Frame): Future[Unit] = {

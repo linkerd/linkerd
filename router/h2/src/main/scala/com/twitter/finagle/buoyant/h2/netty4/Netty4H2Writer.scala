@@ -9,6 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, NonFatal, Stopwatch, Time}
 import io.netty.handler.codec.http2._
+import java.net.SocketAddress
 
 private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   import Netty4H2Writer.log
@@ -98,5 +99,8 @@ private[netty4] object Netty4H2Writer {
 
       override protected[this] def close(t: Time): Future[Unit] =
         trans.close(t)
+
+      override def localAddress: SocketAddress = trans.localAddress
+      override def remoteAddress: SocketAddress = trans.remoteAddress
     }
 }

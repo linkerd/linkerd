@@ -33,6 +33,8 @@ class Netty4ClientDispatcher(
 
   private[this] val writer = Netty4H2Writer(transport)
 
+  private[this] val prefix = s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+
   private[this] val _id = new AtomicInteger(BaseStreamId)
 
   private[this] def nextId(): Int = _id.getAndAdd(2) match {
@@ -59,7 +61,8 @@ class Netty4ClientDispatcher(
     if (streams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
-    stream.onClose.ensure {
+    stream.onReset.ensure {
+      log.debug("[%s S:%d] removing closed stream", prefix, id)
       streams.remove(id, stream); ()
     }
     stream
@@ -72,12 +75,14 @@ class Netty4ClientDispatcher(
   private[this] val reading = {
     lazy val loop: Http2Frame => Future[Unit] = {
       case _: Http2GoAwayFrame =>
+        log.debug("[%s] received GOAWAY", prefix)
         if (closed.compareAndSet(false, true)) {
           streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
         }
         Future.Unit
 
       case f: Http2StreamFrame =>
+        log.debug("[%s] received %s", prefix, f.name)
         f.streamId match {
           case 0 => goAway(GoAway.ProtocolError)
           case id =>
@@ -85,10 +90,12 @@ class Netty4ClientDispatcher(
               case null => goAway(GoAway.ProtocolError)
               case stream =>
                 stream.admitRemote(f) match {
-                  case Some(err: GoAway) => goAway(err)
+                  case Some(err: GoAway) =>
+                    log.debug("[%s S:%d] go away on %s", prefix, id, f.name)
+                    goAway(err)
 
                   case Some(err: Reset) =>
-                    println(s"client dispatcher resetting stream $id")
+                    log.debug("[%s S:%d] client reset on %s", prefix, id, f.name)
                     writer.reset(id, err).before(transport.read().flatMap(loop))
 
                   case None =>
@@ -103,7 +110,7 @@ class Netty4ClientDispatcher(
 
     transport.read().flatMap(loop).onFailure {
       case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-      case e => log.error(e, "client dispatcher")
+      case e => log.error(e, s"${transport.localAddress} ${transport.remoteAddress}: client dispatcher")
     }
   }
 
@@ -112,31 +119,34 @@ class Netty4ClientDispatcher(
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
-    println(s"client dispatcher request $req")
     val st = newStreamTransport()
+    log.debug("local=%s remote=%s stream=%d: client dispatcher issuing request", transport.localAddress, transport.remoteAddress, st.streamId)
     // Stream the request while receiving the response and
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
     val t0 = Stopwatch.start()
-    st.write(req).flatMap { send =>
-      println(s"client dispatcher sending")
-      send.onFailure(st.remoteMsg.raise)
-      st.remoteMsg.onFailure(send.raise)
-      val p = new Promise[Response]
-      st.remoteMsg.proxyTo(p)
-      p.setInterruptHandler {
-        case e =>
-          println(s"client dispatcher interrupt $e")
-          st.remoteMsg.raise(e)
+    st.write(req).flatMap { sendF =>
+      log.debug("local=%s remote=%s stream=%d: client dispatcher responding", transport.localAddress, transport.remoteAddress, st.streamId)
+      st.remoteMsg.onFailure(sendF.raise(_))
+      st.remoteMsg.onFailure {
+        case rst: Reset =>
+          log.debug("local=%s remote=%s stream=%d: client dispatcher writing reset", transport.localAddress, transport.remoteAddress, st.streamId)
+          writer.reset(st.streamId, rst); ()
+        case err: GoAway =>
+          goAway(err); ()
+        case exc =>
+          goAway(GoAway.InternalError); ()
       }
-      p.respond(v => println(s"client dispatcher sent: $v"))
-      p
+      st.remoteMsg.respond { v =>
+        log.debug("local=%s remote=%s stream=%d: client dispatcher response: %s", transport.localAddress, transport.remoteAddress, st.streamId, v)
+      }
+      st.remoteMsg
     }
   }
 
   private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      log.info("%s %s: client dispatcher: %s", transport.localAddress, transport.remoteAddress, err)
+      log.info(err, "%s %s: client dispatcher", transport.localAddress, transport.remoteAddress)
       reading.raise(Failure(err).flagged(Failure.Interrupted))
       streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
       writer.goAway(err, deadline)

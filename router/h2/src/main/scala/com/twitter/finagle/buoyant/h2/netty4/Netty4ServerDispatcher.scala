@@ -12,6 +12,7 @@ import scala.collection.JavaConverters._
 
 object Netty4ServerDispatcher {
   private val log = Logger.get(getClass.getName)
+
 }
 
 class Netty4ServerDispatcher(
@@ -28,6 +29,8 @@ class Netty4ServerDispatcher(
 
   private[this] val streams = new ConcurrentHashMap[Int, Netty4StreamTransport[Response, Request]]
 
+  private[this] val prefix = s"S L:${transport.localAddress} R:${transport.remoteAddress}"
+
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
   private[this] def newStreamTransport(id: Int): Netty4StreamTransport[Response, Request] = {
@@ -35,7 +38,8 @@ class Netty4ServerDispatcher(
     if (streams.putIfAbsent(id, stream) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
-    stream.onClose.ensure {
+    stream.onReset.ensure {
+      log.debug("[%s S:%d] removing closed stream", prefix, id)
       streams.remove(id, stream); ()
     }
     stream
@@ -58,7 +62,7 @@ class Netty4ServerDispatcher(
             case Http2Error.ENHANCE_YOUR_CALM => GoAway.EnhanceYourCalm
             case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
           }
-          log.debug(err, "%s %s: server dispatcher", transport.localAddress, transport.remoteAddress)
+          log.debug(err, "[%s] go away", prefix)
           serving.raise(err)
           val resetFs = streams.values.asScala.toSeq.map { s =>
             if (s.reset(Reset.Cancel)) writer.reset(s.streamId, Reset.Cancel)
@@ -68,21 +72,29 @@ class Netty4ServerDispatcher(
         } else Future.Unit
 
       case frame: Http2StreamFrame if frame.streamId > 0 =>
+        log.debug("[%s] received %s", prefix, frame.name)
         streams.get(frame.streamId) match {
           case null =>
             frame match {
               case frame: Http2HeadersFrame =>
-                val stream = newStreamTransport(frame.streamId)
-                stream.admitRemote(frame) match {
+                val st = newStreamTransport(frame.streamId)
+                st.admitRemote(frame) match {
                   case Some(err: GoAway) => goAway(err)
-                  case Some(err: Reset) => writer.reset(stream.streamId, err)
+                  case Some(err: Reset) => writer.reset(st.streamId, err)
                   case None =>
                     // Read the request from the stream, pass it to the
                     // service to get the response, and then write the
                     // response stream.
-                    val reqF = stream.remoteMsg
+                    val reqF = st.remoteMsg
                     val rspF = reqF.flatMap(serve)
-                    val endF = rspF.flatMap(stream.write(_).flatten)
+                    val endF = rspF.flatMap(st.write(_).flatten)
+                    st.onReset.respond { t =>
+                      val err = t match {
+                        case Return(e) => e
+                        case Throw(e) => e
+                      }
+                      endF.raise(err)
+                    }
 
                     // If the service fails to process the request or
                     // the response stream fails, the stream is reset.
@@ -96,12 +108,13 @@ class Netty4ServerDispatcher(
                           case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
                           case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused
                           case e =>
-                            log.error(e, "%s %s: stream %d: serving error", transport.localAddress, transport.remoteAddress, frame.streamId)
+                            log.error(exc, "[%s S:%d] error", prefix, frame.streamId)
                             Reset.InternalError
                         }
-                        if (stream.reset(err)) {
-                          writer.reset(stream.streamId, err); ()
-                        }
+                        if (st.reset(err)) {
+                          log.debug(err, "[%s S:%d] writing reset", prefix, st.streamId)
+                          writer.reset(st.streamId, err); ()
+                        } else log.debug(err, "[%s S:%d] already reset", prefix, st.streamId)
                     }
 
                     if (closed.get) Future.Unit
@@ -109,14 +122,20 @@ class Netty4ServerDispatcher(
                 }
 
               case frame =>
-                log.error(s"server dispatcher unexpected ${frame.name} frame on unknown stream ${frame.streamId}")
+                log.error(Reset.Closed, "[%s S:%d] unexpected %s", prefix, frame.streamId, frame.name)
                 writer.reset(frame.streamId, Reset.Closed)
             }
 
-          case stream =>
-            stream.admitRemote(frame) match {
-              case Some(err: GoAway) => goAway(err)
-              case Some(err: Reset) => writer.reset(frame.streamId, err)
+          case st =>
+            st.admitRemote(frame) match {
+              case Some(err: GoAway) =>
+                log.debug(err, "[%s S:%d] go away %s", prefix, st.streamId, frame.name)
+                goAway(err)
+
+              case Some(err: Reset) =>
+                log.debug(err, "[%s S:%d] unexpected %s", prefix, st.streamId, frame.name)
+                writer.reset(st.streamId, err)
+
               case None =>
                 if (closed.get) Future.Unit
                 else transport.read().flatMap(processLoop)
@@ -124,14 +143,13 @@ class Netty4ServerDispatcher(
         }
 
       case frame =>
-        log.warning("%s %s: unexpected frame: %s", transport.localAddress, transport.remoteAddress, frame.name)
+        log.warning("[%s] unexpected frame: %s", prefix, frame.name)
         goAway(GoAway.ProtocolError)
     }
 
     transport.read().flatMap(processLoop).onFailure {
       // TODO more error handling
-      case e =>
-        log.error(e, "server dispatcher")
+      case e => log.error(e, "[%s] error", prefix)
     }
   }
 
@@ -146,7 +164,7 @@ class Netty4ServerDispatcher(
 
   private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      log.info("%s %s: server dispatcher: %s", transport.localAddress, transport.remoteAddress, err)
+      log.debug(err, "[%s] go away", prefix)
       serving.raise(err)
       val resetFs = streams.values.asScala.toSeq.map { s =>
         if (s.reset(Reset.Cancel)) writer.reset(s.streamId, Reset.Cancel)
