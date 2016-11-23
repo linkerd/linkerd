@@ -7,15 +7,15 @@ import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time, Throw}
-import io.buoyant.test.Awaits
+import io.buoyant.test.FunSuite
 import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
-import org.scalatest.FunSuite
 import scala.collection.immutable.Queue
 
-class Netty4StreamTransportTest extends FunSuite with Awaits {
+class Netty4StreamTransportTest extends FunSuite {
+  setLogLevel(com.twitter.logging.Level.OFF)
 
   test("client: response") {
     val id = 8
@@ -111,7 +111,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(rspF.isDefined)
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(synchronized(written).length == 1)
     assert(!closed.get)
   }
@@ -157,7 +157,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(synchronized(written).length == 1)
     assert(!closed.get)
   }
@@ -216,7 +216,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)) == None)
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(synchronized(written).length == 1)
     assert(!closed.get)
   }
@@ -278,7 +278,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(await(streamF.liftToTry) == Throw(Reset.InternalError))
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.InternalError)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.InternalError))
     assert(!closed.get)
   }
 
@@ -324,7 +324,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 
@@ -480,7 +480,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(synchronized(written).isEmpty)
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 
@@ -537,7 +537,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(synchronized(written).length == 1)
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 
@@ -595,7 +595,7 @@ class Netty4StreamTransportTest extends FunSuite with Awaits {
     assert(synchronized(written).length == 1)
     assert(stream.isClosed)
     assert(stream.onReset.isDefined)
-    assert(await(stream.onReset) == Reset.Cancel)
+    assert(await(stream.onReset.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 }

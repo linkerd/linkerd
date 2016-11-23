@@ -82,7 +82,7 @@ class Netty4ClientDispatcher(
         Future.Unit
 
       case f: Http2StreamFrame =>
-        log.debug("[%s] received %s", prefix, f.name)
+        log.debug("[%s S:%d] diapatching %s", prefix, f.streamId, f.name)
         f.streamId match {
           case 0 => goAway(GoAway.ProtocolError)
           case id =>
@@ -120,33 +120,41 @@ class Netty4ClientDispatcher(
    */
   override def apply(req: Request): Future[Response] = {
     val st = newStreamTransport()
-    log.debug("local=%s remote=%s stream=%d: client dispatcher issuing request", transport.localAddress, transport.remoteAddress, st.streamId)
+    log.debug("[%s S:%d] client dispatcher issuing: %s", prefix, st.streamId, req)
     // Stream the request while receiving the response and
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
-    val t0 = Stopwatch.start()
-    st.write(req).flatMap { sendF =>
-      log.debug("local=%s remote=%s stream=%d: client dispatcher responding", transport.localAddress, transport.remoteAddress, st.streamId)
-      st.remoteMsg.onFailure(sendF.raise(_))
-      st.remoteMsg.onFailure {
-        case rst: Reset =>
-          log.debug("local=%s remote=%s stream=%d: client dispatcher writing reset", transport.localAddress, transport.remoteAddress, st.streamId)
-          writer.reset(st.streamId, rst); ()
-        case err: GoAway =>
-          goAway(err); ()
-        case exc =>
-          goAway(GoAway.InternalError); ()
-      }
-      st.remoteMsg.respond { v =>
-        log.debug("local=%s remote=%s stream=%d: client dispatcher response: %s", transport.localAddress, transport.remoteAddress, st.streamId, v)
-      }
-      st.remoteMsg
+    val initF = st.write(req)
+
+    // If the stream is reset (i.e. by the remote server), cancel the local stream
+    val writeF = initF.flatten
+    st.onReset.onFailure {
+      case rst: Reset =>
+        log.debug("[%s S:%d] client dispatcher writing reset", prefix, st.streamId)
+        writeF.raise(rst)
+        writer.reset(st.streamId, rst); ()
+
+      case exc =>
+        log.debug(exc, "[%s S:%d] client dispatcher error", prefix, st.streamId)
+        writeF.raise(exc)
+        goAway(GoAway.InternalError); ()
+    }
+
+    initF.unit.before(st.remoteMsg)
+  }
+
+  // If the connection is lost, reset active streams.
+  transport.onClose.onSuccess { e =>
+    if (closed.compareAndSet(false, true)) {
+      log.debug(e, "%s %s: transport closed", transport.localAddress, transport.remoteAddress)
+      reading.raise(Failure("closed").flagged(Failure.Interrupted))
+      streams.asScala.values.foreach(_.reset(Reset.Cancel))
     }
   }
 
   private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
     if (closed.compareAndSet(false, true)) {
-      log.info(err, "%s %s: client dispatcher", transport.localAddress, transport.remoteAddress)
+      log.info("[%s] go away: %s", prefix, err)
       reading.raise(Failure(err).flagged(Failure.Interrupted))
       streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
       writer.goAway(err, deadline)

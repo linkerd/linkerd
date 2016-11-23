@@ -6,6 +6,7 @@ import com.twitter.finagle.{Status => _, param => fparam, _}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
+import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
@@ -13,12 +14,15 @@ import org.scalatest.BeforeAndAfter
 import scala.collection.JavaConverters._
 
 trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
+  setLogLevel(Level.OFF)
 
   val statsReceiver = new InMemoryStatsReceiver
   before {
+    setLogLevel(Level.OFF)
     statsReceiver.clear()
   }
   after {
+    setLogLevel(Level.OFF)
     statsReceiver.clear()
   }
 

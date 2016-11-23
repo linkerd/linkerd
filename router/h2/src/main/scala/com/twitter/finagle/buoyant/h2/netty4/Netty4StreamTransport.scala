@@ -114,8 +114,14 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
   private[this] val stateRef: AtomicReference[StreamState] =
     new AtomicReference(Open(RemotePending(remoteMsgP)))
 
-  private[this] val resetP = new Promise[Reset]
-  def onReset: Future[Reset] = resetP
+  /**
+   * Satisfied successfully when the stream is fully closed with no
+   * error.  An exception is raised with a Reset if the stream is
+   * closed prematurely.
+   */
+  def onReset: Future[Unit] = resetP
+  private[this] val resetP = new Promise[Unit]
+
   def isClosed = stateRef.get match {
     case Closed(_) => true
     case _ => false
@@ -140,7 +146,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
             case RemoteStreaming(remoteQ) =>
               remoteQ.fail(err, discard = true)
           }
-          resetP.setValue(err)
+          resetP.setException(err)
           true
         } else reset(err)
 
@@ -148,7 +154,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
         if (stateRef.compareAndSet(state, Closed(err))) {
           log.debug("[%s] resetting in %s", prefix, state)
           remoteQ.fail(err, discard = true)
-          resetP.setValue(err)
+          resetP.setException(err)
           true
         } else reset(err)
     }
@@ -166,43 +172,60 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
   @tailrec final def admitRemote(in: Http2StreamFrame): Option[Error] = {
     val state = stateRef.get
     log.debug(s"[%s] admitting %s in %s", prefix, in.name, state)
+
+    def resetPendingRemote(p: Promise[RemoteMsg], rst: Reset): Boolean =
+      if (stateRef.compareAndSet(state, Closed(rst))) {
+        p.setException(rst)
+        resetP.setException(rst)
+        true
+      } else false
+
+    def resetStreamingRemote(q: AsyncQueue[Frame], rst: Reset): Boolean =
+      if (stateRef.compareAndSet(state, Closed(rst))) {
+        q.fail(rst, discard = true)
+        resetP.setException(rst)
+        true
+      } else false
+
+    def admitFrame(f: Frame, remoteQ: AsyncQueue[Frame]): Boolean = {
+      require(!f.isEnd)
+      if (remoteQ.offer(f)) {
+        statsReceiver.recordRemoteFrame(f)
+        true
+      } else false
+    }
+
     in match {
       case rst: Http2ResetFrame =>
         state match {
-          case Closed(err) => Some(err)
+          case Closed(_) => someClosed
 
-          case RemoteOpen(remote) =>
-            val err = toReset(rst.errorCode)
-            if (stateRef.compareAndSet(state, Closed(err))) {
+          case RemoteOpen(RemotePending(remoteP)) =>
+            if (resetPendingRemote(remoteP, toReset(rst.errorCode))) {
               statsReceiver.remoteResetCount.incr()
-              remote match {
-                case RemotePending(remoteP) =>
-                  remoteP.setException(err)
-                case RemoteStreaming(remoteQ) =>
-                  remoteQ.fail(err, discard = true)
-              }
-              resetP.setValue(err)
+              None
+            } else admitRemote(rst)
+
+          case RemoteOpen(RemoteStreaming(remoteQ)) =>
+            if (resetStreamingRemote(remoteQ, toReset(rst.errorCode))) {
+              statsReceiver.remoteResetCount.incr()
               None
             } else admitRemote(rst)
 
           case RemoteClosed(remoteQ) =>
-            val err = toReset(rst.errorCode)
-            if (stateRef.compareAndSet(state, Closed(err))) {
-              remoteQ.fail(err, discard = true)
-              resetP.setValue(err)
+            if (resetStreamingRemote(remoteQ, toReset(rst.errorCode))) {
+              statsReceiver.remoteResetCount.incr()
               None
             } else admitRemote(rst)
         }
 
       case hdrs: Http2HeadersFrame if hdrs.isEndStream =>
         state match {
-          case Closed(err) => Some(err)
+          case Closed(_) => someClosed
 
           case RemoteClosed(remoteQ) =>
-            if (stateRef.compareAndSet(state, closedClosed)) {
-              remoteQ.fail(Reset.Closed, discard = true)
-              someClosed
-            } else admitRemote(hdrs)
+            if (resetStreamingRemote(remoteQ, Reset.Closed)) someClosed
+            else admitRemote(hdrs)
 
           case Open(remote) => remote match {
             case RemotePending(remoteP) =>
@@ -227,22 +250,22 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
               } else admitRemote(hdrs)
           }
 
-          case lc@LocalClosed(remote) => remote match {
+          case LocalClosed(remote) => remote match {
             case RemotePending(remoteP) =>
-              if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+              if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
                 val msg = mkRemoteMsg(hdrs.headers, NilStream)
                 remoteP.setValue(msg)
-                resetP.setValue(Reset.NoError)
+                resetP.setDone()
                 None
               } else admitRemote(hdrs)
 
             case RemoteStreaming(remoteQ) =>
-              if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+              if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
                 val f = toFrame(hdrs)
                 statsReceiver.recordRemoteFrame(f)
                 if (remoteQ.offer(f)) {
                   remoteQ.fail(Reset.NoError, discard = false)
-                  resetP.setValue(Reset.NoError)
+                  resetP.setDone()
                   None
                 } else someClosed
               } else admitRemote(hdrs)
@@ -253,105 +276,73 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
         // A HEADERS frame without END_STREAM may only be received to
         // initiate a message (i.e. when the remote is still pending).
         state match {
-          case Closed(err) => Some(err)
+          case Closed(_) => someClosed
+          case RemoteClosed(remoteQ) =>
+            if (resetStreamingRemote(remoteQ, Reset.Closed)) someClosed
+            else admitRemote(hdrs)
 
-          case open@Open(RemotePending(remoteP)) =>
+          case RemoteOpen(RemoteStreaming(remoteQ)) =>
+            if (resetStreamingRemote(remoteQ, Reset.Closed)) someClosed
+            else admitRemote(hdrs)
+
+          case Open(RemotePending(remoteP)) =>
             val remoteQ = new AsyncQueue[Frame]
-            if (stateRef.compareAndSet(open, Open(RemoteStreaming(remoteQ)))) {
+            if (stateRef.compareAndSet(state, Open(RemoteStreaming(remoteQ)))) {
               val msg = mkRemoteMsg(hdrs.headers, Stream(remoteQ))
               remoteP.setValue(msg)
               None
             } else admitRemote(hdrs)
 
-          case lc@LocalClosed(RemotePending(remoteP)) =>
+          case LocalClosed(RemotePending(remoteP)) =>
             val remoteQ = new AsyncQueue[Frame]
-            if (stateRef.compareAndSet(lc, LocalClosed(RemoteStreaming(remoteQ)))) {
+            if (stateRef.compareAndSet(state, LocalClosed(RemoteStreaming(remoteQ)))) {
               val msg = mkRemoteMsg(hdrs.headers, Stream(remoteQ))
               remoteP.setValue(msg)
               None
-            } else admitRemote(hdrs)
-
-          case rc@RemoteClosed(remoteQ) =>
-            if (stateRef.compareAndSet(rc, closedClosed)) {
-              remoteQ.fail(Reset.Closed, discard = true)
-              resetP.setValue(Reset.Closed)
-              someClosed
-            } else admitRemote(hdrs)
-
-          case ro@RemoteOpen(RemoteStreaming(remoteQ)) =>
-            if (stateRef.compareAndSet(ro, closedClosed)) {
-              remoteQ.fail(Reset.Closed, discard = true)
-              resetP.setValue(Reset.Closed)
-              someClosed
             } else admitRemote(hdrs)
         }
 
       case data: Http2DataFrame =>
         state match {
-          case Closed(err) => Some(err)
+          case Closed(_) => someClosed
 
-          case rc@RemoteClosed(remoteQ) =>
-            if (stateRef.compareAndSet(rc, closedClosed)) {
-              remoteQ.fail(Reset.Closed, discard = true)
-              resetP.setValue(Reset.Closed)
-              someClosed
-            } else admitRemote(data)
+          case RemoteOpen(RemotePending(remoteP)) =>
+            if (resetPendingRemote(remoteP, Reset.Closed)) someClosed
+            else admitRemote(data)
 
-          case ro@RemoteOpen(RemotePending(remoteP)) =>
-            if (stateRef.compareAndSet(ro, closedClosed)) {
-              remoteP.setException(Reset.Closed)
-              resetP.setValue(Reset.Closed)
-              someClosed
-            } else admitRemote(data)
+          case RemoteClosed(remoteQ) =>
+            if (resetStreamingRemote(remoteQ, Reset.Closed)) someClosed
+            else admitRemote(data)
 
-          case open@Open(RemoteStreaming(remoteQ)) =>
+          case Open(RemoteStreaming(remoteQ)) =>
             if (data.isEndStream) {
-              val rc = RemoteClosed(remoteQ)
-              if (stateRef.compareAndSet(open, rc)) {
+              if (stateRef.compareAndSet(state, RemoteClosed(remoteQ))) {
                 val f = toFrame(data)
-                statsReceiver.recordRemoteFrame(f)
-
-                if (remoteQ.offer(f)) None
-                else if (stateRef.compareAndSet(rc, closedClosed)) {
-                  remoteQ.fail(Reset.Closed, discard = true)
-                  resetP.setValue(Reset.Closed)
-                  someClosed
-                } else admitRemote(data)
+                if (remoteQ.offer(f)) {
+                  statsReceiver.recordRemoteFrame(f)
+                  None
+                } else throw new IllegalStateException("stream queue closed prematurely")
               } else admitRemote(data)
             } else {
-              val f = toFrame(data)
-              if (remoteQ.offer(f)) {
-                statsReceiver.recordRemoteFrame(f)
-                None
-              } else if (stateRef.compareAndSet(open, closedClosed)) {
-                remoteQ.fail(Reset.Closed, discard = true)
-                resetP.setValue(Reset.Closed)
-                someClosed
-              } else admitRemote(data)
+              if (admitFrame(toFrame(data), remoteQ)) None
+              else admitRemote(data)
             }
 
-          case lc@LocalClosed(RemoteStreaming(remoteQ)) =>
+          case LocalClosed(RemoteStreaming(remoteQ)) =>
             if (data.isEndStream) {
-              if (stateRef.compareAndSet(lc, Closed(Reset.NoError))) {
+              if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
                 val f = toFrame(data)
-                statsReceiver.recordRemoteFrame(f)
-
                 if (remoteQ.offer(f)) {
+                  statsReceiver.recordRemoteFrame(f)
                   remoteQ.fail(Reset.NoError, discard = false)
-                  resetP.setValue(Reset.NoError)
+                  resetP.setDone()
+                  log.debug("[%s] admitted terminal frame %s", prefix, f)
                   None
-                } else someClosed
+                } else throw new IllegalStateException("stream queue closed prematurely")
               } else admitRemote(data)
             } else {
-              val f = toFrame(data)
-              if (remoteQ.offer(f)) {
-                statsReceiver.recordRemoteFrame(f)
-                None
-              } else if (stateRef.compareAndSet(lc, closedClosed)) {
-                remoteQ.fail(Reset.Closed, discard = true)
-                resetP.setValue(Reset.Closed)
-                someClosed
-              } else admitRemote(data)
+              if (admitFrame(toFrame(data), remoteQ)) None
+              else admitRemote(data)
             }
         }
     }
@@ -407,7 +398,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
       case rc@RemoteClosed(remoteQ) =>
         if (stateRef.compareAndSet(rc, Closed(Reset.NoError))) {
           remoteQ.fail(Reset.NoError, discard = false)
-          resetP.setValue(Reset.NoError)
+          resetP.setDone()
           writeHeaders(hdrs, true)
         } else writeHeadersEos(hdrs)
     }
@@ -424,7 +415,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
             case RemoteStreaming(remoteQ) =>
               remoteQ.fail(Reset.Closed, discard = true)
           }
-          resetP.setValue(Reset.Closed)
+          resetP.setDone()
           Future.exception(Reset.Closed)
         } else _writeFrame(frame)
 
@@ -445,7 +436,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
             case RemoteStreaming(remoteQ) =>
               remoteQ.fail(Reset.Closed, discard = true)
           }
-          resetP.setValue(Reset.Closed)
+          resetP.setException(Reset.Closed)
           Future.exception(Reset.Closed)
         } else _writeFrameEos(frame)
 
@@ -462,7 +453,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
           val f = transport.write(streamId, frame).before(frame.release())
           f.respond {
             case Return(_) =>
-              resetP.updateIfEmpty(Return(Reset.NoError)); ()
+              resetP.updateIfEmpty(Return.Unit); ()
             case Throw(e) =>
               resetP.updateIfEmpty(Throw(e)); ()
           }
@@ -578,7 +569,7 @@ object Netty4StreamTransport {
   ) extends Netty4StreamTransport[Response, Request] {
 
     override protected[this] val prefix =
-      s"[S L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
+      s"S L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
     override protected[this] def mkRemoteMsg(headers: Http2Headers, stream: Stream): Request =
       Request(Netty4Message.Headers(headers), stream)

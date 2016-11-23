@@ -15,12 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 
 class Netty4ServerDispatchTest extends FunSuite {
-  import com.twitter.logging._
-  Logger.configure(List(LoggerFactory(
-    node = "",
-    level = Some(Level.DEBUG),
-    handlers = List(ConsoleHandler())
-  )))
+  setLogLevel(com.twitter.logging.Level.OFF)
 
   test("serves multiple concurrent requests ") {
     val recvq = new AsyncQueue[Http2Frame]

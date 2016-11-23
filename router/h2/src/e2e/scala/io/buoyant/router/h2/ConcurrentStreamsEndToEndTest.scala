@@ -16,7 +16,7 @@ class ConcurrentStreamsEndToEndTest
 
   val FrameSize = 16 * 1024
   val WindowSize = 4 * FrameSize
-  val lengths = Seq(1, WindowSize * 2 - WindowSize / 2)
+  val lengths = Seq(/*1,*/ WindowSize * 2 - WindowSize / 2)
 
   case class Spec(len: Long, frameSize: Int, concurrency: Int)
   val specs = lengths.flatMap { len =>
@@ -58,6 +58,7 @@ class ConcurrentStreamsEndToEndTest
         await(streamers.flatMap(streamToAllInStep(_, streamLen)))
         info(s"duration=${elapsed().inMillis}ms")
       } finally {
+        setLogLevel(Level.OFF)
         await(client.close())
         await(server.server.close())
       }
@@ -65,9 +66,15 @@ class ConcurrentStreamsEndToEndTest
 
   case class Streamer(reader: Stream, writer: Stream.Writer) {
     def stream(buf: Buf, eos: Boolean): Future[Unit] = {
-      def read(remaining: Int): Future[Unit] =
-        reader.read().flatMap {
-          case d: Frame.Data =>
+      def read(remaining: Int): Future[Unit] = {
+        log.debug("Streamer.read < %d", remaining)
+        reader.read().transform {
+          case t@Throw(e) =>
+            log.error(e, "read error")
+            Future.exception(e)
+
+          case Return(d: Frame.Data) =>
+            log.debug("Streamer.read > %s", d)
             (remaining - d.buf.length) match {
               case 0 =>
                 assert(d.isEnd == eos)
@@ -78,8 +85,9 @@ class ConcurrentStreamsEndToEndTest
                 d.release().join(read(remaining)).unit
             }
 
-          case f => fail(s"unexpected frame $f")
+          case Return(f) => fail(s"unexpected frame $f")
         }
+      }
 
       writer.write(Frame.Data(buf, eos)).before(read(buf.length))
     }

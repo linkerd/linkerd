@@ -13,6 +13,7 @@ import java.net.SocketAddress
 import scala.collection.immutable.Queue
 
 class Netty4ClientDispatchTest extends FunSuite {
+  setLogLevel(com.twitter.logging.Level.OFF)
 
   test("dispatches multiple concurrent requests on underlying transport") {
     val recvq, sentq = new AsyncQueue[Http2Frame]
