@@ -304,7 +304,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
             else admitRemote(hdrs)
 
           case Open(remote@RemotePending()) =>
-            val q = new AsyncQueue[Frame]
+            val q = new AsyncQueue[Frame](1)
             if (stateRef.compareAndSet(state, new RemoteClosed(q))) {
               remote.setMessage(hdrs.headers, Stream.empty(q))
               true
@@ -433,41 +433,38 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
 
     val writeF = streamF.flatten
     onReset.onFailure(writeF.raise(_))
-    writeF.onSuccess(closeLocalOnComplete)
-    writeF.onFailure(resetOnFailure)
+    writeF.respond {
+      case Return(_) =>
+        closeLocal()
 
+      case Throw(StreamError.Remote(e)) =>
+        val rst = e match {
+          case rst: Reset => rst
+          case _ => Reset.Cancel
+        }
+        log.debug(e, "[%s] remote write failed: %s", prefix, rst)
+        remoteReset(rst)
+
+      case Throw(StreamError.Local(e)) =>
+        val rst = e match {
+          case rst: Reset => rst
+          case _ => Reset.Cancel
+        }
+        log.debug(e, "[%s] stream read failed: %s", prefix, rst)
+        localReset(rst)
+
+      case Throw(e) =>
+        log.error(e, "[%s] unexpected error", prefix)
+        localReset(Reset.InternalError)
+    }
     streamF
-  }
-
-  private[this] val closeLocalOnComplete: Unit => Unit = _ => closeLocal()
-
-  private[this] val resetOnFailure: PartialFunction[Throwable, Unit] = {
-    case StreamError.Remote(e) =>
-      val rst = e match {
-        case rst: Reset => rst
-        case _ => Reset.Cancel
-      }
-      log.debug(e, "[%s] remote write failed: %s", prefix, rst)
-      remoteReset(rst)
-
-    case StreamError.Local(e) =>
-      val rst = e match {
-        case rst: Reset => rst
-        case _ => Reset.Cancel
-      }
-      log.debug(e, "[%s] stream read failed: %s", prefix, rst)
-      localReset(rst)
-
-    case e =>
-      log.error(e, "[%s] unexpected error", prefix)
-      localReset(Reset.InternalError)
   }
 
   private[this] def writeHeaders(hdrs: Headers, eos: Boolean): Future[Unit] =
     stateRef.get match {
       case Closed(rst) => Future.exception(StreamError.Remote(rst))
       case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
-      case LocalOpen() => resetOnCancel(transport.write(streamId, hdrs, eos))
+      case LocalOpen() => localResetOnCancel(transport.write(streamId, hdrs, eos))
     }
 
   /** Write a request stream to the underlying transport */
@@ -477,10 +474,10 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
         .flatMap(writeFrame)
         .before(loop())
 
-    resetOnCancel(loop())
+    localResetOnCancel(loop())
   }
 
-  private[this] def resetOnCancel[T](f: Future[T]): Future[T] = {
+  private[this] def localResetOnCancel[T](f: Future[T]): Future[T] = {
     val p = new Promise[T]
     p.setInterruptHandler {
       case e =>
