@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{ChannelClosedException, ChannelWriteException, Failure, Service}
+import com.twitter.finagle.{Failure, Service}
 import com.twitter.finagle.context.{Contexts, RemoteInfo}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -106,68 +106,24 @@ class Netty4ServerDispatcher(
     }
   }
 
+  override protected[this] val demuxing: Future[Unit] = demux()
+
   /**
-   * Continually read from the transport, creating new streams.
+   * The stream didn't exist. We're either receiving HEADERS
+   * to initiate a new request, or we're receiving an
+   * unexpected frame.  Unexpected frames cause the
+   * connection to be closed with a protocol error.
    */
-  override protected[this] val reading: Future[Unit] = {
-    lazy val loop: Try[Http2Frame] => Future[Unit] = {
-      case Throw(e: ChannelClosedException) =>
-        log.debug(e, "[%s] read failed", prefix)
-        resetStreams(Reset.Cancel)
-        Future.Unit
+  override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = f match {
+    case frame: Http2HeadersFrame =>
+      val stream = newStreamTransport(frame.streamId)
+      if (stream.admitRemote(frame)) serveStream(stream)
+      Future.Unit
 
-      case Throw(e) =>
-        log.error(e, "[%s] read failed", prefix)
-        goAway(GoAway.InternalError)
-
-      case Return(_: Http2GoAwayFrame) =>
-        if (resetStreams(Reset.Cancel)) transport.close()
-        else Future.Unit
-
-      case Return(frame: Http2StreamFrame) if frame.streamId > 0 =>
-        streams.get(frame.streamId) match {
-          case null =>
-            // The stream didn't exist. We're either receiving HEADERS
-            // to initiate a new request, or we're receiving an
-            // unexpected frame.  Unexpected frames cause the
-            // connection to be closed with a protocol error.
-            frame match {
-              case frame: Http2HeadersFrame =>
-                val stream = newStreamTransport(frame.streamId)
-                if (stream.admitRemote(frame)) serveStream(stream)
-                if (closed.get) Future.Unit
-                else transport.read().transform(loop)
-
-              case frame =>
-                log.error("[%s S:%d] unexpected %s; sending GO_AWAY", prefix, frame.streamId, frame.name)
-                goAway(GoAway.ProtocolError)
-            }
-
-          case StreamOpen(st) =>
-            // The stream exists and is open, so feed it frames.
-            st.admitRemote(frame)
-            if (closed.get) Future.Unit
-            else transport.read().transform(loop)
-
-          case StreamLocalReset | StreamFailed(_) =>
-            // The local stream was already reset, but we may still
-            // receive frames until the remote is notified.  Just
-            // disregard these frames.
-            if (closed.get) Future.Unit
-            else transport.read().transform(loop)
-
-          case StreamClosed | StreamRemoteReset =>
-            // The stream has been closed and should know better than
-            // to send us messages.
-            writer.reset(frame.streamId, Reset.Closed)
-        }
-
-      case Return(frame) =>
-        log.warning("[%s] unexpected frame: %s", prefix, frame.name)
-        goAway(GoAway.ProtocolError)
-    }
-
-    transport.read().transform(loop)
+    case frame =>
+      log.error("[%s S:%d] unexpected %s; sending GO_AWAY", prefix, frame.streamId, frame.name)
+      val e = new IllegalArgumentException(s"unexpected frame on new stream: ${frame.name}")
+      goAway(GoAway.ProtocolError).before(Future.exception(e))
   }
 
 }

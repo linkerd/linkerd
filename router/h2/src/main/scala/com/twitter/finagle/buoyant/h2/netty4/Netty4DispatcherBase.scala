@@ -1,11 +1,11 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.Failure
+import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.netty.handler.codec.http2.Http2Frame
+import io.netty.handler.codec.http2.{Http2Frame, Http2GoAwayFrame, Http2StreamFrame}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
@@ -29,7 +29,7 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
     new ConcurrentHashMap
 
   protected[this] val closed: AtomicBoolean = new AtomicBoolean(false)
-  protected[this] def reading: Future[Unit]
+  protected[this] def demuxing: Future[Unit]
 
   protected[this] def registerStream(
     id: Int,
@@ -74,6 +74,62 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
     }
   }
 
+  protected[this] def demux(): Future[Unit] = {
+    lazy val loop: Try[Http2Frame] => Future[Unit] = {
+      case Throw(_: ChannelClosedException) => Future.Unit
+
+      case Throw(e) =>
+        log.error(e, "[%s] dispatcher failed", prefix)
+        goAway(GoAway.InternalError)
+
+      case Return(_: Http2GoAwayFrame) =>
+        if (resetStreams(Reset.Cancel)) transport.close()
+        else Future.Unit
+
+      case Return(f: Http2StreamFrame) =>
+        f.streamId match {
+          case 0 =>
+            val e = new IllegalArgumentException(s"unexpected frame on stream 0: ${f.name}")
+            goAway(GoAway.ProtocolError).before(Future.exception(e))
+
+          case id =>
+            streams.get(id) match {
+              case null =>
+                demuxNewStream(f).before {
+                  if (closed.get) Future.Unit
+                  else transport.read().transform(loop)
+                }
+
+              case StreamOpen(st) =>
+                st.admitRemote(f)
+                if (closed.get) Future.Unit
+                else transport.read().transform(loop)
+
+              case StreamLocalReset | StreamFailed(_) =>
+                // The local stream was already reset, but we may still
+                // receive frames until the remote is notified.  Just
+                // disregard these frames.
+                if (closed.get) Future.Unit
+                else transport.read().transform(loop)
+
+              case StreamClosed | StreamRemoteReset =>
+                // The stream has been closed and should know better than
+                // to send us messages.
+                writer.reset(id, Reset.Closed)
+            }
+        }
+
+      case Return(f) =>
+        log.error("[%s] unexpected frame: %s", prefix, f.name)
+        val e = new IllegalArgumentException(s"unexpected frame on new stream: ${f.name}")
+        goAway(GoAway.ProtocolError).before(Future.exception(e))
+    }
+
+    transport.read().transform(loop)
+  }
+
+  protected[this] def demuxNewStream(frame: Http2StreamFrame): Future[Unit]
+
   protected[this] def resetStreams(err: Reset): Boolean =
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
@@ -82,7 +138,7 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
           st.remoteReset(err); ()
         case _ =>
       }
-      reading.raise(Failure(err).flagged(Failure.Interrupted))
+      demuxing.raise(Failure(err).flagged(Failure.Interrupted))
       true
     } else false
 

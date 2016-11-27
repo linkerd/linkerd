@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{ChannelClosedException, Failure, Service, Status => SvcStatus}
+import com.twitter.finagle.{Service, Status => SvcStatus}
 import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -71,50 +71,11 @@ class Netty4ClientDispatcher(
    * Continually read frames from the HTTP2 transport. Demultiplex
    * frames from the transport onto a per-stream receive queue.
    */
-  override protected[this] val reading = {
-    lazy val loop: Try[Http2Frame] => Future[Unit] = {
-      case Throw(_: ChannelClosedException) => Future.Unit
+  override protected[this] val demuxing = demux()
 
-      case Throw(e) =>
-        log.error(e, "[%s] dispatcher failed", prefix)
-        goAway(GoAway.InternalError)
-
-      case Return(_: Http2GoAwayFrame) =>
-        if (resetStreams(Reset.Cancel)) transport.close()
-        else Future.Unit
-
-      case Return(f: Http2StreamFrame) =>
-        f.streamId match {
-          case 0 => goAway(GoAway.ProtocolError)
-          case id =>
-            streams.get(id) match {
-              case null => goAway(GoAway.ProtocolError)
-
-              case StreamOpen(st) =>
-                st.admitRemote(f)
-                if (closed.get) Future.Unit
-                else transport.read().transform(loop)
-
-              case StreamLocalReset | StreamFailed(_) =>
-                // The local stream was already reset, but we may still
-                // receive frames until the remote is notified.  Just
-                // disregard these frames.
-                if (closed.get) Future.Unit
-                else transport.read().transform(loop)
-
-              case StreamClosed | StreamRemoteReset =>
-                // The stream has been closed and should know better than
-                // to send us messages.
-                writer.reset(id, Reset.Closed)
-            }
-        }
-
-      case Return(f) =>
-        log.error("[%s] unexpected frame: %s", prefix, f.name)
-        goAway(GoAway.ProtocolError)
-    }
-
-    transport.read().transform(loop)
+  override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = {
+    val e = new IllegalArgumentException(s"unexpected frame on new stream: ${f.name}")
+    goAway(GoAway.ProtocolError).before(Future.exception(e))
   }
 
   /**
