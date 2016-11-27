@@ -94,8 +94,12 @@ private[netty4] object Netty4H2Writer {
 
   def apply(trans: Transport[Http2Frame, Http2Frame]): H2Transport.Writer =
     new Netty4H2Writer {
-      override protected[this] def write(frame: Http2Frame): Future[Unit] =
-        trans.write(frame).rescue(wrapWriteException)
+      override protected[this] def write(frame: Http2Frame): Future[Unit] = {
+        log.trace("[L:%s R:%s] write: %s", trans.localAddress, trans.remoteAddress, frame.name)
+        val f = trans.write(frame).rescue(wrapWriteException)
+        f.respond(v => log.trace("[L:%s R:%s] wrote: %s: %s", trans.localAddress, trans.remoteAddress, frame.name, v))
+        f
+      }
 
       override protected[this] def close(t: Time): Future[Unit] =
         trans.close(t)

@@ -84,16 +84,12 @@ object Stream {
   private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
     override protected[this] val frameQ = new AsyncQueue[Frame]
 
-    override def write(f: Frame): Future[Unit] = {
+    override def write(f: Frame): Future[Unit] =
       if (frameQ.offer(f)) f.onRelease
       else Future.exception(Reset.Closed)
-    }
 
-    override def reset(err: Reset): Unit =
-      frameQ.fail(err, discard = true)
-
-    override def close(): Unit =
-      frameQ.fail(Reset.NoError, discard = false)
+    override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+    override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
   }
 
   def apply(q: AsyncQueue[Frame]): Stream =

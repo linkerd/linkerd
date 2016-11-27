@@ -1,11 +1,11 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.{ChannelClosedException, Failure, Service, Status => SvcStatus}
 import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Future, Promise, Return, Stopwatch, Time, Throw}
+import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -16,6 +16,13 @@ object Netty4ClientDispatcher {
   private val log = Logger.get(getClass.getName)
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
   private val MaxStreamId = (math.pow(2, 31) - 1).toInt
+
+  private sealed trait StreamTransport
+  private case class StreamOpen(stream: Netty4StreamTransport[Request, Response]) extends StreamTransport
+  private object StreamClosed extends StreamTransport
+  private object StreamLocalReset extends StreamTransport
+  private object StreamRemoteReset extends StreamTransport
+  private case class StreamFailed(cause: Throwable) extends StreamTransport
 }
 
 /**
@@ -49,7 +56,7 @@ class Netty4ClientDispatcher(
   }
 
   private[this] val streams =
-    new ConcurrentHashMap[Int, Netty4StreamTransport[Request, Response]]
+    new ConcurrentHashMap[Int, StreamTransport]
 
   private[this] val closed = new AtomicBoolean(false)
 
@@ -58,12 +65,42 @@ class Netty4ClientDispatcher(
   private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
     val stream = Netty4StreamTransport.client(id, writer, streamStats)
-    if (streams.putIfAbsent(id, stream) != null) {
+    val open = StreamOpen(stream)
+    if (streams.putIfAbsent(id, open) != null) {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
-    stream.onReset.ensure {
-      log.debug("[%s S:%d] removing closed stream", prefix, id)
-      streams.remove(id, stream); ()
+    log.debug("[%s S:%d] initialized stream", prefix, id)
+    stream.onReset.respond {
+      case Return(_) =>
+        // Free and clear.
+        if (streams.replace(id, open, StreamClosed)) {
+          log.debug("[%s S:%d] stream closed", prefix, id)
+        }
+
+      case Throw(StreamError.Remote(e)) =>
+        // The downstream remote initiated a reset, so just update the state and
+        // do nothing else.
+        if (streams.replace(id, open, StreamRemoteReset)) {
+          log.debug(e, "[%s S:%d] stream reset from remote", prefix, id)
+        }
+
+      case Throw(StreamError.Local(e)) =>
+        // The upstream local initiated a reset, so send a reset to
+        // the downstream remote.
+        if (streams.replace(id, open, StreamLocalReset)) {
+          log.debug(e, "[%s S:%d] stream reset from local; resetting remote", prefix, id)
+          val rst = e match {
+            case rst: Reset => rst
+            case _ => Reset.Cancel
+          }
+          if (!closed.get) { writer.reset(id, rst); () }
+        }
+
+      case Throw(e) =>
+        if (streams.replace(id, open, StreamFailed(e))) {
+          log.error(e, "[%s S:%d] stream reset", prefix, id)
+          if (!closed.get) { writer.reset(id, Reset.InternalError); () }
+        }
     }
     stream
   }
@@ -73,45 +110,49 @@ class Netty4ClientDispatcher(
    * frames from the transport onto a per-stream receive queue.
    */
   private[this] val reading = {
-    lazy val loop: Http2Frame => Future[Unit] = {
-      case _: Http2GoAwayFrame =>
-        log.debug("[%s] received GOAWAY", prefix)
-        if (closed.compareAndSet(false, true)) {
-          streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
-        }
-        Future.Unit
+    lazy val loop: Try[Http2Frame] => Future[Unit] = {
+      case Throw(_: ChannelClosedException) => Future.Unit
 
-      case f: Http2StreamFrame =>
-        log.debug("[%s S:%d] diapatching %s", prefix, f.streamId, f.name)
+      case Throw(e) =>
+        log.error(e, "[%s] dispatcher failed", prefix)
+        goAway(GoAway.InternalError)
+
+      case Return(_: Http2GoAwayFrame) =>
+        if (resetStreams(Reset.Cancel)) transport.close()
+        else Future.Unit
+
+      case Return(f: Http2StreamFrame) =>
         f.streamId match {
           case 0 => goAway(GoAway.ProtocolError)
           case id =>
             streams.get(id) match {
               case null => goAway(GoAway.ProtocolError)
-              case stream =>
-                stream.admitRemote(f) match {
-                  case Some(err: GoAway) =>
-                    log.debug("[%s S:%d] go away on %s", prefix, id, f.name)
-                    goAway(err)
 
-                  case Some(err: Reset) =>
-                    log.debug("[%s S:%d] client reset on %s", prefix, id, f.name)
-                    writer.reset(id, err).before(transport.read().flatMap(loop))
+              case StreamOpen(st) =>
+                st.admitRemote(f)
+                if (closed.get) Future.Unit
+                else transport.read().transform(loop)
 
-                  case None =>
-                    if (closed.get) Future.Unit
-                    else transport.read().flatMap(loop)
-                }
+              case StreamLocalReset | StreamFailed(_) =>
+                // The local stream was already reset, but we may still
+                // receive frames until the remote is notified.  Just
+                // disregard these frames.
+                if (closed.get) Future.Unit
+                else transport.read().transform(loop)
+
+              case StreamClosed | StreamRemoteReset =>
+                // The stream has been closed and should know better than
+                // to send us messages.
+                writer.reset(id, Reset.Closed)
             }
         }
 
-      case unknown => goAway(GoAway.ProtocolError)
+      case Return(f) =>
+        log.error("[%s] unexpected frame: %s", prefix, f.name)
+        goAway(GoAway.ProtocolError)
     }
 
-    transport.read().flatMap(loop).onFailure {
-      case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-      case e => log.error(e, s"${transport.localAddress} ${transport.remoteAddress}: client dispatcher")
-    }
+    transport.read().transform(loop)
   }
 
   /**
@@ -120,45 +161,52 @@ class Netty4ClientDispatcher(
    */
   override def apply(req: Request): Future[Response] = {
     val st = newStreamTransport()
-    log.debug("[%s S:%d] client dispatcher issuing: %s", prefix, st.streamId, req)
     // Stream the request while receiving the response and
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
     val initF = st.write(req)
 
-    // If the stream is reset (i.e. by the remote server), cancel the local stream
+    // Compose the response future and the stream write so that we
+    // cancel the entire pipeline on reset.
     val writeF = initF.flatten
-    st.onReset.onFailure {
-      case rst: Reset =>
-        log.debug("[%s S:%d] client dispatcher writing reset", prefix, st.streamId)
-        writeF.raise(rst)
-        writer.reset(st.streamId, rst); ()
 
-      case exc =>
-        log.debug(exc, "[%s S:%d] client dispatcher error", prefix, st.streamId)
-        writeF.raise(exc)
-        goAway(GoAway.InternalError); ()
+    // If the stream is reset prematurely, cancel the pending write
+    st.onReset.onFailure {
+      case StreamError.Remote(rst: Reset) => writeF.raise(rst)
+      case StreamError.Remote(e) => writeF.raise(Reset.Cancel)
+      case e => writeF.raise(e)
     }
 
     initF.unit.before(st.remoteMsg)
   }
 
+  override def status: SvcStatus =
+    if (closed.get) SvcStatus.Closed
+    else SvcStatus.Open
+
+  private[this] def resetStreams(err: Reset): Boolean =
+    if (closed.compareAndSet(false, true)) {
+      log.debug("[%s] resetting all streams: %s", prefix, err)
+      streams.values.asScala.foreach {
+        case StreamOpen(st) =>
+          st.remoteReset(err); ()
+        case _ =>
+      }
+      reading.raise(Failure(err).flagged(Failure.Interrupted))
+      true
+    } else false
+
   // If the connection is lost, reset active streams.
   transport.onClose.onSuccess { e =>
-    if (closed.compareAndSet(false, true)) {
-      log.debug(e, "%s %s: transport closed", transport.localAddress, transport.remoteAddress)
-      reading.raise(Failure("closed").flagged(Failure.Interrupted))
-      streams.asScala.values.foreach(_.reset(Reset.Cancel))
-    }
+    log.debug(e, "[%s] transport closed", prefix)
+    resetStreams(Reset.Cancel); ()
   }
 
-  private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
-    if (closed.compareAndSet(false, true)) {
-      log.info("[%s] go away: %s", prefix, err)
-      reading.raise(Failure(err).flagged(Failure.Interrupted))
-      streams.values.asScala.toSeq.foreach(_.reset(Reset.Cancel))
-      writer.goAway(err, deadline)
-    } else Future.Unit
+  private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] = {
+    log.debug("[%s] go away: %s", prefix, err)
+    if (resetStreams(Reset.Cancel)) writer.goAway(err, deadline)
+    else Future.Unit
+  }
 
   override def close(d: Time): Future[Unit] = goAway(GoAway.NoError, d)
 

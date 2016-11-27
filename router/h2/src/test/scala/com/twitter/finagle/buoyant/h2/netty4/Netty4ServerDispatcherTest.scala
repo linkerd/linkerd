@@ -25,7 +25,7 @@ class Netty4ServerDispatchTest extends FunSuite {
       def status = ???
       def localAddress = new SocketAddress {}
       def remoteAddress = new SocketAddress {}
-      def peerCertificate = ???
+      def peerCertificate = None
       def read(): Future[Http2Frame] = recvq.poll()
       def write(f: Http2Frame): Future[Unit] = {
         sentq = sentq :+ f
@@ -52,7 +52,8 @@ class Netty4ServerDispatchTest extends FunSuite {
         case "elbarto" if elBartoCalled.compareAndSet(false, true) =>
           elBartoStreamP.map(Response(Status.Cowabunga, _))
 
-        case _ => Future.value(Response(Status.EatMyShorts, Stream.empty()))
+        case _ =>
+          Future.value(Response(Status.EatMyShorts, Stream.empty()))
       }
     }
 

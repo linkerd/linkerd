@@ -23,3 +23,19 @@ object Reset {
   object NoError extends Reset { override def toString = "Reset.NoError" }
   object Refused extends Reset { override def toString = "Reset.Refused" }
 }
+
+sealed trait StreamError extends NoStackTrace {
+  def cause: Throwable
+}
+
+object StreamError {
+  case class Local(cause: Throwable) extends StreamError {
+    override def toString = s"StreamError.Local(${cause.toString})"
+    override def getMessage = s"local: ${cause.getMessage}"
+  }
+
+  case class Remote(cause: Throwable) extends StreamError {
+    override def toString = s"StreamError.Remote(${cause.toString})"
+    override def getMessage = s"remote: ${cause.getMessage}"
+  }
+}
