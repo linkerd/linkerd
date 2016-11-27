@@ -38,4 +38,6 @@ object StreamError {
     override def toString = s"StreamError.Remote(${cause.toString})"
     override def getMessage = s"remote: ${cause.getMessage}"
   }
+
+  def unapply(e: StreamError): Option[Throwable] = Some(e.cause)
 }
