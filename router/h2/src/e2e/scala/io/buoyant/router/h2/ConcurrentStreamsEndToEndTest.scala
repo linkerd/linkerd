@@ -6,6 +6,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import scala.annotation.tailrec
 
 class ConcurrentStreamsEndToEndTest
   extends FunSuite
@@ -42,20 +43,19 @@ class ConcurrentStreamsEndToEndTest
       }
 
       // Send the same data through all streams simultaneously, one frame at a time:
-      def streamToAllInStep(streamers: Seq[Streamer], remaining: Long): Future[Unit] = {
+      @tailrec def streamToAllInStep(streamers: Seq[Streamer], remaining: Long): Unit = {
         require(remaining > 0)
         val len = math.min(frameSize, remaining).toInt
         val buf = mkBuf(len)
         val eos = len == remaining
-        val f = Future.collect(streamers.map(_.stream(buf, eos))).unit
-        if (eos) f
-        else f.before(streamToAllInStep(streamers, remaining - len))
+        await(Future.collect(streamers.map(_.stream(buf, eos))))
+        if (!eos) streamToAllInStep(streamers, remaining - len)
       }
 
       try {
         val elapsed = Stopwatch.start()
-        val streamers = Future.collect((0 until concurrency).map(_ => open()))
-        await(streamers.flatMap(streamToAllInStep(_, streamLen)))
+        val streamers = await(Future.collect((0 until concurrency).map(_ => open())))
+        streamToAllInStep(streamers, streamLen)
         info(s"duration=${elapsed().inMillis}ms")
       } finally {
         setLogLevel(Level.OFF)
@@ -82,7 +82,7 @@ class ConcurrentStreamsEndToEndTest
 
               case remaining =>
                 assert(!d.isEnd)
-                d.release().join(read(remaining)).unit
+                d.release().before(read(remaining))
             }
 
           case Return(f) => fail(s"unexpected frame $f")

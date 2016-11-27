@@ -33,7 +33,9 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
     val server = Downstream.mk("srv")(srv)
     val client = upstream(server.server)
     try f(client)
+    catch { case e: Throwable => log.info(e, "client") }
     finally {
+      setLogLevel(Level.OFF)
       await(client.close())
       await(server.server.close())
     }

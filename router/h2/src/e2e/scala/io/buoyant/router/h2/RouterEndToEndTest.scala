@@ -80,9 +80,13 @@ class RouterEndToEndTest
       eventually(assert(serverInterrupted == Some(Reset.Cancel)))
 
     } finally {
-      setLogLevel(Level.OFF)
-      try await(client.close().before(dog.server.close()).before(router.close()))
-      catch { case e: Throwable => log.error(e, "closing") }
+      try {
+        await(client.close())
+        await(dog.server.close())
+        await(router.close())
+      } catch {
+        case e: Throwable => log.error(e, "closing")
+      } finally setLogLevel(Level.OFF)
     }
   }
 
