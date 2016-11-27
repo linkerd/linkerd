@@ -16,31 +16,30 @@ object Netty4ClientDispatcher {
   private val log = Logger.get(getClass.getName)
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
   private val MaxStreamId = (math.pow(2, 31) - 1).toInt
-
-  private sealed trait StreamTransport
-  private case class StreamOpen(stream: Netty4StreamTransport[Request, Response]) extends StreamTransport
-  private object StreamClosed extends StreamTransport
-  private object StreamLocalReset extends StreamTransport
-  private object StreamRemoteReset extends StreamTransport
-  private case class StreamFailed(cause: Throwable) extends StreamTransport
 }
 
 /**
- * Expose a single HTTP2 connection as a Service.
+ * A dispatcher that exposes a `Service[Request, Response]`.
  *
- * The provided Transport[Http2Frame, Http2Frame] models a single
- * HTTP2 connection.xs
+ * Requests are issued onto the dispatcher to be written on a (new)
+ * remote stream, and the response is returned and streamed upstream
+ * from the remote.
  */
 class Netty4ClientDispatcher(
-  transport: Transport[Http2Frame, Http2Frame],
+  override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   streamStats: Netty4StreamTransport.StatsReceiver
-) extends Service[Request, Response] {
-
+) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
 
-  private[this] val writer = Netty4H2Writer(transport)
+  override protected[this] val log = Netty4ClientDispatcher.log
 
-  private[this] val prefix = s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+  override protected[this] val prefix =
+    s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+
+  transport.onClose.onSuccess(onTransportClose)
+
+  override def close(deadline: Time): Future[Unit] =
+    goAway(GoAway.NoError, deadline)
 
   private[this] val _id = new AtomicInteger(BaseStreamId)
 
@@ -55,61 +54,24 @@ class Netty4ClientDispatcher(
     case id => id
   }
 
-  private[this] val streams =
-    new ConcurrentHashMap[Int, StreamTransport]
-
-  private[this] val closed = new AtomicBoolean(false)
-
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
   private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
     val stream = Netty4StreamTransport.client(id, writer, streamStats)
-    val open = StreamOpen(stream)
-    if (streams.putIfAbsent(id, open) != null) {
-      throw new IllegalStateException(s"stream ${stream.streamId} already exists")
-    }
-    log.debug("[%s S:%d] initialized stream", prefix, id)
-    stream.onReset.respond {
-      case Return(_) =>
-        // Free and clear.
-        if (streams.replace(id, open, StreamClosed)) {
-          log.debug("[%s S:%d] stream closed", prefix, id)
-        }
-
-      case Throw(StreamError.Remote(e)) =>
-        // The downstream remote initiated a reset, so just update the state and
-        // do nothing else.
-        if (streams.replace(id, open, StreamRemoteReset)) {
-          log.debug(e, "[%s S:%d] stream reset from remote", prefix, id)
-        }
-
-      case Throw(StreamError.Local(e)) =>
-        // The upstream local initiated a reset, so send a reset to
-        // the downstream remote.
-        if (streams.replace(id, open, StreamLocalReset)) {
-          log.debug(e, "[%s S:%d] stream reset from local; resetting remote", prefix, id)
-          val rst = e match {
-            case rst: Reset => rst
-            case _ => Reset.Cancel
-          }
-          if (!closed.get) { writer.reset(id, rst); () }
-        }
-
-      case Throw(e) =>
-        if (streams.replace(id, open, StreamFailed(e))) {
-          log.error(e, "[%s S:%d] stream reset", prefix, id)
-          if (!closed.get) { writer.reset(id, Reset.InternalError); () }
-        }
-    }
+    registerStream(id, stream)
     stream
   }
+
+  override def status: SvcStatus =
+    if (closed.get) SvcStatus.Closed
+    else SvcStatus.Open
 
   /**
    * Continually read frames from the HTTP2 transport. Demultiplex
    * frames from the transport onto a per-stream receive queue.
    */
-  private[this] val reading = {
+  override protected[this] val reading = {
     lazy val loop: Try[Http2Frame] => Future[Unit] = {
       case Throw(_: ChannelClosedException) => Future.Unit
 
@@ -179,35 +141,4 @@ class Netty4ClientDispatcher(
 
     initF.unit.before(st.onRemoteMessage)
   }
-
-  override def status: SvcStatus =
-    if (closed.get) SvcStatus.Closed
-    else SvcStatus.Open
-
-  private[this] def resetStreams(err: Reset): Boolean =
-    if (closed.compareAndSet(false, true)) {
-      log.debug("[%s] resetting all streams: %s", prefix, err)
-      streams.values.asScala.foreach {
-        case StreamOpen(st) =>
-          st.remoteReset(err); ()
-        case _ =>
-      }
-      reading.raise(Failure(err).flagged(Failure.Interrupted))
-      true
-    } else false
-
-  // If the connection is lost, reset active streams.
-  transport.onClose.onSuccess { e =>
-    log.debug(e, "[%s] transport closed", prefix)
-    resetStreams(Reset.Cancel); ()
-  }
-
-  private[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] = {
-    log.debug("[%s] go away: %s", prefix, err)
-    if (resetStreams(Reset.Cancel)) writer.goAway(err, deadline)
-    else Future.Unit
-  }
-
-  override def close(d: Time): Future[Unit] = goAway(GoAway.NoError, d)
-
 }
