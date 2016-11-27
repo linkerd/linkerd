@@ -116,8 +116,8 @@ class Netty4ServerDispatcher(
    */
   override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = f match {
     case frame: Http2HeadersFrame =>
-      val stream = newStreamTransport(frame.streamId)
-      if (stream.admitRemote(frame)) serveStream(stream)
+      val st = newStreamTransport(frame.streamId)
+      if (st.admitRemote(frame)) serveStream(st)
       Future.Unit
 
     case frame =>

@@ -42,7 +42,6 @@ class Netty4ClientDispatcher(
     goAway(GoAway.NoError, deadline)
 
   private[this] val _id = new AtomicInteger(BaseStreamId)
-
   private[this] def nextId(): Int = _id.getAndAdd(2) match {
     case id if id < BaseStreamId || MaxStreamId < id =>
       // If the ID overflows, we can't use this connection anymore, so
@@ -64,7 +63,7 @@ class Netty4ClientDispatcher(
   }
 
   override def status: SvcStatus =
-    if (closed.get) SvcStatus.Closed
+    if (isClosed) SvcStatus.Closed
     else SvcStatus.Open
 
   /**

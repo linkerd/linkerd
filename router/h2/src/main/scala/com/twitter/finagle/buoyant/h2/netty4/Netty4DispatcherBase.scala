@@ -18,17 +18,23 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
 
-  protected[this] sealed trait StreamTransport
-  protected[this] case class StreamOpen(stream: Netty4StreamTransport[LocalMsg, RemoteMsg]) extends StreamTransport
-  protected[this] object StreamClosed extends StreamTransport
-  protected[this] object StreamLocalReset extends StreamTransport
-  protected[this] object StreamRemoteReset extends StreamTransport
-  protected[this] case class StreamFailed(cause: Throwable) extends StreamTransport
+  /**
+   * The various states a stream can be in (particularly closed).
+   *
+   * The failures are distinguished so that the dispatcher can be
+   * smart about (not) emiting resets to the remote.
+   */
+  private[this] sealed trait StreamTransport
+  private[this] case class StreamOpen(stream: Netty4StreamTransport[LocalMsg, RemoteMsg]) extends StreamTransport
+  private[this] object StreamClosed extends StreamTransport
+  private[this] object StreamLocalReset extends StreamTransport
+  private[this] object StreamRemoteReset extends StreamTransport
+  private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
 
-  protected[this] val streams: ConcurrentHashMap[Int, StreamTransport] =
-    new ConcurrentHashMap
+  private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
+  private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
+  protected[this] def isClosed = closed.get
 
-  protected[this] val closed: AtomicBoolean = new AtomicBoolean(false)
   protected[this] def demuxing: Future[Unit]
 
   protected[this] def registerStream(
@@ -130,12 +136,11 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
 
   protected[this] def demuxNewStream(frame: Http2StreamFrame): Future[Unit]
 
-  protected[this] def resetStreams(err: Reset): Boolean =
+  private[this] def resetStreams(err: Reset): Boolean =
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
       streams.values.asScala.foreach {
-        case StreamOpen(st) =>
-          st.remoteReset(err); ()
+        case StreamOpen(st) => st.remoteReset(err)
         case _ =>
       }
       demuxing.raise(Failure(err).flagged(Failure.Interrupted))
