@@ -29,7 +29,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.client(id, writer, tstats)
 
-    val rspf = stream.remoteMsg
+    val rspf = stream.onRemoteMessage
     assert(!rspf.isDefined)
 
     stream.admitRemote(new DefaultHttp2HeadersFrame({
@@ -93,7 +93,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.client(id, writer, tstats)
 
-    val rspF = stream.remoteMsg
+    val rspF = stream.onRemoteMessage
 
     assert(synchronized(written).isEmpty)
     assert(!rspF.isDefined)
@@ -139,7 +139,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.client(id, writer, tstats)
 
-    val rspF = stream.remoteMsg
+    val rspF = stream.onRemoteMessage
 
     assert(synchronized(written).isEmpty)
     assert(!rspF.isDefined)
@@ -198,7 +198,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.client(id, writer, tstats)
 
-    val rspF = stream.remoteMsg
+    val rspF = stream.onRemoteMessage
     assert(synchronized(written).isEmpty)
     assert(!rspF.isDefined)
     assert(!stream.onReset.isDefined)
@@ -261,7 +261,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.client(id, writer, tstats)
 
-    val rspF = stream.remoteMsg
+    val rspF = stream.onRemoteMessage
     assert(synchronized(written).isEmpty)
     assert(!rspF.isDefined)
     assert(!stream.isClosed)
@@ -295,7 +295,7 @@ class Netty4StreamTransportTest extends FunSuite {
       def write(f: Http2Frame) = ???
     }
     val stream = Netty4StreamTransport.server(3, writer)
-    val reqf = stream.remoteMsg
+    val reqf = stream.onRemoteMessage
     assert(!reqf.isDefined)
 
     assert(stream.admitRemote({
@@ -413,7 +413,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.server(id, writer, tstats)
 
-    val reqF = stream.remoteMsg
+    val reqF = stream.onRemoteMessage
 
     assert(synchronized(written).isEmpty)
     assert(!reqF.isDefined)
@@ -463,7 +463,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.server(id, writer, tstats)
 
-    val reqF = stream.remoteMsg
+    val reqF = stream.onRemoteMessage
 
     assert(synchronized(written).isEmpty)
     assert(!reqF.isDefined)
@@ -520,7 +520,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val stream = Netty4StreamTransport.server(id, writer, tstats)
 
-    val reqF = stream.remoteMsg
+    val reqF = stream.onRemoteMessage
 
     assert(synchronized(written).isEmpty)
     assert(!reqF.isDefined)

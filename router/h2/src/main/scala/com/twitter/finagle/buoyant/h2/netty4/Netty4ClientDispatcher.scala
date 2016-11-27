@@ -177,7 +177,7 @@ class Netty4ClientDispatcher(
       case e => writeF.raise(e)
     }
 
-    initF.unit.before(st.remoteMsg)
+    initF.unit.before(st.onRemoteMessage)
   }
 
   override def status: SvcStatus =

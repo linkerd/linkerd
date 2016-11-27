@@ -14,12 +14,28 @@ import scala.collection.immutable.Queue
 import scala.util.control.NoStackTrace
 
 /**
- * Models a single HTTP/2 stream.
+ * Reads and writes a bi-directional HTTP/2 stream.
  *
- * Transports send a `Local`-typed message via an underlying
- * [[H2Transport.Writer]]. A dispatcher, which models a single HTTP/2
- * connection, provides the transport with `Http2StreamFrame`
- * instances that are used to build a `RemoteMsg`-typed message.
+ * Each stream transport has two "sides":
+ *
+ * - Dispatchers provide a stream with remote frames _from_ a socket
+ *   into a `RemoteMsg`-typed message.  The `onRemoteMessage` future
+ *   is satisfied when an initial HEADERS frame is received from the
+ *   dispatcher.
+ *
+ * - Dispatchers write a `LocalMsg`-typed message _to_ a socket.  The
+ *   stream transport reasds from the message's stream until it
+ *   _fails_, so that errors may be propagated if the local side of
+ *   the stream is reset.
+ *
+ * When both sides of the stram are closed, the `onReset` future is
+ * satisfied.
+ *
+ * Either side may reset the stream prematurely, causing the `onReset`
+ * future to fail, typically with a [[StreamError]] indicating whether
+ * the reset was initiated from the remote or local side of the
+ * stream. This information is used by i.e. dispatchers to determine
+ * whether a reset frame must be written.
  */
 private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Message] {
   import Netty4StreamTransport._
@@ -62,40 +78,50 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
    * version of the state diagram).
    */
 
+  /** Helper: a state that supports Reset.  (All but Closed) */
   private[this] trait ResettableState {
     def reset(rst: Reset): Unit
-  }
-  private[this] trait ClosableState { _: ResettableState =>
-    def close(): Unit
   }
 
   private[this] sealed trait StreamState
 
+  /** The stream is open in both directions. */
   private[this] case class Open(remote: RemoteState) extends StreamState with ResettableState {
     override def reset(rst: Reset): Unit = remote.reset(rst)
   }
 
+  /**
+   * The local message has been fully sent, but the remote message is
+   * still being received.
+   */
   private[this] case class LocalClosed(remote: RemoteState)
     extends StreamState with ResettableState {
-
     override def reset(rst: Reset): Unit = remote.reset(rst)
   }
 
-  private[this] case class Closed(error: Reset) extends StreamState
-  private[this] val closedState = Closed(Reset.Closed)
-
+  /**
+   * The full remote message has been received and the LocalMsg is
+   * still being sent.
+   *
+   * The remote frame queue is preserved so that it may be failed when
+   * the stream is closed or reset.
+   */
   private[this] class RemoteClosed(q: AsyncQueue[Frame])
-    extends StreamState with ResettableState with ClosableState {
-
+    extends StreamState with ResettableState {
+    def close(): Unit = q.fail(Reset.NoError, discard = false)
     override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
-    override def close(): Unit = q.fail(Reset.NoError, discard = false)
   }
   private[this] object RemoteClosed {
     def unapply(rc: RemoteClosed): Boolean = true
   }
 
+  /** The stream is fully closed. */
+  private[this] case class Closed(error: Reset) extends StreamState
+
+  /** The state of the remote side of a stream. */
   private[this] sealed trait RemoteState extends ResettableState
 
+  /** A remote stream before the initial HEADERS frame has been received. */
   private[this] class RemotePending(p: Promise[RemoteMsg]) extends RemoteState {
     def setMessage(msg: RemoteMsg): Unit = p.setValue(msg)
     override def reset(rst: Reset): Unit = p.setException(rst)
@@ -104,19 +130,19 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     def unapply(rs: RemotePending): Boolean = true
   }
 
-  private[this] class RemoteStreaming(q: AsyncQueue[Frame])
-    extends RemoteState with ClosableState {
+  /** A remote stream that has been initiated but not yet closed or reset. */
+  private[this] class RemoteStreaming(q: AsyncQueue[Frame]) extends RemoteState {
     def toRemoteClosed: RemoteClosed = new RemoteClosed(q)
-
     def offer(f: Frame): Boolean = q.offer(f)
+    def close(): Unit = q.fail(Reset.NoError, discard = false)
     override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
-    override def close(): Unit = q.fail(Reset.NoError, discard = false)
   }
   private[this] object RemoteStreaming {
     def apply(q: AsyncQueue[Frame]): RemoteStreaming = new RemoteStreaming(q)
     def unapply(rs: RemoteStreaming): Boolean = true
   }
 
+  /** Helper to extract a RemoteState from a StreamState. */
   private[this] object RemoteOpen {
     def unapply(s: StreamState): Option[RemoteState] = s match {
       case Open(r) => Some(r)
@@ -125,6 +151,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     }
   }
 
+  /** Helper to match writable states. */
   private[this] object LocalOpen {
     def unapply(s: StreamState): Boolean = s match {
       case Open(_) | RemoteClosed() => true
@@ -132,10 +159,10 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     }
   }
 
+  /**
+   */
   private[this] val remoteMsgP = new Promise[RemoteMsg]
-  private[this] val localResetP = new Promise[Reset]
-
-  def remoteMsg: Future[RemoteMsg] = remoteMsgP
+  def onRemoteMessage: Future[RemoteMsg] = remoteMsgP
 
   // When the remote message--especially a client's repsonse--is
   // canceled, close the transport, sending a RST_STREAM as
@@ -208,7 +235,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
       case Closed(_) =>
 
       case state@LocalClosed(remote) =>
-        if (stateRef.compareAndSet(state, closedState)) {
+        if (stateRef.compareAndSet(state, Closed(Reset.InternalError))) {
           remote.reset(Reset.InternalError)
           resetP.setException(new IllegalStateException("closing local from LocalClosed"))
         } else closeLocal()
@@ -228,14 +255,11 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
    */
 
   /**
-   * Optionally accept a frame from the remote side of a connection.
+   * Offer a Netty Http2StreamFrame from the remote.
    *
-   * `admitRemote` returns false to indicate that a frame cold not be
+   * `admitRemote` returns false to indicate that a frame could not be
    * accepted.  This may occur, for example, when a message is
    * received on a closed stream.
-   *
-   * Remote frames that are received and demultiplexed by a Dispatcher
-   * are offered onto the stream. Each frame
    */
   @tailrec final def admitRemote(in: Http2StreamFrame): Boolean = {
     val state = stateRef.get
@@ -381,32 +405,42 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     }
   }
 
-  private[this] val updateWindow: Int => Future[Unit] =
-    incr => transport.updateWindow(streamId, incr)
-
+  /** */
   private[this] def toFrame(f: Http2StreamFrame): Frame = f match {
     case f: Http2DataFrame => Netty4Message.Data(f, updateWindow)
     case f: Http2HeadersFrame if f.isEndStream => Netty4Message.Trailers(f.headers)
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
 
-  /*
-   * Writing a LocalMsg to the remote.
-   */
+  private[this] val updateWindow: Int => Future[Unit] =
+    incr => transport.updateWindow(streamId, incr)
 
+  /**
+   * Write a `LocalMsg` to the remote.
+   *
+   * The outer future is satisfied initially to indicate that the
+   * local message has been initiated (i.e. its HEADERS have been
+   * sent). This first future is satisfied with a second future. The
+   * second future is satisfied when the full local stream has been
+   * written to the remote.
+   *
+   * If any write fails or is canceled, the entire stream is reset.
+   *
+   * If the stream is reset, writes are canceled.
+   */
   def write(msg: LocalMsg): Future[Future[Unit]] = {
     val headersF = writeHeaders(msg.headers, msg.stream.isEmpty)
     val streamF = headersF.map(_ => writeStream(msg.stream))
 
     val writeF = streamF.flatten
     onReset.onFailure(writeF.raise(_))
-    writeF.onSuccess(closeOnComplete)
+    writeF.onSuccess(closeLocalOnComplete)
     writeF.onFailure(resetOnFailure)
 
     streamF
   }
 
-  private[this] val closeOnComplete: Unit => Unit = _ => closeLocal()
+  private[this] val closeLocalOnComplete: Unit => Unit = _ => closeLocal()
 
   private[this] val resetOnFailure: PartialFunction[Throwable, Unit] = {
     case StreamError.Remote(e) =>
@@ -434,12 +468,7 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     stateRef.get match {
       case Closed(rst) => Future.exception(StreamError.Remote(rst))
       case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
-      case LocalOpen() =>
-        val p = new Promise[Unit]
-        p.setInterruptHandler { case e => localReset(Reset.Cancel) }
-
-        transport.write(streamId, hdrs, eos).proxyTo(p)
-        p
+      case LocalOpen() => resetOnCancel(transport.write(streamId, hdrs, eos))
     }
 
   /** Write a request stream to the underlying transport */
@@ -449,12 +478,17 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
         .flatMap(writeFrame)
         .before(loop())
 
-    // Create a proxy Future that issues a reset on interrupt or
-    // failure.
-    val p = new Promise[Unit]
-    p.setInterruptHandler { case e => localReset(Reset.Cancel) }
+    resetOnCancel(loop())
+  }
 
-    loop().proxyTo(p)
+  private[this] def resetOnCancel[T](f: Future[T]): Future[T] = {
+    val p = new Promise[T]
+    p.setInterruptHandler {
+      case e =>
+        localReset(Reset.Cancel)
+        f.raise(e)
+    }
+    f.proxyTo(p)
     p
   }
 
