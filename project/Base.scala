@@ -100,7 +100,7 @@ class Base extends Build {
 
   val defaultExecScript =
     """|#!/bin/sh
-       |exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@"
+       |exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@"
        |""".stripMargin.split("\n").toSeq
 
   val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
