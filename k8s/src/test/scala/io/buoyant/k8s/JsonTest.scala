@@ -1,5 +1,6 @@
 package io.buoyant.k8s
 
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import org.scalatest.FunSuite
@@ -9,6 +10,10 @@ private case class OtherType(huh: String, name: Option[String] = None)
 private case class TypeWithSeq(name: String, values: Seq[TestType])
 
 class JsonTest extends FunSuite {
+
+  implicit private[this] val testTypeRef = new TypeReference[TestType] {}
+  implicit private[this] val otherTypeRef = new TypeReference[OtherType] {}
+  implicit private[this] val typeWithSeqRef = new TypeReference[TypeWithSeq] {}
 
   test("chunked: message") {
     val obj = TestType("foo", Some(TestType("bar")))

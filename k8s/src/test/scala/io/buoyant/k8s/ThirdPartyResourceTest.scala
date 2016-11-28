@@ -1,6 +1,7 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.Buf
@@ -85,6 +86,10 @@ object ThirdPartyResourceTest {
     ) extends BookWatch with Watch.Error[Book]
 
   }
+
+  implicit private val bookTypeRef = new TypeReference[Book] {}
+  implicit private val bookListTypeRef = new TypeReference[BookList] {}
+  implicit private val bookWatchTypeRef = new TypeReference[BookWatch] {}
 
   case class Api(client: Client) extends ThirdPartyVersion[Object] {
     def owner = "buoyant.io"
