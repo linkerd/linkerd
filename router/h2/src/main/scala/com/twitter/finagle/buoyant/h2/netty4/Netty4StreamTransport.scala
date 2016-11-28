@@ -429,9 +429,9 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
    */
   def write(msg: LocalMsg): Future[Future[Unit]] = {
     val headersF = writeHeaders(msg.headers, msg.stream.isEmpty)
-    val streamF = headersF.map(_ => writeStream(msg.stream))
+    val streamFF = headersF.map(_ => writeStream(msg.stream))
 
-    val writeF = streamF.flatten
+    val writeF = streamFF.flatten
     onReset.onFailure(writeF.raise(_))
     writeF.respond {
       case Return(_) =>
@@ -457,7 +457,8 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
         log.error(e, "[%s] unexpected error", prefix)
         localReset(Reset.InternalError)
     }
-    streamF
+
+    streamFF
   }
 
   private[this] def writeHeaders(hdrs: Headers, eos: Boolean): Future[Unit] =

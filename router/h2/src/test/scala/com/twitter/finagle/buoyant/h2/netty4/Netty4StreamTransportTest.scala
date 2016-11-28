@@ -39,7 +39,7 @@ class Netty4StreamTransportTest extends FunSuite {
     }
 
     lazy val stats = new InMemoryStatsReceiver
-    def mkStream(): Netty4StreamTransport[Request, Response] = {
+    def mkStreamTransport(): Netty4StreamTransport[Request, Response] = {
       val tstats = new Netty4StreamTransport.StatsReceiver(stats)
       Netty4StreamTransport.client(id, mkWriter(), tstats)
     }
@@ -49,11 +49,11 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val rspf = stream.onRemoteMessage
+    val st = mkStreamTransport()
+    val rspf = st.onRemoteMessage
     assert(!rspf.isDefined)
 
-    stream.admitRemote(new DefaultHttp2HeadersFrame({
+    st.admitRemote(new DefaultHttp2HeadersFrame({
       val hs = new DefaultHttp2Headers
       hs.status("222")
       hs
@@ -70,8 +70,8 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    stream.admitRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
-    stream.admitRemote({
+    st.admitRemote(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
@@ -98,30 +98,21 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val rspF = stream.onRemoteMessage
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
+    val reqStream = Stream.empty()
+    await(st.write(Request("http", Method.Get, "host", "/path", reqStream)))
+    assert(!st.onReset.isDefined)
 
-    assert(ctx.synchronized(written).isEmpty)
-    assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    reqStream.reset(Reset.Cancel)
 
-    await(stream.write(Request("http", Method.Get, "host", "/path", Stream.empty())))
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
-    assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
-    assert(rspF.isDefined)
+    eventually { assert(rspF.isDefined) }
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
-    assert(ctx.synchronized(written).length == 1)
+
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(st.isClosed)
+
     assert(!closed.get)
   }
 
@@ -129,43 +120,30 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val rspF = stream.onRemoteMessage
-
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
+    val reqStream = Stream()
+    await(st.write(Request("http", Method.Get, "host", "/path", reqStream)))
     assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
 
-    val localStream = Stream()
-    await(stream.write(Request("http", Method.Get, "host", "/path", localStream)))
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.status("200")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+      new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
     }))
-    assert(ctx.synchronized(written).length == 1)
-    assert(rspF.isDefined)
+    eventually { assert(rspF.isDefined) }
     val rsp = await(rspF)
     assert(rsp.status == Status.Ok)
-    assert(rsp.stream.isEmpty)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    assert(rsp.stream.nonEmpty)
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
 
-    assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
-    assert(ctx.synchronized(written).length == 1)
+    reqStream.reset(Reset.Cancel)
+
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(st.isClosed)
+
     assert(!closed.get)
   }
 
@@ -173,14 +151,10 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val rspF = stream.onRemoteMessage
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
     assert(!rspF.isDefined)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.status("200")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
@@ -189,62 +163,113 @@ class Netty4StreamTransportTest extends FunSuite {
     val rsp = await(rspF)
     assert(rsp.status == Status.Ok)
     assert(rsp.stream.isEmpty)
+    assert(!st.onReset.isDefined)
+    assert(!st.isClosed)
 
     val reqStream = Stream()
-    val streamF = await(stream.write(Request("http", Method.Get, "host", "/path", reqStream)))
-
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
+    val streamF = await(st.write(Request("http", Method.Get, "host", "/path", reqStream)))
     await(reqStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
-    assert(ctx.synchronized(written).length == 2)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2DataFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
     assert(!streamF.isDefined)
-    log.debug("resetting request stream")
-    reqStream.reset(Reset.InternalError)
-    assert(ctx.synchronized(written).length == 2)
-    assert(await(streamF.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
 
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
-    assert(stream.isClosed)
+    reqStream.reset(Reset.InternalError)
+    assert(await(streamF.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(st.isClosed)
     assert(!closed.get)
   }
 
-  test("client: canceled response causes downstream reset") {
+  test("client: downstream reset before response") {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val rspF = stream.onRemoteMessage
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
+    await(st.write(Request("http", Method.Get, "host", "/path", Stream.empty())))
     assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
 
-    val streamF = await(stream.write(Request("http", Method.Get, "host", "/path", Stream.empty())))
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!rspF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
-
-    assert(!streamF.isDefined)
-    rspF.raise(Failure("shut up").flagged(Failure.Interrupted))
-    assert(ctx.synchronized(written).length == 1)
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
     assert(rspF.isDefined)
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(st.isClosed)
+    assert(st.onReset.isDefined)
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(!closed.get)
+  }
+
+  test("client: downstream reset while streaming response") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
+    await(st.write(Request("http", Method.Get, "host", "/path", Stream.empty())))
+    assert(!rspF.isDefined)
+
+    assert(st.admitRemote({
+      val hs = new DefaultHttp2Headers
+      hs.status("200")
+      new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
+    }))
+    eventually { assert(rspF.isDefined) }
+    val rsp = await(rspF)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.stream.nonEmpty)
+    assert(!st.onReset.isDefined)
+    assert(!st.isClosed)
+
+    val readF = rsp.stream.read()
+    assert(!readF.isDefined)
+
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
+
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(st.isClosed)
+
+    eventually { assert(readF.isDefined) }
+    assert(await(readF.liftToTry) == Throw(Reset.Cancel))
+
+    assert(!closed.get)
+  }
+
+  test("client: downstream reset while streaming request") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val st = mkStreamTransport()
+    val rspF = st.onRemoteMessage
+    val reqStream = Stream()
+    await(st.write(Request("http", Method.Get, "host", "/path", reqStream)))
+    assert(!rspF.isDefined)
+
+    assert(st.admitRemote({
+      val hs = new DefaultHttp2Headers
+      hs.status("200")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+    eventually { assert(rspF.isDefined) }
+    val rsp = await(rspF)
+    assert(rsp.status == Status.Ok)
+    assert(rsp.stream.isEmpty)
+    assert(!st.onReset.isDefined)
+    assert(!st.isClosed)
+
+    val readF = rsp.stream.read()
+    assert(!readF.isDefined)
+
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
+
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(st.isClosed)
+
+    eventually { assert(readF.isDefined) }
+    assert(await(readF.liftToTry) == Throw(Reset.Cancel))
+
     assert(!closed.get)
   }
 
@@ -270,7 +295,7 @@ class Netty4StreamTransportTest extends FunSuite {
     }
 
     lazy val stats = new InMemoryStatsReceiver
-    def mkStream(): Netty4StreamTransport[Response, Request] = {
+    def mkStreamTransport(): Netty4StreamTransport[Response, Request] = {
       val tstats = new Netty4StreamTransport.StatsReceiver(stats)
       Netty4StreamTransport.server(id, mkWriter(), tstats)
     }
@@ -280,11 +305,11 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val reqf = stream.onRemoteMessage
+    val st = mkStreamTransport()
+    val reqf = st.onRemoteMessage
     assert(!reqf.isDefined)
 
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
       hs.method("SUP")
@@ -302,8 +327,9 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val d0f = req.stream.read()
     assert(!d0f.isDefined)
-    assert(stream.admitRemote({
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(Buf.Utf8("data")), false).setStreamId(id)
+    assert(st.admitRemote({
+      val bb = BufAsByteBuf.Owned(Buf.Utf8("data"))
+      new DefaultHttp2DataFrame(bb, false).setStreamId(id)
     }))
     assert(d0f.isDefined)
     await(d0f) match {
@@ -316,7 +342,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val d1f = req.stream.read()
     assert(!d1f.isDefined)
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "chya")
       new DefaultHttp2HeadersFrame(hs, true)
@@ -335,57 +361,59 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    val stream = mkStream()
+    val st = mkStreamTransport()
 
-    val rspdataQ = new AsyncQueue[Frame]
+    val rspStreamQ = new AsyncQueue[Frame]
+    val rspStream = Stream(rspStreamQ)
     val rsp = {
       val hs = new DefaultHttp2Headers
       hs.status("202")
-      Netty4Message.Response(hs, Stream(rspdataQ))
+      Netty4Message.Response(hs, rspStream)
     }
 
-    val wf = stream.write(rsp)
-    assert(wf.isDefined)
-    val endf = await(wf)
-    assert(!endf.isDefined)
+    val endF = await(st.write(rsp))
+    assert(!endF.isDefined)
 
-    assert(written.head == {
-      val hs = new DefaultHttp2Headers
-      hs.status("202")
-      new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
-    })
-    written = written.tail
+    ctx.synchronized {
+      assert(written.head == {
+        val hs = new DefaultHttp2Headers
+        hs.status("202")
+        new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
+      })
+      written = written.tail
+    }
 
     val buf = Buf.Utf8("Looks like some tests were totally excellent")
-    assert(rspdataQ.offer(Frame.Data(buf, false)))
-    assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
-    written = written.tail
+    assert(rspStreamQ.offer(Frame.Data(buf, false)))
+    ctx.synchronized {
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
+      written = written.tail
+    }
 
-    assert(rspdataQ.offer(Frame.Data(buf, false)))
-    assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
-    written = written.tail
+    assert(rspStreamQ.offer(Frame.Data(buf, false)))
+    ctx.synchronized {
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
+      written = written.tail
+    }
 
     val trailers = new DefaultHttp2Headers
     trailers.set("trailin", "yams")
-    assert(rspdataQ.offer(Netty4Message.Trailers(trailers)))
-    assert(written.head == new DefaultHttp2HeadersFrame(trailers, true).setStreamId(id))
-    written = written.tail
+    assert(rspStreamQ.offer(Netty4Message.Trailers(trailers)))
+    ctx.synchronized {
+      assert(written.head == new DefaultHttp2HeadersFrame(trailers, true).setStreamId(id))
+      written = written.tail
+    }
   }
 
-  test("client: downstream reset while request and response streams are open") {
+  test("server: downstream reset while request and response streams are open") {
     val ctx = new ServerCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val reqF = stream.onRemoteMessage
-
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
     assert(!reqF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
 
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
       hs.method("SUP")
@@ -393,17 +421,19 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.authority("auf")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
     }))
-    assert(reqF.isDefined)
-    assert(ctx.synchronized(written).isEmpty)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    eventually { assert(reqF.isDefined) }
 
-    assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
-    assert(ctx.synchronized(written).isEmpty)
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    val rspStream = Stream()
+    val rspEndF = await(st.write(Response(Status.Ok, rspStream)))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
+    assert(!rspEndF.isDefined)
+
+    rspStream.reset(Reset.Cancel)
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(st.isClosed)
+
     assert(!closed.get)
   }
 
@@ -411,15 +441,11 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val reqF = stream.onRemoteMessage
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
     assert(!reqF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
 
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
       hs.method("SUP")
@@ -427,24 +453,22 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.authority("auf")
       new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
     }))
-    assert(reqF.isDefined)
-    assert(ctx.synchronized(written).isEmpty)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    eventually { assert(reqF.isDefined) }
 
-    await(stream.write(Response(Status.Ok, Stream.empty())))
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    val rspStream = Stream.empty()
+    await(st.write(Response(Status.Ok, rspStream)))
+    ctx.synchronized {
+      assert(written.length == 1)
+      assert(written.last.isInstanceOf[Http2HeadersFrame])
+    }
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
 
-    assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
-    assert(ctx.synchronized(written).length == 1)
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    rspStream.reset(Reset.Refused)
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
+    assert(st.isClosed)
+
     assert(!closed.get)
   }
 
@@ -452,16 +476,11 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    val stream = mkStream()
-    val reqF = stream.onRemoteMessage
-
-    assert(ctx.synchronized(written).isEmpty)
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
     assert(!reqF.isDefined)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
 
-    assert(stream.admitRemote({
+    assert(st.admitRemote({
       val hs = new DefaultHttp2Headers
       hs.scheme("h2")
       hs.method("SUP")
@@ -469,25 +488,108 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.authority("auf")
       new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
     }))
-    assert(reqF.isDefined)
-    assert(ctx.synchronized(written).isEmpty)
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    eventually { assert(reqF.isDefined) }
 
     val rspStream = Stream()
-    await(stream.write(Response(Status.Ok, rspStream)))
-    assert(ctx.synchronized(written).length == 1)
-    assert(ctx.synchronized(written).last.isInstanceOf[Http2HeadersFrame])
-    assert(!stream.isClosed)
-    assert(!stream.onReset.isDefined)
-    assert(!closed.get)
+    await(st.write(Response(Status.Ok, rspStream)))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
 
-    assert(stream.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
-    assert(ctx.synchronized(written).length == 1)
-    assert(stream.isClosed)
-    assert(stream.onReset.isDefined)
-    assert(await(stream.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    rspStream.reset(Reset.InternalError)
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(st.isClosed)
+
     assert(!closed.get)
   }
+
+  test("server: upstream reset before response") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
+
+    assert(st.admitRemote({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("h2")
+      hs.method("SUP")
+      hs.path("/")
+      hs.authority("auf")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+    eventually { assert(reqF.isDefined) }
+
+    val rspStream = Stream()
+    await(st.write(Response(Status.Ok, rspStream)))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
+
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(st.isClosed)
+
+    assert(!closed.get)
+  }
+
+  test("server: upstream reset while streaming response") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
+
+    assert(st.admitRemote({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("h2")
+      hs.method("SUP")
+      hs.path("/")
+      hs.authority("auf")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+    eventually { assert(reqF.isDefined) }
+
+    val rspStream = Stream()
+    await(st.write(Response(Status.Ok, rspStream)))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
+
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(st.isClosed)
+
+    assert(!closed.get)
+  }
+
+  test("server: upstream reset while streaming request") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val st = mkStreamTransport()
+    val reqF = st.onRemoteMessage
+
+    assert(st.admitRemote({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("h2")
+      hs.method("SUP")
+      hs.path("/")
+      hs.authority("auf")
+      new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
+    }))
+    eventually { assert(reqF.isDefined) }
+
+    await(st.write(Response(Status.Ok, Stream.empty())))
+    assert(!st.isClosed)
+    assert(!st.onReset.isDefined)
+
+    assert(st.admitRemote(new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)))
+    eventually { assert(st.onReset.isDefined) }
+    assert(await(st.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+    assert(st.isClosed)
+
+    assert(!closed.get)
+  }
+
 }

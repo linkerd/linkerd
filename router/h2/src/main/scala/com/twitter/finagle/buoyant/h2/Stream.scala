@@ -77,15 +77,26 @@ object Stream {
     override def read(): Future[Frame] = {
       val f = frameQ.poll()
       f.respond(endOnReleaseIfEnd)
-      f
+      failOnInterrupt(f, frameQ)
     }
+  }
+
+  private[this] def failOnInterrupt[T, Q](f: Future[T], q: AsyncQueue[Q]): Future[T] = {
+    val p = new Promise[T]
+    p.setInterruptHandler {
+      case e =>
+        q.fail(e, discard = true)
+        f.raise(e)
+    }
+    f.proxyTo(p)
+    p
   }
 
   private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
     override protected[this] val frameQ = new AsyncQueue[Frame]
 
     override def write(f: Frame): Future[Unit] =
-      if (frameQ.offer(f)) f.onRelease
+      if (frameQ.offer(f)) failOnInterrupt(f.onRelease, frameQ)
       else Future.exception(Reset.Closed)
 
     override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
@@ -118,7 +129,7 @@ object Stream {
       private[this] val frameQ = new AsyncQueue[Frame](1)
       override def isEmpty = true
       override def onEnd = Future.Unit
-      override def read(): Future[Frame] = frameQ.poll()
+      override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
       override def write(f: Frame): Future[Unit] = {
         frameQ.fail(Reset.Closed, discard = true)
         Future.exception(Reset.Closed)
