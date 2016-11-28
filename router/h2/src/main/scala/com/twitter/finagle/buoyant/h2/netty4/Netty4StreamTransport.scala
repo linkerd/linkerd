@@ -414,6 +414,9 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
   private[this] val updateWindow: Int => Future[Unit] =
     incr => transport.updateWindow(streamId, incr)
 
+  val writeAll: LocalMsg => Future[Unit] =
+    msg => write(msg).flatten
+
   /**
    * Write a `LocalMsg` to the remote.
    *
