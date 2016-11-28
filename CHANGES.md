@@ -1,6 +1,7 @@
 ## x.x.x
 
 * Change default value of `attemptTTwitterUpgrade` to `false`
+* The `io.l5d.consul` and `io.l5d.k8s` namers are no longer experimental
 
 ## 0.8.3
 

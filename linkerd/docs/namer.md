@@ -147,7 +147,7 @@ zkPath | yes | The ZooKeeper path to use for this request.
 endpoint | no | The ZooKeeper endpoint to use for this request.
 
 <a name="consul"></a>
-## Consul service discovery (experimental)
+## Consul service discovery
 
 kind: `io.l5d.consul`
 
@@ -158,7 +158,6 @@ kind: `io.l5d.consul`
 ```yaml
 namers:
 - kind: io.l5d.consul
-  experimental: true
   host: 127.0.0.1
   port: 2181
   includeTag: true
@@ -179,7 +178,6 @@ linker provides support for service discovery via [Consul](https://www.consul.io
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
-experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
@@ -212,7 +210,7 @@ serviceName | yes | The Consul service name to use for this request.
 
 
 <a name="k8s"></a>
-## Kubernetes service discovery (experimental)
+## Kubernetes service discovery
 
 kind : `io.l5d.k8s`
 
@@ -223,7 +221,6 @@ kind : `io.l5d.k8s`
 ```yaml
 namers:
 - kind: io.l5d.k8s
-  experimental: true
   host: localhost
   port: 8001
   labelSelector: version
@@ -242,7 +239,6 @@ linkerd provides support for service discovery via
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
-experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master post.
 labelSelector | none | The key of the label to filter services.
