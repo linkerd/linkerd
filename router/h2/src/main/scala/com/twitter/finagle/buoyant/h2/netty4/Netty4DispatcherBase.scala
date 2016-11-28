@@ -57,7 +57,10 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
         // The remote initiated a reset, so just update the state and
         // do nothing else.
         if (streams.replace(id, open, StreamRemoteReset)) {
-          log.debug(e, "[%s S:%d] stream reset from remote", prefix, id)
+          e match {
+            case rst: Reset => log.debug("[%s S:%d] stream reset from remote: %s", prefix, id, rst)
+            case e => log.error(e, "[%s S:%d] stream reset from remote", prefix, id)
+          }
         }
 
       case Throw(StreamError.Local(e)) =>
@@ -80,13 +83,22 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
     }
   }
 
+  private[this] val wrapRemoteEx: PartialFunction[Throwable, Future[Http2Frame]] = {
+    case e => Future.exception(StreamError.Remote(e))
+  }
+
+  private[this] def readFromTransport(): Future[Http2Frame] =
+    transport.read().rescue(wrapRemoteEx)
+
   protected[this] def demux(): Future[Unit] = {
     lazy val loop: Try[Http2Frame] => Future[Unit] = {
-      case Throw(_: ChannelClosedException) => Future.Unit
+      case Throw(e) if closed.get =>
+        log.debug(e, "[%s] dispatcher closed", prefix)
+        Future.exception(e)
 
       case Throw(e) =>
         log.error(e, "[%s] dispatcher failed", prefix)
-        goAway(GoAway.InternalError)
+        goAway(GoAway.InternalError).before(Future.exception(e))
 
       case Return(_: Http2GoAwayFrame) =>
         if (resetStreams(Reset.Cancel)) transport.close()
