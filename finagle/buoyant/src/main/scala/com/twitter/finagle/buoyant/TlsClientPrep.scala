@@ -81,11 +81,14 @@ object TlsClientPrep {
    * A module that configures TransportSecurity and Trust to verify
    * that the remote's common name is `cn`.
    */
-  def static[Req, Rsp](cn: String, caCert: Option[String]): Stkable[Req, Rsp] =
+  def static[Req, Rsp](cn: String, trustCerts: Seq[String]): Stkable[Req, Rsp] =
     new TlsTrustModule[Req, Rsp] {
       override val transportSecurity = TransportSecurity.Secure()
-      override val trust = Trust.Verified(cn, caCert.toSeq.map(loadCert(_)))
+      override val trust = Trust.Verified(cn, trustCerts.map(loadCert(_)))
     }
+
+  def static[Req, Rsp](cn: String, trustCert: Option[String]): Stkable[Req, Rsp] =
+    static(cn, trustCert.toSeq)
 
   /**
    * A module that configures TransportSecurity and Trust to NOT

@@ -279,10 +279,8 @@ class ThriftNamerClient(
         pending = Trace.letClear(client.delegate(req)).respond {
           case Return(thrift.Delegation(stamp1, ttree, _)) =>
             states() = Try(mkDelegateTree(ttree)) match {
-              case Return(tree) =>
-                Activity.Ok(tree)
-              case Throw(e) =>
-                Activity.Failed(e)
+              case Return(tree) => Activity.Ok(tree)
+              case Throw(e) => Activity.Failed(e)
             }
             loop(stamp1)
 

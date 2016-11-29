@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package io.linkerd.mesh;
+
+import "dtab.proto";
+
+/**
+ * Supports binding of a Path through a Dtab.
+ */
+service Interpreter {
+
+  rpc GetBoundTree (BindReq) returns (BoundTreeRsp) {}
+  rpc StreamBoundTree (BindReq) returns (stream BoundTreeRsp) {}
+}
+
+message BindReq {
+  Path  = 1;
+  Path name = 2;
+  Dtab dtab = 3;
+}
+
+message BoundTreeRsp {
+  BoundNameTree tree = 1;
+}
+
+message BoundNameTree {
+  oneof node {
+    Nop nop = 1;
+    Alt alt = 2;
+    Union union = 3;
+    Leaf leaf = 4;
+  }
+
+  enum Nop {
+    NEG = 0;
+    FAIL = 1;
+    EMPTY = 2;
+  }
+
+  message Alt {
+    repeated BoundNameTree trees = 1;
+  }
+
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      BoundNameTree tree = 2;
+    }
+  }
+
+  message Leaf {
+    Path id = 1;
+    Path residual = 2;
+  }
+}

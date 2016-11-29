@@ -161,11 +161,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       true
     } else false
 
-  protected[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] =
-    if (resetStreams(Reset.Cancel)) {
-      log.debug("[%s] go away: %s", prefix, err)
-      writer.goAway(err, deadline)
-    } else Future.Unit
+  protected[this] def goAway(err: GoAway, deadline: Time = Time.Top): Future[Unit] = {
+    log.debug("[%s] go away: %s", prefix, err)
+    if (resetStreams(Reset.Cancel)) writer.goAway(err, deadline)
+    else Future.Unit
+  }
 
   protected[this] val onTransportClose: Throwable => Unit = { e =>
     log.debug(e, "[%s] transport closed", prefix)

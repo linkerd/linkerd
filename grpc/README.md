@@ -3,6 +3,8 @@
 Protobuf3 & gRPC code generation for Finagle using
 io.buoyant:finagle-h2.
 
+**Status**: Experimental; the runtime API may change.
+
 ## io.buoyant:grpc-gen ##
 
 The grpc-gen package assembles the `protoc-gen-io.buoyant.grpc` protoc

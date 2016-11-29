@@ -1,0 +1,16 @@
+admin:
+  port: 9991
+
+storage:
+  kind: io.l5d.inMemory
+  namespaces:
+    default: /grpc => /#/io.l5d.fs;
+
+namers:
+  - kind: io.l5d.fs
+    rootDir: namerd/examples/disco
+
+interfaces:
+  - kind: io.l5d.httpController
+  - kind: io.l5d.mesh
+    port: 4321

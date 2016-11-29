@@ -12,6 +12,15 @@ object TlsTransformer {
     case None => Identity
     case Some(tls) => new TlsTransformer(tls.commonName, tls.caCert)
   }
+
+  def prepOnly(config: Option[ClientTlsConfig]): Stack.Transformer = config match {
+    case None => Identity
+    case Some(tls) => new Stack.Transformer {
+      private[this] def prep[Req, Rep] = TlsClientPrep.static[Req, Rep](tls.commonName, tls.caCert)
+      override def apply[Req, Rep](underlying: Stack[ServiceFactory[Req, Rep]]) =
+        prep[Req, Rep] +: underlying
+    }
+  }
 }
 
 class TlsTransformer(cn: String, cert: Option[String]) extends Stack.Transformer {

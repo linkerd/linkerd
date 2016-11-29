@@ -1,0 +1,305 @@
+package io.buoyant.interpreter.mesh
+
+import com.twitter.finagle._
+import com.twitter.finagle.buoyant.h2
+import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.io.Buf
+import com.twitter.util.{Activity, Closable, Future, Return, Throw, Try, Var}
+import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
+import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree, Metadata}
+import io.linkerd.mesh
+import io.linkerd.mesh.Converters._
+import java.net.{InetAddress, InetSocketAddress}
+import scala.util.control.NoStackTrace
+
+/**
+ * XXX TODO retry/backoff
+ */
+object Client {
+
+  def apply(
+    namespace: String,
+    service: Service[h2.Request, h2.Response]
+  ): NameInterpreter with Delegator = {
+    val interpreter = new mesh.Interpreter.Client(service)
+    val resolver = new mesh.Resolver.Client(service)
+    val delegator = new mesh.Delegator.Client(service)
+    new Impl(namespace, interpreter, resolver, delegator)
+  }
+
+  def apply(
+    namespace: String,
+    interpreter: mesh.Interpreter,
+    resolver: mesh.Resolver,
+    delegator: mesh.Delegator
+  ): NameInterpreter with Delegator =
+    new Impl(namespace, interpreter, resolver, delegator)
+
+  private[this] class Impl(
+    namespace: String,
+    interpreter: mesh.Interpreter,
+    resolver: mesh.Resolver,
+    delegator: mesh.Delegator
+  ) extends NameInterpreter with Delegator {
+
+    /**
+     * When observed, streams bound trees from the mesh Interpreter.
+     *
+     * Leaf nodes include a Var[Addr] that, when observed, streams
+     * replica resolutions from the mesh Resolver.
+     */
+    override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
+      val open = () => interpreter.streamBoundTree(mkBindReq(namespace, path, dtab))
+      streamActivity(open, decodeBoundTree)
+    }
+
+    /**
+     * When observed, streams dtabs from the mesh server and
+     */
+    override lazy val dtab: Activity[Dtab] = {
+      val open = () => delegator.streamDtab(mkDtabReq(namespace))
+      streamActivity(open, decodeDtab)
+    }
+
+    override def delegate(
+      dtab: Dtab,
+      tree: NameTree[Name.Path]
+    ): Activity[DelegateTree[Name.Bound]] = {
+      val open = () => delegator.streamDelegateTree(mkDelegateTreeReq(namespace, dtab, tree))
+      streamActivity(open, decodeDelegateTree)
+    }
+
+    private[this] val resolve: Path => Var[Addr] = {
+      case Path.empty => Var.value(Addr.Failed("empty"))
+      case id =>
+        val open = () => resolver.streamReplicas(mkReplicasReq(id))
+        streamVar(Addr.Pending, open, replicasToAddr)
+    }
+
+    private[this] val fromBoundNameTree: mesh.BoundNameTree => NameTree[Name.Bound] =
+      mkFromBoundNameTree(resolve)
+
+    private[this] val decodeBoundTree: mesh.BoundTreeRsp => Option[NameTree[Name.Bound]] = {
+      case mesh.BoundTreeRsp(Some(ptree)) => Some(fromBoundNameTree(ptree))
+      case _ => None
+    }
+
+    private[this] val fromBoundDelegateTree: mesh.BoundDelegateTree => DelegateTree[Name.Bound] =
+      mkFromBoundDelegateTree(resolve)
+
+    private[this] val decodeDelegateTree: mesh.DelegateTreeRsp => Option[DelegateTree[Name.Bound]] = {
+      case mesh.DelegateTreeRsp(Some(ptree)) => Some(fromBoundDelegateTree(ptree))
+      case _ => None
+    }
+  }
+
+  private[this] val releaseNop = () => Future.Unit
+
+  /**
+   * Constructs a Var that, when observed, calls `open()` to obtain a
+   * gRPC stream, publishing updates into the Var's state.
+   *
+   * When the stream returns an error, the Var may be updated (as
+   * according to `toT`) and no further updates will will be
+   * published.
+   */
+  private[this] def streamVar[S, T](
+    init: T,
+    open: () => Stream[S],
+    toT: Try[S] => Option[T]
+  ): Var[T] = Var.async[T](init) { state =>
+    val rsps = open()
+
+    // As we receive streamed messages, we are careful not to release
+    // them until the state has been updated to a new value. This is
+    // intended to (1) integrate tightly with flow control and more
+    // importantly (2) later integrate with netty's reference counted
+    // bueffers.
+    @volatile var closed = false
+    def loop(releasePrior: () => Future[Unit]): Future[Unit] =
+      if (closed) Future.Unit
+      else rsps.recv().transform {
+        case Throw(e) =>
+          toT(Throw(e)) match {
+            case None =>
+            case Some(t) =>
+              state() = t
+          }
+          releasePrior().before(Future.exception(e))
+
+        case Return(Stream.Releasable(s, release)) =>
+          toT(Return(s)) match {
+            case None =>
+              release().before(loop(releasePrior))
+            case Some(t) =>
+              state() = t
+              releasePrior().before(loop(release))
+          }
+      }
+
+    val f = loop(releaseNop)
+    Closable.make { _ =>
+      closed = true
+      f.raise(Failure("closed", Failure.Interrupted))
+      rsps.reset(GrpcStatus.Ok())
+      Future.Unit
+    }
+  }
+
+  /**
+   * Constructs an ACtivity that, when observed, calls `open()` to obtain a
+   * gRPC stream, publishing updates into the Activity's state.
+   *
+   * When the stream returns an error, the state is updated to
+   * Activity.Failed and no further updates will will be published.
+   */
+  private[this] def streamActivity[S, T](
+    open: () => Stream[S],
+    toT: S => Option[T]
+  ): Activity[T] = {
+    val toState: Try[S] => Option[Activity.State[T]] = {
+      case Throw(e) => Some(Activity.Failed(e))
+      case Return(s) => toT(s) match {
+        case None => None
+        case Some(t) => Some(Activity.Ok(t))
+      }
+    }
+    Activity(streamVar(Activity.Pending, open, toState))
+  }
+
+  private[this] val decodeDtab: mesh.DtabRsp => Option[Dtab] = {
+    case mesh.DtabRsp(Some(mesh.VersionedDtab(_, Some(pdtab)))) =>
+      Some(fromDtab(pdtab))
+    case _ => None
+  }
+
+  private[this] val _collectFromEndpoint: PartialFunction[mesh.Endpoint, Address] = {
+    case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), pmeta) =>
+      val ipBytes = Buf.ByteArray.Owned.extract(ipBuf)
+      val ip = InetAddress.getByAddress(ipBytes)
+      val meta = Seq.empty[(String, Any)] ++
+        pmeta.flatMap(_.authority).map(Metadata.authority -> _) ++
+        pmeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
+      Address.Inet(new InetSocketAddress(ip, port), Addr.Metadata(meta: _*))
+  }
+
+  private[this] val fromReplicas: mesh.Replicas => Addr = {
+    case mesh.Replicas(None) => Addr.Neg
+    case mesh.Replicas(Some(result)) => result match {
+      case mesh.Replicas.OneofResult.Pending(_) => Addr.Pending
+      case mesh.Replicas.OneofResult.Neg(_) => Addr.Neg
+      case mesh.Replicas.OneofResult.Failed(mesh.Replicas.Failed(msg)) =>
+        Addr.Failed(msg.getOrElse("unknown"))
+
+      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, pmeta)) =>
+        val addrs = paddrs.collect(_collectFromEndpoint)
+        val meta = Seq.empty[(String, Any)] ++
+          pmeta.flatMap(_.authority).map(Metadata.authority -> _)
+        Addr.Bound(addrs.toSet, Addr.Metadata(meta: _*))
+    }
+  }
+
+  private[this] val replicasToAddr: Try[mesh.Replicas] => Option[Addr] = {
+    case Throw(e) => Some(Addr.Failed(e))
+    case Return(pa) => Some(fromReplicas(pa))
+  }
+
+  private[this] def mkFromBoundNameTree(
+    resolve: Path => Var[Addr]
+  ): mesh.BoundNameTree => NameTree[Name.Bound] = {
+    def bindTree(ptree: mesh.BoundNameTree): NameTree[Name.Bound] = ptree.node match {
+      case None => throw new IllegalArgumentException("No bound tree")
+      case Some(BoundTreeNeg) => NameTree.Neg
+      case Some(BoundTreeFail) => NameTree.Fail
+      case Some(BoundTreeEmpty) => NameTree.Empty
+
+      case Some(mesh.BoundNameTree.OneofNode.Leaf(mesh.BoundNameTree.Leaf(Some(pid), Some(ppath)))) =>
+        val id = fromPath(pid)
+        val path = fromPath(ppath)
+        NameTree.Leaf(Name.Bound(resolve(id), id, path))
+
+      case Some(mesh.BoundNameTree.OneofNode.Alt(mesh.BoundNameTree.Alt(ptrees))) =>
+        val trees = ptrees.map(bindTree)
+        NameTree.Alt(trees: _*)
+
+      case Some(mesh.BoundNameTree.OneofNode.Union(mesh.BoundNameTree.Union(pwtrees))) =>
+        val wtrees = pwtrees.collect {
+          case mesh.BoundNameTree.Union.Weighted(Some(w), Some(t)) =>
+            NameTree.Weighted(w, bindTree(t))
+        }
+        NameTree.Union(wtrees: _*)
+
+      case Some(tree) => throw new IllegalArgumentException(s"Illegal bound tree: $tree")
+    }
+    bindTree _
+  }
+
+  private[this] val BoundTreeNeg = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.NEG)
+  private[this] val BoundTreeFail = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.FAIL)
+  private[this] val BoundTreeEmpty = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.EMPTY)
+
+  private[this] def mkFromBoundDelegateTree(
+    resolve: Path => Var[Addr]
+  ): mesh.BoundDelegateTree => DelegateTree[Name.Bound] = {
+    def bindTree(t: mesh.BoundDelegateTree): DelegateTree[Name.Bound] = t match {
+      case mesh.BoundDelegateTree(Some(dpath0), Some(dentry0), Some(node)) =>
+        val dpath = fromPath(dpath0)
+        val dentry = fromDentry(dentry0)
+        node match {
+          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.NEG) =>
+            DelegateTree.Neg(dpath, dentry)
+          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.FAIL) =>
+            DelegateTree.Fail(dpath, dentry)
+          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.EMPTY) =>
+            DelegateTree.Empty(dpath, dentry)
+
+          case mesh.BoundDelegateTree.OneofNode.Leaf(mesh.BoundDelegateTree.Leaf(Some(pid), Some(ppath))) =>
+            val id = fromPath(pid)
+            val path = fromPath(ppath)
+            DelegateTree.Leaf(dpath, dentry, Name.Bound(resolve(id), id, path))
+
+          case mesh.BoundDelegateTree.OneofNode.Alt(mesh.BoundDelegateTree.Alt(ptrees)) =>
+            val trees = ptrees.map(bindTree)
+            DelegateTree.Alt(dpath, dentry, trees: _*)
+
+          case mesh.BoundDelegateTree.OneofNode.Union(mesh.BoundDelegateTree.Union(ptrees)) =>
+            val trees = ptrees.collect {
+              case mesh.BoundDelegateTree.Union.Weighted(Some(weight), Some(ptree)) =>
+                DelegateTree.Weighted(weight, bindTree(ptree))
+            }
+            DelegateTree.Union(dpath, dentry, trees: _*)
+
+          case mesh.BoundDelegateTree.OneofNode.Delegate(ptree) =>
+            DelegateTree.Delegate(dpath, dentry, bindTree(ptree))
+
+          case mesh.BoundDelegateTree.OneofNode.Exception(msg) =>
+            DelegateTree.Exception(dpath, dentry, DelegateException(msg))
+
+          case tree =>
+            throw new IllegalArgumentException(s"illegal delegate tree node: $node")
+        }
+
+      case tree =>
+        throw new IllegalArgumentException(s"illegal delegate tree: $tree")
+    }
+
+    bindTree _
+  }
+
+  private[this] def mkBindReq(ns: String, path: Path, dtab: Dtab) =
+    mesh.BindReq(Some(ns), Some(toPath(path)), Some(toDtab(dtab)))
+
+  private[this] def mkReplicasReq(id: Path) =
+    mesh.ReplicasReq(Some(toPath(id)))
+
+  private[this] def mkDelegateTreeReq(ns: String, dtab: Dtab, tree: NameTree[Name.Path]) =
+    mesh.DelegateTreeReq(Some(ns), Some(toPathNameTree(tree.map(_.path))), Some(toDtab(dtab)))
+
+  private[this] def mkDtabReq(ns: String) =
+    mesh.DtabReq(Some(ns))
+}
+
+case class DelegateException(msg: String)
+  extends Throwable(msg)
+  with NoStackTrace
