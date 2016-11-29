@@ -22,5 +22,5 @@ case class StaticIdentifierConfig(path: Path) extends HttpIdentifierConfig {
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
-  ): Identifier[Request] = new StaticIdentifier(prefix, path, baseDtab)
+  ): Identifier[Request] = new StaticIdentifier(prefix ++ path, baseDtab)
 }
