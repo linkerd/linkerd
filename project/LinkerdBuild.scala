@@ -3,6 +3,7 @@ import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
+import sbtprotobuf.ProtobufPlugin._
 import sbtunidoc.Plugin._
 import scoverage.ScoverageKeys._
 
@@ -231,13 +232,19 @@ object LinkerdBuild extends Base {
         .settings(coverageExcludedPackages := ".*thriftscala.*")
 
       val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
-        .dependsOn(core)
-        .dependsOn(interpreterThriftIdl)
+        .dependsOn(core, interpreterThriftIdl)
         .withLib(Deps.guava)
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
         .withTests()
 
-      val all = aggregateDir("namerd/iface", controlHttp, interpreterThriftIdl, interpreterThrift)
+      val grpc = projectDir("namerd/iface/grpc")
+        .dependsOn(core, Grpc.runtime)
+        .withGrpc
+
+      val all = aggregateDir(
+        "namerd/iface",
+        controlHttp, interpreterThriftIdl, interpreterThrift, grpc
+      )
     }
 
     val main = projectDir("namerd/main")
@@ -279,6 +286,7 @@ object LinkerdBuild extends Base {
       core, main, Namer.fs, Storage.inMemory, Router.http,
       Iface.controlHttp, Iface.interpreterThrift,
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Iface.grpc,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
     )
@@ -366,7 +374,13 @@ object LinkerdBuild extends Base {
   object Interpreter {
     val namerd = projectDir("interpreter/namerd")
       .withTests()
-      .dependsOn(Namer.core, Namerd.Iface.interpreterThrift, Namerd.Iface.controlHttp, Router.core)
+      .dependsOn(Namer.core,
+        Namerd.Iface.interpreterThrift,
+        Namerd.Iface.controlHttp,
+        Namerd.Iface.grpc,
+        Router.core,
+        Grpc.runtime
+    )
 
     val fs = projectDir("interpreter/fs")
       .withTests()
@@ -624,6 +638,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdIfaceGrpc = Namerd.Iface.grpc
   val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s

@@ -45,6 +45,17 @@ object Stream {
     }
   }
 
+  def value[T](v: T): Stream[T] = new Stream[T] {
+    val ref = new AtomicReference[Future[Releasable[T]]](Future.value(Releasable(v)))
+    val closedF = Future.exception(Closed)
+    def recv() = ref.getAndSet(closedF)
+  }
+
+  def exception(exc: Throwable): Stream[Nothing] = new Stream[Nothing] {
+    val recvF = Future.exception(exc)
+    def recv() = recvF
+  }
+
   object Closed extends Throwable
   object Rejected extends Throwable
 

@@ -20,6 +20,9 @@ addSbtPlugin("se.marcuslonnberg" % "sbt-docker"    % "1.4.0")
 // scrooge
 addSbtPlugin("com.twitter" %% "scrooge-sbt-plugin" % "4.6.0")
 
+// Compiles protbuf
+addSbtPlugin("com.github.gseitz" % "sbt-protobuf" % "0.5.3")
+
 // microbenchmarking for tests.
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.6")
 

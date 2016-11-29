@@ -1,0 +1,183 @@
+syntax = "proto3";
+
+package io.buoyant.proto.namerd;
+
+import "dtab.proto";
+
+/**
+ * A read-only interface (i.e. for interpreters in linkerd).
+ */
+service Interpreter {
+
+  rpc Parse (ParseReq) returns (ParseRsp) {}
+  
+  rpc GetDtab (DtabReq) returns (DtabRsp) {}
+  rpc StreamDtab (DtabReq) returns (stream DtabRsp) {}
+
+  rpc GetBoundTree (BindReq) returns (BoundTreeRsp) {}
+  rpc StreamBoundTree (BindReq) returns (stream BoundTreeRsp) {}
+
+  rpc GetAddr (AddrReq) returns (Addr) {}
+  rpc StreamAddr (AddrReq) returns (stream Addr) {}
+
+  // rpc GetExplainedTree (ExplainTreeReq) returns (ExplainTreeRsp) {}
+  // rpc StreamExplainedTree (ExplainTreeReq) returns (stream ExplainTreeRsp) {}
+
+  // TODO GetNsList 
+  // TODO StreamNsList 
+}
+
+/*
+ * Parse -- parsing a DTAB from a string
+ */
+
+message ParseReq {
+  string text = 1;
+}
+
+message ParseRsp {
+
+  message Error {
+    string description = 1;
+
+    /** Offsets in bytes, if known. */
+    uint32 location = 2;
+  }
+
+  oneof result {
+    io.buoyant.proto.Dtab dtab = 1;
+    Error error = 2;
+  }
+}
+
+/*
+ * GetDtab, StreamDtab
+ */
+
+message DtabReq {
+  string ns = 1;
+}
+
+message VersionedDtab {
+  message Version {
+    bytes stamp = 1;
+  }
+
+  Version version = 1;
+  io.buoyant.proto.Dtab dtab = 2;
+}
+
+message DtabRsp {
+
+  message Error {
+    enum Code {
+      UNKNOWN = 0;
+      NOT_FOUND = 1;
+      BAD_REQUEST = 2;
+    }
+
+    string description = 1;
+    Code code = 2;
+  }
+
+  oneof result {
+    VersionedDtab dtab = 1;
+    Error error = 2;
+  }
+}
+
+/*
+ * GetBoundTree, StreamBoundTree
+ */
+
+message BindReq {
+  string ns = 1;
+  Path name = 2;
+  Dtab dtab = 3;
+}
+
+message BoundTreeRsp {
+
+  message Error {
+    enum Code {
+      UNKNOWN = 0;
+      NOT_FOUND = 1;
+      BAD_REQUEST = 2;
+    }
+
+    string description = 1;
+    Code code = 2;
+  }
+
+  oneof result {
+    BoundNameTree tree = 1;
+    Error error = 2;
+  }
+}
+
+/*
+ * GetAddr, StreamAddr
+ */
+
+message AddrReq {
+  Path id = 1;
+}
+
+message Endpoint {
+
+  enum AddressFamily {
+    INET4 = 0;
+    INET6 = 1;
+  }
+  AddressFamily family = 1;
+
+  /** An opaque address (according to family). */
+  bytes address = 2;
+
+  int32 port = 3;
+
+  /** Endpoint-specific metadata */
+  message Meta {
+    /**
+     * Suggested HTTP authority to be used for inbound requests.
+     */
+    string authority = 1;  
+
+    /**
+     * In scheduled environments, a diagnostic name for the parent node.
+     */
+    string nodeName = 2;
+  }
+  Meta meta = 4;
+}
+
+message Addr {
+
+  message Pending {}
+
+  message Neg {}
+
+  message Failed {
+    string message = 1;
+  }
+
+  message Bound {
+    repeated Endpoint endpoints = 1;
+
+    /** Cluster-level metadata */
+    message Meta {
+      /**
+       * Suggested HTTP authority to be used for inbound requests.
+       */
+      string authority = 1;    
+    }
+    Meta meta = 2;
+  }
+
+  oneof result {
+    Pending pending = 1;
+    Neg neg = 2;
+    Failed failed = 3;
+    Bound bound = 4;
+  }
+}
