@@ -14,12 +14,12 @@ import com.twitter.util.{Future, Promise, Return, Throw, Try}
  * release each data frame after it has processed its contents.
  *
  * Consumers SHOULD call `read()` until it fails (i.e. when the
- * stream is fullt closed).
+ * stream is fully closed).
  *
  * If a consumer cancels a `read()` Future, the stream is reset.
  */
 trait Stream {
-  override def toString = s"Stream(empty=$isEmpty, onEnd=$onEnd)"
+  override def toString = s"Stream(isEmpty=$isEmpty, onEnd=${onEnd.poll})"
 
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
@@ -162,7 +162,7 @@ object Frame {
    * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
-    override def toString = s"Frame.Data(length=${buf.length}, eos=$isEnd)"
+    override def toString = s"Frame.Data(length=${buf.length}, isEnd=$isEnd)"
     def buf: Buf
   }
 

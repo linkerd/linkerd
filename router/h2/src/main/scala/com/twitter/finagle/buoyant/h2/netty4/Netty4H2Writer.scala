@@ -30,7 +30,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 
   override def write(id: Int, f: Frame): Future[Unit] = f match {
     case data: Frame.Data => write(id, data.buf, data.isEnd)
-    case tlrs: Frame.Trailers => write(id, tlrs, true /*eos*/ )
+    case tlrs: Frame.Trailers => write(id, tlrs, eos = true)
   }
 
   override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {

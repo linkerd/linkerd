@@ -17,7 +17,7 @@ class ConcurrentStreamsEndToEndTest
 
   val FrameSize = 16 * 1024
   val WindowSize = 4 * FrameSize
-  val lengths = Seq(/*1,*/ WindowSize * 2 - WindowSize / 2)
+  val lengths = Seq(1, WindowSize * 2 - WindowSize / 2)
 
   case class Spec(len: Long, frameSize: Int, concurrency: Int)
   val specs = lengths.flatMap { len =>

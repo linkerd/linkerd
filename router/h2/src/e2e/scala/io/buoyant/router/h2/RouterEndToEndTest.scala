@@ -80,13 +80,10 @@ class RouterEndToEndTest
       eventually(assert(serverInterrupted == Some(Reset.Cancel)))
 
     } finally {
-      try {
-        await(client.close())
-        await(dog.server.close())
-        await(router.close())
-      } catch {
-        case e: Throwable => log.error(e, "closing")
-      } finally setLogLevel(Level.OFF)
+      setLogLevel(Level.OFF)
+      await(client.close())
+      await(dog.server.close())
+      await(router.close())
     }
   }
 
@@ -129,13 +126,14 @@ class RouterEndToEndTest
 
     } finally {
       setLogLevel(Level.OFF)
-      try await(dog.server.close().before(router.close()))
-      catch { case e: Throwable => log.error(e, "closing") }
+      await(dog.server.close())
+      await(router.close())
     }
   }
 
   test("resets upstream on downstream failure") {
-    val dogReqP, dogRspP = new Promise[Stream]
+    val dogReqP = new Promise[Stream]
+    val dogRspP = new Promise[Stream]
     val dog = Downstream.service("dog") { req =>
       dogReqP.setValue(req.stream)
       dogRspP.map(Response(Status.Ok, _))
@@ -166,9 +164,10 @@ class RouterEndToEndTest
       assert(await(rspF.liftToTry) == Throw(Reset.Refused))
 
     } finally {
-      try await(client.close().before(dog.server.close()).before(router.close()))
-      catch { case e: Throwable => log.error(e, "closing") }
-      finally setLogLevel(Level.OFF)
+      setLogLevel(Level.OFF)
+      await(client.close())
+      await(dog.server.close())
+      await(router.close())
     }
   }
 

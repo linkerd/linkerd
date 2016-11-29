@@ -404,15 +404,13 @@ private[h2] trait Netty4StreamTransport[LocalMsg <: Message, RemoteMsg <: Messag
     }
   }
 
-  /** */
   private[this] def toFrame(f: Http2StreamFrame): Frame = f match {
     case f: Http2DataFrame => Netty4Message.Data(f, updateWindow)
     case f: Http2HeadersFrame if f.isEndStream => Netty4Message.Trailers(f.headers)
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
 
-  private[this] val updateWindow: Int => Future[Unit] =
-    incr => transport.updateWindow(streamId, incr)
+  private[this] val updateWindow: Int => Future[Unit] = transport.updateWindow(streamId, _)
 
   /**
    * Write a `LocalMsg` to the remote.

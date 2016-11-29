@@ -53,12 +53,6 @@ object Netty4H2Listener {
         proto match {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
-            // ctx.pipeline.addBefore(PlaceholderKey, "wtf", new ChannelDuplexHandler {
-            //   override def channelInactive(ctx: ChannelHandlerContext): Unit = {
-            //     log.debug(s"$prefix.channelInactive ${ctx.channel}")
-            //     super.channelInactive(ctx)
-            //   }
-            // })
             ctx.pipeline.replace(PlaceholderKey, "h2 framer", new Http2FrameCodec(true)); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>

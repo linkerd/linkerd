@@ -24,7 +24,15 @@ object Reset {
   object Refused extends Reset { override def toString = "Reset.Refused" }
 }
 
-sealed trait StreamError extends NoStackTrace {
+/**
+ * When an exception is encountered in a stream, it is wrapepd in a
+ * StreamError to indicate whether the error originated from the
+ * remote (network) or local (application) side of the stream.
+ */
+sealed trait StreamError
+  extends Throwable
+  with NoStackTrace {
+
   def cause: Throwable
 }
 
