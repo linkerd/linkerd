@@ -261,7 +261,7 @@ object LinkerdBuild extends Base {
          |fi
          |""" +
       execScriptJvmOptions +
-      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
@@ -508,7 +508,7 @@ object LinkerdBuild extends Base {
          |fi
          |""" +
       execScriptJvmOptions +
-      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""
