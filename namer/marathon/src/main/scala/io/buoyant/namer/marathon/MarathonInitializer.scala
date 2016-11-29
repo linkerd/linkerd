@@ -41,6 +41,10 @@ case class MarathonSecret(
   uid: Option[String]
 )
 
+object MarathonConfig {
+  private val log = Logger.get(getClass.getName)
+}
+
 case class MarathonConfig(
   host: Option[String],
   port: Option[Port],
@@ -50,7 +54,7 @@ case class MarathonConfig(
   useHealthCheck: Option[Boolean]
 ) extends NamerConfig {
 
-  private[this] val log = Logger.get(getClass.getName)
+  import MarathonConfig.log
 
   @JsonIgnore
   override val experimentalRequired = true

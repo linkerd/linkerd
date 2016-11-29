@@ -45,15 +45,21 @@ object Parser {
    */
   def objectMapper(
     config: String,
-    configInitializers: Iterable[Seq[ConfigInitializer]]
+    inits: Iterable[Seq[ConfigInitializer]]
   ): ObjectMapper with ScalaObjectMapper = {
-    val factory = if (peekJsonObject(config)) new JsonFactory() else new YAMLFactory()
-    objectMapper(factory, configInitializers)
+    if (peekJsonObject(config)) jsonObjectMapper(inits)
+    else yamlObjectMapper(inits)
   }
 
   def jsonObjectMapper(
     configInitializers: Iterable[Seq[ConfigInitializer]]
-  ): ObjectMapper with ScalaObjectMapper = objectMapper(new JsonFactory(), configInitializers)
+  ): ObjectMapper with ScalaObjectMapper =
+    objectMapper(new JsonFactory, configInitializers)
+
+  def yamlObjectMapper(
+    configInitializers: Iterable[Seq[ConfigInitializer]]
+  ): ObjectMapper with ScalaObjectMapper =
+    objectMapper(new YAMLFactory, configInitializers)
 
   private[this] def objectMapper(
     factory: JsonFactory,
