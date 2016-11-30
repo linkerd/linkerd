@@ -76,7 +76,7 @@ class Netty4ServerDispatcher(
   private[this] def serveStream(st: Netty4StreamTransport[Response, Request]) = {
     // Note: `remoteMsg` should be satisfied immediately, since the
     // headers frame will have just been admitted to the stream.
-    val serveF = st.onRemoteMessage.flatMap(serve).flatMap(st.write(_).flatten)
+    val serveF = st.onRecvMessage.flatMap(serve).flatMap(st.send(_).flatten)
 
     // When the stream is reset, ensure that the cancelation is
     // propagated downstream.
@@ -117,7 +117,7 @@ class Netty4ServerDispatcher(
   override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = f match {
     case frame: Http2HeadersFrame =>
       val st = newStreamTransport(frame.streamId)
-      if (st.admitRemote(frame)) serveStream(st)
+      if (st.recv(frame)) serveStream(st)
       Future.Unit
 
     case frame =>
