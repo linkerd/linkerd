@@ -2,7 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Request, Response}
+import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.param

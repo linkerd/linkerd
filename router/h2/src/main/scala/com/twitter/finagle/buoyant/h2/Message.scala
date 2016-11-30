@@ -1,12 +1,6 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
-import com.twitter.finagle.Failure
 import com.twitter.util.{Future, Promise}
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.collection.immutable.Queue
-import scala.collection.mutable
 
 /**
  * A generic HTTP2 message.
@@ -24,7 +18,7 @@ import scala.collection.mutable
  */
 sealed trait Message {
   def headers: Headers
-  def data: Stream
+  def stream: Stream
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
@@ -101,7 +95,7 @@ object Request {
     method: Method,
     authority: String,
     path: String,
-    data: Stream
+    stream: Stream
   ): Request = Impl(
     Headers(
       Headers.Scheme -> scheme,
@@ -109,14 +103,14 @@ object Request {
       Headers.Authority -> authority,
       Headers.Path -> path
     ),
-    data
+    stream
   )
 
-  def apply(headers: Headers, data: Stream): Request =
-    Impl(headers, data)
+  def apply(headers: Headers, stream: Stream): Request =
+    Impl(headers, stream)
 
-  private case class Impl(headers: Headers, data: Stream) extends Request {
-    override def toString = s"Request($scheme, $method, $authority, $path, $data)"
+  private case class Impl(headers: Headers, stream: Stream) extends Request {
+    override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
     override def method = headers.get(Headers.Method).headOption match {
@@ -134,175 +128,22 @@ trait Response extends Message {
 }
 
 object Response {
-  def apply(status: Status, data: Stream): Response =
-    Impl(Headers(Headers.Status -> status.code.toString), data)
 
-  def apply(headers: Headers, data: Stream): Response =
-    Impl(headers, data)
+  def apply(status: Status, stream: Stream): Response =
+    Impl(Headers(Headers.Status -> status.code.toString), stream)
+
+  def apply(headers: Headers, stream: Stream): Response =
+    Impl(headers, stream)
 
   private case class Impl(
     headers: Headers,
-    data: Stream
+    stream: Stream
   ) extends Response {
-    override def toString = s"Response($status, $data)"
+    override def toString = s"Response($status, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def status = headers.get(Headers.Status).headOption match {
       case Some(code) => Status.fromCode(code.toInt)
       case None => throw new IllegalArgumentException(s"missing ${Headers.Status} header")
     }
-  }
-}
-
-/**
- * A Stream represents a stream of Data frames, optionally
- * followed by Trailers.
- *
- * A Stream is not prescriptive as to how data is produced. However,
- * flow control semantics are built into the Stream--consumers MUST
- * release each data frame after it has processed its contents.
- */
-sealed trait Stream {
-  def isEmpty: Boolean
-  final def nonEmpty: Boolean = !isEmpty
-  def onEnd: Future[Unit]
-}
-
-/**
- * A Stream of Frames
- */
-object Stream {
-
-  /**
-   * An empty stream. Useful, for instance, when a Message consists of
-   * only a headers frame with END_STREAM set.
-   */
-  object Nil extends Stream {
-    override def toString = "Stream.Nil"
-    override def isEmpty = true
-    override def onEnd = Future.Unit
-  }
-
-  trait Reader extends Stream {
-    override def toString = s"Stream.Reader()"
-    final override def isEmpty = false
-    def onEnd: Future[Unit]
-    def read(): Future[Frame]
-  }
-
-  // TODO have a dedicated Static stream type that indicates the
-  // entire message is buffered (i.e. so that retries may be
-  // performed).  This would require some form of buffering, ideally
-  // in the dispatcher and server stream
-
-  /**
-   * In order to create a stream, we need a mechanism to write to it.
-   */
-  trait Writer {
-
-    /**
-     * Write an object to a Stream so that it may be read as a Frame
-     * (i.e. onto an underlying transport).
-     */
-    def write(frame: Frame): Future[Unit]
-  }
-
-  private trait AsyncQueueReader extends Reader {
-    protected[this] val frameQ: AsyncQueue[Frame]
-
-    private[this] val endP = new Promise[Unit]
-    private[this] val endOnReleaseIfEnd: Frame => Unit = { f =>
-      if (f.isEnd) endP.become(f.onRelease)
-    }
-
-    override def onEnd: Future[Unit] = endP
-    override def read(): Future[Frame] = {
-      val f = frameQ.poll()
-      f.onSuccess(endOnReleaseIfEnd)
-      f
-    }
-  }
-
-  private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
-    override protected[this] val frameQ = new AsyncQueue[Frame]
-
-    override def write(f: Frame): Future[Unit] = {
-      if (frameQ.offer(f)) f.onRelease
-      else Future.exception(Failure("write failed").flagged(Failure.Rejected))
-    }
-  }
-
-  def apply(q: AsyncQueue[Frame]): Reader =
-    new AsyncQueueReader { override protected[this] val frameQ = q }
-
-  def apply(): Reader with Writer =
-    new AsyncQueueReaderWriter
-
-  def const(buf: Buf): Reader = {
-    val q = new AsyncQueue[Frame]
-    q.offer(Frame.Data.eos(buf))
-    apply(q)
-  }
-
-  def const(s: String): Reader =
-    const(Buf.Utf8(s))
-}
-
-/**
- * A single item in a Stream.
- */
-sealed trait Frame {
-
-  /**
-   * When `isEnd` is true, no further events will be returned on the
-   * Stream.
-   */
-  def isEnd: Boolean
-
-  def onRelease: Future[Unit]
-  def release(): Future[Unit]
-}
-
-object Frame {
-  /**
-   * A frame containing aribtrary data.
-   *
-   * `release()` MUST be called so that the producer may manage flow control.
-   */
-  trait Data extends Frame {
-    override def toString = s"Frame.Data(length=${buf.length}, eos=$isEnd)"
-    def buf: Buf
-  }
-
-  object Data {
-
-    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
-      def buf = buf0
-      private[this] val releaseP = new Promise[Unit]
-      def onRelease = releaseP
-      def release() = {
-        val f = release0()
-        releaseP.become(f)
-        f
-      }
-      def isEnd = eos
-    }
-
-    def apply(buf: Buf, eos: Boolean): Data =
-      apply(buf, eos, () => Future.Unit)
-
-    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
-      apply(Buf.Utf8(s), eos, release)
-
-    def apply(s: String, eos: Boolean): Data =
-      apply(Buf.Utf8(s), eos)
-
-    def eos(buf: Buf): Data = apply(buf, true)
-    def eos(s: String): Data = apply(s, true)
-  }
-
-  /** A terminal Frame including headers. */
-  trait Trailers extends Frame with Headers { headers =>
-    override def toString = s"Stream.Trailers(${headers.toSeq})"
-    final override def isEnd = true
   }
 }

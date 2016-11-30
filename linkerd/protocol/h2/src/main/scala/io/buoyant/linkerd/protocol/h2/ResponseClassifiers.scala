@@ -97,13 +97,15 @@ object ResponseClassifiers {
       case ReqRep(_, Throw(_) | Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
     }
 
+  // TODO allow fully-buffered streams to be retried.
   def NonRetryableStream(classifier: ResponseClassifier): ResponseClassifier =
     ResponseClassifier.named(s"NonRetryableStream") {
       case rr@ReqRep(req: Request, _) if classifier.isDefinedAt(rr) =>
-        (req.data, classifier(rr)) match {
-          case (_: Stream.Reader, ResponseClass.RetryableFailure) =>
+        classifier(rr) match {
+          case ResponseClass.RetryableFailure if req.stream.nonEmpty =>
             ResponseClass.NonRetryableFailure
-          case (_, rc) => rc
+
+          case rc => rc
         }
     }
 }
