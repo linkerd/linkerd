@@ -271,10 +271,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         } else closeLocal()
     }
 
-  /*
-   * Reading an RecvMsg from the remote.
-   */
-
   /**
    * Offer a Netty Http2StreamFrame from the remote.
    *
