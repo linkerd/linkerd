@@ -234,10 +234,18 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   }
 
   def remoteReset(err: Reset): Unit =
-    if (tryReset(err)) resetP.setException(StreamError.Remote(err))
+    if (tryReset(err)) err match {
+      case Reset.NoError =>
+        resetP.setDone(); ()
+      case err => resetP.setException(StreamError.Remote(err))
+    }
 
   def localReset(err: Reset): Unit =
-    if (tryReset(err)) resetP.setException(StreamError.Local(err))
+    if (tryReset(err)) err match {
+      case Reset.NoError =>
+        resetP.setDone(); ()
+      case err => resetP.setException(StreamError.Local(err))
+    }
 
   @tailrec private[this] def tryReset(err: Reset): Boolean =
     stateRef.get match {

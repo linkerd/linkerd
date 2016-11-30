@@ -6,7 +6,7 @@ import com.twitter.finagle.Failure
 import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Promise, Time, Throw}
+import com.twitter.util._
 import io.buoyant.test.FunSuite
 import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
@@ -173,6 +173,23 @@ class Netty4StreamTransportTest extends FunSuite {
     }
   }
 
+  test("client: full request/response with empty streams") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream.empty()
+    val endF = await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
+    assert(!rspF.isDefined)
+
+    val rsp = assertRecvResponse(200, eos = true)
+    reqStream.close()
+
+    eventually { assert(transport.onReset.isDefined) }
+    assert(await(transport.onReset.liftToTry) == Return.Unit)
+    assert(transport.isClosed)
+    assert(!closed.get)
+  }
+
   test("client: open: local reset") {
     val ctx = new ClientCtx {}
     import ctx._
@@ -322,6 +339,41 @@ class Netty4StreamTransportTest extends FunSuite {
     eventually { assert(readF.isDefined) }
     assert(await(readF.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
+  }
+
+  test("client: response cancelation resets stream: Reset") {
+    val ctx = new ClientCtx {}
+    assert(!ctx.rspF.isDefined)
+    ctx.rspF.raise(Reset.EnhanceYourCalm)
+    assert(await(ctx.rspF.liftToTry) == Throw(Reset.EnhanceYourCalm))
+  }
+
+  test("client: response cancelation resets stream: Failure(Reset)") {
+    val ctx = new ClientCtx {}
+    assert(!ctx.rspF.isDefined)
+    ctx.rspF.raise(Failure(Reset.EnhanceYourCalm))
+    assert(await(ctx.rspF.liftToTry) == Throw(Reset.EnhanceYourCalm))
+  }
+
+  test("client: response cancelation resets stream: Failure(Interrupted)") {
+    val ctx = new ClientCtx {}
+    assert(!ctx.rspF.isDefined)
+    ctx.rspF.raise(Failure("foo").flagged(Failure.Interrupted))
+    assert(await(ctx.rspF.liftToTry) == Throw(Reset.Cancel))
+  }
+
+  test("client: response cancelation resets stream: Failure(Rejected)") {
+    val ctx = new ClientCtx {}
+    assert(!ctx.rspF.isDefined)
+    ctx.rspF.raise(Failure("foo").flagged(Failure.Rejected))
+    assert(await(ctx.rspF.liftToTry) == Throw(Reset.Refused))
+  }
+
+  test("client: response cancelation resets stream: Exception") {
+    val ctx = new ClientCtx {}
+    assert(!ctx.rspF.isDefined)
+    ctx.rspF.raise(new Exception("ugh"))
+    assert(await(ctx.rspF.liftToTry) == Throw(Reset.InternalError))
   }
 
   test("server: provides a remote request") {
