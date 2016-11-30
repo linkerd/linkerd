@@ -46,7 +46,8 @@ class RouterEndToEndTest
   }
 
   test("resets downstream on upstream cancelation") {
-    val dogReqP, dogRspP = new Promise[Stream]
+    val dogReqP = new Promise[Stream]
+    val dogRspP = new Promise[Stream]
     @volatile var serverInterrupted: Option[Throwable] = None
     dogRspP.setInterruptHandler { case e => serverInterrupted = Some(e) }
     val dog = Downstream.service("dog") { req =>
@@ -88,7 +89,8 @@ class RouterEndToEndTest
   }
 
   test("resets downstream on upstream disconnect") {
-    val dogReqP, dogRspP = new Promise[Stream]
+    val dogReqP = new Promise[Stream]
+    val dogRspP = new Promise[Stream]
     val dog = Downstream.service("dog") { req =>
       dogReqP.setValue(req.stream)
       dogRspP.map(Response(Status.Ok, _))
