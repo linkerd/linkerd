@@ -66,18 +66,18 @@ class Netty4StreamTransportTest extends FunSuite {
       rsp
     }
 
-    def assertRemoteReset(): Unit = {
-      val f = new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)
+    def assertRemoteReset(rst: Reset): Unit = {
+      val f = new DefaultHttp2ResetFrame(Netty4Message.toNetty(rst)).setStreamId(id)
       assert(transport.recv(f))
       eventually { assert(transport.isClosed) }
 
       if (!receivedMsg) {
         eventually { assert(rspF.isDefined) }
-        assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
+        assert(await(rspF.liftToTry) == Throw(rst))
       }
 
       eventually { assert(transport.onReset.isDefined) }
-      assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+      assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(rst)))
     }
 
   }
@@ -112,18 +112,18 @@ class Netty4StreamTransportTest extends FunSuite {
       req
     }
 
-    def assertRemoteReset(): Unit = {
-      val f = new DefaultHttp2ResetFrame(Http2Error.CANCEL).setStreamId(id)
+    def assertRemoteReset(rst: Reset): Unit = {
+      val f = new DefaultHttp2ResetFrame(Netty4Message.toNetty(rst)).setStreamId(id)
       assert(transport.recv(f))
       eventually { assert(transport.isClosed) }
 
       if (!receivedMsg) {
         eventually { assert(reqF.isDefined) }
-        assert(await(reqF.liftToTry) == Throw(Reset.Cancel))
+        assert(await(reqF.liftToTry) == Throw(rst))
       }
 
       eventually { assert(transport.onReset.isDefined) }
-      assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(Reset.Cancel)))
+      assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(rst)))
     }
   }
 
@@ -173,16 +173,50 @@ class Netty4StreamTransportTest extends FunSuite {
     }
   }
 
-  test("client: local reset while waiting on remote response") {
+  test("client: open: local reset") {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val reqStream = Stream.empty()
+    val reqStream = Stream()
+    await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
+    assert(!rspF.isDefined)
+
+    val rsp = assertRecvResponse(200, eos = false)
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+
+    reqStream.reset(Reset.Cancel)
+    eventually { assert(transport.onReset.isDefined) }
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(transport.isClosed)
+    assert(!closed.get)
+  }
+
+  test("client: open: remote reset") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream()
+    await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
+    assert(!rspF.isDefined)
+
+    val rsp = assertRecvResponse(200, eos = false)
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+
+    assertRemoteReset(Reset.Cancel)
+    assert(!closed.get)
+  }
+
+  test("client: open before remote response: local reset") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream()
     await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
     assert(!transport.onReset.isDefined)
 
     reqStream.reset(Reset.Cancel)
-
     eventually { assert(rspF.isDefined) }
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
 
@@ -193,90 +227,42 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!closed.get)
   }
 
-  test("client: local reset while streams is fully open") {
+  test("client: open before remote response: remote reset") {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val reqStream = Stream()
-    await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
-    assert(!rspF.isDefined)
-
-    assert(transport.recv({
-      val hs = new DefaultHttp2Headers
-      hs.status("200")
-      new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
-    }))
-    eventually { assert(rspF.isDefined) }
-    val rsp = await(rspF)
-    assert(!transport.isClosed)
-    assert(!transport.onReset.isDefined)
-
-    reqStream.reset(Reset.Cancel)
-
-    eventually { assert(transport.onReset.isDefined) }
-    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
-    assert(transport.isClosed)
-
-    assert(!closed.get)
-  }
-
-  test("client: local reset with remote half closed") {
-    val ctx = new ClientCtx {}
-    import ctx._
-
-    assert(!rspF.isDefined)
-    assert(transport.recv({
-      val hs = new DefaultHttp2Headers
-      hs.status("200")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
-    }))
-    assert(rspF.isDefined)
-    val rsp = await(rspF)
-    assert(!transport.onReset.isDefined)
-    assert(!transport.isClosed)
-
-    val reqStream = Stream()
-    val streamF = await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
-    await(reqStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
-    assert(!streamF.isDefined)
-    assert(!transport.isClosed)
-    assert(!transport.onReset.isDefined)
-
-    reqStream.reset(Reset.InternalError)
-    assert(await(streamF.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
-    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
-    assert(transport.isClosed)
-    assert(!closed.get)
-  }
-
-  test("client: local reset before remote message") {
-    val ctx = new ClientCtx {}
-    import ctx._
-
-    val localStream = Stream.empty()
+    val localStream = Stream()
     await(transport.send(Request("http", Method.Get, "host", "/path", localStream)))
     assert(!rspF.isDefined)
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    assertRemoteReset()
+    assertRemoteReset(Reset.Cancel)
     assert(!closed.get)
   }
 
-  test("client: remote reset before remote message") {
+  test("client: local half closed: local reset") {
     val ctx = new ClientCtx {}
     import ctx._
 
-    await(transport.send(Request("http", Method.Get, "host", "/path", Stream.empty())))
+    val reqStream = Stream.empty()
+    await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
     assert(!rspF.isDefined)
-    assert(!transport.isClosed)
-    assert(!transport.onReset.isDefined)
 
-    assertRemoteReset()
+    val rsp = assertRecvResponse(200, eos = false)
+    assert(!transport.onReset.isDefined)
+    assert(!transport.isClosed)
+
+    val readF = rsp.stream.read()
+    assert(!readF.isDefined)
+
+    reqStream.reset(Reset.Cancel)
+    eventually { assert(readF.isDefined) }
+    assert(await(readF.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 
-  test("client: remote reset while local half closed") {
+  test("client: local half closed: remote reset") {
     val ctx = new ClientCtx {}
     import ctx._
 
@@ -290,13 +276,34 @@ class Netty4StreamTransportTest extends FunSuite {
     val readF = rsp.stream.read()
     assert(!readF.isDefined)
 
-    assertRemoteReset()
+    assertRemoteReset(Reset.Cancel)
     eventually { assert(readF.isDefined) }
     assert(await(readF.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
   }
 
-  test("client: remote reset while remote half closed") {
+  test("client: remote half closed: local reset") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    assert(!rspF.isDefined)
+    val reqStream = Stream()
+    val endF = await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
+    await(reqStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
+    assert(!endF.isDefined)
+
+    val rsp = assertRecvResponse(200, eos = true)
+    assert(!transport.onReset.isDefined)
+    assert(!transport.isClosed)
+
+    reqStream.reset(Reset.InternalError)
+    assert(await(endF.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(transport.isClosed)
+    assert(!closed.get)
+  }
+
+  test("client: remote half closed: remote reset") {
     val ctx = new ClientCtx {}
     import ctx._
 
@@ -311,7 +318,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val readF = rsp.stream.read()
     assert(!readF.isDefined)
 
-    assertRemoteReset()
+    assertRemoteReset(Reset.Cancel)
     eventually { assert(readF.isDefined) }
     assert(await(readF.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
@@ -402,7 +409,7 @@ class Netty4StreamTransportTest extends FunSuite {
     }
   }
 
-  test("server: local reset while fully open") {
+  test("server: open: local reset") {
     val ctx = new ServerCtx {}
     import ctx._
 
@@ -418,15 +425,79 @@ class Netty4StreamTransportTest extends FunSuite {
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
     assert(transport.isClosed)
-
     assert(!closed.get)
   }
 
-  test("server: local reset while remote half closed") {
+  test("server: open: remote reset") {
     val ctx = new ServerCtx {}
     import ctx._
 
     val req = assertRecvRequest(eos = false)
+
+    val rspStream = Stream()
+    val rspEndF = await(transport.send(Response(Status.Ok, rspStream)))
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+    assert(!rspEndF.isDefined)
+
+    assertRemoteReset(Reset.Cancel)
+    assert(!closed.get)
+  }
+
+  test("server: open before local response: local reset") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val req = assertRecvRequest(eos = false)
+
+    val rspStream = Stream()
+    await(transport.send(Response(Status.Ok, rspStream)))
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+
+    rspStream.reset(Reset.Cancel)
+    eventually { assert(transport.onReset.isDefined) }
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
+    assert(transport.isClosed)
+    assert(!closed.get)
+  }
+
+  test("server: open before local response: remote reset") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val req = assertRecvRequest(eos = false)
+
+    val rspStream = Stream()
+    await(transport.send(Response(Status.Ok, rspStream)))
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+    assertRemoteReset(Reset.Cancel)
+    assert(!closed.get)
+  }
+  test("server: remote half closed: local reset") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val req = assertRecvRequest(eos = false)
+
+    val rspStream = Stream.empty()
+    await(transport.send(Response(Status.Ok, rspStream)))
+    assert(!transport.isClosed)
+    assert(!transport.onReset.isDefined)
+
+    rspStream.reset(Reset.Refused)
+    eventually { assert(transport.onReset.isDefined) }
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
+    assert(transport.isClosed)
+    assert(!closed.get)
+  }
+
+  test("server: remote half closed: remote reset") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    val req = assertRecvRequest(eos = true)
 
     val rspStream = Stream.empty()
     await(transport.send(Response(Status.Ok, rspStream)))
@@ -437,61 +508,28 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    rspStream.reset(Reset.Refused)
-    eventually { assert(transport.onReset.isDefined) }
-    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
-    assert(transport.isClosed)
-
+    assertRemoteReset(Reset.Cancel)
     assert(!closed.get)
   }
 
-  test("server: local reset while local half closed") {
+  test("server: local half closed: local reset") {
     val ctx = new ServerCtx {}
     import ctx._
 
     val req = assertRecvRequest(eos = false)
-
     val rspStream = Stream.empty()
     await(transport.send(Response(Status.Ok, rspStream)))
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    rspStream.reset(Reset.InternalError)
+    rspStream.reset(Reset.Refused)
     eventually { assert(transport.onReset.isDefined) }
-    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
     assert(transport.isClosed)
-
     assert(!closed.get)
   }
 
-  test("server: remote reset before local message") {
-    val ctx = new ServerCtx {}
-    import ctx._
-
-    val req = assertRecvRequest(eos = false)
-
-    val rspStream = Stream()
-    await(transport.send(Response(Status.Ok, rspStream)))
-    assert(!transport.isClosed)
-    assert(!transport.onReset.isDefined)
-    assertRemoteReset()
-    assert(!closed.get)
-  }
-
-  test("server: remote reset while remote half closed") {
-    val ctx = new ServerCtx {}
-    import ctx._
-
-    val req = assertRecvRequest(eos = false)
-    val rspStream = Stream()
-    await(transport.send(Response(Status.Ok, rspStream)))
-    assert(!transport.isClosed)
-    assert(!transport.onReset.isDefined)
-    assertRemoteReset()
-    assert(!closed.get)
-  }
-
-  test("server: remote reset while local half closed") {
+  test("server: local half closed: remote reset") {
     val ctx = new ServerCtx {}
     import ctx._
 
@@ -499,7 +537,7 @@ class Netty4StreamTransportTest extends FunSuite {
     await(transport.send(Response(Status.Ok, Stream.empty())))
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
-    assertRemoteReset()
+    assertRemoteReset(Reset.Cancel)
     assert(!closed.get)
   }
 

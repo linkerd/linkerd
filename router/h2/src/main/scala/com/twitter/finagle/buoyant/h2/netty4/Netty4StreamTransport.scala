@@ -301,17 +301,18 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
     in match {
       case rst: Http2ResetFrame =>
+        val err = Netty4Message.toReset(rst)
         state match {
           case Closed(_) => false
 
           case RemoteOpen(remote) =>
-            if (resetRemote(remote, toReset(rst.errorCode))) {
+            if (resetRemote(remote, err)) {
               statsReceiver.remoteResetCount.incr()
               true
             } else recv(rst)
 
           case state@RemoteClosed() =>
-            if (resetRemote(state, toReset(rst.errorCode))) {
+            if (resetRemote(state, err)) {
               statsReceiver.remoteResetCount.incr()
               true
             } else recv(rst)
@@ -546,17 +547,6 @@ object Netty4StreamTransport {
     override def onEnd = Future.Unit
     override def read(): Future[Frame] = Future.exception(Reset.NoError)
   }
-
-  private def toReset(code: Long): Reset =
-    Http2Error.valueOf(code) match {
-      case Http2Error.NO_ERROR => Reset.NoError
-      case Http2Error.INTERNAL_ERROR => Reset.InternalError
-      case Http2Error.ENHANCE_YOUR_CALM => Reset.EnhanceYourCalm
-      case Http2Error.REFUSED_STREAM => Reset.Refused
-      case Http2Error.STREAM_CLOSED => Reset.Closed
-      case Http2Error.CANCEL => Reset.Cancel
-      case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
-    }
 
   class StatsReceiver(underlying: FStatsReceiver) {
     private[this] val local = underlying.scope("local")
