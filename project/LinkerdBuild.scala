@@ -261,7 +261,7 @@ object LinkerdBuild extends Base {
          |fi
          |""" +
       execScriptJvmOptions +
-      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
@@ -288,6 +288,7 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
     )
 
@@ -335,7 +336,7 @@ object LinkerdBuild extends Base {
 
     val all = projectDir("namerd")
       .settings(aggregateSettings)
-      .aggregate(core, dcosBootstrap, Storage.all, Iface.all, main)
+      .aggregate(core, dcosBootstrap, Storage.all, Interpreter.all, Iface.all, main)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -507,7 +508,7 @@ object LinkerdBuild extends Base {
          |fi
          |""" +
       execScriptJvmOptions +
-      """|exec ${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
+      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""

@@ -13,7 +13,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier(Headers.Path, None, Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
 
     Dtab.local = localDtab
     await(identifier(req0)) match {
@@ -29,7 +29,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier(Headers.Path, Some(1), Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
 
     Dtab.local = localDtab
     await(identifier(req0)) match {
@@ -45,7 +45,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier(Headers.Path, Some(3), Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
 
     Dtab.local = localDtab
     assert(await(identifier(req0)).isInstanceOf[UnidentifiedRequest[Request]])
@@ -55,7 +55,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier("lolz", None, Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
     req0.headers.set("lolz", "/rofl/hah")
 
     Dtab.local = localDtab
@@ -72,7 +72,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier("lolz", None, Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
 
     Dtab.local = localDtab
     assert(await(identifier(req0)).isInstanceOf[UnidentifiedRequest[Request]])
@@ -82,7 +82,7 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderPathIdentifier("lolz", Some(1), Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two", Stream.empty())
 
     Dtab.local = localDtab
     assert(await(identifier(req0)).isInstanceOf[UnidentifiedRequest[Request]])

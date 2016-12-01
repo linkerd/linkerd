@@ -13,7 +13,7 @@ class HeaderTokenIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderTokenIdentifier(":authority", Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/path", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/path", Stream.empty())
 
     Dtab.local = localDtab
     await(identifier(req0)) match {
@@ -29,7 +29,7 @@ class HeaderTokenIdentifierTest extends FunSuite with Awaits {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")
     val identifier = new HeaderTokenIdentifier("lolz", Path.Utf8("pfx"), () => baseDtab)
-    val req0 = Request("http", Method.Get, "wacky", "/path", Stream.Nil)
+    val req0 = Request("http", Method.Get, "wacky", "/path", Stream.empty())
 
     Dtab.local = localDtab
     assert(await(identifier(req0)).isInstanceOf[UnidentifiedRequest[Request]])

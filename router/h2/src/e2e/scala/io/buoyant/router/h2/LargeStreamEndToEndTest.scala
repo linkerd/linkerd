@@ -3,7 +3,7 @@ package h2
 
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise, Stopwatch}
+import com.twitter.util._
 import io.buoyant.test.FunSuite
 
 class LargeStreamEndToEndTest
@@ -18,8 +18,8 @@ class LargeStreamEndToEndTest
   test(s"client/server ${LargeStreamLen}B request stream") {
     val streamP = new Promise[Stream]
     def serve(req: Request) = {
-      streamP.setValue(req.data)
-      Response(Status.Ok, Stream.Nil)
+      streamP.setValue(req.stream)
+      Response(Status.Ok, Stream.empty())
     }
     withClient(serve) { client =>
       val elapsed = Stopwatch.start()
@@ -28,7 +28,7 @@ class LargeStreamEndToEndTest
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       await(defaultWait * 2) {
-        testStream(reader(await(streamP)), writer, LargeStreamLen, FrameLen)
+        testStream(await(streamP), writer, LargeStreamLen, FrameLen)
       }
       info(s"duration=${elapsed().inMillis}ms")
     }
@@ -36,40 +36,46 @@ class LargeStreamEndToEndTest
 
   test(s"client/server ${LargeStreamLen}B response stream") {
     val writer = Stream()
-    withClient(_ => Response(Status.Ok, writer)) { client =>
+    try withClient(_ => Response(Status.Ok, writer)) { client =>
       val elapsed = Stopwatch.start()
-      val req = Request("http", Method.Get, "host", "/path", Stream.Nil)
+      val req = Request("http", Method.Get, "host", "/path", Stream.empty())
       val rsp = await(client(req))
       assert(rsp.status == Status.Ok)
       await(defaultWait * 2) {
-        testStream(reader(rsp.data), writer, LargeStreamLen, FrameLen)
+        testStream(rsp.stream, writer, LargeStreamLen, FrameLen)
       }
       info(s"duration=${elapsed().inMillis}ms")
-    }
+    } finally setLogLevel(Level.OFF)
   }
 
   def testStream(
-    reader: Stream.Reader,
+    reader: Stream,
     writer: Stream.Writer,
     streamLen: Long,
     frameSize: Int
   ): Future[Unit] = {
     def loop(bytesWritten: Long, ending: Boolean): Future[Unit] = {
       assert(bytesWritten <= streamLen)
-      reader.read().flatMap {
-        case t: Frame.Trailers =>
+      reader.read().transform {
+        case Throw(e) => fail(e)
+
+        case Return(t: Frame.Trailers) =>
           fail(s"unexpected trailers $t")
           Future.Unit
 
-        case d: Frame.Data if d.isEnd =>
+        case Return(d: Frame.Data) if d.isEnd =>
           assert(bytesWritten == streamLen)
-          d.release()
+          log.debug("releasing %s", d)
+          d.release().onSuccess(_ => log.debug("released %s", d))
 
-        case d: Frame.Data =>
+        case Return(d: Frame.Data) =>
           val eos = bytesWritten + d.buf.length >= streamLen
           val len = math.min(frameSize, streamLen - bytesWritten)
           val frame = Frame.Data(mkBuf(len.toInt), eos)
-          d.release().before {
+          log.debug("releasing %s", d)
+          val releaseF = d.release()
+          releaseF.onSuccess(_ => log.debug("released %s", d))
+          releaseF.before {
             if (ending) Future.Unit
             else writer.write(frame).before(loop(bytesWritten + len, eos))
           }
