@@ -28,28 +28,27 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
   private[this] val rspStreamFailures = statsReceiver.counter("stream", "response", "failures")
   private[this] val streamFailures = statsReceiver.counter("stream", "failures")
 
+  private[this] val latencyMs = statsReceiver.stat("latency_ms")
+
   override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
     val reqT = Stopwatch.start()
-    req.data match {
-      case Stream.Nil =>
-      case r: Stream.Reader => r.onEnd.respond {
-        case Return(_) => reqStreamTimeMs.add(reqT().inMillis)
-        case Throw(_) => reqStreamFailures.incr()
-      }
+    req.stream.onEnd.respond {
+      case Return(_) => reqStreamTimeMs.add(reqT().inMillis)
+      case Throw(_) => reqStreamFailures.incr()
     }
 
     val rspF = service(req)
+
     rspF.onSuccess { rsp =>
+      latencyMs.add(reqT().inMillis)
+
       val rspT = Stopwatch.start()
-      rsp.data match {
-        case Stream.Nil =>
-        case r: Stream.Reader =>
-          r.onEnd.respond {
-            case Return(_) => rspStreamTimeMs.add(rspT().inMillis)
-            case Throw(_) => rspStreamFailures.incr()
-          }
+      rsp.stream.onEnd.respond {
+        case Return(_) => rspStreamTimeMs.add(rspT().inMillis)
+        case Throw(_) => rspStreamFailures.incr()
       }
-      val _ = req.data.onEnd.join(rsp.data.onEnd).respond {
+
+      val _ = req.stream.onEnd.join(rsp.stream.onEnd).respond {
         case Return(_) => streamTimeMs.add(reqT().inMillis)
         case Throw(_) => streamFailures.incr()
       }

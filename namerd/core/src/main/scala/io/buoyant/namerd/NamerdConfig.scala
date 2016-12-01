@@ -5,7 +5,7 @@ import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Namer, Path, Stack}
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
-import io.buoyant.namer.{NamerConfig, NamerInitializer}
+import io.buoyant.namer.{NamerConfig, NamerInitializer, TransformerInitializer}
 import io.buoyant.telemetry.{NullTelemeter, Telemeter}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
@@ -77,16 +77,18 @@ private[namerd] object NamerdConfig {
   private[namerd] case class Initializers(
     namer: Seq[NamerInitializer] = Nil,
     dtabStore: Seq[DtabStoreInitializer] = Nil,
-    iface: Seq[InterfaceInitializer] = Nil
+    iface: Seq[InterfaceInitializer] = Nil,
+    transformers: Seq[TransformerInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(namer, dtabStore, iface)
+      Seq(namer, dtabStore, iface, transformers)
   }
 
   private[namerd] lazy val LoadedInitializers = Initializers(
     LoadService[NamerInitializer],
     LoadService[DtabStoreInitializer],
-    LoadService[InterfaceInitializer]
+    LoadService[InterfaceInitializer],
+    LoadService[TransformerInitializer]
   )
 
   def loadNamerd(configText: String, initializers: Initializers): NamerdConfig = {

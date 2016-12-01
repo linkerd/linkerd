@@ -32,9 +32,6 @@ case class K8sConfig(
 ) extends NamerConfig with ClientConfig {
 
   @JsonIgnore
-  override val experimentalRequired = true
-
-  @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.k8s")
 
   @JsonIgnore
