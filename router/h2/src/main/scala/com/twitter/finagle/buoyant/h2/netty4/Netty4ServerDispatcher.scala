@@ -87,10 +87,10 @@ class Netty4ServerDispatcher(
     }
 
     val _ = serveF.onFailure {
-      // The stream has already been reset.  Do nothing
-      case _: StreamError =>
+      // The stream has already been reset.  Do nothing.
+      case (_: StreamError | _: Error) =>
 
-      // The service failed independently of streaming, reset the stream.
+      // The service failed independently of streaming. Reset the stream.
       case ServiceException(e) =>
         val rst = e match {
           case rst: Reset => rst

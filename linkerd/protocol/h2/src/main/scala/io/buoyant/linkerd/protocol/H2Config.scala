@@ -27,7 +27,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
     val pathStack = H2.router.pathStack
       .insertAfter(ClassifiedRetries.role, h2.DupRequest.module)
       .prepend(LinkerdHeaders.Dst.PathFilter.module)
-      .prepend(h2.ErrorResponder.module)
+      .prepend(h2.ErrorReseter.module)
 
     // I think we can safely ignore the DelayedRelease module (as
     // applied by finagle-http), since we don't ever run in
