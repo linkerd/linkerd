@@ -45,6 +45,32 @@ class RouterEndToEndTest
     }
   }
 
+  test("fails requests with connection-headers") {
+    val dog = Downstream.const("dog", "woof")
+    val dtab = Dtab.read(s"""
+        /p/dog => /$$/inet/127.1/${dog.port} ;
+        /h2/clifford => /p/dog ;
+      """)
+    val identifierParam = H2.Identifier { _ => req =>
+      val dst = Dst.Path(Path.Utf8("h2", req.authority), dtab)
+      Future.value(new RoutingFactory.IdentifiedRequest(dst, req))
+    }
+    val router = H2.serve(new InetSocketAddress(0), H2.router
+      .configured(identifierParam)
+      .factory())
+    val client = upstream(router)
+    try {
+      val req = Request("http", Method.Get, "clifford", "/path", Stream.empty())
+      req.headers.set("connection", "close")
+      assert(await(client(req).liftToTry) == Throw(Reset.ProtocolError))
+    } finally {
+      setLogLevel(Level.OFF)
+      await(client.close())
+      await(dog.server.close())
+      await(router.close())
+    }
+  }
+
   test("resets downstream on upstream cancelation") {
     val dogReqP = new Promise[Stream]
     val dogRspP = new Promise[Stream]

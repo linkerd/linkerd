@@ -51,7 +51,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 
   override def reset(id: Int, rst: Reset): Future[Unit] = {
     require(id > 0)
-    val code = Netty4Message.toNetty(rst)
+    val code = Netty4Message.Reset.toHttp2Error(rst)
     val frame = new DefaultHttp2ResetFrame(code).setStreamId(id)
     write(frame)
   }

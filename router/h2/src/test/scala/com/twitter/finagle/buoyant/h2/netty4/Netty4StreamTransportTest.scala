@@ -67,12 +67,12 @@ class Netty4StreamTransportTest extends FunSuite {
     }
 
     def assertRemoteReset(rst: Reset): Unit = {
-      val f = new DefaultHttp2ResetFrame(Netty4Message.toNetty(rst)).setStreamId(id)
+      val err = Netty4Message.Reset.toHttp2Error(rst)
+      val f = new DefaultHttp2ResetFrame(err).setStreamId(id)
       assert(transport.recv(f))
       eventually { assert(transport.isClosed) }
 
       if (!receivedMsg) {
-        eventually { assert(rspF.isDefined) }
         assert(await(rspF.liftToTry) == Throw(rst))
       }
 
@@ -113,17 +113,14 @@ class Netty4StreamTransportTest extends FunSuite {
     }
 
     def assertRemoteReset(rst: Reset): Unit = {
-      val f = new DefaultHttp2ResetFrame(Netty4Message.toNetty(rst)).setStreamId(id)
+      val err = Netty4Message.Reset.toHttp2Error(rst)
+      val f = new DefaultHttp2ResetFrame(err).setStreamId(id)
       assert(transport.recv(f))
-      eventually { assert(transport.isClosed) }
-
       if (!receivedMsg) {
-        eventually { assert(reqF.isDefined) }
         assert(await(reqF.liftToTry) == Throw(rst))
       }
-
-      eventually { assert(transport.onReset.isDefined) }
       assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(rst)))
+      assert(transport.isClosed)
     }
   }
 
@@ -591,6 +588,63 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.onReset.isDefined)
     assertRemoteReset(Reset.Cancel)
     assert(!closed.get)
+  }
+
+  test("server: fails request with `connection` header") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    assert(transport.recv({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("testscheme")
+      hs.method("TEST")
+      hs.path("/")
+      hs.authority("auf")
+      hs.set("connection", "blah")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+
+    val rst = Reset.ProtocolError
+    assert(await(reqF.liftToTry) == Throw(rst))
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(rst)))
+    assert(transport.isClosed)
+  }
+
+  test("server: fails request with `te: chunked, trailers`") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    assert(transport.recv({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("testscheme")
+      hs.method("TEST")
+      hs.path("/")
+      hs.authority("auf")
+      hs.set("te", "chunked, trailers")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+
+    val rst = Reset.ProtocolError
+    assert(await(reqF.liftToTry) == Throw(rst))
+    assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(rst)))
+    assert(transport.isClosed)
+  }
+
+  test("server: allows request with `te: trailers`") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    assert(transport.recv({
+      val hs = new DefaultHttp2Headers
+      hs.scheme("testscheme")
+      hs.method("TEST")
+      hs.path("/")
+      hs.authority("auf")
+      hs.set("te", "trailers")
+      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+    }))
+
+    assert(await(reqF.liftToTry).isReturn)
   }
 
 }
