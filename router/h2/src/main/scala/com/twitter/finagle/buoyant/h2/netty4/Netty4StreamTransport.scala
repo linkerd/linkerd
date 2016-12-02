@@ -292,7 +292,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
     def resetFromRemote(remote: ResettableState, rst: Reset): Boolean =
       if (stateRef.compareAndSet(state, Closed(rst))) {
-        println(s"REMOTE RESET: $rst")
         remote.reset(rst)
         resetP.setException(StreamError.Remote(rst))
         true
@@ -300,7 +299,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
     def resetFromLocal(remote: ResettableState, rst: Reset): Boolean =
       if (stateRef.compareAndSet(state, Closed(rst))) {
-        println(s"LOCAL RESET: $rst")
         remote.reset(rst)
         resetP.setException(StreamError.Local(rst))
         true
@@ -312,7 +310,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         true
       } else false
 
-    println(s"IN: $in")
     in match {
       case rst: Http2ResetFrame =>
         val err = Netty4Message.Reset.fromFrame(rst)
@@ -524,7 +521,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     stateRef.get match {
       case Closed(rst) => Future.exception(StreamError.Remote(rst))
       case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
-      case LocalOpen() => localResetOnCancel(transport.write(streamId, hdrs, eos))
+      case LocalOpen() =>
+        if (ConnectionHeaders.detect(hdrs)) {
+          Future.exception(StreamError.Local(Reset.ProtocolError))
+        } else localResetOnCancel(transport.write(streamId, hdrs, eos))
     }
 
   /** Write a request stream to the underlying transport */

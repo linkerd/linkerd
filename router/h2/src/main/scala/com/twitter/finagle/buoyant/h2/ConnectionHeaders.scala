@@ -35,7 +35,7 @@ object ConnectionHeaders {
   val TransferEncoding = "transfer-encoding"
   val Upgrade = "upgrade"
 
-  private val Trailers = Seq("trailers")
+  private val TeTrailers = Seq("trailers")
 
   /**
    * Returns true iff Headers has connection-specific headers (and
@@ -54,5 +54,5 @@ object ConnectionHeaders {
   }
 
   private def detectTE(headers: Headers): Boolean =
-    headers.contains(Te) && (headers.get(Te) != Trailers)
+    headers.contains(Te) && (headers.get(Te) != TeTrailers)
 }

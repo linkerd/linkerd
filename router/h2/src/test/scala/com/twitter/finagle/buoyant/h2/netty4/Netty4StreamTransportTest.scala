@@ -175,7 +175,8 @@ class Netty4StreamTransportTest extends FunSuite {
     import ctx._
 
     val reqStream = Stream.empty()
-    val endF = await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
+    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    val endF = await(transport.send(req))
     assert(!rspF.isDefined)
 
     val rsp = assertRecvResponse(200, eos = true)
@@ -371,6 +372,57 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!ctx.rspF.isDefined)
     ctx.rspF.raise(new Exception("ugh"))
     assert(await(ctx.rspF.liftToTry) == Throw(Reset.InternalError))
+  }
+
+  test("client: fails request with `connection` header") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream.empty()
+    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    req.headers.set("connection", "awesome")
+    val rst = Reset.ProtocolError
+    val localRst = StreamError.Local(rst)
+    assert(await(transport.send(req).liftToTry) == Throw(localRst))
+    assert(await(rspF.liftToTry) == Throw(rst))
+    assert(await(transport.onReset.liftToTry) == Throw(localRst))
+    assert(transport.isClosed)
+  }
+
+  test("client: fails request with `te: chunked, trailers`") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream.empty()
+    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    req.headers.set("te", "chunked, trailers")
+    val rst = Reset.ProtocolError
+    val localRst = StreamError.Local(rst)
+    assert(await(transport.send(req).liftToTry) == Throw(localRst))
+    assert(await(rspF.liftToTry) == Throw(rst))
+    assert(await(transport.onReset.liftToTry) == Throw(localRst))
+    assert(transport.isClosed)
+  }
+
+  test("client: allows request with `te: trailers`") {
+    val ctx = new ClientCtx {}
+    import ctx._
+
+    val reqStream = Stream.empty()
+    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    req.headers.set("te", "trailers")
+    val rst = Reset.ProtocolError
+    val localRst = StreamError.Local(rst)
+    val endF = await(transport.send(req))
+    assert(!rspF.isDefined)
+    assert(!transport.onReset.isDefined)
+    assert(!transport.isClosed)
+
+    assertRecvResponse(200, eos = true)
+    assert(rspF.isDefined)
+    reqStream.close()
+    assert(transport.onReset.poll == Some(Return.Unit))
+    assert(transport.isClosed)
   }
 
   test("server: provides a remote request") {
