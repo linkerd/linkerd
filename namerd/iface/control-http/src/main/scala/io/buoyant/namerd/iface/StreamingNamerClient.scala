@@ -69,11 +69,9 @@ class StreamingNamerClient(
       }
     )
 
-  private[this] val parser = {
-    val mapper = DelegateApiHandler.Codec.mapper
-    mapper.registerModule(DtabModule.module)
-    new JsonStreamParser(mapper)
-  }
+  private[this] val mapper = DelegateApiHandler.Codec.mapper
+  mapper.registerModule(DtabModule.module)
+  private[this] val parser = new JsonStreamParser(mapper)
 
   private[this] implicit val jsonDelegateTreeType = new TypeReference[JsonDelegateTree] {}
   private[this] implicit val addrType = new TypeReference[DelegateApiHandler.Addr] {}
@@ -139,28 +137,15 @@ class StreamingNamerClient(
   private[this] def watchDelegate(dtab: Dtab, path: Path): Activity[DelegateTree[Name.Bound]] = {
     @volatile var rspF: Future[Response] = Future.never
 
-    def mkStream(): AsyncStream[Activity.State[DelegateTree[Name.Bound]]] = {
-      val bindReq = Request(
-        s"/api/1/delegate/$namespace",
-        "path" -> path.show,
-        "watch" -> "1",
-        "dtab" -> dtab.show
-      )
-      rspF = client(bindReq)
-      AsyncStream.fromFuture(rspF).flatMap { rsp =>
-        parser.readStream[JsonDelegateTree](rsp.reader)
-          .map(JsonDelegateTree.toDelegateTree)
-          .map(Activity.Ok(_))
-      }
-    }
+    val delegateReq = Request(
+      s"/api/1/delegate/$namespace",
+      "path" -> path.show,
+      "dtab" -> dtab.show
+    )
 
-    val state = StreamingNamerClient.asyncStreamToVar(Activity.Pending, mkStream, Closable.make { _ =>
-      rspF.onSuccess { _.reader.discard() }
-      rspF.raise(StreamingNamerClient.Closed)
-      Future.Unit
-    })
-
-    Activity(state)
+    Activity.future(client(delegateReq)).map { rsp =>
+      mapper.readValue[JsonDelegateTree](rsp.contentString)
+    }.map(JsonDelegateTree.toDelegateTree)
   }
 
   private[this] lazy val watchDtab: Activity[Dtab] = {

@@ -45,7 +45,7 @@ case class NamerdInterpreterConfig(
 ) extends InterpreterConfig {
 
   @JsonIgnore
-  private[this] val log = Logger.get("namerd")
+  private[this] val log = Logger.get()
 
   @JsonIgnore
   val defaultRetry = Retry(5, 10.minutes.inSeconds)
@@ -59,7 +59,7 @@ case class NamerdInterpreterConfig(
       case None => throw new IllegalArgumentException("`dst` is a required field")
       case Some(dst) => Name.Path(dst)
     }
-    val label = s"namer/${NamerdInterpreterConfig.kind}"
+    val label = s"interpreter/${NamerdInterpreterConfig.kind}"
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)

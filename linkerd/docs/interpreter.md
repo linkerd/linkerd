@@ -43,6 +43,7 @@ the protocols of linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
+experimental | _required_ | Because the http version is still considered experimental, you must set this to `true` to use it.
 dst | _required_ | A Finagle path locating the namerd service.
 namespace | `default` | The name of the namerd dtab to use.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.

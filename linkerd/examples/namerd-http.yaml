@@ -2,6 +2,7 @@ routers:
 - protocol: http
   interpreter:
     kind: io.l5d.namerd.http
+    experimental: true
     dst: /$/inet/localhost/4180
     namespace: default
   servers:

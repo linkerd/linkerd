@@ -2,7 +2,6 @@ package io.buoyant.namerd.iface
 
 import com.twitter.conversions.time._
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.naming.NameInterpreter
@@ -32,10 +31,13 @@ case class NamerdHttpInterpreterConfig(
 ) extends InterpreterConfig {
 
   @JsonIgnore
-  private[this] val log = Logger.get("namerd-http")
+  private[this] val log = Logger.get()
 
   @JsonIgnore
   val defaultRetry = Retry(5, 10.minutes.inSeconds)
+
+  @JsonIgnore
+  override val experimentalRequired = true
 
   /**
    * Construct a namer.
@@ -46,7 +48,7 @@ case class NamerdHttpInterpreterConfig(
       case None => throw new IllegalArgumentException("`dst` is a required field")
       case Some(dst) => Name.Path(dst)
     }
-    val label = s"namer/${NamerdHttpInterpreterInitializer.configId}"
+    val label = s"interpreter/${NamerdHttpInterpreterInitializer.configId}"
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
@@ -77,7 +79,7 @@ case class NamerdHttpInterpreterConfig(
         }
     }
 
-    val tlsTransformer = new Transformer {
+    val tlsTransformer = new Stack.Transformer {
       override def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]) = {
         tls match {
           case Some(tlsConfig) =>
