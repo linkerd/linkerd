@@ -4,6 +4,7 @@
 * The `io.l5d.consul` and `io.l5d.k8s` namers are no longer experimental
 * Fix the `h2` protocol to gracefully handle connection loss and
   stream interruption.
+* Add `io.l5d.static` identifier
 * Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
 
 ## 0.8.3
