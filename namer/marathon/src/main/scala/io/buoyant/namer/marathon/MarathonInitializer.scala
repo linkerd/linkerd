@@ -7,23 +7,24 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Return, Throw}
+import com.twitter.util.{Return, Throw, Duration}
 import io.buoyant.config.types.Port
-import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import io.buoyant.marathon.v2.{Api, AppIdNamer}
+import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
  * Supports namer configurations in the form:
  *
  * <pre>
  * namers:
- * - kind:           io.l5d.marathon
- *   experimental:   true
- *   prefix:         /io.l5d.marathon
- *   host:           marathon.mesos
- *   port:           80
- *   uriPrefix:      /marathon
- *   ttlMs:          5000
+ * - kind:      io.l5d.marathon
+ *   experimental: true
+ *   prefix:    /io.l5d.marathon
+ *   host:      marathon.mesos
+ *   port:      80
+ *   uriPrefix: /marathon
+ *   ttlMs:     5000
+ *   jitterMs:  50
  *   useHealthCheck: false
  * </pre>
  */
@@ -47,6 +48,7 @@ case class MarathonConfig(
   dst: Option[String],
   uriPrefix: Option[String],
   ttlMs: Option[Int],
+  jitterMs: Option[Int],
   useHealthCheck: Option[Boolean]
 ) extends NamerConfig {
 
@@ -64,7 +66,17 @@ case class MarathonConfig(
     case None => 80
   }
   private[this] def getUriPrefix = uriPrefix.getOrElse("")
-  private[this] def getTtl = ttlMs.getOrElse(5000).millis
+
+  @JsonIgnore
+  private[this] def getJitteredTtl(ttl: Int, jitterConf: Int): Stream[Duration] = {
+    require(ttl > jitterConf, "TTL should be greater than jitter")
+    val jitter = (ttl + (scala.util.Random.nextDouble() * 2 - 1) * jitterConf).toInt
+    Stream.continually(jitter.millis)
+  }
+  private[this] def getTtl: Stream[Duration] = {
+    getJitteredTtl(ttlMs.getOrElse(5000), jitterMs.getOrElse(0))
+  }
+
   private[this] def getMarathonHealth = useHealthCheck.getOrElse(false)
 
   private[this] def getDst = dst.getOrElse(s"/$$/inet/$getHost/$getPort")

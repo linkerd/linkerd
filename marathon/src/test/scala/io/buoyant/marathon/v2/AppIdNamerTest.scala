@@ -8,7 +8,7 @@ import java.net.{InetSocketAddress, SocketAddress}
 import org.scalatest.FunSuite
 
 class AppIdNamerTest extends FunSuite with Awaits {
-  val ttl = 10.millis
+  val ttl = Stream(10.millis)
   val err = ChannelWriteException(null)
   val exc = Future.exception(err)
   def newTimer = new MockTimer
@@ -152,7 +152,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
       assert(state == Activity.Failed(err))
 
       api.idsAlive = true
-      tc.advance(ttl)
+      tc.advance(ttl.head)
       timer.tick()
 
       namer.lookup(input).states.respond(state = _)
@@ -180,7 +180,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
       assert(state == Activity.Ok(NameTree.Leaf(output)))
 
       api.idsAlive = false
-      tc.advance(ttl)
+      tc.advance(ttl.head)
       timer.tick()
 
       namer.lookup(input).states.respond(state = _)
@@ -223,7 +223,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
       assertAddrsFail(state)
 
       api.addrsAlive = true
-      tc.advance(ttl)
+      tc.advance(ttl.head)
       timer.tick()
 
       namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
@@ -264,7 +264,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
         assertAddrs(state, Set(addr))
 
         api.addrsAlive = false
-        tc.advance(ttl)
+        tc.advance(ttl.head)
         timer.tick()
 
         namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
