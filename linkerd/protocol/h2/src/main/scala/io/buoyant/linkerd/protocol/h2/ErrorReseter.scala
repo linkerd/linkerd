@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Request, Response, Reset, LinkerdHeaders}
 import com.twitter.logging.Logger
 import com.twitter.util.Future
@@ -19,8 +19,11 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
     service(req).rescue(handler)
 
   private[this] val handler: PartialFunction[Throwable, Future[Response]] = {
-    case e@RoutingFactory.UnknownDst(_, _) =>
-      log.info(e, "unroutable request")
+    case e@RoutingFactory.UnknownDst(req, reason) =>
+      log.info("unroutable request: %s: %s", req, reason)
+      RefusedF
+    case e: NoBrokersAvailableException =>
+      log.info(e, "no available endpoints")
       RefusedF
   }
 }
