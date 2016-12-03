@@ -6,10 +6,9 @@ import com.twitter.finagle.service._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Duration, Future, Return, Throw, Time, Try, MockTimer}
-import io.buoyant.test.{Exceptions, Awaits}
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
-class ClassifiedRetriesTest extends FunSuite with Awaits with Exceptions {
+class ClassifiedRetriesTest extends FunSuite {
 
   class Badness extends Exception
 
