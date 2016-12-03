@@ -86,19 +86,16 @@ class Netty4ClientDispatcher(
     // Stream the request while receiving the response and
     // continue streaming the request until it is complete,
     // canceled,  or the response fails.
-    val initF = st.write(req)
-
-    // Compose the response future and the stream write so that we
-    // cancel the entire pipeline on reset.
-    val writeF = initF.flatten
+    val sendFF = st.send(req)
 
     // If the stream is reset prematurely, cancel the pending write
     st.onReset.onFailure {
-      case StreamError.Remote(rst: Reset) => writeF.raise(rst)
-      case StreamError.Remote(e) => writeF.raise(Reset.Cancel)
-      case e => writeF.raise(e)
+      case StreamError.Remote(rst: Reset) => sendFF.flatten.raise(rst)
+      case StreamError.Remote(e) => sendFF.flatten.raise(Reset.Cancel)
+      case e => sendFF.flatten.raise(e)
     }
 
-    initF.unit.before(st.onRemoteMessage)
+    sendFF.unit.before(st.onRecvMessage)
   }
+
 }

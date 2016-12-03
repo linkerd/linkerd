@@ -4,11 +4,34 @@ package netty4
 import com.twitter.finagle.buoyant.h2.{Request => H2Request, Response => H2Response, Headers => H2Headers}
 import com.twitter.finagle.netty4.ByteBufAsBuf
 import com.twitter.util.{Future, Promise}
-import io.netty.handler.codec.http2.{DefaultHttp2Headers, Http2Headers, Http2DataFrame}
+import io.netty.handler.codec.http2._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 private[h2] object Netty4Message {
+
+  def toReset(err: Http2ResetFrame): Reset =
+    toReset(err.errorCode)
+
+  def toReset(code: Long): Reset =
+    Http2Error.valueOf(code) match {
+      case Http2Error.NO_ERROR => Reset.NoError
+      case Http2Error.INTERNAL_ERROR => Reset.InternalError
+      case Http2Error.ENHANCE_YOUR_CALM => Reset.EnhanceYourCalm
+      case Http2Error.REFUSED_STREAM => Reset.Refused
+      case Http2Error.STREAM_CLOSED => Reset.Closed
+      case Http2Error.CANCEL => Reset.Cancel
+      case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
+    }
+
+  def toNetty(rst: Reset): Http2Error = rst match {
+    case Reset.Cancel => Http2Error.CANCEL
+    case Reset.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
+    case Reset.InternalError => Http2Error.INTERNAL_ERROR
+    case Reset.NoError => Http2Error.NO_ERROR
+    case Reset.Refused => Http2Error.REFUSED_STREAM
+    case Reset.Closed => Http2Error.STREAM_CLOSED
+  }
 
   trait Headers extends H2Headers {
     def underlying: Http2Headers
