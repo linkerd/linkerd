@@ -9,36 +9,53 @@ import io.buoyant.test.FunSuite
 
 class PerDstPathStatsFilterTest extends FunSuite {
 
-  def mkFilter(sr: StatsReceiver) = {
+  def mkFilter(sr: StatsReceiver) =
     Filter.mk[Unit, Unit, Unit, Unit] { (_, svc) =>
       sr.counter("before").incr()
       val rspF = svc(())
       rspF.ensure(sr.counter("after").incr())
       rspF
     }
+
+  def mkService(stats: StatsReceiver) = {
+    val filter = new PerDstPathStatsFilter[Unit, Unit](stats, mkFilter _)
+    filter.andThen(Service.const(Future.Unit))
   }
+
+  def setContext(f: String => Path) =
+    Filter.mk[String, Unit, Unit, Unit] { (req, service) =>
+      val save = Local.save()
+      try Contexts.local.let(ctx.DstPath, Dst.Path(f(req))) { service(()) }
+      finally Local.restore(save)
+    }
+
 
   test("scopes stats with dst/path") {
     val stats = new InMemoryStatsReceiver
-    val path = Path.Utf8("dog")
-    val setContext = Filter.mk[Unit, Unit, Unit, Unit] { (req, service) =>
-      val save = Local.save()
-      try Contexts.local.let(ctx.DstPath, Dst.Path(path)) { service(req) }
-      finally Local.restore(save)
-    }
-    val filter = new PerDstPathStatsFilter[Unit, Unit](stats, mkFilter _)
-    val service = setContext.andThen(filter).andThen(Service.const(Future.Unit))
-    await(service(()))
+    val service = setContext(Path.Utf8("req", _)).andThen(mkService(stats))
+
+    await(service("dog"))
+    await(service("cat"))
     assert(stats.counters == Map(
-      Seq("dst/path", "dog", "before") -> 1,
-      Seq("dst/path", "dog", "after") -> 1
+      Seq("dst/path", "req/dog", "before") -> 1,
+      Seq("dst/path", "req/dog", "after") -> 1,
+      Seq("dst/path", "req/cat", "before") -> 1,
+      Seq("dst/path", "req/cat", "after") -> 1
     ))
+  }
+
+  test("adds no stats when Dst.Path is empty") {
+    val stats = new InMemoryStatsReceiver
+    val service = setContext(_ => Path.empty).andThen(mkService(stats))
+
+    await(service("dog"))
+    await(service("cat"))
+    assert(stats.counters == Map())
   }
 
   test("adds no stats when Dst.Path not in context") {
     val stats = new InMemoryStatsReceiver
-    val filter = new PerDstPathStatsFilter[Unit, Unit](stats, mkFilter _)
-    val service = filter.andThen(Service.const(Future.Unit))
+    val service = mkService(stats)
     await(service(()))
     assert(stats.counters == Map())
   }
