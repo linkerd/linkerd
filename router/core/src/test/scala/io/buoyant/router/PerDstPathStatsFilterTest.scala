@@ -9,13 +9,13 @@ import io.buoyant.test.FunSuite
 
 class PerDstPathStatsFilterTest extends FunSuite {
 
-  def mkFilter(sr: StatsReceiver) =
-    Filter.mk[Unit, Unit, Unit, Unit] { (_, svc) =>
-      sr.counter("before").incr()
-      val rspF = svc(())
-      rspF.ensure(sr.counter("after").incr())
-      rspF
+  def mkFilter[Req, Rsp](sr: StatsReceiver) = {
+    sr.counter("creates").incr()
+    Filter.mk[Req, Rsp, Req, Rsp] { (req, svc) =>
+      sr.counter("calls").incr()
+      svc(req)
     }
+  }
 
   def mkService(stats: StatsReceiver) = {
     val filter = new PerDstPathStatsFilter[Unit, Unit](stats, mkFilter _)
@@ -29,34 +29,29 @@ class PerDstPathStatsFilterTest extends FunSuite {
       finally Local.restore(save)
     }
 
-
   test("scopes stats with dst/path") {
     val stats = new InMemoryStatsReceiver
     val service = setContext(Path.Utf8("req", _)).andThen(mkService(stats))
-
-    await(service("dog"))
-    await(service("cat"))
+    await(service("cat").join(service("dog")).join(service("dog")))
     assert(stats.counters == Map(
-      Seq("dst/path", "req/dog", "before") -> 1,
-      Seq("dst/path", "req/dog", "after") -> 1,
-      Seq("dst/path", "req/cat", "before") -> 1,
-      Seq("dst/path", "req/cat", "after") -> 1
+      Seq("dst/path", "req/dog", "creates") -> 1,
+      Seq("dst/path", "req/dog", "calls") -> 2,
+      Seq("dst/path", "req/cat", "creates") -> 1,
+      Seq("dst/path", "req/cat", "calls") -> 1
     ))
   }
 
   test("adds no stats when Dst.Path is empty") {
     val stats = new InMemoryStatsReceiver
     val service = setContext(_ => Path.empty).andThen(mkService(stats))
-
-    await(service("dog"))
-    await(service("cat"))
-    assert(stats.counters == Map())
+    await(service("dog").join(service("cat")))
+    assert(stats.counters.isEmpty)
   }
 
   test("adds no stats when Dst.Path not in context") {
     val stats = new InMemoryStatsReceiver
     val service = mkService(stats)
     await(service(()))
-    assert(stats.counters == Map())
+    assert(stats.counters.isEmpty)
   }
 }
