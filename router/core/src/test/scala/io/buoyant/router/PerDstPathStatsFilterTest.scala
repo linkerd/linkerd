@@ -54,13 +54,13 @@ class PerDstPathStatsFilterTest extends FunSuite {
       (dogPfx :+ "requests") -> 2,
       (dogPfx :+ "success") -> 2
     ))
-    assert(stats.histogramDetails.keys == Set(
-      "pfx/dst/path/req/cat/request_latency_ms",
-      "pfx/dst/path/req/dog/request_latency_ms"
-    ))
     assert(stats.gauges.keys == Set(
       (catPfx :+ "pending"),
       (dogPfx :+ "pending")
+    ))
+    assert(stats.histogramDetails.keys == Set(
+      "pfx/dst/path/req/cat/request_latency_ms",
+      "pfx/dst/path/req/dog/request_latency_ms"
     ))
   }
 
@@ -77,8 +77,8 @@ class PerDstPathStatsFilterTest extends FunSuite {
     }
 
     assert(stats.counters.isEmpty)
-    assert(stats.histogramDetails.isEmpty)
     assert(stats.gauges.isEmpty)
+    assert(stats.histogramDetails.isEmpty)
   }
 
   test("module does nothing when DstPath context isEmpty") {
@@ -95,8 +95,8 @@ class PerDstPathStatsFilterTest extends FunSuite {
     }
 
     assert(stats.counters.isEmpty)
-    assert(stats.histogramDetails.isEmpty)
     assert(stats.gauges.isEmpty)
+    assert(stats.histogramDetails.isEmpty)
   }
 
 }
