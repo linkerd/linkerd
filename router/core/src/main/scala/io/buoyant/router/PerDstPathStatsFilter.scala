@@ -1,30 +1,9 @@
 package io.buoyant.router
 
-import com.twitter.finagle._
+import com.twitter.finagle.{Filter, Path, Stack, Stackable, ServiceFactory, param}
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.stats.{ExceptionStatsHandler, StatsReceiver}
-import com.twitter.util.{Future, Memoize}
-
-class PerDstPathStatsFilter[Req, Rsp](
-  statsReceiver: StatsReceiver,
-  mkFilter: StatsReceiver => Filter[Req, Rsp, Req, Rsp]
-) extends SimpleFilter[Req, Rsp] {
-
-  private[this] val getFilter = Memoize[Path, Filter[Req, Rsp, Req, Rsp]] { path =>
-    mkFilter(statsReceiver.scope("dst/path", path.show.stripPrefix("/")))
-  }
-
-  def apply(req: Req, service: Service[Req, Rsp]): Future[Rsp] =
-    ctx.DstPath.current match {
-      case None | Some(Dst.Path(Path.empty, _, _)) =>
-        service(req)
-
-      case Some(Dst.Path(path, _, _)) =>
-        val filter = getFilter(path)
-        filter(req, service)
-    }
-}
 
 object PerDstPathStatsFilter {
   val role = Stack.Role("PerDstPathStatsFilter")
@@ -45,10 +24,14 @@ object PerDstPathStatsFilter {
           val param.ResponseClassifier(classifier) = _classifier
           val param.ExceptionStatsHandler(handler) = _exceptions
           val StatsFilter.Param(unit) = _unit
-          val mkScoped: StatsReceiver => Filter[Req, Rsp, Req, Rsp] =
-            sr => new StatsFilter(sr, classifier, handler, unit)
 
-          val filter = new PerDstPathStatsFilter(statsReceiver, mkScoped)
+          def mkScopedStatsFilter(path: Path): Filter[Req, Rsp, Req, Rsp] = {
+            val name = path.show.stripPrefix("/")
+            val sr = statsReceiver.scope("dst/path", name)
+            new StatsFilter(sr, classifier, handler, unit)
+          }
+
+          val filter = new PerDstPathFilter(mkScopedStatsFilter _)
           filter.andThen(next)
 
         case _ => next
