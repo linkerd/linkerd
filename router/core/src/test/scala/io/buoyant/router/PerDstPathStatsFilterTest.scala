@@ -43,7 +43,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
     assert(await(service("cat").liftToTry).isThrow)
     await(service("dog"))
 
-    val pfx = Seq("pfx", "dst/path")
+    val pfx = Seq("pfx", "path")
     val catPfx = pfx :+ "req/cat"
     val dogPfx = pfx :+ "req/dog"
     assert(stats.counters == Map(
@@ -59,8 +59,8 @@ class PerDstPathStatsFilterTest extends FunSuite {
       (dogPfx :+ "pending")
     ))
     assert(stats.histogramDetails.keys == Set(
-      "pfx/dst/path/req/cat/request_latency_ms",
-      "pfx/dst/path/req/dog/request_latency_ms"
+      "pfx/path/req/cat/request_latency_ms",
+      "pfx/path/req/dog/request_latency_ms"
     ))
   }
 
