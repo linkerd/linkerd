@@ -8,6 +8,7 @@ import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, Stats
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.context._
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -321,7 +322,7 @@ object StackRouter {
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
-    stk.push(ctx.DstPath.Setter.module)
+    stk.push(DstPathCtx.Setter.module)
     stk.result
   }
 
@@ -329,7 +330,7 @@ object StackRouter {
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
     stk.push(DstTracing.Bound.module)
     stk.push(EncodeResidual.role, identity[ServiceFactory[Req, Rsp]](_))
-    stk.push(ctx.DstBound.Setter.module)
+    stk.push(DstBoundCtx.Setter.module)
     stk.result
   }
 

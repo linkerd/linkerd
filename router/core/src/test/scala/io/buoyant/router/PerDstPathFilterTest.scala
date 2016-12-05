@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver, StatsReceiver}
 import com.twitter.util.{Future, Local}
+import io.buoyant.router.context.DstPathCtx
 import io.buoyant.test.FunSuite
 
 class PerDstPathFilterTest extends FunSuite {
@@ -26,7 +27,7 @@ class PerDstPathFilterTest extends FunSuite {
   def setContext(f: String => Path) =
     Filter.mk[String, Unit, Unit, Unit] { (req, service) =>
       val save = Local.save()
-      try Contexts.local.let(ctx.DstPath, Dst.Path(f(req))) { service(()) }
+      try Contexts.local.let(DstPathCtx, Dst.Path(f(req))) { service(()) }
       finally Local.restore(save)
     }
 

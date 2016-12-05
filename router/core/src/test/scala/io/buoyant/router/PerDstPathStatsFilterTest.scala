@@ -6,6 +6,7 @@ import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.stack.{Endpoint, nilStack}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver, StatsReceiver}
 import com.twitter.util.{Future, Local}
+import io.buoyant.router.context.DstPathCtx
 import io.buoyant.test.FunSuite
 
 class NotDog extends Exception
@@ -16,7 +17,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
   def setContext(f: String => Path) =
     Filter.mk[String, Unit, String, Unit] { (req, service) =>
       val save = Local.save()
-      try Contexts.local.let(ctx.DstPath, Dst.Path(f(req))) { service(req) }
+      try Contexts.local.let(DstPathCtx, Dst.Path(f(req))) { service(req) }
       finally Local.restore(save)
     }
 
@@ -70,7 +71,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
     val factory = stack.make(params)
     val service = await(factory())
 
-    Contexts.local.letClear(ctx.DstPath) {
+    Contexts.local.letClear(DstPathCtx) {
       await(service("dog"))
       assert(await(service("cat").liftToTry).isThrow)
       await(service("dog"))
@@ -88,7 +89,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
     val factory = ctxFilter.andThen(stack.make(params))
     val service = await(factory())
 
-    Contexts.local.letClear(ctx.DstPath) {
+    Contexts.local.letClear(DstPathCtx) {
       await(service("dog"))
       assert(await(service("cat").liftToTry).isThrow)
       await(service("dog"))
