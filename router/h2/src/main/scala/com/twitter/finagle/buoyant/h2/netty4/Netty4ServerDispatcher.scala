@@ -87,18 +87,23 @@ class Netty4ServerDispatcher(
     }
 
     val _ = serveF.onFailure {
-      // The stream has already been reset.  Do nothing
-      case _: StreamError =>
+      // The stream has already been reset.  Do nothing.
+      case (_: StreamError | _: Error) =>
 
-      // The service failed independently of streaming, reset the stream.
+      // The service failed independently of streaming. Reset the stream.
       case ServiceException(e) =>
         val rst = e match {
           case rst: Reset => rst
-          case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
-          case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused
-          case _ => Reset.InternalError
+          case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
+            log.info(f, "[%s S:%d] interrupted; resetting remote: CANCEL", prefix, st.streamId)
+            Reset.Cancel
+          case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
+            log.info(f, "[%s S:%d] rejected; resetting remote: REFUSED", prefix, st.streamId)
+            Reset.Refused
+          case e =>
+            log.info(e, "[%s S:%d] unexpected error; resetting remote: INTERNAL_ERROR", prefix, st.streamId)
+            Reset.InternalError
         }
-        log.info(e, "[%s S:%d] service error; resetting remote %s", prefix, st.streamId, rst)
         st.localReset(rst)
 
       case e =>
