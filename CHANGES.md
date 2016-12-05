@@ -1,12 +1,20 @@
-## x.x.x
+## In the next release...
+
+## 0.8.4 2016-12-05
 
 * Change default value of `attemptTTwitterUpgrade` to `false`
-* The `io.l5d.consul` and `io.l5d.k8s` namers are no longer experimental
-* Fix the `h2` protocol to gracefully handle connection loss and
-  stream interruption.
+* The `io.l5d.consul` and `io.l5d.k8s` namers are no longer experimental 🎉
+* H2 stabilization:
+  * Fix the `h2` protocol to gracefully handle connection loss and
+    stream interruption.
+  * RFC-compliant handling of connection-specific headers.
+  * Routing failures are now surfaced as REFUSED_STREAM resets.
+* Add per-logical-destination stats to each concrete client.
 * Add `io.l5d.static` identifier
+* Fix a config-serialization issue that prevented the Dtab Admin UI
+  from working properly with some configurations.
 
-## 0.8.3
+## 0.8.3 2016-11-07
 
 * Make several namers available to namerd that were missing
 * Fix crash when viewing the dtab playground
@@ -23,7 +31,7 @@
   * Add `labelSelector` option to k8s and k8s.external namers
   * Add `hostNetwork` option to k8s transformers to support CNI environments
 
-## 0.8.2
+## 0.8.2 2016-10-17
 
 * Consul namer can use `.local` to reference local agent's datacenter.
 * Add an `ip` option to admin configuration so that access to the
@@ -44,12 +52,12 @@
   ciphers, backed by BoringSSL!
 * Introduce experimental support for the `h2` protocol, supporting gRPC! :balloon:
 
-## 0.8.1
+## 0.8.1 2016-09-21
 
 * Fix missing data on the linkerd admin dashboard
 * Allow a non-default port to be specified for the etcd storage plugin
 
-## 0.8.0
+## 0.8.0 2016-09-20
 
 * Allow routers to be configured with a list of identifiers.  If an identifier
   cannot assign a dest to a request, it falls back to the next one in the list.
