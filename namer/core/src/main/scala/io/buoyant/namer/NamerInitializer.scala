@@ -22,7 +22,6 @@ import io.buoyant.config.ConfigInitializer
  * `/#/i` (after this prefix has been stripped).
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-@JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 abstract class NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
