@@ -7,7 +7,7 @@ import com.twitter.finagle.{NameTree, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1.Api
 import io.buoyant.k8s.{ClientConfig, EndpointsNamer}
-import io.buoyant.namer.{Metadata, NameTreeTransformer, TransformerConfig, TransformerInitializer}
+import io.buoyant.namer._
 import java.net.InetAddress
 
 class DaemonSetTransformerInitializer extends TransformerInitializer {

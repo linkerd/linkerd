@@ -1,4 +1,4 @@
-package io.buoyant.transformer
+package io.buoyant.namer
 
 import com.twitter.finagle.Address
 import java.net.InetAddress

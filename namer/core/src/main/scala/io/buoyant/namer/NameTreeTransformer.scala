@@ -95,7 +95,7 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
       )
     })
 
-  override protected def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
+  override def transform(tree: NameTree[Name.Bound]): Activity[NameTree[Name.Bound]] =
     Activity.value(tree.map(mapBound))
 }
 

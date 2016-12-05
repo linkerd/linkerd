@@ -1,7 +1,7 @@
 package io.buoyant.transformer.perHost
 
 import io.buoyant.config.types.Port
-import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
+import io.buoyant.namer.{NameTreeTransformer, PortTransformer, TransformerConfig, TransformerInitializer}
 
 class PortTransformerInitializer extends TransformerInitializer {
   val configClass = classOf[PortTransformerConfig]

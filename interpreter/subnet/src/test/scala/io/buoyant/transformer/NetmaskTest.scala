@@ -1,6 +1,7 @@
 package io.buoyant.transformer
 
 import com.twitter.finagle.Address
+import io.buoyant.namer.Netmask
 import java.net.InetAddress
 import org.scalatest.FunSuite
 
