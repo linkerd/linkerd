@@ -5,10 +5,9 @@ import com.twitter.finagle.stack._
 import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Return, Throw}
-import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
-class ClassifiedTracingTest extends FunSuite with Awaits {
+class ClassifiedTracingTest extends FunSuite {
 
   trait Ctx {
     val classifier = ResponseClassifier.named("test") {
