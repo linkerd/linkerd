@@ -20,6 +20,7 @@ object Reset {
   object Closed extends Reset { override def toString = "Reset.Closed" }
   object EnhanceYourCalm extends Reset { override def toString = "Reset.EnhanceYourCalm" }
   object InternalError extends Reset { override def toString = "Reset.InternalError" }
+  object ProtocolError extends Reset { override def toString = "Reset.ProtocolError" }
   object NoError extends Reset { override def toString = "Reset.NoError" }
   object Refused extends Reset { override def toString = "Reset.Refused" }
 }

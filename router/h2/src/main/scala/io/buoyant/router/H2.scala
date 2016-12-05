@@ -89,7 +89,7 @@ object H2 extends Client[Request, Response]
     val pathStack: Stack[ServiceFactory[Request, Response]] = {
       val stk = StackRouter.newPathStack
         .insertAfter(StatsFilter.role, h2.StreamStatsFilter.module)
-      h2.ViaHeaderFilter.module +: h2.ScrubHopByHopHeadersFilter.module +: stk
+      h2.ViaHeaderFilter.module +: stk
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =

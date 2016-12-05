@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.buoyant.h2.{Request => H2Request, Response => H2Response, Headers => H2Headers}
+import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.netty4.ByteBufAsBuf
 import com.twitter.util.{Future, Promise}
 import io.netty.handler.codec.http2._
@@ -10,30 +10,7 @@ import scala.collection.mutable.ListBuffer
 
 private[h2] object Netty4Message {
 
-  def toReset(err: Http2ResetFrame): Reset =
-    toReset(err.errorCode)
-
-  def toReset(code: Long): Reset =
-    Http2Error.valueOf(code) match {
-      case Http2Error.NO_ERROR => Reset.NoError
-      case Http2Error.INTERNAL_ERROR => Reset.InternalError
-      case Http2Error.ENHANCE_YOUR_CALM => Reset.EnhanceYourCalm
-      case Http2Error.REFUSED_STREAM => Reset.Refused
-      case Http2Error.STREAM_CLOSED => Reset.Closed
-      case Http2Error.CANCEL => Reset.Cancel
-      case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
-    }
-
-  def toNetty(rst: Reset): Http2Error = rst match {
-    case Reset.Cancel => Http2Error.CANCEL
-    case Reset.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
-    case Reset.InternalError => Http2Error.INTERNAL_ERROR
-    case Reset.NoError => Http2Error.NO_ERROR
-    case Reset.Refused => Http2Error.REFUSED_STREAM
-    case Reset.Closed => Http2Error.STREAM_CLOSED
-  }
-
-  trait Headers extends H2Headers {
+  trait Headers extends h2.Headers {
     def underlying: Http2Headers
 
     def toSeq = {
@@ -83,7 +60,7 @@ private[h2] object Netty4Message {
     def apply(h: Http2Headers): Headers =
       new Headers { val underlying = h }
 
-    def extract(orig: H2Headers): Http2Headers = orig match {
+    def extract(orig: h2.Headers): Http2Headers = orig match {
       case orig: Headers => orig.underlying
       case orig =>
         val headers = new DefaultHttp2Headers
@@ -93,13 +70,13 @@ private[h2] object Netty4Message {
   }
 
   object Request {
-    def apply(netty4Headers: Http2Headers, data: Stream): H2Request =
-      H2Request(Headers(netty4Headers), data)
+    def apply(netty4Headers: Http2Headers, data: Stream): h2.Request =
+      h2.Request(Headers(netty4Headers), data)
   }
 
   object Response {
-    def apply(netty4Headers: Http2Headers, data: Stream): H2Response =
-      H2Response(Headers(netty4Headers), data)
+    def apply(netty4Headers: Http2Headers, data: Stream): h2.Response =
+      h2.Response(Headers(netty4Headers), data)
 
     def apply(status: Status, stream: Stream): Response = {
       val h = new DefaultHttp2Headers
@@ -131,4 +108,32 @@ private[h2] object Netty4Message {
       Future.Unit
     }
   }
+
+  object Reset {
+
+    def fromFrame(err: Http2ResetFrame): h2.Reset =
+      fromCode(err.errorCode)
+
+    def fromCode(code: Long): h2.Reset = Http2Error.valueOf(code) match {
+      case Http2Error.CANCEL => h2.Reset.Cancel
+      case Http2Error.ENHANCE_YOUR_CALM => h2.Reset.EnhanceYourCalm
+      case Http2Error.INTERNAL_ERROR => h2.Reset.InternalError
+      case Http2Error.NO_ERROR => h2.Reset.NoError
+      case Http2Error.PROTOCOL_ERROR => h2.Reset.ProtocolError
+      case Http2Error.REFUSED_STREAM => h2.Reset.Refused
+      case Http2Error.STREAM_CLOSED => h2.Reset.Closed
+      case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
+    }
+
+    def toHttp2Error(rst: h2.Reset): Http2Error = rst match {
+      case h2.Reset.Cancel => Http2Error.CANCEL
+      case h2.Reset.Closed => Http2Error.STREAM_CLOSED
+      case h2.Reset.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
+      case h2.Reset.InternalError => Http2Error.INTERNAL_ERROR
+      case h2.Reset.NoError => Http2Error.NO_ERROR
+      case h2.Reset.ProtocolError => Http2Error.PROTOCOL_ERROR
+      case h2.Reset.Refused => Http2Error.REFUSED_STREAM
+    }
+  }
+
 }
