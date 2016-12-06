@@ -4,9 +4,10 @@ package protocol
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.finagle.{Path, Stack}
-import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.{param, Path, Stack}
 import com.twitter.finagle.buoyant.h2.{Request, Response, LinkerdHeaders}
+import com.twitter.finagle.client.StackClient
+import com.twitter.util.{Monitor, NonFatal}
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
@@ -27,7 +28,6 @@ class H2Initializer extends ProtocolInitializer.Simple {
     val pathStack = H2.router.pathStack
       .insertAfter(ClassifiedRetries.role, h2.DupRequest.module)
       .prepend(LinkerdHeaders.Dst.PathFilter.module)
-      .prepend(h2.ErrorResponder.module)
 
     // I think we can safely ignore the DelayedRelease module (as
     // applied by finagle-http), since we don't ever run in
@@ -51,9 +51,12 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
+  private[this] val monitor = Monitor.mk { case NonFatal(_) => true }
+
   protected val defaultServer = H2.server.withStack(H2.server.stack
     .prepend(LinkerdHeaders.Ctx.serverModule)
-    .prepend(h2.ErrorResponder.module))
+    .prepend(h2.ErrorReseter.module))
+    .configured(param.Monitor(monitor))
 
   override def defaultServerPort: Int = 4142
 }

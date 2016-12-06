@@ -6,10 +6,9 @@ import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Time}
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
-import io.buoyant.test.{Exceptions, Awaits}
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
-class RoutingFactoryTest extends FunSuite with Awaits with Exceptions {
+class RoutingFactoryTest extends FunSuite {
   case class Request()
   case class Response()
 

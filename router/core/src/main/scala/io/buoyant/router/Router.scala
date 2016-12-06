@@ -8,6 +8,7 @@ import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, Stats
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.context._
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -282,10 +283,14 @@ object StackRouter {
      *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
+     *
+     * Augment the default client StatsFilter with a
+     * per-logical-destination stats filter.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
       (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
         .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+        .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -317,6 +322,7 @@ object StackRouter {
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
+    stk.push(DstPathCtx.Setter.module)
     stk.result
   }
 
@@ -324,6 +330,7 @@ object StackRouter {
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
     stk.push(DstTracing.Bound.module)
     stk.push(EncodeResidual.role, identity[ServiceFactory[Req, Rsp]](_))
+    stk.push(DstBoundCtx.Setter.module)
     stk.result
   }
 

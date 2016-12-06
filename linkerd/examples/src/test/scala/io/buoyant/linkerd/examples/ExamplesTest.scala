@@ -1,6 +1,7 @@
-package io.buoyant.linkerd.examples
+package io.buoyant.linkerd
+package examples
 
-import io.buoyant.linkerd.Linker
+import io.buoyant.config.Parser
 import java.io.{FilenameFilter, File}
 import org.scalatest.FunSuite
 import scala.io.Source
@@ -12,6 +13,8 @@ class ExamplesTest extends FunSuite {
     override def accept(dir: File, name: String): Boolean = name.endsWith(".yaml")
   })
 
+  val mapper = Parser.jsonObjectMapper(Linker.LoadedInitializers.iter)
+
   for (file <- files) {
     test(file.getName) {
       val source = Source.fromFile(file)
@@ -19,12 +22,12 @@ class ExamplesTest extends FunSuite {
         val lines = source.getLines().toSeq
         val firstLine = lines.headOption
         if (!firstLine.contains("#notest")) {
-          val config = lines.mkString("\n")
-          val _ = Linker.load(config)
+          val yaml = lines.mkString("\n")
+          val parsed = Linker.parse(yaml)
+          val loaded = parsed.mk()
+          assert(mapper.writeValueAsString(parsed).nonEmpty)
         }
-      } finally {
-        source.close()
-      }
+      } finally source.close()
     }
   }
 }
