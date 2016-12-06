@@ -11,10 +11,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 case class K8sDaemonsetConfig(
   k8sHost: Option[String],
-  k8sPort: Option[Port],
-  namespace: String,
-  service: String,
-  port: String
+  k8sPort: Option[Port]
 ) extends NamerConfig with ClientConfig {
   @JsonIgnore
   override val defaultPrefix = Path.read("/#/io.l5d.k8s.ds")
