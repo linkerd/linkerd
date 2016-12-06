@@ -14,7 +14,7 @@ case class K8sDaemonsetConfig(
   k8sPort: Option[Port]
 ) extends NamerConfig with ClientConfig {
   @JsonIgnore
-  override val defaultPrefix = Path.read("/#/io.l5d.k8s.ds")
+  override val defaultPrefix = Path.read("/io.l5d.k8s.ds")
 
   override def host: Option[String] = k8sHost
   override def portNum: Option[Int] = k8sPort.map(_.port)

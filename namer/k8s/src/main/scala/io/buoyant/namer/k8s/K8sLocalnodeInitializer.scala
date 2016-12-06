@@ -7,7 +7,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 class K8sLocalnodeConfig extends NamerConfig {
   @JsonIgnore
-  override val defaultPrefix = Path.read("/#/io.l5d.k8s.localnode")
+  override val defaultPrefix = Path.read("/io.l5d.k8s.localnode")
 
   @JsonIgnore
   override protected def newNamer(params: Params): Namer = {
