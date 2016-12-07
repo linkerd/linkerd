@@ -54,4 +54,21 @@ class HeaderIdentifierConfigTest extends FunSuite with Awaits {
     )
   }
 
+  test("header segment") {
+    val yaml = s"""
+                  |kind: io.l5d.header
+                  |headerPath: false
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(HeaderIdentifierInitializer)))
+    val config = mapper.readValue[HttpIdentifierConfig](yaml).asInstanceOf[HeaderIdentifierConfig]
+    val identifier = config.newIdentifier(Path.empty)
+    val req = Request()
+    req.headerMap.set("l5d-name", "foo")
+    assert(
+      await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst ==
+        Dst.Path(Path.read("/foo"))
+    )
+  }
+
 }

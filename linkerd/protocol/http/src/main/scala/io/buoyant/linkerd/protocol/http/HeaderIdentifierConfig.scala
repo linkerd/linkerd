@@ -19,8 +19,10 @@ object HeaderIdentifierConfig {
   val defaultHeader = Headers.Prefix + "name"
 }
 
-class HeaderIdentifierConfig extends HttpIdentifierConfig {
-  var header: Option[String] = None
+case class HeaderIdentifierConfig(
+  header: Option[String] = None,
+  headerPath: Option[Boolean] = None
+) extends HttpIdentifierConfig {
 
   @JsonIgnore
   override def newIdentifier(
@@ -29,6 +31,7 @@ class HeaderIdentifierConfig extends HttpIdentifierConfig {
   ) = HeaderIdentifier(
     prefix,
     header.getOrElse(HeaderIdentifierConfig.defaultHeader),
+    headerPath.getOrElse(true), // TODO: consider defaulting this to false in the future
     baseDtab
   )
 }
