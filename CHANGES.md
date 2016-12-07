@@ -1,5 +1,7 @@
 ## In the next release...
 
+* Fix localhost transformer when used on systems with unresolvable hostname.
+
 ## 0.8.4 2016-12-05
 
 * Change default value of `attemptTTwitterUpgrade` to `false`
