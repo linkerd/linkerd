@@ -5,7 +5,6 @@ import com.twitter.finagle.{Address, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Exceptions, Awaits}
-import java.net.InetSocketAddress
 import org.scalatest.FunSuite
 
 class ApiTest extends FunSuite with Awaits with Exceptions {
@@ -66,6 +65,67 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
   """)
 
+  val ipAppBuf = Buf.Utf8("""
+    {
+      "app": {
+        "id": "/foo",
+        "cmd": "foo cmd",
+        "tasks": [
+          {
+            "id": "booksId",
+            "host": "1.2.3.4",
+            "ports": [],
+            "ipAddresses": [
+              {
+                "ipAddress": "250.1.62.0",
+                "protocol": "IPv4"
+              }
+            ],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": true
+              }
+            ]
+          },
+          {
+            "id": "booksId2",
+            "host": "5.6.7.8",
+            "ports": [],
+            "ipAddresses": [
+              {
+                "ipAddress": "250.1.62.1",
+                "protocol": "IPv4"
+              }
+            ],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": false
+              }
+            ]
+          }
+        ],
+        "ipAddress": {
+          "discovery": {
+            "ports": [
+              {
+                "labels": {},
+                "name": "http",
+                "number": 8080,
+                "protocol": "tcp"
+              }
+            ]
+          }
+        }
+      }
+    }
+  """)
+
   val noApps = Buf.Utf8("""
     {"apps":[]}
   """)
@@ -106,6 +166,16 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     ))
   }
 
+  test("getAddrs endpoint returns a seq of addresses for Ip-Per-Task") {
+    val service = stubService(ipAppBuf)
+
+    val response = await(Api(service, "prefix", false).getAddrs(Path.Utf8("foo")))
+    assert(response == Set(
+      Address("250.1.62.0", 8080),
+      Address("250.1.62.1", 8080)
+    ))
+  }
+
   test("getAddrs endpoint returns an empty set of addresses if app not found") {
     val service = stubService(appNotFoundBuf)
 
@@ -119,6 +189,15 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val response = await(Api(service, "prefix", true).getAddrs(Path.Utf8("foo")))
     assert(response == Set(
       Address("1.2.3.4", 7000)
+    ))
+  }
+
+  test("getAddrs endpoint returns a seq of healthly addresses when useHealthCheck is enabled for Ip-Per-Task") {
+    val service = stubService(ipAppBuf)
+
+    val response = await(Api(service, "prefix", true).getAddrs(Path.Utf8("foo")))
+    assert(response == Set(
+      Address("250.1.62.0", 8080)
     ))
   }
 
