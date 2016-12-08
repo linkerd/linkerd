@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
+import com.twitter.finagle.loadbalancer.Balancers
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
@@ -99,12 +100,21 @@ case class NamerdInterpreterConfig(
       }
     }
 
+    // We use a special balancer that maintains only a single
+    // connection. This benefits the watching logic implemented by the
+    // Thrift API, which assumes subsequent requests are sent to the
+    // same node. In the future, this should be replaced with a
+    // streaming API and this special load balancing behavior may be
+    // removed.
+    val balancer = Balancers.aperture(maxEffort = Int.MaxValue)
+
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ params)
       .transformed(retryTransformer)
       .transformed(tlsTransformer)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
+      .withLoadBalancer(balancer)
 
     val iface = client.newIface[thrift.Namer.FutureIface](name, label)
     new ThriftNamerClient(iface, namespace.getOrElse("default"))
