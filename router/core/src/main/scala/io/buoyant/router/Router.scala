@@ -201,6 +201,11 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         val stats = stats0.scope(label)
         val clientStats = param.Stats(stats.scope("dst", "id"))
 
+        // if this router has been configured as an originator, add a
+        // gauge to reflect that in the router's stats
+        val Originator.Param(originator) = params[Originator.Param]
+        if (originator) { stats.provideGauge("originator")(1f) }
+
         // Since the retry budget is shared across the path stack
         // (RetryFilter) and client stack (RequeueFilter), the lower
         // filter must not deposit into the budget. So, we wrap it in
@@ -221,7 +226,6 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           stk.make(params + withdrawOnlyBudget + bound)
         }
 
-        val param.Label(routerLabel) = params[param.Label]
         def mkClientLabel(bound: Name.Bound): String = bound.id match {
           case null => "null"
           case path: Path => path.show.stripPrefix("/")

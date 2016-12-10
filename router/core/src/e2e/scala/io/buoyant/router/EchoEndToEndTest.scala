@@ -7,7 +7,7 @@ import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.param.ProtocolLibrary
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.nilStack
-import com.twitter.finagle.stats.NullStatsReceiver
+import com.twitter.finagle.stats.{NullStatsReceiver, InMemoryStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, Trace, NullTracer}
 import com.twitter.util._
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification}
@@ -50,7 +50,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
   }
 
   test("end-to-end echo routing") {
-    val stats = NullStatsReceiver
+    val stats = new InMemoryStatsReceiver
     val tracer = new BufferingTracer
     def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
       f(tracer.iterator.map(_.annotation).toSeq)
@@ -59,10 +59,12 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     val echo = Downstream.identity("echo")
     val ohce = Downstream.reversed("ohce")
+    val echoDst = s"$$/inet/127.1/${echo.port}"
+    val ohceDst = s"$$/inet/127.1/${ohce.port}"
     val router = {
       val dtab = Dtab.read(s"""
-        /p/echo => /$$/inet/127.1/${echo.port} ;
-        /p/ohce => /$$/inet/127.1/${ohce.port} ;
+        /p/echo => /${echoDst} ;
+        /p/ohce => /${ohceDst} ;
 
         /s => /p/echo ;
         /s/idk => /$$/fail ;
@@ -74,6 +76,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
         .configured(RoutingFactory.DstPrefix(Path.Utf8("s")))
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
+        .configured(Originator.Param(true))
         .factory()
 
       Echo.server
@@ -87,14 +90,14 @@ class EchoEndToEndTest extends FunSuite with Awaits {
     assert(await(client("cat")) == "cat")
     withAnnotations { anns =>
       assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/cat")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/$$/inet/127.1/${echo.port}")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${echoDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/cat")))
     }
 
     assert(await(client("dog/bark")) == "krab/god")
     withAnnotations { anns =>
       assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/dog/bark")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/$$/inet/127.1/${ohce.port}")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${ohceDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/bark")))
     }
 
@@ -116,7 +119,25 @@ class EchoEndToEndTest extends FunSuite with Awaits {
       )))
     }
 
-    // todo check stats
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "s/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "s/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "s/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "s/dog/bark", "success")) == 1)
+
+    assert(stats.counters(Seq("echo", "dst", "path", "s/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s/dog/bark", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s/idk", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s/idk", "failures")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "s", "failures")) == 1)
+
+    assert(stats.gauges(Seq("echo", "originator"))() == 1f)
 
     await(echo.server.close())
     await(ohce.server.close())

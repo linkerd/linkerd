@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.service.TimeoutFilter
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
-import io.buoyant.router.RoutingFactory
+import io.buoyant.router.{Originator, RoutingFactory}
 import io.buoyant.test.Exceptions
 import java.net.InetAddress
 import org.scalatest.FunSuite
@@ -171,5 +171,14 @@ servers:
     assert(capacity.trees == 999)
     assert(capacity.bounds == 998)
     assert(capacity.clients == DstBindingFactory.Capacity.default.clients)
+  }
+
+  test("with originator") {
+    val yaml =
+      """|protocol: plain
+         |originator: true
+         |""".stripMargin
+    val originator = parseConfig(yaml).routerParams[Originator.Param]
+    assert(originator.originator)
   }
 }
