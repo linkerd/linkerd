@@ -36,7 +36,7 @@
  */
 var Routers = (function() {
 
-  var clientRE = Query.clientQuery().withMetric("requests").build(),
+  var clientRE = Query.clientQuery().withMetric("connects").build(),
       serverRE = Query.serverQuery().withMetric("requests").build();
 
   var mkColor = function() {
