@@ -7,11 +7,11 @@ var CombinedClientGraph = (function() {
 
   return function(metricsCollector, routerName, $root, colors) {
     var clientColors = colors;
-    var query = Query.clientQuery().withRouter(routerName).withMetric("requests").build();
+    var query = Query.clientQuery().withRouter(routerName).withMetric("connects").build();
 
     function timeseriesParams(name) {
       return {
-        strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
+        strokeStyle: clientColors[name.match(Query.clientQuery().withMetric("connects").build())[2]].color,
         lineWidth: 2
       };
     }
