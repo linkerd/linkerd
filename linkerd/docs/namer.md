@@ -317,6 +317,89 @@ port-name | yes | The port name.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
+<a name="daemonset"></a>
+## Kubernetes Daemonset
+
+kind: `io.l5d.k8s.ds`
+
+### Kubernetes Daemonset Configuration
+
+The Kubernetes Daemonset namer takes an existing name, resolves it, and replaces
+each address with the address of a daemonset pod running on the same node as
+that address.  This is useful to redirect traffic for a service to a reverse
+proxy for that service running as a daemonset.
+
+Key    | Default Value   | Description
+------ | --------------- | -----------
+prefix | `io.l5d.k8s.ds` | Resolves names with `/#/<prefix>`.
+host   | `localhost`     | The Kubernetes master host.
+port   | `8001`          | The Kubernetes master post.
+
+### Kubernetes Daemonset Path Parameters
+
+```yaml
+/#/io.l5d.k8s.ds/default/incoming/l5d/#/io.l5d.k8s/default/http/foo
+```
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<namespace>/<port-name>/<svc-name>/<name*>
+```
+
+Key       | Required | Description
+--------- | -------- | -----------
+prefix    | Yes      | Tells linkerd to resolve the request path using the daemonset namer.
+namespace | Yes      | The Kubernetes namespace of the daemonset.
+port-name | Yes      | The port name of the daemonset.
+svc-name  | Yes      | The name of daemonset service.
+name      | Yes      | Lookup this name but replace each address with the address of a daemonset pod running on the same node.
+
+<a name="localnode"></a>
+## Kubernetes Localnode
+
+kind: `io.l5d.k8s.localnode`
+
+### Kubernetes Localnode Configuration
+
+The Kubernetes Localnode namer takes an existing name, and filters the resolved
+addresses to only addresses which are running on the local node.
+
+This namer does not have any configuration properties but it does require
+the `NODE_NAME` environment variable be set with the local node name.  This is
+most easily done with the
+[Kubernetes downward API](http://kubernetes.io/docs/user-guide/downward-api/).
+
+> In your container spec:
+
+```
+env:
+- name: NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+```
+
+Key    | Default Value          | Description
+------ | ---------------------- | -----------
+prefix | `io.l5d.k8s.localnode` | Resolves names with `/#/<prefix>`.
+
+### Kubernetes Localnode Path Parameters
+
+```yaml
+/#/io.l5d.k8s.localnode/#/io.l5d.k8s/default/http/foo
+```
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<name*>
+```
+
+Key       | Required | Description
+--------- | -------- | -----------
+prefix    | Yes      | Tells linkerd to resolve the request path using the localnode namer.
+name      | Yes      | Lookup this name but filter to only addresses running on the local node.
 
 <a name="marathon"></a>
 ## Marathon service discovery (experimental)
@@ -451,6 +534,71 @@ Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the curator namer.
 serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
+
+<a name="port"></a>
+## Port
+
+kind: `io.l5d.port`
+
+### Port Configuration
+
+The port namer takes an existing name and replaces the port numbers of all
+the resolved endpoints.
+
+Key    | Default Value | Description
+------ | ------------- | -----------
+prefix | `io.l5d.port` | Resolves names with `/#/<prefix>`.
+
+### Port Path Parameters
+
+```yaml
+/#/io.l5d.port/4141/#/io.l5d.fs/foo
+```
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<port>/<name*>
+```
+
+Key    | Required | Description
+------ | -------- | -----------
+prefix | yes      | Tells linkerd to resolve the request path using the port namer.
+port   | yes      | The port to use.
+name   | yes      | Lookup this name but replace all port numbers with the specified port.
+
+<a name="localhost"></a>
+## Localhost
+
+kind: `io.l5d.localhost`
+
+### Localhost Configuration
+
+The localhost namer takes an existing name and filters the resolved endpoints to
+only the endpoints on localhost.
+
+Key    | Default Value      | Description
+------ | ------------------ | -----------
+prefix | `io.l5d.localhost` | Resolves names with `/#/<prefix>`.
+
+### Localhost Path Parameters
+
+```yaml
+/#/io.l5d.localhost/#/io.l5d.fs/foo
+```
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<name*>
+```
+
+Key    | Required | Description
+------ | -------- | -----------
+prefix | yes      | Tells linkerd to resolve the request path using the localhost namer.
+name   | yes      | Lookup this name and filter out all non-localhost addresses.
+
+
 
 <a name="rewritingNamers"></a>
 ## Rewriting Namers

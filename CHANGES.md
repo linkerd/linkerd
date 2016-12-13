@@ -1,5 +1,8 @@
 ## In the next release...
 
+* Add `io.l5d.port`, `io.l5d.localhost`, `io.l5d.k8s.daemonset`, and
+  `io.l5d.k8s.localnode` namers
+
 ## 0.8.4 2016-12-05
 
 * Change default value of `attemptTTwitterUpgrade` to `false`

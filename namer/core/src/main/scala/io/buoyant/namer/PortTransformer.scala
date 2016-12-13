@@ -1,9 +1,8 @@
-package io.buoyant.transformer.perHost
+package io.buoyant.namer
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.{Addr, Address, Name, NameTree}
 import com.twitter.util.Activity
-import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
 import java.net.InetSocketAddress
 
 /**
@@ -29,7 +28,7 @@ class PortTransformer(port: Int) extends DelegatingNameTreeTransformer {
     Name.Bound(vaddr, bound.id, bound.path)
   }
 
-  override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
+  override def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
     Activity.value(tree.map(mapBound))
 
   override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =

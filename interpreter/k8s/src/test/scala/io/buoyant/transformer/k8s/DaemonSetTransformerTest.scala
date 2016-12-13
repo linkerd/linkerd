@@ -4,9 +4,8 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
-import io.buoyant.namer.Metadata
+import io.buoyant.namer.{Metadata, MetadataGatewayTransformer, Netmask, SubnetGatewayTransformer}
 import io.buoyant.test.FunSuite
-import io.buoyant.transformer.{MetadataGatewayTransformer, Netmask, SubnetGatewayTransformer}
 import java.net.InetSocketAddress
 
 class DaemonSetTransformerTest extends FunSuite {

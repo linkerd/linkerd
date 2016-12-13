@@ -1,10 +1,8 @@
-package io.buoyant.transformer
+package io.buoyant.namer
 
 import com.twitter.finagle.Name.Bound
-import com.twitter.finagle.{Addr, Name, Address, NameTree}
-import com.twitter.util.{Var, Activity}
-import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
-import java.net.InetAddress
+import com.twitter.finagle.{Addr, Address, Name, NameTree}
+import com.twitter.util.{Activity, Var}
 
 /**
  * Transforms a bound name tree to only include addresses in
@@ -41,7 +39,7 @@ class GatewayTransformer(
       }
     }
 
-  override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
+  override def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
     gatewayTree.map { gateways =>
       val routable = flatten(gateways.eval.toSet.flatten)
       tree.map(mapBound(_, routable))

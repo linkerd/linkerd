@@ -1,8 +1,7 @@
-package io.buoyant.transformer
+package io.buoyant.namer
 
 import com.twitter.finagle.Address
 import java.net.InetAddress
-import io.buoyant.namer.FilteringNameTreeTransformer
 
 /**
  * The subnet local transformer filters the list of addresses down to

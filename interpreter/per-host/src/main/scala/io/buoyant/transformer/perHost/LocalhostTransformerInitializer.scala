@@ -1,7 +1,7 @@
 package io.buoyant.transformer
 package perHost
 
-import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
+import io.buoyant.namer._
 import java.net.InetAddress
 
 class LocalhostTransformerInitializer extends TransformerInitializer {
