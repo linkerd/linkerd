@@ -3,6 +3,7 @@ package io.buoyant.linkerd.tracer
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.builder.ClientBuilder
+import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.stats.{ClientStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.thrift.{Protocols, ThriftClientFramedCodec}
 import com.twitter.finagle.tracing.{Record, Trace, TraceId, Tracer}
@@ -37,7 +38,7 @@ case class ZipkinConfig(
         .codec(ThriftClientFramedCodec())
         .reportTo(ClientStatsReceiver)
         .hostConnectionLimit(5)
-        .hostConnectionMaxWaiters(250)
+        .configured(DefaultPool.Param.param.default.copy(maxWaiters = 250))
         // reduce timeouts because trace requests should be fast
         .timeout(100.millis)
         .daemon(true)

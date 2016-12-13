@@ -174,7 +174,7 @@ object DelegateApiHandler {
     private[this] val mapper = new ObjectMapper with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
     mapper.registerModule(mkModule())
 
     def writeStr[T](t: T): String = mapper.writeValueAsString(t)

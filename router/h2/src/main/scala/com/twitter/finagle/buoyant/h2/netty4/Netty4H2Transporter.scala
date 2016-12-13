@@ -32,18 +32,18 @@ object Netty4H2Transporter {
 
       case TlsConfig.Disabled =>
         // Prior Knowledge: ensure messages are buffered until handshake completes.
-        p => { 
+        p => {
           p.addLast(DirectToHeapInboundHandler)
           p.addLast(framer).addLast(new BufferingConnectDelay)
-          () 
+          ()
         }
 
       case _ =>
         // TLS is configured by the transport, so just install a framer.
-        p => { 
+        p => {
           p.addLast(DirectToHeapInboundHandler)
           p.addLast(framer)
-          () 
+          ()
         }
     }
 

@@ -2,7 +2,7 @@ package com.twitter.finagle.buoyant.linkerd
 
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.buoyant.Sampler
-import com.twitter.finagle.http._
+import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.tracing._
 
 /**
