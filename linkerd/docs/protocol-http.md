@@ -172,7 +172,8 @@ urlPath | N/A | A path from the URL whose number of segments is set in the ident
 kind: `io.l5d.header`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.
+value of an HTTP header.  The value of the HTTP header is interpreted as a path and therefore must
+start with a `/`.
 
 #### Identifier Configuration:
 
@@ -192,21 +193,60 @@ routers:
 Key | Default Value | Description
 --- | ------------- | -----------
 header | `l5d-name` | The name of the HTTP header to use
-headerPath | `true` | If true, parse the header value as a full path.  If false, parse the header value as a single path segment.
 
 #### Identifier Path Parameters:
 
 > Dtab Path Format
 
 ```
-  / dstPrefix [*headerValue ] (if headerPath is true)
-  / dstPrefix / [headerValue] (if headerPath is false)
+  / dstPrefix [*headerValue ]
 ```
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path.
+
+<a name="header-token-identifier"></a>
+### Header Token Identifier
+
+kind: `io.l5d.header.token`
+
+With this identifier, HTTP requests are turned into names based only on the
+value of an HTTP header.  The name is a path with one segment and the value of that segment is
+taken from the HTTP header.
+
+#### Identifier Configuration:
+
+> With this configuration, the value of the `my-header` HTTP header will be used
+as the logical name.
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.header.token
+    header: my-header
+  servers:
+  - port: 5000
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `Host` | The name of the HTTP header to use
+
+#### Identifier Path Parameters:
+
+> Dtab Path Format
+
+```
+  / dstPrefix / [headerValue]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+headerValue | N/A | The value of the HTTP header as a path segment.
 
 <a name="static-identifier"></a>
 ### Static Identifier

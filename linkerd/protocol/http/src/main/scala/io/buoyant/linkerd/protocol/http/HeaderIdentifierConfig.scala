@@ -20,8 +20,7 @@ object HeaderIdentifierConfig {
 }
 
 case class HeaderIdentifierConfig(
-  header: Option[String] = None,
-  headerPath: Option[Boolean] = None
+  header: Option[String] = None
 ) extends HttpIdentifierConfig {
 
   @JsonIgnore
@@ -31,7 +30,7 @@ case class HeaderIdentifierConfig(
   ) = HeaderIdentifier(
     prefix,
     header.getOrElse(HeaderIdentifierConfig.defaultHeader),
-    headerPath.getOrElse(true), // TODO: consider defaulting this to false in the future
+    headerPath = true,
     baseDtab
   )
 }
