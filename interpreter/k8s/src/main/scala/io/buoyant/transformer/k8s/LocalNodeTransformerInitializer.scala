@@ -29,7 +29,7 @@ case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
         )
       )
       val local = InetAddress.getByName(ip)
-      new SubnetLocalTransformer(local, Netmask("255.255.255.0"))
+      new SubnetLocalTransformer(Seq(local), Netmask("255.255.255.0"))
     }
   }
 
