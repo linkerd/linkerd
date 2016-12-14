@@ -2,7 +2,7 @@ package io.buoyant.linkerd.failureAccrual
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
-import io.buoyant.linkerd.{BackoffConfig, FailureAccrualConfig, FailureAccrualInitializer}
+import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 
 class SuccessRateInitializer extends FailureAccrualInitializer {
   val configClass = classOf[SuccessRateConfig]
@@ -11,12 +11,8 @@ class SuccessRateInitializer extends FailureAccrualInitializer {
 
 object SuccessRateInitializer extends SuccessRateInitializer
 
-case class SuccessRateConfig(
-  sr: Double,
-  requests: Int,
-  backoff: Option[BackoffConfig]
-) extends FailureAccrualConfig {
+case class SuccessRateConfig(successRate: Double, requests: Int) extends FailureAccrualConfig {
   @JsonIgnore
   override def policy =
-    () => FailureAccrualPolicy.successRate(sr, requests, backoffOrDefault)
+    () => FailureAccrualPolicy.successRate(successRate, requests, backoffOrDefault)
 }

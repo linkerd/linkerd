@@ -134,7 +134,7 @@ routers:
       kind: heap
     failureAccrual:
       kind: io.l5d.successRate
-      sr: 0.9
+      successRate: 0.9
       requests: 100
   servers:
   - port: 4142
@@ -161,7 +161,7 @@ routers:
       minAperture: 5
     failureAccrual:
       kind: io.l5d.successRate
-      sr: 0.8
+      successRate: 0.8
       requests: 200
       backoff:
         kind: jittered
@@ -188,7 +188,7 @@ routers:
       caCertPath: /foo/caCert.pem
     failureAccrual:
       kind: io.l5d.successRateWindowed
-      sr: 0.9
+      successRate: 0.9
       window: 30
   servers:
   - port: 4144
@@ -219,7 +219,7 @@ routers:
         commonNamePattern: "{service}"
     failureAccrual:
       kind: io.l5d.successRateWindowed
-      sr: 0.8
+      successRate: 0.8
       window: 40
       backoff:
         kind: jittered

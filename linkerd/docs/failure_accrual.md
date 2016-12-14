@@ -6,7 +6,7 @@ routers:
   client:
     failureAccrual:
       kind: io.l5d.successRate
-      sr: 0.9
+      successRate: 0.9
       requests: 1000
       backoff:
         kind: jittered
@@ -21,14 +21,18 @@ behavior are configurable. By default, if linkerd observes 5 consecutive
 failures from a node, it will mark the node as dead and only attempt to resend
 it traffic in increasing intervals between 5 seconds and 5 minutes.
 
-<aside class="success">
-  Learn more about failure accrual via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#failure-accrual">Finagle's documentation</a>
+<aside class="notice">
+  These parameters are available to failure accrual policies regardless of kind. Each policy may also have kind-specific parameters.
 </aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------
 kind | _required_ | Either [`io.l5d.consecutiveFailures`](#consecutive-failures), [`io.l5d.successRate`](#success-rate) or [`io.l5d.successRateWindowed`](#success-rate-windowed).
-backoff | See [retry backoff](#retry-backoff-parameters) | Object that determines which backoff algorithm should be used.
+backoff | jittered backoff from 5s to 300s | A [backoff policy](#retry-budget-parameters) that determines how long to wait before resending traffic.
+
+<aside class="success">
+  Learn more about failure accrual via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#failure-accrual">Finagle's documentation</a>
+</aside>
 
 ## Consecutive Failures
 
@@ -52,7 +56,7 @@ fixed number of requests.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-sr | _required_ | Target success rate.
+successRate | _required_ | Target success rate.
 requests | _required_ | Number of requests over which success rate is computed.
 
 ## Success Rate (windowed)
@@ -66,5 +70,5 @@ fixed time window.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-sr | _required_ | Target success rate.
+successRate | _required_ | Target success rate.
 window | _required_ | Number of seconds over which success rate is computed.

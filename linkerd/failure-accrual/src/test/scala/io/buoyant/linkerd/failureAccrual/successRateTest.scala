@@ -2,16 +2,18 @@ package io.buoyant.linkerd.failureAccrual
 
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.finagle.util.LoadService
-import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualInitializer}
+import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 import io.buoyant.test.FunSuite
 
 class SuccessRateTest extends FunSuite {
   test("sanity") {
-    val sr = 0.6
+    val successRate = 0.6
     val requests = 3
-    val backoff = ConstantBackoffConfig(5000)
-    val config = SuccessRateConfig(sr, requests, Some(backoff))
+    val config = SuccessRateConfig(successRate, requests)
     assert(config.policy().isInstanceOf[FailureAccrualPolicy])
+    assert(config.successRate == successRate)
+    assert(config.requests == requests)
+    assert(config.backoff.map(_.mk) == Some(FailureAccrualConfig.defaultBackoff))
   }
 
   test("service registration") {

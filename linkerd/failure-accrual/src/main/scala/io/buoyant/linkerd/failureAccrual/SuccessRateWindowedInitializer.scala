@@ -3,7 +3,7 @@ package io.buoyant.linkerd.failureAccrual
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
-import io.buoyant.linkerd.{BackoffConfig, FailureAccrualConfig, FailureAccrualInitializer}
+import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 
 class SuccessRateWindowedInitializer extends FailureAccrualInitializer {
   val configClass = classOf[SuccessRateWindowedConfig]
@@ -13,11 +13,11 @@ class SuccessRateWindowedInitializer extends FailureAccrualInitializer {
 object SuccessRateWindowedInitializer extends SuccessRateWindowedInitializer
 
 case class SuccessRateWindowedConfig(
-  sr: Double,
-  window: Int,
-  backoff: Option[BackoffConfig]
+  successRate: Double,
+  window: Int
 ) extends FailureAccrualConfig {
   @JsonIgnore
   override def policy =
-    () => FailureAccrualPolicy.successRateWithinDuration(sr, window.seconds, backoffOrDefault)
+    () =>
+      FailureAccrualPolicy.successRateWithinDuration(successRate, window.seconds, backoffOrDefault)
 }

@@ -14,7 +14,7 @@ trait FailureAccrualConfig {
   @JsonIgnore
   def policy: () => FailureAccrualPolicy
 
-  val backoff: Option[BackoffConfig]
+  var backoff: Option[BackoffConfig] = None
 
   @JsonIgnore
   val backoffOrDefault =
@@ -26,7 +26,7 @@ object FailureAccrualConfig {
   // in linkerd to make it easier to reason about the default failure accrual settings
   private val defaultConsecutiveFailures = 5
 
-  private val defaultBackoff: Stream[Duration] =
+  private[linkerd] val defaultBackoff: Stream[Duration] =
     Backoff.equalJittered(5.seconds, 300.seconds)
 
   private val defaultPolicy =

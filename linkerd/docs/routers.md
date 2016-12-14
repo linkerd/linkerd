@@ -128,7 +128,7 @@ hostConnectionPool | An empty object | see [hostConnectionPool](#host-connection
 tls | no tls | The router will make requests using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 loadBalancer | [p2c](#power-of-two-choices-least-loaded) | A [load balancer](#load-balancer) object.
 retries | see [retries](#retries) | A [retry policy](#retries) for all clients created by this router.
-failureAccrual | see [failure accrual](#failure-accrual) | a [failure accrual policy](#failure-accrual) for all clients created by this router.
+failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 
 #### Host Connection Pool
 
