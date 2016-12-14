@@ -2,7 +2,7 @@ package io.buoyant.linkerd.failureAccrual
 
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.finagle.util.LoadService
-import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
+import io.buoyant.linkerd.FailureAccrualInitializer
 import io.buoyant.test.FunSuite
 
 class SuccessRateTest extends FunSuite {
@@ -13,7 +13,6 @@ class SuccessRateTest extends FunSuite {
     assert(config.policy().isInstanceOf[FailureAccrualPolicy])
     assert(config.successRate == successRate)
     assert(config.requests == requests)
-    assert(config.backoff.map(_.mk) == Some(FailureAccrualConfig.defaultBackoff))
   }
 
   test("service registration") {
