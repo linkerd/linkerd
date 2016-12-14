@@ -74,6 +74,9 @@ routers:
       maxSize: 20
       idleTimeMs: 10000
       maxWaiters: 15
+    failureAccrual:
+      kind: io.l5d.consecutiveFailures
+      failures: 10
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -102,6 +105,12 @@ routers:
       kind: ewma
       maxEffort: 10
       decayTimeMs: 10000
+    failureAccrual:
+      kind: io.l5d.consecutiveFailures
+      failures: 20
+      backoff:
+        kind: constant
+        ms: 10000
   servers:
   - port: 4141
     ip: 0.0.0.0
@@ -123,6 +132,10 @@ routers:
     thriftProtocol: compact
     loadBalancer:
       kind: heap
+    failureAccrual:
+      kind: io.l5d.successRate
+      sr: 0.9
+      requests: 100
   servers:
   - port: 4142
     ip: 0.0.0.0
@@ -146,6 +159,14 @@ routers:
       highLoad: 2.0
       smoothWindowMs: 5000
       minAperture: 5
+    failureAccrual:
+      kind: io.l5d.successRate
+      sr: 0.8
+      requests: 200
+      backoff:
+        kind: jittered
+        minMs: 10000
+        maxMs: 100000
   servers:
   - port: 4143
     ip: 0.0.0.0
@@ -165,6 +186,10 @@ routers:
       kind: io.l5d.static
       commonName: foo
       caCertPath: /foo/caCert.pem
+    failureAccrual:
+      kind: io.l5d.successRateWindowed
+      sr: 0.9
+      window: 30
   servers:
   - port: 4144
     ip: 0.0.0.0
@@ -192,6 +217,14 @@ routers:
       names:
       - prefix: "/#/io.l5d.fs/{service}"
         commonNamePattern: "{service}"
+    failureAccrual:
+      kind: io.l5d.successRateWindowed
+      sr: 0.8
+      window: 40
+      backoff:
+        kind: jittered
+        minMs: 20000
+        maxMs: 200000
   servers:
   - port: 4145
     ip: 0.0.0.0

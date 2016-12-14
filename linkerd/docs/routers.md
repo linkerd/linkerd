@@ -37,7 +37,7 @@ announcers | an empty list | A list of service discovery [announcers](#announcer
 baseDtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
-client | an empty object | An object of [client params](#basic-client-params).
+client | an empty object | An object of [client params](#client-parameters).
 dstPrefix | protocol dependent | A path prefix to be used on request destinations.
 failFast | `false` | If `true`, connection failures are punished more aggressively. Should not be used with small destination pools.
 originator | `false` | If `true`, indicates that this router is the first hop for linker-to-linker requests, and reflects that in the router's stats. Useful for deduping linker-to-linker stats.
@@ -117,6 +117,9 @@ client:
       kind: jittered
       minMs: 10
       maxMs: 10000
+  failureAccrual:
+    kind: io.l5d.consecutiveFailures
+    failures: 10
 ```
 
 Key | Default Value | Description
@@ -125,6 +128,7 @@ hostConnectionPool | An empty object | see [hostConnectionPool](#host-connection
 tls | no tls | The router will make requests using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 loadBalancer | [p2c](#power-of-two-choices-least-loaded) | A [load balancer](#load-balancer) object.
 retries | see [retries](#retries) | A [retry policy](#retries) for all clients created by this router.
+failureAccrual | see [failure accrual](#failure-accrual) | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 
 #### Host Connection Pool
 

@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo, JsonSubTypes}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
@@ -8,8 +8,9 @@ import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
+import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.util.{Closable, Duration}
-import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
+import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
 import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
 /**
@@ -216,13 +217,15 @@ class ClientConfig {
   var loadBalancer: Option[LoadBalancerConfig] = None
   var hostConnectionPool: Option[HostConnectionPool] = None
   var retries: Option[RetriesConfig] = None
+  var failureAccrual: Option[FailureAccrualConfig] = None
 
   @JsonIgnore
   def clientParams: Stack.Params = Stack.Params.empty
     .maybeWith(loadBalancer.map(_.clientParams))
     .maybeWith(hostConnectionPool.map(_.param))
     .maybeWith(retries.flatMap(_.mkBackoff))
-    .maybeWith(retries.flatMap(_.mkBudget))
+    .maybeWith(retries.flatMap(_.mkBudget)) +
+    FailureAccrualConfig.param(failureAccrual)
 }
 
 case class RetriesConfig(
