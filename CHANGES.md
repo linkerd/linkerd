@@ -1,6 +1,7 @@
 ## In the next release...
 
 * Fix localhost transformer when used on systems with unresolvable hostname.
+* Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
 
 ## 0.8.4 2016-12-05
 
@@ -13,8 +14,6 @@
   * Routing failures are now surfaced as REFUSED_STREAM resets.
 * Add per-logical-destination stats to each concrete client.
 * Add `io.l5d.static` identifier
-* Fix a config-serialization issue that prevented the Dtab Admin UI
-  from working properly with some configurations.
 
 ## 0.8.3 2016-11-07
 

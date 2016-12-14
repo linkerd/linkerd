@@ -1,6 +1,7 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.{Failure, http}
 import com.twitter.finagle.http.MediaType
 import com.twitter.io.{Buf, Reader}
@@ -55,7 +56,7 @@ object Api {
       case _ => Future.value(msg.content)
     }
 
-  private[k8s] def parse[T: Manifest](rsp: http.Response): Future[T] =
+  private[k8s] def parse[T: TypeReference](rsp: http.Response): Future[T] =
     rsp.status match {
       case http.Status.Successful(_) =>
         getContent(rsp).flatMap { content =>

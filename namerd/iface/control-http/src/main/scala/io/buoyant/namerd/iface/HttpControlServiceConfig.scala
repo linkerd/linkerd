@@ -31,7 +31,9 @@ case class HttpControlServable(
   namers: Map[Path, Namer]
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
-  def serve(): ListeningServer = Http.serve(addr, new HttpControlService(store, delegate, namers))
+  def serve(): ListeningServer = Http.server
+    .withStreaming(true)
+    .serve(addr, new HttpControlService(store, delegate, namers))
 }
 
 class HttpControlServiceInitializer extends InterfaceInitializer {

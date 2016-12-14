@@ -32,12 +32,18 @@ The default interpreter resolves names via the configured
 ## namerd
 
 kind: `io.l5d.namerd`
+kind: `io.l5d.namerd.http`
 
 The namerd interpreter offloads the responsibilities of name resolution to the
-namerd service.  Any namers configured in this linkerd are not used.
+namerd service.  Any namers configured in this linkerd are not used.  The
+`io.l5d.namerd` interpreter uses namerd's long-poll thrift interface and the
+`io.l5d.namerd.http` interpreter uses namerd's HTTP streaming interface.  Note
+that the protocol that the interpreter uses to talk to namerd is unrelated to
+the protocols of linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
+experimental | _required_ | Because the http version is still considered experimental, you must set this to `true` to use it.
 dst | _required_ | A Finagle path locating the namerd service.
 namespace | `default` | The name of the namerd dtab to use.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.

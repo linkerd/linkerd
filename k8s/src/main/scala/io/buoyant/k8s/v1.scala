@@ -1,7 +1,8 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
-import com.twitter.finagle.{Service => FService, http}
+import com.fasterxml.jackson.core.`type`.TypeReference
+import com.twitter.finagle.{http, Service => FService}
 import io.buoyant.k8s.{KubeObject => BaseObject}
 
 package object v1 {
@@ -70,6 +71,13 @@ package object v1 {
     def listName = "services"
     def toWatch(e: Service) = ServiceModified(e)
   }
+
+  implicit private val endpointsListType = new TypeReference[EndpointsList] {}
+  implicit private val serviceListType = new TypeReference[ServiceList] {}
+  implicit private val endpointsType = new TypeReference[Endpoints] {}
+  implicit private val serviceType = new TypeReference[Service] {}
+  implicit private val endpointsWatch = new TypeReference[EndpointsWatch] {}
+  implicit private val serviceWatch = new TypeReference[ServiceWatch] {}
 
   case class Api(client: Client) extends Version[Object] {
     def group = v1.group

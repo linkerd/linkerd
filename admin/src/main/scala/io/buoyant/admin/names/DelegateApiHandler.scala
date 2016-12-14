@@ -10,10 +10,11 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Address => FAddress, Addr => FAddr, Path, Status => _, _}
+import com.twitter.finagle.{Path, Addr => FAddr, Address => FAddress, Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namer._
+import java.net.InetSocketAddress
 
 object DelegateApiHandler {
 
@@ -31,6 +32,9 @@ object DelegateApiHandler {
       case FAddress.Inet(isa, meta) => Some(Address(isa.getAddress.getHostAddress, isa.getPort, meta))
       case _ => None
     }
+
+    def toFinagle(addr: Address): FAddress =
+      FAddress.Inet(new InetSocketAddress(addr.ip, addr.port), addr.meta)
   }
 
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
@@ -52,6 +56,13 @@ object DelegateApiHandler {
       case FAddr.Failed(e) => Failed(e.getMessage)
       case FAddr.Neg => Neg()
       case FAddr.Pending => Pending()
+    }
+
+    def toFinagle(addr: Addr): FAddr = addr match {
+      case Pending() => FAddr.Pending
+      case Neg() => FAddr.Neg
+      case Failed(cause) => FAddr.Failed(cause)
+      case Bound(addrs, meta) => FAddr.Bound(addrs.map(Address.toFinagle), meta)
     }
   }
 
@@ -126,6 +137,51 @@ object DelegateApiHandler {
         }
     }
 
+    def parseBound(bound: Bound): Name.Bound = Name.Bound(Var(Addr.toFinagle(bound.addr)), bound.id, bound.path)
+
+    def toDelegateTree(jdt: JsonDelegateTree): DelegateTree[Name.Bound] = jdt match {
+      case Empty(p, d) =>
+        DelegateTree.Empty(p, d.getOrElse(Dentry.nop))
+      case Fail(p, d) =>
+        DelegateTree.Fail(Path.read(p), d.getOrElse(Dentry.nop))
+      case Neg(p, d) =>
+        DelegateTree.Neg(Path.read(p), d.getOrElse(Dentry.nop))
+      case Exception(p, d, msg) =>
+        DelegateTree.Exception(p, d.getOrElse(Dentry.nop), new java.lang.Exception(msg))
+      case Delegate(p, d, delegate) =>
+        DelegateTree.Delegate(p, d.getOrElse(Dentry.nop), toDelegateTree(delegate))
+      case Leaf(p, d, bound) =>
+        DelegateTree.Leaf(p, d.getOrElse(Dentry.nop), parseBound(bound))
+      case Alt(p, d, alts) =>
+        DelegateTree.Alt(p, d.getOrElse(Dentry.nop), alts.map(toDelegateTree): _*)
+      case Union(p, d, weighteds) =>
+        val delegateTreeWeighteds = weighteds.map {
+          case Weighted(w, tree) =>
+            DelegateTree.Weighted(w, toDelegateTree(tree))
+        }
+        DelegateTree.Union(p, d.getOrElse(Dentry.nop), delegateTreeWeighteds: _*)
+      case Transformation(p, name, bound, tree) =>
+        DelegateTree.Transformation(p, name, parseBound(bound), toDelegateTree(tree))
+    }
+
+    def toNameTree(d: JsonDelegateTree): NameTree[Name.Bound] = d match {
+      case Empty(_, _) => NameTree.Empty
+      case Fail(_, _) => NameTree.Fail
+      case Neg(_, _) => NameTree.Neg
+      case Exception(_, _, msg) => throw new IllegalStateException(msg)
+      case Delegate(_, _, delegate) => toNameTree(delegate)
+      case Leaf(_, _, bound) =>
+        NameTree.Leaf(Name.Bound(Var(Addr.toFinagle(bound.addr)), bound.id, bound.path))
+      case Alt(_, _, alts) => NameTree.Alt(alts.map(toNameTree): _*)
+      case Union(_, _, weighteds) =>
+        val nameTreeWeighteds = weighteds.map {
+          case Weighted(w, tree) =>
+            NameTree.Weighted(w, toNameTree(tree))
+        }
+        NameTree.Union(nameTreeWeighteds: _*)
+      case Transformation(_, _, _, tree) => toNameTree(tree)
+    }
+
     def mkDentry(d: Dentry): Option[Dentry] = Some(d).filterNot(Dentry.equiv.equiv(Dentry.nop, _))
   }
 
@@ -171,7 +227,7 @@ object DelegateApiHandler {
       module
     }
 
-    private[this] val mapper = new ObjectMapper with ScalaObjectMapper
+    val mapper = new ObjectMapper with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
