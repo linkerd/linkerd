@@ -49,16 +49,9 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     write(frame)
   }
 
-  override def reset(id: Int, err: Reset): Future[Unit] = {
+  override def reset(id: Int, rst: Reset): Future[Unit] = {
     require(id > 0)
-    val code = err match {
-      case Reset.Cancel => Http2Error.CANCEL
-      case Reset.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
-      case Reset.InternalError => Http2Error.INTERNAL_ERROR
-      case Reset.NoError => Http2Error.NO_ERROR
-      case Reset.Refused => Http2Error.REFUSED_STREAM
-      case Reset.Closed => Http2Error.STREAM_CLOSED
-    }
+    val code = Netty4Message.Reset.toHttp2Error(rst)
     val frame = new DefaultHttp2ResetFrame(code).setStreamId(id)
     write(frame)
   }

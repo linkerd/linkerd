@@ -1,6 +1,8 @@
 package io.buoyant.config
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.JsonInclude.Include
+import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -43,15 +45,21 @@ object Parser {
    */
   def objectMapper(
     config: String,
-    configInitializers: Iterable[Seq[ConfigInitializer]]
+    inits: Iterable[Seq[ConfigInitializer]]
   ): ObjectMapper with ScalaObjectMapper = {
-    val factory = if (peekJsonObject(config)) new JsonFactory() else new YAMLFactory()
-    objectMapper(factory, configInitializers)
+    if (peekJsonObject(config)) jsonObjectMapper(inits)
+    else yamlObjectMapper(inits)
   }
 
   def jsonObjectMapper(
     configInitializers: Iterable[Seq[ConfigInitializer]]
-  ): ObjectMapper with ScalaObjectMapper = objectMapper(new JsonFactory(), configInitializers)
+  ): ObjectMapper with ScalaObjectMapper =
+    objectMapper(new JsonFactory, configInitializers)
+
+  def yamlObjectMapper(
+    configInitializers: Iterable[Seq[ConfigInitializer]]
+  ): ObjectMapper with ScalaObjectMapper =
+    objectMapper(new YAMLFactory, configInitializers)
 
   private[this] def objectMapper(
     factory: JsonFactory,
@@ -72,6 +80,7 @@ object Parser {
     mapper.registerModule(DefaultScalaModule)
     mapper.registerModule(customTypes)
     mapper.setSerializationInclusion(Include.NON_NULL)
+    mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
 
     // Subtypes must not conflict
     for (kinds <- configInitializers) {

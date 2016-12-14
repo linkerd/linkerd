@@ -76,7 +76,7 @@ class Netty4ServerDispatcher(
   private[this] def serveStream(st: Netty4StreamTransport[Response, Request]) = {
     // Note: `remoteMsg` should be satisfied immediately, since the
     // headers frame will have just been admitted to the stream.
-    val serveF = st.onRemoteMessage.flatMap(serve).flatMap(st.write(_).flatten)
+    val serveF = st.onRecvMessage.flatMap(serve).flatMap(st.send(_).flatten)
 
     // When the stream is reset, ensure that the cancelation is
     // propagated downstream.
@@ -87,18 +87,23 @@ class Netty4ServerDispatcher(
     }
 
     val _ = serveF.onFailure {
-      // The stream has already been reset.  Do nothing
-      case _: StreamError =>
+      // The stream has already been reset.  Do nothing.
+      case (_: StreamError | _: Error) =>
 
-      // The service failed independently of streaming, reset the stream.
+      // The service failed independently of streaming. Reset the stream.
       case ServiceException(e) =>
         val rst = e match {
           case rst: Reset => rst
-          case f@Failure(_) if f.isFlagged(Failure.Interrupted) => Reset.Cancel
-          case f@Failure(_) if f.isFlagged(Failure.Rejected) => Reset.Refused
-          case _ => Reset.InternalError
+          case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
+            log.info(f, "[%s S:%d] interrupted; resetting remote: CANCEL", prefix, st.streamId)
+            Reset.Cancel
+          case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
+            log.info(f, "[%s S:%d] rejected; resetting remote: REFUSED", prefix, st.streamId)
+            Reset.Refused
+          case e =>
+            log.info(e, "[%s S:%d] unexpected error; resetting remote: INTERNAL_ERROR", prefix, st.streamId)
+            Reset.InternalError
         }
-        log.info(e, "[%s S:%d] service error; resetting remote %s", prefix, st.streamId, rst)
         st.localReset(rst)
 
       case e =>
@@ -117,7 +122,7 @@ class Netty4ServerDispatcher(
   override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = f match {
     case frame: Http2HeadersFrame =>
       val st = newStreamTransport(frame.streamId)
-      if (st.admitRemote(frame)) serveStream(st)
+      if (st.recv(frame)) serveStream(st)
       Future.Unit
 
     case frame =>

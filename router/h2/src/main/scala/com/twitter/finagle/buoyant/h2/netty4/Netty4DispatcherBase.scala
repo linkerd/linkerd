@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 
-trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
+trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def log: Logger
   protected[this] def prefix: String
@@ -23,9 +23,11 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
    *
    * The failures are distinguished so that the dispatcher can be
    * smart about (not) emiting resets to the remote.
+   *
+   * TODO only track closed streams for a TTL after it has closed.
    */
   private[this] sealed trait StreamTransport
-  private[this] case class StreamOpen(stream: Netty4StreamTransport[LocalMsg, RemoteMsg]) extends StreamTransport
+  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
   private[this] object StreamClosed extends StreamTransport
   private[this] object StreamLocalReset extends StreamTransport
   private[this] object StreamRemoteReset extends StreamTransport
@@ -39,7 +41,7 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
 
   protected[this] def registerStream(
     id: Int,
-    stream: Netty4StreamTransport[LocalMsg, RemoteMsg]
+    stream: Netty4StreamTransport[SendMsg, RecvMsg]
   ): Unit = {
     val open = StreamOpen(stream)
     if (streams.putIfAbsent(id, open) != null) {
@@ -119,7 +121,7 @@ trait Netty4DispatcherBase[LocalMsg <: Message, RemoteMsg <: Message] {
                 }
 
               case StreamOpen(st) =>
-                st.admitRemote(f)
+                st.recv(f)
                 if (closed.get) Future.Unit
                 else transport.read().transform(loop)
 

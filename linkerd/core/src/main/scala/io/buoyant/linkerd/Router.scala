@@ -10,13 +10,13 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
 import io.buoyant.namer.{InterpreterConfig, DefaultInterpreterConfig}
-import io.buoyant.router.{ClassifiedRetries, RoutingFactory}
+import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
 /**
  * A router configuration builder api.
  *
  * Each router must have a [[ProtocolInitializer protocol]] that
- * assists in the parsing and intialization of a router and its
+ * assists in the parsing and initialization of a router and its
  * services.
  *
  * `params` contains all params configured on this router, including
@@ -97,6 +97,7 @@ trait RouterConfig {
 
   var baseDtab: Option[Dtab] = None
   var failFast: Option[Boolean] = None
+  var originator: Option[Boolean] = None
   var timeoutMs: Option[Int] = None
   var dstPrefix: Option[String] = None
 
@@ -183,6 +184,7 @@ trait RouterConfig {
   def routerParams = (Stack.Params.empty + defaultBudget)
     .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
+    .maybeWith(originator.map(Originator.Param(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(bindingCache.map(_.capacity))

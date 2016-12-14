@@ -10,13 +10,12 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Activity, Duration, Future, MockTimer, Return, Throw, Time, Try, Var}
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
-import io.buoyant.test.{Exceptions, Awaits}
+import io.buoyant.test.FunSuite
 import java.util.concurrent.atomic.AtomicInteger
-import org.scalatest.FunSuite
 
 // This is a sort of end-to-end test, but is intended to improve test
 // coverage of Router.scala
-class RouterTest extends FunSuite with Awaits with Exceptions {
+class RouterTest extends FunSuite {
 
   val strToInt = Service.mk[String, Int] { s => Future(s.toInt) }
   val strToIntFactory = ServiceFactory.const(strToInt)

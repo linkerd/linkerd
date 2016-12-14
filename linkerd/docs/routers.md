@@ -23,6 +23,7 @@ routers:
     /host                => /#/io.l5d.fs;
     /walruses/http/1.1/* => /host;
   failFast: false
+  originator: true
   timeoutMs: 10000
   bindingTimeoutMs: 5000
   responseClassifier: io.l5d.nonRetryable5XX
@@ -39,6 +40,7 @@ bindingCache | see [binding cache](#binding-cache) | Binding cache size configur
 client | an empty object | An object of [client params](#basic-client-params).
 dstPrefix | protocol dependent | A path prefix to be used on request destinations.
 failFast | `false` | If `true`, connection failures are punished more aggressively. Should not be used with small destination pools.
+originator | `false` | If `true`, indicates that this router is the first hop for linker-to-linker requests, and reflects that in the router's stats. Useful for deduping linker-to-linker stats.
 interpreter | default interpreter | An [interpreter object](#interpreter) determining what module will be used to process destinations.
 label | the value of *protocol* | The name of the router (in stats and the admin ui)
 response Classifier | `io.l5d.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).

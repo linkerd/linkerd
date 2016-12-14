@@ -8,6 +8,7 @@ import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, Stats
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.context._
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -200,6 +201,11 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         val stats = stats0.scope(label)
         val clientStats = param.Stats(stats.scope("dst", "id"))
 
+        // if this router has been configured as an originator, add a
+        // gauge to reflect that in the router's stats
+        val Originator.Param(originator) = params[Originator.Param]
+        if (originator) { stats.provideGauge("originator")(1f) }
+
         // Since the retry budget is shared across the path stack
         // (RetryFilter) and client stack (RequeueFilter), the lower
         // filter must not deposit into the budget. So, we wrap it in
@@ -220,7 +226,6 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           stk.make(params + withdrawOnlyBudget + bound)
         }
 
-        val param.Label(routerLabel) = params[param.Label]
         def mkClientLabel(bound: Name.Bound): String = bound.id match {
           case null => "null"
           case path: Path => path.show.stripPrefix("/")
@@ -282,10 +287,14 @@ object StackRouter {
      *
      * Install the TlsClientPrep module below the endpoint stack so that it
      * may avail itself of any and all params to set TLS params.
+     *
+     * Augment the default client StatsFilter with a
+     * per-logical-destination stats filter.
      */
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
       (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
         .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+        .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -317,6 +326,7 @@ object StackRouter {
     stk.push(ClassifiedRetries.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
+    stk.push(DstPathCtx.Setter.module)
     stk.result
   }
 
@@ -324,6 +334,7 @@ object StackRouter {
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
     stk.push(DstTracing.Bound.module)
     stk.push(EncodeResidual.role, identity[ServiceFactory[Req, Rsp]](_))
+    stk.push(DstBoundCtx.Setter.module)
     stk.result
   }
 

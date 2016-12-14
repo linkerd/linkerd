@@ -44,6 +44,7 @@ namers:
 routers:
 - protocol: http
   label: int
+  originator: true
   dstPrefix: /http
   interpreter:
     kind: io.l5d.fs
@@ -86,6 +87,7 @@ routers:
 # TODO: test thrift traffic
 - protocol: thrift
   label: /host/thrift-framed
+  originator: true
   baseDtab: |
     /host        => /#/io.l5d.fs;
     /thrift/echo => /host/thrift-framed;
@@ -108,6 +110,7 @@ routers:
 
 - protocol: thrift
   label: /host/thrift-buffered
+  originator: false
   baseDtab: |
     /host   => /#/io.l5d.fs;
     /thrift => /host/thrift-buffered;

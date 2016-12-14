@@ -8,7 +8,6 @@ import io.buoyant.config.ConfigInitializer
 import scala.util.control.NoStackTrace
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-@JsonAutoDetect(fieldVisibility = Visibility.PUBLIC_ONLY)
 trait InterpreterConfig {
 
   /** This property must be set to true in order to use this interpreter if it is experimental */
