@@ -8,7 +8,7 @@ var CombinedClientGraph = (function() {
   function currentClients(routerName, metrics) {
     var clientQuery = Query.clientQuery().withRouter(routerName).withMetric("connects").build();
     return _.map(Query.filter(clientQuery, metrics), function(metric) {
-        var match = metric.name.match(clientQuery)
+        var match = metric.match(clientQuery)
         return match[2];
     });
   }
@@ -60,7 +60,8 @@ var CombinedClientGraph = (function() {
         // where the first values from /metrics are very large [linkerd#485]
         count++;
       } else {
-        var clients = currentClients(routerName, data.specific);
+        var metrics = _.map(data.specific, function(metric) { return metric.name; });
+        var clients = currentClients(routerName, metrics);
         var filteredData = Query.filter(query.withClients(clients).build(), data.specific);
         chart.updateMetrics(filteredData);
       }
