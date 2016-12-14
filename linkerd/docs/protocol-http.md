@@ -84,7 +84,7 @@ With this identifier, HTTP requests are turned into logical names using a
 combination of `Host` header, method, and (optionally) URI. `Host`
 header value is lower-cased as per `RFC 2616`.
 
-#### Namer Configuration:
+#### Identifier Configuration:
 
 > Configuration example
 
@@ -99,7 +99,7 @@ Key | Default Value | Description
 httpUriInDst | `false` | If `true` http paths are appended to destinations. This allows a form of path-prefix routing. This option is **not** recommended as performance implications may be severe; Use the [path identifier](#path-identifier) instead.
 
 
-#### Namer Path Parameters:
+#### Identifier Path Parameters:
 
 > Dtab Path Format for HTTP/1.1
 
@@ -129,7 +129,7 @@ With this identifier, HTTP requests are turned into names based only on the
 path component of the URL, using a configurable number of "/" separated
 segments from the start of their HTTP path.
 
-#### Namer Configuration:
+#### Identifier Configuration:
 
 > With this configuration, a request to `:5000/true/love/waits.php` will be
 mapped to `/http/true/love` and will be routed based on this name by the
@@ -153,7 +153,7 @@ Key | Default Value | Description
 segments | `1` | Number of segments from the path that are appended to destinations.
 consume | `false` | Whether to additionally strip the consumed segments from the HTTP request proxied to the final destination service. This only affects the request sent to the destination service; it does not affect identification or routing.
 
-#### Namer Path Parameters:
+#### Identifier Path Parameters:
 
 > Dtab Path Format
 
@@ -172,10 +172,10 @@ urlPath | N/A | A path from the URL whose number of segments is set in the ident
 kind: `io.l5d.header`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.  If the header value is a valid path, that path is
-used.  Otherwise, the header value is converted to a path with one path segment.
+value of an HTTP header.  The value of the HTTP header is interpreted as a path and therefore must
+start with a `/`.
 
-#### Namer Configuration:
+#### Identifier Configuration:
 
 > With this configuration, the value of the `my-header` HTTP header will be used
 as the logical name.
@@ -194,18 +194,59 @@ Key | Default Value | Description
 --- | ------------- | -----------
 header | `l5d-name` | The name of the HTTP header to use
 
-#### Namer Path Parameters:
+#### Identifier Path Parameters:
 
 > Dtab Path Format
 
 ```
-  / dstPrefix [/ *headerValue ]
+  / dstPrefix [*headerValue ]
 ```
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path.
+
+<a name="header-token-identifier"></a>
+### Header Token Identifier
+
+kind: `io.l5d.header.token`
+
+With this identifier, HTTP requests are turned into names based only on the
+value of an HTTP header.  The name is a path with one segment and the value of that segment is
+taken from the HTTP header.
+
+#### Identifier Configuration:
+
+> With this configuration, the value of the `my-header` HTTP header will be used
+as the logical name.
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.header.token
+    header: my-header
+  servers:
+  - port: 5000
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+header | `Host` | The name of the HTTP header to use
+
+#### Identifier Path Parameters:
+
+> Dtab Path Format
+
+```
+  / dstPrefix / [headerValue]
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+headerValue | N/A | The value of the HTTP header as a path segment.
 
 <a name="static-identifier"></a>
 ### Static Identifier
@@ -214,7 +255,7 @@ kind: `io.l5d.static`
 
 This identifier always assigns the same static name to all requests.
 
-#### Namer Configuration:
+#### Identifier Configuration:
 
 ```yaml
 routers:
@@ -228,7 +269,7 @@ Key  | Default Value | Description
 ---- | ------------- | -----------
 path | _required_    | The name to assign to all requests
 
-#### Namer Path Parameters
+#### Identifier Path Parameters
 
 > Dtab Path Format
 

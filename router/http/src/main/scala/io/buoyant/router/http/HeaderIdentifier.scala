@@ -10,6 +10,7 @@ import io.buoyant.router.RoutingFactory.{UnidentifiedRequest, IdentifiedRequest,
 case class HeaderIdentifier(
   prefix: Path,
   header: String,
+  headerPath: Boolean,
   baseDtab: () => Dtab = () => Dtab.base
 ) extends RoutingFactory.Identifier[Request] {
 
@@ -17,7 +18,7 @@ case class HeaderIdentifier(
     req.headerMap.get(header) match {
       case Some(value) =>
         val identified = Try {
-          val path = Path.read(value)
+          val path = if (headerPath) Path.read(value) else Path.Utf8(value)
           val dst = Dst.Path(prefix ++ path, baseDtab(), Dtab.local)
           new IdentifiedRequest(dst, req)
         }

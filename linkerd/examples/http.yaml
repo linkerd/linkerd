@@ -9,10 +9,12 @@ namers:
 routers:
 - protocol: http
   label: netty3
+  identifier:
+    kind: io.l5d.header
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
-    /http/1.1/* => /host;
+    /http/* => /host;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -25,10 +27,12 @@ routers:
 
 - protocol: http
   label: netty4
+  identifier:
+    kind: io.l5d.header.token
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
-    /http/1.1/* => /host;
+    /http => /host;
   servers:
   - port: 4141
     ip: 0.0.0.0
