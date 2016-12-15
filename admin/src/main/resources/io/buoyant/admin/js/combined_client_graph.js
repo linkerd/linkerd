@@ -7,7 +7,6 @@ var CombinedClientGraph = (function() {
 
   return function(metricsCollector, routers, routerName, $root, colors) {
     var clientColors = colors;
-    var query = Query.clientQuery().withRouter(routerName).withMetric("requests");
 
     function timeseriesParams(name) {
       return {
@@ -41,7 +40,8 @@ var CombinedClientGraph = (function() {
 
     var clients = _.map(routers.clients(routerName), 'label');
 
-    var desiredMetrics = _.map(Query.filter(query.withClients(clients).build(), metricsCollector.getCurrentMetrics()), clientToMetric);
+    var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
+    var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
 
     var count = 0;
@@ -52,7 +52,8 @@ var CombinedClientGraph = (function() {
         count++;
       } else {
         var clients = _.map(routers.clients(routerName), 'label');
-        var filteredData = Query.filter(query.withClients(clients).build(), data.specific);
+        var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
+        var filteredData = Query.filter(query, data.specific);
         chart.updateMetrics(filteredData);
       }
     };
