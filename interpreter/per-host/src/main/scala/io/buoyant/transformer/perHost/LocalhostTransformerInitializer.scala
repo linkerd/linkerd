@@ -1,6 +1,8 @@
 package io.buoyant.transformer
 package perHost
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Path
 import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.NetworkInterface
 import scala.collection.JavaConverters._
@@ -12,6 +14,10 @@ class LocalhostTransformerInitializer extends TransformerInitializer {
 
 class LocalhostTransformerConfig extends TransformerConfig {
 
+  @JsonIgnore
+  val defaultPrefix = Path.read("/io.l5d.localhost")
+
+  @JsonIgnore
   override def mk(): NameTreeTransformer = {
     val localIPs = for {
       interface <- NetworkInterface.getNetworkInterfaces.asScala
@@ -19,7 +25,7 @@ class LocalhostTransformerConfig extends TransformerConfig {
       inet <- interface.getInetAddresses.asScala
       if !inet.isLoopbackAddress
     } yield inet
-    new SubnetLocalTransformer(localIPs.toSeq, Netmask("255.255.255.255"))
+    new SubnetLocalTransformer(prefix, localIPs.toSeq, Netmask("255.255.255.255"))
   }
 
 }

@@ -70,6 +70,8 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
 
 trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
 
+  def prefix: Path
+
   /** Determine whether an address may be used. */
   protected def predicate: Address => Boolean
 
@@ -99,7 +101,11 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
     Activity.value(tree.map(mapBound))
 }
 
-class MetadataFiltertingNameTreeTransformer(metadataKey: String, metadataValue: Any) extends FilteringNameTreeTransformer {
+class MetadataFiltertingNameTreeTransformer(
+  val prefix: Path,
+  metadataKey: String,
+  metadataValue: Any
+) extends FilteringNameTreeTransformer {
   protected val predicate: Address => Boolean = {
     case a@Address.Inet(_, meta) =>
       meta.get(metadataKey).contains(metadataValue)
