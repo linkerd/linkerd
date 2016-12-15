@@ -84,16 +84,25 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
         }
       case addr => addr
     }
-    Name.Bound(vaddr, bound.id, bound.path)
+    bound.id match {
+      case id: Path => Name.Bound(vaddr, prefix ++ id, bound.path)
+      case _ => Name.Bound(vaddr, bound.id, bound.path)
+    }
+
   }
 
   override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
     Activity.value(tree.flatMap { leaf =>
+      val bound = mapBound(leaf.value)
+      val path = bound.id match {
+        case id: Path => id
+        case _ => leaf.path
+      }
       DelegateTree.Transformation(
         leaf.path,
         getClass.getSimpleName,
         leaf.value,
-        leaf.copy(value = mapBound(leaf.value))
+        leaf.copy(value = bound, path = path)
       )
     })
 

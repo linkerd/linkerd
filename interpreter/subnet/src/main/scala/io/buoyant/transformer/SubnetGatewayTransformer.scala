@@ -34,11 +34,16 @@ class GatewayTransformer(
     gatewayTree.map { gateways =>
       val routable = flatten(gateways.eval.toSet.flatten)
       tree.flatMap { leaf =>
+        val bound = mapBound(leaf.value, routable)
+        val path = bound.id match {
+          case id: Path => id
+          case _ => leaf.path
+        }
         DelegateTree.Transformation(
           leaf.path,
           getClass.getSimpleName,
           leaf.value,
-          leaf.copy(value = mapBound(leaf.value, routable))
+          leaf.copy(value = bound, path = path)
         )
       }
     }

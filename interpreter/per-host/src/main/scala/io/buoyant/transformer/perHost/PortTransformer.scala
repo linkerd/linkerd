@@ -37,11 +37,16 @@ class PortTransformer(prefix: Path, port: Int) extends DelegatingNameTreeTransfo
 
   override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
     Activity.value(tree.flatMap { leaf =>
+      val bound = mapBound(leaf.value)
+      val path = bound.id match {
+        case id: Path => id
+        case _ => leaf.path
+      }
       DelegateTree.Transformation(
         leaf.path,
         getClass.getSimpleName,
         leaf.value,
-        leaf.copy(value = mapBound(leaf.value))
+        leaf.copy(value = bound, path = path)
       )
     })
 }
