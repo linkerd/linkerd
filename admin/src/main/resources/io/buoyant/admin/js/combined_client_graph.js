@@ -39,7 +39,7 @@ var CombinedClientGraph = (function() {
       timeseriesParams
     );
 
-    var clients = _.map(routers.clients(routerName), function(client) { return client.label; });
+    var clients = _.map(routers.clients(routerName), 'label');
 
     var desiredMetrics = _.map(Query.filter(query.withClients(clients).build(), metricsCollector.getCurrentMetrics()), clientToMetric);
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
@@ -51,7 +51,7 @@ var CombinedClientGraph = (function() {
         // where the first values from /metrics are very large [linkerd#485]
         count++;
       } else {
-        var clients = _.map(routers.clients(routerName), function(client) { return client.label; });
+        var clients = _.map(routers.clients(routerName), 'label');
         var filteredData = Query.filter(query.withClients(clients).build(), data.specific);
         chart.updateMetrics(filteredData);
       }
