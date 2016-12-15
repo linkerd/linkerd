@@ -19,7 +19,7 @@ var RouterClients = (function() {
 
   return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, metricPartial, clientContainerTemplate, colors) {
     var clientToColor = assignColorsToClients(colors, routers.clients(routerName));
-    var combinedClientGraph = CombinedClientGraph(metricsCollector, routerName, $clientEl.find(".router-graph"), clientToColor);
+    var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $clientEl.find(".router-graph"), clientToColor);
     var clients = routers.clients(routerName);
 
     var expandClients = shouldExpandClients(clients.length);
