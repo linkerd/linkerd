@@ -199,4 +199,24 @@ object Frame {
     final override def isEnd = true
   }
 
+  object Trailers {
+
+    private class Impl(orig: Seq[(String, String)])
+      extends Headers.Impl(orig) with Trailers {
+
+      private[this] val promise = new Promise[Unit]
+      def release(): Future[Unit] = {
+        promise.updateIfEmpty(Return.Unit)
+        Future.Unit
+      }
+      def onRelease: Future[Unit] = promise
+    }
+
+    def apply(pairs: Seq[(String, String)]): Trailers =
+      new Impl(pairs)
+
+    def apply(hd: (String, String), tl: (String, String)*): Trailers =
+      apply(hd +: tl)
+  }
+
 }
