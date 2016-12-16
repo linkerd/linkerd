@@ -62,12 +62,53 @@ object Api {
     id: Option[String],
     host: Option[String],
     ports: Option[Seq[Int]],
+    ipAddresses: Option[Seq[TaskIpAddress]],
     healthCheckResults: Option[Seq[HealthCheckResult]]
+  )
+
+  private[this] case class TaskIpAddress(
+    ipAddress: Option[String]
   )
 
   private[this] case class App(
     id: Option[String],
-    tasks: Option[Seq[Task]]
+    tasks: Option[Seq[Task]],
+    ipAddress: Option[IpAddress]
+  ) {
+    def appView: Set[AppView] = {
+      val ipPort = ipAddress.flatMap(_.discovery).flatMap(_.ports).flatMap(_.headOption).flatMap(_.number)
+
+      tasks match {
+        case Some(tasks) =>
+          tasks.collect { task =>
+            (task, ipPort) match {
+              case (Task(_, Some(host), Some(Seq(port, _*)), _, healthCheckResults), _) =>
+                AppView(host, port, healthCheckResults)
+              case (Task(_, _, _, Some(Seq(TaskIpAddress(Some(host)), _*)), healthCheckResults), Some(port)) =>
+                AppView(host, port, healthCheckResults)
+            }
+          }.toSet
+        case _ => Set.empty
+      }
+    }
+  }
+
+  private[this] case class AppView(
+    host: String,
+    port: Int,
+    healthCheckResults: Option[Seq[HealthCheckResult]]
+  )
+
+  private[this] case class IpAddress(
+    discovery: Option[IpAddressDiscovery]
+  )
+
+  private[this] case class IpAddressDiscovery(
+    ports: Option[Seq[IpAddressDiscoveryPort]]
+  )
+
+  private[this] case class IpAddressDiscoveryPort(
+    number: Option[Int]
   )
 
   private[this] case class AppsRsp(apps: Option[Seq[App]] = None) {
@@ -75,7 +116,7 @@ object Api {
     private[v2] def toApps: Api.AppIds =
       apps match {
         case Some(apps) =>
-          apps.collect { case App(Some(id), _) => Path.read(id) }.toSet
+          apps.collect { case App(Some(id), _, _) => Path.read(id) }.toSet
         case None => Set.empty
       }
   }
@@ -86,15 +127,13 @@ object Api {
       healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
 
     private[v2] def toAddresses(useHealthCheck: Boolean): Set[Address] =
-      app match {
-        case Some(App(_, Some(tasks))) =>
-          tasks.collect {
-            case Task(_, Some(host), Some(Seq(port, _*)), _) if !useHealthCheck =>
-              Address(host, port)
-            case Task(_, Some(host), Some(Seq(port, _*)), Some(healthCheckResults)) if healthy(healthCheckResults) =>
-              Address(host, port)
-          }.toSet
-
+      app.map(_.appView) match {
+        case Some(view) => view.collect {
+          case AppView(host, port, _) if !useHealthCheck =>
+            Address(host, port)
+          case AppView(host, port, Some(healthCheckResults)) if healthy(healthCheckResults) =>
+            Address(host, port)
+        }
         case _ => Set.empty
       }
   }
