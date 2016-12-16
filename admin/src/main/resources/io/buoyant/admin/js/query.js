@@ -1,3 +1,4 @@
+/* globals require, module */
 /* exported Query */
 
 /**
@@ -5,6 +6,8 @@
  * `Query.clientQuery().build()` matches all possible client metrics.
  *  Use defined helpers to make the query more specific.
  */
+var _ = require("./lib/lodash.min.js");
+
 var Query = function() {
   function escape(string) {
     return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -129,3 +132,5 @@ var Query = function() {
   };
 
 }();
+
+module.exports = Query;
