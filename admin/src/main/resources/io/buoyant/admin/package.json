@@ -1,6 +1,8 @@
 {
   "devDependencies": {
-    "eslint": "^2.10.2",
+    "amdefine": ">=0.1.0",
+    "eslint": "^3.12.2",
+    "eslint-plugin-requirejs": "^3.1.0",
     "jasmine": "^2.5.2"
   },
   "scripts": {

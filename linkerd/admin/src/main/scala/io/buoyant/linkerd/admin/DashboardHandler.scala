@@ -28,22 +28,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <div class="row proc-info">
         </div>
       """,
-      javaScripts = Seq(
-        "lib/smoothie.js",
-        "utils.js",
-        "process_info.js",
-        "routers.js",
-        "router_summary.js",
-        "combined_client_graph.js",
-        "router_server.js",
-        "success_rate_graph.js",
-        "router_client.js",
-        "router_clients.js",
-        "router_controller.js",
-        "metrics_collector.js",
-        "request_totals.js",
-        "dashboard.js"
-      )
+      javaScripts = Seq.empty
     )
   }
 }

@@ -1,5 +1,5 @@
 describe("Query", function() {
-  var Query = require('../js/query.js');
+  var Query = require('../js/app/query.js');
   var routerName = "fooRouter";
 
   describe("generalQuery", function() { // we don't expose generalQuery, so test via clientQuery

@@ -11,7 +11,7 @@ class StyleOverrideFilter extends SimpleFilter[Request, Response] {
     s"""
     <link type="text/css" href="/files/css/logger-overrides.css" rel="stylesheet"/>
     <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
-    <script src="/files/js/logger-overrides.js"></script>
+    <script src="/files/js/app/logger-overrides.js"></script>
       """
 
   def apply(req: Request, svc: Service[Request, Response]) = {

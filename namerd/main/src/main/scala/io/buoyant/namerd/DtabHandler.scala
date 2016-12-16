@@ -52,14 +52,7 @@ class DtabHandler(
           </div>
 
           <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
-
-          <script src="/files/js/lib/jquery.min.js"></script>
-          <script src="/files/js/lib/bootstrap.min.js"></script>
-          <script src="/files/js/lib/lodash.min.js"></script>
-          <script src="/files/js/lib/handlebars-v4.0.5.js"></script>
-          <script src="/files/js/dtab_viewer.js"></script>
-          <script src="/files/js/delegator.js"></script>
-          <script src="/files/js/dashboard_delegate.js"></script>
+          <script data-main="/files/js/main" src="/files/js/lib/require.js"></script>
         </body>
       </html>
     """

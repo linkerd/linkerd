@@ -53,6 +53,7 @@ object AdminHandler extends HtmlView {
     Future.value(response)
   }
 
+  // THIS WORKS <script data-main="/files/altjs/main" src="/files/js/lib/require.js"></script>
   def html(
     content: String,
     tailContent: String = "",
@@ -85,16 +86,10 @@ object AdminHandler extends HtmlView {
           <div class="container-fluid">
             $content
           </div>
-
           $tailContent
 
-          <script src="/files/js/lib/jquery.min.js"></script>
-          <script src="/files/js/lib/bootstrap.min.js"></script>
-          <script src="/files/js/lib/lodash.min.js"></script>
-          <script src="/files/js/lib/handlebars-v4.0.5.js"></script>
-          <script src="/files/js/admin.js"></script>
-          <script src="/files/js/query.js"></script>
-          $javaScriptsHtml
+          <script data-main="/files/js/main" src="/files/js/lib/require.js"></script>
+
         </body>
       </html>
     """

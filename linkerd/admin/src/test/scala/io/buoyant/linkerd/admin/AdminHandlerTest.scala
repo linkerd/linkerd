@@ -10,21 +10,17 @@ class AdminHandlerTest extends FunSuite {
   test("handles populated params") {
     val content = "fake content"
     val tailContent = "fake tail content"
-    val javaScripts = Seq("foo.js", "bar.js")
     val csses = Seq("foo.css", "bar.css")
 
     val html = AdminHandler.html(
       content = content,
       tailContent = tailContent,
-      javaScripts = javaScripts,
+      javaScripts = Seq.empty,
       csses = csses
     )
 
     assert(html.contains(content))
     assert(html.contains(tailContent))
-    javaScripts.foreach { js =>
-      assert(html.contains(s"""js/$js"""))
-    }
     csses.foreach { css =>
       assert(html.contains(s"""css/$css"""))
     }
