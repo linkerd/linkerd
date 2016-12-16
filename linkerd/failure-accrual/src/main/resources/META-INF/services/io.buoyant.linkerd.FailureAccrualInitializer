@@ -1,0 +1,3 @@
+io.buoyant.linkerd.failureAccrual.ConsecutiveFailuresInitializer
+io.buoyant.linkerd.failureAccrual.SuccessRateInitializer
+io.buoyant.linkerd.failureAccrual.SuccessRateWindowedInitializer

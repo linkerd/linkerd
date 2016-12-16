@@ -416,6 +416,10 @@ object LinkerdBuild extends Base {
       .withLibs("io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
       .withTests()
 
+    val failureAccrual = projectDir("linkerd/failure-accrual")
+      .dependsOn(core)
+      .withTests()
+
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
@@ -537,12 +541,13 @@ object LinkerdBuild extends Base {
       Announcer.serversets,
       Telemetry.core, Telemetry.tracelog,
       Tracer.zipkin,
-      tls
+      tls,
+      failureAccrual
     )
 
     val all = projectDir("linkerd")
       .settings(aggregateSettings)
-      .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, Announcer.all, tls)
+      .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, Announcer.all, tls, failureAccrual)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -655,6 +660,7 @@ object LinkerdBuild extends Base {
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls
+  val linkerdFailureAccrual = Linkerd.failureAccrual
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
