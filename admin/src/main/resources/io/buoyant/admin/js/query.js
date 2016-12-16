@@ -98,7 +98,7 @@ var Query = function() {
     }
     q.withServers = function(servers) {
       if (_.isArray(q.serverLabels))
-        q.serverLabels.concat(servers);
+        q.serverLabels = q.serverLabels.concat(servers);
       return q;
     }
     q.build = function() {

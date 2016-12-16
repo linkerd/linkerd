@@ -2,7 +2,7 @@ describe("Query", function() {
   var Query = require('../js/query.js');
   var routerName = "fooRouter";
 
-  describe("generalQuery", function() {
+  describe("generalQuery", function() { // we don't expose generalQuery, so test via clientQuery
     it("builds a query for a router and a metric", function() {
       var query = Query.clientQuery().withRouter(routerName).withMetric("fooMetric").build();
       var expectedRegex = new RegExp('^rt\/(fooRouter)\/dst\/id\/(.*)\/(fooMetric)$');
@@ -23,13 +23,16 @@ describe("Query", function() {
 
       expect(query).toEqual(expectedRegex);
     });
+
+    it("builds a query for several routers and several metrics", function() {
+      var query = Query.clientQuery().withRouters(["r1", "r2", "r2d2"]).withMetrics(["foo1", "foo2", "foo3"]).build();
+      var expectedRegex = new RegExp('^rt\/(r1|r2|r2d2)\/dst\/id\/(.*)\/(foo1|foo2|foo3)$');
+
+      expect(query).toEqual(expectedRegex);
+    });
   });
 
   describe("clientQuery", function() {
-    it("should fail on a failure", function() {
-      expect(1 + 1).toBe(2);
-    });
-
     it("builds a query for a router and metric and all clients", function() {
       var query = Query.clientQuery().withRouter(routerName).withMetric("fooMetric").allClients().build();
       var expectedRegex = new RegExp('^rt\/(fooRouter)\/dst\/id\/(.*)\/(fooMetric)$');
@@ -52,11 +55,40 @@ describe("Query", function() {
   });
 
   describe("serverQuery", function() {
-    it("doesn't build a query that has both clients and servers", function() {
-      var badQuery = function() { return Query.clientQuery().withRouter("").withMetric("").withClient("").withServer("").build(); };
-      var expectedRegex = new RegExp('^rt\/(fooRouter)\/dst\/id\/(fooClient)\/(fooMetric)$');
+    it("builds a query for a router and metric and all servers", function() {
+      var query = Query.serverQuery().withRouter(routerName).withMetric("fooMetric").allServers().build();
+      var expectedRegex = new RegExp('^rt\/(fooRouter)\/srv\/(.*)\/(fooMetric)$');
 
-      expect(badQuery).toThrowError(TypeError);
-    })
+      expect(query).toEqual(expectedRegex);
+    });
+
+    it("builds a query for a router and a metric and a server", function() {
+      var query = Query.serverQuery().withRouter(routerName).withMetric("fooMetric").withServer("barServer").build();
+      var expectedRegex = new RegExp('^rt\/(fooRouter)\/srv\/(barServer)\/(fooMetric)$');
+
+      expect(query).toEqual(expectedRegex);
+    });
+
+    it("builds a query for a router and all metrics and a server", function() {
+      var query = Query.serverQuery().withRouter(routerName).allMetrics().withServer("quuxServer").build();
+      var expectedRegex = new RegExp('^rt\/(fooRouter)\/srv\/(quuxServer)\/(.*)$');
+
+      expect(query).toEqual(expectedRegex);
+    });
+
+    it("builds a query for a router and several servers", function() {
+      var query = Query.serverQuery().withRouter(routerName).withServers(["bar1", "bar2", "bar3"]).build();
+      var expectedRegex = new RegExp('^rt\/(fooRouter)\/srv\/(bar1|bar2|bar3)\/(.*)$');
+
+      expect(query).toEqual(expectedRegex);
+    });
+  });
+
+  describe("find", function() {
+    it("finds the metrics that match the given query", function() {
+      var query = Query.clientQuery().withRouter("fooRouter").allMetrics().build();
+      var rawMetrics = [
+      ];
+    });
   });
 });
