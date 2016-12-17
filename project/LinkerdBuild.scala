@@ -12,6 +12,12 @@ object LinkerdBuild extends Base {
   val Bundle = config("bundle") extend Minimal
   val Dcos = config("dcos") extend Bundle
 
+  val gen = projectDir("gen").settings(
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+  )
+
+  val use = projectDir("use").dependsOn(gen)
+
   val configCore = projectDir("config")
     .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
