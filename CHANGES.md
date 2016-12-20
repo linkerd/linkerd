@@ -2,6 +2,8 @@
 
 * Fix localhost transformer when used on systems with unresolvable hostname.
 * Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
+* Marathon:
+  * Support "ip per task" feature
 
 ## 0.8.4 2016-12-05
 

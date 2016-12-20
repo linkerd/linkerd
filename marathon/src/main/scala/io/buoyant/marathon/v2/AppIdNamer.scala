@@ -4,7 +4,6 @@ import com.twitter.finagle.{Addr, Name, Namer, NameTree, Path}
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util._
-import java.net.SocketAddress
 
 object AppIdNamer {
   object Closed extends Throwable
