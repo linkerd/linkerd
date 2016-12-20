@@ -24,7 +24,7 @@ object Deps {
   def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
 
   // Jackson (parsing)
-  val jacksonVersion = "2.6.5"
+  val jacksonVersion = "2.8.4"
   val jacksonCore =
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion
   val jacksonAnnotations =
