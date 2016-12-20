@@ -1,3 +1,5 @@
+"use strict";
+
 define([
   'lodash',
   'app/router_summary',

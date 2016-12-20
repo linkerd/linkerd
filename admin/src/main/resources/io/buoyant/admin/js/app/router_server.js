@@ -1,3 +1,5 @@
+"use strict";
+
 define([
   'app/success_rate_graph',
   'app/query',

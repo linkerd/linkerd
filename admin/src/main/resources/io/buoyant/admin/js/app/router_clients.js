@@ -1,3 +1,5 @@
+"use strict";
+
 define([
   'jQuery',
   'app/router_client',

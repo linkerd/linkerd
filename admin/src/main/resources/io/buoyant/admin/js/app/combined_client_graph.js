@@ -1,3 +1,5 @@
+"use strict";
+
 define([
   'app/query',
   'app/utils'

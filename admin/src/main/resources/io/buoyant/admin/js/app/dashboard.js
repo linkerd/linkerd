@@ -1,4 +1,7 @@
-define(['jQuery', 'Handlebars', 'bootstrap',
+"use strict";
+
+define([
+  'jQuery', 'Handlebars', 'bootstrap',
   'app/metrics_collector',
   'app/routers',
   'app/process_info',
