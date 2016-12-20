@@ -1,4 +1,7 @@
-define(['app/utils'], function(Utils) {
+define([
+  'jQuery',
+  'app/utils'
+], function($, Utils) {
   var SuccessRateGraph = (function() {
     var neutralLineColor = "#878787"; // greys.neutral
     var defaultWidth = 1181;

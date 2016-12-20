@@ -4,7 +4,8 @@ define(['jQuery', 'Handlebars', 'bootstrap',
   'app/process_info',
   'app/request_totals',
   'app/router_controller'
-], function($, Handlebars, bootstrap,
+], function(
+  $, Handlebars, bootstrap,
   MetricsCollector,
   Routers,
   ProcInfo,

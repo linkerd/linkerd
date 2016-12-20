@@ -1,12 +1,14 @@
 define([
-    'app/router_summary',
-    'app/router_servers',
-    'app/router_clients'
-  ], function(
-      RouterSummary,
-      RouterServers,
-      RouterClients
-    ) {
+  'lodash',
+  'app/router_summary',
+  'app/router_servers',
+  'app/router_clients'
+], function(
+  _,
+  RouterSummary,
+  RouterServers,
+  RouterClients
+) {
 
   var RouterController = (function () {
     // Contains all the router components, e.g. summaries, graphs, etc

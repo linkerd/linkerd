@@ -1,4 +1,8 @@
-define(['app/query', 'app/utils'], function(Query, Utils) {
+define([
+  'jQuery',
+  'app/query',
+  'app/utils'
+], function($, Query, Utils) {
   var RouterSummary = (function() {
     function processResponses(data, routerName) {
       var process = function(metricName) { return processResponse(data, routerName, metricName); };

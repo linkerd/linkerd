@@ -1,4 +1,9 @@
-define(['Handlebars', 'app/router_server'], function(Handlebars, RouterServer) {
+define([
+  'jQuery',
+  'lodash',
+  'Handlebars',
+  'app/router_server'
+], function($, _, Handlebars, RouterServer) {
     var RouterServers = (function() {
     return function (metricsCollector, routers, $serverEl, routerName, serverTemplate, rateMetricPartial, serverContainerTemplate) {
       var servers = routers.servers(routerName);

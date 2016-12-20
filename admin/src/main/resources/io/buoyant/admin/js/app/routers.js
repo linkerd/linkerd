@@ -1,6 +1,9 @@
 "use strict";
 
-define(['app/query'], function(Query) {
+define([
+  'jQuery',
+  'app/query'
+], function($, Query) {
   /**
    * Utilities for building and updating router information from raw
    * key-val metrics.

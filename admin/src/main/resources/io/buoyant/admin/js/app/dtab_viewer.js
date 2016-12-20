@@ -1,6 +1,6 @@
 "use strict";
 
-define([], function() {
+define(['jQuery'], function($) {
   function DtabViewer(initialDtab, dentryTemplate) {
     this.dtab = initialDtab;
     this.template = dentryTemplate;

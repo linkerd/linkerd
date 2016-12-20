@@ -1,4 +1,8 @@
-define(['jQuery', 'Handlebars', 'bootstrap'], function($, Handlebars) {
+define([
+  'jQuery',
+  'Handlebars',
+  'bootstrap'
+], function($, Handlebars) {
   function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;

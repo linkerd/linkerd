@@ -187,29 +187,7 @@ helpers for writing tests against Finagle's asynchronous APIs.
 
 #### JS tests ####
 
-The javascript tests are written using Jasmine and are in
-`linkerd/admin/src/main/resources/io/buoyant/admin`.
-
-To run the tests:
-```
-$ npm install -g jasmine
-$ cd linkerd/admin/src/main/resources/io/buoyant/admin
-$ jasmine
-Started
-....
-
-
-4 specs, 0 failures
-Finished in 0.007 seconds
-```
-
-(Alternatively, you could run `npm test`).
-
-To run eslint:
-```
-$ cd linkerd/admin/src/main/resources/io/buoyant/admin
-$ npm run eslint
-```
+See the [javascript readme](/admin/src/main/resources/io/buoyant/admin/README.md).
 
 ### Packaging ###
 

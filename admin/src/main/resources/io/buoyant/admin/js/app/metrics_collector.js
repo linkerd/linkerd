@@ -3,7 +3,7 @@
   we need and gets them in two requests - one to metrics.json and one to metrics
   with the desired params.
 */
-define([], function() {
+define(['jQuery'], function($) {
 
   var MetricsCollector = (function() {
     var generalUpdateUri = "/admin/metrics.json";

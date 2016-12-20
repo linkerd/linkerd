@@ -2,7 +2,7 @@ define([
   'app/success_rate_graph',
   'app/query',
   'app/utils'
-  ], function(SuccessRateGraph, Query, Utils) {
+], function(SuccessRateGraph, Query, Utils) {
   var RouterServer = (function() {
     var template;
 

@@ -29,22 +29,21 @@ require.config({
     }
   }
 });
-require([
-    'jQuery',
-    'lodash',
-    'app/admin',
-    'app/dashboard',
-    'app/delegate',
-    'app/dashboard_delegate'
-  ],
-  function (
-    $, _,
-    adminPage,
-    dashboard,
-    linkerdDtabPlayground,
-    namerdDtabPlayground
-  ) {
 
+require([
+  'jQuery',
+  'lodash',
+  'app/admin',
+  'app/dashboard',
+  'app/delegate',
+  'app/dashboard_delegate'
+], function (
+  $, _,
+  adminPage,
+  dashboard,
+  linkerdDtabPlayground,
+  namerdDtabPlayground
+) {
   if ($('title').text().indexOf("namerd") !== -1) {
     // namerd admin
     new namerdDtabPlayground();
