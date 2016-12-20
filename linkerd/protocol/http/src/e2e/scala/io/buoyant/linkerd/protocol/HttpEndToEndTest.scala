@@ -4,7 +4,7 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Method, Request, Response, Status}
+import com.twitter.finagle.http._
 import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
@@ -328,5 +328,46 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
   test("retries nonRetryable5XX") {
     retryTest("io.l5d.nonRetryable5XX", Set.empty)
+  }
+
+  val dtabReadHeaders = Seq("l5d-dtab", "l5d-ctx-dtab")
+  val dtabWriteHeader = "l5d-ctx-dtab"
+
+  for (readHeader <- dtabReadHeaders) test(s"dtab read from $readHeader header") {
+    val stats = NullStatsReceiver
+    val tracer = new BufferingTracer
+    def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
+      f(tracer.iterator.map(_.annotation).toSeq)
+      tracer.clear()
+    }
+
+    @volatile var headers: HeaderMap = null
+
+    val dog = Downstream.mk("dog") { req =>
+      headers = req.headerMap
+      req.response
+    }
+    val dtab = Dtab.read(s"""
+      /http/*/*/* => /$$/inet/127.1/${dog.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.set(readHeader, "/a=>/b")
+    await(client(req))
+    for (header <- dtabReadHeaders) {
+      if (header == dtabWriteHeader) assert(headers(header) == "/a=>/b")
+      else assert(!headers.contains(header))
+    }
+    assert(!headers.contains("dtab-local"))
   }
 }
