@@ -8,21 +8,21 @@ require.config({
     // smoothie_timeseries is a direct copy of smoothie_timeseries
     // because I don't want to edit the source file, but this file exports
     // two things in non-AMD format (SmoothieChart and TimeSeries)
-    'TimeSeries': 'lib/smoothie_timeseries'
+    'TimeSeries': 'lib/smoothie_copy'
   },
   shim: {
     'jQuery': {
-        exports: '$'
+      exports: '$'
     },
     'lodash': {
-        exports: '_'
+      exports: '_'
     },
     'bootstrap': {
-        deps : [ 'jQuery'],
-        exports: 'Bootstrap'
+      deps : [ 'jQuery'],
+      exports: 'Bootstrap'
     },
     'SmoothieChart': {
-        exports: 'SmoothieChart'
+      exports: 'SmoothieChart'
     },
     'TimeSeries': {
       exports: 'TimeSeries'

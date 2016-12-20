@@ -1,14 +1,10 @@
 "use strict";
-/* globals module */
 
 /**
  * Util for building regexes that map over specifically formatted metric names.
  * `Query.clientQuery().build()` matches all possible client metrics.
  *  Use defined helpers to make the query more specific.
  */
-
-// access this module from node environments
-if (typeof define !== 'function') { var define = require('amdefine')(module) }
 
 define(['lodash'], function(_) {
 
