@@ -1,8 +1,7 @@
 /*! modified from twitter-server | (c) 2015 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
 "use strict";
 
-define(['SmoothieChart'], function(SmoothieChart) {
-
+define(['SmoothieChart', 'TimeSeries'], function(SmoothieChart, TimeSeries) {
   function MsToStringConverter() {
     this.msInSecond = 1000
     this.msInMinute = this.msInSecond*60
