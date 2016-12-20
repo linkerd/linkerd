@@ -7,10 +7,12 @@ import io.buoyant.test.FunSuite
 class RinetTest extends FunSuite {
 
   test("rinet binds") {
-    val path = Path.read("/$/io.buoyant.rinet/12345/localhost")
-    val tree = await(Namer.global.lookup(path).values.toFuture.flatMap(Future.const))
-    val NameTree.Leaf(Name.Bound(va)) = tree
-    val addr = await(va.changes.filter(_ != Addr.Pending).toFuture())
+    val path = Path.read("/$/io.buoyant.rinet/12345/localhost/residual")
+    val tree = await(Namer.global.bind(NameTree.Leaf(path)).values.toFuture.flatMap(Future.const))
+    val NameTree.Leaf(bound) = tree
+    assert(bound.id == Path.read("/$/io.buoyant.rinet/12345/localhost"))
+    assert(bound.path == Path.read("/residual"))
+    val addr = await(bound.addr.changes.filter(_ != Addr.Pending).toFuture())
     val Addr.Bound(addresses, _) = addr
     assert(addresses == Set(Address("localhost", 12345)))
   }
