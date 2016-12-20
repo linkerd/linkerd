@@ -1,7 +1,5 @@
 define(['jQuery', 'Handlebars', 'bootstrap'], function($, Handlebars) {
-  function initialize() {
-    var SINGLE_ROUTER_PAGES_ONLY = SINGLE_ROUTER_PAGES_ONLY || false;
-
+  function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;
     $('a[href="' + path + '"]').parent().addClass("current");
@@ -20,7 +18,7 @@ define(['jQuery', 'Handlebars', 'bootstrap'], function($, Handlebars) {
       var routers = routersRsp[0].routers;
 
       //Not every page supports a mult-router view!
-      if(!SINGLE_ROUTER_PAGES_ONLY) {
+      if(!removeRoutersAllOption) {
         routers.unshift({label: "all"});
       }
 

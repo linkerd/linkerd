@@ -6,7 +6,6 @@ define(['jQuery', 'Handlebars',
 ], function($, Handlebars, AdminHelpers, Delegator) {
   return function() {
     var templates = {};
-    var SINGLE_ROUTER_PAGES_ONLY = true;
 
     $.when(
       $.get("/files/template/dentry.template"),
@@ -29,7 +28,7 @@ define(['jQuery', 'Handlebars',
       if (!dtab) {
         var defaultRouter = $(".router-menu-option:first").text();
         if (dtabMap[defaultRouter]) {
-          selectRouter(defaultRouter);
+          AdminHelpers.selectRouter(defaultRouter);
         } else {
           console.warn("undefined router:", selectedRouter);
         }

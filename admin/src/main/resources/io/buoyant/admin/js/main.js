@@ -13,9 +13,6 @@ require.config({
     'lodash': {
         exports: '_'
     },
-    'Handlebars': {
-        exports: 'Handlebars'
-    },
     'bootstrap': {
         deps : [ 'jQuery'],
         exports: 'Bootstrap'
@@ -46,12 +43,13 @@ require([
     new namerdDtabPlayground();
   } else {
     // linkerd admin
-    adminPage.initialize();
 
     // poor man's routing
     if (window.location.pathname.indexOf("delegator") === 1) {
+      adminPage.initialize(true);
       new linkerdDtabPlayground();
     } else {
+      adminPage.initialize();
       new dashboard();
     }
   }
