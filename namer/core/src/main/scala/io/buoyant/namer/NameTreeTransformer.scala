@@ -68,6 +68,28 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
   }
 }
 
+object DelegatingNameTreeTransformer {
+
+  /**
+   * Expand a delegate tree to show the effect of a transformation that maps one Name.Bound to
+   * another.
+   */
+  def transformDelegate(tree: DelegateTree[Name.Bound], mapBound: Name.Bound => Name.Bound): DelegateTree[Name.Bound] =
+    tree.flatMap { orig =>
+      val transformed = mapBound(orig.value)
+      val transformedPath = transformed.id match {
+        case id: Path => id
+        case _ => orig.path
+      }
+      DelegateTree.Transformation(
+        orig.path,
+        getClass.getSimpleName,
+        orig.value, // pre-transformation
+        orig.copy(value = transformed, path = transformedPath) // post-transformation
+      )
+    }
+}
+
 trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
 
   def prefix: Path

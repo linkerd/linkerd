@@ -7,8 +7,8 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
-import io.buoyant.namerd.{Ns, stripTransformerPrefix}
+import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
+import io.buoyant.namerd.{Ns, Paths}
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -441,7 +441,7 @@ class ThriftNamerInterface(
         Future.exception(failure)
 
       case fullPath =>
-        val path = stripTransformerPrefix(fullPath)
+        val path = Paths.stripTransformerPrefix(fullPath)
         Trace.recordBinary("namerd.srv/addr.path", path.show)
         Future.const(addrCache.get(path)).flatMap { addrObserver =>
           addrObserver(reqStamp)

@@ -6,7 +6,7 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.admin.names.DelegateApiHandler.{Addr => JsonAddr}
-import io.buoyant.namerd.{RichActivity, stripTransformerPrefix}
+import io.buoyant.namerd.{Paths, RichActivity}
 
 object AddrUri extends NsPathUri {
   import HttpControlService._
@@ -19,7 +19,7 @@ class AddrHandler(cache: NameInterpreterCache) extends Service[Request, Response
 
   override def apply(req: Request): Future[Response] = req match {
     case AddrUri(Some(ns), fullPath) =>
-      val path = stripTransformerPrefix(fullPath)
+      val path = Paths.stripTransformerPrefix(fullPath)
       get(ns, path, req)
     case _ => NotFound
   }

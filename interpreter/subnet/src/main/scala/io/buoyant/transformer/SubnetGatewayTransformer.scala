@@ -33,19 +33,7 @@ class GatewayTransformer(
   override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
     gatewayTree.map { gateways =>
       val routable = flatten(gateways.eval.toSet.flatten)
-      tree.flatMap { leaf =>
-        val bound = mapBound(leaf.value, routable)
-        val path = bound.id match {
-          case id: Path => id
-          case _ => leaf.path
-        }
-        DelegateTree.Transformation(
-          leaf.path,
-          getClass.getSimpleName,
-          leaf.value,
-          leaf.copy(value = bound, path = path)
-        )
-      }
+      DelegatingNameTreeTransformer.transformDelegate(tree, mapBound(_, routable))
     }
 
   override protected def transform(tree: NameTree[Bound]): Activity[NameTree[Bound]] =
