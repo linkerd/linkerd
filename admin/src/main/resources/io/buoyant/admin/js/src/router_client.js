@@ -4,9 +4,9 @@ define([
   'jQuery',
   'lodash',
   'Handlebars',
-  'app/utils',
-  'app/query',
-  'app/success_rate_graph'
+  'src/utils',
+  'src/query',
+  'src/success_rate_graph'
 ], function($, _, Handlebars, Utils, Query, SuccessRateGraph) {
 
   var RouterClient = (function() {

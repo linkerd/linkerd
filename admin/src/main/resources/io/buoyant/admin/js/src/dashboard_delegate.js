@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'Handlebars',
-  'app/delegator'
+  'src/delegator'
 ], function($, Handlebars, Delegator) {
   return function() {
     $.when(

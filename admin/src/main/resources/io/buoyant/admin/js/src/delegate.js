@@ -1,8 +1,8 @@
 "use strict";
 
 define(['jQuery', 'Handlebars',
-  'app/admin',
-  'app/delegator'
+  'src/admin',
+  'src/delegator'
 ], function($, Handlebars, AdminHelpers, Delegator) {
   return function() {
     var templates = {};

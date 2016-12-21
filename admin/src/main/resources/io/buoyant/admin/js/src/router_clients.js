@@ -2,8 +2,8 @@
 
 define([
   'jQuery',
-  'app/router_client',
-  'app/combined_client_graph'
+  'src/router_client',
+  'src/combined_client_graph'
 ], function($, RouterClient, CombinedClientGraph) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;

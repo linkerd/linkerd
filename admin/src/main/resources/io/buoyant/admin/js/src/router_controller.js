@@ -2,9 +2,9 @@
 
 define([
   'lodash',
-  'app/router_summary',
-  'app/router_servers',
-  'app/router_clients'
+  'src/router_summary',
+  'src/router_servers',
+  'src/router_clients'
 ], function(
   _,
   RouterSummary,

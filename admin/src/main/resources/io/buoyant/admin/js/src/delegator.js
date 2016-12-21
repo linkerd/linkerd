@@ -1,6 +1,6 @@
 "use strict";
 
-define(['app/dtab_viewer'], function(DtabViewer) {
+define(['src/dtab_viewer'], function(DtabViewer) {
   var Delegator = (function() {
     var templates;
 

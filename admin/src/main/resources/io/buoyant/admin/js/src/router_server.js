@@ -1,9 +1,9 @@
 "use strict";
 
 define([
-  'app/success_rate_graph',
-  'app/query',
-  'app/utils'
+  'src/success_rate_graph',
+  'src/query',
+  'src/utils'
 ], function(SuccessRateGraph, Query, Utils) {
   var RouterServer = (function() {
     var template;

@@ -1,7 +1,7 @@
 ## JS
 
 This app uses RequireJS to load modules. The config is in `/js/main.js`.
-App code goes in `/js/app` and vendor code in `/js/lib`.
+App code goes in `/js/src` and vendor code in `/js/lib`.
 
 ## Tests
 
@@ -18,11 +18,11 @@ npm install
 To run the tests:
 ```
 cd /linkerd/admin/src/main/resources/io/buoyant/admin
-karma start
+npm test # karma start
 ```
 
 To run eslint:
 ```
 cd /linkerd/admin/src/main/resources/io/buoyant/admin
-eslint js // OR npm run eslint
+npm run eslint # eslint js
 ```

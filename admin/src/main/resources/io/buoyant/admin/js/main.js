@@ -33,10 +33,10 @@ require.config({
 require([
   'jQuery',
   'lodash',
-  'app/admin',
-  'app/dashboard',
-  'app/delegate',
-  'app/dashboard_delegate'
+  'src/admin',
+  'src/dashboard',
+  'src/delegate',
+  'src/dashboard_delegate'
 ], function (
   $, _,
   adminPage,

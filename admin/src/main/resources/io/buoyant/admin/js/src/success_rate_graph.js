@@ -2,7 +2,7 @@
 
 define([
   'jQuery',
-  'app/utils'
+  'src/utils'
 ], function($, Utils) {
   var SuccessRateGraph = (function() {
     var neutralLineColor = "#878787"; // greys.neutral

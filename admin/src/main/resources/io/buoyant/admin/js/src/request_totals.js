@@ -1,6 +1,6 @@
 "use strict";
 
-define(["jQuery", 'app/query'], function($, Query) {
+define(["jQuery", 'src/query'], function($, Query) {
 
   var RequestTotals = (function() {
     var metricDefinitions = [

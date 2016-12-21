@@ -1,8 +1,8 @@
 "use strict";
 
 define([
-  'app/query',
-  'app/utils'
+  'src/query',
+  'src/utils'
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
     function clientToMetric(client) {

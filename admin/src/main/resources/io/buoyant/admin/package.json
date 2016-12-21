@@ -13,6 +13,6 @@
   },
   "scripts": {
     "eslint": "eslint js",
-    "test": "karma start"
+    "test": "karma start --single-run"
   }
 }

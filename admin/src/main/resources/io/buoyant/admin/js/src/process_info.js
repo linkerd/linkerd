@@ -2,7 +2,7 @@
 
 define([
   'jQuery',
-  'app/utils'
+  'src/utils'
   ], function($, Utils) {
   /**
    * Process info for topline summary

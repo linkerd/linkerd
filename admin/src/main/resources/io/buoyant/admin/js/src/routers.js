@@ -2,7 +2,7 @@
 
 define([
   'jQuery',
-  'app/query'
+  'src/query'
 ], function($, Query) {
   /**
    * Utilities for building and updating router information from raw

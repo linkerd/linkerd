@@ -2,8 +2,8 @@
 
 define([
   'jQuery',
-  'app/query',
-  'app/utils'
+  'src/query',
+  'src/utils'
 ], function($, Query, Utils) {
   var RouterSummary = (function() {
     function processResponses(data, routerName) {

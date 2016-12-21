@@ -4,7 +4,7 @@ define([
   'jQuery',
   'lodash',
   'Handlebars',
-  'app/router_server'
+  'src/router_server'
 ], function($, _, Handlebars, RouterServer) {
     var RouterServers = (function() {
     return function (metricsCollector, routers, $serverEl, routerName, serverTemplate, rateMetricPartial, serverContainerTemplate) {

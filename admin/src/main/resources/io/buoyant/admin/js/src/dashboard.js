@@ -2,11 +2,11 @@
 
 define([
   'jQuery', 'Handlebars', 'bootstrap',
-  'app/metrics_collector',
-  'app/routers',
-  'app/process_info',
-  'app/request_totals',
-  'app/router_controller'
+  'src/metrics_collector',
+  'src/routers',
+  'src/process_info',
+  'src/request_totals',
+  'src/router_controller'
 ], function(
   $, Handlebars, bootstrap,
   MetricsCollector,
