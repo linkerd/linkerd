@@ -8,7 +8,6 @@ trait HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    javaScripts: Seq[String] = Nil,
     navbar: String = ""
   ): String
 

@@ -27,8 +27,7 @@ private[admin] class DashboardHandler extends Service[Request, Response] {
         <div class="dashboard-container"></div>
         <div class="row proc-info">
         </div>
-      """,
-      javaScripts = Seq.empty
+      """
     )
   }
 }

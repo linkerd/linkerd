@@ -46,7 +46,6 @@ class DelegateHandler(
         <script id="dtab-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
         <script id="dtab-base-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtabBase)}</script>
       """,
-      javaScripts = Seq.empty, // handle on client side with requirejs
       csses = Seq("delegator.css")
     )
   }.tupled

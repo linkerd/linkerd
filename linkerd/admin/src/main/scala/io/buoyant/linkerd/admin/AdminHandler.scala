@@ -53,20 +53,14 @@ object AdminHandler extends HtmlView {
     Future.value(response)
   }
 
-  // THIS WORKS <script data-main="/files/altjs/main" src="/files/js/lib/require.js"></script>
   def html(
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    javaScripts: Seq[String] = Nil,
     navbar: String = navBar
   ): String = {
     val cssesHtml = csses.map { css =>
       s"""<link type="text/css" href="/files/css/$css" rel="stylesheet"/>"""
-    }.mkString("\n")
-
-    val javaScriptsHtml = javaScripts.map { js =>
-      s"""<script src="/files/js/$js"></script>"""
     }.mkString("\n")
 
     s"""

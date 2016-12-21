@@ -15,7 +15,6 @@ class AdminHandlerTest extends FunSuite {
     val html = AdminHandler.html(
       content = content,
       tailContent = tailContent,
-      javaScripts = Seq.empty,
       csses = csses
     )
 
