@@ -9,7 +9,8 @@
     "karma-mocha-reporter": "^2.2.1",
     "karma-phantomjs-launcher": "^1.0.2",
     "karma-requirejs": "^1.1.0",
-    "requirejs": "^2.3.2"
+    "requirejs": "^2.3.2",
+    "text": "github:requirejs/text"
   },
   "scripts": {
     "eslint": "eslint js",

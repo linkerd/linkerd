@@ -6,14 +6,34 @@ define([
   'src/routers',
   'src/process_info',
   'src/request_totals',
-  'src/router_controller'
+  'src/router_controller',
+  'text!template/router_container.template',
+  'text!template/router_server.template',
+  'text!template/router_client.template',
+  'text!template/router_client_container.template',
+  'text!template/router_server_container.template',
+  'text!template/server_rate_metric.partial.template',
+  'text!template/metric.partial.template',
+  'text!template/router_summary.template',
+  'text!template/process_info.template',
+  'text!template/request_totals.template'
 ], function(
   $, Handlebars, bootstrap,
   MetricsCollector,
   Routers,
   ProcInfo,
   RequestTotals,
-  RouterController
+  RouterController,
+  routerContainerTemplate,
+  routerServerTemplate,
+  routerClientTemplate,
+  routerClientContainerTemplate,
+  routerServerContainerTemplate,
+  serverMetricPartialTemplate,
+  metricPartialTemplate,
+  routerSummaryTemplate,
+  overviewStatsTemplate,
+  requestTotalsTemplate
 ) {
   return function() {
     /**
@@ -22,50 +42,30 @@ define([
     var UPDATE_INTERVAL = 1000;
 
     $.when(
-      $.get("/files/template/router_container.template"),
-      $.get("/files/template/router_server.template"),
-      $.get("/files/template/router_client.template"),
-      $.get("/files/template/router_client_container.template"),
-      $.get("/files/template/router_server_container.template"),
-      $.get("/files/template/server_rate_metric.partial.template"),
-      $.get("/files/template/metric.partial.template"),
-      $.get("/files/template/router_summary.template"),
-      $.get("/files/template/process_info.template"),
-      $.get("/files/template/request_totals.template"),
       $.get("/admin/metrics.json")
     ).done(function(
-        routerContainerRsp,
-        routerServerRsp,
-        routerClientRsp,
-        routerClientContainerRsp,
-        routerServerContainerRsp,
-        serverMetricPartialRsp,
-        metricPartialRsp,
-        routerSummaryRsp,
-        overviewStatsRsp,
-        requestTotalsRsp,
+
         metricsJson) {
 
       var routerTemplates = {
-        summary: Handlebars.compile(routerSummaryRsp[0]),
-        container: Handlebars.compile(routerContainerRsp[0]),
-        server: Handlebars.compile(routerServerRsp[0]),
-        client: Handlebars.compile(routerClientRsp[0]),
-        clientContainer: Handlebars.compile(routerClientContainerRsp[0]),
-        serverContainer: Handlebars.compile(routerServerContainerRsp[0]),
-        serverMetric: Handlebars.compile(serverMetricPartialRsp[0]),
-        metric: Handlebars.compile(metricPartialRsp[0])
+        summary: Handlebars.compile(routerSummaryTemplate),
+        container: Handlebars.compile(routerContainerTemplate),
+        server: Handlebars.compile(routerServerTemplate),
+        client: Handlebars.compile(routerClientTemplate),
+        clientContainer: Handlebars.compile(routerClientContainerTemplate),
+        serverContainer: Handlebars.compile(routerServerContainerTemplate),
+        serverMetric: Handlebars.compile(serverMetricPartialTemplate),
+        metric: Handlebars.compile(metricPartialTemplate)
       }
 
-      var metricsCollector = MetricsCollector(metricsJson[0]);
-      var routers = Routers(metricsJson[0], metricsCollector);
+      var metricsCollector = MetricsCollector(metricsJson);
+      var routers = Routers(metricsJson, metricsCollector);
 
       var $serverData = $(".server-data");
       var buildVersion = $serverData.data("linkerd-version");
       var selectedRouter = $serverData.data("router-name");
-
-      ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsRsp[0]), buildVersion);
-      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), Handlebars.compile(requestTotalsRsp[0]), _.keys(metricsJson[0]));
+      ProcInfo(metricsCollector, $(".proc-info"), Handlebars.compile(overviewStatsTemplate), buildVersion);
+      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), Handlebars.compile(requestTotalsTemplate), _.keys(metricsJson));
       RouterController(metricsCollector, selectedRouter, routers, routerTemplates, $(".dashboard-container"));
 
       $(function() {

@@ -4,7 +4,8 @@ require.config({
     'lodash': 'lib/lodash.min',
     'Handlebars': 'lib/handlebars-v4.0.5',
     'bootstrap': 'lib/bootstrap.min',
-    'Smoothie': 'js/lib/smoothie'
+    'Smoothie': 'lib/smoothie',
+    'text': 'lib/text'
   },
   shim: {
     'jQuery': {
@@ -27,13 +28,11 @@ require([
   'src/admin',
   'src/dashboard',
   'src/delegate',
-  'src/dashboard_delegate'
 ], function (
   $, _, bootstrap,
   adminPage,
   dashboard,
-  linkerdDtabPlayground,
-  namerdDtabPlayground
+  linkerdDtabPlayground
 ) {
   // poor man's routing
   if (window.location.pathname.indexOf("delegator") === 1) {
