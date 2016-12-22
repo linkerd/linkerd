@@ -1,7 +1,4 @@
 $(function() {
-  $("nav#sidebar").remove();
-  $("#toggle").remove();
-
   $("td>div.btn-group").addClass("pull-right");
   $("thead>tr>th:eq(1)").addClass("pull-right");
 
