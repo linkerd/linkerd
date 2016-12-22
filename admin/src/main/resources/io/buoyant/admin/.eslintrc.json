@@ -1,15 +1,21 @@
 {
   "env": {
     "browser": true,
+    "jasmine": true,
     "jquery": true
   },
-  "extends": ["eslint:recommended", "plugin:requirejs/recommended"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:jasmine/recommended",
+    "plugin:requirejs/recommended"
+  ],
   "globals": {
     "_": true,
     "Handlebars": true
   },
   "plugins": [
-    "eslint-plugin-requirejs"
+    "eslint-plugin-requirejs",
+    "jasmine"
   ],
   "rules": {
     "no-console": ["warn", { "allow": ["warn", "error"] }],

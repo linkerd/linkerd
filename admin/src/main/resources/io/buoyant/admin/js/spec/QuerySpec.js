@@ -84,11 +84,30 @@ define(['src/query'], function(Query) {
       });
     });
 
-    describe("find", function() {
+    describe("find and filter", function() {
+      var rawMetrics = [
+        { delta: 1, name: "foo", value: 10 },
+        { delta: 1, name: "rt/barRouter/dst/id/foo/bar", value: 1 },
+        { delta: 21, name: "rt/fooRouter/dst/id/foo/bar", value: 10 },
+        { delta: 1, name: "rt/barRouter/dst/id/$/inet/127.1/9074/barMetric", value: 1 },
+        { delta: 1, name: "rt/barRouter/dst/id/$/inet/127.1/9073/barMetric", value: 1 },
+        { delta: 3, name: "rt/fooRouter/dst/id/$/inet/127.1/9072/connections", value: 10 }
+      ];
+
       it("finds the metrics that match the given query", function() {
         var query = Query.clientQuery().withRouter("fooRouter").allMetrics().build();
-        var rawMetrics = [
-        ];
+        var result = Query.find(query, rawMetrics);
+        var expectedResult = rawMetrics[2];
+
+        expect(result).toBe(expectedResult);
+      });
+
+      it("filters all the metrics that match the given query", function() {
+        var query = Query.clientQuery().withRouter("barRouter").withMetric("barMetric").build();
+        var result = Query.filter(query, rawMetrics);
+        var expectedResult = [rawMetrics[3], rawMetrics[4]];
+
+        expect(result).toEqual(expectedResult);
       });
     });
   });
