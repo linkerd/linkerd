@@ -4,6 +4,7 @@
 * Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
 * Marathon:
   * Support "ip per task" feature
+* Add `/bound-names.json` endpoint to namerd admin
 
 ## 0.8.4 2016-12-05
 

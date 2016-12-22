@@ -4,8 +4,8 @@ import com.twitter.finagle.{Path, Namer, Service}
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.server.handler.ResourceHandler
 import io.buoyant.admin.{Admin, App, ConfigHandler, StaticFilter}
-import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler}
+import io.buoyant.namer.{ConfiguredNamersInterpreter, EnumeratingNamer}
 
 object NamerdAdmin {
 
@@ -16,6 +16,11 @@ object NamerdAdmin {
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     ))
   )
+
+  def boundNames(namers: Seq[Namer]): Admin.Handlers = {
+    val enumerating = namers.collect { case en: EnumeratingNamer => en }
+    Seq("/bound-names.json" -> new BoundNamesHandler(enumerating))
+  }
 
   def config(nc: NamerdConfig): Admin.Handlers = Seq(
     "/config.json" -> new ConfigHandler(nc, NamerdConfig.LoadedInitializers.iter)
@@ -29,6 +34,7 @@ object NamerdAdmin {
 
   def apply(nc: NamerdConfig, namerd: Namerd): Admin.Handlers =
     static ++ config(nc) ++
+      boundNames(namerd.namers.toSeq.map { case (_, n) => n }) ++
       dtabs(namerd.dtabStore, namerd.namers) ++
       Admin.extractHandlers(namerd.dtabStore +: (namerd.namers.values.toSeq ++ namerd.telemeters))
 
