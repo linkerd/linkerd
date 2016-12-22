@@ -52,7 +52,7 @@ class DtabHandler(
           </div>
 
           <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
-          <script data-main="/files/js/main" src="/files/js/lib/require.js"></script>
+          <script data-main="/files/js/main-namerd" src="/files/js/lib/require.js"></script>
         </body>
       </html>
     """

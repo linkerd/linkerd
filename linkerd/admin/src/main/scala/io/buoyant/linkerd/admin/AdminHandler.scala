@@ -82,7 +82,7 @@ object AdminHandler extends HtmlView {
           </div>
           $tailContent
 
-          <script data-main="/files/js/main" src="/files/js/lib/require.js"></script>
+          <script data-main="/files/js/main-linkerd" src="/files/js/lib/require.js"></script>
 
         </body>
       </html>

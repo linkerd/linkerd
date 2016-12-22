@@ -18,7 +18,7 @@ require.config({
       exports: '_'
     },
     'bootstrap': {
-      deps : [ 'jQuery'],
+      deps : ['jQuery'],
       exports: 'Bootstrap'
     },
     'SmoothieChart': {
@@ -33,30 +33,24 @@ require.config({
 require([
   'jQuery',
   'lodash',
+  'bootstrap',
   'src/admin',
   'src/dashboard',
   'src/delegate',
   'src/dashboard_delegate'
 ], function (
-  $, _,
+  $, _, bootstrap,
   adminPage,
   dashboard,
   linkerdDtabPlayground,
   namerdDtabPlayground
 ) {
-  if ($('title').text().indexOf("namerd") !== -1) {
-    // namerd admin
-    new namerdDtabPlayground();
+  // poor man's routing
+  if (window.location.pathname.indexOf("delegator") === 1) {
+    adminPage.initialize(true);
+    new linkerdDtabPlayground();
   } else {
-    // linkerd admin
-
-    // poor man's routing
-    if (window.location.pathname.indexOf("delegator") === 1) {
-      adminPage.initialize(true);
-      new linkerdDtabPlayground();
-    } else {
-      adminPage.initialize();
-      new dashboard();
-    }
+    adminPage.initialize();
+    new dashboard();
   }
 });

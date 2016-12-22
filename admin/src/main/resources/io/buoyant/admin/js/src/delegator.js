@@ -1,6 +1,6 @@
 "use strict";
 
-define(['src/dtab_viewer'], function(DtabViewer) {
+define(['jQuery', 'src/dtab_viewer'], function($, DtabViewer) {
   var Delegator = (function() {
     var templates;
 
