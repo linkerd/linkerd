@@ -19,12 +19,11 @@ require.config({
   // grab this from our app's main.js, but make sure the paths are correct
   // relative to karma.conf.js's perspective
   paths: {
-    'jQuery': 'js/lib/jquery.min',
-    'lodash': 'js/lib/lodash.min',
-    'Handlebars': 'js/lib/handlebars-v4.0.5',
-    'bootstrap': 'js/lib/bootstrap.min',
-    'SmoothieChart': 'js/lib/smoothie',
-    'TimeSeries': 'js/lib/smoothie_copy'
+    'jQuery': 'lib/jquery.min',
+    'lodash': 'lib/lodash.min',
+    'Handlebars': 'lib/handlebars-v4.0.5',
+    'bootstrap': 'lib/bootstrap.min',
+    'Smoothie': 'lib/smoothie'
   },
   // grab this from our app's main.js, but make sure the paths are correct
   shim: {
@@ -37,12 +36,6 @@ require.config({
     'bootstrap': {
       deps : [ 'jQuery'],
       exports: 'Bootstrap'
-    },
-    'SmoothieChart': {
-      exports: 'SmoothieChart'
-    },
-    'TimeSeries': {
-      exports: 'TimeSeries'
     }
   },
 

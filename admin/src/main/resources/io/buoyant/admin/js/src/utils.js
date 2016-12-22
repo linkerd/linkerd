@@ -3,9 +3,11 @@
 
 define([
   'jQuery',
-  'SmoothieChart',
-  'TimeSeries'
-], function($, SmoothieChart, TimeSeries) {
+  'lib/smoothie'
+], function($, SmoothieChartUtils) {
+  var SmoothieChart = SmoothieChartUtils.SmoothieChart;
+  var TimeSeries = SmoothieChartUtils.TimeSeries;
+
   function MsToStringConverter() {
     this.msInSecond = 1000
     this.msInMinute = this.msInSecond*60

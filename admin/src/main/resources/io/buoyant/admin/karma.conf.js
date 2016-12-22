@@ -5,7 +5,7 @@ module.exports = function(config) {
   config.set({
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
-    basePath: '',
+    basePath: './js',
 
 
     // frameworks to use
@@ -18,8 +18,8 @@ module.exports = function(config) {
     files: [
       'spec/test-main.js',
       {pattern: 'spec/*.js', included: false},
-      {pattern: 'js/src/*.js', included: false},
-      {pattern: 'js/lib/*.js', included: false}
+      {pattern: 'src/*.js', included: false},
+      {pattern: 'lib/*.js', included: false}
     ],
 
 

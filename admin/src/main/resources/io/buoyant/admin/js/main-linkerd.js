@@ -4,11 +4,7 @@ require.config({
     'lodash': 'lib/lodash.min',
     'Handlebars': 'lib/handlebars-v4.0.5',
     'bootstrap': 'lib/bootstrap.min',
-    'SmoothieChart': 'lib/smoothie',
-    // smoothie_timeseries is a direct copy of smoothie_timeseries
-    // because I don't want to edit the source file, but this file exports
-    // two things in non-AMD format (SmoothieChart and TimeSeries)
-    'TimeSeries': 'lib/smoothie_copy'
+    'Smoothie': 'js/lib/smoothie'
   },
   shim: {
     'jQuery': {
@@ -20,12 +16,6 @@ require.config({
     'bootstrap': {
       deps : ['jQuery'],
       exports: 'Bootstrap'
-    },
-    'SmoothieChart': {
-      exports: 'SmoothieChart'
-    },
-    'TimeSeries': {
-      exports: 'TimeSeries'
     }
   }
 });

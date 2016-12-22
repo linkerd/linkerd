@@ -1,4 +1,4 @@
-define(['js/src/query'], function(Query) {
+define(['src/query'], function(Query) {
   describe("Query", function() {
     var routerName = "fooRouter";
 

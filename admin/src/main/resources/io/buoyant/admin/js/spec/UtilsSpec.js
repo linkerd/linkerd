@@ -1,4 +1,4 @@
-define(['js/src/utils'], function(Utils) {
+define(['src/utils'], function(Utils) {
   describe("Utils", function() {
     it("calculates a simple success rate", function() {
       var half = new Utils.SuccessRate(10,10);
