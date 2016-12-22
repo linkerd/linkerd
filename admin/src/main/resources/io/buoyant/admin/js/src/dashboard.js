@@ -41,12 +41,7 @@ define([
      */
     var UPDATE_INTERVAL = 1000;
 
-    $.when(
-      $.get("/admin/metrics.json")
-    ).done(function(
-
-        metricsJson) {
-
+    $.get("/admin/metrics.json").done(function(metricsJson) {
       var routerTemplates = {
         summary: Handlebars.compile(routerSummaryTemplate),
         container: Handlebars.compile(routerContainerTemplate),
