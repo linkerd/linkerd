@@ -24,6 +24,10 @@ define([
       //Not every page supports a mult-router view!
       if(!removeRoutersAllOption) {
         routers.unshift({label: "all"});
+      } else {
+        if (!matches && routers.length > 0) {
+          selectRouter(routers[0].label);
+        }
       }
 
       var routerHtml = routers.map(template);
@@ -58,7 +62,6 @@ define([
     window.location.search = window.location.search.replace(re, "");
   }
 
-  /* exported getSelectedRouter */
   function getSelectedRouter() {
     return $(".dropdown-toggle .router-label").text();
   }
