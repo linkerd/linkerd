@@ -3,8 +3,9 @@
 define([
   'jQuery',
   'Handlebars',
+  'text!template/router_option.template',
   'bootstrap'
-], function($, Handlebars) {
+], function($, Handlebars, templateRsp) {
   function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;
@@ -16,12 +17,9 @@ define([
       $(".dropdown-toggle .router-label").text(label)
     }
 
-    $.when(
-      $.get("/files/template/router_option.template"),
-      $.get("/config.json")
-    ).done(function(templateRsp, routersRsp) {
-      var template = Handlebars.compile(templateRsp[0]);
-      var routers = routersRsp[0].routers;
+    $.get("/config.json").done(function(routersRsp) {
+      var template = Handlebars.compile(templateRsp);
+      var routers = routersRsp.routers;
 
       //Not every page supports a mult-router view!
       if(!removeRoutersAllOption) {

@@ -4,23 +4,22 @@ define([
   'jQuery',
   'Handlebars',
   'src/delegator'
-], function($, Handlebars, Delegator) {
+  'text!template/dentry.template',
+  'text!template/delegatenode.template',
+  'text!template/error_modal.template',
+  'text!template/delegator.template'
+], function($, Handlebars, Delegator,
+  dentryRsp, nodeRsp, modalRsp, delegatorRsp
+) {
   return function() {
-    $.when(
-      $.get("/files/template/dentry.template"),
-      $.get("/files/template/delegatenode.template"),
-      $.get("/files/template/error_modal.template"),
-      $.get("/files/template/delegator.template")
-    ).done(function(dentryRsp, nodeRsp, modalRsp, delegatorRsp){
-      var templates = {
-        dentry: Handlebars.compile(dentryRsp[0]),
-        node: Handlebars.compile(nodeRsp[0]),
-        errorModal: Handlebars.compile(modalRsp[0]),
-        delegator: Handlebars.compile(delegatorRsp[0])
-      }
+    var templates = {
+      dentry: Handlebars.compile(dentryRsp[0]),
+      node: Handlebars.compile(nodeRsp[0]),
+      errorModal: Handlebars.compile(modalRsp[0]),
+      delegator: Handlebars.compile(delegatorRsp[0])
+    }
 
-      var dtab = JSON.parse($("#data").html());
-      Delegator($(".delegator"), dtab.namespace, [], dtab.dtab, templates);
-    });
+    var dtab = JSON.parse($("#data").html());
+    Delegator($(".delegator"), dtab.namespace, [], dtab.dtab, templates);
   }
 });
