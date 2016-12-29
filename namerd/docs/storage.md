@@ -33,7 +33,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
-port | `8001` | The Kubernetes master post.
+port | `8001` | The Kubernetes master port.
 namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
 
 <aside class="notice">

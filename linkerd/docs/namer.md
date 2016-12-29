@@ -240,7 +240,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.k8s` | Resolves names with `/#/<prefix>`.
 host | `localhost` | The Kubernetes master host.
-port | `8001` | The Kubernetes master post.
+port | `8001` | The Kubernetes master port.
 labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
@@ -293,7 +293,7 @@ Key | Default Value | Description
 prefix | `io.l5d.k8s.external` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
-port | `8001` | The Kubernetes master post.
+port | `8001` | The Kubernetes master port.
 labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
