@@ -13,15 +13,18 @@ dependencies:
     - ~/.gitshas
     - .sbt-launch.jar
     - admin/src/main/resources/io/buoyant/admin/node_modules
+    - protoc-3.1.0-linux-x86_64.zip
+
   override:
-    - ci/update.sh
+    - sh -x ci/update.sh
+    - if [ \! -f protoc-3.1.0-linux-x86_64.zip ] ; then curl -sLO https://github.com/google/protobuf/releases/download/v3.1.0/protoc-3.1.0-linux-x86_64.zip ; fi && unzip -p protoc-3.1.0-linux-x86_64.zip bin/protoc >~/bin/protoc && chmod 755 ~/bin/protoc
     - cd admin/src/main/resources/io/buoyant/admin && npm install
 
 test:
   pre:
     - cd admin/src/main/resources/io/buoyant/admin && npm run eslint
   override:
-    - ci/test.sh:
+    - sh -x ci/test.sh:
         parallel: true
 
   post:

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package io.buoyant.eg;
+
+import "base.proto";
+
+option java_outer_classname = "Eg";
+
+enum Enumeration {
+  ZERO = 0;
+  ONE = 1;
+  TWO = 2;
+  THREEFOUR = 34;
+}
+
+message Message {
+  enum Enumeration {
+    ZERO = 0;
+    ONE = 1;
+    TWO = 2;
+    THREEFOUR = 34;
+  }
+
+  Enumeration enumeration = 1;
+  oneof result {
+    base.Unit ok = 2;
+    base.Exception exception = 3;
+  }
+
+  message Path {
+    repeated bytes values = 1;
+  }
+  Path path = 4;
+
+  io.buoyant.eg.Enumeration outer = 5;
+}
+
+message Req {
+  Enumeration value = 1;
+}
+message Rsp {
+  Message.Enumeration value = 1;
+}
+
+service Eggman {
+  rpc Uplatu (Req) returns (Rsp) {}
+  rpc Uplats (Req) returns (stream Rsp) {}
+  rpc Splatu (stream Req) returns (Rsp) {}
+  rpc Splats (stream Req) returns (stream Rsp) {}
+}

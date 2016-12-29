@@ -3,7 +3,10 @@
 set -eu
 
 unitTests() {
-  ./sbt coverage test coverageReport
+  # Grpc tests need the protoc plugin to exist, but when it's built as part
+  # of the test, it ends up with scoverage linked in and fails at
+  # runtime.
+  ./sbt test # 'set logLevel in Global := Level.Debug' coverage test coverageReport
 }
 
 # we can't compute coverage on e2e tests because it

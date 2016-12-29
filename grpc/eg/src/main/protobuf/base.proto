@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package io.buoyant.eg.base;
+
+message Unit {}
+message Exception {
+  string message = 1;
+}
