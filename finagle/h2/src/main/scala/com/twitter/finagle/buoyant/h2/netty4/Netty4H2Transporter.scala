@@ -7,7 +7,6 @@ import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
 import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
 import com.twitter.finagle.transport.{TlsConfig, Transport}
-import io.buoyant.router.H2
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
 

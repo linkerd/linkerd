@@ -167,6 +167,9 @@ class Base extends Build {
   def projectDir(dir: String): Project =
     project(dir.replaceAll("/", "-"), file(dir))
 
+  def aggregateDir(dir: String, projects: ProjectReference*): Project =
+    projectDir(dir).settings(aggregateSettings).aggregate(projects:_*)
+
   def project(id: String, dir: File): Project = Project(id, dir)
     .settings(name := id)
     .settings(baseSettings)
