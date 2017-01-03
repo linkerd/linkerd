@@ -4,6 +4,8 @@
 * Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
 * Marathon:
   * Support "ip per task" feature
+* linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
+  `dtab-local`
 
 ## 0.8.4 2016-12-05
 
