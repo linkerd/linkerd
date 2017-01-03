@@ -3,6 +3,7 @@ package netty4
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
+import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
 import com.twitter.finagle.server.Listener
 import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.netty.buffer.ByteBuf
@@ -35,6 +36,7 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] val pipelineInit = { p: ChannelPipeline =>
+      p.addLast(DirectToHeapInboundHandler)
       p.addLast(new ServerUpgradeHandler); ()
     }
   }
@@ -42,6 +44,7 @@ object Netty4H2Listener {
   private[this] object TlsListener extends ListenerMaker {
     val PlaceholderKey = "h2 framer placeholder"
     override protected[this] val pipelineInit = { p: ChannelPipeline =>
+      p.addLast(DirectToHeapInboundHandler)
       p.addLast(PlaceholderKey, new ChannelDuplexHandler)
         .addLast("alpn", new Alpn); ()
     }

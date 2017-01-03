@@ -79,7 +79,7 @@ object Parser {
     val mapper = new ObjectMapper(factory) with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     mapper.registerModule(customTypes)
-    mapper.setSerializationInclusion(Include.NON_NULL)
+    mapper.setSerializationInclusion(Include.NON_ABSENT)
     mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
 
     // Subtypes must not conflict
