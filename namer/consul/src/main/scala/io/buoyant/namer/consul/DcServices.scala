@@ -114,7 +114,7 @@ private[consul] object DcServices {
     Failure("consul did not return an index")
 
   private[this] val DcRelease =
-    Failure("dc observation released").flagged(Failure.Interrupted)
+    Failure("dc observation released", Failure.Interrupted)
 
   private[this] val toServices: v1.Indexed[Map[String, Seq[String]]] => v1.Indexed[Set[SvcKey]] = {
     case v1.Indexed(services, idx) =>

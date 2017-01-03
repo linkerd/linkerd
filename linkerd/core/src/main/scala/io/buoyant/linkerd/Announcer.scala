@@ -23,7 +23,7 @@ abstract class FutureAnnouncer extends Announcer {
     @volatile var deadline: Option[Time] = None
     val closeRef = new AtomicReference[Closable](Closable.make { d =>
       deadline = Some(d)
-      pending.raise(Failure("closed").flagged(Failure.Interrupted))
+      pending.raise(Failure("closed", Failure.Interrupted))
       Future.Unit
     })
     pending.respond {

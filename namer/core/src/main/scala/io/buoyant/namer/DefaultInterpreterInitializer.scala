@@ -3,9 +3,9 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{Activity, NonFatal, Var}
+import com.twitter.util.{Activity, Var}
 import io.buoyant.namer.DelegateTree._
-import scala.util.control.NoStackTrace
+import scala.util.control.{NonFatal, NoStackTrace}
 import scala.{Exception => ScalaException}
 
 object DefaultInterpreterConfig {

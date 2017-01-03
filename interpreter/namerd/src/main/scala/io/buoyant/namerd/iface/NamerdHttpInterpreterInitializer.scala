@@ -8,8 +8,9 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
-import com.twitter.util.{NonFatal, Throw}
+import com.twitter.util.Throw
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import scala.util.control.NonFatal
 
 /**
  * The namerd interpreter offloads the responsibilities of name resolution to
