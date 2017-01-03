@@ -72,6 +72,7 @@ fancyRouter: true
       """
         |port: 1234
         |tls:
+        |  certPath: /foo/cert
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).isThrow)
   }

@@ -2,9 +2,7 @@ package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter
-import com.twitter.finagle.factory.BindingFactory
-import com.twitter.finagle.netty3._
-import com.twitter.finagle.ssl.{Ssl, Engine}
+import com.twitter.finagle.ssl.{Engine, Ssl}
 import com.twitter.finagle.transport.{TlsConfig, Transport}
 import java.io.FileInputStream
 import java.net.{InetSocketAddress, SocketAddress}
@@ -78,11 +76,10 @@ object TlsClientPrep {
           // remove TLS from this connection.
           params + Transport.TLSClientEngine(None) + Transport.Tls(tlsConfig(cn))
         case Some(mkEngine) =>
-          val cfg = new Netty3TransporterTLSConfig(mkEngine, cn)
           params +
             Transport.Tls(tlsConfig(cn)) +
-            Transport.TLSClientEngine(Some(cfg.newEngine)) +
-            Transporter.TLSHostname(cfg.verifyHost)
+            Transport.TLSClientEngine(Some(mkEngine)) +
+            Transporter.TLSHostname(cn)
       }
       Stack.Leaf(role, next.make(tlsParams))
     }
