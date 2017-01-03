@@ -4,7 +4,7 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http._
+import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
