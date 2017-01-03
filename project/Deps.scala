@@ -53,4 +53,7 @@ object Deps {
 
   // jwt for Marathon API
   val jwt = "com.pauldijou" %% "jwt-core" % "0.9.0"
+
+  // kafka for tracing
+  val kafka = "org.apache.kafka" % "kafka_2.11" % "0.8.2.1"
 }
