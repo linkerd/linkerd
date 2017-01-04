@@ -102,7 +102,7 @@ class RouterEndToEndTest
       val reqStream = await(dogReqP)
       assert(!rspF.isDefined)
 
-      rspF.raise(Failure("failz").flagged(Failure.Interrupted))
+      rspF.raise(Failure("failz", Failure.Interrupted))
       assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
       eventually(assert(serverInterrupted == Some(Reset.Cancel)))
 
@@ -188,7 +188,7 @@ class RouterEndToEndTest
       val _ = await(dogReqP)
       assert(!rspF.isDefined)
 
-      dogRspP.setException(Failure("failz").flagged(Failure.Rejected))
+      dogRspP.setException(Failure("failz", Failure.Rejected))
       assert(await(rspF.liftToTry) == Throw(Reset.Refused))
 
     } finally {

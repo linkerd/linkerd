@@ -13,7 +13,7 @@ import com.twitter.util._
 object Api {
   val BufSize = 8 * 1024
 
-  val Closed = Failure("k8s observation released").flagged(Failure.Interrupted)
+  val Closed = Failure("k8s observation released", Failure.Interrupted)
   case class UnexpectedResponse(rsp: http.Response) extends Throwable
 
   /**

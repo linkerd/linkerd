@@ -5,13 +5,12 @@ var CombinedClientGraph = (function() {
     return {name: client, color: ""}; //TODO: move to clientName only after v2 migration
   }
 
-  return function(metricsCollector, routerName, $root, colors) {
+  return function(metricsCollector, routers, routerName, $root, colors) {
     var clientColors = colors;
-    var query = Query.clientQuery().withRouter(routerName).withMetric("connects").build();
 
     function timeseriesParams(name) {
       return {
-        strokeStyle: clientColors[name.match(Query.clientQuery().withMetric("connects").build())[2]].color,
+        strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
         lineWidth: 2
       };
     }
@@ -39,6 +38,9 @@ var CombinedClientGraph = (function() {
       timeseriesParams
     );
 
+    var clients = _.map(routers.clients(routerName), 'label');
+
+    var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
     var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
     chart.setMetrics(desiredMetrics, timeseriesParams, true);
 
@@ -49,6 +51,8 @@ var CombinedClientGraph = (function() {
         // where the first values from /metrics are very large [linkerd#485]
         count++;
       } else {
+        var clients = _.map(routers.clients(routerName), 'label');
+        var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
         var filteredData = Query.filter(query, data.specific);
         chart.updateMetrics(filteredData);
       }

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.Http.{param => hparam}
+import com.twitter.finagle.http.{param => hparam}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.http.Request
@@ -14,7 +14,7 @@ import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
-import io.buoyant.router.RoutingFactory.{RequestIdentification, IdentifiedRequest, UnidentifiedRequest}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.{Http, RoutingFactory}
 import scala.collection.JavaConverters._
 
@@ -34,9 +34,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val clientStack = Http.router.clientStack
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+      .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
-      .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
     Http.router
       .withPathStack(pathStack)

@@ -6,7 +6,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util._
+import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.namer.{DelegateTree, Delegator, Metadata, Paths}
 import io.buoyant.namerd.Ns
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
@@ -14,6 +14,7 @@ import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
+import scala.util.control.NonFatal
 
 object ThriftNamerInterface {
 

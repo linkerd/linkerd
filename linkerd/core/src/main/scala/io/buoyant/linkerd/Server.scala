@@ -100,26 +100,36 @@ class ServerConfig { config =>
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def netty3Tls(c: TlsServerConfig) =
+  private[this] def netty3Tls(c: TlsServerConfig) = {
+    assert(c.certPath != null)
+    assert(c.keyPath != null)
     Transport.TLSServerEngine(
-      Some(() => Ssl.server(
-        c.certPath,
-        c.keyPath,
-        null,
-        null,
-        null
-      ))
+      Some(
+        () => Ssl.server(
+          c.certPath,
+          c.keyPath,
+          null,
+          null,
+          null
+        )
+      )
     )
+  }
 
   @JsonIgnore
-  private[this] def netty4Tls(c: TlsServerConfig) =
-    Transport.Tls(TlsConfig.ServerCertAndKey(
-      c.certPath,
-      c.keyPath,
-      c.caCertPath,
-      c.ciphers.map(_.mkString(":")),
-      alpnProtocols.map(_.mkString(","))
-    ))
+  private[this] def netty4Tls(c: TlsServerConfig) = {
+    assert(c.certPath != null)
+    assert(c.keyPath != null)
+    Transport.Tls(
+      TlsConfig.ServerCertAndKey(
+        c.certPath,
+        c.keyPath,
+        c.caCertPath,
+        c.ciphers.map(_.mkString(":")),
+        alpnProtocols.map(_.mkString(","))
+      )
+    )
+  }
 
   @JsonIgnore
   def alpnProtocols: Option[Seq[String]] = None

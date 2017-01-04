@@ -1,7 +1,6 @@
 package io.buoyant.linkerd.protocol
 
 import com.twitter.finagle.http.{Response, Request, TlsFilter}
-import com.twitter.finagle.netty3.Netty3TransporterTLSConfig
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
@@ -71,16 +70,12 @@ object TlsUtils {
     tmf.init(ks)
     val ctx = SSLContext.getInstance("TLS")
     ctx.init(null, tmf.getTrustManagers(), null)
-    def tls(address: SocketAddress) = address match {
-      case addr: InetSocketAddress => Ssl.client(ctx, addr.getAddress.getHostAddress, addr.getPort)
-      case _ => Ssl.client()
-    }
 
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
     FinagleHttp.client
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
-      .withTls(new Netty3TransporterTLSConfig(tls, Some(tlsName)))
+      .withTransport.tls(ctx, tlsName)
       .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
       .newClient(name, "upstream").toService
   }

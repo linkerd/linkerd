@@ -7,12 +7,13 @@ import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer,
 import com.twitter.finagle.{param, Path, Stack}
 import com.twitter.finagle.buoyant.h2.{Request, Response, LinkerdHeaders}
 import com.twitter.finagle.client.StackClient
-import com.twitter.util.{Monitor, NonFatal}
+import com.twitter.util.Monitor
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 class H2Initializer extends ProtocolInitializer.Simple {
   val name = "h2"

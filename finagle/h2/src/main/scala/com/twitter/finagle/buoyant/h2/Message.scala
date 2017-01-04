@@ -55,7 +55,7 @@ object Headers {
    * another header implementation that can be translated by
    * transports.
    */
-  private class Impl(orig: Seq[(String, String)]) extends Headers {
+  private[h2] class Impl(orig: Seq[(String, String)]) extends Headers {
     private[this] var current: Seq[(String, String)] = orig
     def toSeq = synchronized(current)
     override def toString = s"""Headers(${toSeq.mkString(", ")})"""

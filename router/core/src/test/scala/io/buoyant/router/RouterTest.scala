@@ -120,7 +120,6 @@ class RouterTest extends FunSuite {
         val id: Any = path match {
           case Path.Utf8("0") => Path.Utf8("some", "path")
           case Path.Utf8("1") => "string"
-          case Path.Utf8("2") => null
           case _ => new {}
         }
         Activity.value(NameTree.Leaf(Name.Bound(Var.value(Addr.Pending), id)))
@@ -140,10 +139,6 @@ class RouterTest extends FunSuite {
     label = None
     assert(await(service("1")) == 1)
     assert(label == Some("string"))
-
-    label = None
-    assert(await(service("2")) == 2)
-    assert(label == Some("null"))
 
     label = None
     assert(await(service("3")) == 3)

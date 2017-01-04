@@ -12,6 +12,16 @@ object LinkerdBuild extends Base {
   val Bundle = config("bundle") extend Minimal
   val Dcos = config("dcos") extend Bundle
 
+  object Finagle {
+    val h2 = projectDir("finagle/h2")
+      .withTwitterLibs(Deps.finagle("netty4"))
+      .withLibs(Deps.netty4("codec-http2"), Deps.netty4("handler"))
+      .withTests()
+      .withE2e()
+
+    val all = aggregateDir("finagle", h2)
+  }
+
   val configCore = projectDir("config")
     .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
@@ -47,9 +57,7 @@ object LinkerdBuild extends Base {
       .settings(coverageExcludedPackages := ".*XXX_.*")
 
     val h2 = projectDir("router/h2")
-      .dependsOn(core)
-      .withTwitterLibs(Deps.finagle("netty4"))
-      .withLibs(Deps.netty4("codec-http2"), Deps.netty4("handler"))
+      .dependsOn(core, Finagle.h2)
       .withTests()
       .withE2e()
 
@@ -77,9 +85,7 @@ object LinkerdBuild extends Base {
         thriftIdl % "test,e2e"
       )
 
-    val all = projectDir("router")
-      .settings(aggregateSettings)
-      .aggregate(core, h2, http, mux, thrift)
+    val all = aggregateDir("router", core, h2, http, mux, thrift)
   }
 
   object Namer {
@@ -120,9 +126,7 @@ object LinkerdBuild extends Base {
       .withLib(Deps.zkCandidate)
       .withTests()
 
-    val all = projectDir("namer")
-      .settings(aggregateSettings)
-      .aggregate(core, consul, curator, fs, k8s, marathon, serversets, zkLeader)
+    val all = aggregateDir("namer", core, consul, curator, fs, k8s, marathon, serversets, zkLeader)
   }
 
   val admin = projectDir("admin")
@@ -147,9 +151,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core, Router.core)
       .withTests()
 
-    val all = projectDir("telemetry")
-      .settings(aggregateSettings)
-      .aggregate(core, commonMetrics, tracelog)
+    val all = aggregateDir("telemetry", core, commonMetrics, tracelog)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -187,8 +189,9 @@ object LinkerdBuild extends Base {
 
     object Storage {
 
-      val inMemory = projectDir("namerd/storage/in-memory")
-        .dependsOn(core % "test->test;compile->compile")
+      val consul = projectDir("namerd/storage/consul")
+        .dependsOn(core)
+        .dependsOn(LinkerdBuild.consul)
         .withTests()
 
       val etcd = projectDir("namerd/storage/etcd")
@@ -196,9 +199,8 @@ object LinkerdBuild extends Base {
         .withTests()
         .withIntegration()
 
-      val zk = projectDir("namerd/storage/zk")
-        .dependsOn(core)
-        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
+      val inMemory = projectDir("namerd/storage/in-memory")
+        .dependsOn(core % "test->test;compile->compile")
         .withTests()
 
       val k8s = projectDir("namerd/storage/k8s")
@@ -206,14 +208,12 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s)
         .withTests()
 
-      val consul = projectDir("namerd/storage/consul")
+      val zk = projectDir("namerd/storage/zk")
         .dependsOn(core)
-        .dependsOn(LinkerdBuild.consul)
+        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .withTests()
 
-      val all = projectDir("namerd/storage")
-        .settings(aggregateSettings)
-        .aggregate(inMemory, zk, k8s, etcd, consul)
+      val all = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s, zk)
     }
 
     object Iface {
@@ -236,9 +236,7 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
         .withTests()
 
-      val all = projectDir("namerd/iface")
-        .settings(aggregateSettings)
-        .aggregate(controlHttp, interpreterThriftIdl, interpreterThrift)
+      val all = aggregateDir("namerd/iface", controlHttp, interpreterThriftIdl, interpreterThrift)
     }
 
     val main = projectDir("namerd/main")
@@ -334,9 +332,8 @@ object LinkerdBuild extends Base {
       assemblyExecScript := dcosExecScript.split("\n").toSeq
     )
 
-    val all = projectDir("namerd")
-      .settings(aggregateSettings)
-      .aggregate(core, dcosBootstrap, Storage.all, Interpreter.all, Iface.all, main)
+    val all = aggregateDir("namerd",
+        core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
       .configs(Minimal, Bundle, Dcos)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -380,20 +377,18 @@ object LinkerdBuild extends Base {
       .dependsOn(Namer.core, Namer.fs)
 
     val subnet = projectDir("interpreter/subnet")
-        .dependsOn(Namer.core)
-        .withTests()
+      .dependsOn(Namer.core)
+      .withTests()
 
     val perHost = projectDir("interpreter/per-host")
-        .dependsOn(Namer.core, subnet)
-        .withTests()
+      .dependsOn(Namer.core, subnet)
+      .withTests()
 
     val k8s = projectDir("interpreter/k8s")
         .dependsOn(Namer.core, LinkerdBuild.k8s, perHost, subnet)
         .withTests()
 
-    val all = projectDir("interpreter")
-      .settings(aggregateSettings)
-      .aggregate(namerd, fs, k8s, perHost, subnet)
+    val all = aggregateDir("interpreter", fs, k8s, namerd, perHost, subnet)
   }
 
   object Linkerd {
@@ -414,6 +409,10 @@ object LinkerdBuild extends Base {
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
       .withLibs("io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
+      .withTests()
+
+    val failureAccrual = projectDir("linkerd/failure-accrual")
+      .dependsOn(core)
       .withTests()
 
     object Protocol {
@@ -441,9 +440,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Router.thrift)
         .withTests()
 
-      val all = projectDir("linkerd/protocol")
-        .settings(aggregateSettings)
-        .aggregate(h2, http, mux, thrift)
+      val all = aggregateDir("linkerd/protocol", h2, http, mux, thrift)
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, Protocol.http)
@@ -458,9 +455,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core)
         .withTests()
 
-      val all = projectDir("linkerd/tracer")
-        .settings(aggregateSettings)
-        .aggregate(zipkin)
+      val all = aggregateDir("linkerd/tracer", zipkin)
     }
 
     object Announcer {
@@ -468,8 +463,7 @@ object LinkerdBuild extends Base {
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
         .dependsOn(core)
 
-      val all = projectDir("linkerd/announcer")
-        .aggregate(serversets)
+      val all = aggregateDir("linkerd/announcer", serversets)
     }
 
     val admin = projectDir("linkerd/admin")
@@ -537,12 +531,13 @@ object LinkerdBuild extends Base {
       Announcer.serversets,
       Telemetry.core, Telemetry.tracelog,
       Tracer.zipkin,
-      tls
+      tls,
+      failureAccrual
     )
 
-    val all = projectDir("linkerd")
-      .settings(aggregateSettings)
-      .aggregate(admin, core, main, configCore, Namer.all, Protocol.all, Tracer.all, Announcer.all, tls)
+    val all = aggregateDir("linkerd",
+        admin, configCore, core, failureAccrual, main, tls,
+        Announcer.all, Namer.all, Protocol.all, Tracer.all)
       .configs(Minimal, Bundle)
       // Minimal cofiguration includes a runtime, HTTP routing and the
       // fs service discovery.
@@ -591,6 +586,9 @@ object LinkerdBuild extends Base {
 
   // All projects must be exposed at the root of the object in
   // dependency-order:
+
+  val finagle = Finagle.all
+  val finagleH2 = Finagle.h2
 
   val router = Router.all
   val routerCore = Router.core
@@ -655,6 +653,7 @@ object LinkerdBuild extends Base {
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls
+  val linkerdFailureAccrual = Linkerd.failureAccrual
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))

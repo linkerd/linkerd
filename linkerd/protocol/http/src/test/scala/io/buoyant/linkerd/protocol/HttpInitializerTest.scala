@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
-import com.twitter.finagle.Http.{param => hparam}
+import com.twitter.finagle.http.{param => hparam}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.service.{Retries, RetryBudget}
 import com.twitter.finagle.stack.nilStack

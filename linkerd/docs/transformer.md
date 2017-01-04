@@ -58,7 +58,7 @@ which can be used to find all pods in the daemonset.
 Key | Default Value | Description
 --- | ------------- | -----------
 k8sHost | `localhost` | The Kubernetes master host.
-k8sPort | `8001` | The Kubernetes master post.
+k8sPort | `8001` | The Kubernetes master port.
 namespace | _required_ | The Kubernetes namespace of the daemonset.
 service | _required_ | The Kubernetes service name for the daemonset.
 port | _required_ | The name of the daemonset port to use.
