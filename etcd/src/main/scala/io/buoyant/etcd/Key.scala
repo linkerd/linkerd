@@ -5,7 +5,8 @@ import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.http._
 import com.twitter.finagle.service.Backoff
 import com.twitter.io.Buf
-import com.twitter.util._
+import com.twitter.util.{NonFatal => _, _}
+import scala.util.control.NonFatal
 
 case class BackoffsExhausted(key: Path, throwable: Throwable)
   extends Exception(key.show, throwable)
