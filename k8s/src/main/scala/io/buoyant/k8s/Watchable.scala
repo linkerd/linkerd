@@ -9,9 +9,9 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
-import com.twitter.util._
+import com.twitter.util.{NonFatal => _, _}
 import java.util.concurrent.atomic.AtomicReference
-import scala.reflect.runtime.universe.TypeTag
+import scala.util.control.NonFatal
 
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
