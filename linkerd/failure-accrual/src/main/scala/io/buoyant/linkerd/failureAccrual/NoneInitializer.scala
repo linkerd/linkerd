@@ -6,18 +6,18 @@ import com.twitter.util.Duration
 import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 
 class NoneInitializer extends FailureAccrualInitializer {
-  val configClass = classOf[NullConfig]
+  val configClass = classOf[NoneConfig]
   override def configId = "none"
 }
 
 object NoneInitializer extends NoneInitializer
 
-case class NullConfig() extends FailureAccrualConfig {
+class NoneConfig extends FailureAccrualConfig {
   @JsonIgnore
-  override def policy = () => NullPolicy
+  override def policy = () => NonePolicy
 }
 
-object NullPolicy extends FailureAccrualPolicy {
+object NonePolicy extends FailureAccrualPolicy {
   override def recordSuccess(): Unit = {}
   override def markDeadOnFailure(): Option[Duration] = None
   override def revived(): Unit = {}

@@ -6,6 +6,7 @@
   * Support "ip per task" feature
 * linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
   `dtab-local`
+* Client failure accrual is now configurable via the `failureAccrual` parameter
 
 ## 0.8.4 2016-12-05
 

@@ -7,7 +7,7 @@ import io.buoyant.test.FunSuite
 
 class NoneTest extends FunSuite {
   test("sanity") {
-    val config = NullConfig()
+    val config = new NoneConfig
     assert(config.policy().isInstanceOf[FailureAccrualPolicy])
   }
 

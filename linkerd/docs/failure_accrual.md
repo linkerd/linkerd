@@ -27,7 +27,7 @@ it traffic in increasing intervals between 5 seconds and 5 minutes.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.consecutiveFailures`](#consecutive-failures), [`io.l5d.successRate`](#success-rate), [`io.l5d.successRateWindowed`](#success-rate-windowed) or [`none`](#none).
+kind | _required_ | Either [`io.l5d.consecutiveFailures`](#consecutive-failures), [`io.l5d.successRate`](#success-rate), [`io.l5d.successRateWindowed`](#success-rate-windowed), or [`none`](#none).
 backoff | jittered backoff from 5s to 300s | A [backoff policy](#retry-budget-parameters) that determines how long to wait before resending traffic.
 
 <aside class="success">
