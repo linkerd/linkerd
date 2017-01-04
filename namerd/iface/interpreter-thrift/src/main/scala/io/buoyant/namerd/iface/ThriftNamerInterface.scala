@@ -7,8 +7,8 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
-import io.buoyant.namerd.{Ns, Paths}
+import io.buoyant.namer.{DelegateTree, Delegator, Metadata, Paths}
+import io.buoyant.namerd.Ns
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
 import io.buoyant.namerd.iface.{thriftscala => thrift}

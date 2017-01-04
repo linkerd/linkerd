@@ -1,13 +1,15 @@
-package io.buoyant.namerd
+package io.buoyant.namer
 
 import com.twitter.finagle.Path
 import com.twitter.io.Buf
 
 object Paths {
-  val ConfiguredNamerPrefix = Buf.Utf8("#")
-  val LoadedNamerPrefix = Buf.Utf8("$")
+  val ConfiguredNamerBuf = Buf.Utf8("#")
+  val ConfiguredNamerPrefix = Path(ConfiguredNamerBuf)
+  val LoadedNamerBuf = Buf.Utf8("$")
+  val LoadedNamerPrefix = Path(LoadedNamerBuf)
   val NotHashOrDollar: Buf => Boolean =
-    (b: Buf) => !(b == ConfiguredNamerPrefix || b == LoadedNamerPrefix)
+    (b: Buf) => !(b == ConfiguredNamerBuf || b == LoadedNamerBuf)
   val TransformerPrefix = Path.Utf8("%")
 
   def stripTransformerPrefix(p: Path): Path =

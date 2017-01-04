@@ -13,14 +13,10 @@ trait TransformerConfig {
   var _prefix: Option[Path] = None
 
   @JsonIgnore
-  def prefix = TransformerConfig.Percent ++ _prefix.getOrElse(defaultPrefix)
+  def prefix = Paths.TransformerPrefix ++ _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
   def mk(): NameTreeTransformer
-}
-
-object TransformerConfig {
-  val Percent = Path.Utf8("%")
 }
 
 trait TransformerInitializer extends ConfigInitializer
