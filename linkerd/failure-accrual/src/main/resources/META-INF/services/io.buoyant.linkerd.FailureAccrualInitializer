@@ -1,4 +1,4 @@
 io.buoyant.linkerd.failureAccrual.ConsecutiveFailuresInitializer
-io.buoyant.linkerd.failureAccrual.NullInitializer
+io.buoyant.linkerd.failureAccrual.NoneInitializer
 io.buoyant.linkerd.failureAccrual.SuccessRateInitializer
 io.buoyant.linkerd.failureAccrual.SuccessRateWindowedInitializer

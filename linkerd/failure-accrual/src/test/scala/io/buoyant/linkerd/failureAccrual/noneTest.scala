@@ -5,13 +5,13 @@ import com.twitter.finagle.util.LoadService
 import io.buoyant.linkerd.FailureAccrualInitializer
 import io.buoyant.test.FunSuite
 
-class NullTest extends FunSuite {
+class NoneTest extends FunSuite {
   test("sanity") {
     val config = NullConfig()
     assert(config.policy().isInstanceOf[FailureAccrualPolicy])
   }
 
   test("service registration") {
-    assert(LoadService[FailureAccrualInitializer].exists(_.isInstanceOf[NullInitializer]))
+    assert(LoadService[FailureAccrualInitializer].exists(_.isInstanceOf[NoneInitializer]))
   }
 }

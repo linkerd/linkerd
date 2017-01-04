@@ -5,12 +5,12 @@ import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.util.Duration
 import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 
-class NullInitializer extends FailureAccrualInitializer {
+class NoneInitializer extends FailureAccrualInitializer {
   val configClass = classOf[NullConfig]
-  override def configId = "io.l5d.null"
+  override def configId = "none"
 }
 
-object NullInitializer extends NullInitializer
+object NoneInitializer extends NoneInitializer
 
 case class NullConfig() extends FailureAccrualConfig {
   @JsonIgnore

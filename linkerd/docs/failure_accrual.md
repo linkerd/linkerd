@@ -27,7 +27,7 @@ it traffic in increasing intervals between 5 seconds and 5 minutes.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.consecutiveFailures`](#consecutive-failures), [`io.l5d.successRate`](#success-rate), [`io.l5d.successRateWindowed`](#success-rate-windowed) or [`io.l5d.null`](#null).
+kind | _required_ | Either [`io.l5d.consecutiveFailures`](#consecutive-failures), [`io.l5d.successRate`](#success-rate), [`io.l5d.successRateWindowed`](#success-rate-windowed) or [`none`](#none).
 backoff | jittered backoff from 5s to 300s | A [backoff policy](#retry-budget-parameters) that determines how long to wait before resending traffic.
 
 <aside class="success">
@@ -73,9 +73,9 @@ Key | Default Value | Description
 successRate | _required_ | Target success rate.
 window | _required_ | Number of seconds over which success rate is computed.
 
-## Null
+## None
 
-kind: `io.l5d.null`
+kind: `none`
 
 Disables failure accrual altogether. This policy does not accept any additional
 parameters.
