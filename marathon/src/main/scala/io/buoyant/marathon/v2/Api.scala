@@ -19,21 +19,107 @@ trait Api {
 }
 
 object Api {
+  private[this] val versionString = "v2"
+  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
+
+  mapper.registerModule(DefaultScalaModule)
+  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   type AppIds = Set[Path]
   type Client = Service[http.Request, http.Response]
 
-  val versionString = "v2"
-
   case class UnexpectedResponse(rsp: http.Response) extends Throwable
+
+  final case class HealthCheckResult(
+    alive: Option[Boolean]
+  )
+
+  final case class Task(
+    id: Option[String],
+    host: Option[String],
+    ports: Option[Seq[Int]],
+    ipAddresses: Option[Seq[TaskIpAddress]],
+    healthCheckResults: Option[Seq[HealthCheckResult]]
+  )
+
+  final case class TaskIpAddress(
+    ipAddress: Option[String]
+  )
+
+  final case class AppIpAddress(
+    discovery: Option[AppDiscovery]
+  )
+
+  final case class AppDiscovery(
+    ports: Option[Seq[AppDiscoveryPort]]
+  )
+
+  final case class AppDiscoveryPort(
+    name: Option[String],
+    number: Option[Int]
+  )
+
+  final case class App(
+    id: Option[String],
+    ipAddress: Option[AppIpAddress],
+    tasks: Option[Seq[Task]]
+  )
+
+  final case class AppsRsp(
+    apps: Option[Seq[App]] = None
+  )
+
+  final case class AppRsp(
+    app: Option[App] = None
+  )
+
+  object discoveryPort {
+    def unapply(addr: Option[AppIpAddress]): Option[Int] = {
+      addr.flatMap(_.discovery).flatMap(_.ports).flatMap(_.headOption).flatMap(_.number)
+    }
+  }
+
+  object hostPort {
+    def unapply(task: Task): Option[(String, Int)] = {
+      for {
+        host <- task.host
+        ports <- task.ports
+        port <- ports.headOption
+      } yield (host, port)
+    }
+  }
+
+  object healthyHostPort {
+    def unapply(task: Task): Option[(String, Int)] = {
+      task.healthCheckResults.map(isHealthy) match {
+        case Some(true) => hostPort.unapply(task)
+        case _ => None
+      }
+    }
+  }
+
+  object ipAddress {
+    def unapply(task: Task): Option[String] = {
+      task.ipAddresses.flatMap(_.headOption).flatMap(_.ipAddress)
+    }
+  }
+
+  object healthyIpAddress {
+    def unapply(task: Task): Option[String] = {
+      task.healthCheckResults.map(isHealthy) match {
+        case Some(true) => ipAddress.unapply(task)
+        case _ => None
+      }
+    }
+  }
 
   def apply(client: Client, uriPrefix: String, useHealthCheck: Boolean): Api =
     new AppIdApi(client, s"$uriPrefix/$versionString", useHealthCheck)
 
-  private[v2] def rspToApps(rsp: http.Response): Future[Api.AppIds] =
+  private[v2] def rspToAppIds(rsp: http.Response): Future[Api.AppIds] =
     rsp.status match {
       case http.Status.Ok =>
-        val apps = readJson[AppsRsp](rsp.content).map(_.toApps)
+        val apps = readJson[AppsRsp](rsp.content).map(toAppIds)
         Future.const(apps)
 
       case _ => Future.exception(UnexpectedResponse(rsp))
@@ -42,61 +128,42 @@ object Api {
   private[v2] def rspToAddrs(rsp: http.Response, useHealthCheck: Boolean): Future[Set[Address]] =
     rsp.status match {
       case http.Status.Ok =>
-        val addrs = readJson[AppRsp](rsp.content).map(_.toAddresses(useHealthCheck))
+        val addrs = readJson[AppRsp](rsp.content).map(toAddresses(_, useHealthCheck))
         Future.const(addrs)
       case _ =>
         Future.exception(UnexpectedResponse(rsp))
     }
 
-  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   def readJson[T: Manifest](buf: Buf): Try[T] = {
     val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)
     Try(mapper.readValue[T](bytes, begin, end - begin))
   }
 
-  private[this] case class HealthCheckResult(alive: Option[Boolean])
-
-  private[this] case class Task(
-    id: Option[String],
-    host: Option[String],
-    ports: Option[Seq[Int]],
-    healthCheckResults: Option[Seq[HealthCheckResult]]
-  )
-
-  private[this] case class App(
-    id: Option[String],
-    tasks: Option[Seq[Task]]
-  )
-
-  private[this] case class AppsRsp(apps: Option[Seq[App]] = None) {
-
-    private[v2] def toApps: Api.AppIds =
-      apps match {
-        case Some(apps) =>
-          apps.collect { case App(Some(id), _) => Path.read(id) }.toSet
-        case None => Set.empty
-      }
+  private[this] def toAppIds(appsRsp: AppsRsp): Api.AppIds = {
+    appsRsp.apps match {
+      case Some(apps) =>
+        apps.collect { case App(Some(id), _, _) => Path.read(id) }.toSet
+      case None => Set.empty
+    }
   }
 
-  private[this] case class AppRsp(app: Option[App] = None) {
+  private[this] def toAddresses(appRsp: AppRsp, useHealthCheck: Boolean): Set[Address] =
+    appRsp.app match {
+      case Some(App(_, discoveryPort(port), Some(tasks))) =>
+        tasks.collect {
+          case ipAddress(host) if !useHealthCheck => Address(host, port)
+          case healthyIpAddress(host) => Address(host, port)
+        }.toSet
+      case Some(App(_, _, Some(tasks))) =>
+        tasks.collect {
+          case hostPort(host, port) if !useHealthCheck => Address(host, port)
+          case healthyHostPort(host, port) => Address(host, port)
+        }.toSet
+      case _ => Set.empty
+    }
 
-    private[this] def healthy(healthCheckResults: Seq[HealthCheckResult]): Boolean =
-      healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
-
-    private[v2] def toAddresses(useHealthCheck: Boolean): Set[Address] =
-      app match {
-        case Some(App(_, Some(tasks))) =>
-          tasks.collect {
-            case Task(_, Some(host), Some(Seq(port, _*)), _) if !useHealthCheck =>
-              Address(host, port)
-            case Task(_, Some(host), Some(Seq(port, _*)), Some(healthCheckResults)) if healthy(healthCheckResults) =>
-              Address(host, port)
-          }.toSet
-
-        case _ => Set.empty
-      }
+  private[this] def isHealthy(healthCheckResults: Seq[HealthCheckResult]): Boolean = {
+    healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
   }
 }
 
@@ -110,7 +177,7 @@ private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Bo
 
   def getAppIds(): Future[Api.AppIds] = {
     val req = http.Request(s"$apiPrefix/apps")
-    Trace.letClear(client(req)).flatMap(rspToApps(_))
+    Trace.letClear(client(req)).flatMap(rspToAppIds)
   }
 
   def getAddrs(app: Path): Future[Set[Address]] = {
@@ -118,3 +185,4 @@ private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Bo
     Trace.letClear(client(req)).flatMap(rspToAddrs(_, useHealthCheck))
   }
 }
+

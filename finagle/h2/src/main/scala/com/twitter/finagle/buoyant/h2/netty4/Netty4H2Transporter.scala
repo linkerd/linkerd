@@ -5,8 +5,8 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
+import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
 import com.twitter.finagle.transport.{TlsConfig, Transport}
-import io.buoyant.router.H2
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
 
@@ -31,11 +31,19 @@ object Netty4H2Transporter {
 
       case TlsConfig.Disabled =>
         // Prior Knowledge: ensure messages are buffered until handshake completes.
-        p => { p.addLast(framer).addLast(new BufferingConnectDelay); () }
+        p => {
+          p.addLast(DirectToHeapInboundHandler)
+          p.addLast(framer).addLast(new BufferingConnectDelay)
+          ()
+        }
 
       case _ =>
         // TLS is configured by the transport, so just install a framer.
-        p => { p.addLast(framer); () }
+        p => {
+          p.addLast(DirectToHeapInboundHandler)
+          p.addLast(framer)
+          ()
+        }
     }
 
     Netty4Transporter(initializer, params)

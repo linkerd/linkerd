@@ -3,7 +3,6 @@ package com.twitter.finagle.buoyant.linkerd
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo, JsonSubTypes}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.finagle.{Http, Stack}
-import com.twitter.finagle.netty4.http.exp.Netty4Impl
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
@@ -20,9 +19,9 @@ abstract class HttpEngine {
 }
 
 class Netty3HttpEngine extends HttpEngine {
-  def mk(params: Stack.Params) = params + Http.param.Netty3Impl
+  def mk(params: Stack.Params) = params + Http.Netty3Impl
 }
 
 class Netty4HttpEngine extends HttpEngine {
-  def mk(params: Stack.Params) = params + Netty4Impl
+  def mk(params: Stack.Params) = params + Http.Netty4Impl
 }

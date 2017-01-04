@@ -122,8 +122,7 @@ private[consul] object SvcAddr {
   }
 
   private[this] val ServiceRelease =
-    Failure("service observation released")
-      .flagged(Failure.Interrupted)
+    Failure("service observation released", Failure.Interrupted)
 
   private[this] val NoIndexException =
     Failure(new IllegalArgumentException("consul did not return an index") with NoStackTrace)

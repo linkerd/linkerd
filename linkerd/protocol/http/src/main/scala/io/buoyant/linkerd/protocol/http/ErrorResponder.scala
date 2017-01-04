@@ -4,9 +4,9 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stacka
 import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.logging.Logger
-import com.twitter.util.NonFatal
 import io.buoyant.router.RoutingFactory
 import java.net.URLEncoder
+import scala.util.control.NonFatal
 
 class ErrorResponder extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
