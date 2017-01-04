@@ -36,7 +36,10 @@ case class ZipkinConfig(
         .configured(DefaultPool.Param.param.default.copy(maxWaiters = 250))
         // reduce timeouts because trace requests should be fast
         .withRequestTimeout(100.millis)
+        // disable failure accrual so that we don't evict nodes when connections
+        // are saturated
         .withSessionQualifier.noFailureAccrual
+        // disable fail fast since we often be sending to a load balancer
         .withSessionQualifier.noFailFast
         .newService(Name.bound(Address(host.getOrElse("localhost"), port.getOrElse(9410))), "zipkin-tracer")
 
