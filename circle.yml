@@ -19,7 +19,7 @@ dependencies:
 
 test:
   pre:
-    - cd admin/src/main/resources/io/buoyant/admin && npm run eslint
+    - cd admin/src/main/resources/io/buoyant/admin && npm run eslint && npm test
   override:
     - ci/test.sh:
         parallel: true

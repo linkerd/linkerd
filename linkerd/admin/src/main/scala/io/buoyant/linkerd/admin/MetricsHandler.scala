@@ -12,7 +12,6 @@ private object MetricsHandler extends Service[Request, Response] {
   val render =
     AdminHandler.html(
       content = """<div class="metrics"></div>""",
-      javaScripts = Seq("lib/smoothie.js", "utils.js", "routers.js", "metrics.js"),
       csses = Seq("admin.css", "metrics.css")
     )
 }

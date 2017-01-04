@@ -57,15 +57,10 @@ object AdminHandler extends HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    javaScripts: Seq[String] = Nil,
     navbar: String = navBar
   ): String = {
     val cssesHtml = csses.map { css =>
       s"""<link type="text/css" href="/files/css/$css" rel="stylesheet"/>"""
-    }.mkString("\n")
-
-    val javaScriptsHtml = javaScripts.map { js =>
-      s"""<script src="/files/js/$js"></script>"""
     }.mkString("\n")
 
     s"""
@@ -85,16 +80,10 @@ object AdminHandler extends HtmlView {
           <div class="container-fluid">
             $content
           </div>
-
           $tailContent
 
-          <script src="/files/js/lib/jquery.min.js"></script>
-          <script src="/files/js/lib/bootstrap.min.js"></script>
-          <script src="/files/js/lib/lodash.min.js"></script>
-          <script src="/files/js/lib/handlebars-v4.0.5.js"></script>
-          <script src="/files/js/admin.js"></script>
-          <script src="/files/js/query.js"></script>
-          $javaScriptsHtml
+          <script data-main="/files/js/main-linkerd" src="/files/js/lib/require.js"></script>
+
         </body>
       </html>
     """
