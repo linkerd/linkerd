@@ -1,6 +1,8 @@
 package io.buoyant.transformer
 package k8s
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Path
 import io.buoyant.namer._
 import java.net.InetAddress
 
@@ -12,6 +14,10 @@ class LocalNodeTransformerInitializer extends TransformerInitializer {
 case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
   extends TransformerConfig {
 
+  @JsonIgnore
+  val defaultPrefix = Path.read("/io.l5d.k8s.localnode")
+
+  @JsonIgnore
   override def mk(): NameTreeTransformer = {
     if (hostNetwork.getOrElse(false)) {
       val nodeName = sys.env.getOrElse(
@@ -20,7 +26,7 @@ case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
           "NODE_NAME env variable must be set to the node's name"
         )
       )
-      new MetadataFiltertingNameTreeTransformer(Metadata.nodeName, nodeName)
+      new MetadataFiltertingNameTreeTransformer(prefix ++ Path.Utf8(nodeName), Metadata.nodeName, nodeName)
     } else {
       val ip = sys.env.getOrElse(
         "POD_IP",
@@ -29,7 +35,7 @@ case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
         )
       )
       val local = InetAddress.getByName(ip)
-      new SubnetLocalTransformer(Seq(local), Netmask("255.255.255.0"))
+      new SubnetLocalTransformer(prefix ++ Path.Utf8(ip), Seq(local), Netmask("255.255.255.0"))
     }
   }
 

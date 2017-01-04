@@ -20,7 +20,7 @@ class DaemonSetTransformerTest extends FunSuite {
       )), Path.read("/#/io.l5d.k8s/default/incoming/l5d"), Path.empty))
     )
 
-    val transformer = new SubnetGatewayTransformer(daemonset, Netmask("255.255.255.0"))
+    val transformer = new SubnetGatewayTransformer(Path.empty, daemonset, Netmask("255.255.255.0"))
 
     val interpreter = new NameInterpreter {
       override def bind(
@@ -64,7 +64,7 @@ class DaemonSetTransformerTest extends FunSuite {
       )), Path.read("/#/io.l5d.k8s/default/incoming/l5d"), Path.empty))
     )
 
-    val transformer = new MetadataGatewayTransformer(daemonset, Metadata.nodeName)
+    val transformer = new MetadataGatewayTransformer(Path.empty, daemonset, Metadata.nodeName)
 
     val interpreter = new NameInterpreter {
       override def bind(

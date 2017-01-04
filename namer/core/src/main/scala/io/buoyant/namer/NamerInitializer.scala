@@ -47,7 +47,7 @@ abstract class NamerConfig {
   def defaultPrefix: Path
 
   @JsonIgnore
-  def prefix = NamerConfig.hash ++ _prefix.getOrElse(defaultPrefix)
+  def prefix = Paths.ConfiguredNamerPrefix ++ _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
   protected def newNamer(params: Stack.Params): Namer
@@ -60,10 +60,6 @@ abstract class NamerConfig {
       transformer.wrap(namer)
     }
   }
-}
-
-object NamerConfig {
-  val hash = Path.Utf8("#")
 }
 
 abstract class NamerInitializer extends ConfigInitializer

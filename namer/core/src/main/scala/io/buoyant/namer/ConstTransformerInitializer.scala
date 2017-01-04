@@ -1,5 +1,6 @@
 package io.buoyant.namer
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Path
 
 class ConstTransformerInitializer extends TransformerInitializer {
@@ -10,5 +11,9 @@ class ConstTransformerInitializer extends TransformerInitializer {
 object ConstTransformerInitializer extends ConstTransformerInitializer
 
 case class ConstTransformerConfig(path: Path) extends TransformerConfig {
-  override def mk(): NameTreeTransformer = new ConstTransformer(path)
+
+  @JsonIgnore
+  val defaultPrefix = Path.read("/io.l5d.const")
+
+  override def mk(): NameTreeTransformer = new ConstTransformer(prefix, path)
 }
