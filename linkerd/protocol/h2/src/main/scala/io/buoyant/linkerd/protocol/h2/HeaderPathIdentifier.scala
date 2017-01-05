@@ -85,7 +85,7 @@ object HeaderPathIdentifier {
     def unapply(uri: String): Option[String] =
       uri.indexOf('?') match {
         case -1 => Some(uri.stripSuffix("/"))
-        case idx => Some(uri.substring(idx + 1).stripSuffix("/"))
+        case idx => Some(uri.substring(0, idx).stripSuffix("/"))
       }
   }
 }
