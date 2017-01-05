@@ -9,8 +9,9 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Buf
-import com.twitter.util._
+import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.consul.log
+import scala.util.control.NonFatal
 
 trait BaseApi extends Closable {
   def client: Client

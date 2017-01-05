@@ -14,7 +14,7 @@ import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
-import io.buoyant.router.RoutingFactory.{RequestIdentification, IdentifiedRequest, UnidentifiedRequest}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.{Http, RoutingFactory}
 import scala.collection.JavaConverters._
 
@@ -34,9 +34,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val clientStack = Http.router.clientStack
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+      .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
-      .insertAfter(StackClient.Role.prepConn, Headers.Ctx.clientModule)
 
     Http.router
       .withPathStack(pathStack)

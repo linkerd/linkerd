@@ -24,7 +24,7 @@ object Authenticator {
   }
   private[marathon] case class UnauthorizedResponse(rsp: http.Response) extends Throwable
   private[this] case class AuthToken(token: Option[String])
-  private[this] val closedException = Failure("closed").flagged(Failure.Interrupted)
+  private[this] val closedException = Failure("closed", Failure.Interrupted)
   private[this] val closedExceptionF = Future.exception(closedException)
   private[this] val missingTokenException = Failure("missing token")
   private[this] val missingTokenExceptionF = Future.exception(missingTokenException)

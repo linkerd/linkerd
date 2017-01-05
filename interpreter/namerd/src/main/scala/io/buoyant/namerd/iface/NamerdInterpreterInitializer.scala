@@ -8,10 +8,11 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
-import com.twitter.util._
+import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import com.twitter.finagle.buoyant.TlsClientPrep
+import scala.util.control.NonFatal
 
 /**
  * The namerd interpreter offloads the responsibilities of name resolution to
