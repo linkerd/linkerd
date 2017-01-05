@@ -23,7 +23,8 @@ require.config({
     'lodash': 'lib/lodash.min',
     'Handlebars': 'lib/handlebars-v4.0.5',
     'bootstrap': 'lib/bootstrap.min',
-    'Smoothie': 'lib/smoothie'
+    'Smoothie': 'lib/smoothie',
+    'text': 'lib/text'
   },
   // grab this from our app's main.js, but make sure the paths are correct
   shim: {
