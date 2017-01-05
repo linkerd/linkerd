@@ -190,6 +190,10 @@ routers:
       kind: io.l5d.successRateWindowed
       successRate: 0.9
       window: 30
+      backoff:
+        kind: jittered
+        minMs: 20000
+        maxMs: 200000
   servers:
   - port: 4144
     ip: 0.0.0.0
@@ -218,13 +222,7 @@ routers:
       - prefix: "/#/io.l5d.fs/{service}"
         commonNamePattern: "{service}"
     failureAccrual:
-      kind: io.l5d.successRateWindowed
-      successRate: 0.8
-      window: 40
-      backoff:
-        kind: jittered
-        minMs: 20000
-        maxMs: 200000
+      kind: none
   servers:
   - port: 4145
     ip: 0.0.0.0
