@@ -1,3 +1,4 @@
+define(function(require, exports) {
 // MIT License:
 //
 // Copyright (c) 2010-2013, Joe Walnes
@@ -801,4 +802,4 @@
   exports.SmoothieChart = SmoothieChart;
 
 })(typeof exports === 'undefined' ? this : exports);
-
+});

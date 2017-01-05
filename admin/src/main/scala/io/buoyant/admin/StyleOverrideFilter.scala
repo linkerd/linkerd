@@ -9,9 +9,12 @@ class StyleOverrideFilter extends SimpleFilter[Request, Response] {
 
   val stylesAndJavascripts =
     s"""
+    <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
     <link type="text/css" href="/files/css/logger-overrides.css" rel="stylesheet"/>
     <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
-    <script src="/files/js/logger-overrides.js"></script>
+    <script src="/files/js/lib/jquery.min.js"></script>
+    <script src="/files/js/lib/bootstrap.min.js"></script>
+    <script src="/files/js/src/logger-overrides.js"></script>
       """
 
   def apply(req: Request, svc: Service[Request, Response]) = {

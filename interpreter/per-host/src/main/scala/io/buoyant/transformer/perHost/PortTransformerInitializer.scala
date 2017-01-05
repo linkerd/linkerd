@@ -1,5 +1,7 @@
 package io.buoyant.transformer.perHost
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Path
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
 
@@ -9,5 +11,9 @@ class PortTransformerInitializer extends TransformerInitializer {
 }
 
 case class PortTransformerConfig(port: Port) extends TransformerConfig {
-  override def mk(): NameTreeTransformer = new PortTransformer(port.port)
+
+  @JsonIgnore
+  val defaultPrefix = Path.read(s"/io.l5d.port/${port.port}")
+
+  override def mk(): NameTreeTransformer = new PortTransformer(prefix, port.port)
 }

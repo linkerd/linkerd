@@ -1,6 +1,6 @@
 package io.buoyant
 
-import com.twitter.util.{Future, Activity}
+import com.twitter.util.{Activity, Future}
 
 package object namerd {
   type Ns = String

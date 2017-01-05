@@ -4,7 +4,7 @@
 /* globals getSelectedRouter, Routers, UpdateableChart */
 
 $.when(
-  $.get("/files/template/metrics.template"),
+  $.get("/files/js/template/metrics.template"),
   $.get("/admin/metrics.json")
 ).done(function(templateRsp, jsonRsp) {
   $(function() {
