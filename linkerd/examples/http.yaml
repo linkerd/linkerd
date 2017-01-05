@@ -8,7 +8,6 @@ namers:
 # A simple HTTP router that looks up host header values in io.l5d.fs.
 routers:
 - protocol: http
-  label: netty3
   identifier:
     kind: io.l5d.header
   baseDtab: |
@@ -18,26 +17,7 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-    engine:
-      kind: netty3
-  client:
-    # maxResponseKB: 40960 # 40MB
-    engine:
-      kind: netty3
 
-- protocol: http
-  label: netty4
-  identifier:
-    kind: io.l5d.header.token
-  baseDtab: |
-    /srv => /#/io.l5d.fs;
-    /host => /srv;
-    /http => /host;
-  servers:
-  - port: 4141
-    ip: 0.0.0.0
-    engine:
-      kind: netty4
-  client:
-    engine:
-      kind: netty4
+telemetry:
+- kind: io.l5d.tracelog
+

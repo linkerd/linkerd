@@ -26,6 +26,7 @@ object AdminHandler extends HtmlView {
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li><a href="/delegator">dtab</a></li>
+            <li><a href="/requests">requests</a></li>
             <li><a href="/admin/logging">logging</a></li>
             <li><a href="/help">help</a></li>
           </ul>

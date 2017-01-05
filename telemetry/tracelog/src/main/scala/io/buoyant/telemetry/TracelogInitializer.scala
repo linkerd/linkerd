@@ -34,7 +34,9 @@ class TracelogTelemeter(logger: Logger, level: Level, sampler: Sampler) extends 
 class TracelogTracer(logger: Logger, level: Level, sample: Sampler) extends Tracer {
 
   // This tracer doesn't influence downstream tracing.
-  def sampleTrace(id: TraceId): Option[Boolean] = None
+  def sampleTrace(id: TraceId): Option[Boolean] = {
+    None
+  }
 
   def record(record: Record): Unit = {
     val id = record.traceId

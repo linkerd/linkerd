@@ -53,12 +53,22 @@ object LinkerdAdmin {
       baseResourcePath = "io/buoyant/admin",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
-    "/help" -> new HelpPageHandler
+    "/help" -> new HelpPageHandler,
+    "/requests" -> new RequestLogPlaceholderHandler
   )
 
-  def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Handlers =
+  def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Handlers = {
+    val extHandlers = Admin.extractHandlers(
+      linker.namers ++
+        linker.routers ++
+        linker.telemeters
+    ).map {
+        case (path, handler) => (path, AdminFilter.andThen(handler))
+      }
+
     static ++ config(lc) ++
       boundNames(linker.namers.map { case (_, n) => n }) ++
       delegator(linker.routers) ++
-      Admin.extractHandlers(linker.namers ++ linker.routers ++ linker.telemeters)
+      extHandlers
+  }
 }
