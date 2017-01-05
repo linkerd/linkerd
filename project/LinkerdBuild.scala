@@ -284,7 +284,8 @@ object LinkerdBuild extends Base {
 
     val LowMemSettings = BundleSettings ++ Seq(
       dockerJavaImage := "buoyantio/debian-32-bit",
-      dockerTag := s"${version.value}-32bit"
+      dockerTag := s"${version.value}-32b",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
     )
 
     /**
@@ -522,7 +523,8 @@ object LinkerdBuild extends Base {
 
     val LowmemSettings = BundleSettings ++ Seq(
       dockerJavaImage := "buoyantio/debian-32-bit",
-      dockerTag := s"${version.value}-32bit"
+      dockerTag := s"${version.value}-32b",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
     )
 
     val LowmemProjects = BundleProjects.filterNot(_ == Project.projectToRef(tls))
