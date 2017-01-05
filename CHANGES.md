@@ -6,6 +6,8 @@
   * Support "ip per task" feature
 * linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
   `dtab-local`
+* The default docker images now use a 64 bit JVM.  A `-32bit` docker image is
+  also availble but does not support TLS.
 
 ## 0.8.4 2016-12-05
 
