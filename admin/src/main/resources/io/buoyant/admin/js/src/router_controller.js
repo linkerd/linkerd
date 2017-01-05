@@ -1,15 +1,17 @@
 "use strict";
 
 define([
-  'lodash',
+  'lodash', 'Handlebars',
   'src/router_summary',
   'src/router_servers',
-  'src/router_clients'
+  'src/router_clients',
+  'text!template/router_container.template'
 ], function(
-  _,
+  _, Handlebars,
   RouterSummary,
   RouterServers,
-  RouterClients
+  RouterClients,
+  routerContainerTemplate
 ) {
 
   var RouterController = (function () {
@@ -93,7 +95,8 @@ define([
       return routerData;
     }
 
-    function initializeRouterContainers(selectedRouter, routers, $parentContainer, template) {
+    function initializeRouterContainers(selectedRouter, routers, $parentContainer) {
+      var template = Handlebars.compile(routerContainerTemplate);
       var routerData = getSelectedRouterData(selectedRouter, routers);
       var containers = template({ routers: _.keys(routerData) });
       $parentContainer.html(containers);
@@ -107,17 +110,17 @@ define([
       return routerContainers;
     }
 
-    return function(metricsCollector, selectedRouter, routers, templates, $parentContainer) {
-      var routerContainerEls = initializeRouterContainers(selectedRouter, routers, $parentContainer, templates.container);
+    return function(metricsCollector, selectedRouter, routers, $parentContainer) {
+      var routerContainerEls = initializeRouterContainers(selectedRouter, routers, $parentContainer);
 
       _.each(routerContainerEls, function(container, router) {
         var $summaryEl = $(container.find(".summary")[0]);
         var $serversEl = $(container.find(".servers")[0]);
         var $clientsEl = $(container.find(".clients")[0]);
 
-        RouterSummary(metricsCollector, templates.summary, $summaryEl, router);
-        RouterServers(metricsCollector, routers, $serversEl, router, templates.server, templates.serverMetric, templates.serverContainer);
-        RouterClients(metricsCollector, routers, $clientsEl, router , templates.client, templates.metric, templates.clientContainer, colorOrder);
+        RouterSummary(metricsCollector, $summaryEl, router);
+        RouterServers(metricsCollector, routers, $serversEl, router);
+        RouterClients(metricsCollector, routers, $clientsEl, router, colorOrder);
       });
 
       return {};
