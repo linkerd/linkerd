@@ -6,7 +6,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.stats.{ClientStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.thrift.Protocols
-import com.twitter.finagle.tracing.{Record, Trace, TraceId, Tracer}
+import com.twitter.finagle.tracing._
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.zipkin.core.Sampler
 import com.twitter.finagle.zipkin.thrift.{ScribeRawZipkinTracer, ZipkinTracer}
@@ -41,6 +41,7 @@ case class ZipkinConfig(
         .withSessionQualifier.noFailureAccrual
         // disable fail fast since we often be sending to a load balancer
         .withSessionQualifier.noFailFast
+        .withTracer(NullTracer)
         .newService(Name.bound(Address(host.getOrElse("localhost"), port.getOrElse(9410))), "zipkin-tracer")
 
       val client = new Scribe.FinagledClient(
