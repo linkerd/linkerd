@@ -15,10 +15,15 @@ e2eTests() {
   ./sbt e2e:test integration:compile linkerd-protocol-http/integration:test
 }
 
+assembleBinaries() {
+  ./sbt linkerd/assembly namerd/assembly
+}
+
 case "${CIRCLE_NODE_TOTAL:-1}" in
 1)
   unitTests
   e2eTests
+  assembleBinaries
   ci/linkerd-acceptance.sh
   ;;
 
@@ -33,6 +38,7 @@ case "${CIRCLE_NODE_TOTAL:-1}" in
   1)
     echo "Running e2e tests in worker ${worker}"
     e2eTests
+    assembleBinaries
     ci/linkerd-acceptance.sh
     ;;
 

@@ -68,7 +68,31 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
   }
 }
 
+object DelegatingNameTreeTransformer {
+
+  /**
+   * Expand a delegate tree to show the effect of a transformation that maps one Name.Bound to
+   * another.
+   */
+  def transformDelegate(tree: DelegateTree[Name.Bound], mapBound: Name.Bound => Name.Bound): DelegateTree[Name.Bound] =
+    tree.flatMap { orig =>
+      val transformed = mapBound(orig.value)
+      val transformedPath = transformed.id match {
+        case id: Path => id
+        case _ => orig.path
+      }
+      DelegateTree.Transformation(
+        orig.path,
+        getClass.getSimpleName,
+        orig.value, // pre-transformation
+        orig.copy(value = transformed, path = transformedPath) // post-transformation
+      )
+    }
+}
+
 trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
+
+  def prefix: Path
 
   /** Determine whether an address may be used. */
   protected def predicate: Address => Boolean
@@ -82,16 +106,25 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
         }
       case addr => addr
     }
-    Name.Bound(vaddr, bound.id, bound.path)
+    bound.id match {
+      case id: Path => Name.Bound(vaddr, prefix ++ id, bound.path)
+      case _ => Name.Bound(vaddr, bound.id, bound.path)
+    }
+
   }
 
   override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
     Activity.value(tree.flatMap { leaf =>
+      val bound = mapBound(leaf.value)
+      val path = bound.id match {
+        case id: Path => id
+        case _ => leaf.path
+      }
       DelegateTree.Transformation(
         leaf.path,
         getClass.getSimpleName,
         leaf.value,
-        leaf.copy(value = mapBound(leaf.value))
+        leaf.copy(value = bound, path = path)
       )
     })
 
@@ -99,7 +132,11 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
     Activity.value(tree.map(mapBound))
 }
 
-class MetadataFiltertingNameTreeTransformer(metadataKey: String, metadataValue: Any) extends FilteringNameTreeTransformer {
+class MetadataFiltertingNameTreeTransformer(
+  val prefix: Path,
+  metadataKey: String,
+  metadataValue: Any
+) extends FilteringNameTreeTransformer {
   protected val predicate: Address => Boolean = {
     case a@Address.Inet(_, meta) =>
       meta.get(metadataKey).contains(metadataValue)

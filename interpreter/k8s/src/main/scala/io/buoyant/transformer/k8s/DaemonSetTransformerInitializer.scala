@@ -1,6 +1,7 @@
 package io.buoyant.transformer
 package k8s
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.{NameTree, Path}
@@ -27,19 +28,27 @@ case class DaemonSetTransformerConfig(
   assert(service != null, "io.l5d.k8s.daemonset: service property is required")
   assert(port != null, "io.l5d.k8s.daemonset: port property is required")
 
+  @JsonIgnore
   override def host: Option[String] = k8sHost
+
+  @JsonIgnore
   override def portNum: Option[Int] = k8sPort.map(_.port)
 
+  @JsonIgnore
+  val defaultPrefix = Path.read(s"/io.l5d.k8s.daemonset/$namespace/$port/$service")
+
+  @JsonIgnore
   private[this] val netmask = InetAddress.getByName("255.255.255.0")
 
+  @JsonIgnore
   override def mk(): NameTreeTransformer = {
     val client = mkClient(Params.empty).configured(Label("daemonsetTransformer"))
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
     val namer = new EndpointsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     if (hostNetwork.getOrElse(false))
-      new MetadataGatewayTransformer(daemonSet, Metadata.nodeName)
+      new MetadataGatewayTransformer(prefix, daemonSet, Metadata.nodeName)
     else
-      new SubnetGatewayTransformer(daemonSet, Netmask("255.255.255.0"))
+      new SubnetGatewayTransformer(prefix, daemonSet, Netmask("255.255.255.0"))
   }
 }

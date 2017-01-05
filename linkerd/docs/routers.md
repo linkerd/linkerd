@@ -26,7 +26,8 @@ routers:
   originator: true
   timeoutMs: 10000
   bindingTimeoutMs: 5000
-  responseClassifier: io.l5d.nonRetryable5XX
+  responseClassifier:
+    kind: io.l5d.nonRetryable5XX
 ```
 
 Key | Default Value | Description

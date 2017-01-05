@@ -26,7 +26,7 @@ private[telemetry] object PrometheusStatsHandler {
     def replaceAllIn(str: String) = regex.replaceAllIn(str, replace)
   }
   private[this] val delimiter = Escape("[/]".r, ":")
-  private[this] val statPattern = """(.*)\.(count|sum|avg|min|max|stddev|p50|p90|p95|p99|p9990)$""".r
+  private[this] val statPattern = """(.*)\.(count|sum|avg|min|max|stddev|p[0-9]+)$""".r
   private[this] val disallowedChars = Escape("[^a-zA-Z0-9:]".r, "_")
 
   private[this] def escapeKey(key: String) = {
