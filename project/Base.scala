@@ -125,7 +125,7 @@ class Base extends Build {
 
     docker <<= docker dependsOn (assembly in configuration),
     dockerEnvPrefix := "",
-    dockerJavaImage := "buoyantio/debian-32-bit",
+    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("library/java:openjdk-8-jre")),
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"

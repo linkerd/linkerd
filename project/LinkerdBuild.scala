@@ -8,9 +8,9 @@ import pl.project13.scala.sbt.JmhPlugin
 
 object LinkerdBuild extends Base {
 
-  val Minimal = config("minimal")
-  val Bundle = config("bundle") extend Minimal
+  val Bundle = config("bundle")
   val Dcos = config("dcos") extend Bundle
+  val LowMem = config("lowmem") extend Bundle
 
   object Finagle {
     val h2 = projectDir("finagle/h2")
@@ -265,29 +265,26 @@ object LinkerdBuild extends Base {
          |"""
       ).stripMargin
 
-    val Minimal = config("minimal")
-    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
+    val BundleSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.namerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "NAMERD_",
-      unmanagedBase := baseDirectory.value / "plugins"
-    )
-
-    val MinimalProjects = Seq[ProjectReference](
-      core, main, Namer.fs, Storage.inMemory, Router.http,
-      Iface.controlHttp, Iface.interpreterThrift
-    )
-
-    val Bundle = config("bundle") extend Minimal
-    val BundleSettings = MinimalSettings ++ Seq(
+      unmanagedBase := baseDirectory.value / "plugins",
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       dockerTag := version.value
     )
 
     val BundleProjects = Seq[ProjectReference](
+      core, main, Namer.fs, Storage.inMemory, Router.http,
+      Iface.controlHttp, Iface.interpreterThrift,
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
+    )
+
+    val LowMemSettings = BundleSettings ++ Seq(
+      dockerJavaImage := "buoyantio/debian-32-bit",
+      dockerTag := s"${version.value}-32bit"
     )
 
     /**
@@ -328,21 +325,18 @@ object LinkerdBuild extends Base {
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
       .dependsOn(core, admin, configCore, Storage.zk)
 
-    val DcosSettings = MinimalSettings ++ Seq(
+    val DcosSettings = BundleSettings ++ Seq(
       assemblyExecScript := dcosExecScript.split("\n").toSeq
     )
 
     val all = aggregateDir("namerd",
         core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
-      .configs(Minimal, Bundle, Dcos)
-      // Minimal cofiguration includes a runtime, HTTP routing and the
-      // fs service discovery.
-      .configDependsOn(Minimal)(MinimalProjects: _*)
-      .settings(inConfig(Minimal)(MinimalSettings))
-      .withTwitterLib(Deps.finagle("stats") % Minimal)
+      .configs(Bundle, Dcos, LowMem)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(LowMem)(BundleProjects: _*)
+      .settings(inConfig(LowMem)(LowMemSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
       .settings(
@@ -356,14 +350,11 @@ object LinkerdBuild extends Base {
     val exampleConfigs = file("namerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }
-    def exampleConfig(name:  String): Configuration = name match {
-      case "basic" => Minimal
-      case _ => Bundle
-    }
+    def exampleConfig(name: String): Configuration = Bundle
 
     val examples = projectDir("namerd/examples")
       .withExamples(Namerd.all, exampleConfigs)
-      .configDependsOn(Test)(MinimalProjects ++ BundleProjects: _*)
+      .configDependsOn(Test)(BundleProjects: _*)
       .withTests()
   }
 
@@ -508,26 +499,20 @@ object LinkerdBuild extends Base {
          |"""
       ).stripMargin
 
-    val MinimalSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
+    val BundleSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.linkerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "L5D_",
-      unmanagedBase := baseDirectory.value / "plugins"
-    )
-
-    val MinimalProjects = Seq[ProjectReference](
-      admin, core, main, configCore, Namer.fs, Protocol.http, Telemetry.tracelog
-    )
-
-    val BundleSettings = MinimalSettings ++ Seq(
+      unmanagedBase := baseDirectory.value / "plugins",
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       dockerTag := version.value
     )
 
     val BundleProjects = Seq[ProjectReference](
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
+      admin, core, main, configCore,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
-      Protocol.h2, Protocol.mux, Protocol.thrift,
+      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
       Telemetry.core, Telemetry.tracelog,
       Tracer.zipkin,
@@ -535,18 +520,22 @@ object LinkerdBuild extends Base {
       failureAccrual
     )
 
+    val LowmemSettings = BundleSettings ++ Seq(
+      dockerJavaImage := "buoyantio/debian-32-bit",
+      dockerTag := s"${version.value}-32bit"
+    )
+
+    val LowmemProjects = BundleProjects.filterNot(_ == Project.projectToRef(tls))
+
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
         Announcer.all, Namer.all, Protocol.all, Tracer.all)
-      .configs(Minimal, Bundle)
-      // Minimal cofiguration includes a runtime, HTTP routing and the
-      // fs service discovery.
-      .configDependsOn(Minimal)(MinimalProjects: _*)
-      .settings(inConfig(Minimal)(MinimalSettings))
-      .withTwitterLib(Deps.finagle("stats") % Minimal)
+      .configs(Bundle, LowMem)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(LowMem)(LowmemProjects: _*)
+      .settings(inConfig(LowMem)(LowmemSettings))
       .settings(
         assembly <<= assembly in Bundle,
         docker <<= docker in Bundle,
@@ -558,14 +547,11 @@ object LinkerdBuild extends Base {
     val exampleConfigs = file("linkerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
     }
-    def exampleConfig(name: String): Configuration = name match {
-      case "http" => Minimal
-      case _ => Bundle
-    }
+    def exampleConfig(name: String): Configuration = Bundle
 
     val examples = projectDir("linkerd/examples")
       .withExamples(Linkerd.all, exampleConfigs)
-      .configDependsOn(Test)(MinimalProjects ++ BundleProjects: _*)
+      .configDependsOn(Test)(BundleProjects: _*)
       .withTests()
   }
 
