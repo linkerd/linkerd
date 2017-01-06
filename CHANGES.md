@@ -1,17 +1,21 @@
-## In the next release...
+## 0.8.5 2017-01-06
 
-* Fix localhost transformer when used on systems with unresolvable hostname.
-* Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
-* Marathon:
-  * Support "ip per task" feature
-* linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
-  `dtab-local`
-* Client failure accrual is now configurable via the `failureAccrual` parameter
 * Introduce the grpc-gen and grpc-runtime projects, enabling code
   generation of gRPC clients and servers for Finagle.
+* Various bug fixes to the linkerd admin dashboard.
 * The default docker images now use a 64 bit JVM.  A `-32b` docker image is
   also availble but does not support the boringssl TLS extensions required for
   ALPN, etc.
+* Marathon:
+  * Support "ip per task" feature
+* Client failure accrual is now configurable via the `failureAccrual` parameter
+* Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
+* linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
+  `dtab-local`
+* Transformers:
+  * Transformers will now prepend a prefix to the id of the bound names they
+    modify. 
+  * Fix localhost transformer when used on systems with unresolvable hostname.
 
 ## 0.8.4 2016-12-05
 
