@@ -17,6 +17,7 @@ import scoverage.ScoverageSbtPlugin
  * Base project configuration.
  */
 class Base extends Build {
+  import Base._
   val headVersion = "0.8.4"
 
   object Git {
@@ -27,9 +28,6 @@ class Base extends Build {
       case _ => s"$headVersion-SNAPSHOT"
     }
   }
-
-  val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
-  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
 
   val baseSettings = Seq(
     organization := "io.buoyant",
@@ -103,11 +101,6 @@ class Base extends Build {
        |exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@"
        |""".stripMargin.split("\n").toSeq
 
-  val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
-  val dockerJavaImage = settingKey[String]("base docker image, providing java")
-  val dockerTag = settingKey[String]("docker image tag")
-  val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
-
   val appPackagingSettings = assemblySettings ++ baseDockerSettings ++ Seq(
     assemblyExecScript := defaultExecScript,
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(
@@ -145,9 +138,6 @@ class Base extends Build {
       tag = Some(dockerTag.value)
     )
   )
-
-  val configFile = settingKey[File]("path to config file")
-  val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
 
   // Examples are named by a .yaml config file
   def exampleSettings(runtime: Project) = Seq(
@@ -262,4 +252,17 @@ class Base extends Build {
   }
 
   implicit def pimpMyProject(p: Project): ProjectHelpers = ProjectHelpers(p)
+}
+
+object Base {
+  val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
+  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
+
+  val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
+  val dockerJavaImage = settingKey[String]("base docker image, providing java")
+  val dockerTag = settingKey[String]("docker image tag")
+  val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
+
+  val configFile = settingKey[File]("path to config file")
+  val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
 }

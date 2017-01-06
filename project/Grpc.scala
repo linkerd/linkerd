@@ -7,6 +7,7 @@ import scala.language.implicitConversions
 import scoverage.ScoverageKeys._
 
 object Grpc extends Base {
+  import Base._
 
   val execScript =
     """|#!/bin/sh
