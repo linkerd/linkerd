@@ -317,7 +317,9 @@ object LinkerdBuild extends Base {
       .dependsOn(core, admin, configCore, Storage.zk)
 
     val DcosSettings = BundleSettings ++ Seq(
-      assemblyExecScript := dcosExecScript.split("\n").toSeq
+      assemblyExecScript := dcosExecScript.split("\n").toSeq,
+      dockerTag := s"${version.value}-dcos",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-dcos-exec"
     )
 
     val all = aggregateDir("namerd",
@@ -516,8 +518,6 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
     )
 
-    val LowmemProjects = BundleProjects.filterNot(_ == Project.projectToRef(tls))
-
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
         Announcer.all, Namer.all, Protocol.all, Tracer.all)
@@ -525,7 +525,7 @@ object LinkerdBuild extends Base {
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
-      .configDependsOn(LowMem)(LowmemProjects: _*)
+      .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowmemSettings))
       .settings(
         assembly <<= assembly in Bundle,
