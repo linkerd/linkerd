@@ -512,7 +512,7 @@ object LinkerdBuild extends Base {
       failureAccrual
     )
 
-    val LowmemSettings = BundleSettings ++ Seq(
+    val LowMemSettings = BundleSettings ++ Seq(
       dockerJavaImage := "buoyantio/debian-32-bit",
       dockerTag := s"${version.value}-32b",
       assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
@@ -526,7 +526,7 @@ object LinkerdBuild extends Base {
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
-      .settings(inConfig(LowMem)(LowmemSettings))
+      .settings(inConfig(LowMem)(LowMemSettings))
       .settings(
         assembly <<= assembly in Bundle,
         docker <<= docker in Bundle,
