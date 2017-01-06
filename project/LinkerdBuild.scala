@@ -7,6 +7,7 @@ import sbtunidoc.Plugin._
 import scoverage.ScoverageKeys._
 
 object LinkerdBuild extends Base {
+  import Base._
 
   val Minimal = config("minimal")
   val Bundle = config("bundle") extend Minimal
