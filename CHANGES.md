@@ -9,7 +9,7 @@
 * Client failure accrual is now configurable via the `failureAccrual` parameter
 * Introduce the grpc-gen and grpc-runtime projects, enabling code
   generation of gRPC clients and servers for Finagle.
-* The default docker images now use a 64 bit JVM.  A `-32bit` docker image is
+* The default docker images now use a 64 bit JVM.  A `-32b` docker image is
   also availble but does not support TLS.
 
 ## 0.8.4 2016-12-05
