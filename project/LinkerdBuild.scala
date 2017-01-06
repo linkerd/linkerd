@@ -1,26 +1,16 @@
+import pl.project13.scala.sbt.JmhPlugin
 import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
 import sbtunidoc.Plugin._
 import scoverage.ScoverageKeys._
-import pl.project13.scala.sbt.JmhPlugin
 
 object LinkerdBuild extends Base {
 
   val Bundle = config("bundle")
   val Dcos = config("dcos") extend Bundle
   val LowMem = config("lowmem") extend Bundle
-
-  object Finagle {
-    val h2 = projectDir("finagle/h2")
-      .withTwitterLibs(Deps.finagle("netty4"))
-      .withLibs(Deps.netty4("codec-http2"), Deps.netty4("handler"))
-      .withTests()
-      .withE2e()
-
-    val all = aggregateDir("finagle", h2)
-  }
 
   val configCore = projectDir("config")
     .withTwitterLibs(Deps.finagle("core"))
@@ -356,6 +346,7 @@ object LinkerdBuild extends Base {
     val examples = projectDir("namerd/examples")
       .withExamples(Namerd.all, exampleConfigs)
       .configDependsOn(Test)(BundleProjects: _*)
+      .settings(publishArtifact := false)
       .withTests()
   }
 
@@ -410,11 +401,9 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
+        .dependsOn(core, Router.h2)
         .withTests()
         .withTwitterLibs(Deps.finagle("netty4"))
-        .dependsOn(
-          core,
-          Router.h2)
 
       val http = projectDir("linkerd/protocol/http")
         .withTests().withE2e().withIntegration()
@@ -432,13 +421,13 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Router.thrift)
         .withTests()
 
-      val all = aggregateDir("linkerd/protocol", h2, http, mux, thrift)
-
       val benchmark = projectDir("linkerd/protocol/benchmark")
-        .dependsOn(http, Protocol.http)
-        .withTests()
-        .withTwitterLib(Deps.twitterUtil("benchmark"))
+        .dependsOn(http, testUtil)
         .enablePlugins(JmhPlugin)
+        .settings(publishArtifact := false)
+        .withTwitterLib(Deps.twitterUtil("benchmark"))
+
+      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift)
     }
 
     object Tracer {
@@ -554,6 +543,7 @@ object LinkerdBuild extends Base {
     val examples = projectDir("linkerd/examples")
       .withExamples(Linkerd.all, exampleConfigs)
       .configDependsOn(Test)(BundleProjects: _*)
+      .settings(publishArtifact := false)
       .withTests()
   }
 
@@ -569,14 +559,14 @@ object LinkerdBuild extends Base {
           (run in Compile).toTask(s" -linkerd.exec=$linkerd -namerd.exec=$namerd").value
         }
       }).value,
-      coverageExcludedPackages := ".*"
+      coverageExcludedPackages := ".*",
+      publishArtifact := false
     )
+
+  // Note: Finagle and Grpc modules defined in other files.
 
   // All projects must be exposed at the root of the object in
   // dependency-order:
-
-  val finagle = Finagle.all
-  val finagleH2 = Finagle.h2
 
   val router = Router.all
   val routerCore = Router.core
@@ -645,8 +635,7 @@ object LinkerdBuild extends Base {
 
   // Unified documentation via the sbt-unidoc plugin
   val all = project("all", file("."))
-    .settings(unidocSettings)
-    .settings(aggregateSettings)
+    .settings(aggregateSettings ++ unidocSettings)
     .aggregate(
       admin,
       configCore,
@@ -655,6 +644,8 @@ object LinkerdBuild extends Base {
       k8s,
       marathon,
       testUtil,
+      Finagle.all,
+      Grpc.all,
       Interpreter.all,
       Linkerd.all,
       Linkerd.examples,

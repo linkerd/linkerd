@@ -41,6 +41,22 @@ class HeaderPathIdentifierTest extends FunSuite with Awaits {
     }
   }
 
+  test("ignores url params") {
+    val baseDtab = Dtab.read("/pfx => /other")
+    val localDtab = Dtab.read("/pfx => /another")
+    val identifier = new HeaderPathIdentifier(Headers.Path, None, Path.Utf8("pfx"), () => baseDtab)
+    val req0 = Request("http", Method.Get, "wacky", "/one/two/?three=four", Stream.empty())
+
+    Dtab.local = localDtab
+    await(identifier(req0)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(name == Path.read("/pfx/one/two"))
+        assert(base == baseDtab)
+        assert(local == localDtab)
+      case id => fail(s"unexpected identification: $id")
+    }
+  }
+
   test("does not identify requests by header, with path shorter than segment limit") {
     val baseDtab = Dtab.read("/pfx => /other")
     val localDtab = Dtab.read("/pfx => /another")

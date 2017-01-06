@@ -1,4 +1,5 @@
 resolvers += "twitter-repo" at "https://maven.twttr.com"
+ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true))
 
 // formatting
 addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.6.0")
@@ -24,3 +25,6 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.6")
 
 // pgp signing for publishing to sonatype
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
+
+// our grpc building extends the wrapped sbt-protobuf
+addSbtPlugin("com.github.gseitz" % "sbt-protobuf" % "0.5.3")

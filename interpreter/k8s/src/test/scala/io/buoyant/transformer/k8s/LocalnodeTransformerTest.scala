@@ -12,7 +12,7 @@ import java.net.{InetAddress, InetSocketAddress}
 class LocalnodeTransformerTest extends FunSuite {
 
   test("localnode transformer selects local instance") {
-    val transformer = new SubnetLocalTransformer(Seq(InetAddress.getByName("1.1.1.1")), Netmask("255.255.255.0"))
+    val transformer = new SubnetLocalTransformer(Path.empty, Seq(InetAddress.getByName("1.1.1.1")), Netmask("255.255.255.0"))
 
     val interpreter = new NameInterpreter {
       override def bind(
@@ -43,7 +43,7 @@ class LocalnodeTransformerTest extends FunSuite {
   }
 
   test("localnode transformer with host network") {
-    val transformer = new MetadataFiltertingNameTreeTransformer(Metadata.nodeName, "7.7.7.7")
+    val transformer = new MetadataFiltertingNameTreeTransformer(Path.empty, Metadata.nodeName, "7.7.7.7")
 
     val interpreter = new NameInterpreter {
       override def bind(

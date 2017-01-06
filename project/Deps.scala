@@ -53,4 +53,6 @@ object Deps {
 
   // jwt for Marathon API
   val jwt = "com.pauldijou" %% "jwt-core" % "0.9.0"
+
+  val protobuf = "com.google.protobuf" % "protobuf-java" % "3.1.0"
 }

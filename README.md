@@ -2,7 +2,6 @@
 
 [![GitHub license](https://img.shields.io/github/license/buoyantio/linkerd.svg)](LICENSE)
 [![Circle CI][l5d-ci-status]][l5d-ci]
-[![Coverage Status](https://coveralls.io/repos/github/BuoyantIO/linkerd/badge.svg)](https://coveralls.io/github/BuoyantIO/linkerd)
 [![Slack Status](http://slack.linkerd.io/badge.svg)](http://slack.linkerd.io)
 
 :balloon: Welcome to linkerd! :wave:
@@ -184,6 +183,10 @@ xUnit-like semantics. We avoid using mocking frameworks when testing
 our own code, as they tend to introduce as many problems as they
 solve. Tests may leverage the `test-util` project, which provides some
 helpers for writing tests against Finagle's asynchronous APIs.
+
+#### JS tests ####
+
+See the [javascript readme](/admin/src/main/resources/io/buoyant/admin/README.md).
 
 ### Packaging ###
 
