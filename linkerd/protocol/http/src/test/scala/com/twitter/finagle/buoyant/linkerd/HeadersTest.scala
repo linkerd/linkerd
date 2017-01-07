@@ -7,10 +7,9 @@ import com.twitter.finagle.context.{Contexts, Deadline}
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util.{Future, Time, Var}
-import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
-class HeadersTest extends FunSuite with Awaits {
+class HeadersTest extends FunSuite {
 
   test("round trip encoding for ctx header") {
     val orig = Trace.nextId

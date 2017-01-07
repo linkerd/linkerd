@@ -15,6 +15,9 @@ routers:
   maxResponseKB: 5120
   servers:
   - port: 5000
+    addForwardedHeader:
+      by: {kind: "ip:port"}
+      for: {kind: ip}
 ```
 
 > Below: an example HTTP router config that routes all `POST` requests to 8091
@@ -60,6 +63,59 @@ These memory constraints are selected to allow reliable
 concurrent usage of linkerd. Changing these parameters may
 significantly alter linkerd's performance characteristics.
 </aside>
+
+
+<a name="http-1-1-server"></a>
+## HTTP Servers ##
+
+HTTP servers accept additional configuration parameters.
+
+> Example: default
+```
+addForwardedHeader: {}
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+addForwardedHeader | null | If set, a `Forwarded` header is added to all requests.  See [below](#http-1-1-forwarded).
+
+<a name="http-1-1-forwarded"></a>
+### Adding the `Forwarded` header ###
+
+[RFC 7239](https://tools.ietf.org/html/rfc7239) describes how a
+`Forwarded` header may be added to requests by proxies. This RFC
+requests that this header not be added unless explicitly configured
+and that proxies obfuscate IP addresses unless explicitly configured
+to transmit them.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+by  | `kind: random` | The [labeler](#http-1-1-forwarded-labeler) to use with the router's server address
+for | `kind: random` | The [labeler](#http-1-1-forwarded-labeler) to use with the upstream client's address
+
+<a name="http-1-1-forwarded-labelers"></a>
+#### Endpoint labelers ####
+
+The `Forwarded` header includes labels describing the endpoints of the
+upstream connection. Because this is sensitive information, it is
+typically randomized.
+
+> Example
+```
+addForwardedHeader:
+  for: {kind: ip}
+  by:
+    kind: static
+    label: linkerd
+```
+
+Kind | Description
+---- |
+ip | A textual IP address like _192.168.1.1_ or _"[2001:db8:cafe::17]"_.
+ip:port | A textual IP:PORT address like _"192.168.1.1:80"_ or _"[2001:db8:cafe::17]:80"_.
+**random** | Generate an obfuscated random label like __6Oq8jJ_.
+router | Uses the router's `label` as an obfuscated static label.
+static | Accepts a `label` parameter. Produces obfuscated static labels like __linkerd_.
 
 <a name="http-1-1-identifiers"></a>
 ## HTTP/1.1 Identifiers
