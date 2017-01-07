@@ -97,9 +97,10 @@ object Headers {
         //      finagle's dtab encoding logic.
         val deadline = new Deadline.ClientFilter
         val dtab = new Dtab.ClientFilter
+        val xff = new XFFInjector.ClientFilter
 
         def make(next: ServiceFactory[Request, Response]) =
-          deadline.andThen(dtab).andThen(next)
+          deadline.andThen(dtab).andThen(xff).andThen(next)
       }
 
     val Prefix = Headers.Prefix + "ctx-"
@@ -295,6 +296,23 @@ object Headers {
 
       def clear(headers: HeaderMap): Unit = {
         val _ = headers.remove(Key)
+      }
+    }
+
+    object XFFInjector {
+      val Key = "X-Forwarded-For".toLowerCase()
+
+      class ClientFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          val currentHopIP = "0.0.0.0" //FIXME:Where to get my IP?
+
+          if (!req.headers.contains(Key))
+            req.headers.set(Key, s"""${currentHopIP}""")
+          else
+            req.headers.set(Key, s"""${req.headers.get(Key)}, ${currentHopIP}""")
+
+          service(req)
+        }
       }
     }
   }

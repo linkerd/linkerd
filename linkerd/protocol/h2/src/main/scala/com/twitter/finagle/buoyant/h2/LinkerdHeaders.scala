@@ -93,9 +93,10 @@ object LinkerdHeaders {
 
         val deadline = new Deadline.ClientFilter
         val dtab = new Dtab.ClientFilter
+        val xff = new XFFInjector.ClientFilter
 
         def make(next: ServiceFactory[Request, Response]) =
-          deadline.andThen(dtab).andThen(next)
+          deadline.andThen(dtab).andThen(xff).andThen(next)
       }
 
     val Prefix = LinkerdHeaders.Prefix + "ctx-"
@@ -291,6 +292,24 @@ object LinkerdHeaders {
 
       def clear(headers: Headers): Unit = {
         val _ = headers.remove(Key)
+      }
+    }
+
+    object XFFInjector {
+      val Key = "X-Forwarded-For"
+
+      class ClientFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          val currentHopIP = "0.0.0.0" //Where to get my IP?
+          req.headers.get(Key).toSeq match {
+            // we only care about the first header value anyway
+            case x :: _ =>
+              req.headers.set(Key, s"""${x}, ${currentHopIP}""")
+            case _ =>
+              req.headers.set(Key, s"""${currentHopIP}""")
+          }
+          service(req)
+        }
       }
     }
   }
