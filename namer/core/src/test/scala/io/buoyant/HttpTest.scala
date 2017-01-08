@@ -68,6 +68,11 @@ class HttpTest extends FunSuite {
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar-suffix", "bah"))))
   }
 
+  test("subdomainOfPfx with port") {
+    val path = Path.read("/$/io.buoyant.http.subdomainOfPfx/a.b/foo/bar.a.b:9090/bah")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("foo", "bar", "bah"))), s"${lookup(path)}")
+  }
+
   test("domainToPath") {
     val path = Path.read("/$/io.buoyant.http.domainToPath/foo.buoyant.io")
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("io", "buoyant", "foo"))))
