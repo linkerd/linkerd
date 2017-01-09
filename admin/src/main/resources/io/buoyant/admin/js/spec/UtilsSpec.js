@@ -1,6 +1,6 @@
 "use strict";
 
-define(['src/utils'], function(Utils) {
+define(['jQuery', 'src/utils'], function($, Utils) {
   describe("Utils", function() {
 
     describe("SuccessRate", function() {
@@ -132,6 +132,49 @@ define(['src/utils'], function(Utils) {
         expect(bytesToStr.convert(5 * 1024 * 1024 * 1024)).toBe("5.0GB");
         expect(bytesToStr.convert(5.5 * 1024 * 1024 * 1024)).toBe("5.5GB");
         expect(bytesToStr.convert(5.25 * 1024 * 1024 * 1024)).toBe("5.3GB");
+      });
+    });
+
+    describe("UpdateableChart", function() {
+      var fakeFns = {
+        getWidth: function() { return 400; },
+        timeseriesParamsFn: function() { return {}; }
+      };
+      var $canvas = $("<canvas id='test-chart-canvas' height='141'></canvas>");
+      var fakeChartParams = {};
+      var chart;
+
+      beforeEach(function() {
+        chart = new Utils.UpdateableChart(
+          fakeChartParams,
+          $canvas[0],
+          fakeFns.getWidth,
+          fakeFns.timeseriesParamsFn
+        );
+      });
+
+      it("sets the desired chart width", function() {
+        expect(chart.canvas.width).toBe(fakeFns.getWidth());
+      });
+
+      it("adds metrics to track", function() {
+        chart.setMetrics([{ name: "successRate", color: "" }], true);
+        expect(chart.metrics).toEqual(["successRate"]);
+
+        chart.addMetrics([{ name: "failureRate", color: "" }]);
+        expect(chart.metrics).toEqual(["successRate", "failureRate"]);
+      });
+
+      it("updates the timeseries of data", function() {
+        expect(chart.tsMap).toBeUndefined();
+
+        chart.setMetrics([{ name: "successRate", color: "" }], true);
+
+        expect(chart.tsMap).not.toBeUndefined();
+        expect(chart.metrics).toEqual(["successRate"]);
+
+        chart.updateMetrics([{name: "successRate", delta: 999}]);
+        expect(chart.tsMap.successRate.data[0][1]).toBe(999);
       });
     });
   });
