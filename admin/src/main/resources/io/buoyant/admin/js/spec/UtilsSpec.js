@@ -89,5 +89,39 @@ define(['src/utils'], function(Utils) {
         expect(msToStr.convert(18 * yearInMs)).toBe("18y 0d 0h");
       });
     });
+
+    describe("BytesToStringConverter", function() {
+      var bytesToStr = new Utils.BytesToStringConverter();
+
+      it("displays bytes with units", function() {
+        expect(bytesToStr.convert(999)).toBe("999B");
+        expect(bytesToStr.convert(1023)).toBe("1023B");
+      });
+
+      it("converts bytes to kilobytes, rounds, displays with units", function() {
+        expect(bytesToStr.convert(1024)).toBe("1.0KB");
+        expect(bytesToStr.convert(1025)).toBe("1.0KB");
+        expect(bytesToStr.convert(1991)).toBe("1.9KB");
+        expect(bytesToStr.convert(1999)).toBe("2.0KB");
+        expect(bytesToStr.convert(8 * 1024)).toBe("8.0KB");
+      });
+
+      it("converts bytes to megabytes, rounds, displays with units", function() {
+        expect(bytesToStr.convert(1023 * 1024)).toBe("1023.0KB");
+        expect(bytesToStr.convert(1024 * 1024)).toBe("1.0MB");
+        expect(bytesToStr.convert(1025 * 1024)).toBe("1.0MB");
+      });
+
+      it("converts bytes to gigabytes, rounds, displays with units", function() {
+        expect(bytesToStr.convert(1023 * 1024 * 1024)).toBe("1023.0MB");
+        expect(bytesToStr.convert(1024 * 1024 * 1024 )).toBe("1.0GB");
+        expect(bytesToStr.convert(1025 * 1024 * 1024)).toBe("1.0GB");
+        expect(bytesToStr.convert(1025 * 1024 * 1024)).toBe("1.0GB");
+
+        expect(bytesToStr.convert(5 * 1024 * 1024 * 1024)).toBe("5.0GB");
+        expect(bytesToStr.convert(5.5 * 1024 * 1024 * 1024)).toBe("5.5GB");
+        expect(bytesToStr.convert(5.25 * 1024 * 1024 * 1024)).toBe("5.3GB");
+      });
+    });
   });
 });
