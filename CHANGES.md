@@ -1,3 +1,7 @@
+## In the next release...
+
+* Add a recent requests log in the linkerd admin dashboard
+
 ## 0.8.5 2017-01-06
 
 * Introduce the grpc-gen and grpc-runtime projects, enabling code
