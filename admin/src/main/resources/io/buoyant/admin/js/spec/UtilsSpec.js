@@ -59,32 +59,8 @@ define(['jQuery', 'src/utils'], function($, Utils) {
         expect(msToStr.convert(20 * dayInMs + 25 * hourInMs + 1 * minuteInMs)).toBe("21d 1h 1m");
       });
 
-      it("does not contain the twitter-server bug at year fractions bigger than 0.5", function() {
+      it("handles half a year's worth of days", function() {
         // test for twitter-server bug
-        /*
-          Just gonna document this here.
-
-          In twitter-server's MsToStringConverter:
-
-          example: 183 days i.e. 15811200000 ms
-          >> msToStr.convert(15811200000) // 183 days
-          >> "-183d 18h 11m"
-
-          looking at MsToStringConverter.prototype.convert,
-          var years = (ms/this.msInYear).toFixed(0) // years = 1
-
-          var days = Math.floor(((ms - this.msInYear*years)/this.msInDay))
-
-          i.e.  15811200000 - (365 * dayInMs) = -15724800000
-                -15724800000 / 86400000 = -182
-
-
-          5 * 365 * dayInMs
-          157680000000
-
-          msToStr.convert(157680000000)
-          "5y -2d 18h"
-        */
         expect(msToStr.convert(181 * dayInMs)).toBe("181d 0h 0m");
         expect(msToStr.convert(182 * dayInMs)).toBe("182d 0h 0m");
         expect(msToStr.convert(183 * dayInMs)).toBe("183d 0h 0m");
