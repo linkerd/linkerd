@@ -21,10 +21,21 @@ define(['src/utils'], function(Utils) {
       });
 
       it("displays a rounded percentage to 2 d.p.", function() {
-        var sr = new Utils.SuccessRate(17, 2);
+        var srBad = new Utils.SuccessRate(17, 2);
+        var srPoor = new Utils.SuccessRate(87,2);
+        var srGood = new Utils.SuccessRate(9990, 5);
 
-        expect(sr.prettyRate()).toBe("89.47%");
-        expect(sr.rateStyle()).toBe("sr-bad");
+        expect(srBad.get()).toBe(17/19);
+        expect(srBad.prettyRate()).toBe("89.47%");
+        expect(srBad.rateStyle()).toBe("sr-bad");
+
+        expect(srPoor.get()).toBe(87/89);
+        expect(srPoor.prettyRate()).toBe("97.75%");
+        expect(srPoor.rateStyle()).toBe("sr-poor");
+
+        expect(srGood.get()).toBe(9990/9995);
+        expect(srGood.prettyRate()).toBe("99.95%");
+        expect(srGood.rateStyle()).toBe("sr-good");
       });
     });
 
