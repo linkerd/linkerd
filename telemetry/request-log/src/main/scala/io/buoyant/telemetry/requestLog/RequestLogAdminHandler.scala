@@ -1,6 +1,6 @@
 package io.buoyant.telemetry.requestLog
 
-import com.twitter.finagle.http.{MediaType, Request, Response, Status}
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.util.Future
 import io.buoyant.admin.Admin.Handler
 import java.net.URLEncoder
