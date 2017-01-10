@@ -158,9 +158,9 @@ object AddForwardedHeader {
   ) extends ServiceFactoryProxy(underlying) {
 
     override def apply(conn: ClientConnection): Future[Service[Request, Response]] = {
-      // The `by` and `for` labels are computed once per
-      // connection. This means that randomized labelers will reuse
-      // labels throughout a client's session.
+      // The `by` and `for` labelers are computed once per
+      // connection. This means that a randomized labeler, for
+      // instance, may reuse labels throughout a client's lifetime.
       val byl = byLabeler(conn.localAddress)
       val forl = forLabeler(conn.remoteAddress)
       val filter = new AddForwardedHeader(byl, forl)
