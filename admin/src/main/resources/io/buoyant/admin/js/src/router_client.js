@@ -6,11 +6,18 @@ define([
   'Handlebars',
   'src/utils',
   'src/query',
-  'src/success_rate_graph'
-], function($, _, Handlebars, Utils, Query, SuccessRateGraph) {
-
+  'src/success_rate_graph',
+  'text!template/metric.partial.template',
+  'text!template/router_client.template'
+], function($, _, Handlebars,
+  Utils,
+  Query,
+  SuccessRateGraph,
+  metricPartialTemplate,
+  routerClientTemplate) {
   var RouterClient = (function() {
-    var template;
+    var template = Handlebars.compile(routerClientTemplate);
+
     var metricToColorShade = {
       "max": "light",
       "p9990": "tint",
@@ -92,9 +99,10 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $metricsEl, routerName, clientTemplate, metricPartial, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
-      template = clientTemplate;
+    return function (metricsCollector, routers, client, $metricsEl, routerName, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
+      var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
+
       var clientColor = colors.color;
       var latencyLegend = createLatencyLegend(colors.colorFamily);
       var metricDefinitions = getMetricDefinitions(routerName, client.label);
