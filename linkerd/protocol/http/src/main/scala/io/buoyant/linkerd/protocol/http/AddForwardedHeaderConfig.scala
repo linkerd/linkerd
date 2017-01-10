@@ -110,6 +110,12 @@ object AddForwardedHeaderConfig {
     val default = Param(None)
   }
 
+  /**
+   * Configures parameters for `AddForwardedHeader`.
+   *
+   * Because `AddForwardedHeaderConfig` types may depend on stack
+   * parameters (for instance, `Server.RouterLabel`)
+   */
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module[ServiceFactory[Request, Response]] {
       val role = Stack.Role("ConfigureAddForwardedHeader")

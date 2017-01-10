@@ -90,8 +90,8 @@ to transmit them.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-by  | `kind: random` | The [labeler](#http-1-1-forwarded-labeler) to use with the router's server address
-for | `kind: random` | The [labeler](#http-1-1-forwarded-labeler) to use with the upstream client's address
+by  | `{kind: requestRandom}` | The [labeler](#http-1-1-forwarded-labeler) to use with the router's server address
+for | `{kind: requestRandom}` | The [labeler](#http-1-1-forwarded-labeler) to use with the upstream client's address
 
 <a name="http-1-1-forwarded-labelers"></a>
 #### Endpoint labelers ####
@@ -111,11 +111,12 @@ addForwardedHeader:
 
 Kind | Description
 ---- |
-ip | A textual IP address like _192.168.1.1_ or _"[2001:db8:cafe::17]"_.
-ip:port | A textual IP:PORT address like _"192.168.1.1:80"_ or _"[2001:db8:cafe::17]:80"_.
-**random** | Generate an obfuscated random label like __6Oq8jJ_.
+ip | A textual IP address like `192.168.1.1` or `"[2001:db8:cafe::17]"`.
+ip:port | A textual IP:PORT address like `"192.168.1.1:80"` or `"[2001:db8:cafe::17]:80"`.
+connectionRandom | An obfuscated random label like `_6Oq8jJ` _generated for all requests on a connection_.
+**requestRandom** | An obfuscated random label like `_6Oq8jJ` _generated for each request_.
 router | Uses the router's `label` as an obfuscated static label.
-static | Accepts a `label` parameter. Produces obfuscated static labels like __linkerd_.
+static | Accepts a `label` parameter. Produces obfuscated static labels like `_linkerd`.
 
 <a name="http-1-1-identifiers"></a>
 ## HTTP/1.1 Identifiers
