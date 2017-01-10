@@ -12,4 +12,9 @@ routers:
   thriftMethodInDst: true
   servers:
   - port: 4114
-    ip: 0.0.0.0
+    thriftProtocol: binary
+    thriftFramed: true
+  client:
+    thriftProtocol: binary
+    thriftFramed: true
+    attemptTTwitterUpgrade: true
