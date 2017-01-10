@@ -24,18 +24,8 @@ define([
   MsToStringConverter.prototype.showYears = function(years) { return years + "y" }
 
   MsToStringConverter.prototype.convert = function(ms) {
-    var years = (ms/this.msInYear).toFixed(0)
-    var daysMs = ms - this.msInYear*years;
-
-    if (daysMs < 0) {
-      daysMs = daysMs + this.msInYear; // don't have negative days
-
-      if(years > 0) {
-        years = years - 1; // you have a year too many from rounding up
-      }
-    }
-
-    var days = Math.floor((daysMs/this.msInDay));
+    var years = Math.floor(ms/this.msInYear)
+    var days = Math.floor(((ms - this.msInYear*years)/this.msInDay))
     var hours = Math.floor((ms - this.msInYear*years - this.msInDay*days)/this.msInHour)
     var minutes = Math.floor((ms - this.msInYear*years - this.msInDay*days - this.msInHour*hours)/this.msInMinute)
     var seconds = Math.floor((ms - this.msInYear*years - this.msInDay*days - this.msInHour*hours - this.msInMinute*minutes)/this.msInSecond)

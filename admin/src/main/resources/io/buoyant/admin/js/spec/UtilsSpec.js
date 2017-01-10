@@ -49,6 +49,8 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       var yearInMs = 365.242 * dayInMs;
 
       it("displays simple ms (sub-second) with units", function() {
+        expect(msToStr.convert(0)).toBe("0ms");
+        expect(msToStr.convert(0.1)).toBe("0.1ms");
         expect(msToStr.convert(123)).toBe("123ms");
         expect(msToStr.convert(999)).toBe("999ms");
       });
@@ -71,6 +73,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
         // test for twitter-server bug
         expect(msToStr.convert(365 * dayInMs)).toBe("365d 0h 0m");
         expect(msToStr.convert(366 * dayInMs)).toBe("1y 0d 18h"); // because of the 0.242
+        expect(msToStr.convert(367 * dayInMs)).toBe("1y 1d 18h");
         expect(msToStr.convert(5 * 365 * dayInMs)).toBe("4y 364d 0h");
         expect(msToStr.convert(9 * yearInMs)).toBe("9y 0d 0h");
         expect(msToStr.convert(18 * yearInMs)).toBe("18y 0d 0h");
