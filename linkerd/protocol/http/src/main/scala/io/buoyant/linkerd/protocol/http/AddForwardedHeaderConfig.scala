@@ -18,7 +18,8 @@ import io.buoyant.linkerd.Server
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[IpLabelerConfig], name = "ip"),
   new JsonSubTypes.Type(value = classOf[IpPortLabelerConfig], name = "ip:port"),
-  new JsonSubTypes.Type(value = classOf[RandomLabelerConfig], name = "random"),
+  new JsonSubTypes.Type(value = classOf[ConnectionRandomLabelerConfig], name = "connectionRandom"),
+  new JsonSubTypes.Type(value = classOf[RequestRandomLabelerConfig], name = "requestRandom"),
   new JsonSubTypes.Type(value = classOf[RouterLabelerConfig], name = "router"),
   new JsonSubTypes.Type(value = classOf[StaticLabelerConfig], name = "static")
 ))
@@ -41,11 +42,20 @@ class IpPortLabelerConfig extends LabelerConfig {
   override def mk(params: Stack.Params) = AddForwardedHeader.Labeler.ClearIpPort
 }
 
-/** Generates a random obfuscated label. */
-class RandomLabelerConfig extends LabelerConfig {
+/** Generates a random obfuscated label for each request. */
+class RequestRandomLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
-  override def mk(params: Stack.Params) = AddForwardedHeader.Labeler.ObfuscatedRandom()
+  override def mk(params: Stack.Params) =
+    AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest()
+}
+
+/** Generates a random obfuscated label for each connection. */
+class ConnectionRandomLabelerConfig extends LabelerConfig {
+
+  @JsonIgnore
+  override def mk(params: Stack.Params) =
+    AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection()
 }
 
 /** Uses the router name as an obfuscated label. */

@@ -19,7 +19,7 @@ class AddForwardedHeaderTest extends FunSuite {
 
   def mkReq() = Request()
   def service(byl: String, forl: String, req: Request = mkReq()) = {
-    val svc = new AddForwardedHeader(byl, forl).andThen(OkSvc)
+    val svc = new AddForwardedHeader(() => byl, () => forl).andThen(OkSvc)
     svc(req)
   }
 

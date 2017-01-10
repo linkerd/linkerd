@@ -13,12 +13,12 @@ import scala.util.Random
  * Possible future additions:
  * * parse incoming X-Forwarded-* from legacy proxy services and convert to Forwarded
  */
-class AddForwardedHeader(byLabel: String, forLabel: String) extends SimpleFilter[Request, Response] {
+class AddForwardedHeader(byLabel: () => String, forLabel: () => String) extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     val forwarded = new mutable.StringBuilder(128)
 
-    forwarded ++= s"by=${byLabel};for=${forLabel}"
+    forwarded ++= s"by=${byLabel()};for=${forLabel()}"
 
     val host = req.host match {
       case None =>
@@ -50,8 +50,10 @@ object AddForwardedHeader {
     val default = Enabled(false)
   }
 
-  type Labeler = SocketAddress => String
+  type Labeler = SocketAddress => () => String
   object Labeler {
+    private[this] def Const(label: String) = () => label
+    private[this] val Unknown = Const("unknown")
 
     /**
      * Formats addresses like:
@@ -59,15 +61,15 @@ object AddForwardedHeader {
      *   "[2001:db8:cafe::17]"
      */
     object ClearIp extends Labeler {
-      def apply(sa: SocketAddress): String = sa match {
+      def apply(sa: SocketAddress): () => String = sa match {
         case isa: InetSocketAddress =>
           isa.getAddress match {
-            case ip if ip.isAnyLocalAddress => "unknown"
-            case ip4: Inet4Address => ip4.getHostAddress
-            case ip6: Inet6Address => s""""[${ip6.getHostAddress}]""""
-            case _ => "unknown"
+            case ip if ip.isAnyLocalAddress => Unknown
+            case ip4: Inet4Address => Const(ip4.getHostAddress)
+            case ip6: Inet6Address => Const(s""""[${ip6.getHostAddress}]"""")
+            case _ => Unknown
           }
-        case _ => "unknown"
+        case _ => Unknown
       }
     }
 
@@ -77,16 +79,16 @@ object AddForwardedHeader {
      *   "[2001:db8:cafe::17]:8080"
      */
     object ClearIpPort extends Labeler {
-      def apply(sa: SocketAddress): String = sa match {
+      def apply(sa: SocketAddress): () => String = sa match {
         case isa: InetSocketAddress =>
           val port = isa.getPort
           isa.getAddress match {
-            case ip if ip.isAnyLocalAddress => "unknown"
-            case ip4: Inet4Address => s""""${ip4.getHostAddress}:${port}""""
-            case ip6: Inet6Address => s""""[${ip6.getHostAddress}]:${port}""""
-            case _ => "unknown"
+            case ip if ip.isAnyLocalAddress => Unknown
+            case ip4: Inet4Address => Const(s""""${ip4.getHostAddress}:${port}"""")
+            case ip6: Inet6Address => Const(s""""[${ip6.getHostAddress}]:${port}"""")
+            case _ => Unknown
           }
-        case _ => "unknown"
+        case _ => Unknown
       }
     }
 
@@ -101,36 +103,51 @@ object AddForwardedHeader {
      *    Example:
      *        Forwarded: for=_qb72ZK
      */
-    case class ObfuscatedRandom(rng: Random = Random) extends Labeler {
-      def apply(sa: SocketAddress): String = sa match {
-        case isa: InetSocketAddress =>
-          val inet = isa.getAddress
-          if (inet.isAnyLocalAddress) "unknown"
-          else s"_${rng.alphanumeric.take(6).mkString}"
-        case _ => "unknown"
+    object ObfuscatedRandom {
+
+      case class PerRequest(length: Int = 6, rng: Random = Random) extends Labeler {
+        def apply(sa: SocketAddress): () => String = sa match {
+          case isa: InetSocketAddress =>
+            val inet = isa.getAddress
+            if (inet.isAnyLocalAddress) Unknown
+            else () => s"_${rng.alphanumeric.take(length).mkString}"
+
+          case _ => Unknown
+        }
+      }
+
+      case class PerConnection(length: Int = 6, rng: Random = Random) extends Labeler {
+        def apply(sa: SocketAddress): () => String = sa match {
+          case isa: InetSocketAddress =>
+            val inet = isa.getAddress
+            if (inet.isAnyLocalAddress) Unknown
+            else Const(s"_${rng.alphanumeric.take(length).mkString}")
+          case _ => Unknown
+        }
       }
     }
 
-    case class ObfuscatedStatic(label0: String) extends Labeler {
-      private[this] val label =
-        if (label0 startsWith "_") label0
-        else s"_${label0}"
+    case class ObfuscatedStatic(label: String) extends Labeler {
+      private[this] val cached: () => String = Const {
+        if (label startsWith "_") label
+        else s"_${label}"
+      }
 
-      def apply(sa: SocketAddress): String = label
+      def apply(sa: SocketAddress): () => String = cached
     }
 
     case class By(labeler: Labeler) extends Labeler {
       def apply(sa: SocketAddress) = labeler(sa)
     }
     implicit object By extends Stack.Param[By] {
-      val default = By(ObfuscatedRandom())
+      val default = By(ObfuscatedRandom.PerRequest())
     }
 
     case class For(labeler: Labeler) extends Labeler {
       def apply(sa: SocketAddress) = labeler(sa)
     }
     implicit object For extends Stack.Param[For] {
-      val default = For(ObfuscatedRandom())
+      val default = For(ObfuscatedRandom.PerRequest())
     }
   }
 

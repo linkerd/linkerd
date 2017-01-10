@@ -25,19 +25,34 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     assert(params[AddForwardedHeader.Labeler.For] == AddForwardedHeader.Labeler.For.default)
   }
 
-  test("parse by=random for=random") {
+  test("parse by=requestRandom for=requestRandom") {
     val yaml =
-      s"""|by: {kind: random}
-          |for: {kind: random}
+      s"""|by: {kind: requestRandom}
+          |for: {kind: requestRandom}
           |""".stripMargin
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
     assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
     assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom())
+      AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest())
     assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom())
+      AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest())
+  }
+
+  test("parse by=connectionRandom for=connectionRandom") {
+    val yaml =
+      s"""|by: {kind: connectionRandom}
+          |for: {kind: connectionRandom}
+          |""".stripMargin
+    val mapper = Parser.objectMapper(yaml, Nil)
+    val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
+    val params = Stack.Params.empty ++: config
+    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
+    assert(params[AddForwardedHeader.Labeler.By].labeler ==
+      AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection())
+    assert(params[AddForwardedHeader.Labeler.For].labeler ==
+      AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection())
   }
 
   test("parse by=ip for=ip") {
