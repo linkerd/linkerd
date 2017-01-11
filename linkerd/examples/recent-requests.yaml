@@ -4,11 +4,11 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: /http/*/* => /#/io.l5d.fs
+  baseDtab: /http/*/*/* => /$/inet/localhost/8888
   servers:
   - port: 4140
 
 telemetry:
 - kind: io.l5d.commonMetrics
-- kind: io.l5d.requestLog
+- kind: io.l5d.recentRequests
   sampleRate: 1.0

@@ -54,7 +54,7 @@ object LinkerdAdmin {
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/help" -> new HelpPageHandler,
-    "/requests" -> new RequestLogPlaceholderHandler
+    "/requests" -> new RecentRequestsPlaceholderHandler
   )
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Handlers = {

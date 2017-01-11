@@ -4,6 +4,10 @@ import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.util.Future
 
+/**
+ * This filter builds a linkerd admin page by wrapping an html content blob with the linkerd
+ * admin chome (navbar, stylesheets, etc.)
+ */
 object AdminFilter extends SimpleFilter[Request, Response] {
   override def apply(
     request: Request,

@@ -1,16 +1,16 @@
-package io.buoyant.telemetry.requestLog
+package io.buoyant.telemetry.recentRequests
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
 
-class RequestLogInitializer extends TelemeterInitializer {
-  type Config = RequestLogConfig
-  override val configId = "io.l5d.requestLog"
-  val configClass = classOf[RequestLogConfig]
+class RecentRequestsInitializer extends TelemeterInitializer {
+  type Config = RecentRequestsConfig
+  override val configId = "io.l5d.recentRequests"
+  val configClass = classOf[RecentRequestsConfig]
 }
 
-case class RequestLogConfig(sampleRate: Option[Double], capacity: Option[Int] = None) extends TelemeterConfig {
+case class RecentRequestsConfig(sampleRate: Option[Double], capacity: Option[Int] = None) extends TelemeterConfig {
   @JsonIgnore
   private[this] val _sampleRate = sampleRate
     .filter(r => r >= 0.0 && r <= 1.0)
@@ -18,5 +18,5 @@ case class RequestLogConfig(sampleRate: Option[Double], capacity: Option[Int] = 
 
   @JsonIgnore
   override def mk(params: Params): Telemeter =
-    new RequestLogTelemeter(_sampleRate, capacity.getOrElse(10))
+    new RecentRequestsTelemeter(_sampleRate, capacity.getOrElse(10))
 }
