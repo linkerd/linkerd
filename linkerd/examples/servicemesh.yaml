@@ -1,0 +1,38 @@
+# A basic service mesh for config.  This config contains an outgoing router
+# that proxies requests from local applications to the linkerd running on the
+# destination host and an incoming router that reverse-proxies incoming requests
+# to the application instance running on the local host.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  label: outgoing
+  interpreter:
+    kind: default
+    transformers:
+    # Instead of sending the request directly to the destination, send it to
+    # the linkerd (listening on port 4141) running on the destination host.
+    - kind: io.l5d.port
+      port: 4141
+  baseDtab: |
+    /host => /#/io.l5d.fs;
+    /http/1.1/* => /host;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+
+- protocol: http
+  label: incoming
+  interpreter:
+    kind: default
+    transformers:
+    # Instead of sending the request to a random destination instance, send it
+    # only to instances running on localhost.
+    - kind: io.l5d.localhost
+  baseDtab: |
+    /host => /#/io.l5d.fs;
+    /http/1.1/* => /host;
+  servers:
+  - port: 4141
