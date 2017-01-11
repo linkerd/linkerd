@@ -22,7 +22,7 @@ import scala.annotation.meta.getter
  * namer-specific options.  This namer refines names beginning with
  * `/#/i` (after this prefix has been stripped).
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
 abstract class NamerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
@@ -31,7 +31,7 @@ abstract class NamerConfig {
   @JsonProperty("experimental")
   var _experimentalEnabled: Option[Boolean] = None
 
-  @(JsonProperty @getter)
+  @JsonProperty("kind")
   var kind: String = ""
 
   var transformers: Option[Seq[TransformerConfig]] = None

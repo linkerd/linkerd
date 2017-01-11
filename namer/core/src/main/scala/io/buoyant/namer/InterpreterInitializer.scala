@@ -8,7 +8,7 @@ import io.buoyant.config.ConfigInitializer
 import scala.annotation.meta.getter
 import scala.util.control.NoStackTrace
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
 trait InterpreterConfig {
 
   /** This property must be set to true in order to use this interpreter if it is experimental */
@@ -17,7 +17,7 @@ trait InterpreterConfig {
 
   var transformers: Option[Seq[TransformerConfig]] = None
 
-  @(JsonProperty @getter)
+  @JsonProperty("kind")
   var kind: String = ""
 
   /**

@@ -5,7 +5,7 @@ import com.twitter.finagle.Path
 import io.buoyant.config.ConfigInitializer
 import scala.annotation.meta.getter
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
 trait TransformerConfig {
 
   def defaultPrefix: Path
@@ -13,7 +13,7 @@ trait TransformerConfig {
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
-  @(JsonProperty @getter)
+  @JsonProperty("kind")
   var kind: String = ""
 
   @JsonIgnore

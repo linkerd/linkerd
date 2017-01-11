@@ -6,10 +6,10 @@ import com.twitter.finagle.{Dtab, Path}
 import io.buoyant.router.RoutingFactory.Identifier
 import scala.annotation.meta.getter
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
 trait HttpIdentifierConfig {
 
-  @(JsonProperty @getter)
+  @JsonProperty("kind")
   var kind: String = ""
 
   @JsonIgnore
