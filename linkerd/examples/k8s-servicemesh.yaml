@@ -1,0 +1,47 @@
+#notest
+# A service mesh for Kubernetes config.  This config contains an outgoing router
+# that proxies requests from local applications to the linkerd running on the
+# destination node and an incoming router that reverse-proxies incoming requests
+# to the application instance running on the local node.
+admin:
+  port: 9990
+
+namers:
+- kind: io.l5d.k8s
+  host: localhost
+  port: 8001
+
+routers:
+- protocol: http
+  label: outgoing
+  originator: true
+  baseDtab: |
+    /http/*/* => /#/io.l5d.k8s/default/http;
+  interpreter:
+    kind: default
+    transformers:
+    # Instead of sending the request directly to the destination pod, send it
+    # to the daemonset linkerd pod running on the destination pod's node.
+    - kind: io.l5d.k8s.daemonset
+      namespace: default
+      service: l5d
+      port: incoming
+      # set to true if the linkerd daemonset is running on the host network
+      hostNetwork: false
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+
+- protocol: http
+  label: incoming
+  interpreter:
+    kind: default
+    transformers:
+    # Instead of sending the request to a random destination pod, send it only
+    # to destination pods running on the local node.
+    - kind: io.l5d.k8s.localnode
+      # set to true if the linkerd daemonset is running on the host network
+      hostNetwork: false
+  servers:
+  - port: 4141
+    ip: 0.0.0.0

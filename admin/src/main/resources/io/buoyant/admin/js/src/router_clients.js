@@ -1,10 +1,14 @@
 "use strict";
 
 define([
-  'jQuery',
+  'jQuery', 'Handlebars',
   'src/router_client',
-  'src/combined_client_graph'
-], function($, RouterClient, CombinedClientGraph) {
+  'src/combined_client_graph',
+  'text!template/router_client_container.template'
+], function($, Handlebars,
+  RouterClient,
+  CombinedClientGraph,
+  routerClientContainerTemplate) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
 
@@ -22,7 +26,9 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, routers, $clientEl, routerName, clientTemplate, metricPartial, clientContainerTemplate, colors) {
+    return function (metricsCollector, routers, $clientEl, routerName, colors) {
+      var clientContainerTemplate = Handlebars.compile(routerClientContainerTemplate);
+
       var clientToColor = assignColorsToClients(colors, routers.clients(routerName));
       var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $clientEl.find(".router-graph"), clientToColor);
       var clients = routers.clients(routerName);
@@ -50,7 +56,7 @@ define([
         var $chart = $container.find(".chart-container");
         var $toggle = $container.find(".client-toggle");
 
-        return RouterClient(metricsCollector, routers, client, $metrics, routerName, clientTemplate, metricPartial, $chart, colorsForClient, $toggle, shouldExpand);
+        return RouterClient(metricsCollector, routers, client, $metrics, routerName, $chart, colorsForClient, $toggle, shouldExpand);
       }
 
       function addClients(addedClients) {

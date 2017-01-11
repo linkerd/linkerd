@@ -1,3 +1,5 @@
+"use strict";
+
 define(['src/query'], function(Query) {
   describe("Query", function() {
     var routerName = "fooRouter";

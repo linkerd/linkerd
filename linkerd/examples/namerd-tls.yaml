@@ -1,3 +1,4 @@
+# Use namerd for name resolution.  Encrypt the connection with TLS.
 routers:
 - protocol: http
   interpreter:
@@ -7,7 +8,6 @@ routers:
     tls:
       commonName: namerdee
       caCert: namerd/examples/certs/namerd-cacert.pem
-      
   servers:
   - port: 4140
     ip: 0.0.0.0
