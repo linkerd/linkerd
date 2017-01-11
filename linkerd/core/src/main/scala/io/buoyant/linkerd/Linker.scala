@@ -86,6 +86,11 @@ object Linker {
   def load(config: String): Linker =
     load(config, LoadedInitializers)
 
+  case class LinkerConfigStackParam(config: LinkerConfig)
+  implicit object LinkerConfigStackParam extends Stack.Param[LinkerConfigStackParam] {
+    val default = LinkerConfigStackParam(LinkerConfig(None, Seq(), None, None, None))
+  }
+
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
@@ -100,7 +105,7 @@ object Linker {
 
       val telemeters = telemetry match {
         case None => Seq(defaultTelemeter)
-        case Some(telemeters) => telemeters.map(_.mk(Stack.Params.empty))
+        case Some(telemeters) => telemeters.map(_.mk(Stack.Params.empty + LinkerConfigStackParam(this)))
       }
 
       // Telemeters may provide StatsReceivers.

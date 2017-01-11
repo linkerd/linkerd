@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonPropert
 import com.twitter.finagle._
 import com.twitter.util.{Future, Activity}
 import io.buoyant.config.ConfigInitializer
+import scala.annotation.meta.getter
 
 /**
  * Read a single namer configuration in the form:
@@ -29,6 +30,9 @@ abstract class NamerConfig {
   /** This property must be set to true in order to use this namer if it is experimental */
   @JsonProperty("experimental")
   var _experimentalEnabled: Option[Boolean] = None
+
+  @(JsonProperty @getter)
+  var kind: String = ""
 
   var transformers: Option[Seq[TransformerConfig]] = None
 

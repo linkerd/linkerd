@@ -5,9 +5,10 @@ import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonPropert
 import com.twitter.finagle.Stack
 import com.twitter.finagle.naming.NameInterpreter
 import io.buoyant.config.ConfigInitializer
+import scala.annotation.meta.getter
 import scala.util.control.NoStackTrace
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
 trait InterpreterConfig {
 
   /** This property must be set to true in order to use this interpreter if it is experimental */
@@ -15,6 +16,9 @@ trait InterpreterConfig {
   var _experimentalEnabled: Option[Boolean] = None
 
   var transformers: Option[Seq[TransformerConfig]] = None
+
+  @(JsonProperty @getter)
+  var kind: String = ""
 
   /**
    * Indicates whether this is an experimental interprester.  Experimental interpresters must have
