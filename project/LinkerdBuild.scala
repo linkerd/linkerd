@@ -42,6 +42,7 @@ object LinkerdBuild extends Base {
 
   object Router {
     val core = projectDir("router/core")
+      .dependsOn(Finagle.buoyantCore)
       .withTwitterLib(Deps.finagle("core"))
       .withTests()
       .withE2e()
@@ -402,7 +403,6 @@ object LinkerdBuild extends Base {
 
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
-      .withLibs("io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
       .withTests()
 
     val failureAccrual = projectDir("linkerd/failure-accrual")

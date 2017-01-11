@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.TimeoutFilter
@@ -92,12 +93,10 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
       InitializedRouter(protocol, params, factory, servable, announcers)
     }
 
-    private[this] val tlsPrepRole = Stack.Role("TlsClientPrep")
-
     def withTls(tls: TlsClientConfig): Router = {
-      val tlsPrep = tls.tlsClientPrep[RouterReq, RouterRsp]
-      val clientStack = router.clientStack.replace(tlsPrepRole, tlsPrep)
-      copy(router = router.withClientStack(clientStack))
+      val stk = router.clientStack
+        .replace(TlsClientPrep.role, tls.tlsClientPrep[RouterReq, RouterRsp])
+      copy(router = router.withClientStack(stk))
     }
   }
 

@@ -2,7 +2,6 @@ package io.buoyant.linkerd.clientTls
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.TlsClientPrep
-import com.twitter.finagle.buoyant.TlsClientPrep.Module
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
 
 class NoValidationInitializer extends TlsClientInitializer {
@@ -14,6 +13,6 @@ object NoValidationInitializer extends NoValidationInitializer
 
 class NoValidationConfig extends TlsClientConfig {
   @JsonIgnore
-  override def tlsClientPrep[Req, Rsp]: Module[Req, Rsp] =
+  override def tlsClientPrep[Req, Rsp] =
     TlsClientPrep.withoutCertificateValidation[Req, Rsp]
 }
