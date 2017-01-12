@@ -1,19 +1,15 @@
 package io.buoyant.namer
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.Path
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{Config, ConfigInitializer}
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
-trait TransformerConfig {
+trait TransformerConfig extends Config {
 
   def defaultPrefix: Path
 
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
-
-  @JsonProperty("kind")
-  var kind: String = ""
 
   @JsonIgnore
   def prefix = Paths.TransformerPrefix ++ _prefix.getOrElse(defaultPrefix)

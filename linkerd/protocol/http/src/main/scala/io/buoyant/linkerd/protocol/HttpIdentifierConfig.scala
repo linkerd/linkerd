@@ -1,16 +1,12 @@
 package io.buoyant.linkerd.protocol
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.{Dtab, Path}
+import io.buoyant.config.Config
 import io.buoyant.router.RoutingFactory.Identifier
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
-trait HttpIdentifierConfig {
-
-  @JsonProperty("kind")
-  var kind: String = ""
-
+trait HttpIdentifierConfig extends Config {
   @JsonIgnore
   def newIdentifier(
     prefix: Path,

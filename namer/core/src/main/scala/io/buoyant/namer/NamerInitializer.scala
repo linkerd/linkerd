@@ -1,8 +1,8 @@
 package io.buoyant.namer
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle._
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{Config, ConfigInitializer}
 
 /**
  * Read a single namer configuration in the form:
@@ -19,17 +19,14 @@ import io.buoyant.config.ConfigInitializer
  * namer-specific options.  This namer refines names beginning with
  * `/#/i` (after this prefix has been stripped).
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
-abstract class NamerConfig {
+abstract class NamerConfig extends Config {
+
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None
 
   /** This property must be set to true in order to use this namer if it is experimental */
   @JsonProperty("experimental")
   var _experimentalEnabled: Option[Boolean] = None
-
-  @JsonProperty("kind")
-  var kind: String = ""
 
   var transformers: Option[Seq[TransformerConfig]] = None
 
