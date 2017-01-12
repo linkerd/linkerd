@@ -1,11 +1,8 @@
 package io.buoyant.namer
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
-import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.twitter.finagle._
-import com.twitter.util.{Future, Activity}
 import io.buoyant.config.ConfigInitializer
-import scala.annotation.meta.getter
 
 /**
  * Read a single namer configuration in the form:

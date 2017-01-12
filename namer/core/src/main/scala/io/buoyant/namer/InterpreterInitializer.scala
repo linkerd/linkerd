@@ -1,11 +1,9 @@
 package io.buoyant.namer
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
-import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.naming.NameInterpreter
 import io.buoyant.config.ConfigInitializer
-import scala.annotation.meta.getter
 import scala.util.control.NoStackTrace
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind", visible = true)
