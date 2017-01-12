@@ -71,7 +71,8 @@ class PathIdentifierTest extends FunSuite with Awaits with Exceptions {
       "/mysvc/subsvc/path1/" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/"),
       "/mysvc/subsvc/path1" -> ExpParsedPath("/http/mysvc/subsvc", "/path1"),
       "/mysvc/subsvc/path1/path2" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/path2"),
-      "/mysvc/subsvc/path1/path2/" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/path2/")
+      "/mysvc/subsvc/path1/path2/" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/path2/"),
+      "/mysvc/subsvc/path1/?foo=bar" -> ExpParsedPath("/http/mysvc/subsvc", "/path1/?foo=bar")
     )
     val identifier = PathIdentifier(Path.Utf8("http"), 2, consume = true)
     testCaseConsume foreach ((input) => {
