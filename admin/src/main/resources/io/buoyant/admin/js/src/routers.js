@@ -206,19 +206,23 @@ define([
 
         //convenience methods
         servers: function(routerName) {
+          var servers = []
           if (routerName && this.data[routerName]) {
-            return this.data[routerName].servers;
+            servers = this.data[routerName].servers;
           } else {
-            return _(this.data).map('servers').flatten().value();
+            servers = _(this.data).map('servers').flatten().value();
           }
+          return _.sortBy(servers, 'label');
         },
 
         clients: function(routerName) {
+          var clients = []
           if (routerName && this.data[routerName]) {
-            return _.values(this.data[routerName].dstIds);
+            clients = _.values(this.data[routerName].dstIds);
           } else {
-            return _(this.data).map(function(router) { return _.values(router.dstIds); }).flatten().value();
+            clients = _(this.data).map(function(router) { return _.values(router.dstIds); }).flatten().value();
           }
+          return _.sortBy(clients, 'label');
         }
       };
     };
