@@ -1,19 +1,15 @@
 package com.twitter.finagle.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo, JsonSubTypes}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.finagle.{Http, Stack}
+import io.buoyant.config.Config
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "kind"
-)
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[Netty3HttpEngine], name = "netty3"),
   new JsonSubTypes.Type(value = classOf[Netty4HttpEngine], name = "netty4")
 ))
-abstract class HttpEngine {
+abstract class HttpEngine extends Config {
   @JsonIgnore
   def mk(params: Stack.Params): Stack.Params
 }

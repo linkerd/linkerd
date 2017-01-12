@@ -1,16 +1,15 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.service.{Backoff, FailureAccrualFactory}
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
+import com.twitter.finagle.service.{Backoff, FailureAccrualFactory}
 import com.twitter.util.Duration
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{Config, ConfigInitializer}
 
 abstract class FailureAccrualInitializer extends ConfigInitializer
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait FailureAccrualConfig {
+trait FailureAccrualConfig extends Config {
   @JsonIgnore
   def policy: () => FailureAccrualPolicy
 

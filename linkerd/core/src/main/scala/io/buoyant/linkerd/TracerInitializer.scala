@@ -1,11 +1,10 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.tracing.Tracer
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{Config, ConfigInitializer}
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait TracerConfig {
+trait TracerConfig extends Config {
 
   /**
    * Construct a tracer.

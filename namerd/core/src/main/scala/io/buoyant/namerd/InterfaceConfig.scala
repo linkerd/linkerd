@@ -1,17 +1,16 @@
 package io.buoyant.namerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path}
-import io.buoyant.config.ConfigInitializer
 import io.buoyant.config.types.Port
+import io.buoyant.config.{Config, ConfigInitializer}
 import java.net.{InetAddress, InetSocketAddress}
 
 /**
  * Configures a network interface to namerd functionality.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait InterfaceConfig {
+trait InterfaceConfig extends Config {
   var ip: Option[InetAddress] = None
   var port: Option[Port] = None
 

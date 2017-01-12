@@ -1,17 +1,12 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.service.ResponseClassifier
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{Config, ConfigInitializer}
 
 abstract class ResponseClassifierInitializer extends ConfigInitializer
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "kind"
-)
-trait ResponseClassifierConfig {
+trait ResponseClassifierConfig extends Config {
   @JsonIgnore
   def mk: ResponseClassifier
 }

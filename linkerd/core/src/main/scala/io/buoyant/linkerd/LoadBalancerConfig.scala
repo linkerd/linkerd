@@ -1,20 +1,20 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.loadbalancer.LoadBalancerFactory.EnableProbation
 import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
+import io.buoyant.config.Config
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
 @JsonSubTypes(Array(
   new Type(value = classOf[P2C], name = "p2c"),
   new Type(value = classOf[P2CEwma], name = "ewma"),
   new Type(value = classOf[Aperture], name = "aperture"),
   new Type(value = classOf[Heap], name = "heap")
 ))
-trait LoadBalancerConfig {
+trait LoadBalancerConfig extends Config {
   val factory: LoadBalancerFactory
 
   val enableProbation: Option[Boolean] = None

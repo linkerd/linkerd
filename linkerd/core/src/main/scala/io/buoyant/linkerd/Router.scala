@@ -8,8 +8,8 @@ import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
-import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.util.{Closable, Duration}
+import io.buoyant.config.Config
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
 import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
@@ -246,15 +246,11 @@ case class RetriesConfig(
     budget.map { b => Retries.Budget(b.mk, Backoff.const(Duration.Zero)) }
 }
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY, property = "kind"
-)
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
   new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
 ))
-trait BackoffConfig {
+trait BackoffConfig extends Config {
   @JsonIgnore
   def mk: Stream[Duration]
 }
