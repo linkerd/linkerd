@@ -1,8 +1,8 @@
 package io.buoyant.telemetry
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.Stack
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
 /**
  * Telemeter plugins describe how to load TelemeterConfig items.
@@ -12,12 +12,7 @@ trait TelemeterInitializer extends ConfigInitializer {
   def configClass: Class[Config]
 }
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "kind"
-)
-trait TelemeterConfig {
+trait TelemeterConfig extends PolymorphicConfig {
   /**
    * This property must be set to true in order to use this telemeter if it is
    * experimental

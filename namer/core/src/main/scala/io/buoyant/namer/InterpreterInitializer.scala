@@ -1,14 +1,12 @@
 package io.buoyant.namer
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
-import com.fasterxml.jackson.annotation.{JsonAutoDetect, JsonIgnore, JsonProperty, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.naming.NameInterpreter
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 import scala.util.control.NoStackTrace
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait InterpreterConfig {
+trait InterpreterConfig extends PolymorphicConfig {
 
   /** This property must be set to true in order to use this interpreter if it is experimental */
   @JsonProperty("experimental")

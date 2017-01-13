@@ -6,11 +6,9 @@ import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.{TlsConfig, Transport}
-import com.twitter.finagle.{Path, ListeningServer, Stack}
+import com.twitter.finagle.{ListeningServer, Path, Stack}
 import io.buoyant.config.types.Port
-import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
-import scala.collection.JavaConverters._
 
 /**
  * A Server configuration, describing a request-receiving interface

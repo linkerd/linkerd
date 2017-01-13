@@ -63,8 +63,8 @@ object LinkerdAdmin {
         linker.routers ++
         linker.telemeters
     ).map {
-      case (path, handler) => (path, AdminFilter.andThen(handler))
-    }
+        case (path, handler) => (path, AdminFilter.andThen(handler))
+      }
 
     static ++ config(lc) ++
       boundNames(linker.namers.map { case (_, n) => n }) ++

@@ -86,6 +86,11 @@ object Linker {
   def load(config: String): Linker =
     load(config, LoadedInitializers)
 
+  case class LinkerConfigStackParam(config: LinkerConfig)
+  implicit object LinkerConfigStackParam extends Stack.Param[LinkerConfigStackParam] {
+    val default = LinkerConfigStackParam(LinkerConfig(None, Seq(), None, None, None))
+  }
+
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
@@ -105,7 +110,7 @@ object Linker {
             val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
               "explicitly enabled by setting the `experimental' parameter to `true'."
             throw new IllegalArgumentException(msg) with NoStackTrace
-          case t => t.mk(Stack.Params.empty)
+          case t => t.mk(Stack.Params.empty + LinkerConfigStackParam(this))
         }
       }
 
