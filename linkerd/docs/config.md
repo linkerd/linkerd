@@ -37,6 +37,19 @@ namers:
 tracers:
 - kind: io.l5d.zipkin
   sampleRate: 0.02
+
+telemetry:
+- kind: io.l5d.commonMetrics
+- kind: io.l5d.statsd
+  experimental: true
+  prefix: linkerd
+  hostname: 127.0.0.1
+  port: 8125
+  gaugeIntervalMs: 10000
+  sampleRate: 0.01
+- kind: io.l5d.tracelog
+  sampleRate: 0.2
+  level: TRACE
 ```
 
 Welcome to the Configuration Reference for linkerd!
@@ -56,6 +69,7 @@ Key | Required | Description
 [admin](#administrative-interface) | no | Configures linkerd's administrative interface.
 [routers](#routers) | yes | Configures linkerd's RPC support for various protocols.
 [namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
+[telemetry](#telemetry) | no | Configures linkerd's metrics instrumentation.
 [tracers](#tracers) | no | Configures linkerd's request instrumentation.
 
 
@@ -110,6 +124,28 @@ is governed by the [routing](#router-parameters) configuration.
 Naming and service discovery are configured via the `namers` section of the
 configuration file.  A namer acts on paths that start with `/#` followed by the
 namer's prefix. See [namers](#namers).
+
+### Telemetry
+
+```yaml
+telemetry:
+- kind: io.l5d.commonMetrics
+- kind: io.l5d.statsd
+  experimental: true
+  prefix: linkerd
+  hostname: 127.0.0.1
+  port: 8125
+  gaugeIntervalMs: 10000
+  sampleRate: 0.01
+- kind: io.l5d.tracelog
+  sampleRate: 0.2
+  level: TRACE
+```
+
+A telemeter may receive stats and trace annotations, i.e. to send to a collector
+or export. Telemetry data can be collected and exported from a linkerd process by
+configuring telemeters via a top-level `telemetry` section. See
+[telemetry](#telemetry14).
 
 ### Tracers
 
