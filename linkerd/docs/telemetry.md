@@ -82,3 +82,24 @@ Key | Default Value | Description
 host | `localhost` | Host to send trace data to.
 sampleRate | `1.0` | What percentage of traces to log.
 level | `INFO` | Log-level, one of: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [com.twitter.logging.Level](http://twitter.github.io/util/docs/#com.twitter.logging.Level).
+
+## Recent Requests
+
+> Example Recent Requests config
+
+```yaml
+telemetry:
+- kind: io.l5d.recentRequests
+  sampleRate: 1.0
+  capacity: 10
+```
+
+The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
+the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the
+admin port.  Recording requests can have an impact on linkerd performance so make sure to set a
+sample rate that is appropriate for your level of traffic.
+
+Key        | Default Value | Description
+---------- | ------------- | -----------
+sampleRate | _required_    | What percentage of traces to record.
+capacity   | 10            | The maximum number of recent traces to store
