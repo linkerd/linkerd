@@ -67,10 +67,10 @@ The configuration may be specified as a JSON or YAML object. There are no requir
 Key | Required | Description
 --- | -------- | -----------
 [admin](#administrative-interface) | no | Configures linkerd's administrative interface.
-[routers](#routers) | yes | Configures linkerd's RPC support for various protocols.
+[routers](#routers-intro) | yes | Configures linkerd's RPC support for various protocols.
 [namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
-[telemetry](#telemetry) | no | Configures linkerd's metrics instrumentation.
-[tracers](#tracers) | no | Configures linkerd's request instrumentation.
+[telemetry](#telemetry-intro) | no | Configures linkerd's metrics instrumentation.
+[tracers](#tracers-intro) | no | Configures linkerd's request instrumentation.
 
 
 ### Administrative interface
@@ -90,7 +90,7 @@ Key | Default Value | Description
 ip | `0.0.0.0` | IP for the admin interface.
 port | `9990` | Port for the admin interface.
 
-### Routers
+### Routers Intro
 
 > A minimal linkerd configuration example, which forwards all requests on `localhost:8080` to `localhost:8888`
 
@@ -105,7 +105,7 @@ routers:
 All configurations must define a **routers** key, the value of which
 must be an array of router configurations. Each router implements RPC for a supported protocol. linkerd doesn't need to understand the payload in an RPC call, but it does need to know enough about the protocol to determine the logical name of the destination.
 
-See [routers](#routers1).
+See [routers](#routers).
 
 ### Namers and Service Discovery
 
@@ -125,7 +125,7 @@ Naming and service discovery are configured via the `namers` section of the
 configuration file.  A namer acts on paths that start with `/#` followed by the
 namer's prefix. See [namers](#namers).
 
-### Telemetry
+### Telemetry Intro
 
 ```yaml
 telemetry:
@@ -145,9 +145,9 @@ telemetry:
 A telemeter may receive stats and trace annotations, i.e. to send to a collector
 or export. Telemetry data can be collected and exported from a linkerd process by
 configuring telemeters via a top-level `telemetry` section. See
-[telemetry](#telemetry14).
+[telemetry](#telemetry).
 
-### Tracers
+### Tracers Intro
 
 ```yaml
 tracers:
@@ -157,4 +157,4 @@ tracers:
 
 Requests that are routed by linkerd are also traceable using Finagle's built-in
 tracing instrumentation. Trace data can be exported from a linkerd process by
-configuring tracers via a top-level `tracers` section. See [tracers](#tracers13).
+configuring tracers via a top-level `tracers` section. See [tracers](#tracers).
