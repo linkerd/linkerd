@@ -515,11 +515,7 @@ object LinkerdBuild extends Base {
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
-<<<<<<< HEAD
-      Telemetry.core, Telemetry.tracelog, Telemetry.recentRequests,
-=======
-      Telemetry.core, Telemetry.statsd, Telemetry.tracelog,
->>>>>>> master
+      Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
       tls,
       failureAccrual
@@ -592,11 +588,8 @@ object LinkerdBuild extends Base {
   val telemetry = Telemetry.all
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
-<<<<<<< HEAD
   val telemetryRecentRequests = Telemetry.recentRequests
-=======
   val telemetryStatsD = Telemetry.statsd
->>>>>>> master
   val telemetryTracelog = Telemetry.tracelog
 
   val namer = Namer.all
