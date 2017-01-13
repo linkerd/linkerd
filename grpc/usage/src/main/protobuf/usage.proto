@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package io.buoyant.linkerd.usage;
+
+/**
+ * For use by the UsageTelemeter
+ */
+
+message Router {
+  string protocol = 1;
+  string interpreter = 2;
+  repeated string identifiers = 3;
+  repeated string transformers = 4;
+}
+
+message Counter {
+  string name = 1;
+  uint64 value = 2;
+}
+
+message Gauge {
+  string name = 1;
+  double value = 2;
+}
+
+message UsageMessage {
+  string pid = 1;
+  string org_id = 2;
+  string linkerd_version = 3;
+  string container_manager = 4;
+  string os_name = 5;
+  string os_version = 6;
+  string start_time = 7; // ISO 8601
+  repeated Router routers = 8;
+  repeated string namers = 9;
+  repeated Counter counters = 10;
+  repeated Gauge gauges = 11;
+}

@@ -450,6 +450,15 @@ object LinkerdBuild extends Base {
       val all = aggregateDir("linkerd/tracer", zipkin)
     }
 
+    object Telemeter {
+      val usage = projectDir("linkerd/telemeter/usage")
+        .dependsOn(core, Protocol.http, Grpc.usage)
+        .withLibs(Deps.jackson)
+        .withTests()
+
+      val all = aggregateDir("linkerd/telemeter", usage)
+    }
+
     object Announcer {
       val serversets = projectDir("linkerd/announcer/serversets")
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
@@ -517,6 +526,7 @@ object LinkerdBuild extends Base {
       Announcer.serversets,
       Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
+      Telemeter.usage,
       tls,
       failureAccrual
     )
@@ -529,7 +539,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all, Tracer.all)
+        Announcer.all, Namer.all, Protocol.all, Tracer.all, Telemeter.all)
       .configs(Bundle, LowMem)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
@@ -639,6 +649,8 @@ object LinkerdBuild extends Base {
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
   val linkerdTracer = Linkerd.Tracer.all
   val linkerdTracerZipkin = Linkerd.Tracer.zipkin
+  val linkerdTelemeter = Linkerd.Telemeter.all
+  val linkerdTelemeterUsage = Linkerd.Telemeter.usage
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls

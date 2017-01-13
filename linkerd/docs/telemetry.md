@@ -103,3 +103,30 @@ Key        | Default Value | Description
 ---------- | ------------- | -----------
 sampleRate | _required_    | What percentage of traces to record.
 capacity   | 10            | The maximum number of recent traces to store
+
+## Usage
+
+> Example usage config
+
+```yaml
+telemetry:
+ - kind: io.l5d.commonMetrics
+ - kind: io.l5d.usage
+```
+
+kind `io.l5d.usage`
+
+In order to make improvements and prioritize features, we'd like to gain a
+broader picture of how users run linkerd. This telemeter helps us by gathering anonymized usage data,
+sent to buoyant once an hour. The kind of data captured is as follows:
+
+1. How linkerds are configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
+2. What environments are linkerds running in (Operating System, Container orchestration solution),
+3. How do linkerds perform in those contexts (JVM performance, Number of requests served)
+
+See proto for exact message and structure.
+
+
+Key | Default Value | Description
+--- | ------------- | -----------
+orgId | empty by default | Optional unique string of your choosing that helps buoyant better understand linkerd behavior across restarts.
