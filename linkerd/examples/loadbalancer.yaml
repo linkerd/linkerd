@@ -1,0 +1,29 @@
+# A config that demonstrates various load balancer options.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  baseDtab: |
+    /http/1.1/* => /#/io.l5d.fs
+  servers:
+  - port: 4140
+    maxConcurrentRequests: 10000
+  client:
+    loadBalancer:
+      kind: p2c
+      maxEffort: 10
+    hostConnectionPool:
+      minSize: 0
+      maxSize: 1000
+      idleTimeMs: 10000
+      maxWaiters: 5000
+    failureAccrual:
+      kind: io.l5d.successRate
+      successRate: 0.9
+      requests: 1000
+      backoff:
+        kind: jittered
+        minMs: 5000
+        maxMs: 300000

@@ -1,0 +1,26 @@
+# A fairly minimal linkerd configuration with statsd exporting.
+
+admin:
+  port: 9990
+
+telemetry:
+- kind: io.l5d.commonMetrics
+- kind: io.l5d.statsd
+  experimental: true
+  prefix: linkerd
+  hostname: 127.0.0.1
+  port: 8125
+  gaugeIntervalMs: 10000
+  sampleRate: 1.0 # for testing only, setting this to 1.0 will increase linkerd latency
+
+# An example service discovery backend that uses the filesystem to resolve endpoints.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  baseDtab: /http/1.1/* => /#/io.l5d.fs
+  servers:
+  - port: 4140
+    ip: 0.0.0.0

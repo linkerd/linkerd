@@ -1,8 +1,14 @@
 "use strict";
 
-define(["jQuery", 'src/query'], function($, Query) {
+define([
+  'jQuery', 'Handlebars',
+  'src/query',
+  'text!template/request_totals.template'
+  ], function($, Handlebars, Query, requestTotalsTemplate) {
 
   var RequestTotals = (function() {
+    var template = Handlebars.compile(requestTotalsTemplate);
+
     var metricDefinitions = [
       {
         description: "Current requests",
@@ -27,13 +33,13 @@ define(["jQuery", 'src/query'], function($, Query) {
       return Query.filter(new RegExp(metaQuery.join("|")), possibleMetrics);
     }
 
-    function render($root, template, metricData) {
+    function render($root, metricData) {
       $root.html(template({
         metrics : metricData
       }));
     }
 
-    return function(metricsCollector, selectedRouter, $root, template) {
+    return function(metricsCollector, selectedRouter, $root) {
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
           var metricsByQuery = Query.filter(defn.query, data.specific);
@@ -44,11 +50,11 @@ define(["jQuery", 'src/query'], function($, Query) {
           };
         });
 
-        render($root, template, transformedData);
+        render($root, transformedData);
       }
 
       if (!selectedRouter) {
-        render($root, template, metricDefinitions);
+        render($root, metricDefinitions);
         metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
       } else {
         $root.hide();

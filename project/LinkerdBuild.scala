@@ -138,6 +138,11 @@ object LinkerdBuild extends Base {
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
       .withTests()
 
+    val statsd = projectDir("telemetry/statsd")
+      .dependsOn(core, Router.core)
+      .withLib(Deps.statsd)
+      .withTests()
+
     val tracelog = projectDir("telemetry/tracelog")
       .dependsOn(core, Router.core)
       .withTests()
@@ -145,7 +150,7 @@ object LinkerdBuild extends Base {
     val recentRequests = projectDir("telemetry/recent-requests")
       .dependsOn(admin, core, Router.core)
 
-    val all = aggregateDir("telemetry", core, commonMetrics, recentRequests, tracelog)
+    val all = aggregateDir("telemetry", core, commonMetrics, recentRequests, statsd, tracelog)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -510,7 +515,11 @@ object LinkerdBuild extends Base {
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
+<<<<<<< HEAD
       Telemetry.core, Telemetry.tracelog, Telemetry.recentRequests,
+=======
+      Telemetry.core, Telemetry.statsd, Telemetry.tracelog,
+>>>>>>> master
       Tracer.zipkin,
       tls,
       failureAccrual
@@ -583,7 +592,11 @@ object LinkerdBuild extends Base {
   val telemetry = Telemetry.all
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
+<<<<<<< HEAD
   val telemetryRecentRequests = Telemetry.recentRequests
+=======
+  val telemetryStatsD = Telemetry.statsd
+>>>>>>> master
   val telemetryTracelog = Telemetry.tracelog
 
   val namer = Namer.all

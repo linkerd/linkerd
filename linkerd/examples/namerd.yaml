@@ -1,3 +1,4 @@
+# Use namerd for name resolution.
 routers:
 - protocol: http
   interpreter:

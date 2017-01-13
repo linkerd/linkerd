@@ -1,0 +1,14 @@
+# This config loads both the dtab and the service discovery registry from the
+# local filesystem.  It establishes watches on the filesystem so that updates
+# will be respected at runtime.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  interpreter:
+    kind: io.l5d.fs
+    dtabFile: linkerd/examples/example.dtab
+  servers:
+  - port: 4140

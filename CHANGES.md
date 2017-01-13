@@ -1,5 +1,6 @@
 ## In the next release...
 
+* Add experimental StatsD telemeter
 * Add a recent requests log in the linkerd admin dashboard
 
 ## 0.8.5 2017-01-06
@@ -18,7 +19,7 @@
   `dtab-local`
 * Transformers:
   * Transformers will now prepend a prefix to the id of the bound names they
-    modify. 
+    modify.
   * Fix localhost transformer when used on systems with unresolvable hostname.
 
 ## 0.8.4 2016-12-05
