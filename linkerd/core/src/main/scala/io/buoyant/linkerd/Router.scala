@@ -9,7 +9,7 @@ import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
-import io.buoyant.config.Config
+import io.buoyant.config.PolymorphicConfig
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
 import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
@@ -250,7 +250,7 @@ case class RetriesConfig(
   new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
   new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
 ))
-trait BackoffConfig extends Config {
+trait BackoffConfig extends PolymorphicConfig {
   @JsonIgnore
   def mk: Stream[Duration]
 }

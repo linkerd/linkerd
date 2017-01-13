@@ -2,7 +2,7 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle._
-import io.buoyant.config.{Config, ConfigInitializer}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 /**
  * Read a single namer configuration in the form:
@@ -19,7 +19,7 @@ import io.buoyant.config.{Config, ConfigInitializer}
  * namer-specific options.  This namer refines names beginning with
  * `/#/i` (after this prefix has been stripped).
  */
-abstract class NamerConfig extends Config {
+abstract class NamerConfig extends PolymorphicConfig {
 
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None

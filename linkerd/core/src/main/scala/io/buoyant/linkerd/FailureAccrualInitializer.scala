@@ -5,11 +5,11 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.service.exp.FailureAccrualPolicy
 import com.twitter.finagle.service.{Backoff, FailureAccrualFactory}
 import com.twitter.util.Duration
-import io.buoyant.config.{Config, ConfigInitializer}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 abstract class FailureAccrualInitializer extends ConfigInitializer
 
-trait FailureAccrualConfig extends Config {
+trait FailureAccrualConfig extends PolymorphicConfig {
   @JsonIgnore
   def policy: () => FailureAccrualPolicy
 

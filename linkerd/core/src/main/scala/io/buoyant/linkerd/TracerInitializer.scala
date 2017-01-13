@@ -2,9 +2,9 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.tracing.Tracer
-import io.buoyant.config.{Config, ConfigInitializer}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
-trait TracerConfig extends Config {
+trait TracerConfig extends PolymorphicConfig {
 
   /**
    * Construct a tracer.

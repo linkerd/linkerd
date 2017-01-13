@@ -2,10 +2,10 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.twitter.finagle.Path
-import io.buoyant.config.{Config, ConfigInitializer}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 import io.buoyant.namer.Paths
 
-trait AnnouncerConfig extends Config {
+trait AnnouncerConfig extends PolymorphicConfig {
 
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None

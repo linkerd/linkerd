@@ -9,7 +9,7 @@ import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
-import io.buoyant.config.Config
+import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
@@ -108,7 +108,7 @@ class H2ServerConfig extends ServerConfig {
     Some(Seq(ApplicationProtocolNames.HTTP_2))
 }
 
-trait H2IdentifierConfig extends Config {
+trait H2IdentifierConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]

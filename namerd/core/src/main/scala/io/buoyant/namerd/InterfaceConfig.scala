@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path}
 import io.buoyant.config.types.Port
-import io.buoyant.config.{Config, ConfigInitializer}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 import java.net.{InetAddress, InetSocketAddress}
 
 /**
  * Configures a network interface to namerd functionality.
  */
-trait InterfaceConfig extends Config {
+trait InterfaceConfig extends PolymorphicConfig {
   var ip: Option[InetAddress] = None
   var port: Option[Port] = None
 

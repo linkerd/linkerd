@@ -6,7 +6,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.loadbalancer.LoadBalancerFactory.EnableProbation
 import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
-import io.buoyant.config.Config
+import io.buoyant.config.PolymorphicConfig
 
 @JsonSubTypes(Array(
   new Type(value = classOf[P2C], name = "p2c"),
@@ -14,7 +14,7 @@ import io.buoyant.config.Config
   new Type(value = classOf[Aperture], name = "aperture"),
   new Type(value = classOf[Heap], name = "heap")
 ))
-trait LoadBalancerConfig extends Config {
+trait LoadBalancerConfig extends PolymorphicConfig {
   val factory: LoadBalancerFactory
 
   val enableProbation: Option[Boolean] = None
