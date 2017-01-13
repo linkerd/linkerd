@@ -6,6 +6,7 @@ import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
+import com.twitter.finagle.buoyant.linkerd.ThriftTraceInitializer
 import io.buoyant.config.Parser
 import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.{RoutingFactory, Thrift}
@@ -23,7 +24,11 @@ class ThriftInitializer extends ProtocolInitializer {
     .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
 
   protected val adapter = Thrift.Router.IngestingFilter
-  protected val defaultServer = Thrift.server
+  protected val defaultServer = {
+    val stack = Thrift.server.stack
+      .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule)
+    Thrift.server.withStack(stack)
+  }
 
   override def defaultServerPort: Int = 4114
 
