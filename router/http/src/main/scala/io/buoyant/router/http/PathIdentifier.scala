@@ -24,7 +24,7 @@ case class PathIdentifier(
           req.uri = req.uri.split("/").drop(segments + 1) match {
             case Array() => "/"
             case x =>
-              val trailingSlash = if (req.path.endsWith("/")) "/" else ""
+              val trailingSlash = if (req.uri.endsWith("/")) "/" else ""
               x.mkString("/", "/", trailingSlash)
           }
         }

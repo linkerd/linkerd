@@ -105,7 +105,13 @@ object Linker {
 
       val telemeters = telemetry match {
         case None => Seq(defaultTelemeter)
-        case Some(telemeters) => telemeters.map(_.mk(Stack.Params.empty + LinkerConfigStackParam(this)))
+        case Some(telemeters) => telemeters.map {
+          case t if t.disabled =>
+            val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
+              "explicitly enabled by setting the `experimental' parameter to `true'."
+            throw new IllegalArgumentException(msg) with NoStackTrace
+          case t => t.mk(Stack.Params.empty + LinkerConfigStackParam(this))
+        }
       }
 
       // Telemeters may provide StatsReceivers.
