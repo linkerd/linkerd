@@ -16,6 +16,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.linkerd.Linker.{LinkerConfig, LinkerConfigStackParam}
@@ -39,6 +40,7 @@ private[telemeter] object UsageDataTelemeter {
   ) {
     def apply(metrics: Map[String, Number]): Future[Unit] = {
       val msg = mkUsageMessage(config, pid, orgId, metrics)
+      log.debug(msg.toString)
 
       val sz = UsageMessage.codec.sizeOf(msg)
       val bb0 = ByteBuffer.allocate(sz)
@@ -48,7 +50,7 @@ private[telemeter] object UsageDataTelemeter {
       val req = Request(Method.Post, "/")
       req.content = Buf.ByteBuffer.Owned(bb0)
       req.contentType = ContentType
-      service(req).unit
+      service(req).map(r => log.debug(r.contentString)).unit
     }
   }
 
@@ -130,6 +132,8 @@ private[telemeter] object UsageDataTelemeter {
   mapper.registerModule(DefaultScalaModule)
   mapper.setSerializationInclusion(Include.NON_ABSENT)
   mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
+
+  private val log = Logger.get(getClass.getName)
 }
 
 /**
@@ -152,6 +156,8 @@ class UsageDataTelemeter(
   private[this] val metricsService = Http.client.newService(metricsDst, "usageData")
   private[this] val started = new AtomicBoolean(false)
   private[this] val pid = java.util.UUID.randomUUID().toString
+  log.info(s"connecting to usageData proxy at $metricsDst")
+  val client = Client(metricsService, config, pid, orgId)
 
   val adminHandlers: Admin.Handlers = Seq(
     "/admin/metrics/usage" -> new UsageDataHandler(metricsService, config, pid, orgId, registry)
@@ -165,7 +171,6 @@ class UsageDataTelemeter(
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val client = Client(metricsService, config, pid, orgId)
     val _ = client(sample(registry))
 
     val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
