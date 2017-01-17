@@ -1,8 +1,9 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.{ServiceFactory, Stackable}
 import com.twitter.finagle.buoyant.TlsClientPrep
-import io.buoyant.config.ConfigInitializer
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 /**
  * Loadable TLS client configuration module.
@@ -12,8 +13,7 @@ import io.buoyant.config.ConfigInitializer
  */
 abstract class TlsClientInitializer extends ConfigInitializer
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait TlsClientConfig {
+trait TlsClientConfig extends PolymorphicConfig {
   @JsonIgnore
-  def tlsClientPrep[Req, Rsp]: TlsClientPrep.Module[Req, Rsp]
+  def tlsClientPrep[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]]
 }

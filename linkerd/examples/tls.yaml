@@ -1,0 +1,25 @@
+# A router that sends and receives encrypted traffic with TLS.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  baseDtab: |
+    /http/1.1/* => /#/io.l5d.fs
+  client:
+    # Establish encryped outgoing connections.
+    tls:
+      kind: io.l5d.boundPath
+      caCertPath: /foo/caCert.pem
+      strict: false
+      names:
+      # Use the service name as the commonName
+      - prefix: "/#/io.l5d.fs/{service}"
+        commonNamePattern: "{service}"
+  servers:
+  - port: 4140
+    # Expect the incoming connection to be encryped.
+    tls:
+      certPath: /foo/cert.pem
+      keyPath: /foo/key.pem

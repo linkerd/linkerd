@@ -2,21 +2,23 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.Stack
+import com.twitter.finagle.buoyant.TlsClientPrep.TransportSecurity
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
-import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
+import com.twitter.finagle.netty4.buoyant.{BufferingConnectDelay, Netty4ClientTls}
 import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
-import com.twitter.finagle.transport.{TlsConfig, Transport}
-import io.netty.channel.ChannelPipeline
+import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPipeline}
 import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
+import io.netty.handler.ssl.ApplicationProtocolNames
 
 object Netty4H2Transporter {
 
   def mk(params0: Stack.Params): Transporter[Http2Frame, Http2Frame] = {
-    // We rely on flow control rather than socket-level backpressure.
-    val params = params0 + Netty4Transporter.Backpressure(false)
-    val param.ClientPriorKnowledge(pk) = params[param.ClientPriorKnowledge]
-    val Transport.Tls(tlsConfig) = params[Transport.Tls]
+    val params = params0 +
+      // We rely on HTTP/2 flow control rather than socket-level
+      // backpressure.
+      Netty4Transporter.Backpressure(false) +
+      Netty4ClientTls.ApplicationProtocols(ApplicationProtocolNames.HTTP_2)
 
     // Each client connection pipeline is framed into HTTP/2 stream
     // frames. The connect promise does not fire (and therefore
@@ -24,28 +26,38 @@ object Netty4H2Transporter {
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
     def framer = new Http2FrameCodec(false /*server*/ )
-    val initializer: ChannelPipeline => Unit = tlsConfig match {
-      case TlsConfig.Disabled if !pk =>
-        // TODO support h1 upgrades
-        throw new IllegalArgumentException("client prior knowledge must be enabled")
+    val pipelineInit: ChannelPipeline => Unit =
+      params[TransportSecurity].config match {
+        case TransportSecurity.Insecure =>
+          params[param.ClientPriorKnowledge] match {
+            case param.ClientPriorKnowledge(false) =>
+              // TODO support h1 upgrades
+              throw new IllegalArgumentException("client prior knowledge must be enabled")
 
-      case TlsConfig.Disabled =>
-        // Prior Knowledge: ensure messages are buffered until handshake completes.
-        p => {
-          p.addLast(DirectToHeapInboundHandler)
-          p.addLast(framer).addLast(new BufferingConnectDelay)
-          ()
-        }
+            case param.ClientPriorKnowledge(true) =>
+              // Prior Knowledge: ensure messages are buffered until
+              // handshake completes.
+              p => {
+                p.addLast(DirectToHeapInboundHandler)
+                p.addLast(framer)
+                p.addLast(new BufferingConnectDelay); ()
+              }
+          }
 
-      case _ =>
-        // TLS is configured by the transport, so just install a framer.
-        p => {
-          p.addLast(DirectToHeapInboundHandler)
-          p.addLast(framer)
-          ()
-        }
-    }
+        case TransportSecurity.Secure() =>
+          // Netty4Transporter has already installed `ssl` and
+          // `sslConnect` channel handlers. The Netty4ClientTls handler
+          // replaces these handlers with the `tls` and `tlsConnect`
+          // handlers, which are configured to advertise h2 support.
+          p => {
+            p.addLast(Netty4ClientTls.handler(params))
+            p.addLast(DirectToHeapInboundHandler)
+            p.addLast(FramerKey, framer); ()
+          }
+      }
 
-    Netty4Transporter(initializer, params)
+    Netty4Transporter(pipelineInit, params)
   }
+
+  private val FramerKey = "h2 framer"
 }

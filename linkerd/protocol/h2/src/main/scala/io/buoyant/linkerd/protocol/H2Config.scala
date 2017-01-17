@@ -1,16 +1,17 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.finagle.{param, Path, Stack}
-import com.twitter.finagle.buoyant.h2.{Request, Response, LinkerdHeaders}
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
 import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonTypeInfo}
+import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
-import io.buoyant.router.{H2, ClassifiedRetries, RoutingFactory}
+import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
@@ -107,12 +108,7 @@ class H2ServerConfig extends ServerConfig {
     Some(Seq(ApplicationProtocolNames.HTTP_2))
 }
 
-@JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "kind"
-)
-trait H2IdentifierConfig {
+trait H2IdentifierConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]

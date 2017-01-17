@@ -2,10 +2,18 @@
 
 define([
   'jQuery',
+  'Handlebars',
   'src/query',
-  'src/utils'
-], function($, Query, Utils) {
+  'src/utils',
+  'text!template/router_summary.template'
+], function($, Handlebars,
+  Query,
+  Utils,
+  routerSummaryTemplate
+) {
   var RouterSummary = (function() {
+    var template = Handlebars.compile(routerSummaryTemplate);
+
     function processResponses(data, routerName) {
       var process = function(metricName) { return processResponse(data, routerName, metricName); };
 
@@ -46,18 +54,18 @@ define([
       }
     }
 
-    function renderRouterSummary(routerData, template, routerName, $summaryEl) {
+    function renderRouterSummary(routerData, routerName, $summaryEl) {
       $summaryEl.html(template(routerData));
     }
 
-    return function(metricsCollector, summaryTemplate, $summaryEl, routerName) {
+    return function(metricsCollector, $summaryEl, routerName) {
       var query = Query.serverQuery().allServers().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
 
-      renderRouterSummary({ router: routerName }, summaryTemplate, routerName, $summaryEl);
+      renderRouterSummary({ router: routerName }, routerName, $summaryEl);
 
       metricsCollector.registerListener(function(data) {
           var summaryData = processResponses(data.specific, routerName);
-          renderRouterSummary(summaryData, summaryTemplate, routerName, $summaryEl);
+          renderRouterSummary(summaryData, routerName, $summaryEl);
         }, function(metrics) { return Query.filter(query, metrics); });
 
       return {};

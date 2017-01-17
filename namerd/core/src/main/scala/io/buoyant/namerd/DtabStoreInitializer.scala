@@ -1,14 +1,11 @@
 package io.buoyant.namerd
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonIgnore, JsonTypeInfo}
-import io.buoyant.config.ConfigInitializer
-import io.buoyant.config.types.Port
-import java.net.{InetAddress, InetSocketAddress}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
+import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 abstract class DtabStoreInitializer extends ConfigInitializer
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
-trait DtabStoreConfig {
+trait DtabStoreConfig extends PolymorphicConfig {
   /** This property must be set to true in order to use this dtab store if it is experimental */
   @JsonProperty("experimental")
   var _experimentalEnenabled: Option[Boolean] = None
