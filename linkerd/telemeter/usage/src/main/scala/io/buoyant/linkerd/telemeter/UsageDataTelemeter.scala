@@ -7,13 +7,15 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.google.protobuf.CodedOutputStream
 import com.twitter.common.metrics.Metrics
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Method, Request, Response}
+import com.twitter.finagle.http.{MediaType, Method, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.DefaultTimer
+import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.linkerd.Linker.{LinkerConfig, LinkerConfigStackParam}
@@ -21,6 +23,7 @@ import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
 import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 
@@ -31,13 +34,19 @@ private[telemeter] object UsageDataTelemeter {
   case class Client(
     service: Service[Request, Response],
     config: Linker.LinkerConfig,
+    pid: String,
     orgId: Option[String]
   ) {
     def apply(metrics: Map[String, Number]): Future[Unit] = {
-      val msg = mkUsageMessage(config, orgId, metrics)
+      val msg = mkUsageMessage(config, pid, orgId, metrics)
+
+      val sz = UsageMessage.codec.sizeOf(msg)
+      val bb0 = ByteBuffer.allocate(sz)
+      val bb = bb0.duplicate()
+      UsageMessage.codec.encode(msg, CodedOutputStream.newInstance(bb))
 
       val req = Request(Method.Post, "/")
-      req.content = UsageMessage.codec.encodeGrpcMessage(msg)
+      req.content = Buf.ByteBuffer.Owned(bb0)
       req.contentType = ContentType
       service(req).unit
     }
@@ -45,11 +54,12 @@ private[telemeter] object UsageDataTelemeter {
 
   def mkUsageMessage(
     config: Linker.LinkerConfig,
+    pid: String,
     orgId: Option[String],
     metrics: Map[String, Number]
   ): UsageMessage =
     UsageMessage(
-      pid = Some(java.util.UUID.randomUUID().toString),
+      pid = Some(pid),
       orgid = orgId,
       linkerdversion = Some(Build.load().version),
       containermanager = mkContainerManager,
@@ -74,17 +84,14 @@ private[telemeter] object UsageDataTelemeter {
       Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue()))
     )
 
-  val RequestPattern = s"""^*/srv/*/requests$$""".r
+  val RequestPattern = """^.*/srv/.*/requests$""".r
   def mkCounters(metrics: Map[String, Number]): Seq[Counter] =
-    metrics.filter({
-      case (RequestPattern(key), value) => true
-      case _ => false
-    }).map({
-      case (k, v: Number) => Counter(Some("srv_requests"), Some(v.longValue()))
-    }).toSeq
+    metrics.collect {
+      case (RequestPattern(key), v) => Counter(Some("srv_requests"), Some(v.longValue()))
+    }.toSeq
 
   def mkRouters(config: Linker.LinkerConfig): Seq[Router] =
-    config.routers.map(r => {
+    config.routers.map { r =>
 
       val identifiers = r match {
         case httpRouter: HttpConfig =>
@@ -100,19 +107,20 @@ private[telemeter] object UsageDataTelemeter {
         identifiers = identifiers,
         transformers = transformers
       )
-    })
+    }
 
   class UsageDataHandler(
     service: Service[Request, Response],
     config: Linker.LinkerConfig,
+    pid: String,
     orgId: Option[String],
     registry: Metrics
   ) extends Admin.Handler {
 
     def apply(request: Request): Future[Response] = {
-      val msg: UsageMessage = mkUsageMessage(config, orgId, registry.sample().asScala.toMap)
+      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
       val rsp = Response()
-      rsp.contentType = "application/json"
+      rsp.contentType = MediaType.Json
       rsp.contentString = mapper.writeValueAsString(msg)
       Future.value(rsp)
     }
@@ -124,6 +132,12 @@ private[telemeter] object UsageDataTelemeter {
   mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
 }
 
+/**
+ * A telemeter that relies on LinkerConfig and Metrics registry params
+ * to send anonymous usage data to metricsDst on an hourly basis.
+ *
+ * Defines neither its own tracer nor its own stats receiver.
+ */
 class UsageDataTelemeter(
   metricsDst: Name,
   config: Linker.LinkerConfig,
@@ -137,12 +151,13 @@ class UsageDataTelemeter(
 
   private[this] val metricsService = Http.client.newService(metricsDst, "usageData")
   private[this] val started = new AtomicBoolean(false)
+  private[this] val pid = java.util.UUID.randomUUID().toString
 
   val adminHandlers: Admin.Handlers = Seq(
-    "/admin/metrics/usage" -> new UsageDataHandler(metricsService, config, orgId, registry)
+    "/admin/metrics/usage" -> new UsageDataHandler(metricsService, config, pid, orgId, registry)
   )
 
-  def sample(registry: Metrics) = registry.sample().asScala.toMap
+  private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
@@ -150,7 +165,7 @@ class UsageDataTelemeter(
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val client = Client(metricsService, config, orgId)
+    val client = Client(metricsService, config, pid, orgId)
     val _ = client(sample(registry))
 
     val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
@@ -176,15 +191,10 @@ case class UsageDataTelemeterConfig(
 
   @JsonIgnore
   def mk(params: Stack.Params): UsageDataTelemeter = {
-    val config = params[LinkerConfigStackParam] match {
-      case LinkerConfigStackParam(c) => c
-      case e => LinkerConfig(None, Seq(), None, None, None)
-    }
-
-    val DefaultPath = "/$/inet/130.211.174.30/80"
+    val config = params[LinkerConfigStackParam].config
 
     new UsageDataTelemeter(
-      Name(DefaultPath),
+      Name.bound(Address("104.197.79.103", 80)),
       config,
       com.twitter.common.metrics.Metrics.root,
       orgId
