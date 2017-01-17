@@ -30,7 +30,7 @@ import scala.collection.JavaConverters._
 
 private[telemeter] object UsageDataTelemeter {
   val DefaultPeriod = 1.hour
-  val ContentType = "application/x-protobuf"
+  val ContentType = "application/octet-stream"
 
   case class Client(
     service: Service[Request, Response],
@@ -48,6 +48,7 @@ private[telemeter] object UsageDataTelemeter {
       UsageMessage.codec.encode(msg, CodedOutputStream.newInstance(bb))
 
       val req = Request(Method.Post, "/")
+      req.host = "stats.buoyant.io"
       req.content = Buf.ByteBuffer.Owned(bb0)
       req.contentType = ContentType
       service(req).map(r => log.debug(r.contentString)).unit
