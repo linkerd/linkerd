@@ -2,6 +2,7 @@
 
 * Add experimental StatsD telemeter
 * Add a recent requests log in the linkerd admin dashboard
+* Add the `io.l5d.rewrite` namer for arbitrary reordering of path segments
 
 ## 0.8.5 2017-01-06
 
