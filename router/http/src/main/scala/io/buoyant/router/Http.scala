@@ -69,7 +69,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
   object Server {
     val stack: Stack[ServiceFactory[Request, Response]] =
-      (ForwardedFilter.module +: FinagleHttp.Server.stack)
+      (AddForwardedHeader.module +: FinagleHttp.Server.stack)
         .insertBefore(http.TracingFilter.role, ProxyRewriteFilter.module)
 
     val defaultParams: Stack.Params =

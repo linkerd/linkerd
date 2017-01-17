@@ -13,7 +13,7 @@ import org.scalatest.FunSuite
 
 class HeaderIdentifierConfigTest extends FunSuite with Awaits {
   test("sanity") {
-    // ensure it doesn't totally blowup
+    // ensure it doesn't totally blow up
     val _ = new HeaderIdentifierConfig().newIdentifier(Path.empty)
   }
 
@@ -22,10 +22,10 @@ class HeaderIdentifierConfigTest extends FunSuite with Awaits {
   }
 
   test("parse config") {
-    val yaml = s"""
-                  |kind: io.l5d.header
-                  |header: my-header
-      """.stripMargin
+    val yaml =
+      s"""|kind: io.l5d.header
+          |header: my-header
+          |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(HeaderIdentifierInitializer)))
     val config = mapper.readValue[HttpIdentifierConfig](yaml).asInstanceOf[HeaderIdentifierConfig]
