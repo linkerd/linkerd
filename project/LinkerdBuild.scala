@@ -42,6 +42,7 @@ object LinkerdBuild extends Base {
 
   object Router {
     val core = projectDir("router/core")
+      .dependsOn(Finagle.buoyantCore)
       .withTwitterLib(Deps.finagle("core"))
       .withTests()
       .withE2e()
@@ -138,11 +139,19 @@ object LinkerdBuild extends Base {
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
       .withTests()
 
+    val statsd = projectDir("telemetry/statsd")
+      .dependsOn(core, Router.core)
+      .withLib(Deps.statsd)
+      .withTests()
+
     val tracelog = projectDir("telemetry/tracelog")
       .dependsOn(core, Router.core)
       .withTests()
 
-    val all = aggregateDir("telemetry", core, commonMetrics, tracelog)
+    val recentRequests = projectDir("telemetry/recent-requests")
+      .dependsOn(admin, core, Router.core)
+
+    val all = aggregateDir("telemetry", core, commonMetrics, recentRequests, statsd, tracelog)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -394,7 +403,6 @@ object LinkerdBuild extends Base {
 
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
-      .withLibs("io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
       .withTests()
 
     val failureAccrual = projectDir("linkerd/failure-accrual")
@@ -507,7 +515,7 @@ object LinkerdBuild extends Base {
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
-      Telemetry.core, Telemetry.tracelog,
+      Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
       tls,
       failureAccrual
@@ -580,6 +588,8 @@ object LinkerdBuild extends Base {
   val telemetry = Telemetry.all
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
+  val telemetryRecentRequests = Telemetry.recentRequests
+  val telemetryStatsD = Telemetry.statsd
   val telemetryTracelog = Telemetry.tracelog
 
   val namer = Namer.all

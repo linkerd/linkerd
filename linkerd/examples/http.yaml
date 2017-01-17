@@ -1,16 +1,19 @@
-# A fairly minimal linkerd configuration.
-
-# An example service discovery backend that uses the filesystem to resolve endpoints.
+# HTTP protocol
 namers:
 - kind: io.l5d.fs
   rootDir: linkerd/examples/io.l5d.fs
 
-# A simple HTTP router that looks up host header values in io.l5d.fs.
 routers:
 - protocol: http
+  httpAccessLog: logs/access.log
   label: netty3
-  identifier:
-    kind: io.l5d.header
+  maxChunkKB: 16
+  maxHeadersKB: 16
+  maxInitialLineKB: 16
+  maxRequestKB: 102400 # 100MB
+  maxResponseKB: 102400 # 100MB
+  compressionLevel: 9
+  identifier: {kind: io.l5d.header}
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
@@ -18,17 +21,16 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-    engine:
-      kind: netty3
+    engine: {kind: netty3}
+    addForwardedHeader:
+      by: {kind: "ip:port"}
+      for: {kind: "ip"}
   client:
-    # maxResponseKB: 40960 # 40MB
-    engine:
-      kind: netty3
+    engine: {kind: netty3}
 
 - protocol: http
   label: netty4
-  identifier:
-    kind: io.l5d.header.token
+  identifier: {kind: io.l5d.header.token}
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
@@ -36,8 +38,7 @@ routers:
   servers:
   - port: 4141
     ip: 0.0.0.0
-    engine:
-      kind: netty4
+    engine: {kind: netty4}
+    addForwardedHeader: {}
   client:
-    engine:
-      kind: netty4
+    engine: {kind: netty4}

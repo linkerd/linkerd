@@ -13,9 +13,10 @@ import com.twitter.finagle.http.Request
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.util.Future
-import io.buoyant.linkerd.protocol.http.{AccessLogger, ResponseClassifiers, RewriteHostHeader}
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
+import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{Http, RoutingFactory}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
+import io.buoyant.router.http.AddForwardedHeader
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -64,6 +65,8 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
+
     Http.server.withStack(stk)
   }
 
@@ -77,6 +80,8 @@ object HttpInitializer extends HttpInitializer
 case class HttpClientConfig(
   engine: Option[HttpEngine]
 ) extends ClientConfig {
+
+  @JsonIgnore
   override def clientParams = engine match {
     case Some(engine) => engine.mk(super.clientParams)
     case None => super.clientParams
@@ -84,11 +89,17 @@ case class HttpClientConfig(
 }
 
 case class HttpServerConfig(
-  engine: Option[HttpEngine]
+  engine: Option[HttpEngine],
+  addForwardedHeader: Option[AddForwardedHeaderConfig]
 ) extends ServerConfig {
-  override def serverParams = engine match {
-    case Some(engine) => engine.mk(super.serverParams)
-    case None => super.serverParams
+
+  @JsonIgnore
+  override def serverParams = {
+    val params = super.serverParams + AddForwardedHeaderConfig.Param(addForwardedHeader)
+    engine match {
+      case None => params
+      case Some(engine) => engine.mk(params)
+    }
   }
 }
 
@@ -150,5 +161,4 @@ case class HttpConfig(
     .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
-
 }

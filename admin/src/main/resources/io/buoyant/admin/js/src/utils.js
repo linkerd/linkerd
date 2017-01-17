@@ -24,7 +24,7 @@ define([
   MsToStringConverter.prototype.showYears = function(years) { return years + "y" }
 
   MsToStringConverter.prototype.convert = function(ms) {
-    var years = (ms/this.msInYear).toFixed(0)
+    var years = Math.floor(ms/this.msInYear)
     var days = Math.floor(((ms - this.msInYear*years)/this.msInDay))
     var hours = Math.floor((ms - this.msInYear*years - this.msInDay*days)/this.msInHour)
     var minutes = Math.floor((ms - this.msInYear*years - this.msInDay*days - this.msInHour*hours)/this.msInMinute)

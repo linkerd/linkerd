@@ -291,10 +291,14 @@ object StackRouter {
      * Augment the default client StatsFilter with a
      * per-logical-destination stats filter.
      */
-    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      (orig ++ (TlsClientPrep.nop[Req, Rsp] +: stack.nilStack))
+    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
+      val stk = new StackBuilder(stack.nilStack[Req, Rsp])
+      stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
+      stk.push(TlsClientPrep.insecure[Req, Rsp])
+      (orig ++ stk.result)
         .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
+    }
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {

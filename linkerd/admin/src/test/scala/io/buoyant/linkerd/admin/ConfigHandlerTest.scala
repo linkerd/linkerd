@@ -38,7 +38,7 @@ routers:
     assert(rsp.contentString == """
       |{
       |  "namers":[
-      |    {"kind":"test", "buh":true}
+      |    {"buh":true, "kind": "test"}
       |  ],
       |  "routers":[
       |    {"protocol":"plain","servers":[{"port":1, "ip":"localhost"}]},

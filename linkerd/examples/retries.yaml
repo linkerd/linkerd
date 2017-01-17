@@ -1,0 +1,24 @@
+# A config that demonstrates options related to automatic retries.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  baseDtab: |
+    /http/1.1/* => /#/io.l5d.fs
+  responseClassifier:
+    # Retry 5XXs for GETs, HEADs, OPTIONs, PUTs, and DELETEs.
+    kind: io.l5d.retryableIdempotent5XX
+  client:
+    retries:
+      budget:
+        minRetriesPerSec: 5
+        percentCanRetry: 0.5
+        ttlSecs: 15
+      backoff:
+        kind: jittered
+        minMs: 10
+        maxMs: 10000
+  servers:
+  - port: 4140

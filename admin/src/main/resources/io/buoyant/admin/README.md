@@ -26,3 +26,9 @@ To run eslint:
 cd /linkerd/admin/src/main/resources/io/buoyant/admin
 npm run eslint # eslint js
 ```
+
+If you're writing js, you may find it useful to automatically rerun the tests
+when a file changes:
+```
+karma start --autoWatch=true --singleRun=false
+```
