@@ -8,8 +8,8 @@ import com.twitter.finagle.ssl.Engine
 import com.twitter.finagle.transport.TlsConfig
 import com.twitter.logging.Logger
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.util.PathMatcher
 import io.buoyant.linkerd.{TlsClientConfig, TlsClientInitializer}
+import io.buoyant.namer.util.PathMatcher
 import java.net.SocketAddress
 
 class BoundPathInitializer extends TlsClientInitializer {
