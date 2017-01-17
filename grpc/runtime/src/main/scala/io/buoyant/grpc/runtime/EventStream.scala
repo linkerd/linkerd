@@ -33,10 +33,10 @@ object EventStream {
     object Empty extends State[Nothing]
 
     /** There are no unconsumed values and there is a waiting receiver. */
-    case class Waiting[T](next: Promise[Unit]) extends State[T]
+    case class Recving[T](onUpdate: Promise[Unit]) extends State[T]
 
     /** An unconsumed value is ready. */
-    case class Ready[T](value: Ev[T]) extends State[T]
+    case class Updated[T](value: Ev[T]) extends State[T]
 
     /** The event is no longer being observed and no further values will be produced. */
     object Closed extends State[Nothing]
@@ -69,23 +69,23 @@ class EventStream[+T](events: Event[EventStream.Ev[T]]) extends Stream[T] {
   private[this] val stateRef: AtomicReference[State[T]] =
     new AtomicReference(State.Empty)
 
-  // Updates from the Event move the state to Ready if the Stream is
+  // Updates from the Event move the state to Updated if the Stream is
   // not otherwise closed/completed.
   private[this] val updater = {
     @tailrec
     def updateState(value: Ev[T]): Unit = stateRef.get match {
-      case State.Closed | State.Ready(End(_)) =>
+      case State.Closed | State.Updated(End(_)) =>
 
-      case state@(State.Empty | State.Ready(Val(_))) =>
-        stateRef.compareAndSet(state, State.Ready(value)) match {
+      case state@(State.Empty | State.Updated(Val(_))) =>
+        stateRef.compareAndSet(state, State.Updated(value)) match {
           case true =>
           case false => updateState(value)
         }
 
-      case state@State.Waiting(promise) =>
+      case state@State.Recving(promise) =>
         // A recver is waiting for a value, so update before notifying
         // the recver of the update.
-        stateRef.compareAndSet(state, State.Ready(value)) match {
+        stateRef.compareAndSet(state, State.Updated(value)) match {
           case true =>
             promise.updateIfEmpty(Return.Unit); ()
           case false => updateState(value)
@@ -103,22 +103,22 @@ class EventStream[+T](events: Event[EventStream.Ev[T]]) extends Stream[T] {
   override def recv(): Future[Stream.Releasable[T]] = stateRef.get match {
     case s@State.Empty =>
       val p = new Promise[Unit]
-      stateRef.compareAndSet(s, State.Waiting(p)) match {
+      stateRef.compareAndSet(s, State.Recving(p)) match {
         case true => p.before(recv())
         case false => recv()
       }
 
-    case State.Waiting(p) =>
+    case State.Recving(p) =>
       // Shouldn't actually reach this, but for the sake of completeness...
       p.before(recv())
 
-    case s@State.Ready(Val(v)) =>
+    case s@State.Updated(Val(v)) =>
       stateRef.compareAndSet(s, State.Empty) match {
         case true => Future.value(Stream.Releasable(v))
         case false => recv()
       }
 
-    case s@State.Ready(End(t)) =>
+    case s@State.Updated(End(t)) =>
       stateRef.compareAndSet(s, State.Closed) match {
         case true => updater.close().before(Future.const(t.map(toReleasable)))
         case false => recv()
