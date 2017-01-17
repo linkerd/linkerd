@@ -76,16 +76,16 @@ class EventStream[+T](events: Event[EventStream.Ev[T]]) extends Stream[T] {
     def updateState(value: Ev[T]): Unit = stateRef.get match {
       case State.Closed | State.Updated(End(_)) =>
 
-      case state@(State.Empty | State.Updated(Val(_))) =>
-        stateRef.compareAndSet(state, State.Updated(value)) match {
+      case s@(State.Empty | State.Updated(Val(_))) =>
+        stateRef.compareAndSet(s, State.Updated(value)) match {
           case true =>
           case false => updateState(value)
         }
 
-      case state@State.Recving(promise) =>
+      case s@State.Recving(promise) =>
         // A recver is waiting for a value, so update before notifying
         // the recver of the update.
-        stateRef.compareAndSet(state, State.Updated(value)) match {
+        stateRef.compareAndSet(s, State.Updated(value)) match {
           case true =>
             promise.updateIfEmpty(Return.Unit); ()
           case false => updateState(value)
