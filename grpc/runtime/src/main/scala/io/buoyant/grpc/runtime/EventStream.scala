@@ -18,8 +18,13 @@ object EventStream {
       case Throw(e) => End(Throw(e))
     })
 
+  /** An T-typed event value */
   sealed trait Ev[+T]
+
+  /** A non-terminal event, containing a value */
   case class Val[T](value: T) extends Ev[T]
+
+  /** A terminal event, containing either a value or an error */
   case class End[T](value: Try[T]) extends Ev[T]
 
   private sealed trait State[+T]
@@ -45,6 +50,9 @@ object EventStream {
  * Activity/Var, the stream may NOT reflect all event states.
  * Intermediate state transitions may be dropped in favor of buffering
  * only the last-observed state.
+ *
+ * Event values are wrapped by EventStream.Ev to indicate whether a
+ * value is terminal.
  *
  * TODO streams are not properly failed on event failure.
  *
