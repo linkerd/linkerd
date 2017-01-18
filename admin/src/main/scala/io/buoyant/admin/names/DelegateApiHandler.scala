@@ -8,9 +8,11 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize.Inclusion
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.twitter.conversions.time._
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Path, Addr => FAddr, Address => FAddress, Status => _, _}
+import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Path, Addr => FAddr, Address => FAddress, Status => _, TimeoutException => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namer._
@@ -249,6 +251,9 @@ object DelegateApiHandler {
             rsp.content = Codec.writeBuf(tree)
             rsp.contentType = MediaType.Json
             rsp
+          }.within(2.seconds).rescue {
+            case e: TimeoutException =>
+              err(Status.ServiceUnavailable, "Request to namerd timed out.")
           }
       case (Throw(e), _) =>
         err(Status.BadRequest, s"Invalid dtab: ${e.getMessage}")
@@ -256,6 +261,8 @@ object DelegateApiHandler {
         err(Status.BadRequest, s"Invalid path: ${e.getMessage}")
     }
   }
+
+  private implicit val timer = DefaultTimer.twitter
 }
 
 class DelegateApiHandler(
