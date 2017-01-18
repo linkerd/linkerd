@@ -19,7 +19,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
-import io.buoyant.linkerd.Linker.LinkerConfigStackParam
+import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
@@ -200,7 +200,7 @@ case class UsageDataTelemeterConfig(
 
   @JsonIgnore
   def mk(params: Stack.Params): UsageDataTelemeter = {
-    val config = params[LinkerConfigStackParam].config
+    val LinkerConfig(config) = params[LinkerConfig]
 
     new UsageDataTelemeter(
       Name.bound(Address("stats.buoyant.io", 443)),
