@@ -17,7 +17,7 @@ define([
       $(".dropdown-toggle .router-label").text(label)
     }
 
-    $.get("config.json").done(function(routersRsp) {
+    return $.get("config.json").done(function(routersRsp) {
       var template = Handlebars.compile(templateRsp);
       var routers = routersRsp.routers;
 
