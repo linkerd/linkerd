@@ -452,7 +452,9 @@ object LinkerdBuild extends Base {
 
     object Telemeter {
       val usage = projectDir("linkerd/telemeter/usage")
-        .dependsOn(core, Protocol.http, Grpc.usage)
+        .dependsOn(core % "compile->compile;test->test")
+        .dependsOn(Namer.core  % "compile->compile;test->test")
+        .dependsOn(Protocol.http, Grpc.usage)
         .withLibs(Deps.jackson)
         .withTests()
         .withE2e()
