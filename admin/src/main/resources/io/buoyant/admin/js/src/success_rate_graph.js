@@ -15,13 +15,12 @@ define([
     var yRangeDefaultMax = 100.001;
 
     function timeseriesParamsFn(successLineColor) {
-      function timeseriesParams(_name) {
+      return function(_name) {
         return {
           strokeStyle: successLineColor,
           lineWidth: 2
         };
-      }
-      return timeseriesParams;
+      };
     }
 
     function chartWidthFn() {

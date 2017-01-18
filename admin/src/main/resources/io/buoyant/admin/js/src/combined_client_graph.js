@@ -10,13 +10,12 @@ define([
     }
 
     function timeseriesParamsFn(clientColors) {
-      function timeseriesParams(name) {
+      return function(name) {
         return {
           strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
           lineWidth: 2
         };
-      }
-      return timeseriesParams;
+      };
     }
 
     return function(metricsCollector, routers, routerName, $root, colors) {
