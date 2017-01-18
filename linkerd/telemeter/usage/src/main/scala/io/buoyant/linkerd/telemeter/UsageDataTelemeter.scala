@@ -19,7 +19,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
-import io.buoyant.linkerd.Linker.{LinkerConfig, LinkerConfigStackParam}
+import io.buoyant.linkerd.Linker.LinkerConfigStackParam
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
@@ -87,10 +87,10 @@ private[telemeter] object UsageDataTelemeter {
       Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue()))
     )
 
-  val RequestPattern = """^.*/srv/.*/requests$""".r
+  val RequestPattern = "^.*/srv/.*/requests$".r
   def mkCounters(metrics: Map[String, Number]): Seq[Counter] =
     metrics.collect {
-      case (RequestPattern(key), v) => Counter(Some("srv_requests"), Some(v.longValue()))
+      case (RequestPattern(), v) => Counter(Some("srv_requests"), Some(v.longValue()))
     }.toSeq
 
   def mkRouters(config: Linker.LinkerConfig): Seq[Router] =
@@ -145,16 +145,18 @@ private[telemeter] object UsageDataTelemeter {
  */
 class UsageDataTelemeter(
   metricsDst: Name,
+  withTls: Boolean,
   config: Linker.LinkerConfig,
   registry: com.twitter.common.metrics.Metrics,
-  orgId: Option[String]
+  orgId: Option[String],
+  dryRun: Boolean
 ) extends Telemeter with Admin.WithHandlers {
   import UsageDataTelemeter._
 
   val tracer = NullTracer
   val stats = NullStatsReceiver
-
-  private[this] val metricsService = Http.client.newService(metricsDst, "usageData")
+  private[this] val httpClient = if (withTls) Http.client.withTls("stats.buoyant.io") else Http.client
+  private[this] val metricsService = httpClient.newService(metricsDst, "usageData")
   private[this] val started = new AtomicBoolean(false)
   private[this] val pid = java.util.UUID.randomUUID().toString
   log.info(s"connecting to usageData proxy at $metricsDst")
@@ -168,7 +170,7 @@ class UsageDataTelemeter(
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
-    if (started.compareAndSet(false, true)) run0()
+    if (!dryRun && started.compareAndSet(false, true)) run0()
     else Telemeter.nopRun
 
   private[this] def run0() = {
@@ -192,7 +194,8 @@ class UsageDataTelemeter(
 }
 
 case class UsageDataTelemeterConfig(
-  orgId: Option[String]
+  orgId: Option[String],
+  dryRun: Option[Boolean]
 ) extends TelemeterConfig {
 
   @JsonIgnore
@@ -200,10 +203,12 @@ case class UsageDataTelemeterConfig(
     val config = params[LinkerConfigStackParam].config
 
     new UsageDataTelemeter(
-      Name.bound(Address("104.197.79.103", 80)),
+      Name.bound(Address("stats.buoyant.io", 443)),
+      withTls = true,
       config,
       com.twitter.common.metrics.Metrics.root,
-      orgId
+      orgId,
+      dryRun.getOrElse(false)
     )
   }
 }

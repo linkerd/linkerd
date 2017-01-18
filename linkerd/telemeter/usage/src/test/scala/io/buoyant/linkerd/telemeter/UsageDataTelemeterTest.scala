@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 class UsageDataTelemeterTest extends FunSuite {
 
   test("sanity") {
-    val _ = UsageDataTelemeterConfig(None)
+    val _ = UsageDataTelemeterConfig(None, None)
   }
 
   test("service registration") {
@@ -20,10 +20,12 @@ class UsageDataTelemeterTest extends FunSuite {
     val yaml = s"""
                   |kind: io.l5d.usage
                   |orgId: parakeet
+                  |dryRun: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(UsageDataTelemeterInitializer)))
     val usage = mapper.readValue[TelemeterConfig](yaml).asInstanceOf[UsageDataTelemeterConfig]
     assert(usage.orgId == Some("parakeet"))
+    assert(usage.dryRun == Some(true))
   }
 }

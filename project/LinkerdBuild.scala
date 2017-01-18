@@ -455,6 +455,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Protocol.http, Grpc.usage)
         .withLibs(Deps.jackson)
         .withTests()
+        .withE2e()
 
       val all = aggregateDir("linkerd/telemeter", usage)
     }
