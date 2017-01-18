@@ -99,7 +99,12 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $metricsEl, routerName, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
+    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
+      var $headerEl = $container.find(".router-header-large");
+      var $metricsEl = $container.find(".metrics-container");
+      var $chartEl = $container.find(".chart-container");
+      var $toggleLinks = $container.find(".client-toggle");
+
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -111,7 +116,7 @@ define([
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
       renderMetrics($metricsEl, client, [], [], clientColor);
-      var chart = SuccessRateGraph($chartEl.find($(".client-success-rate")), colors.color);
+      var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -152,7 +157,10 @@ define([
 
       return {
         updateColors: function(clientToColor) {
-          chart.updateColors(clientToColor[client.label].color);
+          clientColor = clientToColor[client.label].color;
+          latencyLegend = createLatencyLegend(clientToColor[client.label].colorFamily);
+          $headerEl.css("border-bottom-color", clientColor);
+          chart.updateColors(clientColor);
         }
       };
     };

@@ -117,7 +117,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
     describe("UpdateableChart", function() {
       var fakeFns = {
         getWidth: function() { return 400; },
-        timeseriesParamsFn: function() { return {}; }
+        timeseriesParamsFn: function(_name) { return { strokeStyle: "black" }; }
       };
       var $canvas = $("<canvas id='test-chart-canvas' height='141'></canvas>");
       var fakeChartParams = {};
@@ -137,7 +137,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       });
 
       it("adds metrics to track", function() {
-        chart.setMetrics([{ name: "successRate", color: "" }], true);
+        chart.setMetrics([{ name: "successRate", color: "" }]);
         expect(chart.metrics).toEqual(["successRate"]);
 
         chart.addMetrics([{ name: "failureRate", color: "" }]);
@@ -147,13 +147,29 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       it("updates the timeseries of data", function() {
         expect(chart.tsMap).toBeUndefined();
 
-        chart.setMetrics([{ name: "successRate", color: "" }], true);
+        chart.setMetrics([{ name: "successRate", color: "" }]);
 
         expect(chart.tsMap).not.toBeUndefined();
         expect(chart.metrics).toEqual(["successRate"]);
 
         chart.updateMetrics([{name: "successRate", delta: 999}]);
         expect(chart.tsMap.successRate.data[0][1]).toBe(999);
+      });
+
+      it("updates the color of each timeseries", function() {
+        expect(chart.chart.seriesSet.length).toBe(0);
+
+        chart.setMetrics([{ name: "successRate", color: "" }]);
+        expect(chart.chart.seriesSet.length).toBe(1);
+        expect(chart.chart.seriesSet[0].options.strokeStyle).toBe("black");
+        expect(chart.tsOpts("foo").strokeStyle).toBe("black");
+
+        var timeseriesParams = function(_name) { return { strokeStyle: "white" }; }
+
+        chart.updateColors(timeseriesParams);
+        expect(chart.chart.seriesSet.length).toBe(1);
+        expect(chart.chart.seriesSet[0].options.strokeStyle).toBe("white");
+        expect(chart.tsOpts("foo").strokeStyle).toBe("white");
       });
     });
   });

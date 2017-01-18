@@ -9,16 +9,17 @@ define([
       return {name: client, color: ""}; //TODO: move to clientName only after v2 migration
     }
 
-    return function(metricsCollector, routers, routerName, $root, colors) {
-      var clientColors = colors;
-
+    function timeseriesParamsFn(clientColors) {
       function timeseriesParams(name) {
         return {
           strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
           lineWidth: 2
         };
       }
+      return timeseriesParams;
+    }
 
+    return function(metricsCollector, routers, routerName, $root, colors) {
       var chart = new Utils.UpdateableChart(
         {
           minValue: 0,
@@ -39,14 +40,14 @@ define([
         function() {
           return $(".router").first().width();  // get this to display nicely on various screen widths
         },
-        timeseriesParams
+        timeseriesParamsFn(colors)
       );
 
       var clients = _.map(routers.clients(routerName), 'label');
 
       var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
       var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
-      chart.setMetrics(desiredMetrics, timeseriesParams, true);
+      chart.setMetrics(desiredMetrics);
 
       var count = 0;
       var metricsListener = function(data) {
@@ -65,7 +66,7 @@ define([
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
       return {
         updateColors: function(newColors) {
-          clientColors = newColors;
+          chart.updateColors(timeseriesParamsFn(newColors));
         }
       };
     };

@@ -13,12 +13,13 @@ define([
     var EXPAND_CLIENT_THRESHOLD = 6;
 
     function assignColorsToClients(colors, clients) {
-      var colorIdx = 0;
+      var clientMapping = {};
 
-      return _.reduce(clients, function(clientMapping, client) {
-        clientMapping[client.label] = colors[colorIdx++ % colors.length];
-        return clientMapping;
-      }, {});
+      _(clients).sortBy('label').forEach(function(client, idx) {
+        clientMapping[client.label] = colors[idx % colors.length];
+      });
+
+      return clientMapping;
     }
 
     function shouldExpandClients(numClients) {
@@ -36,7 +37,7 @@ define([
       var expandClients = shouldExpandClients(clients.length);
 
       var routerClients = _.map(clients, function(client) {
-        return initializeClient(client, expandClients);
+        return initializeClient(client);
       });
 
       if (routerClients.length == 0) {
@@ -45,18 +46,26 @@ define([
 
       routers.onAddedClients(addClients);
 
-      function initializeClient(client, shouldExpand) {
+      function initializeClient(client) {
         $clientEl.show();
         var colorsForClient = clientToColor[client.label];
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
           client: client.label
-        })).appendTo($clientEl);
-        var $metrics = $container.find(".metrics-container");
-        var $chart = $container.find(".chart-container");
-        var $toggle = $container.find(".client-toggle");
+        }));
+        var inserted = false;
+        $clientEl.find(".client-container").each(function() {
+          if (client.label < $(this).data('label')) {
+            $container.insertBefore($(this));
+            inserted = true;
+            return false;
+          }
+        })
+        if (!inserted) {
+          $container.appendTo($clientEl);
+        }
 
-        return RouterClient(metricsCollector, routers, client, $metrics, routerName, $chart, colorsForClient, $toggle, shouldExpand);
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
 
       function addClients(addedClients) {
@@ -70,13 +79,13 @@ define([
           routerClient.updateColors(clientToColor);
         });
 
-        var expandClients = shouldExpandClients(addedClients.length + routerClients.length);
+        expandClients = shouldExpandClients(routers.clients(routerName).length);
 
         // add new clients
         _.chain(addedClients)
           .filter(function(client) { return client.router === routerName })
           .each(function(clientForRouter) {
-            routerClients.push(initializeClient(clientForRouter, expandClients));
+            routerClients.push(initializeClient(clientForRouter));
           })
           .value();
       }

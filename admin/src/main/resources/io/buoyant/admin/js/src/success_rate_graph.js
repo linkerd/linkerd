@@ -14,10 +14,14 @@ define([
     var yRangeDefaultMin = 99.99;
     var yRangeDefaultMax = 100.001;
 
-    function createChartLegend(successLineColor) {
-      return {
-        successRate: successLineColor
+    function timeseriesParamsFn(successLineColor) {
+      function timeseriesParams(_name) {
+        return {
+          strokeStyle: successLineColor,
+          lineWidth: 2
+        };
       }
+      return timeseriesParams;
     }
 
     function chartWidthFn() {
@@ -33,7 +37,7 @@ define([
       return { min: min, max: yRangeDefaultMax };
     }
 
-    function initializeChart($chartEl, timeseriesParamsFn, chartWidthFn) {
+    function initializeChart($chartEl, tsOpts, chartWidthFn) {
       var $canvas = $("<canvas id='client-success-canvas' height='141'></canvas>");
       $chartEl.append($canvas);
 
@@ -58,28 +62,20 @@ define([
         },
         $canvas[0],
         chartWidthFn,
-        timeseriesParamsFn
+        tsOpts
       );
 
-      chart.setMetrics([{ name: "successRate", color: "" }], true);
+      chart.setMetrics([{ name: "successRate", color: "" }]);
 
       return chart;
     }
 
     return function($chartEl, clientColor) {
-      var chartLegend = createChartLegend(clientColor);
-      var chart = initializeChart($chartEl, timeseriesParamsFn, chartWidthFn);
-
-      function timeseriesParamsFn(name) {
-        return {
-          strokeStyle: chartLegend[name],
-          lineWidth: 2
-        };
-      }
+      var chart = initializeChart($chartEl, timeseriesParamsFn(clientColor), chartWidthFn);
 
       return {
         updateColors: function(clientColor) {
-          chartLegend = createChartLegend(clientColor);
+          chart.updateColors(timeseriesParamsFn(clientColor));
         },
         updateMetrics: function(data) {
           chart.updateMetrics(data)

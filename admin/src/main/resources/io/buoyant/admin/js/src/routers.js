@@ -40,25 +40,6 @@ define([
     var clientRE = Query.clientQuery().withMetric("connects").build(),
         serverRE = Query.serverQuery().withMetric("requests").build();
 
-    var mkColor = function() {
-      var colorIdx = 0;
-      var colors = [
-        "8,64,129",
-        "123,204,196",
-        "8,104,172",
-        "168,221,181",
-        "43,140,190",
-        "204,235,197",
-        "78,179,211",
-        "224,243,219"
-      ];
-
-      //returns the next available color
-      return function() {
-        return colors[colorIdx++ % colors.length];
-      }
-    }();
-
     function mk(router, label, prefix) {
       return {
         router: router,
@@ -78,9 +59,7 @@ define([
 
     function mkDst(router, id) {
       var prefix = "rt/" + router + "/dst/id/" + id + "/";
-      var dst = mk(router, id, prefix);
-      dst.color = mkColor();
-      return dst;
+      return mk(router, id, prefix);
     }
 
     function mkServer(router, ip, port) {
