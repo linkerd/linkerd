@@ -35,10 +35,10 @@ class DtabHandler(
       <html>
         <head>
           <title>namerd admin</title>
-          <link rel="shortcut icon" href="/files/images/favicon.png" />
-          <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/delegator.css" rel="stylesheet"/>
+          <link rel="shortcut icon" href="../files/images/favicon.png" />
+          <link type="text/css" href="../files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/dashboard.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
         </head>
         <body>
           <div class="container-fluid">
@@ -52,7 +52,7 @@ class DtabHandler(
           </div>
 
           <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
-          <script data-main="/files/js/main-namerd" src="/files/js/lib/require.js"></script>
+          <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
         </body>
       </html>
     """
