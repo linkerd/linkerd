@@ -2,6 +2,7 @@
 
 * Add experimental StatsD telemeter
 * Add a recent requests log in the linkerd admin dashboard
+* Add `io.l5d.usage` telemeter for opt-in usage data collection
 
 ## 0.8.5 2017-01-06
 
