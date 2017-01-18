@@ -42,6 +42,7 @@ object Headers {
   val Path = ":path"
   val Scheme = ":scheme"
   val Status = ":status"
+  val ContentType = "content-type"
 
   def apply(pairs: Seq[(String, String)]): Headers =
     new Impl(pairs)

@@ -4,6 +4,7 @@ import com.twitter.finagle.{Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw}
+import io.buoyant.grpc.GrpcError
 
 object ServerDispatcher {
 
@@ -100,6 +101,8 @@ object ServerDispatcher {
             // Odd, but let's roll with this...
             msgs.close()
 
+          case Throw(rst: h2.Reset) =>
+            msgs.reset(GrpcError.fromRst(rst))
           case Throw(e) =>
             msgs.close() // TODO reset the stream with a failure.
         }
@@ -111,8 +114,10 @@ object ServerDispatcher {
       val buf = codec.encodeGrpcMessage(msg)
       val stream = h2.Stream()
       stream.write(h2.Frame.Data(buf, eos = false))
-        .before(stream.write(h2.Frame.Trailers("grpc-status" -> "0")))
-      h2.Response(h2.Status.Ok, stream)
+        .before(stream.write(h2.Frame.Trailers(
+          "grpc-status" -> "0"
+        )))
+      h2.Response(h2.Headers(h2.Headers.Status -> "200", h2.Headers.ContentType -> "application/grpc+proto"), stream)
     }
 
     private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp]): h2.Response = {
@@ -124,12 +129,15 @@ object ServerDispatcher {
             val data = h2.Frame.Data(buf, eos = false, release)
             frames.write(data).before(loop())
 
+          case Throw(rejected: Stream.RejectedWithReason) =>
+            frames.write(h2.Frame.Trailers("grpc-status" -> rejected.reason.errorCode.toString(), "grpc-message" -> rejected.reason.toString))
+              .onSuccess(_ => frames.close())
+
           case Throw(e) =>
-            val status = e match {
-              case Stream.Closed => "0"
-              case _ => "1" // TODO proper grpc status codes
-            }
-            frames.write(h2.Frame.Trailers("grpc-status" -> status))
+            // TODO: does `grpc-message` have a length restriction?
+            // NB: I changed 0 to 2 because if we're catching a Throwable then this must be an error. Yes?
+            System.out.println("returning grpc-status 2")
+            frames.write(h2.Frame.Trailers("grpc-status" -> "2", "grpc-message" -> e.toString))
               .onSuccess(_ => frames.close())
         }
 

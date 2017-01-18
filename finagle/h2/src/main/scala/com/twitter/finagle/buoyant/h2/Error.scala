@@ -18,11 +18,18 @@ sealed trait Reset extends Error
 object Reset {
   object Cancel extends Reset { override def toString = "Reset.Cancel" }
   object Closed extends Reset { override def toString = "Reset.Closed" }
+  object CompressionError extends Reset { override def toString = "Reset.CompressionError" }
+  object ConnectError extends Reset { override def toString = "Reset.ConnectError" }
   object EnhanceYourCalm extends Reset { override def toString = "Reset.EnhanceYourCalm" }
+  object FlowControlError extends Reset { override def toString = "Reset.FlowControlError" }
+  object InadequateSecurity extends Reset { override def toString = "Reset.InadequateSecurity" }
   object InternalError extends Reset { override def toString = "Reset.InternalError" }
   object ProtocolError extends Reset { override def toString = "Reset.ProtocolError" }
   object NoError extends Reset { override def toString = "Reset.NoError" }
   object Refused extends Reset { override def toString = "Reset.Refused" }
+  object DoesNotExist extends Reset { override def toString = "Reset.DoesNotExist" }
+  object SettingsTimeout extends Reset { override def toString = "Reset.SettingsTimeout" }
+  object StreamClosed extends Reset { override def toString = "Reset.StreamClosed" }
 }
 
 /**
