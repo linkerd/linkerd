@@ -1,7 +1,7 @@
-package io.buoyant.http
+package io.buoyant
+package http
 
-import com.twitter.finagle.{Name, NameTree, Namer, Path}
-import com.twitter.util.{Activity, Try}
+import com.twitter.finagle.{Name, Path}
 
 /**
  * A set of utility namers that aren't _actually_ HTTP-specific (at
@@ -18,23 +18,6 @@ private object Match {
     val sfx = s".$domain"
     if (hostname endsWith sfx) Some(hostname.dropRight(sfx.length)) else None
   }
-}
-
-/**
- * A helper
- */
-trait RewritingNamer extends Namer {
-  protected[this] def rewrite(orig: Path): Option[Path]
-
-  def lookup(path: Path): Activity[NameTree[Name]] =
-    Activity.value(path match {
-      case path if path.size > 0 =>
-        rewrite(path) match {
-          case Some(path) => NameTree.Leaf(Name.Path(path))
-          case None => NameTree.Neg
-        }
-      case _ => NameTree.Neg
-    })
 }
 
 /**

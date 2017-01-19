@@ -15,8 +15,8 @@ class RecentRequestsAdminHandler(tracer: RecentRequetsTracer) extends Handler {
       val encodedLogicalName = URLEncoder.encode(requestMeta.logicalName, ISO_8859_1.toString)
       val encodedConcreteName = URLEncoder.encode(requestMeta.concreteName, ISO_8859_1.toString)
 
-      val logicalNameUrl = s"/delegator?router=${requestMeta.router}#$encodedLogicalName"
-      val concreteNameUrl = s"/delegator?router=${requestMeta.router}#$encodedConcreteName"
+      val logicalNameUrl = s"delegator?router=${requestMeta.router}#$encodedLogicalName"
+      val concreteNameUrl = s"delegator?router=${requestMeta.router}#$encodedConcreteName"
 
       val row = Seq(
         requestMeta.timestamp.toString,

@@ -5,6 +5,7 @@ project/boot/
 project/plugins/project/
 project/plugins/src_managed/
 http.pid
+npm-debug.log
 .sbt-launch.jar
 .idea
 .iml

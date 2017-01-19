@@ -26,10 +26,10 @@ class LinkerdAdminTest extends FunSuite with Awaits {
     }
   }
 
-  test("serves buoyant static files at /files") {
+  test("serves buoyant static files at files") {
     val _ = new BuoyantMainTest {
       override def main() {
-        val rsp = await(client(Request("/files/css/dashboard.css")))
+        val rsp = await(client(Request("files/css/dashboard.css")))
         assert(rsp.status == Status.Ok)
       }
     }
@@ -38,34 +38,34 @@ class LinkerdAdminTest extends FunSuite with Awaits {
   test("serves 404 for a non-existent route") {
     val _ = new BuoyantMainTest {
       override def main() {
-        val rsp = await(client(Request("/foo")))
+        val rsp = await(client(Request("foo")))
         assert(rsp.status == Status.NotFound)
       }
     }
   }
 
-  test("serves twitter-server admin at /admin") {
+  test("serves twitter-server admin at admin") {
     val _ = new BuoyantMainTest {
       override def main() {
-        val rsp = await(client(Request("/admin")))
+        val rsp = await(client(Request("admin")))
         assert(rsp.status == Status.Ok)
       }
     }
   }
 
-  test("serves twitter-server static files at /admin/files") {
+  test("serves twitter-server static files at admin/files") {
     val _ = new BuoyantMainTest {
       override def main() {
-        val rsp = await(client(Request("/admin/files/css/dashboard.css")))
+        val rsp = await(client(Request("admin/files/css/dashboard.css")))
         assert(rsp.status == Status.Ok)
       }
     }
   }
 
-  test("serves /admin/metrics.json") {
+  test("serves admin/metrics.json") {
     val _ = new BuoyantMainTest {
       override def main() {
-        val rsp = await(client(Request("/admin/metrics.json")))
+        val rsp = await(client(Request("admin/metrics.json")))
         assert(rsp.status == Status.Ok)
       }
     }
