@@ -77,8 +77,11 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
 
   override def delegate(
     dtab: Dtab,
-    tree: DelegateTree[Name.Path]
-  ): Activity[DelegateTree[Bound]] = delegateBind(dtab, 0, tree).map(_.simplified)
+    tree: NameTree[Name.Path]
+  ): Activity[DelegateTree[Bound]] = {
+    val dtree = DelegateTree.fromNameTree(Path.empty, tree)
+    delegateBind(dtab, 0, dtree).map(_.simplified)
+  }
 
   val MaxDepth = 100
 
