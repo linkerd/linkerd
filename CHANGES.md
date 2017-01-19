@@ -1,9 +1,20 @@
-## In the next release...
+## 0.8.6 2017-01-19
 
 * Add experimental StatsD telemeter
-* Add a recent requests log in the linkerd admin dashboard
-* Admin dashboard now works if served at a non-root url
+* Admin dashboard
+  * Add a log of recent requests
+  * Now works if served at a non-root url
+* HTTP
+  * Support the RFC 7329 `Forwarded` header
+* HTTP/2
+  * H2 clients now properly advertise support for the “http2” protocol over
+    ALPN
+* Introduce `io.buoyant.hostportPfx` and `io.buoyant.porthostPfx` namers for
+  splitting port numbers out of hostnames
 * Add the `io.l5d.rewrite` namer for arbitrary reordering of path segments
+* Bug fixes:
+  * Fix path identifier bug when slash precedes uri params
+  * Fix subdomainOfPfx handling of hostnames with port numbers
 
 ## 0.8.5 2017-01-06
 
