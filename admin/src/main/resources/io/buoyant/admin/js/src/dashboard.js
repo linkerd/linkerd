@@ -21,7 +21,7 @@ define([
      */
     var UPDATE_INTERVAL = 1000;
 
-    $.get("/admin/metrics.json").done(function(metricsJson) {
+    $.get("admin/metrics.json").done(function(metricsJson) {
       var metricsCollector = MetricsCollector(metricsJson);
       var routers = Routers(metricsJson, metricsCollector);
 

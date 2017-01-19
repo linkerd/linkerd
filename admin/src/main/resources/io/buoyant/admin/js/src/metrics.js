@@ -4,8 +4,8 @@
 /* globals getSelectedRouter, Routers, UpdateableChart */
 
 $.when(
-  $.get("/files/js/template/metrics.template"),
-  $.get("/admin/metrics.json")
+  $.get("files/js/template/metrics.template"),
+  $.get("admin/metrics.json")
 ).done(function(templateRsp, jsonRsp) {
   $(function() {
     init(Handlebars.compile(templateRsp[0]), jsonRsp[0]);

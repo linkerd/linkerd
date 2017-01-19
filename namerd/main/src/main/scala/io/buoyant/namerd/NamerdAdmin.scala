@@ -23,7 +23,7 @@ object NamerdAdmin {
 
   def dtabs(dtabStore: DtabStore, namers: Map[Path, Namer]): Admin.Handlers = Seq(
     "/" -> new DtabListHandler(dtabStore),
-    "/delegator.json" -> new DelegateApiHandler(ns => ConfiguredNamersInterpreter(namers.toSeq)),
+    "/dtab/delegator.json" -> new DelegateApiHandler(ns => ConfiguredNamersInterpreter(namers.toSeq)),
     "/dtab/" -> new DtabHandler(dtabStore)
   )
 
