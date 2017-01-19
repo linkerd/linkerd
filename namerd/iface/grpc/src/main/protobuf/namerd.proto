@@ -20,8 +20,8 @@ service Interpreter {
   rpc GetAddr (AddrReq) returns (Addr) {}
   rpc StreamAddr (AddrReq) returns (stream Addr) {}
 
-  // rpc GetExplainedTree (ExplainTreeReq) returns (ExplainTreeRsp) {}
-  // rpc StreamExplainedTree (ExplainTreeReq) returns (stream ExplainTreeRsp) {}
+  rpc GetDelegateTree (DelegateTreeReq) returns (DelegateTreeRsp) {}
+  rpc StreamDelegateTree (DelegateTreeReq) returns (stream DelegateTreeRsp) {}
 
   // TODO GetNsList 
   // TODO StreamNsList 
@@ -181,3 +181,20 @@ message Addr {
     Bound bound = 4;
   }
 }
+
+
+/*
+ * GetDelegateTree, StreamDelegateTree
+ */
+
+message DelegateTreeReq {
+  message PathTree {}
+  PathTree tree = 1;
+}
+
+
+message DelegateTreeRsp {
+  message BoundTree {}
+  BoundTree tree = 1;
+}
+
