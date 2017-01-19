@@ -4,6 +4,7 @@ namers:
 - kind: io.l5d.fs
   rootDir: linkerd/examples/io.l5d.fs
 - kind: io.l5d.rewrite
+  prefix: /apiToSrv
   pattern: "/{service}/api"
   name: "/srv/{service}"
 
@@ -14,6 +15,6 @@ routers:
     segments: 2
   baseDtab: |
     /srv => /#/io.l5d.fs ;
-    /http => /#/io.l5d.rewrite ;
+    /http => /#/apiToSrv ;
   servers:
   - port: 4140

@@ -18,7 +18,8 @@ case class RewritingNamerConfig(
   assert(name != null)
 
   @JsonIgnore
-  override def defaultPrefix: Path = Path.read("/io.l5d.rewrite")
+  override def defaultPrefix: Path =
+    throw new IllegalArgumentException("The 'prefix' property is required for the io.l5d.rewrite namer.")
 
   @JsonIgnore override protected def newNamer(params: Params): Namer = new RewritingNamer(PathMatcher(pattern), name)
 }
