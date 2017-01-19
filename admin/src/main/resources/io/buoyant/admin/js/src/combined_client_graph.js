@@ -6,7 +6,7 @@ define([
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
     function clientToMetric(client) {
-      return {name: client, color: ""}; //TODO: move to clientName only after v2 migration
+      return { name: client }; //TODO: move to clientName only after v2 migration
     }
 
     function timeseriesParamsFn(clientColors) {
@@ -64,6 +64,10 @@ define([
 
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
       return {
+        addClient: function(client) {
+          chart.addMetrics([clientToMetric(client.prefix + "requests")]);
+        },
+
         updateColors: function(newColors) {
           chart.updateColors(timeseriesParamsFn(newColors));
         }

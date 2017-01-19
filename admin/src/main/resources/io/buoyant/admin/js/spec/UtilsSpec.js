@@ -137,17 +137,17 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       });
 
       it("adds metrics to track", function() {
-        chart.setMetrics([{ name: "successRate", color: "" }]);
+        chart.setMetrics([{ name: "successRate" }]);
         expect(chart.metrics).toEqual(["successRate"]);
 
-        chart.addMetrics([{ name: "failureRate", color: "" }]);
+        chart.addMetrics([{ name: "failureRate" }]);
         expect(chart.metrics).toEqual(["successRate", "failureRate"]);
       });
 
       it("updates the timeseries of data", function() {
         expect(chart.tsMap).toBeUndefined();
 
-        chart.setMetrics([{ name: "successRate", color: "" }]);
+        chart.setMetrics([{ name: "successRate" }]);
 
         expect(chart.tsMap).not.toBeUndefined();
         expect(chart.metrics).toEqual(["successRate"]);
@@ -157,9 +157,11 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       });
 
       it("updates the color of each timeseries", function() {
+        expect(chart.metrics).toBeUndefined();
         expect(chart.chart.seriesSet.length).toBe(0);
 
-        chart.setMetrics([{ name: "successRate", color: "" }]);
+        chart.setMetrics([{ name: "successRate" }]);
+        expect(chart.metrics.length).toBe(1);
         expect(chart.chart.seriesSet.length).toBe(1);
         expect(chart.chart.seriesSet[0].options.strokeStyle).toBe("black");
         expect(chart.tsOpts("foo").strokeStyle).toBe("black");

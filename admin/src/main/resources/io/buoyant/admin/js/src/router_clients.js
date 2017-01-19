@@ -82,12 +82,12 @@ define([
         expandClients = shouldExpandClients(routers.clients(routerName).length);
 
         // add new clients
-        _.chain(addedClients)
+        _(addedClients)
           .filter(function(client) { return client.router === routerName })
           .each(function(clientForRouter) {
             routerClients.push(initializeClient(clientForRouter));
-          })
-          .value();
+            combinedClientGraph.addClient(clientForRouter);
+          });
       }
     }
   })();

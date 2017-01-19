@@ -136,12 +136,8 @@ define([
   }
 
   UpdateableChart.prototype.updateColors = function(tsOpts) {
-    _.forEach(this.tsMap, function(ts, metricName) {
-      _.forEach(this.chart.seriesSet, function(series) {
-        if (series.options.strokeStyle === this.tsOpts(metricName).strokeStyle) {
-          series.options.strokeStyle = tsOpts(metricName).strokeStyle;
-        }
-      }.bind(this));
+    _.each(this.metrics, function(metricName, idx) {
+      this.chart.seriesSet[idx].options = tsOpts(metricName);
     }.bind(this));
     this.tsOpts = tsOpts;
   }
@@ -167,15 +163,10 @@ define([
   }
 
   UpdateableChart.prototype._addMetric = function(metric) {
-    var tsOptions = this.tsOpts ? this.tsOpts(metric.name) :  {
-        strokeStyle: "rgb(" + metric.color + ")",
-        lineWidth: 3
-      };
-
     this.tsMap[metric.name] = new TimeSeries();
     this.chart.addTimeSeries(
       this.tsMap[metric.name],
-      tsOptions
+      this.tsOpts(metric.name)
     );
   }
 
@@ -184,13 +175,11 @@ define([
   }
 
   UpdateableChart.prototype.updateMetrics = function(data) {
-    _.each(data, function(datum){
+    _.each(data, function(datum) {
       var ts = this.tsMap[datum.name];
-      if (!ts) {
-        this._addMetric(datum);
-        ts = this.tsMap[datum.name];
+      if (ts) {
+        ts.append(new Date().getTime(), datum.delta);
       }
-      ts.append(new Date().getTime(), datum.delta);
     }.bind(this));
 
     $(this.canvas).trigger(

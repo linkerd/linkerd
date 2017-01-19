@@ -64,7 +64,7 @@ define([
         tsOpts
       );
 
-      chart.setMetrics([{ name: "successRate", color: "" }]);
+      chart.setMetrics([{ name: "successRate" }]);
 
       return chart;
     }
