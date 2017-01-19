@@ -356,7 +356,7 @@ prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
-uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is avaiable at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
+uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is available at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
 ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
 useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
 
@@ -451,6 +451,59 @@ Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the curator namer.
 serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
+
+<a name="rewrite"></a>
+## Rewrite
+
+kind: `io.l5d.rewrite`
+
+### Rewrite Configuration
+
+> Example rewrite configuration:
+
+```yaml
+namers:
+- kind: io.l5d.rewrite
+  pattern: "/{service}/api"
+  name: "/srv/{service}"
+```
+
+> Then reference the namer in the dtab to use it:
+
+```
+baseDtab: |
+  /http => /#/io.l5d.rewrite
+```
+
+A namer that completely rewrites a path.  This is useful to do arbitrary
+reordering of the path segments that is not possible using standard prefix
+replacement.  While this is a general purpose tool for reordering path
+segments, it cannot be used to modify or split individual segments (for
+modification or splitting of individual segments, see the rewriting namers
+section below).
+
+If the name matches the pattern in the config, it will be replaced by the
+name in the config.  Additionally, any variables in the pattern will capture
+the value of the matching path segment and may be used in the final name.
+
+Key     | Default Value    | Description
+------- | ---------------- | -----------
+prefix  | `io.l5d.rewrite` | Resolves names with `/#/<prefix>`.
+pattern | _required_       | If the name matches this prefix, replace it with the name configured in the `name` parameter.  Wildcards and variable capture are allowed (see: `io.buoyant.namer.util.PathMatcher`).
+name    | _required_       | The replacement name.  Variables captured in the pattern may be used in this string.
+
+### Rewrite Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix> [/ *name ]
+```
+
+Key    | Required | Description
+------ | -------- | -----------
+prefix | yes      | Tells linkerd to resolve the request path using the rewrite namer.
+name   | yes      | Attempt to match this name against the pattern and replace it with the configured name.
 
 <a name="rewritingNamers"></a>
 ## Rewriting Namers
