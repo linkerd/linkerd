@@ -1,6 +1,9 @@
 ## Upcoming Release
 
 * Add `io.l5d.usage` telemeter for opt-in usage data collection
+* Admin dashboard
+  * Sorts clients and servers alphabetically
+  * Displays routers in the order that they are defined
 
 ## 0.8.6 2017-01-19
 
