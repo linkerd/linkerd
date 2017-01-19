@@ -9,8 +9,9 @@
 * HTTP/2
   * H2 clients now properly advertise support for the “http2” protocol over
     ALPN
-* Introduce io.buoyant.hostportPfx and io.buoyant.porthostPfx namers for
+* Introduce `io.buoyant.hostportPfx` and `io.buoyant.porthostPfx` namers for
   splitting port numbers out of hostnames
+* Add the `io.l5d.rewrite` namer for arbitrary reordering of path segments
 * Bug fixes:
   * Fix path identifier bug when slash precedes uri params
   * Fix subdomainOfPfx handling of hostnames with port numbers

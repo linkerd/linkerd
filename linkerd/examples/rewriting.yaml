@@ -1,0 +1,20 @@
+# An example of how to use the rewriting namer to reorder path segments.  This
+# resolves names like /http/foo/api to /#/io.l5d.fs/foo.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+- kind: io.l5d.rewrite
+  prefix: /apiToSrv
+  pattern: "/{service}/api"
+  name: "/srv/{service}"
+
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.path
+    segments: 2
+  baseDtab: |
+    /srv => /#/io.l5d.fs ;
+    /http => /#/apiToSrv ;
+  servers:
+  - port: 4140
