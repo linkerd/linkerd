@@ -152,7 +152,7 @@ define([
     if (this.tsMap !== undefined) {
       _.map(this.tsMap, function(ts){
         this.chart.removeTimeSeries(ts);
-      });
+      }.bind(this));
     }
 
     this.tsMap = {};
