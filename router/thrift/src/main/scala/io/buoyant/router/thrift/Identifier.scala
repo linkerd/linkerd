@@ -28,7 +28,7 @@ case class Identifier(
   }
 
   def apply(req: ThriftClientRequest): Future[RequestIdentification[ThriftClientRequest]] = {
-    val dst = Dst.Path(name ++ suffix(req), dtab(), Dtab.local)
+    val dst = Dst.Path(name ++ Dest.local ++ suffix(req), dtab(), Dtab.local)
     Future.value(new IdentifiedRequest[ThriftClientRequest](dst, req))
   }
 }

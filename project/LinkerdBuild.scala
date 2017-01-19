@@ -429,8 +429,9 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Router.mux)
 
       val thrift = projectDir("linkerd/protocol/thrift")
-        .dependsOn(core, Router.thrift)
+        .dependsOn(core, Router.thrift % "compile->compile;test->test;e2e->e2e")
         .withTests()
+        .withE2e()
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, testUtil)

@@ -1,3 +1,8 @@
+## In the next next release...
+
+* Add the ability to route basted on the `dest` request header when using the
+  TTwitter Thrift protocol
+
 ## In the next release...
 
 * Add experimental StatsD telemeter
