@@ -3,7 +3,7 @@
 * Add experimental StatsD telemeter
 * Admin dashboard
   * Add a log of recent requests
-  * Admin dashboard now works if served at a non-root url
+  * Now works if served at a non-root url
 * HTTP
   * Support the RFC 7329 `Forwarded` header
 * HTTP/2
