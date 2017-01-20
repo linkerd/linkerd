@@ -1,0 +1,15 @@
+<tr>
+  <td><h5>{{logger}}</h5></td>
+  <td>
+    <div class="btn-group pull-right" role="group">
+      {{#each logLevels}}
+        <a class="btn btn-sm
+          {{#if this.isActive}}
+            btn-primary active disabled" {{else}} btn-default" {{/if}}
+          data-level={{this.level}} data-logger={{@root.logger}} href="#">
+          {{this.level}}
+        </a>
+      {{/each}}
+    </div>
+  </td>
+</tr>

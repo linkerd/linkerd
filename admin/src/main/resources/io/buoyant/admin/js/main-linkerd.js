@@ -28,16 +28,21 @@ require([
   'src/admin',
   'src/dashboard',
   'src/delegate',
+  'src/logging'
 ], function (
   $, _, bootstrap,
   adminPage,
   dashboard,
-  linkerdDtabPlayground
+  linkerdDtabPlayground,
+  loggingConfig
 ) {
   // poor man's routing
   if (window.location.pathname.endsWith("/delegator")) {
     adminPage.initialize(true);
     new linkerdDtabPlayground();
+  } else if (window.location.pathname.endsWith("/logging")) {
+    adminPage.initialize();
+    new loggingConfig();
   } else {
     adminPage.initialize();
     new dashboard();

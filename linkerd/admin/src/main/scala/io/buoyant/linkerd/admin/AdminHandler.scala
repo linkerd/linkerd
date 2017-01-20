@@ -70,6 +70,7 @@ object AdminHandler extends HtmlView {
           <title>linkerd admin</title>
           <link type="text/css" href="files/css/lib/bootstrap.min.css" rel="stylesheet"/>
           <link type="text/css" href="files/css/dashboard.css" rel="stylesheet"/>
+          <link type="text/css" href="files/css/logger.css" rel="stylesheet"/>
           <link rel="shortcut icon" href="files/images/favicon.png" />
           <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600' rel='stylesheet' type='text/css'>
           $cssesHtml
