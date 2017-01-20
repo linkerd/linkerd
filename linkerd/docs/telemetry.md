@@ -103,3 +103,39 @@ Key        | Default Value | Description
 ---------- | ------------- | -----------
 sampleRate | _required_    | What percentage of traces to record.
 capacity   | 10            | The maximum number of recent traces to store
+
+## Usage
+
+> Example usage config
+
+```yaml
+telemetry:
+ - kind: io.l5d.commonMetrics
+ - kind: io.l5d.usage
+```
+
+kind `io.l5d.usage`
+
+In order to make improvements and prioritize features, we'd like to gain a
+broader picture of how users run linkerd. This opt-in telemeter helps us by
+gathering anonymized usage data, sent to buoyant once an hour.
+
+<aside class="warning"> No data is sent until the telemeter is explicitly added to the config! </aside>
+
+
+The kind of data captured is as follows:
+
+1. How linkerds are configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
+2. What environments are linkerds running in (Operating System, Container orchestration solution),
+3. How do linkerds perform in those contexts (JVM performance, Number of requests served)
+
+We do not collect the labels of namers/routers, designated service addresses or
+directories, dtabs, request/response data, or any other possibly identifying information.
+
+To see the exact payload that would be sent, add the telemeter with `dryRun` set to `true`,
+then query `localhost:9990/admin/metrics/usage`
+
+Key | Default Value | Description
+--- | ------------- | -----------
+orgId | empty by default | Optional string of your choosing that identifies your organization
+dryRun | false | If set to true, the usage telemeter is loaded but no data is sent

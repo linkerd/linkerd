@@ -1,3 +1,7 @@
+## Upcoming Release
+
+* Add `io.l5d.usage` telemeter for opt-in usage data collection
+
 ## 0.8.6 2017-01-19
 
 * Add experimental StatsD telemeter
