@@ -156,21 +156,10 @@ define(['jQuery', 'src/utils'], function($, Utils) {
         expect(chart.tsMap.successRate.data[0][1]).toBe(999);
       });
 
-      it("updates the color of each timeseries", function() {
-        expect(chart.metrics).toBeUndefined();
-        expect(chart.chart.seriesSet.length).toBe(0);
-
-        chart.setMetrics([{ name: "successRate" }]);
-        expect(chart.metrics.length).toBe(1);
-        expect(chart.chart.seriesSet.length).toBe(1);
-        expect(chart.chart.seriesSet[0].options.strokeStyle).toBe("black");
+      it("updates timeseries options", function() {
         expect(chart.tsOpts("foo").strokeStyle).toBe("black");
-
         var timeseriesParams = function(_name) { return { strokeStyle: "white" }; }
-
-        chart.updateColors(timeseriesParams);
-        expect(chart.chart.seriesSet.length).toBe(1);
-        expect(chart.chart.seriesSet[0].options.strokeStyle).toBe("white");
+        chart.updateTsOpts(timeseriesParams);
         expect(chart.tsOpts("foo").strokeStyle).toBe("white");
       });
     });

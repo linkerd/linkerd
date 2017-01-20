@@ -135,10 +135,7 @@ define([
     this._resize();
   }
 
-  UpdateableChart.prototype.updateColors = function(tsOpts) {
-    _.each(this.metrics, function(metricName, idx) {
-      this.chart.seriesSet[idx].options = tsOpts(metricName);
-    }.bind(this));
+  UpdateableChart.prototype.updateTsOpts = function(tsOpts) {
     this.tsOpts = tsOpts;
   }
 

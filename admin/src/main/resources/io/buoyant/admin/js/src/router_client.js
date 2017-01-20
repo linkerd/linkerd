@@ -99,12 +99,7 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
-      var $headerEl = $container.find(".router-header-large");
-      var $metricsEl = $container.find(".metrics-container");
-      var $chartEl = $container.find(".chart-container");
-      var $toggleLinks = $container.find(".client-toggle");
-
+    return function (metricsCollector, routers, client, $metricsEl, routerName, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -156,12 +151,7 @@ define([
       }
 
       return {
-        updateColors: function(clientToColor) {
-          clientColor = clientToColor[client.label].color;
-          latencyLegend = createLatencyLegend(clientToColor[client.label].colorFamily);
-          $headerEl.css("border-bottom-color", clientColor);
-          chart.updateColors(clientColor);
-        }
+        label: client.label
       };
     };
   })();

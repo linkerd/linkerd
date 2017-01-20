@@ -73,9 +73,6 @@ define([
       var chart = initializeChart($chartEl, timeseriesParamsFn(clientColor), chartWidthFn);
 
       return {
-        updateColors: function(newClientColor) {
-          chart.updateColors(timeseriesParamsFn(newClientColor));
-        },
         updateMetrics: function(data) {
           chart.updateMetrics(data)
         }

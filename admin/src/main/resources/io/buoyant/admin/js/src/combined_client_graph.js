@@ -64,12 +64,14 @@ define([
 
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
       return {
-        addClient: function(client) {
-          chart.addMetrics([clientToMetric(client.prefix + "requests")]);
+        addClients: function(clients) {
+          chart.addMetrics(_.map(clients, function(client) {
+            return clientToMetric(client.prefix + "requests");
+          }));
         },
 
         updateColors: function(newColors) {
-          chart.updateColors(timeseriesParamsFn(newColors));
+          chart.updateTsOpts(timeseriesParamsFn(newColors));
         }
       };
     };
