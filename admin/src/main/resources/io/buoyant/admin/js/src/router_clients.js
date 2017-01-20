@@ -70,12 +70,9 @@ define([
         // reassign colors
         clientToColor = assignColorsToClients(colorList, combinedClients);
 
-        // update existing client colors, add new clients to graph
+        // pass new colors to combined request graph, add new clients to graph
         combinedClientGraph.updateColors(clientToColor);
         combinedClientGraph.addClients(filteredClients);
-
-        // reassign expandClients
-        expandClients = shouldExpandClients(combinedClients.length);
 
         // add new clients to dom
         _.each(filteredClients, function(clientForRouter) {
