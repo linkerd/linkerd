@@ -12,6 +12,7 @@ $(function() {
   '        <div id="navbar" class="collapse navbar-collapse">' +
   '          <ul class="nav navbar-nav">' +
   '            <li><a href="../delegator">dtab</a></li>' +
+  '            <li><a href="../requests">requests</a></li>' +
   '            <li><a href="logging">logging</a></li>' +
   '            <li><a href="../help">help</a></li>' +
   '          </ul>' +
