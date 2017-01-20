@@ -13,12 +13,26 @@ import scalariform.formatter.preferences._
 import scoverage.ScoverageKeys._
 import scoverage.ScoverageSbtPlugin
 
+object Base {
+  val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
+  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
+
+  val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
+  val dockerJavaImage = settingKey[String]("base docker image, providing java")
+  val dockerTag = settingKey[String]("docker image tag")
+  val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
+
+  val configFile = settingKey[File]("path to config file")
+  val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
+}
+
 /**
  * Base project configuration.
  */
 class Base extends Build {
   import Base._
-  val headVersion = "0.8.5"
+
+  val headVersion = "0.8.6"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
@@ -252,17 +266,5 @@ class Base extends Build {
   }
 
   implicit def pimpMyProject(p: Project): ProjectHelpers = ProjectHelpers(p)
-}
 
-object Base {
-  val developTwitterDeps = settingKey[Boolean]("use SNAPSHOT twitter dependencies")
-  val doDevelopTwitterDeps = (developTwitterDeps in Global) ?? false
-
-  val dockerEnvPrefix = settingKey[String]("prefix to be applied to environment variables")
-  val dockerJavaImage = settingKey[String]("base docker image, providing java")
-  val dockerTag = settingKey[String]("docker image tag")
-  val assemblyExecScript = settingKey[Seq[String]]("script used to execute the application")
-
-  val configFile = settingKey[File]("path to config file")
-  val runtimeConfiguration = settingKey[Configuration]("runtime configuration")
 }

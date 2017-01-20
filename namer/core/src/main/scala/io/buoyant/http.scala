@@ -1,7 +1,7 @@
-package io.buoyant.http
+package io.buoyant
+package http
 
-import com.twitter.finagle.{Name, NameTree, Namer, Path}
-import com.twitter.util.{Activity, Try}
+import com.twitter.finagle.{Name, Path}
 
 /**
  * A set of utility namers that aren't _actually_ HTTP-specific (at
@@ -14,27 +14,16 @@ private object Match {
   val host = """^[A-Za-z0-9.:_-]+$""".r
   val method = "[A-Z]+".r
 
+  def dropPort(hostname: String): String = {
+    val idx = hostname.indexOf(":")
+    if (idx > 0) hostname.take(hostname.indexOf(":")) else hostname
+  }
+
   def subdomain(domain: String, hostname: String): Option[String] = {
     val sfx = s".$domain"
-    if (hostname endsWith sfx) Some(hostname.dropRight(sfx.length)) else None
+    val host = dropPort(hostname)
+    if (host endsWith sfx) Some(host.dropRight(sfx.length)) else None
   }
-}
-
-/**
- * A helper
- */
-trait RewritingNamer extends Namer {
-  protected[this] def rewrite(orig: Path): Option[Path]
-
-  def lookup(path: Path): Activity[NameTree[Name]] =
-    Activity.value(path match {
-      case path if path.size > 0 =>
-        rewrite(path) match {
-          case Some(path) => NameTree.Leaf(Name.Path(path))
-          case None => NameTree.Neg
-        }
-      case _ => NameTree.Neg
-    })
 }
 
 /**

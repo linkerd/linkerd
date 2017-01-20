@@ -35,7 +35,7 @@ require([
   linkerdDtabPlayground
 ) {
   // poor man's routing
-  if (window.location.pathname.indexOf("delegator") === 1) {
+  if (window.location.pathname.endsWith("/delegator")) {
     adminPage.initialize(true);
     new linkerdDtabPlayground();
   } else {

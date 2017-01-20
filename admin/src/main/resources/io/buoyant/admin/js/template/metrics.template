@@ -12,7 +12,7 @@
     <div id="metrics-title">
       <div class="metrics-json">
         <span>Raw data: </span>
-        <a href="/admin/metrics.json">/admin/metrics.json</a>
+        <a href="admin/metrics.json">admin/metrics.json</a>
       </div>
       <span class="name">&nbsp;</span>
       <span class="value stat">&nbsp;</span>

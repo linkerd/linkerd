@@ -13,8 +13,7 @@ routers:
   maxRequestKB: 102400 # 100MB
   maxResponseKB: 102400 # 100MB
   compressionLevel: 9
-  identifier:
-    kind: io.l5d.header
+  identifier: {kind: io.l5d.header}
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
@@ -22,17 +21,16 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-    engine:
-      kind: netty3
+    engine: {kind: netty3}
+    addForwardedHeader:
+      by: {kind: "ip:port"}
+      for: {kind: "ip"}
   client:
-    # maxResponseKB: 40960 # 40MB
-    engine:
-      kind: netty3
+    engine: {kind: netty3}
 
 - protocol: http
   label: netty4
-  identifier:
-    kind: io.l5d.header.token
+  identifier: {kind: io.l5d.header.token}
   baseDtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
@@ -40,8 +38,7 @@ routers:
   servers:
   - port: 4141
     ip: 0.0.0.0
-    engine:
-      kind: netty4
+    engine: {kind: netty4}
+    addForwardedHeader: {}
   client:
-    engine:
-      kind: netty4
+    engine: {kind: netty4}
