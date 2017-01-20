@@ -5,7 +5,7 @@ import org.scalatest.FunSuite
 
 class LoadBalancerTest extends FunSuite {
 
-  val balancers = Seq("p2c", "ewma", "aperture", "heap")
+  val balancers = Seq("p2c", "ewma", "aperture", "heap", "roundRobin")
 
   for (balancer <- balancers) {
     test(balancer) {
