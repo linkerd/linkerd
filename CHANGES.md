@@ -4,6 +4,7 @@
 * Admin dashboard
   * Sorts clients and servers alphabetically
   * Displays routers in the order that they are defined
+* Update Marathon namer to evaluate an app's running state
 
 ## 0.8.6 2017-01-19
 

@@ -20,6 +20,7 @@ trait Api {
 
 object Api {
   private[this] val versionString = "v2"
+  private[this] val taskRunning = "TASK_RUNNING"
   private[this] val mapper = new ObjectMapper with ScalaObjectMapper
 
   mapper.registerModule(DefaultScalaModule)
@@ -39,7 +40,8 @@ object Api {
     host: Option[String],
     ports: Option[Seq[Int]],
     ipAddresses: Option[Seq[TaskIpAddress]],
-    healthCheckResults: Option[Seq[HealthCheckResult]]
+    healthCheckResults: Option[Seq[HealthCheckResult]],
+    state: Option[String]
   )
 
   final case class TaskIpAddress(
@@ -91,9 +93,10 @@ object Api {
 
   object healthyHostPort {
     def unapply(task: Task): Option[(String, Int)] = {
-      task.healthCheckResults.map(isHealthy) match {
-        case Some(true) => hostPort.unapply(task)
-        case _ => None
+      if (isHealthy(task)) {
+        hostPort.unapply(task)
+      } else {
+        None
       }
     }
   }
@@ -106,9 +109,10 @@ object Api {
 
   object healthyIpAddress {
     def unapply(task: Task): Option[String] = {
-      task.healthCheckResults.map(isHealthy) match {
-        case Some(true) => ipAddress.unapply(task)
-        case _ => None
+      if (isHealthy(task)) {
+        ipAddress.unapply(task)
+      } else {
+        None
       }
     }
   }
@@ -162,9 +166,13 @@ object Api {
       case _ => Set.empty
     }
 
-  private[this] def isHealthy(healthCheckResults: Seq[HealthCheckResult]): Boolean = {
-    healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
-  }
+  private[this] def isHealthy(task: Task): Boolean =
+    task match {
+      case Task(_, _, _, _, Some(healthCheckResults), Some(state)) =>
+        state == taskRunning &&
+          healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
+      case _ => false
+    }
 }
 
 private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Boolean)
@@ -185,4 +193,3 @@ private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Bo
     Trace.letClear(client(req)).flatMap(rspToAddrs(_, useHealthCheck))
   }
 }
-
