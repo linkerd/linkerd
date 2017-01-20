@@ -11,7 +11,6 @@ import com.twitter.logging.Logger
 import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
-import com.twitter.finagle.buoyant.TlsClientPrep
 import scala.util.control.NonFatal
 
 /**
@@ -91,20 +90,10 @@ case class NamerdInterpreterConfig(
         }
     }
 
-    val tlsTransformer = new Transformer {
-      override def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]) = {
-        tls match {
-          case Some(tlsConfig) =>
-            TlsClientPrep.static[Req, Rep](tlsConfig.commonName, tlsConfig.caCert) +: stack
-          case None => stack
-        }
-      }
-    }
-
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ params)
       .transformed(retryTransformer)
-      .transformed(tlsTransformer)
+      .transformed(TlsTransformer(tls))
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
