@@ -43,6 +43,13 @@ trait Codec[T] {
 
   def decodeGrpcMessage(buf: Buf): T =
     Codec.decodeGrpcMessage(buf, this)
+
+  def decodeStream(stream: h2.Stream): Stream[T] =
+    new DecodingStream(this, stream)
+
+  // TODO should be aware of grpc-status
+  val decodeResponse: h2.Response => Stream[T] =
+    rsp => new DecodingStream(this, rsp.stream)
 }
 
 object Codec {

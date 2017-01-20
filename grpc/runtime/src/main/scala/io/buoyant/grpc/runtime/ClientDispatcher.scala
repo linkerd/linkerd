@@ -41,11 +41,7 @@ object ClientDispatcher {
     Codec.bufferGrpcFrame(rsp.stream).map(codec.decodeBuf)
 
   def acceptStreaming[T](rspF: Future[h2.Response], codec: Codec[T]): Stream[T] =
-    Stream.async[T] {
-      rspF.map { rsp =>
-        new CodedStream(codec, rsp.stream)
-      }
-    }
+    Stream.deferred(rspF.map(codec.decodeResponse))
 
   object Rpc {
 
