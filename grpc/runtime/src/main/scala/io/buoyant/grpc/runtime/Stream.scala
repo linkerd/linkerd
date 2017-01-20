@@ -7,6 +7,9 @@ import com.twitter.util.{Future, Promise, Return, Throw}
 
 trait Stream[+T] {
   def recv(): Future[Stream.Releasable[T]]
+
+  // TODO support grpc error types
+  // def reset(err: Grpc.Error): Unit
 }
 
 object Stream {
@@ -17,9 +20,6 @@ object Stream {
     def send(t: T): Future[Unit]
 
     def close(): Future[Unit]
-
-    // TODO support grpc error types
-    // def reset(err: Grpc.Error): Unit
   }
 
   def apply[T](): Stream[T] with Tx[T] = new Stream[T] with Tx[T] {
@@ -46,4 +46,9 @@ object Stream {
 
   object Closed extends Throwable
   object Rejected extends Throwable
+
+  def async[T](streamF: Future[Stream[T]]): Stream[T] = new Stream[T] {
+    private[this] val _mapRecv: Stream[T] => Future[Stream.Releasable[T]] = _.recv()
+    override def recv(): Future[Stream.Releasable[T]] = streamF.flatMap(_mapRecv)
+  }
 }

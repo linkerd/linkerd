@@ -7,9 +7,13 @@ import com.twitter.util.Future
 import java.nio.{ByteBuffer, ByteOrder}
 
 trait Codec[T] {
+
+  val decodeByteBuffer: ByteBuffer => T =
+    bb => decode(CodedInputStream.newInstance(bb))
+
   final val decodeBuf: Buf => T = { buf =>
     val bb = Buf.ByteBuffer.Owned.extract(buf)
-    decode(CodedInputStream.newInstance(bb.duplicate()))
+    decodeByteBuffer(bb.duplicate())
   }
 
   def decode: CodedInputStream => T
