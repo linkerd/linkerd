@@ -45,7 +45,8 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               {
                 "alive": true
               }
-            ]
+            ],
+            "state": "TASK_RUNNING"
           },
           {
             "id": "booksId2",
@@ -58,7 +59,22 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               {
                 "alive": false
               }
-            ]
+            ],
+            "state": "TASK_RUNNING"
+          },
+          {
+            "id": "booksId3",
+            "host": "9.10.11.12",
+            "ports": [7006, 7007, 7008],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": true
+              }
+            ],
+            "state": "TASK_KILLING"
           }
         ]
       }
@@ -88,7 +104,8 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               {
                 "alive": true
               }
-            ]
+            ],
+            "state": "TASK_RUNNING"
           },
           {
             "id": "booksId2",
@@ -107,8 +124,30 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               {
                 "alive": false
               }
-            ]
+            ],
+            "state": "TASK_KILLING"
+          },
+          {
+            "id": "booksId3",
+            "host": "9.10.11.12",
+            "ports": [],
+            "ipAddresses": [
+              {
+                "ipAddress": "250.1.62.2",
+                "protocol": "IPv4"
+              }
+            ],
+            "healthCheckResults": [
+              {
+                "alive": true
+              },
+              {
+                "alive": true
+              }
+            ],
+            "state": "TASK_KILLING"
           }
+
         ],
         "ipAddress": {
           "discovery": {
@@ -162,7 +201,8 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val response = await(Api(service, "prefix", false).getAddrs(Path.Utf8("foo")))
     assert(response == Set(
       Address("1.2.3.4", 7000),
-      Address("5.6.7.8", 7003)
+      Address("5.6.7.8", 7003),
+      Address("9.10.11.12", 7006)
     ))
   }
 
@@ -172,7 +212,8 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val response = await(Api(service, "prefix", false).getAddrs(Path.Utf8("foo")))
     assert(response == Set(
       Address("250.1.62.0", 8080),
-      Address("250.1.62.1", 8080)
+      Address("250.1.62.1", 8080),
+      Address("250.1.62.2", 8080)
     ))
   }
 
