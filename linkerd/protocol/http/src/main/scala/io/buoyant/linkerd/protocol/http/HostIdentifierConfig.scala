@@ -18,7 +18,6 @@ object HostIdentifierConfig {
 }
 
 class HostIdentifierConfig extends HttpIdentifierConfig {
-  var httpUriInDst: Option[Boolean] = None
 
   @JsonIgnore
   override def newIdentifier(
