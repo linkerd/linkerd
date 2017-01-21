@@ -14,7 +14,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
   object param {
     case class HttpIdentifier(id: (Path, () => Dtab) => RoutingFactory.Identifier[fhttp.Request])
     implicit object HttpIdentifier extends Stack.Param[HttpIdentifier] {
-      val default = HttpIdentifier(MethodAndHostIdentifier.mk)
+      val default = HttpIdentifier(HostIdentifier.mk)
     }
   }
 

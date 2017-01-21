@@ -168,7 +168,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     @volatile var retriesToDo = 0
     @volatile var err: Option[Throwable] = None
     val router = {
-      val dtab = Dtab.read(s"/http/1.1/*/ds => /$$/inet/127.1/${downstream.port}")
+      val dtab = Dtab.read(s"/http/1.1/ds => /$$/inet/127.1/${downstream.port}")
       def doReq(req: () => Future[Response], retries: Int = 0): Future[Response] =
         req().transform { ret =>
           if (retries > 0) {
