@@ -122,14 +122,11 @@ class EgEndToEndTest extends FunSuite {
       val rsps = client.uplats(req)
 
       val rf0 = rsps.recv()
-      assert(!rf0.isDefined)
-      assertThrows[IllegalStateException] { rsps.recv() }
-
-      await(tx.send(Eg.Rsp(None)))
-      assert(getAndRelease(rf0) == Eg.Rsp(None))
-
       val rf1 = rsps.recv()
 
+      assert(!rf0.isDefined)
+      await(tx.send(Eg.Rsp(None)))
+      assert(getAndRelease(rf0) == Eg.Rsp(None))
       assert(!rf1.isDefined)
       await(tx.send(Eg.Rsp(Some(Eg.Message.Enumeration.ONE))))
       eventually { assert(rf1.isDefined) }
@@ -168,12 +165,13 @@ class EgEndToEndTest extends FunSuite {
 
       val rf0 = rx.recv()
       assert(!rf0.isDefined)
-      assertThrows[IllegalStateException] { rx.recv() }
+
+      val rf1 = rx.recv()
+      assert(!rf1.isDefined)
 
       await(tx.send(Eg.Req(None)))
       assert(getAndRelease(rf0) == Eg.Req(None))
 
-      val rf1 = rx.recv()
       rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
       assert(await(rspF) == Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
 
