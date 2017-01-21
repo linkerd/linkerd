@@ -18,6 +18,6 @@ class TlsTransformer(cn: String, cert: Option[String]) extends Stack.Transformer
   private[this] def prep[Req, Rep] = TlsClientPrep.static[Req, Rep](cn, cert)
   private[this] def config[Req, Rep] = TlsClientPrep.configureFinagleTls[Req, Rep]
 
-  override def apply[Req, Rep](underlyingg: Stack[ServiceFactory[Req, Rep]]) =
+  override def apply[Req, Rep](underlying: Stack[ServiceFactory[Req, Rep]]) =
     prep[Req, Rep] +: config[Req, Rep] +: underlying
 }
