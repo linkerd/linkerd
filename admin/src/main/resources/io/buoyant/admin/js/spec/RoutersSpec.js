@@ -25,7 +25,7 @@ define([
     describe("clients", function() {
       it("provides the clients associated with a specified router", function() {
         var multiplierClients = routers.clients("multiplier");
-        var expectedLabels = ["$/inet/127.1/9092", "$/inet/127.1/9030", "$/inet/127.1/9029"];
+        var expectedLabels = ["$/inet/127.1/9029", "$/inet/127.1/9030", "$/inet/127.1/9092"];
 
         expect(multiplierClients).toHaveLength(3);
         expect(_.map(multiplierClients, 'label')).toEqual(expectedLabels);
@@ -40,6 +40,22 @@ define([
       it("returns all clients if router is invalid or unspecified", function() {
         expect(routers.clients("foobar")).toHaveLength(10);
         expect(routers.clients()).toHaveLength(10);
+      });
+
+      it("sorts clients by label alphabetically", function() {
+        var expectedLabels = [
+          '$/inet/127.1/9029',
+          '$/inet/127.1/9030',
+          '$/inet/127.1/9070',
+          '$/inet/127.1/9080',
+          '$/inet/127.1/9085',
+          '$/inet/127.1/9089',
+          '$/inet/127.1/9090',
+          '$/inet/127.1/9091',
+          '$/inet/127.1/9092',
+          '$/inet/127.1/9093'
+        ];
+        expect(_.map(routers.clients(), 'label')).toEqual(expectedLabels);
       });
     });
 
@@ -57,6 +73,16 @@ define([
       it("returns all servers if router is invalid or unspecified", function() {
         expect(routers.servers("foobar")).toHaveLength(4);
         expect(routers.servers(null)).toHaveLength(4);
+      });
+
+      it("sorts servers by label alphabetically", function() {
+        var expectedLabels = [
+          '0.0.0.0/4114',
+          '0.0.0.0/4115',
+          '0.0.0.0/4116',
+          '0.0.0.0/4117'
+        ];
+        expect(_.map(routers.servers(), 'label')).toEqual(expectedLabels);
       });
     });
 

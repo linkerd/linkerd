@@ -38,13 +38,16 @@ require([
 ) {
   // poor man's routing
   if (window.location.pathname.endsWith("/delegator")) {
-    adminPage.initialize(true);
-    new linkerdDtabPlayground();
+    adminPage.initialize(true).done(function() {
+      new linkerdDtabPlayground();
+    });
   } else if (window.location.pathname.endsWith("/logging")) {
-    adminPage.initialize();
-    new loggingConfig();
+    adminPage.initialize().done(function() {
+      new loggingConfig();
+    });
   } else {
-    adminPage.initialize();
-    new dashboard();
+    adminPage.initialize().done(function() {
+      new dashboard();
+    });
   }
 });
