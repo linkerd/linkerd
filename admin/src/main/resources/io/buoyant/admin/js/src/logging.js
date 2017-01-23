@@ -29,13 +29,24 @@ define([
     var level = $(this).attr("data-level");
     var logger = $(this).attr("data-logger");
     var config = { level: level, logger: logger };
+    $.post("logging.json", config, function() {
+      if (logger == "root") {
+        $.get("logging.json", function(logConfig) {
+          var $table = $(".table tbody");
+          $table.empty();
+          for (var index in logConfig) {
+            var config = logConfig[index];
+            $table.append(template(modelToView(config)));
+          }
+        })
+      }
+    });
     $(this).closest("tr").replaceWith(template(modelToView(config)));
-    $.get("logging.json", config);
   }
 
   return function() {
-    var $table = $(".table").on("click", "a.btn", clickHandler);
     var logConfig = JSON.parse($("#logger-data").html());
+    var $table = $(".table").on("click", "a.btn", clickHandler);
 
     for (var index in logConfig) {
       var config = logConfig[index];
