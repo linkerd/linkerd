@@ -176,6 +176,10 @@ class EgTest extends FunSuite {
     } finally await(h2client.close().before(h2srv.close()))
   }
 
+  test("services not available should be routed as UNAVAILABLE") {
+    assert(false)
+  }
+
   def getAndRelease[T](f: Future[Stream.Releasable[T]]): T = {
     val Stream.Releasable(v, release) = await(f)
     await(release())

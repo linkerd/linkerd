@@ -4,6 +4,7 @@ import com.twitter.finagle.{Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw}
+import io.buoyant.grpc.GrpcError
 
 object ClientDispatcher {
 
@@ -27,7 +28,9 @@ object ClientDispatcher {
         case Throw(Stream.Closed) =>
           val frame = h2.Frame.Data(Buf.Empty, eos = true)
           stream.write(frame)
-
+        case Throw(rst: h2.Reset) =>
+          stream.reset(GrpcError.toRst(GrpcError.fromRst(rst)))
+          Future.exception(rst)
         case Throw(e) =>
           // TODO better
           stream.reset(h2.Reset.InternalError)

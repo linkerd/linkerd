@@ -121,7 +121,12 @@ private[h2] object Netty4Message {
       case Http2Error.NO_ERROR => h2.Reset.NoError
       case Http2Error.PROTOCOL_ERROR => h2.Reset.ProtocolError
       case Http2Error.REFUSED_STREAM => h2.Reset.Refused
-      case Http2Error.STREAM_CLOSED => h2.Reset.Closed
+      case Http2Error.COMPRESSION_ERROR => h2.Reset.CompressionError
+      case Http2Error.CONNECT_ERROR => h2.Reset.ConnectError
+      case Http2Error.FLOW_CONTROL_ERROR => h2.Reset.FlowControlError
+      case Http2Error.INADEQUATE_SECURITY => h2.Reset.InadequateSecurity
+      case Http2Error.SETTINGS_TIMEOUT => h2.Reset.SettingsTimeout
+      case Http2Error.STREAM_CLOSED => h2.Reset.StreamClosed
       case err => throw new IllegalArgumentException(s"invalid stream error: ${err}")
     }
 
@@ -133,6 +138,13 @@ private[h2] object Netty4Message {
       case h2.Reset.NoError => Http2Error.NO_ERROR
       case h2.Reset.ProtocolError => Http2Error.PROTOCOL_ERROR
       case h2.Reset.Refused => Http2Error.REFUSED_STREAM
+      case h2.Reset.DoesNotExist => Http2Error.REFUSED_STREAM
+      case h2.Reset.CompressionError => Http2Error.COMPRESSION_ERROR
+      case h2.Reset.ConnectError => Http2Error.CONNECT_ERROR
+      case h2.Reset.FlowControlError => Http2Error.FLOW_CONTROL_ERROR
+      case h2.Reset.InadequateSecurity => Http2Error.INADEQUATE_SECURITY
+      case h2.Reset.SettingsTimeout => Http2Error.SETTINGS_TIMEOUT
+      case h2.Reset.StreamClosed => Http2Error.STREAM_CLOSED
     }
   }
 

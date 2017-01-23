@@ -97,9 +97,11 @@ class Netty4ServerDispatcher(
           case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
             log.info(f, "[%s S:%d] interrupted; resetting remote: CANCEL", prefix, st.streamId)
             Reset.Cancel
+          // TODO: disambiguate types of Refused. (need to have a way to map UNIMPLEMENTED)
           case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
             log.info(f, "[%s S:%d] rejected; resetting remote: REFUSED", prefix, st.streamId)
             Reset.Refused
+
           case e =>
             log.info(e, "[%s S:%d] unexpected error; resetting remote: INTERNAL_ERROR", prefix, st.streamId)
             Reset.InternalError
