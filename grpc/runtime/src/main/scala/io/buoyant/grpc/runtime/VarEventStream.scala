@@ -4,10 +4,10 @@ import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, V
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 
-object EventStream {
+object VarEventStream {
 
   def apply[T](event: Event[Ev[T]]): Stream[T] =
-    new EventStream(event)
+    new VarEventStream(event)
 
   def apply[T](var0: Var[Ev[T]]): Stream[T] =
     apply(var0.changes)
@@ -51,7 +51,7 @@ object EventStream {
  * Intermediate state transitions may be dropped in favor of buffering
  * only the last-observed state.
  *
- * Event values are wrapped by EventStream.Ev to indicate whether a
+ * Event values are wrapped by VarEventStream.Ev to indicate whether a
  * value is terminal.
  *
  * TODO streams are not properly failed on event failure.
@@ -59,8 +59,8 @@ object EventStream {
  * TODO when a stream fails (from the remote), we should eagerly
  * stop observing the event.
  */
-class EventStream[+T](events: Event[EventStream.Ev[T]]) extends Stream[T] {
-  import EventStream._
+class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] {
+  import VarEventStream._
 
   // We only buffer at most one event state.  Event states are not
   // written directly from the Event, since this provide no mechanism
