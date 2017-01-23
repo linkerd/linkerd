@@ -41,6 +41,6 @@ class BindHandler(cache: NameInterpreterCache) extends Service[Request, Response
 object BindHandler {
   def renderNameTree(tree: NameTree[Name.Bound]): Future[Buf] =
     JsonDelegateTree.mk(
-      DelegateTree.fromNameTree(null, tree)
+      DelegateTree.fromNameTree(tree, path = null)
     ).map(DelegateApiHandler.Codec.writeBuf).map(_.concat(Buf.Utf8("\n")))
 }

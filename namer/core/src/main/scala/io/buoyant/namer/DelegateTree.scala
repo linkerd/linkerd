@@ -130,7 +130,7 @@ object DelegateTree {
         DelegateTree.Union(path, dentry, delegates: _*)
     }
 
-  def fromNameTree[T](path: Path, names: NameTree[T]): DelegateTree[T] =
+  def fromNameTree[T](names: NameTree[T], path: Path = Path.empty): DelegateTree[T] =
     names match {
       case NameTree.Empty => DelegateTree.Empty(path, Dentry.nop)
       case NameTree.Fail => DelegateTree.Fail(path, Dentry.nop)

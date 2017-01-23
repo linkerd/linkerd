@@ -79,7 +79,7 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
     dtab: Dtab,
     tree: NameTree[Name.Path]
   ): Activity[DelegateTree[Bound]] = {
-    val dtree = DelegateTree.fromNameTree(Path.empty, tree)
+    val dtree = DelegateTree.fromNameTree(tree)
     delegateBind(dtab, 0, dtree).map(_.simplified)
   }
 
