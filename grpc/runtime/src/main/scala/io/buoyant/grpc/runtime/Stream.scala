@@ -49,8 +49,7 @@ object Stream {
   object Rejected extends Throwable
 
   /**
-   * A stream that defers results until the provided future is
-   * satisfied with an underlying stream.
+   * A stream backed by a promised stream.
    */
   def deferred[T](streamFut: Future[Stream[T]]): Stream[T] =
     new Stream[T] {
@@ -77,7 +76,8 @@ object Stream {
       // (which isn't guaranteed without it).
       private[this] val recvMu = new AsyncMutex()
 
-      @volatile private[this] var streamRef: Either[Future[Stream[T]], Try[Stream[T]]] = Left(streamFut)
+      @volatile private[this] var streamRef: Either[Future[Stream[T]], Try[Stream[T]]] =
+        Left(streamFut)
 
       private[this] val _recv: Try[Stream[T]] => Future[Stream.Releasable[T]] = { v =>
         streamRef = Right(v)

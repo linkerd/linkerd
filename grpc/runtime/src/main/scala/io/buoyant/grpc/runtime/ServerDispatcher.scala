@@ -76,7 +76,7 @@ object ServerDispatcher {
       Codec.bufferGrpcFrame(req.stream).map(codec.decodeBuf)
 
     private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] =
-      codec.decodeStream(req.stream)
+      codec.decodeRequest(req)
 
     private[this] def respondUnary[Rsp](codec: Codec[Rsp], msg: Rsp): h2.Response = {
       val buf = codec.encodeGrpcMessage(msg)

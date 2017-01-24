@@ -3,7 +3,7 @@ package io.buoyant.grpc.runtime
 import com.twitter.concurrent.{AsyncMutex, Permit}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Return, Throw, Try}
+import com.twitter.util.{Future, Return, Promise, Throw, Try}
 import java.nio.ByteBuffer
 import scala.util.control.NoStackTrace
 
@@ -16,11 +16,11 @@ import scala.util.control.NoStackTrace
  * invoked serially, i.e. when there are no pending `recv()` calls on
  * the stream.
  */
-private[runtime] class DecodingStream[+T](
-  codec: Codec[T],
-  frames: h2.Stream
-) extends Stream[T] {
+private[runtime] trait DecodingStream[+T] extends Stream[T] {
   import DecodingStream._
+
+  protected[this] def frames: h2.Stream
+  protected[this] def decoder: ByteBuffer => T
 
   // convenience
   private[this]type Releasable = Stream.Releasable[T]
@@ -28,19 +28,15 @@ private[runtime] class DecodingStream[+T](
   /**
    * Holds HTTP/2 data that has not yet been returned from recv().
    *
-   * One of two states:
-   * - Framing: when no gRPC message frame has been read
-   * - Framed: with the current frame header
-   *
    * These states hold a ByteBuffer-backed Buf, as well as a
    * `Releaser`, which manages when HTTP/2 frames are released
    * (i.e. for flow control).
    */
-  @volatile private[this] var recvBuffer: RecvBuffer = EmptyRecvBuffer
+  private[this] var recvState: RecvState = RecvState.Empty
 
   /**
    * Ensures that at most one recv call is actively being processed,
-   * so that read-and-update access to `recvBuffer` is safe.
+   * so that read-and-update access to `recvState` is safe.
    */
   private[this] val recvMu = new AsyncMutex()
 
@@ -49,107 +45,104 @@ private[runtime] class DecodingStream[+T](
    */
   override def recv(): Future[Releasable] =
     recvMu.acquireAndRun {
-      decode(recvBuffer) match {
-        case (rb, Some(msg)) =>
-          recvBuffer = rb
-          Future.value(msg)
-
-        case (rb, None) =>
-          // More data is needed to return another message
-          readMessage(rb).flatMap(_updateBuffer)
+      // Now we have exclusive access of `recvState` until the call
+      // completes. Start by trying to obtain a message directly from
+      // the buffer:
+      val updateF = decode(recvState, decoder) match {
+        case (s, Some(msg)) => Future.value(s -> Return(msg))
+        case (s, None) => read(s)
       }
+      updateF.flatMap(_updateBuffer)
     }
 
-  private[this] val _updateBuffer: ((RecvBuffer, Try[Releasable])) => Future[Releasable] = {
+  /**
+   * Update the receive buffer before returning the result
+   * (and i.e. releasing the mutex).
+   */
+  private[this] val _updateBuffer: ((RecvState, Try[Releasable])) => Future[Releasable] = {
     case (rb, v) =>
-      recvBuffer = rb
+      recvState = rb
       Future.const(v)
   }
 
-  private[this] def decode(s: RecvBuffer): (RecvBuffer, Option[Stream.Releasable[T]]) =
-    s match {
-      case Framed(h0, buf, releaser) =>
-        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        decodeMessage(h0, bb0.duplicate(), releaser)
-
-      case s => (s, None)
-    }
-
-  private[this] def readMessage(s0: RecvBuffer): Future[(RecvBuffer, Try[Stream.Releasable[T]])] = {
-    frames.read().flatMap {
-      case frame: h2.Frame.Data =>
-        decodeFrame(s0, frame) match {
-          case (s1, Some(msg)) =>
-            Future.value(s1 -> Return(msg))
+  /**
+   * Read from the h2 stream until the next message is fully buffered.
+   */
+  private[this] def read(s0: RecvState): Future[(RecvState, Try[Stream.Releasable[T]])] = {
+    frames.read().transform {
+      case Throw(rst: h2.Reset) => Future.exception(Stream.Closed) // XXX FIXME
+      case Throw(e) => Future.exception(e)
+      case Return(t: h2.Frame.Trailers) => Future.exception(Stream.Closed) // XXX FIXME
+      case Return(f: h2.Frame.Data) =>
+        decodeFrame(s0, f, decoder) match {
+          case (s1, Some(msg)) => Future.value(s1 -> Return(msg))
           case (s1, None) =>
-            if (frame.isEnd) Future.value(s1 -> Throw(Stream.Closed))
-            else readMessage(s1)
+            if (f.isEnd) Future.value(s1 -> Throw(Stream.Closed)) // XXX FIXME
+            else read(s1)
         }
-
-      case frame: h2.Frame.Trailers =>
-        // XXX TODO check grpc-status etc
-        Future.value(s0 -> Throw(Stream.Closed))
     }
   }
-
-  private[this] def decodeFrame(
-    s0: RecvBuffer,
-    frame: h2.Frame.Data
-  ): (RecvBuffer, Option[Stream.Releasable[T]]) =
-    s0 match {
-      case Framing(initbuf, releaser0) =>
-        val buf = initbuf.concat(frame.buf)
-        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        val bb = bb0.duplicate()
-        val releaser = releaser0 ++ Releaser(frame)
-
-        if (hasHeader(bb)) {
-          val h0 = decodeHeader(bb)
-          bb.position(bb.position + GrpcFrameHeaderSz)
-          decodeMessage(h0, bb, releaser.advance(GrpcFrameHeaderSz))
-        } else (Framing(buf, releaser), None)
-
-      case Framed(h0, initbuf, releaser) =>
-        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(initbuf.concat(frame.buf))
-        decodeMessage(h0, bb0.duplicate(), releaser ++ Releaser(frame))
-    }
-
-  private[this] def decodeMessage(
-    h0: Header,
-    bb: ByteBuffer,
-    releaser: Releaser
-  ): (RecvBuffer, Option[Stream.Releasable[T]]) =
-    if (h0.compressed) throw new IllegalArgumentException("compression not supported yet")
-    else if (hasMessage(bb, h0.size)) {
-      // Frame fully buffered.
-      val end = bb.position + h0.size
-      val (nextReleaser, release) = releaser.releasable(h0.size)
-      val msg = {
-        val msgbb = bb.duplicate()
-        msgbb.limit(end)
-        val msg = codec.decodeByteBuffer(msgbb)
-        Some(Stream.Releasable(msg, release))
-      }
-      bb.position(end)
-      if (hasHeader(bb)) {
-        // And another header buffered...
-        val h1 = decodeHeader(bb)
-        bb.position(bb.position + GrpcFrameHeaderSz)
-        val r = nextReleaser.advance(GrpcFrameHeaderSz)
-        (Framed(h1, Buf.ByteBuffer.Owned(bb), r), msg)
-      } else (Framing(Buf.ByteBuffer.Owned(bb), nextReleaser), msg)
-    } else (Framed(h0, Buf.ByteBuffer.Owned(bb), releaser), None)
-
 }
 
 object DecodingStream {
-  val GrpcFrameHeaderSz = Codec.GrpcFrameHeaderSz
 
+  def apply[T](
+    req: h2.Request,
+    decodeF: ByteBuffer => T
+  ): Stream[T] = new DecodingStream[T] {
+    protected[this] val frames: h2.Stream = req.stream
+    protected[this] def decoder: ByteBuffer => T = decodeF
+  }
+
+  def apply[T](
+    rsp: h2.Response,
+    decodeF: ByteBuffer => T
+  ): Stream[T] = new DecodingStream[T] {
+    protected[this] val frames: h2.Stream = rsp.stream
+    protected[this] def decoder: ByteBuffer => T = decodeF
+  }
+
+  private sealed trait RecvState
+
+  private object RecvState {
+
+    case class Buffer(
+      /** The current gRPC message header, if one has been parsed */
+      header: Option[Header] = None,
+      /** Unparsed bytes */
+      buf: Buf = Buf.Empty,
+      /** Tracks how many bytes are consumed and when the underling data may be released */
+      releaser: Releaser = Releaser.Empty
+    ) extends RecvState
+
+    val Empty: RecvState = Buffer()
+  }
+
+  /**
+   * Keeps track of when underlying h2 frames should be released.
+   *
+   * As bytes are read from H2 frames, they are _tracked_. As headers
+   * and messages are read, bytes are _consumed_. When a message is
+   * being constructed, it is paired with a _releasable_ function that
+   * frees the underlying H2 frames as needed.
+   */
   private trait Releaser {
-    def ++(next: Releaser): Releaser
 
-    def advance(n: Int): Releaser
-    def releasable(n: Int): (Releaser, Releaser.Func)
+    /**
+     * Add the given H2 frame to be tracked and released.
+     */
+    def track(frame: h2.Frame): Releaser
+
+    /**
+     * Mark `n` bytes as consumed.
+     */
+    def consume(n: Int): Releaser
+
+    /**
+     * Reap all consumed frames into a releasable function, and return
+     * the updated state afterwards.
+     */
+    def releasable(): (Releaser, Releaser.Func)
   }
 
   private object Releaser {
@@ -158,72 +151,61 @@ object DecodingStream {
 
     class Underflow extends Exception("released too many bytes") with NoStackTrace
 
-    object Nop extends Releaser {
-      override def ++(next: Releaser): Releaser = next
+    object Empty extends Releaser {
+      override def track(f: h2.Frame): Releaser = mk(f)
 
-      override def advance(n: Int): Releaser =
+      override def consume(n: Int): Releaser =
         if (n == 0) this
         else throw new Underflow
 
-      override def releasable(n: Int): (Releaser, Func) =
-        (advance(n), NopFunc)
+      override def releasable(): (Releaser, Func) = (this, NopFunc)
     }
 
-    private[this] case class Impl(
-      releaseSz: Int,
+    private[this] case class FrameReleaser(
+      remaining: Int,
       release: () => Future[Unit],
       next: Releaser
     ) extends Releaser {
+      require(remaining >= 0)
 
-      override def ++(r: Releaser): Releaser =
-        copy(next = next ++ r)
+      override def track(f: h2.Frame): Releaser =
+        copy(next = next.track(f))
 
-      override def advance(n: Int): Releaser =
+      override def consume(n: Int): Releaser =
         if (n == 0) this
-        else if (n >= releaseSz) {
-          // Collapse to beharvested when releasable() is called.
+        else if (n >= remaining) {
+          // Leave a 0-length releasable, so that `release` is chained
+          // into the next `releasable` call.
           copy(
-            releaseSz = 0,
-            next = next.advance(n - releaseSz)
+            remaining = 0,
+            next = next.consume(n - remaining)
           )
-        } else copy(releaseSz = releaseSz - n)
+        } else copy(remaining = remaining - n)
 
-      override def releasable(n: Int): (Releaser, Func) =
-        if (n >= releaseSz) {
-          val (rest, nextRelease) = next.releasable(n - releaseSz)
-          val f = () => release().before(nextRelease())
-          rest -> f
+      override def releasable(): (Releaser, Func) =
+        if (remaining == 0) {
+          val (rest, releaseRest) = next.releasable()
+          val doRelease = () => release().before(releaseRest())
+          rest -> doRelease
         } else {
-          val rest = copy(releaseSz = releaseSz - n)
-          rest -> NopFunc
+          // This frame isn't yet releasable, but we require that this
+          // sub-slice is released before releasing the frame:
+          val p = new Promise[Unit]
+          val rest = copy(release = () => p.before(release()))
+          val doRelease = () => { p.setDone(); Future.Unit }
+          rest -> doRelease
         }
     }
 
-    def apply(sz: Int, f: () => Future[Unit]): Releaser =
-      Impl(sz, f, Nop)
-
-    def apply(frame: h2.Frame.Data): Releaser =
-      apply(frame.buf.length, frame.release)
+    private[this] def mk(frame: h2.Frame): Releaser = frame match {
+      case f: h2.Frame.Data => FrameReleaser(f.buf.length, f.release, Empty)
+      case f: h2.Frame.Trailers => FrameReleaser(0, f.release, Empty)
+    }
   }
 
-  private case class Header(compressed: Boolean, size: Int)
+  private[this] case class Header(compressed: Boolean, size: Int)
 
-  private sealed trait RecvBuffer
-
-  private case class Framing(
-    buf: Buf,
-    releaser: Releaser
-  ) extends RecvBuffer {
-    require(buf.length < GrpcFrameHeaderSz)
-  }
-
-  private case class Framed(
-    header: Header,
-    rest: Buf,
-    releaser: Releaser
-  ) extends RecvBuffer
-
-  private val EmptyRecvBuffer = Framing(Buf.Empty, Releaser.Nop)
+  private[this] val GrpcFrameHeaderSz = Codec.GrpcFrameHeaderSz
 
   private val hasHeader: ByteBuffer => Boolean =
     bb => { GrpcFrameHeaderSz <= bb.remaining }
@@ -239,5 +221,68 @@ object DecodingStream {
     val sz = bb.getInt
     Header(compressed, sz)
   }
+
+  private def decode[T](
+    s: RecvState,
+    decoder: ByteBuffer => T
+  ): (RecvState, Option[Stream.Releasable[T]]) =
+    s match {
+      case RecvState.Buffer(Some(h0), buf, releaser) =>
+        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
+        decodeMessage(h0, bb0.duplicate(), releaser, decoder)
+
+      case s => (s, None)
+    }
+
+  private def decodeFrame[T](
+    s0: RecvState,
+    frame: h2.Frame.Data,
+    decoder: ByteBuffer => T
+  ): (RecvState, Option[Stream.Releasable[T]]) =
+    s0 match {
+      case RecvState.Buffer(None, initbuf, releaser0) =>
+        val buf = initbuf.concat(frame.buf)
+        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
+        val bb = bb0.duplicate()
+        val releaser = releaser0.track(frame)
+
+        if (hasHeader(bb)) {
+          val h0 = decodeHeader(bb)
+          bb.position(bb.position + GrpcFrameHeaderSz)
+          decodeMessage(h0, bb, releaser.consume(GrpcFrameHeaderSz), decoder)
+        } else (RecvState.Buffer(None, buf, releaser), None)
+
+      case RecvState.Buffer(Some(h0), initbuf, releaser) =>
+        val buf = initbuf.concat(frame.buf)
+        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
+        decodeMessage(h0, bb0.duplicate(), releaser.track(frame), decoder)
+    }
+
+  private def decodeMessage[T](
+    h0: Header,
+    bb: ByteBuffer,
+    releaser: Releaser,
+    decoder: ByteBuffer => T
+  ): (RecvState, Option[Stream.Releasable[T]]) =
+    if (h0.compressed) throw new IllegalArgumentException("compression not supported yet")
+    else if (hasMessage(bb, h0.size)) {
+      // Frame fully buffered.
+      val end = bb.position + h0.size
+      val (nextReleaser, release) = releaser.consume(h0.size).releasable()
+      val msg = {
+        val msgbb = bb.duplicate()
+        msgbb.limit(end)
+        val msg = decoder(msgbb)
+        Some(Stream.Releasable(msg, release))
+      }
+      bb.position(end)
+      if (hasHeader(bb)) {
+        // And another header buffered...
+        val h1 = decodeHeader(bb)
+        bb.position(bb.position + GrpcFrameHeaderSz)
+        val r = nextReleaser.consume(GrpcFrameHeaderSz)
+        (RecvState.Buffer(Some(h1), Buf.ByteBuffer.Owned(bb), r), msg)
+      } else (RecvState.Buffer(None, Buf.ByteBuffer.Owned(bb), nextReleaser), msg)
+    } else (RecvState.Buffer(Some(h0), Buf.ByteBuffer.Owned(bb), releaser), None)
 
 }
