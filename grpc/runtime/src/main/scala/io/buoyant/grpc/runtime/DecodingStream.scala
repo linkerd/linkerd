@@ -103,7 +103,6 @@ object DecodingStream {
   }
 
   private sealed trait RecvState
-
   private object RecvState {
 
     case class Buffer(
@@ -116,6 +115,9 @@ object DecodingStream {
     ) extends RecvState
 
     val Empty: RecvState = Buffer()
+
+    // TODO Introduce an additional state to indicate when the stream
+    // has been reset.
   }
 
   /**
@@ -207,29 +209,14 @@ object DecodingStream {
 
   private[this] val GrpcFrameHeaderSz = Codec.GrpcFrameHeaderSz
 
-  private val hasHeader: ByteBuffer => Boolean =
-    bb => { GrpcFrameHeaderSz <= bb.remaining }
-
-  private val hasMessage: (ByteBuffer, Int) => Boolean =
-    (bb, msgsz) => { msgsz <= bb.remaining }
-
-  private def decodeHeader(bb0: ByteBuffer): Header = {
-    require(hasHeader(bb0))
-    val bb = bb0.duplicate()
-    bb.limit(bb.position + GrpcFrameHeaderSz)
-    val compressed = (bb.get == 1)
-    val sz = bb.getInt
-    Header(compressed, sz)
-  }
-
   private def decode[T](
     s: RecvState,
     decoder: ByteBuffer => T
   ): (RecvState, Option[Stream.Releasable[T]]) =
     s match {
-      case RecvState.Buffer(Some(h0), buf, releaser) =>
+      case RecvState.Buffer(Some(hdr), buf, releaser) =>
         val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        decodeMessage(h0, bb0.duplicate(), releaser, decoder)
+        decodeMessage(hdr, bb0.slice(), releaser, decoder)
 
       case s => (s, None)
     }
@@ -242,47 +229,51 @@ object DecodingStream {
     s0 match {
       case RecvState.Buffer(None, initbuf, releaser0) =>
         val buf = initbuf.concat(frame.buf)
-        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        val bb = bb0.duplicate()
         val releaser = releaser0.track(frame)
 
-        if (hasHeader(bb)) {
-          val h0 = decodeHeader(bb)
-          bb.position(bb.position + GrpcFrameHeaderSz)
-          decodeMessage(h0, bb, releaser.consume(GrpcFrameHeaderSz), decoder)
+        if (buf.length >= GrpcFrameHeaderSz) {
+          // The buffer has at least a frame header, so decode it and
+          // try to decode the message.
+          val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
+          val bb = bb0.slice()
+
+          val hdrbb = bb.slice()
+          hdrbb.limit(GrpcFrameHeaderSz)
+          bb.position(GrpcFrameHeaderSz)
+          val compressed = (hdrbb.get == 1)
+          val sz = hdrbb.getInt
+
+          val hdr = Header(compressed, sz)
+          decodeMessage(hdr, bb, releaser.consume(GrpcFrameHeaderSz), decoder)
         } else (RecvState.Buffer(None, buf, releaser), None)
 
-      case RecvState.Buffer(Some(h0), initbuf, releaser) =>
-        val buf = initbuf.concat(frame.buf)
-        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        decodeMessage(h0, bb0.duplicate(), releaser.track(frame), decoder)
+      case RecvState.Buffer(Some(hdr), initbuf, releaser) =>
+        // We've already decoded a header, but not its message.  Try
+        // to decode the message.
+        val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(initbuf.concat(frame.buf))
+        decodeMessage(hdr, bb0.slice(), releaser.track(frame), decoder)
     }
 
   private def decodeMessage[T](
-    h0: Header,
+    hdr: Header,
     bb: ByteBuffer,
     releaser: Releaser,
     decoder: ByteBuffer => T
   ): (RecvState, Option[Stream.Releasable[T]]) =
-    if (h0.compressed) throw new IllegalArgumentException("compression not supported yet")
-    else if (hasMessage(bb, h0.size)) {
-      // Frame fully buffered.
-      val end = bb.position + h0.size
-      val (nextReleaser, release) = releaser.consume(h0.size).releasable()
+    if (hdr.compressed) throw new IllegalArgumentException("compression not supported yet")
+    else if (hdr.size <= bb.remaining) {
+      // The message is fully encoded in the buffer, so decode it.
+      val end = bb.position + hdr.size
+      val (nextReleaser, release) = releaser.consume(hdr.size).releasable()
       val msg = {
-        val msgbb = bb.duplicate()
+        val msgbb = bb.slice()
         msgbb.limit(end)
         val msg = decoder(msgbb)
         Some(Stream.Releasable(msg, release))
       }
+      // Update the unparsed buffer to point after the parsed message.
       bb.position(end)
-      if (hasHeader(bb)) {
-        // And another header buffered...
-        val h1 = decodeHeader(bb)
-        bb.position(bb.position + GrpcFrameHeaderSz)
-        val r = nextReleaser.consume(GrpcFrameHeaderSz)
-        (RecvState.Buffer(Some(h1), Buf.ByteBuffer.Owned(bb), r), msg)
-      } else (RecvState.Buffer(None, Buf.ByteBuffer.Owned(bb), nextReleaser), msg)
-    } else (RecvState.Buffer(Some(h0), Buf.ByteBuffer.Owned(bb), releaser), None)
+      (RecvState.Buffer(None, Buf.ByteBuffer.Owned(bb), nextReleaser), msg)
+    } else (RecvState.Buffer(Some(hdr), Buf.ByteBuffer.Owned(bb), releaser), None)
 
 }
