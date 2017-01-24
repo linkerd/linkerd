@@ -507,7 +507,7 @@ class ThriftNamerInterface(
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 
-  private[this] def observeDelegation(ns: Ns, dtab: Dtab, tree: DelegateTree[Name.Path]) = {
+  private[this] def observeDelegation(ns: Ns, dtab: Dtab, tree: NameTree[Name.Path]) = {
     val act = interpreters(ns) match {
       case interpreter: Delegator =>
         interpreter.delegate(dtab, tree)
@@ -516,7 +516,7 @@ class ThriftNamerInterface(
     }
     mkObserver(act, stamper)
   }
-  private[this] val delegationCache = new ObserverCache[(String, Dtab, DelegateTree[Name.Path]), DelegateTree[Name.Bound]](
+  private[this] val delegationCache = new ObserverCache[(String, Dtab, NameTree[Name.Path]), DelegateTree[Name.Bound]](
     activeCapacity = 10,
     inactiveCapacity = 1,
     stats = stats.scope("delegationcache"),
@@ -524,9 +524,10 @@ class ThriftNamerInterface(
   )
 
   override def delegate(req: thrift.DelegateReq): Future[Delegation] = {
-    val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, tree, ns), _) = req
+    val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, ttree, ns), _) = req
     val dtab = Dtab.read(dtabstr)
-    Future.const(delegationCache.get(ns, dtab, parseDelegateTree(tree))).flatMap { observer =>
+    val tree = parseDelegateTree(ttree).toNameTree
+    Future.const(delegationCache.get(ns, dtab, tree)).flatMap { observer =>
       observer(reqStamp)
     }.transform {
       case Return((TStamp(tstamp), delegateTree)) =>

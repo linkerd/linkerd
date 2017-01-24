@@ -30,10 +30,10 @@ class StreamingNamerClient(
 
   override def delegate(
     dtab: Dtab,
-    tree: DelegateTree[Name.Path]
+    tree: NameTree[Name.Path]
   ): Activity[DelegateTree[Name.Bound]] = {
     val path = tree match {
-      case DelegateTree.Leaf(_, _, p) => p.path
+      case NameTree.Leaf(Name.Path(p)) => p
       case _ => throw new IllegalArgumentException("Delegation too complex")
     }
     delegateCache.get((dtab, path))
