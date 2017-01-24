@@ -7,11 +7,6 @@ import io.buoyant.admin.HtmlView
 import io.buoyant.linkerd.Build
 
 object AdminHandler extends HtmlView {
-
-  /**
-   * NOTE: this navigation must be kept in sync with the nav bar in:
-   * admin/src/main/resources/io/buoyant/admin/js/src/logger-overrides.js
-   */
   val navBar =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
@@ -31,7 +26,7 @@ object AdminHandler extends HtmlView {
           <ul class="nav navbar-nav">
             <li><a href="delegator">dtab</a></li>
             <li><a href="requests">requests</a></li>
-            <li><a href="admin/logging">logging</a></li>
+            <li><a href="logging">logging</a></li>
             <li><a href="help">help</a></li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
@@ -74,6 +69,7 @@ object AdminHandler extends HtmlView {
           <title>linkerd admin</title>
           <link type="text/css" href="files/css/lib/bootstrap.min.css" rel="stylesheet"/>
           <link type="text/css" href="files/css/dashboard.css" rel="stylesheet"/>
+          <link type="text/css" href="files/css/logger.css" rel="stylesheet"/>
           <link rel="shortcut icon" href="files/images/favicon.png" />
           <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600' rel='stylesheet' type='text/css'>
           $cssesHtml

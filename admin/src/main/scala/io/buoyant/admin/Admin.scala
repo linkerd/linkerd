@@ -65,7 +65,6 @@ object Admin {
     "/admin/pprof/contention" -> new ProfileResourceHandler(Thread.State.BLOCKED),
     "/admin/ping" -> new ReplyHandler("pong"),
     "/admin/tracing" -> new TracingHandler,
-    "/admin/logging" -> (new StyleOverrideFilter andThen new LoggingHandler),
     "/admin/registry.json" -> new RegistryHandler,
     "/favicon.png" -> ResourceHandler.fromJar(
       baseRequestPath = "/",

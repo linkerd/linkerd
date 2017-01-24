@@ -1,0 +1,23 @@
+.table-striped>tbody>tr:nth-child(odd)>td, .table-striped>tbody>tr:nth-child(odd)>th {
+  background-color: #161963;
+}
+
+.table-striped>tbody>tr>td {
+  border-top: 1px solid dimgray
+}
+
+.table-striped>thead>tr {
+  border-bottom: 1px solid dimgray
+}
+
+.table>thead>tr>th {
+  border-bottom: none;
+}
+
+.table h5 {
+  color: white;
+}
+
+table>caption{
+  color: red;
+}
