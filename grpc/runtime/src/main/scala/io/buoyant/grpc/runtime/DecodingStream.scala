@@ -216,7 +216,7 @@ object DecodingStream {
     s match {
       case RecvState.Buffer(Some(hdr), buf, releaser) =>
         val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-        decodeMessage(hdr, bb0.slice(), releaser, decoder)
+        decodeMessage(hdr, bb0.duplicate(), releaser, decoder)
 
       case s => (s, None)
     }
@@ -235,15 +235,15 @@ object DecodingStream {
           // The buffer has at least a frame header, so decode it and
           // try to decode the message.
           val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
-          val bb = bb0.slice()
-
-          val hdrbb = bb.slice()
-          hdrbb.limit(GrpcFrameHeaderSz)
-          bb.position(GrpcFrameHeaderSz)
-          val compressed = (hdrbb.get == 1)
-          val sz = hdrbb.getInt
-
-          val hdr = Header(compressed, sz)
+          val bb = bb0.duplicate()
+          val hdr = {
+            val hdrbb = bb.duplicate()
+            hdrbb.limit(bb.position + GrpcFrameHeaderSz)
+            bb.position(bb.position + GrpcFrameHeaderSz)
+            val compressed = (hdrbb.get == 1)
+            val sz = hdrbb.getInt
+            Header(compressed, sz)
+          }
           decodeMessage(hdr, bb, releaser.consume(GrpcFrameHeaderSz), decoder)
         } else (RecvState.Buffer(None, buf, releaser), None)
 
@@ -251,7 +251,7 @@ object DecodingStream {
         // We've already decoded a header, but not its message.  Try
         // to decode the message.
         val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(initbuf.concat(frame.buf))
-        decodeMessage(hdr, bb0.slice(), releaser.track(frame), decoder)
+        decodeMessage(hdr, bb0.duplicate(), releaser.track(frame), decoder)
     }
 
   private def decodeMessage[T](
@@ -266,7 +266,7 @@ object DecodingStream {
       val end = bb.position + hdr.size
       val (nextReleaser, release) = releaser.consume(hdr.size).releasable()
       val msg = {
-        val msgbb = bb.slice()
+        val msgbb = bb.duplicate()
         msgbb.limit(end)
         val msg = decoder(msgbb)
         Some(Stream.Releasable(msg, release))
