@@ -60,8 +60,8 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
    * (and i.e. releasing the mutex).
    */
   private[this] val _updateBuffer: ((RecvState, Try[Releasable])) => Future[Releasable] = {
-    case (rb, v) =>
-      recvState = rb
+    case (s, v) =>
+      recvState = s
       Future.const(v)
   }
 

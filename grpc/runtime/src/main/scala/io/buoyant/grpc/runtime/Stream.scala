@@ -53,7 +53,7 @@ object Stream {
    */
   def deferred[T](streamFut: Future[Stream[T]]): Stream[T] =
     new Stream[T] {
-      // What happens to a dream deferred?
+      // What happens to a stream deferred?
       //
       // Does it dry up
       // Like a raisin in the sun?
@@ -69,8 +69,6 @@ object Stream {
       // like a heavy load.
       //
       // Or does it explode?
-      //
-      // -- Langston Hughes
 
       // A mutex is used to ensure first-caller gets the first frame
       // (which isn't guaranteed without it).
