@@ -1,20 +1,14 @@
 package io.buoyant.linkerd
 package admin
 
-import com.twitter.app.App
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.server.handler.{SummaryHandler => _, _}
-import com.twitter.util.Future
+import com.twitter.server.handler.ResourceHandler
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
-import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter}
-import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.Linker.LinkerConfig
+import io.buoyant.admin._
 import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
-import io.buoyant.telemetry.Telemeter
 
 object LinkerdAdmin {
 
@@ -54,7 +48,9 @@ object LinkerdAdmin {
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
     "/help" -> new HelpPageHandler,
-    "/requests" -> new RecentRequestsPlaceholderHandler
+    "/requests" -> new RecentRequestsPlaceholderHandler,
+    "/logging" -> new LoggingHandler(AdminHandler),
+    "/logging.json" -> new LoggingApiHandler()
   )
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Handlers = {
