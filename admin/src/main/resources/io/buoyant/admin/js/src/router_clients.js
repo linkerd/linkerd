@@ -51,11 +51,8 @@ define([
           clientColor: colorsForClient.color,
           client: client.label
         })).appendTo($clientEl);
-        var $metrics = $container.find(".metrics-container");
-        var $chart = $container.find(".chart-container");
-        var $toggle = $container.find(".client-toggle");
 
-        return RouterClient(metricsCollector, routers, client, $metrics, routerName, $chart, colorsForClient, $toggle, expandClients);
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
 
       function addClients(addedClients) {

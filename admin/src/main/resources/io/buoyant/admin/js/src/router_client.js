@@ -99,9 +99,13 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $metricsEl, routerName, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
+    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
+
+      var $metricsEl = $container.find(".metrics-container");
+      var $chartEl = $container.find(".chart-container");
+      var $toggleLinks = $container.find(".client-toggle");
 
       var clientColor = colors.color;
       var latencyLegend = createLatencyLegend(colors.colorFamily);
