@@ -7,11 +7,6 @@ import io.buoyant.admin.HtmlView
 import io.buoyant.linkerd.Build
 
 object AdminHandler extends HtmlView {
-
-  /**
-   * NOTE: this navigation must be kept in sync with the nav bar in:
-   * admin/src/main/resources/io/buoyant/admin/js/src/logger-overrides.js
-   */
   val navBar =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
