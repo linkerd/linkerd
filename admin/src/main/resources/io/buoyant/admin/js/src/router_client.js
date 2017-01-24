@@ -103,6 +103,8 @@ define([
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
 
+      var $contentContainer = $container.find(".client-content-container");
+
       var $metricsEl = $container.find(".metrics-container");
       var $chartEl = $container.find(".chart-container");
       var $toggleLinks = $container.find(".client-toggle");
@@ -133,8 +135,8 @@ define([
         } else {
           metricsCollector.deregisterListener(metricsHandler);
         }
-        $metricsEl.toggle(expand);
-        $chartEl.toggle(expand);
+
+        $contentContainer.toggle(expand);
         $collapseLink.toggle(expand);
         $expandLink.toggle(!expand);
       }
