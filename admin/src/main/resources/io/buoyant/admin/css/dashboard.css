@@ -271,6 +271,50 @@ nav ul.navbar-nav {
 }
 
 /*
+* BAR CHART
+*/
+
+.bar-chart-container {
+  margin-top: 20px;
+}
+.bar-chart-label {
+  margin: 5px 0;
+}
+.bar-chart-value {
+  margin-top: 20px; /* .overlay-bars height */
+  font-size: 18px;
+}
+.overlay-bars {
+  position: absolute;
+  height: 20px;
+}
+.overlay-bars.bar-container {
+  opacity: 0.25;
+}
+.tricolor-overlay > div {
+  width: 33.33%;
+  float: left;
+  position: relative;
+}
+
+.graph-gradient {
+  /* https://css-tricks.com/css3-gradients/ */
+  background-image: repeating-linear-gradient(90deg, black, black 4px, grey 0px, grey 8px);
+}
+.graph-gradient.green {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(144, 251, 69) 0px, rgb(144, 251, 69) 8px);
+}
+.graph-gradient.orange {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(248, 169, 68) 0px, rgb(248, 169, 68) 8px);
+}
+.graph-gradient.red {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(114, 10, 42) 0px, rgb(114, 10, 42) 8px);
+}
+.graph-gradient.yellow {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(228, 211, 60) 0px, rgb(228, 211, 60) 8px);
+}
+
+/*
 * For wider screens
 */
 

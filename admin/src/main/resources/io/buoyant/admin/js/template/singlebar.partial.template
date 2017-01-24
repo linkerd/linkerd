@@ -1,0 +1,2 @@
+<div class="overlay-bars bar-container graph-gradient {{color}}" style="width:{{barContainerWidth}}px;"></div>
+<div class="overlay-bars bar graph-gradient {{color}}" style="width:{{barWidth}}px;"></div>

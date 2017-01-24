@@ -1,0 +1,10 @@
+<div class="tricolor-overlay overlay-bars" style="width:{{barContainerWidth}}px;">
+  <div class="overlay-bars bar-container graph-gradient yellow"></div>
+  <div class="overlay-bars bar-container graph-gradient orange"></div>
+  <div class="overlay-bars bar-container graph-gradient red"></div>
+</div>
+<div class="tricolor-overlay overlay-bars" style="width:{{barContainerWidth}}px;">
+  <div class="overlay-bars bar graph-gradient yellow" style="width:{{yellow}}px;"></div>
+  <div class="overlay-bars bar graph-gradient orange" style="width:{{orange}}px;"></div>
+  <div class="overlay-bars bar graph-gradient red" style="width:{{red}}px;"></div>
+</div>

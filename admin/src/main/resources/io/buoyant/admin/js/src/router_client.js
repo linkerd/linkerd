@@ -7,12 +7,14 @@ define([
   'src/utils',
   'src/query',
   'src/success_rate_graph',
+  'src/bar_chart',
   'text!template/metric.partial.template',
   'text!template/router_client.template'
 ], function($, _, Handlebars,
   Utils,
   Query,
   SuccessRateGraph,
+  BarChart,
   metricPartialTemplate,
   routerClientTemplate) {
   var RouterClient = (function() {
@@ -37,7 +39,11 @@ define([
           {suffix: "requests", label: "Requests"},
           {suffix: "connections", label: "Connections"},
           {suffix: "success", label: "Successes"},
-          {suffix: "failures", label: "Failures"}
+          {suffix: "failures", label: "Failures"},
+          {suffix: "retries/budget", label: "Retries budget"},
+          {suffix: "retries/requeues", label: "Retried requests"},
+          {suffix: "loadbalancer/size", label: "Load balancer pool size"},
+          {suffix: "loadbalancer/available", label: "Load balancers available"}
         ], function(metric) {
         return {
           metricSuffix: metric.suffix,
@@ -108,6 +114,8 @@ define([
       var $metricsEl = $container.find(".metrics-container");
       var $chartEl = $container.find(".chart-container");
       var $toggleLinks = $container.find(".client-toggle");
+      var $lbBarChart = $container.find(".lb-bar-chart");
+      var $retriesBarChart = $container.find(".retries-bar-chart");
 
       var clientColor = colors.color;
       var latencyLegend = createLatencyLegend(colors.colorFamily);
@@ -118,6 +126,8 @@ define([
 
       renderMetrics($metricsEl, client, [], [], clientColor);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
+      var lbBarChart = new BarChart($lbBarChart);
+      var retriesBarChart = new BarChart($retriesBarChart, true);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -147,6 +157,9 @@ define([
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         chart.updateMetrics(getSuccessRate(summaryData));
+        lbBarChart.update(summaryData);
+        retriesBarChart.update(summaryData);
+
         renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
       }
 

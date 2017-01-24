@@ -12,6 +12,10 @@
       <div class="router-graph-header">Client success rate</div>
       <div class="client-success-rate"></div>
     </div>
-    <div class="bar-chart-container row">asldkfjdlkfj</div>
+    <div class="clearfix"></div>
+    <div class="bar-chart-container row">
+      <div class="col-md-6 lb-bar-chart"></div>
+      <div class="col-md-6 retries-bar-chart pull-right"></div>
+    </div>
   </div>
 </div>
