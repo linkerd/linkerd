@@ -5,7 +5,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.LoadService
-import com.twitter.finagle.{Namer, Path, Stack, param}
+import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
 import com.twitter.logging.Logger
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
@@ -86,9 +86,14 @@ object Linker {
   def load(config: String): Linker =
     load(config, LoadedInitializers)
 
-  case class LinkerConfigStackParam(config: LinkerConfig)
-  implicit object LinkerConfigStackParam extends Stack.Param[LinkerConfigStackParam] {
-    val default = LinkerConfigStackParam(LinkerConfig(None, Seq(), None, None, None))
+  object param {
+
+    case class LinkerConfig(config: Linker.LinkerConfig)
+
+    implicit object LinkerConfig extends Stack.Param[LinkerConfig] {
+      val default = LinkerConfig(Linker.LinkerConfig(None, Seq(), None, None, None))
+    }
+
   }
 
   case class LinkerConfig(
@@ -110,7 +115,7 @@ object Linker {
             val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
               "explicitly enabled by setting the `experimental' parameter to `true'."
             throw new IllegalArgumentException(msg) with NoStackTrace
-          case t => t.mk(Stack.Params.empty + LinkerConfigStackParam(this))
+          case t => t.mk(Stack.Params.empty + param.LinkerConfig(this))
         }
       }
 
@@ -126,12 +131,12 @@ object Linker {
       val tracer = mkTracer(telemeters)
       DefaultTracer.self = tracer
 
-      val params = Stack.Params.empty + param.Tracer(tracer) + param.Stats(stats)
+      val params = Stack.Params.empty + fparam.Tracer(tracer) + fparam.Stats(stats)
 
-      val namersByPrefix = mkNamers(params + param.Stats(stats.scope("namer")))
+      val namersByPrefix = mkNamers(params + fparam.Stats(stats.scope("namer")))
       NameInterpreter.setGlobal(ConfiguredNamersInterpreter(namersByPrefix))
 
-      val routerImpls = mkRouters(params + Namers(namersByPrefix) + param.Stats(stats.scope("rt")))
+      val routerImpls = mkRouters(params + Namers(namersByPrefix) + fparam.Stats(stats.scope("rt")))
 
       val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
 

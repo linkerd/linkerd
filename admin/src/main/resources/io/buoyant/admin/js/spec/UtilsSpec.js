@@ -117,7 +117,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
     describe("UpdateableChart", function() {
       var fakeFns = {
         getWidth: function() { return 400; },
-        timeseriesParamsFn: function() { return {}; }
+        timeseriesParamsFn: function(_name) { return { strokeStyle: "black" }; }
       };
       var $canvas = $("<canvas id='test-chart-canvas' height='141'></canvas>");
       var fakeChartParams = {};
@@ -137,23 +137,30 @@ define(['jQuery', 'src/utils'], function($, Utils) {
       });
 
       it("adds metrics to track", function() {
-        chart.setMetrics([{ name: "successRate", color: "" }], true);
+        chart.setMetrics([{ name: "successRate" }]);
         expect(chart.metrics).toEqual(["successRate"]);
 
-        chart.addMetrics([{ name: "failureRate", color: "" }]);
+        chart.addMetrics([{ name: "failureRate" }]);
         expect(chart.metrics).toEqual(["successRate", "failureRate"]);
       });
 
       it("updates the timeseries of data", function() {
         expect(chart.tsMap).toBeUndefined();
 
-        chart.setMetrics([{ name: "successRate", color: "" }], true);
+        chart.setMetrics([{ name: "successRate" }]);
 
         expect(chart.tsMap).not.toBeUndefined();
         expect(chart.metrics).toEqual(["successRate"]);
 
         chart.updateMetrics([{name: "successRate", delta: 999}]);
         expect(chart.tsMap.successRate.data[0][1]).toBe(999);
+      });
+
+      it("updates timeseries options", function() {
+        expect(chart.tsOpts("foo").strokeStyle).toBe("black");
+        var timeseriesParams = function(_name) { return { strokeStyle: "white" }; }
+        chart.updateTsOpts(timeseriesParams);
+        expect(chart.tsOpts("foo").strokeStyle).toBe("white");
       });
     });
   });

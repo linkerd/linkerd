@@ -98,7 +98,16 @@ define([
     function initializeRouterContainers(selectedRouter, routers, $parentContainer) {
       var template = Handlebars.compile(routerContainerTemplate);
       var routerData = getSelectedRouterData(selectedRouter, routers);
-      var containers = template({ routers: _.keys(routerData) });
+
+      var routerLabels = [];
+      $(".router-menu-option").each(function() {
+        var label = $(this).text();
+        if (_.has(routerData, label)) {
+          routerLabels.push(label);
+        }
+      });
+
+      var containers = template({ routers: routerLabels });
       $parentContainer.html(containers);
 
       var routerContainers = {};

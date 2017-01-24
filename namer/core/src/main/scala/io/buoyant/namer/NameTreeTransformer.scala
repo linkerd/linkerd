@@ -61,8 +61,9 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
 
     override def delegate(
       dtab: Dtab,
-      tree: DelegateTree[Name.Path]
-    ): Activity[DelegateTree[Bound]] = underlying.delegate(dtab, tree).flatMap(transformDelegate)
+      tree: NameTree[Name.Path]
+    ): Activity[DelegateTree[Bound]] =
+      underlying.delegate(dtab, tree).flatMap(transformDelegate)
 
     override def dtab: Activity[Dtab] = underlying.dtab
   }

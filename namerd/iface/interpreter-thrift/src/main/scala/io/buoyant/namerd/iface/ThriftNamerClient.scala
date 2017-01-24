@@ -254,10 +254,14 @@ class ThriftNamerClient(
 
   override def delegate(
     dtab: Dtab,
-    tree: DelegateTree[Name.Path]
+    tree: NameTree[Name.Path]
   ): Activity[DelegateTree[Bound]] = {
     val tdtab = dtab.show
-    val (root, nodes, _) = ThriftNamerInterface.mkDelegateTree(tree)
+    val (root, nodes, _) = tree match {
+      case NameTree.Leaf(n@Name.Path(p)) =>
+        ThriftNamerInterface.mkDelegateTree(DelegateTree.Leaf(p, Dentry.nop, n))
+      case _ => throw new IllegalArgumentException("Delegation too complex")
+    }
     val ttree = thrift.DelegateTree(root, nodes)
 
     val states = Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { states =>

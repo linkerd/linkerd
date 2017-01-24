@@ -130,20 +130,20 @@ object DelegateTree {
         DelegateTree.Union(path, dentry, delegates: _*)
     }
 
-  def fromNameTree[T](names: NameTree[T]): DelegateTree[T] =
+  def fromNameTree[T](names: NameTree[T], path: Path = Path.empty): DelegateTree[T] =
     names match {
-      case NameTree.Empty => DelegateTree.Empty(null, Dentry.nop)
-      case NameTree.Fail => DelegateTree.Fail(null, Dentry.nop)
-      case NameTree.Neg => DelegateTree.Neg(null, Dentry.nop)
-      case NameTree.Leaf(v) => DelegateTree.Leaf(null, Dentry.nop, v)
+      case NameTree.Empty => DelegateTree.Empty(path, Dentry.nop)
+      case NameTree.Fail => DelegateTree.Fail(path, Dentry.nop)
+      case NameTree.Neg => DelegateTree.Neg(path, Dentry.nop)
+      case NameTree.Leaf(v) => DelegateTree.Leaf(path, Dentry.nop, v)
       case NameTree.Alt(names@_*) =>
-        val delegates = names.map(fromNameTree[T](null, Dentry.nop, _))
-        DelegateTree.Alt(null, Dentry.nop, delegates: _*)
+        val delegates = names.map(fromNameTree[T](path, Dentry.nop, _))
+        DelegateTree.Alt(path, Dentry.nop, delegates: _*)
       case NameTree.Union(names@_*) =>
         val delegates = names.map {
           case NameTree.Weighted(w, tree) =>
-            DelegateTree.Weighted(w, fromNameTree(null, Dentry.nop, tree))
+            DelegateTree.Weighted(w, fromNameTree(path, Dentry.nop, tree))
         }
-        DelegateTree.Union(null, Dentry.nop, delegates: _*)
+        DelegateTree.Union(path, Dentry.nop, delegates: _*)
     }
 }

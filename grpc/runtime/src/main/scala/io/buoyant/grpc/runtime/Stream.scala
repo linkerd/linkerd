@@ -14,15 +14,16 @@ trait Stream[+T] {
 
 object Stream {
 
-  case class Releasable[+T](value: T, release: () => Future[Unit])
+  val NopRelease: () => Future[Unit] = () => Future.Unit
+  case class Releasable[+T](value: T, release: () => Future[Unit] = NopRelease)
 
-  trait Tx[-T] {
+  trait Provider[-T] {
     def send(t: T): Future[Unit]
 
     def close(): Future[Unit]
   }
 
-  def apply[T](): Stream[T] with Tx[T] = new Stream[T] with Tx[T] {
+  def apply[T](): Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
     // TODO bound queue? not strictly necessary if send() future observed...
     private[this] val q = new AsyncQueue[Releasable[T]]
 

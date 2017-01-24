@@ -7,8 +7,8 @@
 define(['jQuery'], function($) {
 
   var MetricsCollector = (function() {
-    var generalUpdateUri = "/admin/metrics.json";
-    var metricsUpdateUri = "/admin/metrics";
+    var generalUpdateUri = "admin/metrics.json";
+    var metricsUpdateUri = "admin/metrics";
     var listeners = [];
 
     function requestBody(listeners, defaultMetrics) {
