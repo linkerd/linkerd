@@ -32,7 +32,7 @@ routers:
 
 Key | Default Value | Description
 --- | ------------- | -----------
-protocol | _required_ | Either [`http`](#http-1-1-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
+protocol | _required_ | Either [`http`](#http-1-1-protocol), [`h2`](#http-2-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
 servers | _required_ | A list of [server objects](#servers).
 announcers | an empty list | A list of service discovery [announcers](#announcers) that servers can announce to.
 baseDtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
