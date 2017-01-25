@@ -21,6 +21,7 @@ class DecodingStreamTest extends FunSuite {
       }
     }
 
+    // We lay out 4 pseudo-messages across 3 frames:
     @volatile var released0 = false
     val frame0 = {
       val b: Array[Byte] = Array(
@@ -84,13 +85,11 @@ class DecodingStreamTest extends FunSuite {
 
     await(doRel0())
 
-    val rel2F = doRel2()
-    assert(!rel2F.isDefined)
+    await(doRel2())
     assert(released0 == false)
     assert(released1 == false)
 
     await(doRel1())
-    eventually { assert(rel2F.isDefined) }
     eventually { assert(released0 == true) }
     eventually { assert(released1 == true) }
     assert(released2 == false)

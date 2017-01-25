@@ -130,12 +130,14 @@ object DecodingStream {
   }
 
   /**
-   * Keeps track of when underlying h2 frames should be released.
+   * Releasers track releasable segments across regions of an
+   * h2.Stream.
    *
-   * As bytes are read from H2 frames, they are _tracked_. As headers
-   * and messages are read, bytes are _consumed_. When a message is
-   * being constructed, it is paired with a _releasable_ function that
-   * frees the underlying H2 frames as needed.
+   * Frames added to `track` are appended to byte tracking.  As
+   * headers & messages are parsed, `consume` is called to mark bytes
+   * as pending to be released.  Finally, `releasable` returns a
+   * function that can be used to release pending data (since the last
+   * call to releasable).
    */
   private trait Releaser {
 
@@ -176,10 +178,71 @@ object DecodingStream {
       private[this] val _releasable = (this, NopFunc)
     }
 
+    private[this] object FrameReleaser {
+
+      /**
+       * Tracks how many segments of a single frame need to be
+       * released and, when all have been released, calls `underlying`
+       * to release the frame.
+       */
+      trait Latch {
+        def segmentReleaseFunc(): Func
+        def lastSegmentReleaseFunc(): Func
+      }
+
+      object Latch {
+        private[this] trait State
+        private[this] case class Incomplete(pending: Int) extends State {
+          require(pending >= 0)
+          def decrement = copy(pending = pending - 1)
+          def increment = copy(pending = pending + 1)
+        }
+        private[this] case class Releasable(pending: Int) extends State {
+          require(pending >= 0)
+          def decrement = copy(pending = pending - 1)
+        }
+
+        private[this] class Segmented(underlying: Func) extends Latch {
+          @volatile private[this] var canReleaseUnderlying = false
+          @volatile private[this] var pending = 0
+
+          private[this] val releaseSegment: Func = { () =>
+            synchronized {
+              if (pending < 1) Future.exception(new IllegalStateException("releasing too many segments"))
+              pending -= 1
+              if (canReleaseUnderlying && pending == 0) underlying()
+              else Future.Unit
+            }
+          }
+
+          def segmentReleaseFunc(): Func = synchronized {
+            if (canReleaseUnderlying) throw new IllegalStateException("segment after last")
+            pending += 1
+            releaseSegment
+          }
+
+          def lastSegmentReleaseFunc(): Func = synchronized {
+            if (canReleaseUnderlying) throw new IllegalStateException("segment after last")
+            canReleaseUnderlying = true
+            pending += 1
+            releaseSegment
+          }
+        }
+
+        private[this] class Const(f: Func) extends Latch {
+          def segmentReleaseFunc() = throw new IllegalArgumentException("cannot segment const latch")
+          def lastSegmentReleaseFunc() = f
+        }
+
+        def segmented(f: Func): Latch = new Segmented(f)
+        def const(f: Func): Latch = new Const(f)
+      }
+    }
+
     private[this] case class FrameReleaser(
+      _latch: FrameReleaser.Latch,
       consumed: Int,
       total: Int,
-      release: () => Future[Unit],
       tail: Releaser
     ) extends Releaser {
       require(0 <= consumed && consumed <= total)
@@ -205,29 +268,24 @@ object DecodingStream {
         }
 
       override def releasable(): (Releaser, Func) =
-        if (consumed < total) {
-          // This frame isn't yet releasable, but we need this release
-          // function to be called before we can release the
-          // underlying frame. So, chain a promise into the release
-          // func so that the frame's release is blocked on this
-          // segment's release.
-          val p = new Promise[Unit]
-          val rest = copy(release = () => p.before(release()))
-          val releaseSegment = () => { p.setDone(); Future.Unit }
-          rest -> releaseSegment
-        } else {
+        if (consumed < total) this -> _latch.segmentReleaseFunc()
+        else {
           // This frame has been entirely consumed, so return a
           // release function that releases this frame (after all
           // prior segments have been released).
           val (rest, releaseRest) = tail.releasable()
-          val releaseFrame = () => release().before(releaseRest())
-          rest -> releaseFrame
+          val release = _latch.lastSegmentReleaseFunc()
+          val releaseWithRest = () => release().before(releaseRest())
+          rest -> releaseWithRest
         }
     }
 
     private[this] def mk(f: h2.Frame): Releaser = f match {
-      case f: h2.Frame.Trailers => FrameReleaser(0, 0, f.release, Nil)
-      case f: h2.Frame.Data => FrameReleaser(0, f.buf.length, f.release, Nil)
+      case f: h2.Frame.Trailers =>
+        FrameReleaser(FrameReleaser.Latch.const(f.release), 0, 0, Nil)
+
+      case f: h2.Frame.Data =>
+        FrameReleaser(FrameReleaser.Latch.segmented(f.release), 0, f.buf.length, Nil)
     }
   }
 
