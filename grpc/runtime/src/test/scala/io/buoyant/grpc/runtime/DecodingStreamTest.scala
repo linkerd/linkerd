@@ -83,14 +83,17 @@ class DecodingStreamTest extends FunSuite {
     assert(decodedLength == 14)
 
     await(doRel0())
-    assert(released0 == false)
 
-    await(doRel1())
-    eventually { assert(released0 == true) }
+    val rel2F = doRel2()
+    assert(!rel2F.isDefined)
+    assert(released0 == false)
     assert(released1 == false)
 
-    await(doRel2())
+    await(doRel1())
+    eventually { assert(rel2F.isDefined) }
+    eventually { assert(released0 == true) }
     eventually { assert(released1 == true) }
+    assert(released2 == false)
 
     await(doRel3())
     eventually { assert(released2 == true) }
