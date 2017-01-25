@@ -326,7 +326,7 @@
 ## 0.0.10
 
 * We now support end-to-end TLS! However, verification is currently limited to
-  global certs. See  https://github.com/BuoyantIO/linkerd/issues/64 for more on
+  global certs. See  https://github.com/linkerd/linkerd/issues/64 for more on
   the upcoming roadmap.
 * Prep work for "transparent TLS". Look for this in upcoming releases.
 * Prep work for being able to generate Docker images from the repo, in service

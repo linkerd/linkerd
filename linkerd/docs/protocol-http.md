@@ -174,7 +174,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
-host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/BuoyantIO/linkerd/issues/106). Not used in HTTP/1.0.
+host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/linkerd/linkerd/issues/106). Not used in HTTP/1.0.
 uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
 
 <a name="path-identifier"></a>

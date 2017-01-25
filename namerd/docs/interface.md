@@ -51,7 +51,7 @@ kind: `io.l5d.httpController`
 
 The HTTP controller provides APIs for reading and writing dtabs, as well as for
 viewing how names are resolved.  This API can also be accessed using the
-[namerctl](https://github.com/BuoyantIO/namerctl) command line tool.
+[namerctl](https://github.com/linkerd/namerctl) command line tool.
 
 Key | Default Value | Description
 --- | ------------- | -----------
