@@ -205,17 +205,23 @@ object DecodingStream {
         }
 
       override def releasable(): (Releaser, Func) =
-        if (remaining == 0) {
-          val (rest, releaseRest) = tail.releasable()
-          val doRelease = () => release().before(releaseRest())
-          rest -> doRelease
-        } else {
-          // This frame isn't yet releasable, but we require that this
-          // sub-slice is released before releasing the frame:
+        if (consumed < total) {
+          // This frame isn't yet releasable, but we need this release
+          // function to be called before we can release the
+          // underlying frame. So, chain a promise into the release
+          // func so that the frame's release is blocked on this
+          // segment's release.
           val p = new Promise[Unit]
           val rest = copy(release = () => p.before(release()))
-          val doRelease = () => { p.setDone(); Future.Unit }
-          rest -> doRelease
+          val releaseSegment = () => { p.setDone(); Future.Unit }
+          rest -> releaseSegment
+        } else {
+          // This frame has been entirely consumed, so return a
+          // release function that releases this frame (after all
+          // prior segments have been released).
+          val (rest, releaseRest) = tail.releasable()
+          val releaseFrame = () => release().before(releaseRest())
+          rest -> releaseFrame
         }
     }
 
