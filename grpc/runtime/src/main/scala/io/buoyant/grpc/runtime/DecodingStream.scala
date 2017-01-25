@@ -341,9 +341,7 @@ object DecodingStream {
       val buf = initbuf.concat(frame.buf)
       val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
       val bb = bb0.duplicate()
-
       val releaser = releaser0.track(frame)
-
       decodeHeader(bb.duplicate()) match {
         case None => Decoded(RecvState.Buffer(None, buf, releaser), None)
         case Some(hdr) =>
@@ -353,8 +351,8 @@ object DecodingStream {
       }
 
     case RecvState.Buffer(Some(hdr), initbuf, releaser) =>
-      // We've already decoded a header, but not its message.  Try
-      // to decode the message.
+      // We've already decoded a header, but not its message. Try to
+      // decode the message.
       val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(initbuf.concat(frame.buf))
       decodeMessage(hdr, bb0.duplicate(), releaser.track(frame), decoder)
   }
