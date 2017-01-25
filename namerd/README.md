@@ -46,7 +46,7 @@ namerd provides an http interface to create, update and retrieve Dtabs, as
 defined in `HttpControlService`.
 
 For a command-line tool which wraps this interface, try
-[namerctl](https://github.com/BuoyantIO/namerctl)
+[namerctl](https://github.com/linkerd/namerctl)
 
 Primary interface endpoints:
 

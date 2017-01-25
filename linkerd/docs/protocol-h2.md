@@ -55,9 +55,9 @@ protocol: `h2`
 
 linkerd now has _experimental_ support for HTTP/2. There are a number
 of
-[open issues](https://github.com/BuoyantIO/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
+[open issues](https://github.com/linkerd/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
 that are being addressed. Please
-[report](https://github.com/BuoyantIO/linkerd/issues/new) any
+[report](https://github.com/linkerd/linkerd/issues/new) any
 additional issues with this protocol!
 
 Key | Default Value | Description
