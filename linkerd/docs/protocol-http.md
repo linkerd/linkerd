@@ -130,7 +130,7 @@ logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier).
+kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier), [`io.l5d.path`](#path-identifier), [`io.l5d.header`](#header-identifier), [`io.l5d.header.token`](#header-token-identifier), or [`io.l5d.static`](#static-identifier).
 
 <a name="method-and-host-identifier"></a>
 ### Method and Host Identifier
