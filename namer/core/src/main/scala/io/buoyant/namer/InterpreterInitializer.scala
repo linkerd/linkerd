@@ -45,4 +45,8 @@ trait InterpreterConfig extends PolymorphicConfig {
   }
 }
 
+trait NamespacedInterpreterConfig extends InterpreterConfig {
+  def namespace: Option[String]
+}
+
 abstract class InterpreterInitializer extends ConfigInitializer

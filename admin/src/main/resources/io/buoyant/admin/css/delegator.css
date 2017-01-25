@@ -37,7 +37,7 @@
   margin-bottom: 50px;
 }
 
-.panel .active {
+.delegator .panel .active {
   background-color: #555;
   color: #f4f4f4;
 }
@@ -56,11 +56,14 @@
   border: 1px solid lightgray;
 }
 
-.dentry-part:hover {
+.delegator .dentry-part:hover {
   background-color: #f4f4f4;
   box-shadow: 0 0 10px 0 lightgray;
-  cursor: pointer;
   cursor: hand;
+}
+
+.delegator .dentry .dentry-part:hover {
+  background-color: #222;
 }
 
 .dentry-part.active {
