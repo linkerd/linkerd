@@ -21,44 +21,78 @@ class DecodingStreamTest extends FunSuite {
       }
     }
 
-    @volatile var rel0 = false
-    val rel0F = () => { rel0 = true; Future.Unit }
-    val f0 = decodedStream.recv()
-    assert(!f0.isDefined)
-    val b0: Array[Byte] = Array(0, 0, 0, 0, 5, 1, 1, 1, 1)
-    assert(frameQ.offer(h2.Frame.Data(Buf.ByteArray.Owned(b0), false, rel0F)))
-    assert(!f0.isDefined)
+    @volatile var released0 = false
+    val frame0 = {
+      val b: Array[Byte] = Array(
+        0, 0, 0, 0, 2, 1, 2,
+        0, 0, 0, 0, 5, 1, 2, 3, 4 // one by short
+      )
+      val rel = () => { released0 = true; Future.Unit }
+      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
+    }
 
-    @volatile var rel1 = false
-    val rel1F = () => { rel1 = true; Future.Unit }
-    val b1: Array[Byte] = Array(1, 0, 0, 0, 0, 2, 1, 1, 0, 0, 0, 0, 3, 1, 1, 1)
-    assert(frameQ.offer(h2.Frame.Data(Buf.ByteArray.Owned(b1), true, rel1F)))
+    @volatile var released1 = false
+    val frame1 = {
+      val rel = () => { released1 = true; Future.Unit }
+      val b: Array[Byte] = Array(
+        5, // finishes last message
+        0, 0, 0, 0, 3, 1, 2, 3
+      )
+      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
+    }
 
-    eventually { assert(f0.isDefined) }
-    val Stream.Releasable(v0, doRel0) = await(f0)
-    assert(v0 == 5)
-    assert(rel0 == false)
-    assert(decodedLength == 5)
+    @volatile var released2 = false
+    val frame2 = {
+      val rel = () => { released2 = true; Future.Unit }
+      val b: Array[Byte] = Array(0, 0, 0, 0, 4, 1, 2, 3, 4)
+      h2.Frame.Data(Buf.ByteArray.Owned(b), true, rel)
+    }
 
-    val f1 = decodedStream.recv()
-    eventually { assert(f1.isDefined) }
-    val Stream.Releasable(v1, doRel1) = await(f1)
-    assert(v1 == 2)
+    val recvF0 = decodedStream.recv()
+    assert(!recvF0.isDefined)
+
+    assert(frameQ.offer(frame0))
+    eventually { assert(recvF0.isDefined) }
+    val Stream.Releasable(v0, doRel0) = await(recvF0)
+    assert(v0 == 2)
+    assert(released0 == false)
+    assert(decodedLength == 2)
+
+    val recvF1 = decodedStream.recv()
+    assert(!recvF1.isDefined)
+
+    assert(frameQ.offer(frame1))
+    eventually { assert(recvF1.isDefined) }
+    val Stream.Releasable(v1, doRel1) = await(recvF1)
+    assert(v1 == 5)
     assert(decodedLength == 7)
 
-    val f2 = decodedStream.recv()
-    assert(f2.isDefined)
-    val Stream.Releasable(v2, doRel2) = await(f2)
+    val recvF2 = decodedStream.recv()
+    eventually { assert(recvF2.isDefined) }
+    val Stream.Releasable(v2, doRel2) = await(recvF2)
+    assert(v2 == 3)
     assert(decodedLength == 10)
-    assert(rel1 == false)
 
-    assert(rel0 == false)
+    val recvF3 = decodedStream.recv()
+    assert(!recvF3.isDefined)
+
+    assert(frameQ.offer(frame2))
+    eventually { assert(recvF3.isDefined) }
+    val Stream.Releasable(v3, doRel3) = await(recvF3)
+    assert(v3 == 4)
+    assert(decodedLength == 14)
+
     await(doRel0())
-    assert(rel0 == false)
+    assert(released0 == false)
+
     await(doRel1())
-    assert(rel0 == true)
-    assert(rel1 == false)
+    eventually { assert(released0 == true) }
+    assert(released1 == false)
+
     await(doRel2())
-    assert(rel1 == true)
+    eventually { assert(released1 == true) }
+
+    await(doRel3())
+    eventually { assert(released2 == true) }
   }
 }
