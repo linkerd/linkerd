@@ -237,7 +237,7 @@ object DecodingStream {
 
     private[this] object SegmentLatch {
 
-      private[this] class Segmented(underlying: Func) extends SegmentLatch {
+      private[this] class Impl(underlying: Func) extends SegmentLatch {
         @volatile private[this] var segmentsToBeReleased = 0
         @volatile private[this] var allSegmentsReleasable = false
 
@@ -248,36 +248,35 @@ object DecodingStream {
          */
         private[this] val releaseSegment: Func = { () =>
           synchronized {
-            if (segmentsToBeReleased < 1) Future.exception(new IllegalStateException("releasing too many segments"))
-            segmentsToBeReleased -= 1
-            if (allSegmentsReleasable && segmentsToBeReleased == 0) underlying()
-            else Future.Unit
+            if (segmentsToBeReleased < 1) {
+              Future.exception(new IllegalStateException("releasing too many segments"))
+            } else {
+              segmentsToBeReleased -= 1
+              if (allSegmentsReleasable && segmentsToBeReleased == 0) underlying()
+              else Future.Unit
+            }
           }
         }
 
         override def segmentReleaseFunc(last: Boolean): Func = synchronized {
-          if (allSegmentsReleasable) throw new IllegalStateException("cannot create any further segments")
+          if (allSegmentsReleasable)
+            throw new IllegalStateException("cannot create any further segments")
+
           allSegmentsReleasable = last
           segmentsToBeReleased += 1
           releaseSegment
         }
       }
 
-      private[this] class Const(f: Func) extends SegmentLatch {
-        def segmentReleaseFunc(last: Boolean) =
-          if (last) f else throw new IllegalArgumentException("cannot segment const latch")
-      }
-
-      def segmented(f: Func): SegmentLatch = new Segmented(f)
-      def const(f: Func): SegmentLatch = new Const(f)
+      def apply(f: Func): SegmentLatch = new Impl(f)
     }
 
     private[this] def mk(f: h2.Frame): Releaser = f match {
       case f: h2.Frame.Trailers =>
-        FrameReleaser(SegmentLatch.const(f.release), 0, 0, Nil)
+        FrameReleaser(SegmentLatch(f.release), 0, 0, Nil)
 
       case f: h2.Frame.Data =>
-        FrameReleaser(SegmentLatch.segmented(f.release), 0, f.buf.length, Nil)
+        FrameReleaser(SegmentLatch(f.release), 0, f.buf.length, Nil)
     }
   }
 
