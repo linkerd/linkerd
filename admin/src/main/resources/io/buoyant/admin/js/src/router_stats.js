@@ -34,7 +34,8 @@ define([
     }
 
     function getBarChartColor(percent) {
-      if (percent < 0.1) return "green";
+      if (percent === null) return "";
+      else if (percent < 0.1) return "green";
       else if (percent < 0.5) return "yellow";
       else if (percent < 0.75) return "orange";
       else return "red";

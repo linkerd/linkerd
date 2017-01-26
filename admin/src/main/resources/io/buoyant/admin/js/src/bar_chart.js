@@ -34,10 +34,11 @@ define([
         return null;
       }
       var displayData = getPercentAndLabel(data);
+      var barWidth = Math.min(Math.round(displayData.percent * barContainerWidth), barContainerWidth);
 
       var barDimensions = {
         color: getColor(displayData.percent),
-        barWidth: Math.round(displayData.percent * barContainerWidth),
+        barWidth: barWidth,
         barContainerWidth: barContainerWidth
       }
 
