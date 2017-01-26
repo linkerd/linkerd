@@ -1,13 +1,11 @@
 package grpc.testing
 
-import com.google.protobuf.CodedOutputStream
-import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.H2
 import com.twitter.io.Buf
-import com.twitter.util.{Await, Future, Promise, Return, Throw}
+import com.twitter.server.TwitterServer
+import com.twitter.util.{Await, Future, Return, Throw, Try}
 import io.buoyant.grpc.runtime.{Stream, ServerDispatcher}
 import java.nio.ByteBuffer
-import java.util.Arrays
 
 /**
  * The main object for running a gRPC interop server.
@@ -15,8 +13,9 @@ import java.util.Arrays
  * The interop tests are described here:
  *   https://github.com/grpc/grpc/blob/master/doc/interop-test-descriptions.md
  */
-object ServerMain {
-  def main(args: Array[String]) {
+object ServerMain extends TwitterServer {
+
+  def main() {
 
     val iface = new TestService {
       def emptyCall(empty: Empty): Future[Empty] = {
@@ -34,42 +33,36 @@ object ServerMain {
       /**
        * Echo back each request with a Payload having the requested size
        */
-      def fullDuplexCall(reqs: Stream[StreamingOutputCallRequest]): Stream[StreamingOutputCallResponse] = {
+      def fullDuplexCall(
+        reqs: Stream[StreamingOutputCallRequest]
+      ): Stream[StreamingOutputCallResponse] = {
         val rsps = Stream[StreamingOutputCallResponse]
-        def process(): Future[Unit] = reqs.recv().transform {
-          case Throw(Stream.Closed) => rsps.close()
-          case Throw(e) => Future.exception(e)
-          case Return(req) =>
-            req.value.payload.flatMap(_.body) match {
-              case None => rsps.close()
-              case Some(body) =>
-                val chars = Array.fill(body.length) { 0.toByte } // {} specializes us to a Byte array
-                val toSend = Buf.ByteArray.Owned(chars)
-                val msg = StreamingOutputCallResponse(Some(Payload(None, Some(toSend))))
-                rsps.send(msg).before(process())
-            }
+        def process(): Future[Unit] = {
+          println("reading a streaming output call request")
+          reqs.recv().transform {
+            case Throw(Stream.Closed) => rsps.close()
+            case Throw(e) => Future.exception(e)
+            case Return(Stream.Releasable(req, release)) =>
+              println(s"stream output call req $req")
+              respond(rsps, req.responseparameters)
+                .before(release())
+                .before(process())
+          }
         }
         process()
-
         rsps
       }
 
       // TODO: if an interop test can be found that needs this, we will implement it.
-      def halfDuplexCall(req: Stream[StreamingOutputCallRequest]): Stream[StreamingOutputCallResponse] = ???
+      def halfDuplexCall(reqs: Stream[StreamingOutputCallRequest]): Stream[StreamingOutputCallResponse] = ???
 
       /**
        * Returns the aggregated size of input payloads.
        */
-      def streamingInputCall(reqs: Stream[StreamingInputCallRequest]): Future[StreamingInputCallResponse] = {
-        def process(processed: Int): Future[Int] = reqs.recv().transform {
-          case Throw(Stream.Closed) => Future.value(processed)
-          case Throw(e) => Future.exception(e)
-          case Return(req) =>
-            val sz = req.value.payload.flatMap(_.body).map(_.length).getOrElse(0)
-            process(processed + sz)
-        }
-
-        process(0).map { sz => StreamingInputCallResponse(Some(sz)) }
+      def streamingInputCall(
+        reqs: Stream[StreamingInputCallRequest]
+      ): Future[StreamingInputCallResponse] = {
+        accumSize(reqs, 0).map { sz => StreamingInputCallResponse(Some(sz)) }
       }
 
       /**
@@ -77,20 +70,33 @@ object ServerMain {
        */
       def streamingOutputCall(req: StreamingOutputCallRequest): Stream[StreamingOutputCallResponse] = {
         val rsps = Stream[StreamingOutputCallResponse]()
-
-        def process(params: Seq[ResponseParameters]): Future[Unit] = params match {
-          case Seq(param, tail@_*) =>
-            val size = param.size.getOrElse(0)
-            val chars = Array.fill(size) { 0.toByte } // {} specializes us to a Byte array
-            val toSend = Buf.ByteArray.Owned(chars)
-            val msg = StreamingOutputCallResponse(Some(Payload(None, Some(toSend))))
-            rsps.send(msg).before(process(tail))
-
-          case _ => rsps.close()
-        }
-        process(req.responseparameters)
-
+        respond(rsps, req.responseparameters).before(rsps.close())
         rsps
+      }
+
+      private[this] def accumSize(
+        reqs: Stream[StreamingInputCallRequest],
+        processed: Int
+      ): Future[Int] =
+        reqs.recv().transform {
+          case Throw(Stream.Closed) => Future.value(processed)
+          case Throw(e) => Future.exception(e)
+          case Return(Stream.Releasable(req, release)) =>
+            val sz = req.payload.flatMap(_.body).map(_.length).getOrElse(0)
+            release().before(accumSize(reqs, processed + sz))
+        }
+
+      private[this] def respond(
+        rsps: Stream.Provider[StreamingOutputCallResponse],
+        params: Seq[ResponseParameters]
+      ): Future[Unit] = params match {
+        case Nil => Future.Unit
+        case Seq(param, tail@_*) =>
+          val size = param.size.getOrElse(0)
+          println(s"streaming frame with ${size} bytes")
+          val body = Buf.ByteArray.Owned(Array.fill(size) { 0.toByte })
+          val msg = StreamingOutputCallResponse(Some(Payload(None, Some(body))))
+          rsps.send(msg).before(respond(rsps, tail))
       }
 
       // This method should not be implemented on the Server.
@@ -100,6 +106,7 @@ object ServerMain {
 
     val service = new ServerDispatcher(Seq(new TestService.Server(iface)))
     val server = H2.serve(":60001", service)
+    closeOnExit(server)
     val _ = Await.ready(server)
   }
 }
