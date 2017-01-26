@@ -8,6 +8,7 @@ import scoverage.ScoverageKeys._
 
 object LinkerdBuild extends Base {
   import Base._
+  import Grpc._
 
   val Bundle = config("bundle")
   val Dcos = config("dcos") extend Bundle
@@ -454,8 +455,9 @@ object LinkerdBuild extends Base {
       val usage = projectDir("linkerd/telemeter/usage")
         .dependsOn(core % "compile->compile;test->test")
         .dependsOn(Namer.core  % "compile->compile;test->test")
-        .dependsOn(Protocol.http, Grpc.usage)
+        .dependsOn(Protocol.http)
         .withLibs(Deps.jackson)
+        .withGrpc
         .withTests()
         .withE2e()
 
