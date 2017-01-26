@@ -40,8 +40,6 @@ define([
           {suffix: "connections", label: "Connections"},
           {suffix: "success", label: "Successes"},
           {suffix: "failures", label: "Failures"},
-          {suffix: "retries/budget", label: "Retries budget"},
-          {suffix: "retries/requeues", label: "Retried requests"},
           {suffix: "loadbalancer/size", label: "Load balancer pool size"},
           {suffix: "loadbalancer/available", label: "Load balancers available"}
         ], function(metric) {
@@ -115,7 +113,6 @@ define([
       var $chartEl = $container.find(".chart-container");
       var $toggleLinks = $container.find(".client-toggle");
       var $lbBarChart = $container.find(".lb-bar-chart");
-      var $retriesBarChart = $container.find(".retries-bar-chart");
 
       var clientColor = colors.color;
       var latencyLegend = createLatencyLegend(colors.colorFamily);
@@ -151,32 +148,6 @@ define([
       }
       var lbBarChart = new BarChart($lbBarChart, barPercentCalc, barChartColorFn);
 
-
-      var retryColorFn = function(percent) {
-        if (percent < 0.1) return "green";
-        else if (percent < 0.5) return "yellow";
-        else if (percent < 0.8) return "orange";
-        else return "red";
-      }
-      var percentCalcFn = function(data) {
-        var percent = null;
-        if (data) {
-          var numer = data["retries/requeues"] || {};
-          var denom = data["requests"] || {};
-
-          percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
-        }
-
-        return {
-          percent: percent,
-          label: {
-            description: "Retry percentage",
-            value: !percent ? "-" : Math.round(percent * 100) + "%"
-          }
-        }
-      }
-      var retriesBarChart = new BarChart($retriesBarChart, percentCalcFn, retryColorFn);
-
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
         toggleClientDisplay(true);
@@ -206,7 +177,7 @@ define([
 
         chart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
-        retriesBarChart.update(summaryData);
+        // retriesBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
       }

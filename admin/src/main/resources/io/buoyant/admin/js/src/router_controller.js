@@ -5,12 +5,14 @@ define([
   'src/router_summary',
   'src/router_servers',
   'src/router_clients',
+  'src/router_stats',
   'text!template/router_container.template'
 ], function(
   _, Handlebars,
   RouterSummary,
   RouterServers,
   RouterClients,
+  RouterStats,
   routerContainerTemplate
 ) {
 
@@ -126,10 +128,13 @@ define([
         var $summaryEl = $(container.find(".summary")[0]);
         var $serversEl = $(container.find(".servers")[0]);
         var $clientsEl = $(container.find(".clients")[0]);
+        var $combinedClientGraphEl = $(container.find(".router-graph")[0]);
+        var $routerStatsEl = $(container.find(".router-stats"))
 
         RouterSummary(metricsCollector, $summaryEl, router);
         RouterServers(metricsCollector, routers, $serversEl, router);
-        RouterClients(metricsCollector, routers, $clientsEl, router, colorOrder);
+        RouterClients(metricsCollector, routers, $clientsEl, $combinedClientGraphEl, router, colorOrder);
+        RouterStats(metricsCollector, $routerStatsEl, router);
       });
 
       return {};

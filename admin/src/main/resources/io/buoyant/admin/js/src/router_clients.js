@@ -24,13 +24,13 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, routers, $clientEl, routerName, colors) {
+    return function (metricsCollector, routers, $clientEl, $combinedClientGraphEl, routerName, colors) {
       var clientContainerTemplate = Handlebars.compile(routerClientContainerTemplate);
 
       var clients = routers.clients(routerName);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
-      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $clientEl.find(".router-graph"), clientToColor);
+      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
 
       var expandClients = shouldExpandClients(clients.length);
 

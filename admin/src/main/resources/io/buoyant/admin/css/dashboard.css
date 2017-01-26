@@ -205,6 +205,14 @@ nav ul.navbar-nav {
 }
 
 /**
+* Router stats
+*/
+.router-stats {
+  min-height: 100px;
+  margin-top: 20px;
+}
+
+/**
 * Router servers
 */
 
