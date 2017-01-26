@@ -7,6 +7,7 @@ import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
 import com.twitter.logging.Logger
+import com.twitter.server.util.JvmStats
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
@@ -104,24 +105,33 @@ object Linker {
     admin: Option[AdminConfig]
   ) {
 
-    def mk(defaultTelemeter: Telemeter = NullTelemeter): Linker = {
+    def mk(): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val telemeters = telemetry match {
-        case None => Seq(defaultTelemeter)
-        case Some(telemeters) => telemeters.map {
-          case t if t.disabled =>
-            val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
-              "explicitly enabled by setting the `experimental' parameter to `true'."
-            throw new IllegalArgumentException(msg) with NoStackTrace
-          case t => t.mk(Stack.Params.empty + param.LinkerConfig(this))
-        }
+      val metrics = MetricsTree()
+
+      val telemeterConfigs = telemetry match {
+        case Some(telemeters) if telemeters.exists(_.kind == "io.l5d.commonMetrics") =>
+          telemeters
+        case Some(telemeters) =>
+          telemeters :+ CommonMetricsConfig()
+        case None =>
+          Seq(CommonMetricsConfig())
+      }
+
+      val telemeters = telemeterConfigs.map {
+        case t if t.disabled =>
+          val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
+            "explicitly enabled by setting the `experimental' parameter to `true'."
+          throw new IllegalArgumentException(msg) with NoStackTrace
+        case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
       }
 
       // Telemeters may provide StatsReceivers.
-      val stats = mkStats(telemeters)
+      val stats = mkStats(metrics, telemeters)
       LoadedStatsReceiver.self = stats
+      JvmStats.register(stats)
 
       // Tracers may be provided by telemeters OR by 'tracers'
       // configuration.
@@ -143,8 +153,8 @@ object Linker {
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
     }
 
-    private[this] def mkStats(telemeters: Seq[Telemeter]) = {
-      val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats }
+    private[this] def mkStats(metrics: MetricsTree, telemeters: Seq[Telemeter]) = {
+      val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats } :+ new MetricsTreeStatsReceiver(metrics)
       for (r <- receivers) log.debug("stats: %s", r)
       BroadcastStatsReceiver(receivers)
     }

@@ -31,6 +31,25 @@ Exposes admin endpoints:
 
 This telemeter has no additional parameters.
 
+## Admin
+
+> Example Admin config
+
+```yaml
+telemetry:
+- kind: io.l5d.admin
+  snapshotIntervalSecs: 60
+```
+
+kind: `io.l5d.admin`
+
+Exposes admin endpoint:
+
+* `/admin/metrics.json`: retrieve all metrics in [twitter-server](https://twitter.github.io/twitter-server/) format
+
+This is a replacement for the `io.l5d.commonMetrics` telemeter which will be deprecated in the
+future.
+
 ## StatsD (experimental)
 
 > Example StatD config

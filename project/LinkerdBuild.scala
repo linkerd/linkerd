@@ -131,11 +131,16 @@ object LinkerdBuild extends Base {
     val core = projectDir("telemetry/core")
       .dependsOn(configCore)
       .withTwitterLib(Deps.finagle("core"))
-      .withTwitterLib(Deps.finagle("stats") % Test)
+      .withTwitterLib(Deps.finagle("stats"))
+      .withTests()
+
+    val admin = projectDir("telemetry/admin")
+      .dependsOn(LinkerdBuild.admin, core)
+      .withLib(Deps.jacksonCore)
       .withTests()
 
     val commonMetrics = projectDir("telemetry/common-metrics")
-      .dependsOn(admin, core)
+      .dependsOn(LinkerdBuild.admin, core)
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
       .withTests()
 
@@ -151,7 +156,7 @@ object LinkerdBuild extends Base {
     val recentRequests = projectDir("telemetry/recent-requests")
       .dependsOn(admin, core, Router.core)
 
-    val all = aggregateDir("telemetry", core, commonMetrics, recentRequests, statsd, tracelog)
+    val all = aggregateDir("telemetry", admin, core, commonMetrics, recentRequests, statsd, tracelog)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -392,7 +397,7 @@ object LinkerdBuild extends Base {
       .dependsOn(
         configCore,
         LinkerdBuild.admin,
-        Telemetry.core % "compile->compile;test->test",
+        Telemetry.core % "compile->compile;test->test", Telemetry.commonMetrics,
         Namer.core % "compile->compile;test->test",
         Router.core
       )
@@ -527,7 +532,7 @@ object LinkerdBuild extends Base {
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
-      Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
+      Telemetry.admin, Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
       Telemeter.usage,
       tls,
@@ -599,6 +604,7 @@ object LinkerdBuild extends Base {
   val routerThriftIdl = Router.thriftIdl
 
   val telemetry = Telemetry.all
+  val telemetryAdmin = Telemetry.admin
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
   val telemetryRecentRequests = Telemetry.recentRequests

@@ -6,6 +6,8 @@
   * Displays routers in the order that they are defined
 * Update Marathon namer to evaluate an app's running state
 * Add `roundRobin` as a load balancer option.
+* Add `io.l5d.admin` telemeter as an eventual replacement for the `io.l5d.commonMetrics`
+  telemeter.
 
 ## 0.8.6 2017-01-19
 
