@@ -9,7 +9,7 @@ These parameters are available to the tracer regardless of kind. Tracers may als
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Only `io.l5d.zipkin` is available at this time.
+kind | _required_ | Only [`io.l5d.zipkin`](#zipkin) is available at this time.
 
 
 ## Zipkin

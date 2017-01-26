@@ -8,7 +8,7 @@ These parameters are available to the interface regardless of kind. Interfaces m
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either `io.l5d.thriftNameInterpreter` or `io.l5d.httpController`.
+kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter) or [`io.l5d.httpController`](#http-controller).
 ip | interface dependent | The local IP address on which to serve the namer interface.
 port | interface dependent | The port number on which to server the namer interface.
 
@@ -51,7 +51,7 @@ kind: `io.l5d.httpController`
 
 The HTTP controller provides APIs for reading and writing dtabs, as well as for
 viewing how names are resolved.  This API can also be accessed using the
-[namerctl](https://github.com/BuoyantIO/namerctl) command line tool.
+[namerctl](https://github.com/linkerd/namerctl) command line tool.
 
 Key | Default Value | Description
 --- | ------------- | -----------

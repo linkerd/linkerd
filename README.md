@@ -344,11 +344,11 @@ specific language governing permissions and limitations under the License.
 [finagle]: https://twitter.github.io/finagle/
 [funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
 [k8s]: https://k8s.io/
-[l5d-ci]: https://circleci.com/gh/BuoyantIO/linkerd
-[l5d-ci-status]: https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-ci]: https://circleci.com/gh/linkerd/linkerd
+[l5d-ci-status]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
 [l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
 [netty]: https://netty.io/
 [sbt]: http://www.scala-sbt.org/
 [scalatest]: http://www.scalatest.org/
 [ssg]: http://docs.scala-lang.org/style/scaladoc.html
-[releases]: https://github.com/BuoyantIO/linkerd/releases
+[releases]: https://github.com/linkerd/linkerd/releases

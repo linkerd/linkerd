@@ -17,7 +17,7 @@ interpreter.  Transformations are applied sequentially in the order they appear.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | One of the transformer kinds listed below.
+kind | _required_ | Either [`io.l5d.localhost`](#localhost), [`io.l5d.port`](#port), [`io.l5d.k8s.daemonset`](#daemonset-kubernetes), [`io.l5d.k8s.localnode`](#localnode-kubernetes), [`io.l5d.replace`](#replace), or [`io.l5d.const`](#const).
 
 ## Localhost
 
@@ -45,7 +45,7 @@ port | _required_ | The port number to use.
 
 kind: `io.l5d.k8s.daemonset`
 
-The DaemonSetTransformer maps each address in the destination NameTree to a 
+The DaemonSetTransformer maps each address in the destination NameTree to a
 member of a given daemonset that is on the same /24 subnet.  Since each k8s
 node is its own /24 subnet, the result is that each destination address is
 mapped to the member of the daemonset that is running on the same node.
