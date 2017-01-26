@@ -40,33 +40,8 @@ object ClientDispatcher {
   def acceptUnary[T](rsp: h2.Response, codec: Codec[T]): Future[T] =
     Codec.bufferGrpcFrame(rsp.stream).map(codec.decodeBuf)
 
-  def acceptStreaming[T](rspF: Future[h2.Response], codec: Codec[T]): Stream[T] = {
-    val stream = Stream[T]()
-    rspF.respond {
-      case Return(rsp) =>
-        def loop(): Future[Unit] = {
-          rsp.stream.read().transform {
-            case Return(trailers: h2.Frame.Trailers) =>
-              // TODO check grpc-status
-              trailers.release().before(stream.close())
-
-            case Return(data: h2.Frame.Data) =>
-              // TODO framing/buffering
-              val msg = codec.decodeBuf(Codec.decodeGrpcFrame(data.buf))
-              stream.send(msg).before(data.release()).before(loop())
-
-            case Throw(e) =>
-              // TODO reset
-              stream.close().before(Future.exception(e))
-          }
-        }
-        val _ = loop()
-
-      case Throw(e) =>
-        val _ = stream.close() // TODO reset
-    }
-    stream
-  }
+  def acceptStreaming[T](rspF: Future[h2.Response], codec: Codec[T]): Stream[T] =
+    Stream.deferred(rspF.map(codec.decodeResponse))
 
   object Rpc {
 
