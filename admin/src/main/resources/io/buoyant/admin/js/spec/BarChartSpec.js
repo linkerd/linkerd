@@ -44,44 +44,5 @@ define([
       $bar = $lbContainer.find(".overlay-bars.bar");
       expect($bar.width()).toBe(Math.round(6/30 * containerWidth));
     });
-
-    it("renders a three colored bar chart", function() {
-      var containerWidth = 100;
-      var leftValue = 50;
-      var rightValue = 100;
-
-      var $retriesContainer = $("<div style='width:" + containerWidth + "px;' />");
-      var retriesChart = new BarChart($retriesContainer, true);
-      retriesChart.update({
-        "retries/requeues": { description: "fooMin", value: leftValue },
-        "requests": { description: "fooMax", value: rightValue }
-      });
-
-      var leftNum = $retriesContainer.find(".bar-chart-value.pull-left").text();
-      var rightNum = $retriesContainer.find(".bar-chart-value.pull-right").text();
-
-      var $yellow = $retriesContainer.find(".tricolor-overlay .bar.yellow");
-      var $orange = $retriesContainer.find(".tricolor-overlay .bar.orange");
-      var $red = $retriesContainer.find(".tricolor-overlay .bar.red");
-
-      expect(leftNum).toContain(leftValue);
-      expect(rightNum).toContain(rightValue);
-
-      expect($yellow.width()).toBe(33);
-      expect($orange.width()).toBe(17);
-      expect($red.width()).toBe(0);
-
-      retriesChart.update({
-        "retries/requeues": { description: "fooMin", value: 90 },
-        "requests": { description: "fooMax", value: 100 }
-      });
-      $yellow = $retriesContainer.find(".tricolor-overlay .bar.yellow");
-      $orange = $retriesContainer.find(".tricolor-overlay .bar.orange");
-      $red = $retriesContainer.find(".tricolor-overlay .bar.red");
-
-      expect($yellow.width()).toBe(33);
-      expect($orange.width()).toBe(33);
-      expect($red.width()).toBe(24);
-    });
   });
 });

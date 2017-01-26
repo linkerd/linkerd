@@ -126,8 +126,56 @@ define([
 
       renderMetrics($metricsEl, client, [], [], clientColor);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
-      var lbBarChart = new BarChart($lbBarChart);
-      var retriesBarChart = new BarChart($retriesBarChart, true);
+
+
+      var barChartColorFn = function(percent) {
+        return percent < 0.5 ? "orange" : "green";
+      }
+      var barPercentCalc = function(data) {
+        var percent = null;
+        var numer = null;
+        var denom = null;
+        if (data) {
+          numer = data["loadbalancer/available"] || {};
+          denom = data["loadbalancer/size"] || {};
+          percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
+        }
+
+        return {
+          percent: percent,
+          label: {
+            description: "Endpoints available",
+            value: (numer.value || "-") + " / " + (denom.value || "-")
+          }
+        }
+      }
+      var lbBarChart = new BarChart($lbBarChart, barPercentCalc, barChartColorFn);
+
+
+      var retryColorFn = function(percent) {
+        if (percent < 0.1) return "green";
+        else if (percent < 0.5) return "yellow";
+        else if (percent < 0.8) return "orange";
+        else return "red";
+      }
+      var percentCalcFn = function(data) {
+        var percent = null;
+        if (data) {
+          var numer = data["retries/requeues"] || {};
+          var denom = data["requests"] || {};
+
+          percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
+        }
+
+        return {
+          percent: percent,
+          label: {
+            description: "Retry percentage",
+            value: !percent ? "-" : Math.round(percent * 100) + "%"
+          }
+        }
+      }
+      var retriesBarChart = new BarChart($retriesBarChart, percentCalcFn, retryColorFn);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {

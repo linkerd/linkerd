@@ -276,13 +276,11 @@ nav ul.navbar-nav {
 
 .bar-chart-container {
   margin-top: 20px;
+  min-height: 80px;
 }
 .bar-chart-label {
   margin: 5px 0;
-}
-.bar-chart-value {
-  margin-top: 20px; /* .overlay-bars height */
-  font-size: 18px;
+  font-size: 15px;
 }
 .overlay-bars {
   position: absolute;

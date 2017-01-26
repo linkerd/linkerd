@@ -15,7 +15,7 @@
     <div class="clearfix"></div>
     <div class="bar-chart-container row">
       <div class="col-md-6 lb-bar-chart"></div>
-      <div class="col-md-6 retries-bar-chart pull-right"></div>
+      <div class="col-md-6 retries-bar-chart pull-left"></div>
     </div>
   </div>
 </div>
