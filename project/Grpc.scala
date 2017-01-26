@@ -102,5 +102,5 @@ object Grpc extends Base {
       publishArtifact := false
     )
 
-  val all = aggregateDir("grpc", usage, eg, gen, runtime)
+  val all = aggregateDir("grpc", eg, gen, runtime)
 }
