@@ -102,13 +102,5 @@ object Grpc extends Base {
       publishArtifact := false
     )
 
-  val usage = projectDir("grpc/usage")
-    .withGrpc
-    .withTests()
-    .settings(
-      publishArtifact := true
-    )
-
   val all = aggregateDir("grpc", usage, eg, gen, runtime)
-
 }

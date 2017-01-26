@@ -456,6 +456,7 @@ object LinkerdBuild extends Base {
         .dependsOn(Namer.core  % "compile->compile;test->test")
         .dependsOn(Protocol.http, Grpc.usage)
         .withLibs(Deps.jackson)
+        .withGrpc
         .withTests()
         .withE2e()
 
