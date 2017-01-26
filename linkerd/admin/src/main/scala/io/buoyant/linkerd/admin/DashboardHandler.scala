@@ -5,19 +5,19 @@ import com.twitter.finagle.Service
 import com.twitter.util.Future
 import io.buoyant.linkerd.Build
 
-private[admin] class DashboardHandler extends Service[Request, Response] {
+private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Service[Request, Response] {
 
   override def apply(req: Request): Future[Response] = req.path match {
     case "/" =>
       Option(req.getParam("router")) match {
-        case Some(router) => AdminHandler.mkResponse(dashboardHtml(router))
-        case None => AdminHandler.mkResponse(dashboardHtml())
+        case Some(router) => adminHandler.mkResponse(dashboardHtml(router))
+        case None => adminHandler.mkResponse(dashboardHtml())
       }
     case _ => Future.value(Response(Status.NotFound))
   }
 
   def dashboardHtml(router: String = "") = {
-    AdminHandler.html(
+    adminHandler.html(
       content = s"""
         <div class="request-totals"></div>
         <div class="server-data"

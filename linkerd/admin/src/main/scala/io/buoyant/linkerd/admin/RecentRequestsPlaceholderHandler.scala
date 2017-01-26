@@ -4,9 +4,9 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
 import io.buoyant.admin.Admin.Handler
 
-class RecentRequestsPlaceholderHandler extends Handler {
+class RecentRequestsPlaceholderHandler(adminHandler: AdminHandler) extends Handler {
   override def apply(request: Request): Future[Response] = {
-    val html = AdminHandler.html("""
+    val html = adminHandler.html("""
       |<div class="container main">
       |<h1 class="title">Recent Requests</h1>
       |<div class="content">
@@ -20,6 +20,6 @@ class RecentRequestsPlaceholderHandler extends Handler {
       |</div>
       |</div>
     """.stripMargin)
-    AdminHandler.mkResponse(html)
+    adminHandler.mkResponse(html)
   }
 }
