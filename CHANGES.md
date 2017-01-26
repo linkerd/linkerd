@@ -5,6 +5,7 @@
   * Sorts clients and servers alphabetically
   * Displays routers in the order that they are defined
 * Update Marathon namer to evaluate an app's running state
+* Add `roundRobin` as a load balancer option.
 
 ## 0.8.6 2017-01-19
 
