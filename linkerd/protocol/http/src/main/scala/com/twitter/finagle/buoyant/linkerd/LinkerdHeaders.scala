@@ -344,6 +344,20 @@ object Headers {
   }
 
   /**
+    * Indicates that the request came from a linkerd process.
+    * NOTE: services _should not_ forward this header when propagating context.
+    */
+  object FromLinkerd {
+    val Key = "from-l5d"
+
+    def get(headers: HeaderMap): Boolean = headers.get(Key).contains("true")
+
+    def set(headers: HeaderMap): Unit = {
+      val _ = headers.set(Key, "true")
+    }
+  }
+
+  /**
    * Dst headers are encoded on outgoing requests so that downstream
    * services are able to know how they are named by
    * linkerd. Specifically, the `l5d-dst-residual` header may be

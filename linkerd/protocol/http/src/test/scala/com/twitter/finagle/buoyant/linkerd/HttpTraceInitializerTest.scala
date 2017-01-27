@@ -49,7 +49,7 @@ class HttpTraceInitializerTest extends FunSuite with Awaits {
     assert(Headers.Ctx.Trace.get(rsp.headerMap).exists(_.sampled.contains(true)))
   }
 
-  test("parent/child requests are assigned same span id") {
+  test("parent/child requests are assigned linked request ids when from-l5d unset") {
     val service = tracingService()
     val req1 = Request()
     val rsp1 = await(service(req1))
@@ -57,6 +57,24 @@ class HttpTraceInitializerTest extends FunSuite with Awaits {
 
     val req2 = Request()
     req2.headerMap(Headers.Ctx.Trace.Key) = rsp1.headerMap(Headers.Ctx.Trace.Key)
+    val rsp2 = await(service(req2))
+    val reqId2 = Headers.Ctx.Trace.get(rsp2.headerMap).get
+
+    assert(reqId1.spanId == reqId1.parentId)
+    assert(reqId2.spanId != reqId2.parentId)
+    assert(reqId2.parentId == reqId1.spanId)
+    assert(reqId1.traceId == reqId2.traceId)
+  }
+
+  test("parent/child requests are assigned the same request id when from-l5d set") {
+    val service = tracingService()
+    val req1 = Request()
+    val rsp1 = await(service(req1))
+    val reqId1 = Headers.Ctx.Trace.get(rsp1.headerMap).get
+
+    val req2 = Request()
+    req2.headerMap(Headers.Ctx.Trace.Key) = rsp1.headerMap(Headers.Ctx.Trace.Key)
+    Headers.FromLinkerd.set(req2.headerMap)
     val rsp2 = await(service(req2))
     val reqId2 = Headers.Ctx.Trace.get(rsp2.headerMap).get
 

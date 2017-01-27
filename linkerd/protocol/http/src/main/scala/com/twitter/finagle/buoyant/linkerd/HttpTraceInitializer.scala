@@ -23,13 +23,19 @@ object HttpTraceInitializer {
      */
     def apply(req: Request, service: Service[Request, Response]) = {
       val headers = req.headerMap
+      val fromLinkerd = Headers.FromLinkerd.get(headers)
+      Headers.FromLinkerd.set(headers)
       val ctx = Headers.Ctx.Trace.get(headers)
       Headers.Ctx.Trace.clear(headers)
       val sampler = Headers.Sample.get(headers).map(Sampler(_))
       Headers.Sample.clear(headers)
 
       Trace.letIdOption(ctx) {
-        Trace.letTracerAndId(tracer, Trace.idOption.getOrElse(Trace.nextId)) {
+        val traceId = Trace.idOption match {
+          case Some(id) if fromLinkerd => id
+          case _ => Trace.nextId
+        }
+        Trace.letTracerAndId(tracer, traceId) {
           sample(sampler.orElse(defaultSampler)) {
             service(req)
           }
