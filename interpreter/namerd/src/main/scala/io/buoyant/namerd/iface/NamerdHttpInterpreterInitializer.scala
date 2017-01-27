@@ -1,14 +1,14 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.conversions.time._
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
 import com.twitter.util.Throw
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import scala.util.control.NonFatal
 
 /**
@@ -28,7 +28,7 @@ case class NamerdHttpInterpreterConfig(
   namespace: Option[String],
   retry: Option[Retry],
   tls: Option[ClientTlsConfig]
-) extends InterpreterConfig {
+) extends NamespacedInterpreterConfig {
 
   @JsonIgnore
   private[this] val log = Logger.get()

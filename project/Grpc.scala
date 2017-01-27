@@ -118,5 +118,4 @@ object Grpc extends Base {
     )
 
   val all = aggregateDir("grpc", eg, interop, usage, gen, runtime)
-
 }

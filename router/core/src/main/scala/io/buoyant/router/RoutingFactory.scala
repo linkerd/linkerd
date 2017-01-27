@@ -63,10 +63,10 @@ object RoutingFactory {
    *                identifiers to effectively mutate requests that they
    *                identify.
    */
-  class IdentifiedRequest[Req](val dst: Dst, val request: Req) extends RequestIdentification[Req]
+  class IdentifiedRequest[Req](val dst: Dst.Path, val request: Req) extends RequestIdentification[Req]
 
   object IdentifiedRequest {
-    def unapply[Req](identified: IdentifiedRequest[Req]): Option[(Dst, Req)] =
+    def unapply[Req](identified: IdentifiedRequest[Req]): Option[(Dst.Path, Req)] =
       Some((identified.dst, identified.request))
   }
 
