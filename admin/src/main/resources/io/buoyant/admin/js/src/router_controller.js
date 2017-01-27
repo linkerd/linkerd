@@ -5,14 +5,12 @@ define([
   'src/router_summary',
   'src/router_servers',
   'src/router_clients',
-  'src/router_stats',
   'text!template/router_container.template'
 ], function(
   _, Handlebars,
   RouterSummary,
   RouterServers,
   RouterClients,
-  RouterStats,
   routerContainerTemplate
 ) {
 
