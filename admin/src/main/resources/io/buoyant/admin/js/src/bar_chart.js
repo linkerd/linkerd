@@ -1,15 +1,5 @@
 "use strict";
 
-/*
-  A simple bar chart.
-
-  Arguments:
-    - $container - where you want the bar chart to go
-    - colorFn - fn takes a percent and outputs a string color corresponding to a class in dashboard.css
-
-  Returns update() function which is called with { percent: ..., label: { description: ..., value: ...}}
-*/
-
 define([
   'jQuery',
   'lodash',
@@ -20,9 +10,21 @@ define([
   var template = Handlebars.compile(barChartTemplate);
   var barContainerWidth = 360; // px
 
+  var defaultTmplData = {
+    percent: null,
+    label: {
+      description: "",
+      value: null
+    },
+    warningLabel: null,
+    color: "",
+    barWidth: 0,
+    barContainerWidth: barContainerWidth
+  }
+
   function render($container, data, getBarDimensions) {
     if (!data) return;
-    var tmplData = getBarDimensions(data);
+    var tmplData = _.merge({}, defaultTmplData, getBarDimensions(data));
     $container.html(template(tmplData));
   }
 
@@ -31,6 +33,7 @@ define([
     render($container, null, getBarDimensions);
 
     function getBarDimensions(displayData) {
+      if (!displayData) return null;
       var barWidth = Math.min(Math.round(displayData.percent * barContainerWidth), barContainerWidth);
 
       var barDimensions = {

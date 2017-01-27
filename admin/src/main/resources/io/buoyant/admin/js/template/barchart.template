@@ -3,12 +3,6 @@
     {{label.description}}: {{label.value}}
   </div>
 
-  {{#if secondLabel}}
-    <div class="bar-chart-label metric-header pull-right">
-    {{secondLabel.description}}: {{secondLabel.value}}
-    </div>
-  {{/if}}
-
   {{#if warningLabel}}
     <div class="bar-chart-label metric-header warning pull-left">
     {{warningLabel}}

@@ -108,14 +108,11 @@ define([
     }
 
     function barPercentCalc(data) {
-      var percent = null;
-      var numer = null;
-      var denom = null;
-      if (data) {
-        numer = data["loadbalancer/available"] || {};
-        denom = data["loadbalancer/size"] || {};
-        percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
-      }
+      if (!data) return null;
+
+      var numer = data["loadbalancer/available"] || {};
+      var denom = data["loadbalancer/size"] || {};
+      var percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
 
       return {
         percent: percent,
@@ -125,6 +122,7 @@ define([
         }
       }
     }
+
     return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);

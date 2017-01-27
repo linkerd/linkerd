@@ -100,6 +100,11 @@ nav ul.navbar-nav {
   margin-top: -14px;
 }
 
+.col-md-2.router-summary-stat {
+  width: 160px;
+  padding: 0 27px 0 0;
+}
+
 .col-md-2 {
   width: 198px;
   padding: 0 27px 0 0;
@@ -303,9 +308,7 @@ nav ul.navbar-nav {
   background-color: #A41818;
   margin-left: 30px;
   padding: 0px 3px;
-  /*padding: 5px;*/
   border-radius: 2px;
-  /*font-size: 12px;*/
 }
 .overlay-bars {
   position: absolute;
@@ -313,11 +316,6 @@ nav ul.navbar-nav {
 }
 .overlay-bars.bar-container {
   opacity: 0.25;
-}
-.tricolor-overlay > div {
-  width: 33.33%;
-  float: left;
-  position: relative;
 }
 
 .graph-gradient {

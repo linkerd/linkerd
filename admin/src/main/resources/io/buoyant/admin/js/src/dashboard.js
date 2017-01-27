@@ -19,7 +19,7 @@ define([
     /**
      * Number of millis to wait between data updates.
      */
-    var UPDATE_INTERVAL = 100000;
+    var UPDATE_INTERVAL = 1000;
 
     $.get("admin/metrics.json").done(function(metricsJson) {
       var metricsCollector = MetricsCollector(metricsJson);
