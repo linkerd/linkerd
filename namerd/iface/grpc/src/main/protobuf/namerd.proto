@@ -188,13 +188,12 @@ message Addr {
  */
 
 message DelegateTreeReq {
-  message PathTree {}
-  PathTree tree = 1;
+  PathNameTree tree = 1;
+  Dtab dtab = 2;
 }
 
 
 message DelegateTreeRsp {
-  message BoundTree {}
-  BoundTree tree = 1;
+  BoundDelegateTree tree = 1;
 }
 

@@ -3,7 +3,9 @@ package io.buoyant.grpc.runtime
 import com.twitter.concurrent.{AsyncMutex, AsyncQueue}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Promise, Return, Throw, Try}
+import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, Var}
+import java.util.concurrent.atomic.AtomicReference
+import scala.collection
 
 trait Stream[+T] {
   def recv(): Future[Stream.Releasable[T]]
@@ -19,8 +21,25 @@ object Stream {
 
   trait Provider[-T] {
     def send(t: T): Future[Unit]
-
     def close(): Future[Unit]
+  }
+
+  def fromQueue[T](q: AsyncQueue[Releasable[T]]): Stream[T] = new Stream[T] {
+    override def recv(): Future[Releasable[T]] = q.poll()
+  }
+
+  def fromSeq[T](seq: Seq[T]): Stream[T] = {
+    val q = new AsyncQueue[Releasable[T]]()
+    seq.foreach(t => q.offer(Releasable(t)))
+    q.fail(Closed, discard = false)
+    fromQueue(q)
+  }
+
+  def value[T](v: T): Stream[T] = fromSeq(Seq(v))
+
+  def exception[T](e: Throwable): Stream[T] = new Stream[T] {
+    val eF = Future.exception(e)
+    override def recv(): Future[Releasable[T]] = eF
   }
 
   def apply[T](): Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
@@ -43,17 +62,6 @@ object Stream {
       q.fail(Closed, discard = false)
       Future.Unit
     }
-  }
-
-  def value[T](v: T): Stream[T] = new Stream[T] {
-    val ref = new AtomicReference[Future[Releasable[T]]](Future.value(Releasable(v)))
-    val closedF = Future.exception(Closed)
-    def recv() = ref.getAndSet(closedF)
-  }
-
-  def exception(exc: Throwable): Stream[Nothing] = new Stream[Nothing] {
-    val recvF = Future.exception(exc)
-    def recv() = recvF
   }
 
   object Closed extends Throwable
@@ -105,4 +113,5 @@ object Stream {
           }
         }
     }
+
 }

@@ -77,3 +77,35 @@ message BoundNameTree {
     Path residual = 2;
   }
 }
+
+
+message BoundDelegateTree {
+  Path path = 1;
+  Dtab.Dentry dentry = 2;
+  oneof node {
+    Nop nop = 3;
+    Alt alt = 4;
+    Union union = 5;
+    Leaf leaf = 6;
+    BoundDelegateTree delegate = 7;
+    string exception = 8;
+  }
+
+  enum Nop {
+    NEG = 0;
+    FAIL = 1;
+    EMPTY = 2;
+  }
+  message Alt { repeated BoundDelegateTree trees = 1; }
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      BoundDelegateTree tree = 2;
+    }
+  }
+  message Leaf {
+    Path id = 1;
+    Path residual = 2;
+  }
+}

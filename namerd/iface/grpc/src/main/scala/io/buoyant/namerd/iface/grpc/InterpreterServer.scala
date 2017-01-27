@@ -6,7 +6,7 @@ import com.twitter.finagle.{Addr, Dtab, Namer, NameTree, Path}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.{Stream, EventStream}
+import io.buoyant.grpc.runtime.{Stream, VarEventStream}
 import io.buoyant.namer.ConfiguredDtabNamer
 import io.buoyant.proto.namerd.{Addr => ProtoAddr, VersionedDtab => ProtoVersionedDtab, _}
 
@@ -38,7 +38,7 @@ object InterpreterServer {
     override def streamDtab(req: DtabReq): Stream[DtabRsp] =
       req.ns match {
         case None => Stream.value(DtabRspNoNamespace)
-        case Some(ns) => EventStream(store.observe(ns).values.map(toProtoDtabRspEv))
+        case Some(ns) => VarEventStream(store.observe(ns).values.map(toProtoDtabRspEv))
       }
 
     override def getBoundTree(req: BindReq): Future[BoundTreeRsp] =
@@ -72,9 +72,15 @@ object InterpreterServer {
               }
               val name = fromProtoPath(pname)
               val ev = bind(ns, dtab, name).values.map(toProtoBoundTreeRspEv)
-              EventStream(ev)
+              VarEventStream(ev)
           }
       }
+
+    override def getDelegateTree(req: DelegateTreeReq): Future[DelegateTreeRsp] =
+      Future.exception(new IllegalStateException("unimplemented"))
+
+    override def streamDelegateTree(req: DelegateTreeReq): Stream[DelegateTreeRsp] =
+      Stream.exception(new IllegalStateException("unimplemented"))
 
     private[this] def bind(ns: String, localDtab: Dtab, name: Path) = {
       val dtabVar = store.observe(ns).map(_extractDtab)
@@ -91,7 +97,7 @@ object InterpreterServer {
     override def streamAddr(req: AddrReq): Stream[ProtoAddr] = req.id match {
       case None => Stream.value(AddrErrorNoId)
       case Some(pid) if pid.elems.isEmpty => Stream.value(AddrErrorNoId)
-      case Some(pid) => EventStream(bindAddr(fromProtoPath(pid)).map(toProtoAddrEv))
+      case Some(pid) => VarEventStream(bindAddr(fromProtoPath(pid)).map(toProtoAddrEv))
     }
 
     private[this] def bindAddr(id: Path): Var[Addr] = {

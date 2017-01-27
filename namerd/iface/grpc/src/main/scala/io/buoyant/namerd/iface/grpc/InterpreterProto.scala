@@ -4,11 +4,12 @@ package iface.grpc
 import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.util.{Closable, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.{Stream, EventStream}
-import io.buoyant.namer.Metadata
+import io.buoyant.grpc.runtime.{Stream, VarEventStream}
+import io.buoyant.namer.{DelegateTree, Metadata}
 import io.buoyant.proto.{Dtab => ProtoDtab, Path => ProtoPath, _}
 import io.buoyant.proto.namerd.{Addr => ProtoAddr, VersionedDtab => ProtoVersionedDtab, _}
 import java.net.{InetAddress, Inet6Address, InetSocketAddress}
+import scala.util.control.NoStackTrace
 
 /**
  * Utilities for translating between io.buoyant.proto and
@@ -63,14 +64,16 @@ private[grpc] object InterpreterProto {
     })
 
   def fromProtoDtab(pdtab: ProtoDtab): Dtab =
-    Dtab(pdtab.dentries.toIndexedSeq.map {
-      case ProtoDtab.Dentry(Some(ppfx), Some(pdst)) =>
-        val pfx = fromProtoPrefix(ppfx)
-        val dst = fromProtoPathNameTree(pdst)
-        Dentry(pfx, dst)
-      case dentry =>
-        throw new IllegalArgumentException(s"Illegal dentry: $dentry")
-    })
+    Dtab(pdtab.dentries.toIndexedSeq.map(fromProtoDentry))
+
+  val fromProtoDentry: ProtoDtab.Dentry => Dentry = {
+    case ProtoDtab.Dentry(Some(ppfx), Some(pdst)) =>
+      val pfx = fromProtoPrefix(ppfx)
+      val dst = fromProtoPathNameTree(pdst)
+      Dentry(pfx, dst)
+    case dentry =>
+      throw new IllegalArgumentException(s"Illegal dentry: $dentry")
+  }
 
   def toProtoPath(path: Path): ProtoPath = ProtoPath(path.elems)
   def fromProtoPath(ppath: ProtoPath): Path = Path(ppath.elems: _*)
@@ -124,6 +127,9 @@ private[grpc] object InterpreterProto {
       throw new IllegalArgumentException(s"illegal name tree: $tree")
   }
 
+  def mkDtabReq(ns: String): DtabReq =
+    DtabReq(Some(ns))
+
   def DtabRspError(description: String, code: DtabRsp.Error.Code.Value) = {
     val error = DtabRsp.Error(Some(description), Some(code))
     DtabRsp(Some(DtabRsp.OneofResult.Error(error)))
@@ -141,10 +147,10 @@ private[grpc] object InterpreterProto {
     DtabRsp(Some(DtabRsp.OneofResult.Dtab(ProtoVersionedDtab(Some(v), Some(d)))))
   }
 
-  val toProtoDtabRspEv: Try[Option[VersionedDtab]] => EventStream.Ev[DtabRsp] = {
-    case Return(None) => EventStream.Val(DtabRspNotFound)
-    case Return(Some(vdtab)) => EventStream.Val(toProtoDtabRsp(vdtab))
-    case Throw(e) => EventStream.End(Return(DtabRspError(e.getMessage, DtabRsp.Error.Code.UNKNOWN)))
+  val toProtoDtabRspEv: Try[Option[VersionedDtab]] => VarEventStream.Ev[DtabRsp] = {
+    case Return(None) => VarEventStream.Val(DtabRspNotFound)
+    case Return(Some(vdtab)) => VarEventStream.Val(toProtoDtabRsp(vdtab))
+    case Throw(e) => VarEventStream.End(Return(DtabRspError(e.getMessage, DtabRsp.Error.Code.UNKNOWN)))
   }
 
   def mkBindReq(ns: String, path: Path, dtab: Dtab): BindReq =
@@ -228,9 +234,9 @@ private[grpc] object InterpreterProto {
   val toProtoBoundTreeRsp: NameTree[Name.Bound] => BoundTreeRsp =
     t => BoundTreeRsp(Some(BoundTreeRsp.OneofResult.Tree(toProtoBoundNameTree(t))))
 
-  val toProtoBoundTreeRspEv: Try[NameTree[Name.Bound]] => EventStream.Ev[BoundTreeRsp] = {
-    case Return(tree) => EventStream.Val(toProtoBoundTreeRsp(tree))
-    case Throw(e) => EventStream.End(Throw(e))
+  val toProtoBoundTreeRspEv: Try[NameTree[Name.Bound]] => VarEventStream.Ev[BoundTreeRsp] = {
+    case Return(tree) => VarEventStream.Val(toProtoBoundTreeRsp(tree))
+    case Throw(e) => VarEventStream.End(Throw(e))
   }
 
   private[this] val _collectFromEndpoint: PartialFunction[Endpoint, Address] = {
@@ -309,6 +315,57 @@ private[grpc] object InterpreterProto {
   val toProtoAddr: Addr => ProtoAddr =
     a => ProtoAddr(Some(toProtoAddrResult(a)))
 
-  val toProtoAddrEv: Addr => EventStream.Ev[ProtoAddr] =
-    a => EventStream.Val(toProtoAddr(a))
+  val toProtoAddrEv: Addr => VarEventStream.Ev[ProtoAddr] =
+    a => VarEventStream.Val(toProtoAddr(a))
+
+  def mkDelegateTreeReq(dtab: Dtab, tree: NameTree[Name.Path]): DelegateTreeReq =
+    DelegateTreeReq(Some(toProtoPathNameTree(tree.map(_.path))), Some(toProtoDtab(dtab)))
+
+  def mkFromProtoBoundDelegateTree(bindAddr: Path => Var[Addr]): BoundDelegateTree => DelegateTree[Name.Bound] = {
+    def bindTree(t: BoundDelegateTree): DelegateTree[Name.Bound] = t match {
+      case BoundDelegateTree(Some(dpath0), Some(dentry0), Some(node)) =>
+        val dpath = fromProtoPath(dpath0)
+        val dentry = fromProtoDentry(dentry0)
+        node match {
+          case BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.NEG) =>
+            DelegateTree.Neg(dpath, dentry)
+          case BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.FAIL) =>
+            DelegateTree.Fail(dpath, dentry)
+          case BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.EMPTY) =>
+            DelegateTree.Empty(dpath, dentry)
+
+          case BoundDelegateTree.OneofNode.Leaf(BoundDelegateTree.Leaf(Some(pid), Some(ppath))) =>
+            val id = fromProtoPath(pid)
+            val path = fromProtoPath(ppath)
+            DelegateTree.Leaf(dpath, dentry, Name.Bound(bindAddr(id), id, path))
+
+          case BoundDelegateTree.OneofNode.Alt(BoundDelegateTree.Alt(ptrees)) =>
+            val trees = ptrees.map(bindTree)
+            DelegateTree.Alt(dpath, dentry, trees: _*)
+
+          case BoundDelegateTree.OneofNode.Union(BoundDelegateTree.Union(ptrees)) =>
+            val trees = ptrees.collect {
+              case BoundDelegateTree.Union.Weighted(Some(weight), Some(ptree)) =>
+                DelegateTree.Weighted(weight, bindTree(ptree))
+            }
+            DelegateTree.Union(dpath, dentry, trees: _*)
+
+          case BoundDelegateTree.OneofNode.Delegate(ptree) =>
+            DelegateTree.Delegate(dpath, dentry, bindTree(ptree))
+
+          case BoundDelegateTree.OneofNode.Exception(msg) =>
+            DelegateTree.Exception(dpath, dentry, DelegateException(msg))
+
+          case tree =>
+            throw new IllegalArgumentException(s"illegal delegate tree node: $node")
+        }
+
+      case tree =>
+        throw new IllegalArgumentException(s"illegal delegate tree: $tree")
+    }
+
+    bindTree _
+  }
+
+  case class DelegateException(msg: String) extends Throwable(msg) with NoStackTrace
 }

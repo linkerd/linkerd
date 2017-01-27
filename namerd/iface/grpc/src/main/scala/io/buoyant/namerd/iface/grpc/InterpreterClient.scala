@@ -8,10 +8,10 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Closable, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.{Stream, EventStream}
+import io.buoyant.grpc.runtime.Stream
 import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree}
-import io.buoyant.proto.BoundNameTree
-import io.buoyant.proto.namerd.{Interpreter => ProtoInterpreter, BoundTreeRsp}
+import io.buoyant.proto.{BoundNameTree, BoundDelegateTree}
+import io.buoyant.proto.namerd.{Interpreter => ProtoInterpreter, BoundTreeRsp, DtabRsp, VersionedDtab}
 
 object InterpreterClient {
   import InterpreterProto._
@@ -26,6 +26,7 @@ object InterpreterClient {
       val req = mkBindReq(namespace, path, dtab)
       val run = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { state =>
         val stream = client.streamBoundTree(req)
+
         @volatile var closed = false
         def loop(): Future[Unit] =
           if (closed) Future.Unit
@@ -33,16 +34,57 @@ object InterpreterClient {
             case Throw(e) =>
               state() = Activity.Failed(e)
               Future.exception(e)
+
             case Return(Stream.Releasable(rsp, release)) =>
               rsp.result match {
                 case Some(BoundTreeRsp.OneofResult.Tree(ptree)) =>
                   state() = Activity.Ok(fromProtoBoundNameTree(ptree))
                 case _ =>
               }
+              // XXX shouldn't release until this state is changed
+              // later, but deferring this could currently break
+              // flow-control.
               release().before(loop())
           }
+
         val f = loop()
-        Closable.make { deadline =>
+        Closable.make { _ =>
+          // TODO Reset stream
+          closed = true
+          f.raise(Failure("closed", Failure.Interrupted))
+          Future.Unit
+        }
+      }
+      Activity(run)
+    }
+
+    override lazy val dtab: Activity[Dtab] = {
+      val req = mkDtabReq(namespace)
+      val run = Var.async[Activity.State[Dtab]](Activity.Pending) { state =>
+        val stream = client.streamDtab(req)
+
+        @volatile var closed = false
+        def loop(): Future[Unit] =
+          if (closed) Future.Unit
+          else stream.recv().transform {
+            case Throw(e) =>
+              state() = Activity.Failed(e)
+              Future.exception(e)
+
+            case Return(Stream.Releasable(rsp, release)) =>
+              rsp.result match {
+                case Some(DtabRsp.OneofResult.Dtab(VersionedDtab(_, Some(pdtab)))) =>
+                  state() = Activity.Ok(fromProtoDtab(pdtab))
+                case _ =>
+              }
+              // XXX shouldn't release until this state is changed
+              // later, but deferring this could currently break
+              // flow-control.
+              release().before(loop())
+          }
+
+        val f = loop()
+        Closable.make { _ =>
           // TODO Reset stream
           closed = true
           f.raise(Failure("closed", Failure.Interrupted))
@@ -54,48 +96,79 @@ object InterpreterClient {
 
     override def delegate(
       dtab: Dtab,
-      tree: DelegateTree[Name.Path]
+      tree: NameTree[Name.Path]
     ): Activity[DelegateTree[Name.Bound]] = {
       val req = mkDelegateTreeReq(dtab, tree)
-      val run = Var.async[Activitiy.State[DelegateTree[Name.Bound]]] { state =>
-        val stream = client.streamDelegate(req)
+
+      val run = Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { state =>
+        val stream = client.streamDelegateTree(req)
+
+        @volatile var closed = false
         def loop(): Future[Unit] =
-          stream.recv().transform {
+          if (closed) Future.Unit
+          else stream.recv().transform {
             case Throw(e) =>
               state() = Activity.Failed(e)
               Future.exception(e)
+
             case Return(Stream.Releasable(rsp, release)) =>
-              ???
+              rsp.tree match {
+                case None =>
+                case Some(ptree) =>
+                  val dtree = fromProtoBoundDelegateTree(ptree)
+                  state() = Activity.Ok(dtree)
+              }
+              // XXX shouldn't release until this state is changed
+              // later, but deferring this could currently break
+              // flow-control.
               release().before(loop())
           }
+
+        val f = loop()
+        Closable.make { _ =>
+          closed = true
+          // TODO reset stream
+          f.raise(Failure("closed", Failure.Interrupted))
+          Future.Unit
+        }
+      }
+
+      Activity(run)
+    }
+
+    // XXX should we maintain a cache of these?
+    private[this] val bindAddr: Path => Var[Addr] = { id =>
+      val req = mkAddrReq(id)
+      Var.async[Addr](Addr.Pending) { addr =>
+        val stream = client.streamAddr(req)
+
+        @volatile var closed = false
+        def loop(): Future[Unit] =
+          if (closed) Future.Unit
+          else stream.recv().transform {
+            case Throw(e) =>
+              addr() = Addr.Failed(e)
+              Future.exception(e)
+            case Return(Stream.Releasable(paddr, release)) =>
+              addr() = fromProtoAddr(paddr)
+              release().before(loop())
+          }
+        val f = loop()
+
+        Closable.make { deadline =>
+          // TODO cancel stream
+          closed = true
+          f.raise(Failure("closed", Failure.Interrupted))
+          Future.Unit
+        }
       }
     }
 
     private[this] val fromProtoBoundNameTree: BoundNameTree => NameTree[Name.Bound] =
-      mkFromProtoBoundNameTree { id =>
-        val req = mkAddrReq(id)
-        Var.async[Addr](Addr.Pending) { addr =>
-          val stream = client.streamAddr(req)
-          @volatile var closed = false
-          def loop(): Future[Unit] =
-            if (closed) Future.Unit
-            else stream.recv().transform {
-              case Throw(e) =>
-                addr() = Addr.Failed(e)
-                Future.exception(e)
+      mkFromProtoBoundNameTree(bindAddr)
 
-              case Return(Stream.Releasable(paddr, release)) =>
-                addr() = fromProtoAddr(paddr)
-                release().before(loop())
-            }
-          val f = loop()
-          Closable.make { deadline =>
-            // TODO cancel strema
-            closed = true
-            f.raise(Failure("closed", Failure.Interrupted))
-            Future.Unit
-          }
-        }
-      }
+    private[this] val fromProtoBoundDelegateTree: BoundDelegateTree => DelegateTree[Name.Bound] =
+      mkFromProtoBoundDelegateTree(bindAddr)
+
   }
 }
