@@ -207,9 +207,18 @@ nav ul.navbar-nav {
 /**
 * Router stats
 */
+
 .router-stats {
-  min-height: 100px;
   margin-top: 20px;
+  min-height: 100px;
+}
+
+.retries-stats .warning {
+  font-size: 15px;
+  margin-top: 30px;
+  border-radius: 3px;
+  padding: 8px;
+  background-color: #800808;
 }
 
 /**
@@ -287,8 +296,16 @@ nav ul.navbar-nav {
   min-height: 80px;
 }
 .bar-chart-label {
-  margin: 5px 0;
+  margin: 12px 0;
   font-size: 15px;
+}
+.bar-chart-label.warning {
+  background-color: #A41818;
+  margin-left: 30px;
+  padding: 0px 3px;
+  /*padding: 5px;*/
+  border-radius: 2px;
+  /*font-size: 12px;*/
 }
 .overlay-bars {
   position: absolute;
@@ -314,7 +331,7 @@ nav ul.navbar-nav {
   background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(248, 169, 68) 0px, rgb(248, 169, 68) 8px);
 }
 .graph-gradient.red {
-  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(114, 10, 42) 0px, rgb(114, 10, 42) 8px);
+  background-image: repeating-linear-gradient(90deg, black, black 4px, #A41818 0px, #A41818 8px);
 }
 .graph-gradient.yellow {
   background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(228, 211, 60) 0px, rgb(228, 211, 60) 8px);

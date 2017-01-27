@@ -3,6 +3,18 @@
     {{label.description}}: {{label.value}}
   </div>
 
+  {{#if secondLabel}}
+    <div class="bar-chart-label metric-header pull-right">
+    {{secondLabel.description}}: {{secondLabel.value}}
+    </div>
+  {{/if}}
+
+  {{#if warningLabel}}
+    <div class="bar-chart-label metric-header warning pull-left">
+    {{warningLabel}}
+    </div>
+  {{/if}}
+
   <div class="clearfix"></div>
   <div class="overlay-bars bar-container graph-gradient {{color}}" style="width:{{barContainerWidth}}px;"></div>
   <div class="overlay-bars bar graph-gradient {{color}}" style="width:{{barWidth}}px;"></div>

@@ -5,9 +5,9 @@
     <div class="router-graph-header">Requests per client</div>
     <canvas class="router-graph" height="181"></canvas>
 
-    <div class="router-stats">
-      <div class="retries-stats"></div>
-      <div class="retries-bar-chart"></div>
+    <div class="router-stats row">
+      <div class="retries-bar-chart col-md-6"></div>
+      <div class="retries-stats col-md-6"></div>
       <div class="clearfix"></div>
     </div>
 

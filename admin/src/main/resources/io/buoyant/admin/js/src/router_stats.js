@@ -6,15 +6,17 @@ define([
   'src/query',
   'src/utils',
   'src/bar_chart'
-  // 'text!template/router_stats.template'
 ], function($, Handlebars,
   Query,
   Utils,
   BarChart
-  // routerStatsTemplate
 ) {
   var RouterStats = (function() {
-    // var template = Handlebars.compile(routerStatsTemplate);
+    var CONFIGURED_BUDGET = 0.2 // default 20% TODO get from router config
+
+    function displayPercent(percent) {
+      return _.isNull(percent) ? " - " : Math.round(percent * 100) + "%";
+    }
 
     function processResponses(data, routerName) {
       var result = {
@@ -38,21 +40,26 @@ define([
     }
 
     function getBarChartColor(percent) {
-      if (percent === null) return "";
-      else if (percent < 0.1) return "green";
-      else if (percent < 0.5) return "yellow";
+      if (percent < 0.5) return "red";
       else if (percent < 0.75) return "orange";
-      else return "red";
+      else return "green";
     }
 
-    function getBarChartPercent(percent) {
-      // var budgetRemaining = 0.2 // budgetPercent - retriesPercent
+    function getBarChartPercent(retryPercent) {
+      var budgetRemaining = Math.max(CONFIGURED_BUDGET - (retryPercent || 0), 0);
+      var healthBarPercent = Math.min(budgetRemaining / CONFIGURED_BUDGET, 1);
+
       return {
-        percent: percent,
+        percent: healthBarPercent,
         label: {
-          description: "Retry percentage",
-          value: _.isNull(percent) ? "-" : Math.round(percent * 100) + "%"
-        }
+          description: "Retry budget available",
+          value: displayPercent(budgetRemaining) + " / " + displayPercent(CONFIGURED_BUDGET)
+        },
+        // secondLabel: {
+        //   description: "Retry percentage",
+        //   value: Math.round(retryPercent * 100) + "%"
+        // },
+        warningLabel: retryPercent < CONFIGURED_BUDGET ? null : "budget exhausted"
       }
     }
 
@@ -64,8 +71,11 @@ define([
     }
 
     function render(percent, $statsContainer) {
-      var percentDisplay = _.isNull(percent) ? "-" : Math.round(percent * 100) + "%";
-      $statsContainer.html("Retry percentage: " + percentDisplay);
+      if(percent > CONFIGURED_BUDGET) {
+        // $statsContainer.html('<div class="warning text-center">Retry budget exhausted</div>');
+      } else {
+        // $statsContainer.empty();
+      }
     }
 
     return function(metricsCollector, $containerEl, routerName) {
@@ -74,11 +84,13 @@ define([
 
       var $statsContainer = $containerEl.find(".retries-stats");
       var $retriesBarChart = $containerEl.find(".retries-bar-chart");
+
       var retriesBarChart = new BarChart($retriesBarChart, getBarChartColor);
 
       metricsCollector.registerListener(function(data) {
           var summaryData = processResponses(data.specific, routerName);
-          var retryPercent = getRetryPercent(summaryData);
+          // var retryPercent = getRetryPercent(summaryData);
+          var retryPercent = 0.1;
 
           retriesBarChart.update(getBarChartPercent(retryPercent));
           render(retryPercent, $statsContainer);

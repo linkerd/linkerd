@@ -8,8 +8,6 @@ define([
   describe("Simple bar chart", function() {
     it("renders a bar chart (one bar color) with correct widths", function() {
       var containerWidth = 100;
-      var leftValue = 60;
-      var rightValue = 200;
       var fakeDescription = "Bar chart description";
       var fakeValue = "9876";
 
@@ -19,19 +17,17 @@ define([
         return percent < 0.5 ? "orange" : "green";
       }
 
-      function barPercentCalc(data) {
-        var percent = !data.denom ? null : data.numer / data.denom;
-
+      function generateData(numer, denom) {
         return {
-          percent: percent,
+          percent: numer / denom,
           label: {
             description: fakeDescription,
             value: fakeValue
           }
         }
       }
-      var lbBarChart = new BarChart($lbContainer, barPercentCalc, barChartColorFn);
-      lbBarChart.update({ numer: leftValue, denom: rightValue });
+      var lbBarChart = new BarChart($lbContainer, barChartColorFn);
+      lbBarChart.update(generateData(60, 200));
 
       var $barContainer = $lbContainer.find(".overlay-bars.bar-container");
       var $bar = $lbContainer.find(".overlay-bars.bar");
@@ -40,15 +36,15 @@ define([
 
       expect($barContainer.attr('class')).toContain("orange");
       expect($barContainer.width()).toBe(containerWidth);
-      expect($bar.width()).toBe(Math.round(leftValue/rightValue * containerWidth));
+      expect($bar.width()).toBe(Math.round(60/200 * containerWidth));
 
-      lbBarChart.update({ numer: 90, denom: 100 });
+      lbBarChart.update(generateData(90, 100));
       $bar = $lbContainer.find(".overlay-bars.bar");
       $barContainer = $lbContainer.find(".overlay-bars.bar-container");
       expect($barContainer.attr('class')).toContain("green");
       expect($bar.width()).toBe(Math.round(90/100 * containerWidth));
 
-      lbBarChart.update({ numer: 6, denom: 30 });
+      lbBarChart.update(generateData(6, 30));
       $bar = $lbContainer.find(".overlay-bars.bar");
       $barContainer = $lbContainer.find(".overlay-bars.bar-container");
       expect($barContainer.attr('class')).toContain("orange");

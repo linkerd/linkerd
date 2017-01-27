@@ -5,8 +5,9 @@
 
   Arguments:
     - $container - where you want the bar chart to go
-    - percentCalculator - a function that accepts raw metric data, and returns a computed percent, and a label
     - colorFn - fn takes a percent and outputs a string color corresponding to a class in dashboard.css
+
+  Returns update() function which is called with { percent: ..., label: { description: ..., value: ...}}
 */
 
 define([
@@ -30,7 +31,6 @@ define([
     render($container, null, getBarDimensions);
 
     function getBarDimensions(displayData) {
-      // var displayData = getPercentAndLabel(data);
       var barWidth = Math.min(Math.round(displayData.percent * barContainerWidth), barContainerWidth);
 
       var barDimensions = {
