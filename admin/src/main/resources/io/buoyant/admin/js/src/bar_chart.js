@@ -10,21 +10,23 @@ define([
   var template = Handlebars.compile(barChartTemplate);
   var barContainerWidth = 360; // px
 
-  var defaultTmplData = {
+  var defaultDisplayData = {
     percent: null,
     label: {
       description: "",
       value: null
     },
-    warningLabel: null,
+    warningLabel: null
+  };
+  var defaultTmplData = {
     color: "",
     barWidth: 0,
     barContainerWidth: barContainerWidth
-  }
+  };
 
   function render($container, data, getBarDimensions) {
     if (!data) return;
-    var tmplData = _.merge({}, defaultTmplData, getBarDimensions(data));
+    var tmplData = getBarDimensions(data);
     $container.html(template(tmplData));
   }
 
@@ -33,7 +35,7 @@ define([
     render($container, null, getBarDimensions);
 
     function getBarDimensions(displayData) {
-      if (!displayData) return null;
+      if (!displayData) return _.merge({}, defaultDisplayData, defaultTmplData);
       var barWidth = Math.min(Math.round(displayData.percent * barContainerWidth), barContainerWidth);
 
       var barDimensions = {
