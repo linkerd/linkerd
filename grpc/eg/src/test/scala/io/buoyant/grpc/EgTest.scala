@@ -1,7 +1,6 @@
 package io.buoyant.grpc
 
 import com.google.protobuf.CodedOutputStream
-import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.H2
 import com.twitter.io.Buf
 import com.twitter.util.{Await, Future, Promise, Throw}
@@ -135,11 +134,12 @@ class EgEndToEndTest extends FunSuite {
       val rf2 = rsps.recv()
       assert(!rf2.isDefined)
       await(tx.close())
-      assert(await(rf2.liftToTry) == Throw(Stream.Closed))
+      assert(await(rf2.liftToTry) == Throw(GrpcStatus.Ok()))
     } finally await(h2client.close().before(h2srv.close()))
   }
 
   test("streaming request and unary response") {
+    setLogLevel(com.twitter.logging.Level.ALL)
     val rxP = new Promise[Stream[Eg.Req]]
     val rspP = new Promise[Eg.Rsp]
     val tx = Stream[Eg.Rsp]()
@@ -172,17 +172,53 @@ class EgEndToEndTest extends FunSuite {
       await(tx.send(Eg.Req(None)))
       assert(getAndRelease(rf0) == Eg.Req(None))
 
-      rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
-      assert(await(rspF) == Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
-
       assert(!rf1.isDefined)
       await(tx.send(Eg.Req(Some(Eg.Enumeration.ONE))))
       assert(getAndRelease(rf1) == Eg.Req(Some(Eg.Enumeration.ONE)))
 
-      val rf2 = rx.recv()
-      assert(!rf2.isDefined)
-      await(tx.close())
-      assert(await(rf2.liftToTry) == Throw(Stream.Closed))
+      rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
+      assert(await(rspF) == Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
+
+    } finally {
+      await(h2client.close().before(h2srv.close()))
+      setLogLevel(com.twitter.logging.Level.OFF)
+    }
+  }
+
+  test("unary request and failing unary response") {
+    val iface = new Eg.Eggman {
+      def uplatu(req: Eg.Req): Future[Eg.Rsp] = Future.exception(GrpcStatus.DeadlineExceeded())
+      def uplats(req: Eg.Req): Stream[Eg.Rsp] = ???
+      def splatu(req: Stream[Eg.Req]): Future[Eg.Rsp] = ???
+      def splats(req: Stream[Eg.Req]): Stream[Eg.Rsp] = ???
+    }
+    val h2srv = H2.serve(":*", ServerDispatcher(new Eg.Eggman.Server(iface)))
+    val srvAddr = h2srv.boundAddress.asInstanceOf[java.net.InetSocketAddress]
+    val h2client = H2.newService(s"/$$/inet/127.1/${srvAddr.getPort}")
+    try {
+      val client = new Eg.Eggman.Client(h2client)
+
+      val req = Eg.Req(Some(Eg.Enumeration.TWO))
+      val status = intercept[GrpcStatus] { await(client.uplatu(req)) }
+      assert(status == GrpcStatus.DeadlineExceeded(""))
+    } finally await(h2client.close().before(h2srv.close()))
+  }
+
+  test("unary request and failing streaming response") {
+    val iface = new Eg.Eggman {
+      def uplatu(req: Eg.Req): Future[Eg.Rsp] = ???
+      def uplats(req: Eg.Req): Stream[Eg.Rsp] = Stream.empty(GrpcStatus.DeadlineExceeded())
+      def splatu(req: Stream[Eg.Req]): Future[Eg.Rsp] = ???
+      def splats(req: Stream[Eg.Req]): Stream[Eg.Rsp] = ???
+    }
+    val h2srv = H2.serve(":*", ServerDispatcher(new Eg.Eggman.Server(iface)))
+    val srvAddr = h2srv.boundAddress.asInstanceOf[java.net.InetSocketAddress]
+    val h2client = H2.newService(s"/$$/inet/127.1/${srvAddr.getPort}")
+    try {
+      val client = new Eg.Eggman.Client(h2client)
+      val stream = client.uplats(Eg.Req(Some(Eg.Enumeration.TWO)))
+      val status = intercept[GrpcStatus] { await(stream.recv()) }
+      assert(status == GrpcStatus.DeadlineExceeded())
     } finally await(h2client.close().before(h2srv.close()))
   }
 

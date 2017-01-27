@@ -1,6 +1,6 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.finagle.{Service => FinagleService}
+import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw}
@@ -16,25 +16,42 @@ object ClientDispatcher {
   }
 
   def requestStreaming[T](path: String, msgs: Stream[T], codec: Codec[T]): h2.Request = {
-    val stream = h2.Stream()
+    val frames = h2.Stream()
     def loop(): Future[Unit] =
       msgs.recv().transform {
         case Return(Stream.Releasable(msg, release)) =>
           val buf = codec.encodeGrpcMessage(msg)
           val frame = h2.Frame.Data(buf, eos = false, release)
-          stream.write(frame).before(loop())
+          frames.write(frame).before(loop())
 
-        case Throw(Stream.Closed) =>
-          val frame = h2.Frame.Data(Buf.Empty, eos = true)
-          stream.write(frame)
+        case Throw(s@GrpcStatus.Ok(_)) =>
+          frames.write(h2.Frame.Data(Buf.Empty, eos = true))
+
+        case Throw(s: GrpcStatus) =>
+          frames.reset(s.toReset)
+          Future.exception(s)
 
         case Throw(e) =>
-          // TODO better
-          stream.reset(h2.Reset.InternalError)
+          frames.reset(h2.Reset.InternalError)
           Future.exception(e)
       }
-    loop()
-    h2.Request("http", h2.Method.Post, "", path, stream)
+
+    val loopF = loop()
+    frames.onEnd.respond {
+      case Return(_) =>
+        loopF.raise(Failure(GrpcStatus.Ok(), Failure.Interrupted))
+
+      case Throw(e) =>
+        val status = e match {
+          case s: GrpcStatus => s
+          case rst: h2.Reset => GrpcStatus.fromReset(rst)
+          case e => GrpcStatus.Unknown(e.getMessage)
+        }
+        msgs.reset(status)
+        loopF.raise(Failure(status, Failure.Interrupted))
+    }
+
+    h2.Request("http", h2.Method.Post, "", path, frames)
   }
 
   def acceptUnary[T](rsp: h2.Response, codec: Codec[T]): Future[T] =
