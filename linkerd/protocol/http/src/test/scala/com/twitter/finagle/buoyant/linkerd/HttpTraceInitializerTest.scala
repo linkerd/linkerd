@@ -49,7 +49,7 @@ class HttpTraceInitializerTest extends FunSuite with Awaits {
     assert(Headers.Ctx.Trace.get(rsp.headerMap).exists(_.sampled.contains(true)))
   }
 
-  test("parent/child requests are assigned linked request ids") {
+  test("parent/child requests are assigned same span id") {
     val service = tracingService()
     val req1 = Request()
     val rsp1 = await(service(req1))
@@ -60,9 +60,9 @@ class HttpTraceInitializerTest extends FunSuite with Awaits {
     val rsp2 = await(service(req2))
     val reqId2 = Headers.Ctx.Trace.get(rsp2.headerMap).get
 
-    assert(reqId1.spanId == reqId1.parentId)
-    assert(reqId2.spanId != reqId2.parentId)
-    assert(reqId2.parentId == reqId1.spanId)
+    assert(reqId1.spanId == reqId2.spanId)
+    assert(reqId1.parentId == reqId1.spanId)
+    assert(reqId2.parentId == reqId2.spanId)
     assert(reqId1.traceId == reqId2.traceId)
   }
 

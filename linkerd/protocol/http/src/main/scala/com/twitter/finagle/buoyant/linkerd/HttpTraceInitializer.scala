@@ -29,7 +29,7 @@ object HttpTraceInitializer {
       Headers.Sample.clear(headers)
 
       Trace.letIdOption(ctx) {
-        Trace.letTracerAndNextId(tracer) {
+        Trace.letTracerAndId(tracer, Trace.idOption.getOrElse(Trace.nextId)) {
           sample(sampler.orElse(defaultSampler)) {
             service(req)
           }
