@@ -3,7 +3,6 @@ import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
 import sbtdocker.DockerKeys._
-import sbtprotobuf.ProtobufPlugin._
 import sbtunidoc.Plugin._
 import scoverage.ScoverageKeys._
 
