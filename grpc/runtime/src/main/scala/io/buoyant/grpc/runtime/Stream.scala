@@ -23,13 +23,14 @@ object Stream {
   }
 
   def fromQueue[T](q: AsyncQueue[Releasable[T]]): Stream[T] = new Stream[T] {
+    override def reset(rst: GrpcStatus): Unit = q.fail(rst, discard = true)
     override def recv(): Future[Releasable[T]] = q.poll()
   }
 
   def fromSeq[T](seq: Seq[T]): Stream[T] = {
     val q = new AsyncQueue[Releasable[T]]()
     seq.foreach(t => q.offer(Releasable(t)))
-    q.fail(Closed, discard = false)
+    q.fail(GrpcStatus.Ok(), discard = false)
     fromQueue(q)
   }
 
@@ -38,6 +39,7 @@ object Stream {
   def exception[T](e: Throwable): Stream[T] = new Stream[T] {
     val eF = Future.exception(e)
     override def recv(): Future[Releasable[T]] = eF
+    override def reset(rst: GrpcStatus): Unit = ()
   }
 
   def apply[T](): Stream[T] with Provider[T] = new Stream[T] with Provider[T] {

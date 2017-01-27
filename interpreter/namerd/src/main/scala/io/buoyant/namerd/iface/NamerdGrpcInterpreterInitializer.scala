@@ -87,20 +87,10 @@ case class NamerdGrpcInterpreterConfig(
       val c = H2.client
         .withParams(H2.client.params ++ params)
         .transformed(retryTransformer)
+        .transformer(TlsTransformer.prepOnly(tks))
       configureTls(c, tls).newService(name, label)
     }
 
     InterpreterClient(new Interpreter.Client(client), namespace.getOrElse("default"))
   }
-
-  @JsonIgnore
-  private[this] def configureTls[Req, Rsp](client: StackClient[Req, Rsp], tls: Option[ClientTlsConfig]): StackClient[Req, Rsp] =
-    tls match {
-      case None => client
-      case Some(config) =>
-        val cn = config.commonName
-        val certs = config.caCert.toSeq.map(TlsClientPrep.loadCert(_))
-        client.configured(TlsClientPrep.TransportSecurity(TlsClientPrep.TransportSecurity.Secure()))
-          .configured(TlsClientPrep.Trust(TlsClientPrep.Trust.Verified(cn, certs)))
-    }
 }
