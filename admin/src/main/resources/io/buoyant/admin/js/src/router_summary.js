@@ -103,7 +103,6 @@ define([
       var serverQuery = Query.serverQuery().allServers().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
       var clientQuery = Query.clientQuery().allClients().withRouter(routerName).withMetrics(["retries/requeues"]).build();
       var pathQuery = Query.pathQuery().allPaths().withRouter(routerName).withMetrics(["requests", "retries/total"]).build();
-      var query = _.concat(serverQuery, clientQuery, pathQuery);
 
       var $retriesBarChart = $barChartEl.find(".retries-bar-chart");
       var retriesBarChart = new BarChart($retriesBarChart, getBarChartColor);
