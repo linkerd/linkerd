@@ -233,8 +233,24 @@ nav.navbar {
   margin-bottom: 10px;
 }
 
+.client-content-container {
+  float: left;
+  width: 100%;
+  margin-top: -13px;
+}
+.client-container .header-line {
+  width: 100%;
+  position: relative;
+  top: 18px;
+}
 .client-container .router-header-large {
-  padding: 8px 0;
+  padding: 8px 15px;
+  position: relative;
+  top: -3px;
+}
+.client-container .router-header-large > div {
+  padding: 0px 5px;
+  background-color: #090B34;
 }
 
 .client-toggle {
@@ -278,6 +294,7 @@ nav.navbar {
 .bar-chart-container {
   margin-top: 20px;
   min-height: 80px;
+  padding-left: 15px;
 }
 .bar-chart-label {
   margin: 12px 0;
