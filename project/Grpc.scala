@@ -29,6 +29,7 @@ object Grpc extends Base {
   val runtime = projectDir("grpc/runtime")
     .dependsOn(Finagle.h2)
     .withLibs(Deps.protobuf)
+    .withTests
 
   /*
    * Settings for generated modules.
@@ -102,5 +103,4 @@ object Grpc extends Base {
     )
 
   val all = aggregateDir("grpc", eg, gen, runtime)
-
 }

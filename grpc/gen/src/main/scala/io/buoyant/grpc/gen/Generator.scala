@@ -181,7 +181,7 @@ object Generator {
     indent: String
   ): String = {
     val msgTypeName = upperHead(msgType.name)
-    val scope = s"${scope0}.${msgTypeName}"
+    val scope = s"${scope0}.`${msgTypeName}`"
 
     // First off, let's figure out the list of fields that will be
     // present in the case class. We have to merge oneofs and fields
@@ -210,7 +210,7 @@ object Generator {
     }
 
     val typedArgsTxt =
-      args.map { case FieldArg(n, _, t, _) => s"${n}: ${t}" } match {
+      args.map { case FieldArg(n, _, t, _) => s"`${n}`: ${t}" } match {
         case Nil => ""
         case args => args.mkString(s"\n${indent}  ", s",\n${indent}  ", s"\n${indent}")
       }
@@ -304,7 +304,7 @@ object Generator {
 
       case FieldArg(name, typ, _, Right(o)) =>
         o.fields.map { f =>
-          val ftyp = s"${typ}.${snakeToUpperCamel(f.name)}"
+          val ftyp = s"${typ}.`${snakeToUpperCamel(f.name)}`"
           val wireType = genWireType(f)
           val reader = genReader(f)
           val readArg = f match {
@@ -385,7 +385,7 @@ object Generator {
     val encoders = args.map {
       case FieldArg(name, typ, _, Left(f)) if f.isRepeated =>
         val writer = genWriteKind(f, translateType, "value", s"${indent}    ")
-        s"""|${indent}  val ${name}Iter = msg.${name}.iterator
+        s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
             |${indent}  while (${name}Iter.hasNext) {
             |${indent}    val value = ${name}Iter.next()
             |${writer}
@@ -394,7 +394,7 @@ object Generator {
 
       case FieldArg(name, typ, _, Left(f)) =>
         val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
-        s"""|${indent}  msg.${name} match {
+        s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
             |${indent}    case Some(value) =>
             |${writer}
@@ -403,13 +403,13 @@ object Generator {
 
       case FieldArg(name, typ, _, Right(o)) =>
         val fieldWriters = o.fields.map { f =>
-          val ftyp = s"${typ}.${upperHead(f.name)}"
+          val ftyp = s"${typ}.`${upperHead(f.name)}`"
           val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${writer}""".stripMargin
         }
 
-        s"""|${indent}  msg.${name} match {
+        s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
             |${fieldWriters.mkString("\n")}
             |${indent}  }
@@ -430,7 +430,7 @@ object Generator {
     val sizeAdditions = args.map {
       case FieldArg(name, typ, _, Left(f)) if f.isRepeated =>
         val sizeOf = genComputeSizeTagged(f, "value", translateType)
-        s"""|${indent}  val ${name}Iter = msg.${name}.iterator
+        s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
             |${indent}  while (${name}Iter.hasNext) {
             |${indent}    val value = ${name}Iter.next()
             |${indent}    val sz = ${sizeOf}
@@ -439,7 +439,7 @@ object Generator {
 
       case FieldArg(name, typ, _, Left(f)) =>
         val sizeOf = genComputeSizeTagged(f, "value", translateType)
-        s"""|${indent}  msg.${name} match {
+        s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
             |${indent}    case Some(value) =>
             |${indent}      val sz = ${sizeOf}
@@ -456,7 +456,7 @@ object Generator {
               |""".stripMargin
         }
 
-        s"""|${indent}  msg.${name} match {
+        s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
             |${fieldSizes.mkString("")}
             |${indent}  }
@@ -650,7 +650,7 @@ object Generator {
 
     (rpc.client, rpc.server) match {
       case (ProtoFile.Io.Unary(_), ProtoFile.Io.Unary(_)) =>
-        s"""|${indent}private[this] val __${method}Rpc =
+        s"""|${indent}private[this] val `__${method}Rpc` =
             |${indent}  ${RTPKG}.ClientDispatcher.Rpc.UnaryToUnary(
             |${indent}    client, "${path}",
             |${indent}    ${reqT}.codec,
@@ -667,29 +667,29 @@ object Generator {
             |${indent}    ${reqT}.codec,
             |${indent}    ${rspT}.codec
             |${indent}  )
-            |${indent}override def ${method}(msg: $reqT): ${RTPKG}.Stream[$rspT] =
+            |${indent}override def `${method}`(msg: $reqT): ${RTPKG}.Stream[$rspT] =
             |${indent}  __${method}Rpc(msg)
             |""".stripMargin
 
       case (ProtoFile.Io.Stream(_), ProtoFile.Io.Unary(_)) =>
-        s"""|${indent}private[this] val __${method}Rpc =
+        s"""|${indent}private[this] val `__${method}Rpc` =
             |${indent}  ${RTPKG}.ClientDispatcher.Rpc.StreamToUnary(
             |${indent}    client, "${path}",
             |${indent}    ${reqT}.codec,
             |${indent}    ${rspT}.codec
             |${indent}  )
-            |${indent}override def ${method}(msgs: ${RTPKG}.Stream[$reqT]): com.twitter.util.Future[$rspT] =
+            |${indent}override def `${method}`(msgs: ${RTPKG}.Stream[$reqT]): com.twitter.util.Future[$rspT] =
             |${indent}  __${method}Rpc(msgs)
             |""".stripMargin
 
       case (ProtoFile.Io.Stream(_), ProtoFile.Io.Stream(_)) =>
-        s"""|${indent}private[this] val __${method}Rpc =
+        s"""|${indent}private[this] val `__${method}Rpc` =
             |${indent}  ${RTPKG}.ClientDispatcher.Rpc.StreamToStream(
             |${indent}    client, "${path}",
             |${indent}    ${reqT}.codec,
             |${indent}    ${rspT}.codec
             |${indent}  )
-            |${indent}override def ${method}(msgs:  ${RTPKG}.Stream[$reqT]): ${RTPKG}.Stream[$rspT] =
+            |${indent}override def `${method}`(msgs:  ${RTPKG}.Stream[$reqT]): ${RTPKG}.Stream[$rspT] =
             |${indent}  __${method}Rpc(msgs)
             |""".stripMargin
     }

@@ -1,15 +1,14 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.conversions.time._
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
 import com.twitter.util.Throw
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import scala.util.control.NonFatal
 
 /**
@@ -29,7 +28,7 @@ case class NamerdHttpInterpreterConfig(
   namespace: Option[String],
   retry: Option[Retry],
   tls: Option[ClientTlsConfig]
-) extends InterpreterConfig {
+) extends NamespacedInterpreterConfig {
 
   @JsonIgnore
   private[this] val log = Logger.get()
@@ -80,23 +79,13 @@ case class NamerdHttpInterpreterConfig(
         }
     }
 
-    val tlsTransformer = new Stack.Transformer {
-      override def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]) = {
-        tls match {
-          case Some(tlsConfig) =>
-            TlsClientPrep.static[Req, Rep](tlsConfig.commonName, tlsConfig.caCert) +: stack
-          case None => stack
-        }
-      }
-    }
-
     val client = Http.client
       .withParams(Http.client.params ++ params)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
       .withStreaming(true)
       .transformed(retryTransformer)
-      .transformed(tlsTransformer)
+      .transformed(TlsTransformer(tls))
 
     new StreamingNamerClient(client.newService(name, label), namespace.getOrElse("default"))
   }

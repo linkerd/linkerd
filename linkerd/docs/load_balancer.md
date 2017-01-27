@@ -18,13 +18,14 @@ These parameters are available to the loadbalancer regardless of kind. The loadb
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `p2c` | Either `p2c`, `ewma`, `aperture`, or `heap`.
+kind | `p2c` | Either [`p2c`](#power-of-two-choices-least-loaded), [`ewma`](#power-of-two-choices-peak-ewma), [`aperture`](#aperture-least-loaded), [`heap`](#heap-least-loaded), or [`roundRobin`](#round-robin).
 enableProbation | `false` | If `true`, endpoints are eagerly evicted from service discovery. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28).
 
 [p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded
 [ewma]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma
 [aperture]: https://twitter.github.io/finagle/guide/Clients.html#aperture-least-loaded
 [heap]: https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded
+[roundRobin]: https://twitter.github.io/finagle/docs/com/twitter/finagle/loadbalancer/Balancers$.html#roundRobin
 
 ## Power of Two Choices: Least Loaded
 
@@ -74,3 +75,15 @@ kind: `heap`
 <aside class="success">
   Learn more about heap and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/guide/Clients.html#heap-least-loaded">Finagle's documentation</a>
 </aside>
+
+## Round Robin
+
+kind: `roundRobin`
+
+<aside class="success">
+  Learn more about roundRobin and how to configure it via <a target="_blank" href="https://twitter.github.io/finagle/docs/com/twitter/finagle/loadbalancer/Balancers$.html#roundRobin">Finagle's documentation</a>
+</aside>
+
+Key | Default Value | Description
+--- | ------------- | -----------
+maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.

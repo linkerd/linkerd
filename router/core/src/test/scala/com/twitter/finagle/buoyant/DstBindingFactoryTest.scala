@@ -63,7 +63,7 @@ class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
     val closed = new AtomicBoolean(false)
     val factory = DstBindingFactory.refcount {
       new DstBindingFactory[String, String] {
-        def apply(dst: Dst, conn: ClientConnection): Future[Service[String, String]] = ???
+        def apply(dst: Dst.Path, conn: ClientConnection): Future[Service[String, String]] = ???
         def status = Status.Open
         def close(t: Time): Future[Unit] = {
           closed.set(true)

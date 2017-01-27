@@ -11,7 +11,7 @@ import io.buoyant.test.FunSuite
 import java.nio.ByteBuffer
 import java.util.Arrays
 
-class EgTest extends FunSuite {
+object EgTest {
 
   /*
    * A java-serialized protobuf message:
@@ -44,6 +44,10 @@ class EgTest extends FunSuite {
     Some(expectedPath),
     None
   )
+}
+
+class EgTest extends FunSuite {
+  import EgTest._
 
   test("sizeOf") {
     assert(Eg.Message.codec.sizeOf(expectedMsg) == msgBuf.length)
@@ -74,8 +78,12 @@ class EgTest extends FunSuite {
     val msg = Eg.Message.codec.decodeBuf(Buf.ByteBuffer.Owned(bb))
     assert(msg == expectedMsg)
   }
+}
 
-  test("end-to-end: unary request and unary response") {
+class EgEndToEndTest extends FunSuite {
+  import EgTest._
+
+  test("unary request and unary response") {
     val sentRsp = Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR))
     val iface = new Eg.Eggman {
       def uplatu(req: Eg.Req): Future[Eg.Rsp] = Future.value(sentRsp)
@@ -95,7 +103,7 @@ class EgTest extends FunSuite {
     } finally await(h2client.close().before(h2srv.close()))
   }
 
-  test("end-to-end: unary request and streaming response") {
+  test("unary request and streaming response") {
     val tx = Stream[Eg.Rsp]()
     val iface = new Eg.Eggman {
       def uplatu(req: Eg.Req): Future[Eg.Rsp] = ???
@@ -114,14 +122,14 @@ class EgTest extends FunSuite {
       val rsps = client.uplats(req)
 
       val rf0 = rsps.recv()
-      assert(!rf0.isDefined)
-      await(tx.send(Eg.Rsp(None)))
       val rf1 = rsps.recv()
 
+      assert(!rf0.isDefined)
+      await(tx.send(Eg.Rsp(None)))
       assert(getAndRelease(rf0) == Eg.Rsp(None))
-
       assert(!rf1.isDefined)
       await(tx.send(Eg.Rsp(Some(Eg.Message.Enumeration.ONE))))
+      eventually { assert(rf1.isDefined) }
       assert(getAndRelease(rf1) == Eg.Rsp(Some(Eg.Message.Enumeration.ONE)))
 
       val rf2 = rsps.recv()
@@ -131,7 +139,7 @@ class EgTest extends FunSuite {
     } finally await(h2client.close().before(h2srv.close()))
   }
 
-  test("end-to-end: streaming request and unary response") {
+  test("streaming request and unary response") {
     val rxP = new Promise[Stream[Eg.Req]]
     val rspP = new Promise[Eg.Rsp]
     val tx = Stream[Eg.Rsp]()
@@ -157,9 +165,11 @@ class EgTest extends FunSuite {
 
       val rf0 = rx.recv()
       assert(!rf0.isDefined)
-      await(tx.send(Eg.Req(None)))
-      val rf1 = rx.recv()
 
+      val rf1 = rx.recv()
+      assert(!rf1.isDefined)
+
+      await(tx.send(Eg.Req(None)))
       assert(getAndRelease(rf0) == Eg.Req(None))
 
       rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))

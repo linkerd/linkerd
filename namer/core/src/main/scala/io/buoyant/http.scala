@@ -14,9 +14,15 @@ private object Match {
   val host = """^[A-Za-z0-9.:_-]+$""".r
   val method = "[A-Z]+".r
 
+  def dropPort(hostname: String): String = {
+    val idx = hostname.indexOf(":")
+    if (idx > 0) hostname.take(hostname.indexOf(":")) else hostname
+  }
+
   def subdomain(domain: String, hostname: String): Option[String] = {
     val sfx = s".$domain"
-    if (hostname endsWith sfx) Some(hostname.dropRight(sfx.length)) else None
+    val host = dropPort(hostname)
+    if (host endsWith sfx) Some(host.dropRight(sfx.length)) else None
   }
 }
 

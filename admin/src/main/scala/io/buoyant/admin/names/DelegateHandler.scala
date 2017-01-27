@@ -1,9 +1,11 @@
 package io.buoyant.admin.names
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Dtab, Namer, Path, Service}
-import com.twitter.util.Future
+import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Dtab, Service}
+import com.twitter.util.{Future, TimeoutException}
 import io.buoyant.admin.HtmlView
 import io.buoyant.namer.Delegator
 
@@ -13,6 +15,8 @@ class DelegateHandler(
   interpreter: String => NameInterpreter
 ) extends Service[Request, Response] {
 
+  private[this] implicit val time = DefaultTimer.twitter
+
   def apply(req: Request): Future[Response] = {
 
     val dtabs = Future.collect {
@@ -21,6 +25,8 @@ class DelegateHandler(
 
     dtabs.map(_.toMap).map { interpreterDtabs =>
       render(interpreterDtabs, baseDtabs)
+    }.within(2.seconds).handle {
+      case e: TimeoutException => timeoutContent
     }.flatMap(view.mkResponse(_))
   }
 
@@ -49,4 +55,16 @@ class DelegateHandler(
       csses = Seq("delegator.css")
     )
   }.tupled
+
+  val timeoutContent = view.html(
+    content = s"""
+        <div class="row">
+          <div class="col-lg-6">
+            <h2 class="router-label-title">Router</h2>
+            <p>The request to namerd has timed out.  Please ensure your config is correct and try again.</p>
+          </div>
+        </div>
+      """,
+    csses = Seq("delegator.css")
+  )
 }

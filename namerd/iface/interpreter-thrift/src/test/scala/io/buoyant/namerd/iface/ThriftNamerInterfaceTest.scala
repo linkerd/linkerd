@@ -70,7 +70,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   test("delegate") {
     val states = Var[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending)
     def interpreter(ns: String) = new NameInterpreter with Delegator {
-      override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) =
+      override def delegate(dtab: Dtab, tree: NameTree[Name.Path]) =
         Activity(states)
       override def bind(dtab: Dtab, path: Path) = ???
       override def dtab: Activity[Dtab] = ???
@@ -106,7 +106,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   test("dtab") {
     val states = Var[Activity.State[Dtab]](Activity.Pending)
     def interpreter(ns: String) = new NameInterpreter with Delegator {
-      override def delegate(dtab: Dtab, tree: DelegateTree[Name.Path]) = ???
+      override def delegate(dtab: Dtab, tree: NameTree[Name.Path]) = ???
       override def bind(dtab: Dtab, path: Path) = ???
       override def dtab: Activity[Dtab] = Activity(states)
     }

@@ -130,7 +130,7 @@ logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier) or [`io.l5d.path`](#path-identifier).
+kind | _required_ | Either [`io.l5d.methodAndHost`](#method-and-host-identifier), [`io.l5d.path`](#path-identifier), [`io.l5d.header`](#header-identifier), [`io.l5d.header.token`](#header-token-identifier), or [`io.l5d.static`](#static-identifier).
 
 <a name="method-and-host-identifier"></a>
 ### Method and Host Identifier
@@ -174,7 +174,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `http` | The `dstPrefix` as set in the routers block.
 method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
-host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/BuoyantIO/linkerd/issues/106). Not used in HTTP/1.0.
+host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/linkerd/linkerd/issues/106). Not used in HTTP/1.0.
 uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
 
 <a name="path-identifier"></a>

@@ -73,39 +73,10 @@ object ServerDispatcher {
     }
 
     private[this] def acceptUnary[Req](codec: Codec[Req], req: h2.Request): Future[Req] =
-      Codec.bufferGrpcFrame(req.stream)
-        .map(codec.decodeBuf)
+      Codec.bufferGrpcFrame(req.stream).map(codec.decodeBuf)
 
-    private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] = {
-      val frames = req.stream
-      val msgs = Stream[Req]()
-      def loop(): Future[Unit] =
-        frames.read().transform {
-          case Return(data: h2.Frame.Data) =>
-            // TODO proper framing
-            val sendF = data.buf match {
-              case Buf.Empty => Future.Unit
-              case buf =>
-                val msg = codec.decodeGrpcMessage(data.buf)
-                // XXX Should the release be passed down with the message?
-                // Should the release API be changed to allow partial
-                // release (i.e. of encoded messages within an h2 frame)?
-                msgs.send(msg)
-            }
-            val writeF = sendF.before(data.release())
-            if (data.isEnd) writeF.before(msgs.close())
-            else writeF.before(loop())
-
-          case Return(data: h2.Frame.Trailers) =>
-            // Odd, but let's roll with this...
-            msgs.close()
-
-          case Throw(e) =>
-            msgs.close() // TODO reset the stream with a failure.
-        }
-      loop() // TODO detect interrupt and cancel?
-      msgs
-    }
+    private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] =
+      codec.decodeRequest(req)
 
     private[this] def respondUnary[Rsp](codec: Codec[Rsp], msg: Rsp): h2.Response = {
       val buf = codec.encodeGrpcMessage(msg)

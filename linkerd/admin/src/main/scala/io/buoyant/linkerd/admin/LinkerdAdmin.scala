@@ -1,20 +1,14 @@
 package io.buoyant.linkerd
 package admin
 
-import com.twitter.app.App
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.server.handler.{SummaryHandler => _, _}
-import com.twitter.util.Future
+import com.twitter.server.handler.{ResourceHandler, SummaryHandler => _}
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
-import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter}
-import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.Linker.LinkerConfig
-import io.buoyant.namer.EnumeratingNamer
+import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter, _}
+import io.buoyant.namer.{Delegator, EnumeratingNamer, NamespacedInterpreterConfig}
 import io.buoyant.router.RoutingFactory
-import io.buoyant.telemetry.Telemeter
 
 object LinkerdAdmin {
 
@@ -27,7 +21,7 @@ object LinkerdAdmin {
     "/config.json" -> new ConfigHandler(lc, Linker.LoadedInitializers.iter)
   )
 
-  def delegator(routers: Seq[Router]): Admin.Handlers = {
+  def delegator(adminHandler: AdminHandler, routers: Seq[Router]): Admin.Handlers = {
     val byLabel = routers.map(r => r.label -> r).toMap
     val dtabs = byLabel.mapValues { router =>
       val RoutingFactory.BaseDtab(dtab) = router.params[RoutingFactory.BaseDtab]
@@ -37,38 +31,61 @@ object LinkerdAdmin {
       val DstBindingFactory.Namer(namer) = router.params[DstBindingFactory.Namer]
       namer
     }
+    println(interpreters.toString())
     def getInterpreter(label: String): NameInterpreter =
       interpreters.getOrElse(label, NameInterpreter)
 
     Seq(
-      "/delegator" -> new DelegateHandler(AdminHandler, dtabs, getInterpreter),
+      "/delegator" -> new DelegateHandler(adminHandler, dtabs, getInterpreter),
       "/delegator.json" -> new DelegateApiHandler(getInterpreter)
     )
   }
 
-  val static: Admin.Handlers = Seq(
-    "/" -> new DashboardHandler,
+  def static(adminHandler: AdminHandler): Admin.Handlers = Seq(
+    "/" -> new DashboardHandler(adminHandler),
     "/files/" -> StaticFilter.andThen(ResourceHandler.fromDirectoryOrJar(
       baseRequestPath = "/files/",
       baseResourcePath = "io/buoyant/admin",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
     )),
-    "/help" -> new HelpPageHandler,
-    "/requests" -> new RecentRequestsPlaceholderHandler
+    "/help" -> new HelpPageHandler(adminHandler),
+    "/requests" -> new RecentRequestsPlaceholderHandler(adminHandler),
+    "/logging" -> new LoggingHandler(adminHandler),
+    "/logging.json" -> new LoggingApiHandler()
   )
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Admin.Handlers = {
+    val delegatorsByLabel = linker.routers.flatMap { router =>
+      val DstBindingFactory.Namer(namer) = router.params[DstBindingFactory.Namer]
+      namer match {
+        case delegator: Delegator => Some(router.label -> delegator)
+        case _ => None
+      }
+    }.toMap
+
+    val namerdInterpreterConfigs: Seq[(String, NamespacedInterpreterConfig)] = lc.routers
+      .flatMap(router => router.interpreter match {
+        case config: NamespacedInterpreterConfig => Some((router.label -> config))
+        case _ => None
+      })
+
+    val namerdNav = namerdInterpreterConfigs.size > 0
+    val adminHandler = new AdminHandler(namerdNav)
+
+    val namerd = Seq("/namerd" -> new NamerdHandler(adminHandler, namerdInterpreterConfigs, delegatorsByLabel))
+    val adminFilter = new AdminFilter(adminHandler)
+
     val extHandlers = Admin.extractHandlers(
       linker.namers ++
         linker.routers ++
         linker.telemeters
     ).map {
-        case (path, handler) => (path, AdminFilter.andThen(handler))
+        case (path, handler) => (path, adminFilter.andThen(handler))
       }
 
-    static ++ config(lc) ++
+    static(adminHandler) ++ namerd ++ config(lc) ++
       boundNames(linker.namers.map { case (_, n) => n }) ++
-      delegator(linker.routers) ++
+      delegator(adminHandler, linker.routers) ++
       extHandlers
   }
 }

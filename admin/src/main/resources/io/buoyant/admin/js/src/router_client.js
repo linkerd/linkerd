@@ -111,7 +111,7 @@ define([
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
       renderMetrics($metricsEl, client, [], [], clientColor);
-      var chart = SuccessRateGraph($chartEl.find($(".client-success-rate")), colors.color);
+      var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -151,9 +151,7 @@ define([
       }
 
       return {
-        updateColors: function(clientToColor) {
-          chart.updateColors(clientToColor[client.label].color);
-        }
+        label: client.label
       };
     };
   })();

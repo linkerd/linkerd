@@ -10,10 +10,10 @@ import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 
 trait DstBindingFactory[-Req, +Rsp] extends Closable {
-  final def apply(dst: Dst): Future[Service[Req, Rsp]] =
+  final def apply(dst: Dst.Path): Future[Service[Req, Rsp]] =
     apply(dst, ClientConnection.nil)
 
-  def apply(dst: Dst, conn: ClientConnection): Future[Service[Req, Rsp]]
+  def apply(dst: Dst.Path, conn: ClientConnection): Future[Service[Req, Rsp]]
 
   def status: Status
 }
@@ -68,7 +68,7 @@ object DstBindingFactory {
         // by proxying close() on the underlying RpcClientFactory.
         val closable = Closable.ref(new AtomicReference(release))
         new DstBindingFactory[Req, Rsp] {
-          def apply(dst: Dst, conn: ClientConnection) = underlying(dst, conn)
+          def apply(dst: Dst.Path, conn: ClientConnection) = underlying(dst, conn)
           def status = underlying.status
           def close(deadline: Time) = closable.close(deadline)
         }
@@ -136,11 +136,9 @@ object DstBindingFactory {
   )(implicit timer: Timer = DefaultTimer.twitter) extends DstBindingFactory[Req, Rsp] {
     private[this]type Cache[Key] = ServiceFactoryCache[Key, Req, Rsp]
 
-    def apply(dst: Dst, conn: ClientConnection): Future[Service[Req, Rsp]] = dst match {
-      case path: Dst.Path =>
-        val exc = new RequestTimeoutException(bindingTimeout.timeout, s"binding ${path.path.show}")
-        pathCache(path, conn).raiseWithin(bindingTimeout.timeout, exc)
-      case bound: Dst.Bound => boundCache(bound, conn)
+    def apply(dst: Dst.Path, conn: ClientConnection): Future[Service[Req, Rsp]] = {
+      val exc = new RequestTimeoutException(bindingTimeout.timeout, s"binding ${dst.path.show}")
+      pathCache(dst, conn).raiseWithin(bindingTimeout.timeout, exc)
     }
 
     // The path cache is keyed on the resolution context and

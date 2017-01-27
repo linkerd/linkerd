@@ -44,7 +44,7 @@ case class ConfiguredDtabNamer(
 
   override def delegate(
     dtab: Dtab,
-    tree: DelegateTree[Name.Path]
+    tree: NameTree[Name.Path]
   ): Activity[DelegateTree[Bound]] =
     configuredDtab.flatMap { confDtab =>
       namersInterpreter.delegate(confDtab ++ dtab, tree)

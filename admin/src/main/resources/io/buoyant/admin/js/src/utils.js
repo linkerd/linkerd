@@ -135,25 +135,23 @@ define([
     this._resize();
   }
 
-  UpdateableChart.prototype.setMetric = function(metric) {
-    this.setMetrics([{ name: metric, color: "83,176,196"}]);
+  UpdateableChart.prototype.updateTsOpts = function(tsOpts) {
+    this.tsOpts = tsOpts;
   }
 
-  UpdateableChart.prototype.setMetrics = function(metrics, suppressUpdates) {
+  UpdateableChart.prototype.setMetrics = function(metrics) {
     clearTimeout(this.timeout);
 
     if (this.tsMap !== undefined) {
       _.map(this.tsMap, function(ts){
         this.chart.removeTimeSeries(ts);
-      });
+      }.bind(this));
     }
 
     this.tsMap = {};
     _.each(metrics, this._addMetric.bind(this));
 
     this.metrics = _.map(metrics, 'name');
-    if (!suppressUpdates)
-      this._getMetrics();
   }
 
   UpdateableChart.prototype.addMetrics = function(metrics) {
@@ -162,16 +160,10 @@ define([
   }
 
   UpdateableChart.prototype._addMetric = function(metric) {
-    var tsOptions = this.tsOpts ? this.tsOpts(metric.name) :  {
-        strokeStyle: "rgb(" + metric.color + ")",
-        fillStyle: "rgba(" + metric.color + ",0.3)",
-        lineWidth: 3
-      };
-
     this.tsMap[metric.name] = new TimeSeries();
     this.chart.addTimeSeries(
       this.tsMap[metric.name],
-      tsOptions
+      this.tsOpts(metric.name)
     );
   }
 
@@ -179,32 +171,12 @@ define([
     this.canvas.width = this.widthFn();
   }
 
-  UpdateableChart.prototype._getMetrics = function() {
-    if (this.metrics.length) {
-      $.ajax({
-        url: "/admin/metrics",
-        type: "POST",
-        dataType: "json",
-        data: $.param({m: this.metrics}, true), //use shallow/traditional encoding
-        cache: false,
-        success: (function(data) {
-          this.updateMetrics(data);
-          this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
-        }).bind(this)
-      });
-    } else {
-      this.timeout = setTimeout(this._getMetrics.bind(this), 1000);
-    }
-  }
-
   UpdateableChart.prototype.updateMetrics = function(data) {
-    _.each(data, function(datum){
+    _.each(data, function(datum) {
       var ts = this.tsMap[datum.name];
-      if (!ts) {
-        this._addMetric(datum);
-        ts = this.tsMap[datum.name];
+      if (ts) {
+        ts.append(new Date().getTime(), datum.delta);
       }
-      ts.append(new Date().getTime(), datum.delta);
     }.bind(this));
 
     $(this.canvas).trigger(

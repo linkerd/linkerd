@@ -12,7 +12,8 @@ import io.buoyant.config.PolymorphicConfig
   new Type(value = classOf[P2C], name = "p2c"),
   new Type(value = classOf[P2CEwma], name = "ewma"),
   new Type(value = classOf[Aperture], name = "aperture"),
-  new Type(value = classOf[Heap], name = "heap")
+  new Type(value = classOf[Heap], name = "heap"),
+  new Type(value = classOf[RoundRobin], name = "roundRobin")
 ))
 trait LoadBalancerConfig extends PolymorphicConfig {
   val factory: LoadBalancerFactory
@@ -57,4 +58,11 @@ case class Aperture(
 class Heap extends LoadBalancerConfig {
   @JsonIgnore
   val factory = Balancers.heap()
+}
+
+case class RoundRobin(maxEffort: Option[Int]) extends LoadBalancerConfig {
+  @JsonIgnore
+  val factory = Balancers.roundRobin(
+    maxEffort = maxEffort.getOrElse(Balancers.MaxEffort)
+  )
 }

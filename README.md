@@ -267,7 +267,7 @@ For local testing convenience, we supply a config that routes to a single
 backend on _localhost:8080_.
 
 ```
-$ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.8.4-SNAPSHOT /config/static_namer.yaml
+$ docker run -p 4140:4140 -p 9990:9990 -v /path/to/linkerd/linkerd/examples:/config buoyantio/linkerd:0.8.6-SNAPSHOT /config/static_namer.yaml
 ```
 
 The list of image names may be changed with a command like:
@@ -302,14 +302,14 @@ The assembly script executes two commands serially:
 
 ```bash
 $ ./sbt namerd/dcos:assembly
-$ namerd/target/scala-2.11/namerd-0.8.4-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+$ namerd/target/scala-2.11/namerd-0.8.6-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
 ```
 
 ##### Run assembly script in docker #####
 
 ```bash
 $ ./sbt namerd/dcos:docker
-$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.8.4-SNAPSHOT-dcos namerd/examples/zk.yaml
+$ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.8.6-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```
 
 ### Contributing ###
@@ -344,11 +344,11 @@ specific language governing permissions and limitations under the License.
 [finagle]: https://twitter.github.io/finagle/
 [funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
 [k8s]: https://k8s.io/
-[l5d-ci]: https://circleci.com/gh/BuoyantIO/linkerd
-[l5d-ci-status]: https://circleci.com/gh/BuoyantIO/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-ci]: https://circleci.com/gh/linkerd/linkerd
+[l5d-ci-status]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
 [l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
 [netty]: https://netty.io/
 [sbt]: http://www.scala-sbt.org/
 [scalatest]: http://www.scalatest.org/
 [ssg]: http://docs.scala-lang.org/style/scaladoc.html
-[releases]: https://github.com/BuoyantIO/linkerd/releases
+[releases]: https://github.com/linkerd/linkerd/releases

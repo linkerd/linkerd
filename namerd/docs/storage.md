@@ -9,7 +9,7 @@ These parameters are available to the storage regardless of kind. Storage may al
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either `io.l5d.inMemory`, `io.l5d.k8s`, `io.l5d.zk`, `io.l5d.etcd` or `io.l5d.consul`.
+kind | _required_ | Either [`io.l5d.inMemory`](#in-memory), [`io.l5d.k8s`](#kubernetes), [`io.l5d.zk`](#zookeeper), [`io.l5d.etcd`](#etcd) or [`io.l5d.consul`](#consul).
 experimental | `false` | Set this to `true` to enable the storage if it is experimental.
 
 ## In Memory

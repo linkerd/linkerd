@@ -4,11 +4,11 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.util.Future
 
-private[admin] class HelpPageHandler extends Service[Request, Response] {
+private[admin] class HelpPageHandler(adminHandler: AdminHandler) extends Service[Request, Response] {
 
-  override def apply(req: Request): Future[Response] = AdminHandler.mkResponse(html)
+  override def apply(req: Request): Future[Response] = adminHandler.mkResponse(html)
 
-  val html = AdminHandler.html(
+  val html = adminHandler.html(
     content = HelpPageHandler.helpHtml
   )
 }

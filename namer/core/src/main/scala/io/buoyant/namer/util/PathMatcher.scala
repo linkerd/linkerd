@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.util
+package io.buoyant.namer.util
 
 import com.twitter.finagle.Path
 import scala.annotation.tailrec

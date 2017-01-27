@@ -9,7 +9,7 @@ regardless of kind. Telemeters may also have kind-specific parameters. </aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | `io.l5d.commonMetrics`, `io.l5d.statsd`, or `io.l5d.tracelog`
+kind | _required_ | Either [`io.l5d.commonMetrics`](#commonmetrics), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), or [`io.l5d.recentRequests`](#recent-requests).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## CommonMetrics
@@ -94,6 +94,8 @@ telemetry:
   capacity: 10
 ```
 
+kind: `io.l5d.recentRequests`
+
 The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
 the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the
 admin port.  Recording requests can have an impact on linkerd performance so make sure to set a
@@ -103,3 +105,39 @@ Key        | Default Value | Description
 ---------- | ------------- | -----------
 sampleRate | _required_    | What percentage of traces to record.
 capacity   | 10            | The maximum number of recent traces to store
+
+## Usage
+
+> Example usage config
+
+```yaml
+telemetry:
+ - kind: io.l5d.commonMetrics
+ - kind: io.l5d.usage
+```
+
+kind `io.l5d.usage`
+
+In order to make improvements and prioritize features, we'd like to gain a
+broader picture of how users run linkerd. This opt-in telemeter helps us by
+gathering anonymized usage data, sent to buoyant once an hour.
+
+<aside class="warning"> No data is sent until the telemeter is explicitly added to the config! </aside>
+
+
+The kind of data captured is as follows:
+
+1. How linkerds are configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
+2. What environments are linkerds running in (Operating System, Container orchestration solution),
+3. How do linkerds perform in those contexts (JVM performance, Number of requests served)
+
+We do not collect the labels of namers/routers, designated service addresses or
+directories, dtabs, request/response data, or any other possibly identifying information.
+
+To see the exact payload that would be sent, add the telemeter with `dryRun` set to `true`,
+then query `localhost:9990/admin/metrics/usage`
+
+Key | Default Value | Description
+--- | ------------- | -----------
+orgId | empty by default | Optional string of your choosing that identifies your organization
+dryRun | false | If set to true, the usage telemeter is loaded but no data is sent

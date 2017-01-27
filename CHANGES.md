@@ -1,12 +1,31 @@
-## In the next next release...
+## Upcoming Release
 
+* Add `io.l5d.usage` telemeter for opt-in usage data collection
+* Admin dashboard
+  * Sorts clients and servers alphabetically
+  * Displays routers in the order that they are defined
+* Update Marathon namer to evaluate an app's running state
+* Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
 
-## In the next release...
+## 0.8.6 2017-01-19
 
 * Add experimental StatsD telemeter
-* Add a recent requests log in the linkerd admin dashboard
+* Admin dashboard
+  * Add a log of recent requests
+  * Now works if served at a non-root url
+* HTTP
+  * Support the RFC 7329 `Forwarded` header
+* HTTP/2
+  * H2 clients now properly advertise support for the “http2” protocol over
+    ALPN
+* Introduce `io.buoyant.hostportPfx` and `io.buoyant.porthostPfx` namers for
+  splitting port numbers out of hostnames
+* Add the `io.l5d.rewrite` namer for arbitrary reordering of path segments
+* Bug fixes:
+  * Fix path identifier bug when slash precedes uri params
+  * Fix subdomainOfPfx handling of hostnames with port numbers
 
 ## 0.8.5 2017-01-06
 
@@ -310,7 +329,7 @@
 ## 0.0.10
 
 * We now support end-to-end TLS! However, verification is currently limited to
-  global certs. See  https://github.com/BuoyantIO/linkerd/issues/64 for more on
+  global certs. See  https://github.com/linkerd/linkerd/issues/64 for more on
   the upcoming roadmap.
 * Prep work for "transparent TLS". Look for this in upcoming releases.
 * Prep work for being able to generate Docker images from the repo, in service

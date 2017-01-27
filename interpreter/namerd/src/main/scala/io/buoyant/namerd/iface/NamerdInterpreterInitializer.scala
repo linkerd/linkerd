@@ -4,14 +4,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
 import com.twitter.util.{NonFatal => _, _}
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
-import com.twitter.finagle.buoyant.TlsClientPrep
 import scala.util.control.NonFatal
 
 /**
@@ -43,7 +43,7 @@ case class NamerdInterpreterConfig(
   namespace: Option[String],
   retry: Option[Retry],
   tls: Option[ClientTlsConfig]
-) extends InterpreterConfig {
+) extends NamespacedInterpreterConfig {
 
   @JsonIgnore
   private[this] val log = Logger.get()
@@ -91,20 +91,10 @@ case class NamerdInterpreterConfig(
         }
     }
 
-    val tlsTransformer = new Transformer {
-      override def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]) = {
-        tls match {
-          case Some(tlsConfig) =>
-            TlsClientPrep.static[Req, Rep](tlsConfig.commonName, tlsConfig.caCert) +: stack
-          case None => stack
-        }
-      }
-    }
-
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ params)
       .transformed(retryTransformer)
-      .transformed(tlsTransformer)
+      .transformed(TlsTransformer(tls))
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
