@@ -55,14 +55,14 @@ object LinkerdAdmin {
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Seq[Handler] = {
     val navItems = Seq(
-      NavItem("dtab", "/delegator"),
-      NavItem("logging", "/logging")
+      NavItem("dtab", "delegator"),
+      NavItem("logging", "logging")
     ) ++ Admin.extractNavItems(
         linker.namers ++
           linker.routers.map(_.interpreter) ++
           linker.routers ++
           linker.telemeters
-      ) :+ NavItem("help", "/help")
+      ) :+ NavItem("help", "help")
 
     def uniqBy[T, U](items: Seq[T])(f: T => U): Seq[T] = items match {
       case Nil => items

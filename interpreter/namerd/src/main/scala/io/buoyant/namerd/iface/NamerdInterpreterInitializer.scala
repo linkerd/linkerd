@@ -111,7 +111,7 @@ case class NamerdInterpreterConfig(
       override def adminHandlers: Seq[Handler] =
         Seq(Handler("/namerd", handler, css = Seq("delegator.css")))
 
-      override def navItems: Seq[NavItem] = Seq(NavItem("namerd", "/namerd"))
+      override def navItems: Seq[NavItem] = Seq(NavItem("namerd", "namerd"))
     }
   }
 }

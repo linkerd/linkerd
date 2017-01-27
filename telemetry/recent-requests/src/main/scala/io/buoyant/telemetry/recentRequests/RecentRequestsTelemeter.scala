@@ -13,5 +13,5 @@ class RecentRequestsTelemeter(sampleRate: Double, capacity: Int) extends Telemet
 
   override def adminHandlers: Seq[Handler] = Seq(Handler("/requests", handler))
 
-  override def navItems: Seq[NavItem] = Seq(NavItem("requests", "/requests"))
+  override def navItems: Seq[NavItem] = Seq(NavItem("requests", "requests"))
 }
