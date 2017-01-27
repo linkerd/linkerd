@@ -139,7 +139,6 @@ class EgEndToEndTest extends FunSuite {
   }
 
   test("streaming request and unary response") {
-    setLogLevel(com.twitter.logging.Level.ALL)
     val rxP = new Promise[Stream[Eg.Req]]
     val rspP = new Promise[Eg.Rsp]
     val tx = Stream[Eg.Rsp]()
@@ -181,7 +180,6 @@ class EgEndToEndTest extends FunSuite {
 
     } finally {
       await(h2client.close().before(h2srv.close()))
-      setLogLevel(com.twitter.logging.Level.OFF)
     }
   }
 
