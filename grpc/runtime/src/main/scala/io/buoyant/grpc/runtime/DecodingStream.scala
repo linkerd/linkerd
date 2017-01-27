@@ -21,6 +21,7 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
 
   protected[this] def frames: h2.Stream
   protected[this] def decoder: ByteBuffer => T
+  protected[this] def getStatus: h2.Frame.Trailers => GrpcStatus
 
   // convenience
   private[this]type Releasable = Stream.Releasable[T]
@@ -39,6 +40,10 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
    * so that read-and-update access to `recvState` is safe.
    */
   private[this] val recvMu = new AsyncMutex()
+
+  override def reset(e: GrpcStatus): Unit = synchronized {
+    recvState = RecvState.Reset(e)
+  }
 
   /**
    * Obtain the next gRPC message from the underlying H2 stream.
@@ -67,51 +72,45 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
 
   /**
    * Read from the h2 stream until the next message is fully buffered.
-   *
-   * XXX this can starve on messages that exceed an h2 window size,
-   * but we don't have access to the window size anyhwere here...
    */
-  private[this] def read(s0: RecvState): Future[(RecvState, Try[Stream.Releasable[T]])] =
+  private[this] def read(s0: RecvState): Future[(RecvState, Try[Stream.Releasable[T]])] = {
     frames.read().transform {
-      case Throw(rst: h2.Reset) => Future.exception(Stream.Closed) // XXX FIXME
+      case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
-      case Return(t: h2.Frame.Trailers) => Future.exception(Stream.Closed) // XXX FIXME
+      case Return(t: h2.Frame.Trailers) => Future.exception(getStatus(t))
       case Return(f: h2.Frame.Data) =>
         decodeFrame(s0, f, decoder) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
           case Decoded(s1, None) =>
-            if (f.isEnd) Future.value(s1 -> Throw(Stream.Closed)) // XXX FIXME
-            else read(s1) // still not enough data, continue reading.
+            if (f.isEnd) Future.value(s1 -> Throw(GrpcStatus.Ok()))
+            else read(s1)
         }
     }
+  }
 }
 
 object DecodingStream {
-
-  /*
-   * Constructors
-   */
 
   def apply[T](
     req: h2.Request,
     decodeF: ByteBuffer => T
   ): Stream[T] = new DecodingStream[T] {
-    override protected[this] val frames: h2.Stream = req.stream
-    override protected[this] val decoder: ByteBuffer => T = decodeF
+    protected[this] val frames: h2.Stream = req.stream
+    protected[this] def decoder: ByteBuffer => T = decodeF
+    protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = _ => GrpcStatus.Ok()
   }
 
   def apply[T](
     rsp: h2.Response,
     decodeF: ByteBuffer => T
   ): Stream[T] = new DecodingStream[T] {
-    override protected[this] val frames: h2.Stream = rsp.stream
-    override protected[this] val decoder: ByteBuffer => T = decodeF
+    protected[this] val frames: h2.Stream = rsp.stream
+    protected[this] def decoder: ByteBuffer => T = decodeF
+    protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromTrailers(_)
   }
 
-  /**
-   * Frame buffer state
-   */
   private sealed trait RecvState
+
   private object RecvState {
 
     case class Buffer(
@@ -123,21 +122,18 @@ object DecodingStream {
       releaser: Releaser = Releaser.Nil
     ) extends RecvState
 
-    val Empty: RecvState = Buffer()
+    case class Reset(error: GrpcStatus) extends RecvState
 
-    // TODO Introduce an additional state to indicate when the stream
-    // has been reset.
+    val Empty: RecvState = Buffer()
   }
 
   /**
-   * Releasers track releasable segments across regions of an
-   * h2.Stream.
+   * Keeps track of when underlying h2 frames should be released.
    *
-   * Frames added to `track` are appended to byte tracking.  As
-   * headers & messages are parsed, `consume` is called to mark bytes
-   * as pending to be released.  Finally, `releasable` returns a
-   * function that can be used to release pending data (since the last
-   * call to releasable).
+   * As bytes are read from H2 frames, they are _tracked_. As headers
+   * and messages are read, bytes are _consumed_. When a message is
+   * being constructed, it is paired with a _releasable_ function that
+   * frees the underlying H2 frames as needed.
    */
   private trait Releaser {
 
@@ -307,6 +303,8 @@ object DecodingStream {
     s0: RecvState,
     decoder: ByteBuffer => T
   ): Decoded[T] = s0 match {
+    case rst@RecvState.Reset(_) => Decoded(rst, None)
+
     case RecvState.Buffer(Some(hdr), buf, releaser) =>
       val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
       decodeMessage(hdr, bb0.duplicate(), releaser, decoder)
@@ -328,6 +326,8 @@ object DecodingStream {
     frame: h2.Frame.Data,
     decoder: ByteBuffer => T
   ): Decoded[T] = s0 match {
+    case rst@RecvState.Reset(_) => Decoded(rst, None)
+
     case RecvState.Buffer(None, initbuf, releaser0) =>
       val buf = initbuf.concat(frame.buf)
       val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)

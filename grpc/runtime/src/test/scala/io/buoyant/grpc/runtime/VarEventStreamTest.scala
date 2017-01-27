@@ -26,7 +26,7 @@ class VarEventStreamTest extends FunSuite {
     assert(await(f2).value == 2)
 
     val f3 = stream.recv()
-    assert(await(f3.liftToTry) == Throw(Stream.Closed))
+    assert(await(f3.liftToTry) == Throw(GrpcStatus.Ok()))
   }
 
   test("drops intermediate states") {
@@ -52,6 +52,6 @@ class VarEventStreamTest extends FunSuite {
     assert(await(f2).value == 4)
 
     val f3 = stream.recv()
-    assert(await(f3.liftToTry) == Throw(Stream.Closed))
+    assert(await(f3.liftToTry) == Throw(GrpcStatus.Ok()))
   }
 }
