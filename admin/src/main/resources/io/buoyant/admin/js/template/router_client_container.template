@@ -1,6 +1,6 @@
 <div class="client-container clearfix">
   <div class="router-header-large" style="border-bottom: 2px solid {{clientColor}};">
-    /{{client}}
+    <span class="transformer-prefix client-id" style="display: none">{{prefix}}</span><span class="client-id">{{client}}</span>
     <div class="client-toggle pull-right">
       <a class="client-expand" target="blank">expand</a>
       <a class="client-collapse" target="blank">collapse</a>
