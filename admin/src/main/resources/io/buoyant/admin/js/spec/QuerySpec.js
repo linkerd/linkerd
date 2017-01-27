@@ -86,6 +86,22 @@ define(['src/query'], function(Query) {
       });
     });
 
+    describe("pathQuery", function() {
+      it("builds a query for a router and metric and all paths", function() {
+        var query = Query.pathQuery().withRouter(routerName).withMetric("fooMetric").allPaths().build();
+        var expectedRegex = new RegExp('^rt\/(fooRouter)\/dst\/path\/(.*)\/(fooMetric)$');
+
+        expect(query).toEqual(expectedRegex);
+      });
+
+      it("builds a query for a router and all metrics and all paths", function() {
+        var query = Query.pathQuery().withRouter(routerName).allMetrics().allPaths().build();
+        var expectedRegex = new RegExp('^rt\/(fooRouter)\/dst\/path\/(.*)\/(.*)$');
+
+        expect(query).toEqual(expectedRegex);
+      });
+    });
+
     describe("find and filter", function() {
       var rawMetrics = [
         { delta: 1, name: "foo", value: 10 },

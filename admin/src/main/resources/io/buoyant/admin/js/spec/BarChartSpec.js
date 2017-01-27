@@ -5,43 +5,53 @@ define([
   'lodash',
   'src/bar_chart'
 ], function($, _, BarChart) {
-  describe("LB/retries bar chart", function() {
-    it("renders a simple bar chart (one bar color)", function() {
+  describe("Simple bar chart", function() {
+    it("renders a bar chart (one bar color) with correct widths", function() {
       var containerWidth = 100;
       var leftValue = 60;
       var rightValue = 200;
+      var fakeDescription = "Bar chart description";
+      var fakeValue = "9876";
 
       var $lbContainer = $("<div style='width:" + containerWidth + "px;' />");
-      var lbBarChart = new BarChart($lbContainer);
-      lbBarChart.update({
-        "loadbalancer/size": { description: "fooMin", value: rightValue },
-        "loadbalancer/available": { description: "fooMax", value: leftValue }
-      });
 
-      var leftNum = $lbContainer.find(".bar-chart-value.pull-left").text();
-      var rightNum = $lbContainer.find(".bar-chart-value.pull-right").text();
+      function barChartColorFn(percent) {
+        return percent < 0.5 ? "orange" : "green";
+      }
+
+      function barPercentCalc(data) {
+        var percent = !data.denom ? null : data.numer / data.denom;
+
+        return {
+          percent: percent,
+          label: {
+            description: fakeDescription,
+            value: fakeValue
+          }
+        }
+      }
+      var lbBarChart = new BarChart($lbContainer, barPercentCalc, barChartColorFn);
+      lbBarChart.update({ numer: leftValue, denom: rightValue });
+
       var $barContainer = $lbContainer.find(".overlay-bars.bar-container");
       var $bar = $lbContainer.find(".overlay-bars.bar");
 
-      expect(leftNum).toContain(leftValue);
-      expect(rightNum).toContain(rightValue);
+      expect($lbContainer.find(".bar-chart-label").text()).toContain(fakeDescription);
 
       expect($barContainer.attr('class')).toContain("orange");
       expect($barContainer.width()).toBe(containerWidth);
       expect($bar.width()).toBe(Math.round(leftValue/rightValue * containerWidth));
 
-      lbBarChart.update({
-        "loadbalancer/size": { description: "fooMin", value: 100 },
-        "loadbalancer/available": { description: "fooMax", value: 90 }
-      });
+      lbBarChart.update({ numer: 90, denom: 100 });
       $bar = $lbContainer.find(".overlay-bars.bar");
+      $barContainer = $lbContainer.find(".overlay-bars.bar-container");
+      expect($barContainer.attr('class')).toContain("green");
       expect($bar.width()).toBe(Math.round(90/100 * containerWidth));
 
-      lbBarChart.update({
-        "loadbalancer/size": { description: "fooMin", value: 30 },
-        "loadbalancer/available": { description: "fooMax", value: 6 }
-      });
+      lbBarChart.update({ numer: 6, denom: 30 });
       $bar = $lbContainer.find(".overlay-bars.bar");
+      $barContainer = $lbContainer.find(".overlay-bars.bar-container");
+      expect($barContainer.attr('class')).toContain("orange");
       expect($bar.width()).toBe(Math.round(6/30 * containerWidth));
     });
   });

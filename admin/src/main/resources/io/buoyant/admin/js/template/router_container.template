@@ -6,7 +6,8 @@
     <canvas class="router-graph" height="181"></canvas>
 
     <div class="router-stats">
-      <div class="col-md-6 retries-bar-chart"></div>
+      <div class="retries-stats"></div>
+      <div class="retries-bar-chart"></div>
       <div class="clearfix"></div>
     </div>
 

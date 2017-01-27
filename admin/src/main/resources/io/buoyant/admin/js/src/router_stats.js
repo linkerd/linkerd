@@ -6,12 +6,16 @@ define([
   'src/query',
   'src/utils',
   'src/bar_chart'
+  // 'text!template/router_stats.template'
 ], function($, Handlebars,
   Query,
   Utils,
   BarChart
+  // routerStatsTemplate
 ) {
   var RouterStats = (function() {
+    // var template = Handlebars.compile(routerStatsTemplate);
+
     function processResponses(data, routerName) {
       var result = {
         router: routerName,
@@ -41,11 +45,8 @@ define([
       else return "red";
     }
 
-    function getBarChartPercent(data) {
-      var numer = (data["retries/requeues"] || 0) + (data["retries/total"] || 0);
-      var denom = data["requests"];
-      var percent = !denom ? null : (numer || 0) / denom;
-
+    function getBarChartPercent(percent) {
+      // var budgetRemaining = 0.2 // budgetPercent - retriesPercent
       return {
         percent: percent,
         label: {
@@ -55,16 +56,32 @@ define([
       }
     }
 
+    function getRetryPercent(data) {
+      var numer = (data["retries/requeues"] || 0) + (data["retries/total"] || 0);
+      var denom = data["requests"];
+
+      return !denom ? null : (numer || 0) / denom;
+    }
+
+    function render(percent, $statsContainer) {
+      var percentDisplay = _.isNull(percent) ? "-" : Math.round(percent * 100) + "%";
+      $statsContainer.html("Retry percentage: " + percentDisplay);
+    }
+
     return function(metricsCollector, $containerEl, routerName) {
       var clientQuery = Query.clientQuery().allClients().withRouter(routerName).withMetrics(["retries/requeues"]).build();
       var pathQuery = Query.pathQuery().allPaths().withRouter(routerName).withMetrics(["requests", "retries/total"]).build();
 
+      var $statsContainer = $containerEl.find(".retries-stats");
       var $retriesBarChart = $containerEl.find(".retries-bar-chart");
-      var retriesBarChart = new BarChart($retriesBarChart, getBarChartPercent, getBarChartColor);
+      var retriesBarChart = new BarChart($retriesBarChart, getBarChartColor);
 
       metricsCollector.registerListener(function(data) {
           var summaryData = processResponses(data.specific, routerName);
-          retriesBarChart.update(summaryData);
+          var retryPercent = getRetryPercent(summaryData);
+
+          retriesBarChart.update(getBarChartPercent(retryPercent));
+          render(retryPercent, $statsContainer);
         }, function(metrics) {
           var pathMetrics = Query.filter(pathQuery, metrics);
           var clientMetrics = Query.filter(clientQuery, metrics);

@@ -19,21 +19,18 @@ define([
   var template = Handlebars.compile(barChartTemplate);
   var barContainerWidth = 360; // px
 
-  function render($container, data, dataExtractor) {
+  function render($container, data, getBarDimensions) {
     if (!data) return;
-    var tmplData = dataExtractor(data);
+    var tmplData = getBarDimensions(data);
     $container.html(template(tmplData));
   }
 
-  return function($container, getPercentAndLabel, getColor) {
+  return function($container, getColor) {
     barContainerWidth = $container.width() || barContainerWidth;
-    render($container, null, dataExtractor);
+    render($container, null, getBarDimensions);
 
-    function dataExtractor(data) {
-      if (!data) {
-        return null;
-      }
-      var displayData = getPercentAndLabel(data);
+    function getBarDimensions(displayData) {
+      // var displayData = getPercentAndLabel(data);
       var barWidth = Math.min(Math.round(displayData.percent * barContainerWidth), barContainerWidth);
 
       var barDimensions = {
@@ -47,7 +44,7 @@ define([
 
     return {
       update: function(newData) {
-        render($container, newData, dataExtractor);
+        render($container, newData, getBarDimensions);
       }
     }
   }
