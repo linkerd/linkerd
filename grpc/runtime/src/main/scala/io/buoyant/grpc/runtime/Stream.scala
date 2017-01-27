@@ -5,8 +5,6 @@ import com.twitter.finagle.Failure
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, Var}
-import java.util.concurrent.atomic.AtomicReference
-import scala.collection
 
 trait Stream[+T] {
   def recv(): Future[Stream.Releasable[T]]
