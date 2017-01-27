@@ -19,6 +19,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
+import io.buoyant.admin.Admin.Handler
 import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
@@ -118,7 +119,7 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String],
     registry: Metrics
-  ) extends Admin.Handler {
+  ) extends Service[Request, Response] {
 
     def apply(request: Request): Future[Response] = {
       val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
@@ -162,8 +163,8 @@ class UsageDataTelemeter(
   log.info(s"connecting to usageData proxy at $metricsDst")
   val client = Client(metricsService, config, pid, orgId)
 
-  val adminHandlers: Admin.Handlers = Seq(
-    "/admin/metrics/usage" -> new UsageDataHandler(metricsService, config, pid, orgId, registry)
+  val adminHandlers = Seq(
+    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, registry))
   )
 
   private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap

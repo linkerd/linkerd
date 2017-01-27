@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.param.Label
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.LoadService
@@ -181,7 +182,7 @@ object Linker {
       }
 
       val impls = routers.map { router =>
-        val interpreter = router.interpreter.interpreter(params)
+        val interpreter = router.interpreter.interpreter(params + Label(router.label))
         router.router(params + DstBindingFactory.Namer(interpreter))
       }
 

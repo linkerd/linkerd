@@ -4,12 +4,12 @@ import org.scalatest.FunSuite
 
 class AdminHandlerTest extends FunSuite {
   test("handles empty content") {
-    val adminHandler = new AdminHandler(false)
+    val adminHandler = new AdminHandler(Nil)
     assert(adminHandler.html("").contains("linkerd admin"))
   }
 
   test("handles populated params") {
-    val adminHandler = new AdminHandler(false)
+    val adminHandler = new AdminHandler(Nil)
     val content = "fake content"
     val tailContent = "fake tail content"
     val csses = Seq("foo.css", "bar.css")
