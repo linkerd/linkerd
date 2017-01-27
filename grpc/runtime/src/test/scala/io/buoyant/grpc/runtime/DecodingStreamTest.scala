@@ -19,6 +19,7 @@ class DecodingStreamTest extends FunSuite {
         decodedLength += bb.remaining
         bb.remaining
       }
+      protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromTrailers(_)
     }
 
     // We lay out 4 pseudo-messages across 3 frames:
@@ -46,8 +47,10 @@ class DecodingStreamTest extends FunSuite {
     val frame2 = {
       val rel = () => { released2 = true; Future.Unit }
       val b: Array[Byte] = Array(0, 0, 0, 0, 4, 1, 2, 3, 4)
-      h2.Frame.Data(Buf.ByteArray.Owned(b), true, rel)
+      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
     }
+
+    val status = GrpcStatus.Unknown("idk man")
 
     val recvF0 = decodedStream.recv()
     assert(!recvF0.isDefined)
@@ -83,6 +86,9 @@ class DecodingStreamTest extends FunSuite {
     assert(v3 == 4)
     assert(decodedLength == 14)
 
+    val recvF4 = decodedStream.recv()
+    assert(!recvF4.isDefined)
+
     await(doRel0())
 
     await(doRel2())
@@ -96,5 +102,10 @@ class DecodingStreamTest extends FunSuite {
 
     await(doRel3())
     eventually { assert(released2 == true) }
+
+    assert(!recvF4.isDefined)
+    assert(frameQ.offer(status.toTrailers))
+    eventually { assert(recvF4.isDefined) }
+    assert(await(recvF4.liftToTry) == Throw(status))
   }
 }
