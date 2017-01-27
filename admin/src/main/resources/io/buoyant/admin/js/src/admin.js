@@ -37,6 +37,8 @@ define([
       $(".router-menu-option").click(function() {
         selectRouter($(this).text());
       });
+
+      return routersRsp;
     });
   }
 

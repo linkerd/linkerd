@@ -46,8 +46,8 @@ require([
       new loggingConfig();
     });
   } else {
-    adminPage.initialize().done(function() {
-      new dashboard();
+    adminPage.initialize().done(function(routerConfig) {
+      new dashboard(routerConfig);
     });
   }
 });
