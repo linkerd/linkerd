@@ -4,6 +4,14 @@ package io.buoyant.proto.namerd;
 
 import "dtab.proto";
 
+/*
+ * Highly experimental
+ *
+ * TODO
+ * - remove error types in favor of grpc-status/grpc-message
+ */
+
+
 /**
  * A read-only interface (i.e. for interpreters in linkerd).
  */
@@ -188,12 +196,28 @@ message Addr {
  */
 
 message DelegateTreeReq {
-  PathNameTree tree = 1;
-  Dtab dtab = 2;
+  string ns = 1;
+  PathNameTree tree = 2;
+  Dtab dtab = 3;
 }
 
 
 message DelegateTreeRsp {
-  BoundDelegateTree tree = 1;
+  
+  message Error {
+    enum Code {
+      UNKNOWN = 0;
+      NOT_FOUND = 1;
+      BAD_REQUEST = 2;
+    }
+
+    string description = 1;
+    Code code = 2;
+  }
+
+  oneof result {
+    BoundDelegateTree tree = 1;
+    Error error = 2;
+  }
 }
 

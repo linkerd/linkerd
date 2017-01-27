@@ -57,11 +57,13 @@ private[grpc] object InterpreterProto {
   }
 
   def toProtoDtab(dtab: Dtab): ProtoDtab =
-    ProtoDtab(dtab.map { dentry =>
-      val ppfx = toProtoPrefix(dentry.prefix)
-      val pdst = toProtoPathNameTree(dentry.dst)
-      ProtoDtab.Dentry(Some(ppfx), Some(pdst))
-    })
+    ProtoDtab(dtab.map(toProtoDentry))
+
+  val toProtoDentry: Dentry => ProtoDtab.Dentry = { dentry =>
+    val ppfx = toProtoPrefix(dentry.prefix)
+    val pdst = toProtoPathNameTree(dentry.dst)
+    ProtoDtab.Dentry(Some(ppfx), Some(pdst))
+  }
 
   def fromProtoDtab(pdtab: ProtoDtab): Dtab =
     Dtab(pdtab.dentries.toIndexedSeq.map(fromProtoDentry))
@@ -318,8 +320,19 @@ private[grpc] object InterpreterProto {
   val toProtoAddrEv: Addr => VarEventStream.Ev[ProtoAddr] =
     a => VarEventStream.Val(toProtoAddr(a))
 
-  def mkDelegateTreeReq(dtab: Dtab, tree: NameTree[Name.Path]): DelegateTreeReq =
-    DelegateTreeReq(Some(toProtoPathNameTree(tree.map(_.path))), Some(toProtoDtab(dtab)))
+  def mkDelegateTreeReq(ns: String, dtab: Dtab, tree: NameTree[Name.Path]): DelegateTreeReq =
+    DelegateTreeReq(Some(ns), Some(toProtoPathNameTree(tree.map(_.path))), Some(toProtoDtab(dtab)))
+
+  def DelegateTreeRspError(description: String, code: DelegateTreeRsp.Error.Code.Value) = {
+    val error = DelegateTreeRsp.Error(Some(description), Some(code))
+    DelegateTreeRsp(Some(DelegateTreeRsp.OneofResult.Error(error)))
+  }
+
+  val DelegateTreeRspNoNamespace =
+    DelegateTreeRspError("Namespaces not found", DelegateTreeRsp.Error.Code.NOT_FOUND)
+
+  val DelegateTreeRspNoName =
+    DelegateTreeRspError("No name given", DelegateTreeRsp.Error.Code.BAD_REQUEST)
 
   def mkFromProtoBoundDelegateTree(bindAddr: Path => Var[Addr]): BoundDelegateTree => DelegateTree[Name.Bound] = {
     def bindTree(t: BoundDelegateTree): DelegateTree[Name.Bound] = t match {
@@ -365,6 +378,77 @@ private[grpc] object InterpreterProto {
     }
 
     bindTree _
+  }
+
+  private[this] val toProtoDelegateWeightedTree: DelegateTree.Weighted[Name.Bound] => BoundDelegateTree.Union.Weighted =
+    wt => BoundDelegateTree.Union.Weighted(Some(wt.weight), Some(toProtoDelegateTree(wt.tree)))
+
+  private[this] def mkBoundDelegateTree(
+    path: Path,
+    dentry: Option[Dentry],
+    node: BoundDelegateTree.OneofNode
+  ): BoundDelegateTree = {
+    val p = toProtoPath(path)
+    val d = dentry.map(toProtoDentry)
+    BoundDelegateTree(Some(p), d, Some(node))
+  }
+
+  private[this] def mkBoundDelegateTree(
+    path: Path,
+    dentry: Dentry,
+    node: BoundDelegateTree.OneofNode
+  ): BoundDelegateTree = mkBoundDelegateTree(path, Some(dentry), node)
+
+  private[this] def mkBoundDelegateTreeLeaf(name: Name.Bound): Option[BoundDelegateTree.Leaf] =
+    name.id match {
+      case id: Path =>
+        val pid = toProtoPath(id)
+        val ppath = toProtoPath(name.path)
+        Some(BoundDelegateTree.Leaf(Some(pid), Some(ppath)))
+      case _ => None
+    }
+
+  val toProtoDelegateTree: DelegateTree[Name.Bound] => BoundDelegateTree = {
+    case DelegateTree.Neg(p, d) =>
+      mkBoundDelegateTree(p, d, BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.NEG))
+    case DelegateTree.Fail(p, d) =>
+      mkBoundDelegateTree(p, d, BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.FAIL))
+    case DelegateTree.Empty(p, d) =>
+      mkBoundDelegateTree(p, d, BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.EMPTY))
+
+    case DelegateTree.Delegate(p, d, t) =>
+      mkBoundDelegateTree(p, d, BoundDelegateTree.OneofNode.Delegate(toProtoDelegateTree(t)))
+    case DelegateTree.Exception(p, d, e) =>
+      mkBoundDelegateTree(p, d, BoundDelegateTree.OneofNode.Exception(e.getMessage))
+    case DelegateTree.Transformation(p, desc, n, t) =>
+      val leaf = mkBoundDelegateTreeLeaf(n)
+      val ptrans = BoundDelegateTree.Transformation(Some(desc), leaf, Some(toProtoDelegateTree(t)))
+      mkBoundDelegateTree(p, None, BoundDelegateTree.OneofNode.Transformation(ptrans))
+
+    case DelegateTree.Leaf(p, d, name) =>
+      val node = mkBoundDelegateTreeLeaf(name) match {
+        case None => BoundDelegateTree.OneofNode.Nop(BoundDelegateTree.Nop.NEG)
+        case Some(leaf) => BoundDelegateTree.OneofNode.Leaf(leaf)
+      }
+      mkBoundDelegateTree(p, d, node)
+
+    case DelegateTree.Alt(p, d, trees@_*) =>
+      val ptrees = trees.map(toProtoDelegateTree)
+      val node = BoundDelegateTree.OneofNode.Alt(BoundDelegateTree.Alt(ptrees))
+      mkBoundDelegateTree(p, d, node)
+
+    case DelegateTree.Union(p, d, trees@_*) =>
+      val ptrees = trees.map(toProtoDelegateWeightedTree)
+      val node = BoundDelegateTree.OneofNode.Union(BoundDelegateTree.Union(ptrees))
+      mkBoundDelegateTree(p, d, node)
+  }
+
+  val toProtoDelegateTreeRsp: DelegateTree[Name.Bound] => DelegateTreeRsp =
+    t => DelegateTreeRsp(Some(DelegateTreeRsp.OneofResult.Tree(toProtoDelegateTree(t))))
+
+  val toProtoDelegateTreeRspEv: Try[DelegateTree[Name.Bound]] => VarEventStream.Ev[DelegateTreeRsp] = {
+    case Return(tree) => VarEventStream.Val(toProtoDelegateTreeRsp(tree))
+    case Throw(e) => VarEventStream.End(Throw(e))
   }
 
   case class DelegateException(msg: String) extends Throwable(msg) with NoStackTrace

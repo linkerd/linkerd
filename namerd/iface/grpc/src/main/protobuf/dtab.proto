@@ -88,7 +88,8 @@ message BoundDelegateTree {
     Union union = 5;
     Leaf leaf = 6;
     BoundDelegateTree delegate = 7;
-    string exception = 8;
+    Transformation transformation = 8;
+    string exception = 9;
   }
 
   enum Nop {
@@ -107,5 +108,11 @@ message BoundDelegateTree {
   message Leaf {
     Path id = 1;
     Path residual = 2;
+  }
+
+  message Transformation {
+    string name = 1;
+    Leaf leaf = 2;
+    BoundDelegateTree tree = 3;
   }
 }

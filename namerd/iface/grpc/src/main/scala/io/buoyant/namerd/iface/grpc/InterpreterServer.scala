@@ -2,12 +2,13 @@ package io.buoyant.namerd
 package iface.grpc
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.{Addr, Dtab, Namer, NameTree, Path}
+import com.twitter.finagle.{Addr, Dtab, Name, Namer, NameTree, Path}
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
 import io.buoyant.grpc.runtime.{Stream, VarEventStream}
-import io.buoyant.namer.ConfiguredDtabNamer
+import io.buoyant.namer.{ConfiguredDtabNamer, Delegator}
 import io.buoyant.proto.namerd.{Addr => ProtoAddr, VersionedDtab => ProtoVersionedDtab, _}
 
 object InterpreterServer {
@@ -54,7 +55,7 @@ object InterpreterServer {
                 case Some(d) => fromProtoDtab(d)
               }
               val name = fromProtoPath(pname)
-              bind(ns, dtab, name).toFuture.map(toProtoBoundTreeRsp)
+              getNs(ns).bind(dtab, name).toFuture.map(toProtoBoundTreeRsp)
           }
       }
 
@@ -66,26 +67,52 @@ object InterpreterServer {
             case None => Stream.value(BoundTreeRspNoName)
             case Some(pname) if pname.elems.isEmpty => Stream.value(BoundTreeRspNoName)
             case Some(pname) =>
+              val name = fromProtoPath(pname)
               val dtab = req.dtab match {
                 case None => Dtab.empty
                 case Some(d) => fromProtoDtab(d)
               }
-              val name = fromProtoPath(pname)
-              val ev = bind(ns, dtab, name).values.map(toProtoBoundTreeRspEv)
+              val ev = getNs(ns).bind(dtab, name).values.map(toProtoBoundTreeRspEv)
               VarEventStream(ev)
           }
       }
 
     override def getDelegateTree(req: DelegateTreeReq): Future[DelegateTreeRsp] =
-      Future.exception(new IllegalStateException("unimplemented"))
+      req.ns match {
+        case None => Future.value(DelegateTreeRspNoNamespace)
+        case Some(ns) =>
+          req.tree match {
+            case None => Future.value(DelegateTreeRspNoName)
+            case Some(ptree) =>
+              val tree = fromProtoPathNameTree(ptree).map(Name.Path(_))
+              val dtab = req.dtab match {
+                case None => Dtab.empty
+                case Some(d) => fromProtoDtab(d)
+              }
+              getNs(ns).delegate(dtab, tree).toFuture.map(toProtoDelegateTreeRsp)
+          }
+      }
 
     override def streamDelegateTree(req: DelegateTreeReq): Stream[DelegateTreeRsp] =
-      Stream.exception(new IllegalStateException("unimplemented"))
+      req.ns match {
+        case None => Stream.value(DelegateTreeRspNoNamespace)
+        case Some(ns) =>
+          req.tree match {
+            case None => Stream.value(DelegateTreeRspNoName)
+            case Some(ptree) =>
+              val tree = fromProtoPathNameTree(ptree).map(Name.Path(_))
+              val dtab = req.dtab match {
+                case None => Dtab.empty
+                case Some(d) => fromProtoDtab(d)
+              }
+              val ev = getNs(ns).delegate(dtab, tree).values.map(toProtoDelegateTreeRspEv)
+              VarEventStream(ev)
+          }
+      }
 
-    private[this] def bind(ns: String, localDtab: Dtab, name: Path) = {
+    private[this] def getNs(ns: String): NameInterpreter with Delegator = {
       val dtabVar = store.observe(ns).map(_extractDtab)
-      val interpreter = ConfiguredDtabNamer(dtabVar, namers.toSeq)
-      interpreter.bind(localDtab, name)
+      ConfiguredDtabNamer(dtabVar, namers.toSeq)
     }
 
     override def getAddr(req: AddrReq): Future[ProtoAddr] = req.id match {
