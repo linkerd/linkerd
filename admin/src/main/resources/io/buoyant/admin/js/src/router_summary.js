@@ -6,18 +6,20 @@ define([
   'src/query',
   'src/utils',
   'src/bar_chart',
-  'src/bar_chart_helpers',
   'text!template/router_summary.template'
 ], function($, Handlebars,
   Query,
   Utils,
   BarChart,
-  BarChartHelpers,
   routerSummaryTemplate
 ) {
   var RouterSummary = (function() {
     var DEFAULT_BUDGET = 0.2 // default 20%
     var template = Handlebars.compile(routerSummaryTemplate);
+
+    function displayPercent(percent) {
+      return _.isNull(percent) ? " - " : Math.round(percent * 100) + "%";
+    }
 
     function processResponses(data, routerName) {
       var process = function(metricName) { return processServerResponse(data, routerName, metricName); };
@@ -72,6 +74,27 @@ define([
       }
     }
 
+    function getBarChartColor(percent) {
+      if (percent < 0.5) return "red";
+      else if (percent < 0.75) return "orange";
+      else return "green";
+    }
+
+    function getBarChartPercent(data, configuredBudget) {
+      var retryPercent = !data["requests"] ? null : (data["retries"] || 0) / data["requests"];
+      var budgetRemaining = Math.max(configuredBudget - (retryPercent || 0), 0);
+      var healthBarPercent = Math.min(budgetRemaining / configuredBudget, 1);
+
+      return {
+        percent: healthBarPercent,
+        label: {
+          description: "Retry budget available",
+          value: displayPercent(budgetRemaining) + " / " + displayPercent(configuredBudget)
+        },
+        warningLabel: retryPercent < configuredBudget ? null : "budget exhausted"
+      }
+    }
+
     function renderRouterSummary(routerData, routerName, $summaryEl) {
       $summaryEl.html(template(routerData));
     }
@@ -92,7 +115,7 @@ define([
       var pathQuery = Query.pathQuery().allPaths().withRouter(routerName).withMetrics(["requests", "retries/total"]).build();
 
       var $retriesBarChart = $barChartEl.find(".retries-bar-chart");
-      var retriesBarChart = new BarChart($retriesBarChart, BarChartHelpers.retryBarColor);
+      var retriesBarChart = new BarChart($retriesBarChart, getBarChartColor);
       var retryBudget = getRetryBudget(routerName, routerConfig);
 
       renderRouterSummary({ router: routerName }, routerName, $summaryEl);
@@ -101,7 +124,7 @@ define([
         function(data) {
           var summaryData = processResponses(data.specific, routerName);
 
-          retriesBarChart.update(BarChartHelpers.retryBarPercent(summaryData, retryBudget));
+          retriesBarChart.update(getBarChartPercent(summaryData, retryBudget));
           renderRouterSummary(summaryData, routerName, $summaryEl);
         },
         function(metrics) {
