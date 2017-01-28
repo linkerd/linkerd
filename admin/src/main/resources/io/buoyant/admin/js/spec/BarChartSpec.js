@@ -60,7 +60,7 @@ define([
       expect($bar.width() / $barContainer.width()).toBeCloseTo(60/200);
     });
 
-    it("udpates the bar's color when new data is padded in", function() {
+    it("updates the bar's color when new data is added", function() {
       lbBarChart.update(generateData(21, 30));
       var $barContainer = getBarContainer($lbContainer);
       expect($barContainer.attr('class')).toContain("green");
