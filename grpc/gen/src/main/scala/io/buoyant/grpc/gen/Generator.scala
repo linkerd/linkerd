@@ -721,7 +721,7 @@ object Generator {
   private[this] val HeadRE = """^(.)""".r
 
   private[this] def snakeToCamel(in: String): String =
-    SnakeRE.replaceAllIn(in, _.group(1))
+    SnakeRE.replaceAllIn(in, m => upperHead(m.group(1)))
 
   private[this] def lowerHead(in: String): String =
     HeadRE.replaceAllIn(in, _.group(1).toLowerCase)
