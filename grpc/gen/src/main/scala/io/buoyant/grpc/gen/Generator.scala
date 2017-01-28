@@ -162,6 +162,7 @@ object Generator {
     name: String,
     typeName: String,
     boxedTypeName: String,
+    boxedDefault: String,
     proto: Either[ProtoFile.Field, ProtoFile.Oneof]
   )
 
@@ -193,24 +194,25 @@ object Generator {
         val name = snakeToLowerCamel(f.name)
         val typ = genFieldType(f, translateType)
         val boxed = if (f.isRepeated) s"Seq[${typ}]" else s"Option[${typ}]"
-        FieldArg(name, typ, boxed, Left(f))
+        val default = if (f.isRepeated) "Nil" else "None"
+        FieldArg(name, typ, boxed, default, Left(f))
     }
     val oneofArgs = msgType.oneofs.toSeq.map {
       case (_, o) =>
         val name = snakeToLowerCamel(o.name)
         val typ = s"${msgTypeName}.Oneof${snakeToUpperCamel(o.name)}"
         val boxed = s"Option[${typ}]"
-        FieldArg(name, typ, boxed, Right(o))
+        FieldArg(name, typ, boxed, "None", Right(o))
     }
 
     // Arrange all fields in numerical order.
     val args = (fieldArgs ++ oneofArgs).sortBy {
-      case FieldArg(_, _, _, Left(f)) => f.number
-      case FieldArg(_, _, _, Right(o)) => o.fields.map(_.number).min
+      case FieldArg(_, _, _, _, Left(f)) => f.number
+      case FieldArg(_, _, _, _, Right(o)) => o.fields.map(_.number).min
     }
 
     val typedArgsTxt =
-      args.map { case FieldArg(n, _, t, _) => s"`${n}`: ${t}" } match {
+      args.map { case FieldArg(n, _, t, d, _) => s"`${n}`: ${t} = ${d}" } match {
         case Nil => ""
         case args => args.mkString(s"\n${indent}  ", s",\n${indent}  ", s"\n${indent}")
       }
@@ -278,15 +280,13 @@ object Generator {
     // The decoder starts with a bunch of vars initialized to default
     // values.
     val varDefs = args.map {
-      case FieldArg(name, _, boxed, Left(f)) if f.isRepeated =>
-        s"var ${name}Arg: $boxed = Nil"
-      case FieldArg(name, _, boxed, _) =>
-        s"var ${name}Arg: $boxed = None"
+      case FieldArg(name, _, boxed, default, _) =>
+        s"var ${name}Arg: $boxed = $default"
     }
     val varNames = args.map(a => s"${a.name}Arg")
 
     val varDecoders = args.flatMap {
-      case FieldArg(name, _, _, Left(f)) =>
+      case FieldArg(name, _, _, _, Left(f)) =>
         val wireType = genWireType(f)
         val reader = genReader(f)
         val readArg =
@@ -302,7 +302,7 @@ object Generator {
             |${indent}        }
             |""".stripMargin :: Nil
 
-      case FieldArg(name, typ, _, Right(o)) =>
+      case FieldArg(name, typ, _, _, Right(o)) =>
         o.fields.map { f =>
           val ftyp = s"${typ}.`${snakeToUpperCamel(f.name)}`"
           val wireType = genWireType(f)
@@ -383,7 +383,7 @@ object Generator {
     indent: String
   ): String = {
     val encoders = args.map {
-      case FieldArg(name, typ, _, Left(f)) if f.isRepeated =>
+      case FieldArg(name, typ, _, _, Left(f)) if f.isRepeated =>
         val writer = genWriteKind(f, translateType, "value", s"${indent}    ")
         s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
             |${indent}  while (${name}Iter.hasNext) {
@@ -392,7 +392,7 @@ object Generator {
             |${indent}  }
             |""".stripMargin
 
-      case FieldArg(name, typ, _, Left(f)) =>
+      case FieldArg(name, typ, _, _, Left(f)) =>
         val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
         s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
@@ -401,7 +401,7 @@ object Generator {
             |${indent}  }
             |""".stripMargin
 
-      case FieldArg(name, typ, _, Right(o)) =>
+      case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldWriters = o.fields.map { f =>
           val ftyp = s"${typ}.`${upperHead(f.name)}`"
           val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
@@ -428,7 +428,7 @@ object Generator {
     indent: String
   ): String = {
     val sizeAdditions = args.map {
-      case FieldArg(name, typ, _, Left(f)) if f.isRepeated =>
+      case FieldArg(name, typ, _, _, Left(f)) if f.isRepeated =>
         val sizeOf = genComputeSizeTagged(f, "value", translateType)
         s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
             |${indent}  while (${name}Iter.hasNext) {
@@ -437,7 +437,7 @@ object Generator {
             |${indent}    size += sz
             |${indent}  }""".stripMargin
 
-      case FieldArg(name, typ, _, Left(f)) =>
+      case FieldArg(name, typ, _, _, Left(f)) =>
         val sizeOf = genComputeSizeTagged(f, "value", translateType)
         s"""|${indent}  msg.`${name}` match {
             |${indent}    case None =>
@@ -446,7 +446,7 @@ object Generator {
             |${indent}      size += sz
             |${indent}  }""".stripMargin
 
-      case FieldArg(name, typ, _, Right(o)) =>
+      case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldSizes = o.fields.map { f =>
           val ftyp = s"${typ}.${upperHead(f.name)}"
           val sizeOf = genComputeSizeTagged(f, "value", translateType)
