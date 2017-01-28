@@ -8,6 +8,7 @@ define([
   'src/query',
   'src/success_rate_graph',
   'src/bar_chart',
+  'src/bar_chart_helpers',
   'text!template/metric.partial.template',
   'text!template/router_client.template'
 ], function($, _, Handlebars,
@@ -15,6 +16,7 @@ define([
   Query,
   SuccessRateGraph,
   BarChart,
+  BarChartHelpers,
   metricPartialTemplate,
   routerClientTemplate) {
   var RouterClient = (function() {
@@ -103,26 +105,6 @@ define([
       return summary;
     }
 
-    function barChartColorFn(percent) {
-      return percent < 0.5 ? "orange" : "green";
-    }
-
-    function barPercentCalc(data) {
-      if (!data) return null;
-
-      var numer = data["loadbalancer/available"] || {};
-      var denom = data["loadbalancer/size"] || {};
-      var percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
-
-      return {
-        percent: percent,
-        label: {
-          description: "Endpoints available",
-          value: (numer.value || "-") + " / " + (denom.value || "-")
-        }
-      }
-    }
-
     return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
       var metricPartial = Handlebars.compile(metricPartialTemplate);
       Handlebars.registerPartial('metricPartial', metricPartial);
@@ -144,7 +126,7 @@ define([
       renderMetrics($metricsEl, client, [], [], clientColor);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
 
-      var lbBarChart = new BarChart($lbBarChart, barChartColorFn);
+      var lbBarChart = new BarChart($lbBarChart, BarChartHelpers.loadBalancerBarColor);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -174,7 +156,7 @@ define([
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         chart.updateMetrics(getSuccessRate(summaryData));
-        lbBarChart.update(barPercentCalc(summaryData));
+        lbBarChart.update(BarChartHelpers.loadBalancerPercent(summaryData));
 
         renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
       }
