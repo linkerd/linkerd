@@ -18,27 +18,33 @@ define([
   metricPartialTemplate,
   routerClientTemplate) {
 
-  function getLoadBalancerBarChartHelpers() {
-    return {
-      getColor: function(percent) {
-        return percent < 0.5 ? "orange" : "green";
-      },
-      getPercent: function(data) {
-        if (!data) return null;
+  var LoadBalancerBarChart = function($lbContainer) {
+    function getColor(percent) {
+      return percent < 0.5 ? "orange" : "green";
+    }
 
-        var numer = data["loadbalancer/available"] || {};
-        var denom = data["loadbalancer/size"] || {};
-        var percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
+    function getPercent(data) {
+      if (!data) return null;
 
-        return {
-          percent: percent,
-          label: {
-            description: "Endpoints available",
-            value: (numer.value || "-") + " / " + (denom.value || "-")
-          }
+      var numer = data["loadbalancer/available"] || {};
+      var denom = data["loadbalancer/size"] || {};
+      var percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
+
+      return {
+        percent: percent,
+        label: {
+          description: "Endpoints available",
+          value: (numer.value || "-") + " / " + (denom.value || "-")
         }
       }
-    };
+    }
+
+    var barChart = new BarChart($lbContainer, getColor);
+    return {
+      update: function(data) {
+        return barChart.update(getPercent(data));
+      }
+    }
   }
 
   var RouterClient = (function() {
@@ -147,9 +153,7 @@ define([
 
       renderMetrics($metricsEl, client, [], [], clientColor);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
-
-      var barChartHelpers = getLoadBalancerBarChartHelpers();
-      var lbBarChart = new BarChart($lbBarChart, barChartHelpers.getColor);
+      var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -179,7 +183,7 @@ define([
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         chart.updateMetrics(getSuccessRate(summaryData));
-        lbBarChart.update(barChartHelpers.getPercent(summaryData));
+        lbBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
       }
