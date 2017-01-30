@@ -1,6 +1,7 @@
 # Simple config for testing admin parameters and relative paths.
 # localhost:9990 and localhost:4140/foo/ should display the same page.
 # when running namerd, localhost:9991 and localhost:4141/foo/ should display the same page.
+# Note, to run namerd in parallel, use `./sbt namerd-examples/basic:run`.
 
 admin:
   ip: 0.0.0.0
@@ -33,4 +34,12 @@ routers:
     consume: true
   servers:
   - port: 4141
+    ip: 0.0.0.0
+- protocol: http
+  interpreter:
+    kind: io.l5d.namerd
+    dst: /$/inet/localhost/4100
+    namespace: default
+  servers:
+  - port: 4142
     ip: 0.0.0.0
