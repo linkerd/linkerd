@@ -63,12 +63,12 @@ private[telemeter] object UsageDataTelemeter {
   ): UsageMessage =
     UsageMessage(
       pid = Some(pid),
-      orgid = orgId,
-      linkerdversion = Some(Build.load().version),
-      containermanager = mkContainerManager,
-      osname = Some(System.getProperty("os.name")),
-      osversion = Some(System.getProperty("os.version")),
-      starttime = None, //TODO
+      orgId = orgId,
+      linkerdVersion = Some(Build.load().version),
+      containerManager = mkContainerManager,
+      osName = Some(System.getProperty("os.name")),
+      osVersion = Some(System.getProperty("os.version")),
+      startTime = None, //TODO
       routers = mkRouters(config),
       namers = mkNamers(config),
       counters = mkCounters(metrics),

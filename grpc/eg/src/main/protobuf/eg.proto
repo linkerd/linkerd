@@ -37,6 +37,7 @@ message Message {
 
 message Req {
   Enumeration value = 1;
+  bool destroy_fascism = 2;
 }
 message Rsp {
   Message.Enumeration value = 1;

@@ -95,7 +95,7 @@ class EgEndToEndTest extends FunSuite {
     try {
       val client = new Eg.Eggman.Client(h2client)
 
-      val req = Eg.Req(Some(Eg.Enumeration.TWO))
+      val req = Eg.Req(Some(Eg.Enumeration.TWO), Some(true))
       val rsp = await(client.uplatu(req))
       assert(rsp == sentRsp)
     } finally await(h2client.close().before(h2srv.close()))
@@ -116,7 +116,7 @@ class EgEndToEndTest extends FunSuite {
     val client = new Eg.Eggman.Client(h2client)
 
     try {
-      val req = Eg.Req(Some(Eg.Enumeration.ONE))
+      val req = Eg.Req(Some(Eg.Enumeration.ONE), Some(true))
       val rsps = client.uplats(req)
 
       val rf0 = rsps.recv()
@@ -167,12 +167,14 @@ class EgEndToEndTest extends FunSuite {
       val rf1 = rx.recv()
       assert(!rf1.isDefined)
 
-      await(tx.send(Eg.Req(None)))
-      assert(getAndRelease(rf0) == Eg.Req(None))
+      await(tx.send(Eg.Req(None, Some(true))))
+      val req0 = getAndRelease(rf0)
+      assert(req0.value == None)
+      assert(req0.destroyFascism == Some(true))
 
       assert(!rf1.isDefined)
-      await(tx.send(Eg.Req(Some(Eg.Enumeration.ONE))))
-      assert(getAndRelease(rf1) == Eg.Req(Some(Eg.Enumeration.ONE)))
+      await(tx.send(Eg.Req(Some(Eg.Enumeration.ONE), Some(true))))
+      assert(getAndRelease(rf1) == Eg.Req(Some(Eg.Enumeration.ONE), Some(true)))
 
       rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
       assert(await(rspF) == Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
@@ -195,7 +197,7 @@ class EgEndToEndTest extends FunSuite {
     try {
       val client = new Eg.Eggman.Client(h2client)
 
-      val req = Eg.Req(Some(Eg.Enumeration.TWO))
+      val req = Eg.Req(Some(Eg.Enumeration.TWO), Some(true))
       val status = intercept[GrpcStatus] { await(client.uplatu(req)) }
       assert(status == GrpcStatus.DeadlineExceeded(""))
     } finally await(h2client.close().before(h2srv.close()))
@@ -213,7 +215,7 @@ class EgEndToEndTest extends FunSuite {
     val h2client = H2.newService(s"/$$/inet/127.1/${srvAddr.getPort}")
     try {
       val client = new Eg.Eggman.Client(h2client)
-      val stream = client.uplats(Eg.Req(Some(Eg.Enumeration.TWO)))
+      val stream = client.uplats(Eg.Req(Some(Eg.Enumeration.TWO), Some(true)))
       val status = intercept[GrpcStatus] { await(stream.recv()) }
       assert(status == GrpcStatus.DeadlineExceeded())
     } finally await(h2client.close().before(h2srv.close()))
