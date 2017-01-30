@@ -50,7 +50,6 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .withPathStack(pathStack)
       .withBoundStack(boundStack)
       .withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   private[this] val monitor = Monitor.mk { case NonFatal(_) => true }

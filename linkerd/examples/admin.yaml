@@ -15,7 +15,7 @@ routers:
 - protocol: http
   label: linkerd-admin
   baseDtab: |
-    /http/* => /$/inet/127.1/9990;
+    /s/* => /$/inet/127.1/9990;
   identifier:
     kind: io.l5d.path
     segments: 1
@@ -26,7 +26,7 @@ routers:
 - protocol: http
   label: namerd-admin
   baseDtab: |
-    /http/* => /$/inet/127.1/9991;
+    /s/* => /$/inet/127.1/9991;
   identifier:
     kind: io.l5d.path
     segments: 1

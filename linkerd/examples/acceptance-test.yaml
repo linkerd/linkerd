@@ -3,6 +3,6 @@
 routers:
 - protocol: http
   baseDtab: |
-    /http/1.1 => /$/inet/127.1/9999;
+    /s/* => /$/inet/127.1/9999;
   servers:
   - port: 4140

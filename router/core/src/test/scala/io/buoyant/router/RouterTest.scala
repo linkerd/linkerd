@@ -118,8 +118,8 @@ class RouterTest extends FunSuite {
     val namer = new NameInterpreter {
       def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
         val id: Any = path match {
-          case Path.Utf8("0") => Path.Utf8("some", "path")
-          case Path.Utf8("1") => "string"
+          case Path.Utf8("s", "0") => Path.Utf8("some", "path")
+          case Path.Utf8("s", "1") => "string"
           case _ => new {}
         }
         Activity.value(NameTree.Leaf(Name.Bound(Var.value(Addr.Pending), id)))

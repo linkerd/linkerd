@@ -11,8 +11,7 @@ namers:
 routers:
 - protocol: http
   baseDtab: |
-    /host => /#/io.l5d.curator;
-    /http/1.1/* => /host;
+    /s => /#/io.l5d.curator;
   servers:
   - port: 4140
     ip: 0.0.0.0

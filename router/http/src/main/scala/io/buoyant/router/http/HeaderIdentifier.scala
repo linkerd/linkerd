@@ -28,3 +28,8 @@ case class HeaderIdentifier(
     }
   }
 }
+
+object HeaderIdentifier {
+  def default(prefix: Path, baseDtab: () => Dtab = () => Dtab.base): HeaderIdentifier =
+    new HeaderIdentifier(prefix, "Host", false, baseDtab)
+}

@@ -54,7 +54,7 @@ class ThriftEndToEndTest extends FunSuite {
     val cat = Downstream.const("cat", "meow")
     val router = {
       val dtab = Dtab.read(s"""
-        /thrift/cat => /$$/inet/127.1/${cat.port} ;
+        /s/cat => /$$/inet/127.1/${cat.port} ;
       """)
 
       val config = new ThriftConfig(None) {
@@ -90,7 +90,7 @@ class ThriftEndToEndTest extends FunSuite {
     val cat = Downstream.const("cat", "meow")
     val incoming = {
       val dtab = Dtab.read(s"""
-        /thrift/cat => /$$/inet/127.1/${cat.port} ;
+        /s/cat => /$$/inet/127.1/${cat.port} ;
       """)
 
       val config = new ThriftConfig(None) {
@@ -108,7 +108,7 @@ class ThriftEndToEndTest extends FunSuite {
 
     val outgoing = {
       val dtab = Dtab.read(s"""
-        /thrift/cat => /$$/inet/127.1/${incoming.boundAddress.asInstanceOf[InetSocketAddress].getPort} ;
+        /s/cat => /$$/inet/127.1/${incoming.boundAddress.asInstanceOf[InetSocketAddress].getPort} ;
       """)
 
       val config = new ThriftConfig(None) {

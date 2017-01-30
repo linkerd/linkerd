@@ -49,7 +49,7 @@ class MuxEndToEndTest extends FunSuite with Awaits {
   case class Router(downstreams: Seq[Downstream], names: (String, String)*) {
     val dentries =
       downstreams.map { d => Dentry.read(s"/d/${d.name} => /$$/inet/127.1/${d.port}") } ++
-        names.map { case (n, d) => Dentry.read(s"/n/$n => /d/$d") }
+        names.map { case (n, d) => Dentry.read(s"/s/n/$n => /d/$d") }
 
     val dtab = Dtab(dentries.toIndexedSeq)
 

@@ -9,7 +9,7 @@ import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.util._
-import io.buoyant.router.Http
+import io.buoyant.router.{Http, RoutingFactory}
 import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -54,7 +54,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       .newClient(name, "upstream").toService
   }
 
-  def basicConfig(dtab: Dtab) = 
+  def basicConfig(dtab: Dtab) =
     s"""|routers:
         |- protocol: http
         |  baseDtab: ${dtab.show}
@@ -87,14 +87,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val dtab = Dtab.read(s"""
       /p/cat => /$$/inet/127.1/${cat.port} ;
       /p/dog => /$$/inet/127.1/${dog.port} ;
-      /http/1.1/GET/felix => /p/cat ;
-      /http/1.1/GET/clifford => /p/dog ;
+      /s/felix => /p/cat ;
+      /s/clifford => /p/dog ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
@@ -112,28 +111,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
 
-        val path = "/http/1.1/GET/felix"
+        val path = "/s/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
           assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
-        }
-      }
-
-      get("clifford", "/the/big/red/dog") { rsp =>
-        assert(rsp.status == Status.Ok)
-        assert(rsp.contentString == "woof")
-
-        val path = "/http/1.1/GET/clifford/the/big/red/dog"
-        val bound = s"/$$/inet/127.1/${dog.port}"
-        val residual = "/the/big/red/dog"
-        withAnnotations { anns =>
-          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", residual)))
         }
       }
 
@@ -175,12 +159,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/http/1.1/GET/dog => /$label;")
+    val dtab = Dtab.read(s"/s/dog => /$label;")
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -237,7 +220,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/http/1.1/*/dog => /$label;")
+    val dtab = Dtab.read(s"/s/dog => /$label;")
     val yaml =
       s"""|routers:
           |- protocol: http
@@ -250,7 +233,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -272,7 +254,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = s"http/1.1/$method/dog"
+        val name = "s/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
@@ -300,7 +282,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = s"http/1.1/$method/dog"
+        val name = s"s/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
@@ -348,13 +330,12 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       req.response
     }
     val dtab = Dtab.read(s"""
-      /http/*/*/* => /$$/inet/127.1/${dog.port} ;
+      /s/* => /$$/inet/127.1/${dog.port} ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 

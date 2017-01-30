@@ -39,7 +39,7 @@ class HttpConfigTest extends FunSuite with Awaits {
     assert(config.maxResponseKB.get == 5120)
   }
 
-  test("default to methodAndHost identifier") {
+  test("default identifier") {
     val yaml = s"""
                   |protocol: http
                   |servers:
@@ -47,12 +47,12 @@ class HttpConfigTest extends FunSuite with Awaits {
       """.stripMargin
     val config = parse(yaml)
     val identifier = config.routerParams[Http.param.HttpIdentifier]
-      .id(Path.read("/http"), () => Dtab.empty)
+      .id(Path.read("/s"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
-        Path.read("/http/1.1/GET/host.com")
+        Path.read("/s/host.com")
     )
   }
 

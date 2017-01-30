@@ -2,7 +2,7 @@
 routers:
 - protocol: http
   baseDtab: |
-    /http/*/*/* => /$/inet/localhost/8080;
+    /s/* => /$/inet/localhost/8080;
   servers:
   - port: 4140
     ip: 0.0.0.0
