@@ -9,7 +9,7 @@ define([
   function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;
-    $('a[href="' + path + '"]').parent().addClass("current");
+    $('a[href="' + path + '"]').parent().addClass("active");
 
     var matches = window.location.search.match(/router=(.+)(?:&|$)/)
     if (matches && matches.length > 1) {
@@ -26,7 +26,7 @@ define([
         routers.unshift({label: "all"});
       } else {
         if (!matches && routers.length > 0) {
-          selectRouter(routers[0].label);
+          selectRouter(routers[0].label || routers[0].protocol);
         }
       }
 

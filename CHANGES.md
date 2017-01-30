@@ -5,6 +5,9 @@
   * Sorts clients and servers alphabetically
   * Displays routers in the order that they are defined
 * Update Marathon namer to evaluate an app's running state
+* Add `roundRobin` as a load balancer option.
+* Add the ability to route basted on the `dest` request header when using the
+  TTwitter Thrift protocol
 * Add `ignoreServiceAddress` option to `io.l5d.consul` namer
 
 ## 0.8.6 2017-01-19
@@ -327,7 +330,7 @@
 ## 0.0.10
 
 * We now support end-to-end TLS! However, verification is currently limited to
-  global certs. See  https://github.com/BuoyantIO/linkerd/issues/64 for more on
+  global certs. See  https://github.com/linkerd/linkerd/issues/64 for more on
   the upcoming roadmap.
 * Prep work for "transparent TLS". Look for this in upcoming releases.
 * Prep work for being able to generate Docker images from the repo, in service

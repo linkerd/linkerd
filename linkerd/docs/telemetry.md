@@ -9,7 +9,7 @@ regardless of kind. Telemeters may also have kind-specific parameters. </aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | `io.l5d.commonMetrics`, `io.l5d.statsd`, or `io.l5d.tracelog`
+kind | _required_ | Either [`io.l5d.commonMetrics`](#commonmetrics), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), or [`io.l5d.recentRequests`](#recent-requests).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## CommonMetrics
@@ -93,6 +93,8 @@ telemetry:
   sampleRate: 1.0
   capacity: 10
 ```
+
+kind: `io.l5d.recentRequests`
 
 The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
 the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the

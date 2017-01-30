@@ -19,7 +19,7 @@ These parameters are available to the classifier regardless of kind. Classifiers
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `io.l5d.nonRetryable5XX` | Either `io.l5d.nonRetryable5XX`, `io.l5d.retryableRead5XX`, or `io.l5d.retryableIdempotent5XX`.
+kind | `io.l5d.nonRetryable5XX` | Either [`io.l5d.nonRetryable5XX`](#non-retryable-5xx), [`io.l5d.retryableRead5XX`](#retryable-read-5xx), or [`io.l5d.retryableIdempotent5XX`](#retryable-idempotent-5xx).
 
 
 ## Non-Retryable 5XX

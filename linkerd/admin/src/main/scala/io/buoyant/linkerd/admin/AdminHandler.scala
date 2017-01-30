@@ -1,17 +1,11 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{MediaType, Request, Response}
-import com.twitter.finagle.{Service, SimpleFilter}
+import com.twitter.finagle.http.{MediaType, Response}
 import com.twitter.util.Future
 import io.buoyant.admin.HtmlView
 import io.buoyant.linkerd.Build
 
-object AdminHandler extends HtmlView {
-
-  /**
-   * NOTE: this navigation must be kept in sync with the nav bar in:
-   * admin/src/main/resources/io/buoyant/admin/js/src/logger-overrides.js
-   */
+class AdminHandler(namerdNav: Boolean) extends HtmlView {
   val navBar =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
@@ -23,16 +17,17 @@ object AdminHandler extends HtmlView {
             <span class="icon-bar"></span>
           </button>
 
-          <a class="navbar-brand-img" href=".">
+          <a class="navbar-brand" href=".">
             <img alt="Logo" src="files/images/linkerd-horizontal-white-transbg-vectorized.svg">
           </a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="delegator">dtab</a></li>
-            <li><a href="requests">requests</a></li>
-            <li><a href="admin/logging">logging</a></li>
-            <li><a href="help">help</a></li>
+            <li><a href="/delegator">dtab</a></li>
+            <li><a href="/requests">requests</a></li>
+            <li><a href="/logging">logging</a></li>
+            <li><a href="/help">help</a></li>
+            ${if (namerdNav) "<li><a href=\"/namerd\">namerd</a></li>" else ""}
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -42,7 +37,7 @@ object AdminHandler extends HtmlView {
               <ul class="dropdown-menu">
               </ul>
             </li>
-            <li>version ${Build.load().version}</li>
+            <li class="version">version ${Build.load().version}</li>
           </ul>
         </div>
       </div>
@@ -74,6 +69,7 @@ object AdminHandler extends HtmlView {
           <title>linkerd admin</title>
           <link type="text/css" href="files/css/lib/bootstrap.min.css" rel="stylesheet"/>
           <link type="text/css" href="files/css/dashboard.css" rel="stylesheet"/>
+          <link type="text/css" href="files/css/logger.css" rel="stylesheet"/>
           <link rel="shortcut icon" href="files/images/favicon.png" />
           <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600' rel='stylesheet' type='text/css'>
           $cssesHtml

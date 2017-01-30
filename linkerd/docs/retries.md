@@ -58,7 +58,7 @@ These parameters are available to the backoff regardless of kind. Backoffs may a
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either `constant` or `jittered`.
+kind | _required_ | Either [`constant`](#constant-backoff) or [`jittered`](#jittered-backoff).
 
 ### Constant Backoff
 

@@ -1,13 +1,15 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.concurrent.AsyncQueue
+import com.twitter.concurrent.{AsyncMutex, AsyncQueue}
+import com.twitter.finagle.Failure
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, Var}
-import java.util.concurrent.atomic.AtomicReference
+import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 trait Stream[+T] {
   def recv(): Future[Stream.Releasable[T]]
+
+  def reset(err: GrpcStatus): Unit
 }
 
 object Stream {
@@ -19,14 +21,15 @@ object Stream {
     def send(t: T): Future[Unit]
 
     def close(): Future[Unit]
-
-    // TODO support grpc error types
-    // def reset(err: Grpc.Error): Unit
   }
 
   def apply[T](): Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
     // TODO bound queue? not strictly necessary if send() future observed...
     private[this] val q = new AsyncQueue[Releasable[T]]
+
+    override def reset(e: GrpcStatus): Unit = {
+      q.fail(e, discard = true)
+    }
 
     override def recv(): Future[Releasable[T]] = q.poll()
 
@@ -37,15 +40,84 @@ object Stream {
         Future.Unit
       }
       if (q.offer(Releasable(msg, release))) p
-      else Future.exception(Rejected)
+      else Future.exception(Failure("rejected", Failure.Rejected))
     }
 
     override def close(): Future[Unit] = {
-      q.fail(Closed, discard = false)
+      q.fail(GrpcStatus.Ok(), discard = false)
       Future.Unit
     }
   }
 
-  object Closed extends Throwable
-  object Rejected extends Throwable
+  def empty(status: GrpcStatus): Stream[Nothing] = new Stream[Nothing] {
+    override def reset(e: GrpcStatus): Unit = ()
+    override def recv(): Future[Releasable[Nothing]] = Future.exception(status)
+  }
+
+  /**
+   * A stream backed by a promised stream.
+   */
+  def deferred[T](streamFut: Future[Stream[T]]): Stream[T] =
+    new Stream[T] {
+      // What happens to a stream deferred?
+      //
+      // Does it dry up
+      // Like a raisin in the sun?
+      //
+      // Or fester like a sore--
+      // And then run?
+      //
+      // Does it stink like rotten meat?
+      // Or crust and sugar over--
+      // like a syrupy sweet?
+      //
+      // Maybe it just sags
+      // like a heavy load.
+      //
+      // Or does it explode?
+
+      // A mutex is used to ensure first-caller gets the first frame
+      // (which isn't guaranteed without it).
+      private[this] val recvMu = new AsyncMutex()
+
+      private[this] var streamRef: Either[Future[Stream[T]], Try[Stream[T]]] =
+        Left(streamFut)
+
+      def reset(e: GrpcStatus): Unit = synchronized {
+        streamRef match {
+          case Right(_) =>
+          case Left(f) =>
+            f.raise(Failure(e, Failure.Interrupted))
+        }
+        streamRef = Right(Throw(e))
+      }
+
+      override def recv(): Future[Stream.Releasable[T]] =
+        recvMu.acquireAndRun {
+          synchronized {
+            streamRef match {
+              case Left(f) => f.transform(_recv) // first time through
+              case Right(Return(s)) => s.recv()
+              case Right(Throw(e)) => Future.exception(e)
+            }
+          }
+        }
+
+      private[this] val _recv: Try[Stream[T]] => Future[Stream.Releasable[T]] = { v =>
+        val ret = synchronized {
+          streamRef match {
+            case Right(reset) =>
+              // If something has happened to update this, just use that update
+              reset
+            case Left(_) =>
+              streamRef = Right(v)
+              v
+          }
+        }
+        ret match {
+          case Return(s) => s.recv()
+          case Throw(e) => Future.exception(e)
+        }
+      }
+    }
 }

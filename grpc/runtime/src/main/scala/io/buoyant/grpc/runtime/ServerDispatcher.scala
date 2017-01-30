@@ -1,9 +1,9 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.finagle.{Service => FinagleService}
+import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Return, Throw}
+import com.twitter.util.{Future, Return, Throw, Try}
 
 object ServerDispatcher {
 
@@ -26,9 +26,10 @@ object ServerDispatcher {
     ) extends ServerDispatcher.Rpc {
 
       override def apply(req: h2.Request): Future[h2.Response] =
-        acceptUnary(reqCodec, req).flatMap(serve).map(respond)
+        acceptUnary(reqCodec, req).flatMap(serve).transform(respond)
 
-      private[this] val respond: Rsp => h2.Response = respondUnary(rspCodec, _)
+      private[this] val respond: Try[Rsp] => Future[h2.Response] =
+        rsp => Future.value(respondUnary(rspCodec, rsp))
     }
 
     class UnaryToStream[Req, Rsp](
@@ -53,9 +54,10 @@ object ServerDispatcher {
     ) extends ServerDispatcher.Rpc {
 
       override def apply(req: h2.Request): Future[h2.Response] =
-        serve(acceptStreaming(reqCodec, req)).map(respond)
+        serve(acceptStreaming(reqCodec, req)).transform(_respond)
 
-      private[this] val respond: Rsp => h2.Response = respondUnary(rspCodec, _)
+      private[this] val _respond: Try[Rsp] => Future[h2.Response] =
+        rsp => Future.value(respondUnary(rspCodec, rsp))
     }
 
     class StreamToStream[Req, Rsp](
@@ -73,46 +75,29 @@ object ServerDispatcher {
     }
 
     private[this] def acceptUnary[Req](codec: Codec[Req], req: h2.Request): Future[Req] =
-      Codec.bufferGrpcFrame(req.stream)
-        .map(codec.decodeBuf)
+      Codec.bufferWithStatus(req.stream).map {
+        case (buf, _) => codec.decodeBuf(Codec.decodeGrpcFrame(buf))
+      }
 
-    private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] = {
-      val frames = req.stream
-      val msgs = Stream[Req]()
-      def loop(): Future[Unit] =
-        frames.read().transform {
-          case Return(data: h2.Frame.Data) =>
-            // TODO proper framing
-            val sendF = data.buf match {
-              case Buf.Empty => Future.Unit
-              case buf =>
-                val msg = codec.decodeGrpcMessage(data.buf)
-                // XXX Should the release be passed down with the message?
-                // Should the release API be changed to allow partial
-                // release (i.e. of encoded messages within an h2 frame)?
-                msgs.send(msg)
-            }
-            val writeF = sendF.before(data.release())
-            if (data.isEnd) writeF.before(msgs.close())
-            else writeF.before(loop())
+    private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] =
+      codec.decodeRequest(req)
 
-          case Return(data: h2.Frame.Trailers) =>
-            // Odd, but let's roll with this...
-            msgs.close()
+    private[this] def respondUnary[Rsp](codec: Codec[Rsp], rsp: Try[Rsp]): h2.Response = rsp match {
+      case Return(msg) =>
+        val buf = codec.encodeGrpcMessage(msg)
+        val frames = h2.Stream()
+        frames.write(h2.Frame.Data(buf, eos = false))
+          .before(frames.write(GrpcStatus.Ok().toTrailers))
+        h2.Response(h2.Status.Ok, frames)
 
-          case Throw(e) =>
-            msgs.close() // TODO reset the stream with a failure.
+      case Throw(e) =>
+        val status = e match {
+          case s: GrpcStatus => s
+          case e => GrpcStatus.Internal(e.getMessage)
         }
-      loop() // TODO detect interrupt and cancel?
-      msgs
-    }
-
-    private[this] def respondUnary[Rsp](codec: Codec[Rsp], msg: Rsp): h2.Response = {
-      val buf = codec.encodeGrpcMessage(msg)
-      val stream = h2.Stream()
-      stream.write(h2.Frame.Data(buf, eos = false))
-        .before(stream.write(h2.Frame.Trailers("grpc-status" -> "0")))
-      h2.Response(h2.Status.Ok, stream)
+        val frames = h2.Stream()
+        frames.write(status.toTrailers)
+        h2.Response(h2.Status.Ok, frames)
     }
 
     private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp]): h2.Response = {
@@ -126,14 +111,29 @@ object ServerDispatcher {
 
           case Throw(e) =>
             val status = e match {
-              case Stream.Closed => "0"
-              case _ => "1" // TODO proper grpc status codes
+              case s: GrpcStatus => s
+              case e => GrpcStatus.Internal(e.getMessage)
             }
-            frames.write(h2.Frame.Trailers("grpc-status" -> status))
-              .onSuccess(_ => frames.close())
+            frames.write(status.toTrailers).onSuccess(_ => frames.close())
         }
 
-      loop() // TODO detect tx interrupt and cancel?
+      val loopF = loop()
+
+      // If the client cancels the response, proactively reset the
+      // server's stream.
+      frames.onEnd.respond {
+        case Return(_) =>
+          loopF.raise(Failure(GrpcStatus.Ok(), Failure.Interrupted))
+
+        case Throw(e) =>
+          val status = e match {
+            case s: GrpcStatus => s
+            case _ => GrpcStatus.Internal()
+          }
+          msgs.reset(status)
+          loopF.raise(Failure(status, Failure.Interrupted))
+      }
+
       h2.Response(h2.Status.Ok, frames)
     }
   }

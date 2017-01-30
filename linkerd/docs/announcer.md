@@ -12,7 +12,7 @@ These parameters are available to the announcer regardless of kind. Announcers m
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Only `io.l5d.serversets` is available at this time.
+kind | _required_ | Only [`io.l5d.serversets`](#serversets) is available at this time.
 prefix | kind-specific | Announces names beginning with `/#/<prefix>`.
 
 ## Serversets

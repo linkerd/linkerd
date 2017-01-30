@@ -35,7 +35,7 @@ class RoutingFactoryTest extends FunSuite {
     new DstBindingFactory[Request, Response] {
       def status = Status.Open
       def close(d: Time) = Future.Unit
-      def apply(dst: Dst, conn: ClientConnection) = client
+      def apply(dst: Dst.Path, conn: ClientConnection) = client
     }
 
   def mkService(

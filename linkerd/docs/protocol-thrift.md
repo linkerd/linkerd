@@ -21,11 +21,16 @@ routers:
 
 protocol: `thrift`
 
-Since the Thrift protocol does not encode a destination name in the message
-itself, routing must be done per port. This implies one port per Thrift
-service. For out-of-the-box configuration, this means that the contents of
-`disco/thrift` will be treated as a newline-delimited list of `host:port`
-combinations for a specific thrift service.
+If the [TTwitter thrift](http://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol is
+used, the value from the `dest` request header will be used for routing:
+
+> Dtab Path Format For Thrift
+```
+  / dstPrefix [/ dest] [/ thriftMethod ]
+```
+
+Otherwise, the Thrift protocol does not encode a destination name in the message
+itself and the dest part of the path will be absent.
 
 ## Thrift Router Parameters
 

@@ -1,6 +1,7 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, Var}
+import com.twitter.finagle.Failure
+import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 
@@ -38,6 +39,9 @@ object VarEventStream {
     /** An unconsumed value is ready. */
     case class Updated[T](value: Ev[T]) extends State[T]
 
+    /** The consumer of the stream reset it. */
+    case class Reset(rst: GrpcStatus) extends State[Nothing]
+
     /** The event is no longer being observed and no further values will be produced. */
     object Closed extends State[Nothing]
   }
@@ -53,11 +57,6 @@ object VarEventStream {
  *
  * Event values are wrapped by VarEventStream.Ev to indicate whether a
  * value is terminal.
- *
- * TODO streams are not properly failed on event failure.
- *
- * TODO when a stream fails (from the remote), we should eagerly
- * stop observing the event.
  */
 class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] {
   import VarEventStream._
@@ -71,10 +70,10 @@ class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] 
 
   // Updates from the Event move the state to Updated if the Stream is
   // not otherwise closed/completed.
-  private[this] val updater = {
+  private[this] val updater: Closable = {
     @tailrec
     def updateState(value: Ev[T]): Unit = stateRef.get match {
-      case State.Closed | State.Updated(End(_)) =>
+      case State.Closed | State.Reset(_) | State.Updated(End(_)) =>
 
       case s@(State.Empty | State.Updated(Val(_))) =>
         stateRef.compareAndSet(s, State.Updated(value)) match {
@@ -93,6 +92,24 @@ class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] 
     }
 
     events.respond(updateState(_))
+  }
+
+  override def reset(rst: GrpcStatus): Unit = _reset(rst)
+
+  @tailrec
+  private[this] def _reset(rst: GrpcStatus): Unit = stateRef.get match {
+    case State.Closed | State.Reset(_) =>
+
+    case s@State.Recving(p) =>
+      if (stateRef.compareAndSet(s, State.Reset(rst))) {
+        p.raise(Failure(rst, Failure.Interrupted))
+        val _ = updater.close()
+      } else _reset(rst)
+
+    case s@(State.Empty | State.Updated(_)) =>
+      if (!stateRef.compareAndSet(s, State.Reset(rst))) {
+        val _ = updater.close()
+      } else _reset(rst)
   }
 
   /**
@@ -124,8 +141,8 @@ class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] 
         case false => recv()
       }
 
-    case State.Closed =>
-      Future.exception(Stream.Closed)
+    case State.Reset(rst) => Future.exception(rst)
+    case State.Closed => Future.exception(GrpcStatus.Ok())
   }
 
   private[this] val toReleasable: T => Stream.Releasable[T] =
