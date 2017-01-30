@@ -40,9 +40,10 @@ trait Router {
 
   protected def configureServer(s: Server): Server
 
-  def withParams(ps: Stack.Params): Router =
-    _withParams(ps)
-      .withServers(servers.map(configureServer(_)))
+  def withParams(ps: Stack.Params): Router = {
+    val routerWithParams = _withParams(ps)
+    routerWithParams.withServers(routerWithParams.servers.map(routerWithParams.configureServer))
+  }
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
