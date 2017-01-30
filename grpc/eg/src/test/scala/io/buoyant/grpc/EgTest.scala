@@ -38,10 +38,9 @@ object EgTest {
     Buf.Utf8("baz")
   ))
   val expectedMsg = Eg.Message(
-    Some(expectedEnumeration),
-    Some(Eg.Message.OneofResult.Exception(expectedException)),
-    Some(expectedPath),
-    None
+    enumeration = Some(expectedEnumeration),
+    result = Some(Eg.Message.OneofResult.Exception(expectedException)),
+    path = Some(expectedPath)
   )
 }
 
