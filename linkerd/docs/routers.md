@@ -21,7 +21,7 @@ routers:
   dstPrefix: /walruses/http
   baseDtab: |
     /host                => /#/io.l5d.fs;
-    /walruses/http/1.1/* => /host;
+    /walruses/http => /host;
   failFast: false
   originator: true
   timeoutMs: 10000

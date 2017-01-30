@@ -8,7 +8,7 @@ storage:
   namespaces:
     galaxyquest: |
       /host       => /#/io.l5d.fs;
-      /http/1.1/* => /host;
+      /s => /host;
 namers:
 - kind: io.l5d.fs
   rootDir: examples/disco

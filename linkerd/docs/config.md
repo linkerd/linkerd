@@ -10,11 +10,7 @@ routers:
 - protocol: http
   label: int-http
   baseDtab: |
-    /host       => /#/io.l5d.fs;
-    /http/1.1/* => /host;
-  identifier:
-    kind: io.l5d.methodAndHost
-    httpUriInDst: true
+    /s       => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -28,7 +24,7 @@ routers:
     thriftFramed: true
   thriftMethodInDst: false
   baseDtab: |
-    /thrift => /#/io.l5d.fs/thrift;
+    /s => /#/io.l5d.fs/thrift;
 
 namers:
 - kind: io.l5d.fs
@@ -97,7 +93,7 @@ port | `9990` | Port for the admin interface.
 ```yaml
 routers:
 - protocol: http
-  baseDtab: /http => /$/inet/127.1/8888
+  baseDtab: /s/* => /$/inet/127.1/8888
   servers:
   - port: 8080
 ```

@@ -8,7 +8,7 @@ routers:
 - protocol: thrift
   label: port-shifter
   baseDtab: |
-    /thrift => /$/inet/127.1/5005;
+    /s => /$/inet/127.1/5005;
   servers:
   - port: 4004
     ip: 0.0.0.0
@@ -36,7 +36,7 @@ itself and the dest part of the path will be absent.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `thrift` | A path prefix used in `baseDtab`.
+dstPrefix | `/s` | A path prefix used in `baseDtab`.
 thriftMethodInDst | `false` | If `true`, thrift method names are appended to destinations for outgoing requests.
 
 

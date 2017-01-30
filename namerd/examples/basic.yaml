@@ -4,7 +4,7 @@ storage:
   kind: io.l5d.inMemory
   namespaces:
     default: |
-      /http/1.1/GET => /#/io.l5d.fs;
+      /s => /#/io.l5d.fs;
 namers:
 - kind: io.l5d.fs
   rootDir: namerd/examples/disco

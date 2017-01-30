@@ -126,7 +126,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     }
     val namers = Seq(id -> namer)
     def interpreter(ns: String) = new ConfiguredDtabNamer(
-      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /http/1.1/* => /host")),
+      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /s => /host")),
       namers
     )
     val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
@@ -134,12 +134,12 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
 
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
-      Path.read("/http/1.1/GET/poop")
+      Path.read("/s/poop")
     ).toFuture)
 
     assert(tree ==
       DelegateTree.Delegate(
-        Path.read("/http/1.1/GET/poop"),
+        Path.read("/s/poop"),
         Dentry.nop,
         DelegateTree.Alt(
           Path.read("/host/poop"),

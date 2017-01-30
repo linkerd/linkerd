@@ -21,7 +21,7 @@ protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `mux` | A path prefix used in `baseDtab`.
+dstPrefix | `/s` | A path prefix used in `baseDtab`.
 
 ## Mux Server Parameters
 

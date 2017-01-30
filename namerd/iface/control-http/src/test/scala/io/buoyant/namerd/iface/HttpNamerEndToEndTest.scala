@@ -119,7 +119,7 @@ class HttpNamerEndToEndTest extends FunSuite with Eventually with IntegrationPat
     }
     val namers = Seq(id -> namer)
     def interpreter(ns: String) = new ConfiguredDtabNamer(
-      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /http/1.1/* => /host")),
+      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /s => /host")),
       namers
     )
     val service = new HttpControlService(NullDtabStore, interpreter, namers.toMap)
@@ -127,16 +127,16 @@ class HttpNamerEndToEndTest extends FunSuite with Eventually with IntegrationPat
 
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
-      Path.read("/http/1.1/GET/poop")
+      Path.read("/s/poop")
     ).toFuture)
 
     assert(tree ==
       DelegateTree.Delegate(
-        Path.read("/http/1.1/GET/poop"),
+        Path.read("/s/poop"),
         Dentry.nop,
         DelegateTree.Alt(
           Path.read("/host/poop"),
-          Dentry.read("/http/1.1/*=>/host"),
+          Dentry.read("/s=>/host"),
           List(
             DelegateTree.Delegate(
               Path.read("/srv/woop"),

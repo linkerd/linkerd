@@ -19,7 +19,7 @@ routers:
     header: ":authority"
   baseDtab: |
     /srv => /#/io.l5d.fs ;
-    /h2 => /srv ;
+    /s => /srv ;
   client:
     tls:
       kind: io.l5d.boundPath
@@ -43,7 +43,7 @@ routers:
     segments: 2
   baseDtab: |
     /srv => /#/io.l5d.fs ;
-    /h2 => /srv ;
+    /s => /srv ;
 ```
 > because gRPC encodes URLs as /_serviceName_/_methodName_, we can
 simply register service names into a discovery system and route
@@ -62,7 +62,7 @@ additional issues with this protocol!
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `h2` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
+dstPrefix | `/s` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
 experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
 
 When TLS is configured, h2 routers negotiate to communicate over
@@ -127,7 +127,7 @@ header | `:authority` | The name of the header to extract a token from.  If ther
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the header.
 
 <a name="header-path-identifier"></a>
@@ -172,7 +172,7 @@ segments | None | If specified, the number of path segments that are required ex
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `h2` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | The first `segments` elements of the path from the URL
 
 <a name="h2-headers"></a>
