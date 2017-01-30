@@ -23,7 +23,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   token: some-consul-acl-token
  *   consistencyMode: default
  *   failFast: false
- *   ignoreServiceAddress: false
+ *   preferServiceAddress: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -42,7 +42,7 @@ case class ConsulConfig(
   setHost: Option[Boolean] = None,
   consistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None,
-  ignoreServiceAddress: Option[Boolean] = None
+  preferServiceAddress: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -80,11 +80,11 @@ case class ConsulConfig(
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, ignoreServiceAddress, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, ignoreServiceAddress, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
         )
     }
   }

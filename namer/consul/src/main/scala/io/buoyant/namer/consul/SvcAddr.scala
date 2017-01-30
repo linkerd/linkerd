@@ -33,7 +33,7 @@ private[consul] object SvcAddr {
     key: SvcKey,
     domain: Option[String],
     consistency: Option[v1.ConsistencyMode] = None,
-    ignoreServiceAddress: Option[Boolean] = None,
+    preferServiceAddress: Option[Boolean] = None,
     stats: Stats
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
@@ -46,7 +46,7 @@ private[consul] object SvcAddr {
         blockingIndex = index,
         consistency = consistency,
         retry = true
-      ).map(indexedToAddresses(ignoreServiceAddress))
+      ).map(indexedToAddresses(preferServiceAddress))
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
@@ -105,10 +105,10 @@ private[consul] object SvcAddr {
         Addr.Metadata(Metadata.authority -> authority)
     }
 
-  private[this] def indexedToAddresses(ignoreSvcAddr: Option[Boolean]): v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
+  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean]): v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
     case v1.Indexed(nodes, idx) =>
-      val addrs = ignoreSvcAddr match {
-        case Some(true) => nodes.flatMap(serviceNodeToNodeAddr).toSet
+      val addrs = preferServiceAddress match {
+        case Some(false) => nodes.flatMap(serviceNodeToNodeAddr).toSet
         case _ => nodes.flatMap(serviceNodeToAddr).toSet
       }
       v1.Indexed(addrs, idx)

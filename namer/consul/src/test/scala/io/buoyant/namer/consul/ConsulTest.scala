@@ -41,7 +41,7 @@ class ConsulTest extends FunSuite {
                     |setHost: true
                     |consistencyMode: stale
                     |failFast: true
-                    |ignoreServiceAddress: true
+                    |preferServiceAddress: false
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -53,7 +53,7 @@ class ConsulTest extends FunSuite {
     assert(consul.includeTag == Some(true))
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.failFast == Some(true))
-    assert(consul.ignoreServiceAddress == Some(true))
+    assert(consul.preferServiceAddress == Some(false))
     assert(!consul.disabled)
   }
 }

@@ -8,7 +8,7 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
-* Add `ignoreServiceAddress` option to `io.l5d.consul` namer
+* Add `preferServiceAddress` option to `io.l5d.consul` namer
 
 ## 0.8.6 2017-01-19
 

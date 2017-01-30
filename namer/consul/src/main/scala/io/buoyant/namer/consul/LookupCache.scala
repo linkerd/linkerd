@@ -14,7 +14,7 @@ private[consul] class LookupCache(
   agentApi: v1.AgentApi,
   setHost: Boolean = false,
   consistency: Option[v1.ConsistencyMode] = None,
-  ignoreServiceAddress: Option[Boolean] = None,
+  preferServiceAddress: Option[Boolean] = None,
   stats: StatsReceiver = NullStatsReceiver
 ) {
 
@@ -96,7 +96,7 @@ private[consul] class LookupCache(
       name: String,
       domain: Option[String]
     ): Activity[Map[SvcKey, Var[Addr]]] = {
-      val dc = DcServices(consulApi, name, domain, consistency, ignoreServiceAddress, dcStats)
+      val dc = DcServices(consulApi, name, domain, consistency, preferServiceAddress, dcStats)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }
