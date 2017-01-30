@@ -8,6 +8,8 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
+* Change the default `dstPrefix` from the protocol name to `/s`
+* Change the default HTTP identifier to simply use the `Host` header
 
 ## 0.8.6 2017-01-19
 
