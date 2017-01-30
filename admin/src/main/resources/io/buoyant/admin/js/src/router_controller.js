@@ -119,17 +119,19 @@ define([
       return routerContainers;
     }
 
-    return function(metricsCollector, selectedRouter, routers, $parentContainer) {
+    return function(metricsCollector, selectedRouter, routers, $parentContainer, routerConfig) {
       var routerContainerEls = initializeRouterContainers(selectedRouter, routers, $parentContainer);
 
       _.each(routerContainerEls, function(container, router) {
         var $summaryEl = $(container.find(".summary")[0]);
         var $serversEl = $(container.find(".servers")[0]);
         var $clientsEl = $(container.find(".clients")[0]);
+        var $combinedClientGraphEl = $(container.find(".router-graph")[0]);
+        var $routerStatsEl = $(container.find(".router-stats")[0]);
 
-        RouterSummary(metricsCollector, $summaryEl, router);
+        RouterSummary(metricsCollector, $summaryEl, $routerStatsEl, router, routerConfig);
         RouterServers(metricsCollector, routers, $serversEl, router);
-        RouterClients(metricsCollector, routers, $clientsEl, router, colorOrder);
+        RouterClients(metricsCollector, routers, $clientsEl, $combinedClientGraphEl, router, colorOrder);
       });
 
       return {};
