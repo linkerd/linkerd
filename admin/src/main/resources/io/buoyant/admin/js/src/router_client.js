@@ -34,7 +34,9 @@ define([
         percent: percent,
         label: {
           description: "Endpoints available",
-          value: (numer.value || "-") + " / " + (denom.value || "-")
+          value: (_.isNull(numer.value) ? "-" : numer.value)
+            + " / "
+            + (_.isNull(denom.value) ? "-" : denom.value)
         }
       }
     }
