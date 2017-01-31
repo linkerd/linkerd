@@ -51,6 +51,8 @@ require([
     adminPage.initialize().done(function() {
       new loggingConfig();
     });
+  } else if (window.location.pathname.endsWith("/help")) {
+      return;
   } else {
     adminPage.initialize().done(function(routerConfig) {
       new dashboard(routerConfig);
