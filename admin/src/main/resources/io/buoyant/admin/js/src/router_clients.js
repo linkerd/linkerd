@@ -57,7 +57,8 @@ define([
         if (match[1]) {
           var $transformerPrefix = $container.find(".transformer-prefix");
           var $clientSuffix = $container.find(".client-suffix");
-          var $clientId = $container.find(".client-id")
+
+          $container.find(".client-id")
             .click(function() {
               $transformerPrefix.toggle("slow", function() {
                 $clientSuffix.toggleClass("is-first", !$transformerPrefix.is(":visible"));
