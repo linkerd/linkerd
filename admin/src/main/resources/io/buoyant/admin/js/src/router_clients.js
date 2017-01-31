@@ -55,12 +55,14 @@ define([
           client: match[2]
         })).appendTo($clientEl);
         if (match[1]) {
-          var $clientId = $container.find(".client-id");
-          var $transformerPrefix = $container.find(".transformer-prefix")
-          $clientId.css("cursor", "pointer");
-          $clientId.click(function() {
-            $transformerPrefix.toggle("slow", function() {});
-          });
+          var $transformerPrefix = $container.find(".transformer-prefix");
+          var $clientSuffix = $container.find(".client-suffix");
+          var $clientId = $container.find(".client-id")
+            .click(function() {
+              $transformerPrefix.toggle("slow", function() {
+                $clientSuffix.toggleClass("is-first", !$transformerPrefix.is(":visible"));
+              });
+            });
         }
 
         return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
