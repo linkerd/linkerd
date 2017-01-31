@@ -1,6 +1,7 @@
 # Routes all requests to localhost:8080
 routers:
 - protocol: http
+  httpAccessLog: access.log
   baseDtab: |
     /http/*/*/* => /$/inet/localhost/8080;
   servers:

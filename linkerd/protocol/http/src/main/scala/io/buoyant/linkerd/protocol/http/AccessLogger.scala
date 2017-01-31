@@ -14,14 +14,17 @@ case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
     val user = "-"
     val referer = reqHeaders.getOrElse("Referer", "-")
     val userAgent = reqHeaders.getOrElse("User-Agent", "-")
-    var hostHeader = reqHeaders.getOrElse("Host", "-")
+    val hostHeader = reqHeaders.getOrElse("Host", "-")
     val reqResource = s"${req.method.toString.toUpperCase} ${req.uri} ${req.version}"
+
+    //https://en.wikipedia.org/wiki/X-Forwarded-For
+    val xffHeader = reqHeaders.getOrElse("X-Forwarded-For", reqHeaders.getOrElse("Forwarded", "-"))
 
     svc(req).onSuccess { rsp =>
       val statusCode = rsp.statusCode
       val responseBytes = rsp.contentLength.map(_.toString).getOrElse("-")
       val requestEndTime = new TimeFormat("dd/MM/yyyy:HH:mm:ss Z").format(Time.now)
-      log.info(s"""$hostHeader $remoteHost $identd $user [$requestEndTime] "$reqResource" $statusCode $responseBytes "$referer" "$userAgent"""")
+      log.info(s"""$hostHeader $remoteHost $identd $user [$requestEndTime] "$reqResource" $statusCode $responseBytes "$referer" "$userAgent" "$xffHeader""")
     }
   }
 }
