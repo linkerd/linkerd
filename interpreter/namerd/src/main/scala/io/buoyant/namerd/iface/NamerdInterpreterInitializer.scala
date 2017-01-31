@@ -6,10 +6,12 @@ import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.param.HighResTimer
+import com.twitter.finagle.param.{HighResTimer, Label}
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
 import com.twitter.util.{NonFatal => _, _}
+import io.buoyant.admin.Admin
+import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import scala.util.control.NonFatal
@@ -43,7 +45,7 @@ case class NamerdInterpreterConfig(
   namespace: Option[String],
   retry: Option[Retry],
   tls: Option[ClientTlsConfig]
-) extends NamespacedInterpreterConfig {
+) extends NamespacedInterpreterConfig { config =>
 
   @JsonIgnore
   private[this] val log = Logger.get()
@@ -99,7 +101,18 @@ case class NamerdInterpreterConfig(
       .withSessionQualifier.noFailureAccrual
 
     val iface = client.newIface[thrift.Namer.FutureIface](name, label)
-    new ThriftNamerClient(iface, namespace.getOrElse("default"))
+
+    val ns = namespace.getOrElse("default")
+    val Label(routerLabel) = params[Label]
+
+    new ThriftNamerClient(iface, ns) with Admin.WithHandlers with Admin.WithNavItems {
+      val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
+
+      override def adminHandlers: Seq[Handler] =
+        Seq(Handler("/namerd", handler, css = Seq("delegator.css")))
+
+      override def navItems: Seq[NavItem] = Seq(NavItem("namerd", "namerd"))
+    }
   }
 }
 

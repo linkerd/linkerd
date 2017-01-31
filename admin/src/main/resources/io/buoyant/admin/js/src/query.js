@@ -108,6 +108,22 @@ define(['lodash'], function(_) {
       return q;
     }
 
+    var pathQuery = function() {
+      var q = generalQuery();
+      q.pathLabels = [];
+
+      q.allPaths = function() {
+        q.pathLabels = "*";
+        return q;
+      }
+
+      q.build = function() {
+        return new RegExp(["^rt\/", toR(q.routerLabels), "\/dst\/path\/", toR(q.pathLabels), "\/", toR(q.metricNames), "$"].join(""));
+      }
+
+      return q;
+    }
+
     function matchesQuery(metricName, q) {
       return metricName.search(q) >= 0;
     }
@@ -127,6 +143,7 @@ define(['lodash'], function(_) {
     return {
       serverQuery: serverQuery,
       clientQuery: clientQuery,
+      pathQuery: pathQuery,
       find: find,
       filter: filter
     };

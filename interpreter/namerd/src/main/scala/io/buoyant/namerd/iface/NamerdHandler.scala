@@ -1,6 +1,6 @@
-package io.buoyant.linkerd.admin
+package io.buoyant.namerd.iface
 
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
@@ -13,7 +13,6 @@ case class DelegatorConfig(
 )
 
 class NamerdHandler(
-  view: AdminHandler,
   interpreterConfigs: Seq[(String, NamespacedInterpreterConfig)],
   namerdInterpreters: Map[String, Delegator]
 ) extends Service[Request, Response] {
@@ -30,12 +29,13 @@ class NamerdHandler(
     }
 
     val collectedConfigs: Future[Seq[DelegatorConfig]] = Future.collect { delegatorConfigs }
-    collectedConfigs.flatMap(d => view.mkResponse(dashboardHtml(d)))
+    collectedConfigs.map(dashboardHtml)
   }
 
-  def dashboardHtml(dtabs: Seq[DelegatorConfig]) = {
-    view.html(
-      content = s"""
+  private[this] def dashboardHtml(dtabs: Seq[DelegatorConfig]) = {
+    val rsp = Response()
+    rsp.contentType = MediaType.Html
+    rsp.contentString = s"""
       <div class="container main">
         <div class="row">
           <h2>Namespaces</h2>
@@ -44,11 +44,8 @@ class NamerdHandler(
         </div>
         <div id="namerd-stats"></div>
       </div>
-      """,
-      tailContent = s"""
-        <script id="dtab-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtabs)}</script>
-      """,
-      csses = Seq("delegator.css")
-    )
+      <script id="dtab-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtabs)}</script>
+      """
+    rsp
   }
 }

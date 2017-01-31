@@ -80,7 +80,7 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     telemeter.run()
 
     val msg = await(promise)
-    assert(msg.orgid == Some("orgId"))
+    assert(msg.orgId == Some("orgId"))
     assert(msg.namers == Seq("test"))
     assert(msg.routers.head.protocol == Some("plain"))
     assert(msg.routers.last.protocol == Some("fancy"))
