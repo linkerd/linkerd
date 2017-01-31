@@ -237,6 +237,7 @@ nav.navbar {
   float: left;
   width: 100%;
   margin-top: -13px;
+  border-radius: 3px;
 }
 .client-container .header-line {
   width: 100%;

@@ -171,7 +171,7 @@ define([
       function toggleClientDisplay(expand) {
         if (expand) {
           $contentContainer.css({"border": colorBorder});
-          $headerLine.css("border-bottom", null);
+          $headerLine.css("border-bottom", "0px");
 
           metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
         } else {

@@ -19,7 +19,7 @@ define([
 
     return $.get("config.json").done(function(routersRsp) {
       var template = Handlebars.compile(templateRsp);
-      var routers = _.sortBy(routersRsp.routers, "label");
+      var routers = routersRsp.routers;
 
       if (!matches && routers.length > 0) {
         selectRouter(routers[0].label || routers[0].protocol);
