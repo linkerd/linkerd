@@ -8,7 +8,7 @@ namers:
 routers:
 - protocol: h2
   experimental: true
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs;
     /h2/localhost:4142 => /$/inet/127.1/8888;
     /h2 => /srv;

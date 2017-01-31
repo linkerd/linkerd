@@ -5,7 +5,7 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
+  dtab: |
     /http/1.1/* => /#/io.l5d.fs
   servers:
   - port: 4140

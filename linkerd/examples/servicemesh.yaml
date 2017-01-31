@@ -16,7 +16,7 @@ routers:
     # the linkerd (listening on port 4141) running on the destination host.
     - kind: io.l5d.port
       port: 4141
-  baseDtab: |
+  dtab: |
     /host => /#/io.l5d.fs;
     /http/1.1/* => /host;
   servers:
@@ -31,7 +31,7 @@ routers:
     # Instead of sending the request to a random destination instance, send it
     # only to instances running on localhost.
     - kind: io.l5d.localhost
-  baseDtab: |
+  dtab: |
     /host => /#/io.l5d.fs;
     /http/1.1/* => /host;
   servers:

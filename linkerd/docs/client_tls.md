@@ -11,7 +11,7 @@ routers:
     tls:
       certPath: /certificates/certificate.pem
       keyPath: /certificates/key.pem
-  baseDtab: |
+  dtab: |
     /http => /$/inet/127.1/8080;
 ```
 
