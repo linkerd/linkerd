@@ -2,10 +2,16 @@ package io.buoyant.linkerd.admin
 
 import com.twitter.finagle.http.{MediaType, Response}
 import com.twitter.util.Future
+import io.buoyant.admin.Admin.NavItem
 import io.buoyant.admin.HtmlView
 import io.buoyant.linkerd.Build
 
-class AdminHandler(namerdNav: Boolean) extends HtmlView {
+class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
+
+  private[this] val navHtml = navItems.map { item =>
+    s"""<li><a href="${item.url}">${item.name}</a></li>"""
+  }.mkString("\n")
+
   val navBar =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
@@ -23,11 +29,7 @@ class AdminHandler(namerdNav: Boolean) extends HtmlView {
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="/delegator">dtab</a></li>
-            <li><a href="/requests">requests</a></li>
-            <li><a href="/logging">logging</a></li>
-            <li><a href="/help">help</a></li>
-            ${if (namerdNav) "<li><a href=\"/namerd\">namerd</a></li>" else ""}
+          $navHtml
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">

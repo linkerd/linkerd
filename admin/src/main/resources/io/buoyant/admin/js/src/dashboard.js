@@ -15,7 +15,7 @@ define([
   RequestTotals,
   RouterController
 ) {
-  return function() {
+  return function(routerConfig) {
     /**
      * Number of millis to wait between data updates.
      */
@@ -31,7 +31,7 @@ define([
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
       RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), _.keys(metricsJson));
-      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"));
+      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"), routerConfig);
 
       $(function() {
         metricsCollector.start(UPDATE_INTERVAL);

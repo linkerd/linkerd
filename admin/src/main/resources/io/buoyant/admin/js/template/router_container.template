@@ -1,9 +1,17 @@
 {{#each routers}}
   <div class="router router-{{this}} row" data-router="{{this}}">
     <div class="summary row"></div>
+
+    <div class="router-graph-header">Requests per client</div>
+    <canvas class="router-graph" height="181"></canvas>
+
+    <div class="router-stats row">
+      <div class="retries-bar-chart col-md-6"></div>
+      <div class="retries-stats col-md-6"></div>
+      <div class="clearfix"></div>
+    </div>
+
     <div class="clients router-clients">
-      <div class="router-graph-header">Requests per client</div>
-      <canvas class="router-graph" height="181"></canvas>
       <div class="router-subsection-title">Clients</div>
     </div>
     <div class="servers router-servers row">

@@ -1,12 +1,12 @@
 package io.buoyant.telemetry.recentRequests
 
+import com.twitter.finagle.Service
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.util.Future
-import io.buoyant.admin.Admin.Handler
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.ISO_8859_1
 
-class RecentRequestsAdminHandler(tracer: RecentRequetsTracer) extends Handler {
+class RecentRequestsAdminHandler(tracer: RecentRequetsTracer) extends Service[Request, Response] {
 
   override def apply(req: Request): Future[Response] = {
 
