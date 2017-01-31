@@ -42,7 +42,7 @@ object Stream {
     override def reset(rst: GrpcStatus): Unit = ()
   }
 
-  def apply[T](): Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
+  def mk[T]: Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
     // TODO bound queue? not strictly necessary if send() future observed...
     private[this] val q = new AsyncQueue[Releasable[T]]
 
