@@ -106,27 +106,21 @@ object Linker {
     admin: Option[AdminConfig]
   ) {
 
-    def mk(): Linker = {
+    def mk(defaultTelemeter: Telemeter = NullTelemeter): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
       val metrics = MetricsTree()
 
-      val telemeterConfigs = telemetry match {
-        case Some(telemeters) if telemeters.exists(_.kind == "io.l5d.commonMetrics") =>
-          telemeters
-        case Some(telemeters) =>
-          telemeters :+ CommonMetricsConfig()
-        case None =>
-          Seq(CommonMetricsConfig())
-      }
-
-      val telemeters = telemeterConfigs.map {
-        case t if t.disabled =>
-          val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
-            "explicitly enabled by setting the `experimental' parameter to `true'."
-          throw new IllegalArgumentException(msg) with NoStackTrace
-        case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
+      val telemeters = telemetry match {
+        case None => Seq(defaultTelemeter)
+        case Some(telemeters) => telemeters.map {
+          case t if t.disabled =>
+            val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
+              "explicitly enabled by setting the `experimental' parameter to `true'."
+            throw new IllegalArgumentException(msg) with NoStackTrace
+          case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
+        }
       }
 
       // Telemeters may provide StatsReceivers.

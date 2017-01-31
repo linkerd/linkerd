@@ -7,7 +7,7 @@ import io.buoyant.config.Parser
 import io.buoyant.telemetry.{TelemeterConfig, TelemeterInitializer}
 import io.buoyant.test.FunSuite
 
-class AdminTelemeterInitializerTest extends FunSuite {
+class AdminMetricsExportTelemeterInitializerTest extends FunSuite {
 
   test("io.l5d.admin telemeter loads") {
     val yaml =

@@ -31,17 +31,17 @@ Exposes admin endpoints:
 
 This telemeter has no additional parameters.
 
-## Admin
+## Admin Metrics Export
 
-> Example Admin config
+> Example Admin Metrics Export config
 
 ```yaml
 telemetry:
-- kind: io.l5d.admin
+- kind: io.l5d.adminMetricsExport
   snapshotIntervalSecs: 60
 ```
 
-kind: `io.l5d.admin`
+kind: `io.l5d.adminMetricsExport`
 
 Exposes admin endpoint:
 

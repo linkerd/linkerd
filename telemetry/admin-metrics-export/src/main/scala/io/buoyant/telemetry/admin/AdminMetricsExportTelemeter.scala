@@ -11,14 +11,15 @@ import io.buoyant.telemetry.Metric.{Counter, Gauge, HistogramSummary, Stat}
 import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.collection.mutable
 
 /**
- * AdminTelemeter provides the /admin/metrics.json admin endpoint, backed by a MetricsTree.  It
- * does not provide a StatsReciever or Tracer.  Histograms are snapshotted into summaries at a
- * regular interval and the values served on /admin/metrics.json are taken from the most recent
- * summary snapshot.  Counter and gauge values are served live.
+ * AdminMetricsExportTelemeter provides the /admin/metrics.json admin endpoint, backed by a
+ * MetricsTree.  It does not provide a StatsReciever or Tracer.  Histograms are snapshotted into
+ * summaries at a regular interval and the values served on /admin/metrics.json are taken from the
+ * most recent summary snapshot.  Counter and gauge values are served live.
  */
-class AdminTelemeter(
+class AdminMetricsExportTelemeter(
   metrics: MetricsTree,
   snapshotInterval: Duration,
   timer: Timer
@@ -62,48 +63,49 @@ class AdminTelemeter(
     val jg = json.createGenerator(out)
     if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
     jg.writeStartObject()
-    val flattened = if (pretty)
-      flattenMetricsTree(metrics).sortBy(_._1)
-    else
-      flattenMetricsTree(metrics)
+    val flattened =
+      if (pretty) flattenMetricsTree(metrics).sortBy(_._1)
+      else flattenMetricsTree(metrics)
     flattened.foreach {
-      case (name, metric) =>
-        metric match {
-          case c: Counter =>
-            jg.writeNumberField(name, c.get)
-          case g: Gauge =>
-            jg.writeNumberField(name, g.get)
-          case s: Stat =>
-            for (summary <- summarySnapshots.get(s)) {
-              jg.writeNumberField(s"$name.count", summary.count)
-              if (summary.count > 0) {
-                jg.writeNumberField(s"$name.max", summary.max)
-                jg.writeNumberField(s"$name.min", summary.min)
-                jg.writeNumberField(s"$name.p50", summary.p50)
-                jg.writeNumberField(s"$name.p90", summary.p90)
-                jg.writeNumberField(s"$name.p95", summary.p95)
-                jg.writeNumberField(s"$name.p99", summary.p99)
-                jg.writeNumberField(s"$name.p9990", summary.p9990)
-                jg.writeNumberField(s"$name.p9999", summary.p9999)
-                jg.writeNumberField(s"$name.sum", summary.sum)
-                jg.writeNumberField(s"$name.avg", summary.avg)
-              }
-            }
-          case Metric.None =>
+      case (name, c: Counter) =>
+        jg.writeNumberField(name, c.get)
+      case (name, g: Gauge) =>
+        jg.writeNumberField(name, g.get)
+      case (name, s: Stat) =>
+        for (summary <- summarySnapshots.get(s)) {
+          jg.writeNumberField(s"$name.count", summary.count)
+          if (summary.count > 0) {
+            jg.writeNumberField(s"$name.max", summary.max)
+            jg.writeNumberField(s"$name.min", summary.min)
+            jg.writeNumberField(s"$name.p50", summary.p50)
+            jg.writeNumberField(s"$name.p90", summary.p90)
+            jg.writeNumberField(s"$name.p95", summary.p95)
+            jg.writeNumberField(s"$name.p99", summary.p99)
+            jg.writeNumberField(s"$name.p9990", summary.p9990)
+            jg.writeNumberField(s"$name.p9999", summary.p9999)
+            jg.writeNumberField(s"$name.sum", summary.sum)
+            jg.writeNumberField(s"$name.avg", summary.avg)
+          }
         }
+      case (_, Metric.None) =>
     }
     jg.writeEndObject()
     jg.close()
   }
 
-  private[this] def flattenMetricsTree(tree: MetricsTree, prefix: String = ""): Seq[(String, Metric)] = {
-    tree.children.foldLeft(Seq(prefix -> tree.metric)) {
-      case (acc, (name, child)) =>
-        if (prefix == "")
-          acc ++ flattenMetricsTree(child, name)
-        else
-          acc ++ flattenMetricsTree(child, s"$prefix/$name")
+  private[this] def flattenMetricsTree(
+    tree: MetricsTree,
+    prefix: String = "",
+    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
+  ): Seq[(String, Metric)] = {
+    acc += (prefix -> tree.metric)
+    for ((child, name) <- tree.children) {
+      if (prefix.isEmpty)
+        flattenMetricsTree(child, name, acc)
+      else
+        flattenMetricsTree(child, s"$prefix/$name", acc)
     }
+    acc.toSeq
   }
 
   /** Snapshot histograms to produce histogram summaries, resetting as we go. */

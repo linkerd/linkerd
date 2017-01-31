@@ -8,8 +8,8 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
-* Add `io.l5d.admin` telemeter as an eventual replacement for the `io.l5d.commonMetrics`
-  telemeter.
+* Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
+  `io.l5d.commonMetrics` telemeter.
 
 ## 0.8.6 2017-01-19
 

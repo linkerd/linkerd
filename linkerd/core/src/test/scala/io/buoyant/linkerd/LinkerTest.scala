@@ -17,7 +17,7 @@ class LinkerTest extends FunSuite with Exceptions {
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
     namers: Seq[NamerInitializer] = Seq(TestNamerInitializer),
     tracers: Seq[TracerInitializer] = Seq(TestTracerInitializer),
-    telemeters: Seq[TelemeterInitializer] = Seq(new TestTelemeterInitializer, new CommonMetricsInitializer)
+    telemeters: Seq[TelemeterInitializer] = Seq(new TestTelemeterInitializer)
   ) = Linker.Initializers(protocol = protos, namer = namers, tracer = tracers, telemetry = telemeters)
 
   def parse(yaml: String) = initializer().load(yaml)
@@ -208,7 +208,6 @@ class LinkerTest extends FunSuite with Exceptions {
          |- kind: io.l5d.testTelemeter
          |  metrics: true
          |  tracing: true
-         |- kind: io.l5d.commonMetrics
          |namers:
          |- kind: test
          |routers:
@@ -225,7 +224,7 @@ class LinkerTest extends FunSuite with Exceptions {
       case Seq((_, namer: TestNamer)) =>
       case namers => fail(s"unexpected namers: $namers")
     }
-    assert(linker.telemeters.size == 4)
+    assert(linker.telemeters.size == 3)
 
     val ttracers = linker.telemeters.map(_.tracer).collect { case t: BufferingTracer => t }
     assert(ttracers.size == 2)
@@ -245,32 +244,6 @@ class LinkerTest extends FunSuite with Exceptions {
     ttracers.foreach { t =>
       assert(t.size == 1)
     }
-  }
-
-  test("default telemeter is added when telemeters absent") {
-    val yaml =
-      """|routers:
-         |- protocol: plain
-         |  servers:
-         |  - port: 1
-         |""".stripMargin
-    val linker = parse(yaml)
-    assert(linker.telemeters.size == 1)
-    assert(linker.telemeters(0).isInstanceOf[CommonMetricsTelemeter])
-  }
-
-  test("default telemeter is added to telemeters list") {
-    val yaml =
-      """|telemetry:
-         |- kind: io.l5d.testTelemeter
-         |routers:
-         |- protocol: plain
-         |  servers:
-         |  - port: 1
-         |""".stripMargin
-    val linker = parse(yaml)
-    assert(linker.telemeters.size == 2)
-    assert(linker.telemeters.exists(_.isInstanceOf[CommonMetricsTelemeter]))
   }
 
   test("with admin") {

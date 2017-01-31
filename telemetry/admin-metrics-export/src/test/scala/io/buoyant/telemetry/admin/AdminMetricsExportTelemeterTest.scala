@@ -6,13 +6,13 @@ import com.twitter.util.{MockTimer, Time}
 import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}
 import io.buoyant.test.FunSuite
 
-class AdminTelemeterTest extends FunSuite {
+class AdminMetricsExportTelemeterTest extends FunSuite {
 
   test("counters are updated immediately") {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
 
     Time.withCurrentTimeFrozen { tc =>
       val counter = stats.scope("foo", "bar").counter("bas")
@@ -29,7 +29,7 @@ class AdminTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
 
     Time.withCurrentTimeFrozen { tc =>
       var v = 1.0f
@@ -46,7 +46,7 @@ class AdminTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
     val closable = telemeter.run()
 
     try {

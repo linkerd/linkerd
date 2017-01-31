@@ -6,7 +6,7 @@ import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.util.DefaultTimer
 import io.buoyant.telemetry.{MetricsTree, Telemeter, TelemeterConfig, TelemeterInitializer}
 
-case class AdminTelemeterConfig(
+case class AdminMetricsExportTelemeterConfig(
   snapshotIntervalSecs: Option[Int] = None
 ) extends TelemeterConfig {
   @JsonIgnore
@@ -17,8 +17,8 @@ case class AdminTelemeterConfig(
   )
 }
 
-class AdminTelemeterInitializer extends TelemeterInitializer {
-  type Config = AdminTelemeterConfig
-  val configClass = classOf[AdminTelemeterConfig]
-  override val configId = "io.l5d.admin"
+class AdminMetricsExportTelemeterInitializer extends TelemeterInitializer {
+  type Config = AdminMetricsExportTelemeterConfig
+  val configClass = classOf[AdminMetricsExportTelemeterConfig]
+  override val configId = "io.l5d.adminMetricsExport"
 }
