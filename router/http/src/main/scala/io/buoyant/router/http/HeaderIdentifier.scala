@@ -1,11 +1,11 @@
 package io.buoyant.router.http
 
-import com.twitter.finagle.http.Request
-import com.twitter.finagle.{Path, Dtab}
+import com.twitter.finagle.http.{Fields, Request}
+import com.twitter.finagle.{Dtab, Path}
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.util.{Try, Future}
+import com.twitter.util.{Future, Try}
 import io.buoyant.router.RoutingFactory
-import io.buoyant.router.RoutingFactory.{UnidentifiedRequest, IdentifiedRequest, RequestIdentification}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 
 case class HeaderIdentifier(
   prefix: Path,
@@ -31,5 +31,5 @@ case class HeaderIdentifier(
 
 object HeaderIdentifier {
   def default(prefix: Path, baseDtab: () => Dtab = () => Dtab.base): HeaderIdentifier =
-    new HeaderIdentifier(prefix, "Host", false, baseDtab)
+    new HeaderIdentifier(prefix, Fields.Host, false, baseDtab)
 }

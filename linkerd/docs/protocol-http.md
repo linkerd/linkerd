@@ -30,7 +30,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/s` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
-identifier | The `methodAndHost` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
+identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
 maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
@@ -108,8 +108,7 @@ this.) All HTTP/1.1 identifiers have a `kind`.  If a list of identifiers is
 provided, each identifier is tried in turn until one successfully assigns a
 logical *name* to the request.
 
-If no identifier is specified, the logical name is taken from the `Host`
-header of the request.
+If no identifier is specified the `io.l5d.header.token` identifier is used.
 
 Key | Default Value | Description
 --- | ------------- | -----------
