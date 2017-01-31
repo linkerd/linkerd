@@ -47,7 +47,6 @@ trait Codec[T] {
   val decodeRequest: h2.Request => Stream[T] =
     DecodingStream(_, decodeByteBuffer)
 
-  // TODO should be aware of grpc-status
   val decodeResponse: h2.Response => Stream[T] =
     DecodingStream(_, decodeByteBuffer)
 }
@@ -59,7 +58,7 @@ object Codec {
     val Buf.ByteBuffer.Owned(bb0) = Buf.ByteBuffer.coerce(buf)
     val bb = bb0.duplicate()
     if (GrpcFrameHeaderSz > bb.remaining)
-      throw new IllegalArgumentException("too short for header")
+      throw new IllegalArgumentException(s"too short for header: $bb")
 
     // TODO decompress
     val compressed = bb.get == 1
@@ -74,20 +73,29 @@ object Codec {
     Buf.ByteBuffer.Owned(bb)
   }
 
-  def buffer(stream: h2.Stream): Future[Buf] = {
-    def accum(orig: Buf): Future[Buf] =
+  def bufferWithStatus(stream: h2.Stream): Future[(Buf, GrpcStatus)] = {
+    def accum(orig: Buf): Future[(Buf, GrpcStatus)] =
       stream.read().flatMap {
-        case trls: h2.Frame.Trailers => Future.value(orig)
-        case data: h2.Frame.Data =>
-          val buf = orig.concat(data.buf)
-          if (data.isEnd) Future.value(buf)
+        case t: h2.Frame.Trailers =>
+          val status = GrpcStatus.fromTrailers(t)
+          Future.value(orig -> status)
+
+        case d: h2.Frame.Data =>
+          val buf = orig.concat(d.buf)
+          if (d.isEnd) Future.value(buf -> GrpcStatus.Unknown())
           else accum(buf)
       }
+
     accum(Buf.Empty)
   }
 
   def bufferGrpcFrame(stream: h2.Stream): Future[Buf] =
-    buffer(stream).map(decodeGrpcFrame)
+    bufferWithStatus(stream).flatMap(decodeBufferedGrpcResponseFrame)
+
+  private[this] val decodeBufferedGrpcResponseFrame: ((Buf, GrpcStatus)) => Future[Buf] = {
+    case (buf, GrpcStatus.Ok(_)) if !buf.isEmpty => Future(decodeGrpcFrame(buf))
+    case (_, status) => Future.exception(status)
+  }
 
   private def encodeGrpcMessage[T](msg: T, codec: Codec[T]): Buf = {
     val sz = codec.sizeOf(msg)

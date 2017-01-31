@@ -6,7 +6,7 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 
 class IndexTxtHandler(paths: Seq[String])
-  extends Admin.Handler {
+  extends Service[Request, Response] {
 
   def apply(req: Request): Future[Response] = {
     val rsp = Response()

@@ -25,13 +25,13 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, routers, $clientEl, routerName, colors) {
+    return function (metricsCollector, routers, $clientEl, $combinedClientGraphEl, routerName, colors) {
       var clientContainerTemplate = Handlebars.compile(routerClientContainerTemplate);
 
       var clients = routers.clients(routerName);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
-      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $clientEl.find(".router-graph"), clientToColor);
+      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
 
       var expandClients = shouldExpandClients(clients.length);
 
@@ -60,11 +60,7 @@ define([
             $transformerPrefix.toggle("slow", function() {});
         });
 
-        var $metrics = $container.find(".metrics-container");
-        var $chart = $container.find(".chart-container");
-        var $toggle = $container.find(".client-toggle");
-
-        return RouterClient(metricsCollector, routers, client, $metrics, routerName, $chart, colorsForClient, $toggle, expandClients);
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
 
       function addClients(addedClients) {

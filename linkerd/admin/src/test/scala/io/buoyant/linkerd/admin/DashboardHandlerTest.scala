@@ -6,7 +6,7 @@ import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
 class DashboardHandlerTest extends FunSuite with Awaits {
-  val handler = new DashboardHandler(new AdminHandler(false))
+  val handler = new DashboardHandler(new AdminHandler(Nil))
 
   test("serves ok on /") {
     val rsp = await(handler(Request("/")))
