@@ -54,11 +54,14 @@ define([
           prefix: match[1],
           client: match[2]
         })).appendTo($clientEl);
-        var $clientId = $container.find(".client-id");
-        var $transformerPrefix = $container.find(".transformer-prefix")
-        $clientId.click(function() {
+        if (match[1]) {
+          var $clientId = $container.find(".client-id");
+          var $transformerPrefix = $container.find(".transformer-prefix")
+          $clientId.css("cursor", "pointer");
+          $clientId.click(function() {
             $transformerPrefix.toggle("slow", function() {});
-        });
+          });
+        }
 
         return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
