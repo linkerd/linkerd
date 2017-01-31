@@ -73,10 +73,6 @@ class RoutingFactoryTest extends FunSuite {
       val service = mkService(label = "customlabel")
       await(service(Request()))
       assert(tracer.annotations.exists {
-        case Rpc(name) => name == "customlabel"
-        case _ => false
-      })
-      assert(tracer.annotations.exists {
         case BinaryAnnotation(key, value) => key == "router.label" && value == "customlabel"
         case _ => false
       })
