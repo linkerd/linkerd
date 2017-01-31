@@ -4,7 +4,7 @@ package iface.grpc
 import com.twitter.finagle.{Addr, Address, Dentry, Dtab, Name, Namer, NameTree, Path}
 import com.twitter.io.Buf
 import com.twitter.util.{Closable, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.{Stream, VarEventStream}
+import io.buoyant.grpc.runtime.{GrpcStatus, Stream, VarEventStream}
 import io.buoyant.namer.{DelegateTree, Metadata}
 import io.buoyant.proto.{Dtab => ProtoDtab, Path => ProtoPath, _}
 import io.buoyant.proto.namerd.{Addr => ProtoAddr, VersionedDtab => ProtoVersionedDtab, _}
@@ -21,14 +21,8 @@ import scala.util.control.NoStackTrace
 private[grpc] object InterpreterProto {
 
   val toProtoParseRsp: Try[Dtab] => Future[ParseRsp] = {
-    case Return(dtab) =>
-      val result = ParseRsp.OneofResult.Dtab(toProtoDtab(dtab))
-      Future.value(ParseRsp(Some(result)))
-
-    case Throw(exc) =>
-      val e = ParseRsp.Error(Option(exc.getMessage), None)
-      val result = ParseRsp.OneofResult.Error(e)
-      Future.value(ParseRsp(Some(result)))
+    case Return(dtab) => Future.value(ParseRsp(dtab = Some(toProtoDtab(dtab))))
+    case Throw(exc) => Future.exception(GrpcStatus.InvalidArgument(exc.getMessage))
   }
 
   private[this] val WildcardElem =
@@ -132,42 +126,24 @@ private[grpc] object InterpreterProto {
   def mkDtabReq(ns: String): DtabReq =
     DtabReq(Some(ns))
 
-  def DtabRspError(description: String, code: DtabRsp.Error.Code.Value) = {
-    val error = DtabRsp.Error(Some(description), Some(code))
-    DtabRsp(Some(DtabRsp.OneofResult.Error(error)))
-  }
-
-  val DtabRspNoNamespace =
-    DtabRspError("No namespace specified", DtabRsp.Error.Code.BAD_REQUEST)
-
-  val DtabRspNotFound =
-    DtabRspError("Namespace not found", DtabRsp.Error.Code.NOT_FOUND)
+  val NoNamespaceStatus = GrpcStatus.InvalidArgument("No namespace specified")
+  val NamespaceNotFoundStatus = GrpcStatus.NotFound("Namespace not found")
+  val NoNameStatus = GrpcStatus.NotFound("No name given")
 
   val toProtoDtabRsp: VersionedDtab => DtabRsp = { vdtab =>
     val v = ProtoVersionedDtab.Version(Some(vdtab.version))
     val d = toProtoDtab(vdtab.dtab)
-    DtabRsp(Some(DtabRsp.OneofResult.Dtab(ProtoVersionedDtab(Some(v), Some(d)))))
+    DtabRsp(Some(ProtoVersionedDtab(Some(v), Some(d))))
   }
 
   val toProtoDtabRspEv: Try[Option[VersionedDtab]] => VarEventStream.Ev[DtabRsp] = {
-    case Return(None) => VarEventStream.Val(DtabRspNotFound)
     case Return(Some(vdtab)) => VarEventStream.Val(toProtoDtabRsp(vdtab))
-    case Throw(e) => VarEventStream.End(Return(DtabRspError(e.getMessage, DtabRsp.Error.Code.UNKNOWN)))
+    case Return(None) => VarEventStream.End(Throw(NamespaceNotFoundStatus)) // TODO empty dtab?
+    case Throw(e) => VarEventStream.End(Throw(GrpcStatus.Internal(e.getMessage)))
   }
 
   def mkBindReq(ns: String, path: Path, dtab: Dtab): BindReq =
     BindReq(Some(ns), Some(toProtoPath(path)), Some(toProtoDtab(dtab)))
-
-  def BoundTreeRspError(desc: String, code: BoundTreeRsp.Error.Code.Value) = {
-    val error = BoundTreeRsp.Error(Some(desc), Some(code))
-    BoundTreeRsp(Some(BoundTreeRsp.OneofResult.Error(error)))
-  }
-
-  val BoundTreeRspNoNamespace =
-    BoundTreeRspError("Namespaces not found", BoundTreeRsp.Error.Code.NOT_FOUND)
-
-  val BoundTreeRspNoName =
-    BoundTreeRspError("No name given", BoundTreeRsp.Error.Code.BAD_REQUEST)
 
   private[this] val BoundTreeNeg = BoundNameTree.OneofNode.Nop(BoundNameTree.Nop.NEG)
   private[this] val BoundTreeFail = BoundNameTree.OneofNode.Nop(BoundNameTree.Nop.FAIL)
@@ -234,7 +210,7 @@ private[grpc] object InterpreterProto {
   }
 
   val toProtoBoundTreeRsp: NameTree[Name.Bound] => BoundTreeRsp =
-    t => BoundTreeRsp(Some(BoundTreeRsp.OneofResult.Tree(toProtoBoundNameTree(t))))
+    t => BoundTreeRsp(Some(toProtoBoundNameTree(t)))
 
   val toProtoBoundTreeRspEv: Try[NameTree[Name.Bound]] => VarEventStream.Ev[BoundTreeRsp] = {
     case Return(tree) => VarEventStream.Val(toProtoBoundTreeRsp(tree))
@@ -322,17 +298,6 @@ private[grpc] object InterpreterProto {
 
   def mkDelegateTreeReq(ns: String, dtab: Dtab, tree: NameTree[Name.Path]): DelegateTreeReq =
     DelegateTreeReq(Some(ns), Some(toProtoPathNameTree(tree.map(_.path))), Some(toProtoDtab(dtab)))
-
-  def DelegateTreeRspError(description: String, code: DelegateTreeRsp.Error.Code.Value) = {
-    val error = DelegateTreeRsp.Error(Some(description), Some(code))
-    DelegateTreeRsp(Some(DelegateTreeRsp.OneofResult.Error(error)))
-  }
-
-  val DelegateTreeRspNoNamespace =
-    DelegateTreeRspError("Namespaces not found", DelegateTreeRsp.Error.Code.NOT_FOUND)
-
-  val DelegateTreeRspNoName =
-    DelegateTreeRspError("No name given", DelegateTreeRsp.Error.Code.BAD_REQUEST)
 
   def mkFromProtoBoundDelegateTree(bindAddr: Path => Var[Addr]): BoundDelegateTree => DelegateTree[Name.Bound] = {
     def bindTree(t: BoundDelegateTree): DelegateTree[Name.Bound] = t match {
@@ -444,7 +409,7 @@ private[grpc] object InterpreterProto {
   }
 
   val toProtoDelegateTreeRsp: DelegateTree[Name.Bound] => DelegateTreeRsp =
-    t => DelegateTreeRsp(Some(DelegateTreeRsp.OneofResult.Tree(toProtoDelegateTree(t))))
+    t => DelegateTreeRsp(Some(toProtoDelegateTree(t)))
 
   val toProtoDelegateTreeRspEv: Try[DelegateTree[Name.Bound]] => VarEventStream.Ev[DelegateTreeRsp] = {
     case Return(tree) => VarEventStream.Val(toProtoDelegateTreeRsp(tree))

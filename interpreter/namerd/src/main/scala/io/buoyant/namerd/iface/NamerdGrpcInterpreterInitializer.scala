@@ -81,15 +81,11 @@ case class NamerdGrpcInterpreterConfig(
         }
     }
 
-    val clientParams = H2.client.params ++ params
-
-    val client = {
-      val c = H2.client
-        .withParams(H2.client.params ++ params)
-        .transformed(retryTransformer)
-        .transformer(TlsTransformer.prepOnly(tks))
-      configureTls(c, tls).newService(name, label)
-    }
+    val client = H2.client
+      .withParams(H2.client.params ++ params)
+      .transformed(retryTransformer)
+      .transformer(TlsTransformer.prepOnly(tls))
+      .newService(name, label)
 
     InterpreterClient(new Interpreter.Client(client), namespace.getOrElse("default"))
   }

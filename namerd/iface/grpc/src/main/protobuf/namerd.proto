@@ -44,18 +44,7 @@ message ParseReq {
 }
 
 message ParseRsp {
-
-  message Error {
-    string description = 1;
-
-    /** Offsets in bytes, if known. */
-    uint32 location = 2;
-  }
-
-  oneof result {
-    io.buoyant.proto.Dtab dtab = 1;
-    Error error = 2;
-  }
+  io.buoyant.proto.Dtab dtab = 1;
 }
 
 /*
@@ -76,22 +65,7 @@ message VersionedDtab {
 }
 
 message DtabRsp {
-
-  message Error {
-    enum Code {
-      UNKNOWN = 0;
-      NOT_FOUND = 1;
-      BAD_REQUEST = 2;
-    }
-
-    string description = 1;
-    Code code = 2;
-  }
-
-  oneof result {
-    VersionedDtab dtab = 1;
-    Error error = 2;
-  }
+  VersionedDtab dtab = 1;
 }
 
 /*
@@ -105,22 +79,7 @@ message BindReq {
 }
 
 message BoundTreeRsp {
-
-  message Error {
-    enum Code {
-      UNKNOWN = 0;
-      NOT_FOUND = 1;
-      BAD_REQUEST = 2;
-    }
-
-    string description = 1;
-    Code code = 2;
-  }
-
-  oneof result {
-    BoundNameTree tree = 1;
-    Error error = 2;
-  }
+  BoundNameTree tree = 1;
 }
 
 /*
@@ -149,7 +108,7 @@ message Endpoint {
     /**
      * Suggested HTTP authority to be used for inbound requests.
      */
-    string authority = 1;  
+    string authority = 1;
 
     /**
      * In scheduled environments, a diagnostic name for the parent node.
@@ -203,21 +162,6 @@ message DelegateTreeReq {
 
 
 message DelegateTreeRsp {
-  
-  message Error {
-    enum Code {
-      UNKNOWN = 0;
-      NOT_FOUND = 1;
-      BAD_REQUEST = 2;
-    }
-
-    string description = 1;
-    Code code = 2;
-  }
-
-  oneof result {
-    BoundDelegateTree tree = 1;
-    Error error = 2;
-  }
+  BoundDelegateTree tree = 1;
 }
 

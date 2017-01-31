@@ -7,7 +7,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.{Stream, VarEventStream}
+import io.buoyant.grpc.runtime.{GrpcStatus, Stream, VarEventStream}
 import io.buoyant.namer.{ConfiguredDtabNamer, Delegator}
 import io.buoyant.proto.namerd.{Addr => ProtoAddr, VersionedDtab => ProtoVersionedDtab, _}
 
@@ -32,23 +32,23 @@ object InterpreterServer {
 
     override def getDtab(req: DtabReq): Future[DtabRsp] =
       req.ns match {
-        case None => Future.value(DtabRspNoNamespace)
+        case None => Future.exception(NoNamespaceStatus)
         case Some(ns) => store.observe(ns).toFuture.transform(_transformDtabRsp)
       }
 
     override def streamDtab(req: DtabReq): Stream[DtabRsp] =
       req.ns match {
-        case None => Stream.value(DtabRspNoNamespace)
+        case None => Stream.exception(NoNamespaceStatus)
         case Some(ns) => VarEventStream(store.observe(ns).values.map(toProtoDtabRspEv))
       }
 
     override def getBoundTree(req: BindReq): Future[BoundTreeRsp] =
       req.ns match {
-        case None => Future.value(BoundTreeRspNoNamespace)
+        case None => Future.exception(NoNamespaceStatus)
         case Some(ns) =>
           req.name match {
-            case None => Future.value(BoundTreeRspNoName)
-            case Some(pname) if pname.elems.isEmpty => Future.value(BoundTreeRspNoName)
+            case None => Future.exception(NoNameStatus)
+            case Some(pname) if pname.elems.isEmpty => Future.exception(NoNameStatus)
             case Some(pname) =>
               val dtab = req.dtab match {
                 case None => Dtab.empty
@@ -61,11 +61,11 @@ object InterpreterServer {
 
     override def streamBoundTree(req: BindReq): Stream[BoundTreeRsp] =
       req.ns match {
-        case None => Stream.value(BoundTreeRspNoNamespace)
+        case None => Stream.exception(NoNamespaceStatus)
         case Some(ns) =>
           req.name match {
-            case None => Stream.value(BoundTreeRspNoName)
-            case Some(pname) if pname.elems.isEmpty => Stream.value(BoundTreeRspNoName)
+            case None => Stream.exception(NoNameStatus)
+            case Some(pname) if pname.elems.isEmpty => Stream.exception(NoNameStatus)
             case Some(pname) =>
               val name = fromProtoPath(pname)
               val dtab = req.dtab match {
@@ -79,10 +79,10 @@ object InterpreterServer {
 
     override def getDelegateTree(req: DelegateTreeReq): Future[DelegateTreeRsp] =
       req.ns match {
-        case None => Future.value(DelegateTreeRspNoNamespace)
+        case None => Future.exception(NoNamespaceStatus)
         case Some(ns) =>
           req.tree match {
-            case None => Future.value(DelegateTreeRspNoName)
+            case None => Future.exception(NoNameStatus)
             case Some(ptree) =>
               val tree = fromProtoPathNameTree(ptree).map(Name.Path(_))
               val dtab = req.dtab match {
@@ -95,10 +95,10 @@ object InterpreterServer {
 
     override def streamDelegateTree(req: DelegateTreeReq): Stream[DelegateTreeRsp] =
       req.ns match {
-        case None => Stream.value(DelegateTreeRspNoNamespace)
+        case None => Stream.exception(NoNamespaceStatus)
         case Some(ns) =>
           req.tree match {
-            case None => Stream.value(DelegateTreeRspNoName)
+            case None => Stream.exception(NoNameStatus)
             case Some(ptree) =>
               val tree = fromProtoPathNameTree(ptree).map(Name.Path(_))
               val dtab = req.dtab match {
@@ -153,9 +153,9 @@ object InterpreterServer {
   }
 
   private[this] val _transformDtabRsp: Try[Option[VersionedDtab]] => Future[DtabRsp] = {
-    case Return(None) => Future.value(DtabRspNotFound)
+    case Return(None) => Future.exception(NamespaceNotFoundStatus)
     case Return(Some(vdtab)) => Future.value(toProtoDtabRsp(vdtab))
-    case Throw(e) => Future.value(DtabRspError(e.getMessage, DtabRsp.Error.Code.UNKNOWN))
+    case Throw(e) => Future.exception(GrpcStatus.Internal(e.getMessage))
   }
 
 }

@@ -8,7 +8,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Closable, Future, Return, Throw, Try, Var}
-import io.buoyant.grpc.runtime.Stream
+import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
 import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree}
 import io.buoyant.proto.{BoundNameTree, BoundDelegateTree}
 import io.buoyant.proto.namerd.{Interpreter => ProtoInterpreter, Addr => _, _}
@@ -16,8 +16,6 @@ import scala.util.control.NoStackTrace
 
 object InterpreterClient {
   import InterpreterProto._
-
-  case class NamespaceNotFound(namespace: String) extends Throwable with NoStackTrace
 
   def apply(client: ProtoInterpreter, namespace: String): NameInterpreter =
     Impl(client, namespace)
@@ -28,23 +26,21 @@ object InterpreterClient {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
       val req = mkBindReq(namespace, path, dtab)
       val run = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { state =>
-        val stream = client.streamBoundTree(req)
+        val trees = client.streamBoundTree(req)
 
         @volatile var closed = false
         def loop(): Future[Unit] =
           if (closed) Future.Unit
-          else stream.recv().transform {
+          else trees.recv().transform {
             case Throw(e) =>
               state() = Activity.Failed(e)
               Future.exception(e)
 
-            case Return(Stream.Releasable(rsp, release)) =>
-              rsp.result match {
-                case Some(BoundTreeRsp.OneofResult.Tree(ptree)) =>
+            case Return(Stream.Releasable(BoundTreeRsp(ptree), release)) =>
+              ptree match {
+                case None =>
+                case Some(ptree) =>
                   state() = Activity.Ok(fromProtoBoundNameTree(ptree))
-                case Some(BoundTreeRsp.OneofResult.Error(BoundTreeRsp.Error(_, BoundTreeRsp.Error.Code.NOT_FOUND))) =>
-                  state() = Activity.Failed(NamespaceNotFound(namespace))
-                case _ =>
               }
               // XXX shouldn't release until this state is changed
               // later, but deferring this could currently break
@@ -54,9 +50,9 @@ object InterpreterClient {
 
         val f = loop()
         Closable.make { _ =>
-          // TODO Reset stream
           closed = true
           f.raise(Failure("closed", Failure.Interrupted))
+          trees.reset(GrpcStatus.Ok())
           Future.Unit
         }
       }
@@ -66,24 +62,21 @@ object InterpreterClient {
     override lazy val dtab: Activity[Dtab] = {
       val req = mkDtabReq(namespace)
       val run = Var.async[Activity.State[Dtab]](Activity.Pending) { state =>
-        val stream = client.streamDtab(req)
+        val dtabs = client.streamDtab(req)
 
         @volatile var closed = false
         def loop(): Future[Unit] =
           if (closed) Future.Unit
-          else stream.recv().transform {
+          else dtabs.recv().transform {
             case Throw(e) =>
               state() = Activity.Failed(e)
               Future.exception(e)
 
-            case Return(Stream.Releasable(rsp, release)) =>
-              rsp.result match {
-                case Some(DtabRsp.OneofResult.Dtab(VersionedDtab(_, Some(pdtab)))) =>
+            case Return(Stream.Releasable(DtabRsp(vd), release)) =>
+              vd match {
+                case Some(VersionedDtab(_, Some(pdtab))) =>
                   state() = Activity.Ok(fromProtoDtab(pdtab))
-                case Some(DtabRsp.OneofResult.Error(DtabRsp.Error(_, DtabRsp.Error.Code.NOT_FOUND))) =>
-                  state() = Activity.Failed(NamespaceNotFound(namespace))
                 case _ =>
-
               }
               // XXX shouldn't release until this state is changed
               // later, but deferring this could currently break
@@ -93,9 +86,9 @@ object InterpreterClient {
 
         val f = loop()
         Closable.make { _ =>
-          // TODO Reset stream
           closed = true
           f.raise(Failure("closed", Failure.Interrupted))
+          dtabs.reset(GrpcStatus.Ok())
           Future.Unit
         }
       }
@@ -109,23 +102,21 @@ object InterpreterClient {
       val req = mkDelegateTreeReq(namespace, dtab, tree)
 
       val run = Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { state =>
-        val stream = client.streamDelegateTree(req)
+        val trees = client.streamDelegateTree(req)
 
         @volatile var closed = false
         def loop(): Future[Unit] =
           if (closed) Future.Unit
-          else stream.recv().transform {
+          else trees.recv().transform {
             case Throw(e) =>
               state() = Activity.Failed(e)
               Future.exception(e)
 
-            case Return(Stream.Releasable(rsp, release)) =>
-              rsp.result match {
-                case Some(DelegateTreeRsp.OneofResult.Tree(ptree)) =>
+            case Return(Stream.Releasable(DelegateTreeRsp(ptree), release)) =>
+              ptree match {
+                case None =>
+                case Some(ptree) =>
                   state() = Activity.Ok(fromProtoBoundDelegateTree(ptree))
-                case Some(DelegateTreeRsp.OneofResult.Error(DelegateTreeRsp.Error(_, DelegateTreeRsp.Error.Code.NOT_FOUND))) =>
-                  state() = Activity.Failed(NamespaceNotFound(namespace))
-                case _ =>
               }
               // XXX shouldn't release until this state is changed
               // later, but deferring this could currently break
@@ -136,8 +127,8 @@ object InterpreterClient {
         val f = loop()
         Closable.make { _ =>
           closed = true
-          // TODO reset stream
           f.raise(Failure("closed", Failure.Interrupted))
+          trees.reset(GrpcStatus.Ok())
           Future.Unit
         }
       }
@@ -149,12 +140,12 @@ object InterpreterClient {
     private[this] val bindAddr: Path => Var[Addr] = { id =>
       val req = mkAddrReq(id)
       Var.async[Addr](Addr.Pending) { addr =>
-        val stream = client.streamAddr(req)
+        val addrs = client.streamAddr(req)
 
         @volatile var closed = false
         def loop(): Future[Unit] =
           if (closed) Future.Unit
-          else stream.recv().transform {
+          else addrs.recv().transform {
             case Throw(e) =>
               addr() = Addr.Failed(e)
               Future.exception(e)
@@ -165,9 +156,9 @@ object InterpreterClient {
         val f = loop()
 
         Closable.make { deadline =>
-          // TODO cancel stream
           closed = true
           f.raise(Failure("closed", Failure.Interrupted))
+          addrs.reset(GrpcStatus.Ok())
           Future.Unit
         }
       }
