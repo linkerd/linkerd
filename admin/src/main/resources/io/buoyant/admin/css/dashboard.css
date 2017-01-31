@@ -65,39 +65,27 @@ body {
 /*
 * Navbar styles
 */
-.navbar {
-  margin-bottom: 0;
+
+.navbar-brand img {
+  height: 26px;
+  padding-bottom: 5px;
 }
 
-nav {
+nav.navbar {
   font-size: 18px;
   font-weight: 300;
   line-height: 1.1;
+  margin-bottom: 0;
 }
 
-.navbar-container {
-  padding: 20px 27px 9px 27px;
+.navbar-right .version {
+  margin: 20px 15px 0 10px;
+  font-size: 12px;
 }
 
-.nav {
-  margin-top: -11px;
-}
-
-.navbar-brand-img img {
-  height: 26px;
-}
-
-nav ul.navbar-nav {
-  margin-left: 10px;
-}
-
-.navbar-right {
-  margin-top: 3px;
-}
-
-.navbar-right .dropdown {
-  margin-right: 30px;
-  margin-top: -14px;
+.col-md-2.router-summary-stat {
+  width: 160px;
+  padding: 0 27px 0 0;
 }
 
 .col-md-2 {
@@ -155,10 +143,6 @@ nav ul.navbar-nav {
   border-radius: 0;
 }
 
-.dentry .dentry-part:hover {
-  background-color: #222;
-}
-
 /*
 * Router container
 */
@@ -202,6 +186,23 @@ nav ul.navbar-nav {
 
 .router-server .router-graph-header {
   margin-top: 0px;
+}
+
+/**
+* Router stats
+*/
+
+.router-stats {
+  margin-top: 20px;
+  min-height: 100px;
+}
+
+.retries-stats .warning {
+  font-size: 15px;
+  margin-top: 30px;
+  border-radius: 3px;
+  padding: 8px;
+  background-color: #800808;
 }
 
 /**
@@ -271,6 +272,49 @@ nav ul.navbar-nav {
 }
 
 /*
+* BAR CHART
+*/
+
+.bar-chart-container {
+  margin-top: 20px;
+  min-height: 80px;
+}
+.bar-chart-label {
+  margin: 12px 0;
+  font-size: 15px;
+}
+.bar-chart-label.warning {
+  background-color: #A41818;
+  margin-left: 30px;
+  padding: 0px 3px;
+  border-radius: 2px;
+}
+.overlay-bars {
+  position: absolute;
+  height: 20px;
+}
+.overlay-bars.bar-container {
+  opacity: 0.25;
+}
+
+.graph-gradient {
+  /* https://css-tricks.com/css3-gradients/ */
+  background-image: repeating-linear-gradient(90deg, black, black 4px, grey 0px, grey 8px);
+}
+.graph-gradient.green {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(144, 251, 69) 0px, rgb(144, 251, 69) 8px);
+}
+.graph-gradient.orange {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(248, 169, 68) 0px, rgb(248, 169, 68) 8px);
+}
+.graph-gradient.red {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, #A41818 0px, #A41818 8px);
+}
+.graph-gradient.yellow {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(228, 211, 60) 0px, rgb(228, 211, 60) 8px);
+}
+
+/*
 * For wider screens
 */
 
@@ -291,4 +335,12 @@ nav ul.navbar-nav {
   .router > div {
     width: 100%;
   }
+}
+
+a.router-list-item:after {
+    content: ','
+}
+
+a.router-list-item:last-of-type:after {
+    content:''
 }

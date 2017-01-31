@@ -1,0 +1,9 @@
+<div class='namespace-container container-fluid col-md-4'>
+  <h3>{{namespace}}
+    <small>used by
+      {{#each routers}}
+        <a class="router-list-item" href="/delegator?router={{.}}">{{.}}</a>
+      {{/each}}
+    </small>
+  </h3>
+</div>

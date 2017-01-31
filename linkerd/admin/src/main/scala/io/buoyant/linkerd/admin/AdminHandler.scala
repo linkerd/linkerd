@@ -1,12 +1,17 @@
 package io.buoyant.linkerd.admin
 
-import com.twitter.finagle.http.{MediaType, Request, Response}
-import com.twitter.finagle.{Service, SimpleFilter}
+import com.twitter.finagle.http.{MediaType, Response}
 import com.twitter.util.Future
+import io.buoyant.admin.Admin.NavItem
 import io.buoyant.admin.HtmlView
 import io.buoyant.linkerd.Build
 
-object AdminHandler extends HtmlView {
+class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
+
+  private[this] val navHtml = navItems.map { item =>
+    s"""<li><a href="${item.url}">${item.name}</a></li>"""
+  }.mkString("\n")
+
   val navBar =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
@@ -18,16 +23,13 @@ object AdminHandler extends HtmlView {
             <span class="icon-bar"></span>
           </button>
 
-          <a class="navbar-brand-img" href=".">
+          <a class="navbar-brand" href=".">
             <img alt="Logo" src="files/images/linkerd-horizontal-white-transbg-vectorized.svg">
           </a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="delegator">dtab</a></li>
-            <li><a href="requests">requests</a></li>
-            <li><a href="logging">logging</a></li>
-            <li><a href="help">help</a></li>
+          $navHtml
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -37,7 +39,7 @@ object AdminHandler extends HtmlView {
               <ul class="dropdown-menu">
               </ul>
             </li>
-            <li>version ${Build.load().version}</li>
+            <li class="version">version ${Build.load().version}</li>
           </ul>
         </div>
       </div>

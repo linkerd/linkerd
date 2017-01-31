@@ -34,6 +34,16 @@
         </div>
       </div>
       <div class="router-summary-stat col-md-2">
+        <div class="metric-header">Retries</div>
+        <div data-key="retries">
+          {{#if retries}}
+            {{retries}}
+          {{else}}
+            0
+          {{/if}}
+        </div>
+      </div>
+      <div class="router-summary-stat col-md-2">
         <div class="metric-header">Success rate</div>
         <div data-key="success-rate" class="success-metric">
           {{#if successRate}}

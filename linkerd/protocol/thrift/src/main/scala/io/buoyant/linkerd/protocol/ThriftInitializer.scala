@@ -6,7 +6,7 @@ import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
-import com.twitter.finagle.buoyant.linkerd.ThriftTraceInitializer
+import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftServerPrep, ThriftTraceInitializer}
 import io.buoyant.config.Parser
 import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.{RoutingFactory, Thrift}
@@ -20,13 +20,18 @@ class ThriftInitializer extends ProtocolInitializer {
   protected type ServerReq = Array[Byte]
   protected type ServerRsp = Array[Byte]
 
-  protected val defaultRouter = Thrift.router
-    .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
+  protected val defaultRouter = {
+    val clientStack = Thrift.router.clientStack
+      .replace(ThriftClientPrep.role, ThriftClientPrep.module)
+    Thrift.router.withClientStack(clientStack)
+      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
+  }
 
   protected val adapter = Thrift.Router.IngestingFilter
   protected val defaultServer = {
     val stack = Thrift.server.stack
       .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule)
+      .replace(ThriftServerPrep.role, ThriftServerPrep.module)
     Thrift.server.withStack(stack)
   }
 

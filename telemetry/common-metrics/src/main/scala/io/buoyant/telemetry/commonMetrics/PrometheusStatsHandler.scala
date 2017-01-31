@@ -40,7 +40,7 @@ private[telemetry] object PrometheusStatsHandler {
 }
 
 private[telemetry] class PrometheusStatsHandler(registry: Metrics)
-  extends Admin.Handler {
+  extends Service[Request, Response] {
 
   import PrometheusStatsHandler._
 
