@@ -11,6 +11,7 @@ define([
   routerClientContainerTemplate) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
+    var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
 
     function assignColorsToClients(colors, clients) {
       return _.reduce(clients, function(clientMapping, client, idx) {
@@ -47,10 +48,20 @@ define([
       function initializeClient(client) {
         $clientEl.show();
         var colorsForClient = clientToColor[client.label];
+        var match = ('/' + client.label).match(TRANSFORMER_RE);
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
-          client: client.label
+          prefix: match[1],
+          client: match[2]
         })).appendTo($clientEl);
+        if (match[1]) {
+          var $clientId = $container.find(".client-id");
+          var $transformerPrefix = $container.find(".transformer-prefix")
+          $clientId.css("cursor", "pointer");
+          $clientId.click(function() {
+            $transformerPrefix.toggle("slow", function() {});
+          });
+        }
 
         return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
