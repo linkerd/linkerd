@@ -1,12 +1,12 @@
 <div class="client-metrics row">
   <div class="col-md-2">
-    {{> metricPartial data.successRate containerClass="metric-container" metricClass="success-metric metric-large" borderColor=clientColor}}
-    {{> metricPartial data.requests containerClass="metric-container" metricClass="metric-large" borderColor=clientColor}}
+    {{> metricPartial data.successRate containerClass="metric-container" metricClass="success-metric metric-large"}}
+    {{> metricPartial data.requests containerClass="metric-container" metricClass="metric-large"}}
   </div>
 
   <div class="col-md-2">
-    {{> metricPartial data.connections containerClass="metric-container" metricClass="metric-large" borderColor=clientColor}}
-    {{> metricPartial data.failures containerClass="metric-container" metricClass="failure-metric metric-large" borderColor=clientColor}}
+    {{> metricPartial data.connections containerClass="metric-container" metricClass="metric-large"}}
+    {{> metricPartial data.failures containerClass="metric-container" metricClass="failure-metric metric-large"}}
   </div>
 
   <div class="col-md-2 router-latencies-container">

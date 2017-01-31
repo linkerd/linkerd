@@ -83,9 +83,8 @@ define([
       });
     }
 
-    function renderMetrics($container, client, summaryData, latencyData, clientColor) {
+    function renderMetrics($container, client, summaryData, latencyData) {
       var clientHtml = template({
-        clientColor: clientColor,
         client: client.label,
         latencies: latencyData,
         data: summaryData
@@ -141,19 +140,21 @@ define([
 
       var $contentContainer = $container.find(".client-content-container");
 
+      var $headerLine = $container.find(".header-line");
+      var colorBorder = "2px solid" + colors.color;
+
       var $metricsEl = $container.find(".metrics-container");
       var $chartEl = $container.find(".chart-container");
       var $toggleLinks = $container.find(".client-toggle");
       var $lbBarChart = $container.find(".lb-bar-chart");
 
-      var clientColor = colors.color;
       var latencyLegend = createLatencyLegend(colors.colorFamily);
       var metricDefinitions = getMetricDefinitions(routerName, client.label);
 
       var $expandLink = $toggleLinks.find(".client-expand");
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
-      renderMetrics($metricsEl, client, [], [], clientColor);
+      renderMetrics($metricsEl, client, [], []);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
@@ -169,8 +170,14 @@ define([
 
       function toggleClientDisplay(expand) {
         if (expand) {
+          $contentContainer.css({"border": colorBorder});
+          $headerLine.css("border-bottom", "0px");
+
           metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
         } else {
+          $contentContainer.css({'border': null});
+          $headerLine.css({'border-bottom': colorBorder});
+
           metricsCollector.deregisterListener(metricsHandler);
         }
 
@@ -187,7 +194,7 @@ define([
         chart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
 
-        renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
+        renderMetrics($metricsEl, client, summaryData, latencies);
       }
 
       function getDesiredMetrics(metrics) {

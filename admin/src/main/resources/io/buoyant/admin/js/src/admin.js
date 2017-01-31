@@ -21,15 +21,14 @@ define([
       var template = Handlebars.compile(templateRsp);
       var routers = routersRsp.routers;
 
-      //Not every page supports a mult-router view!
-      if(!removeRoutersAllOption) {
-        routers.unshift({label: "all"});
-      } else {
-        if (!matches && routers.length > 0) {
-          selectRouter(routers[0].label || routers[0].protocol);
-        }
+      if (!matches && routers.length > 0) {
+        selectRouter(routers[0].label || routers[0].protocol);
       }
 
+      //Not every page supports a mult-router view!
+      if(!removeRoutersAllOption || routers.length === 0) {
+        routers.push({label: "all"});
+      }
       var routerHtml = routers.map(template);
 
       $(".dropdown-menu").html(routerHtml.join(""));
@@ -43,11 +42,6 @@ define([
   }
 
   function selectRouter(label) {
-    if (label === "all") {
-      unselectRouter();
-      return;
-    }
-
     var uriComponent = "router=" + encodeURIComponent(label);
     var re = /router=(.+)(?:&|$)/
     if (window.location.search == "") {
