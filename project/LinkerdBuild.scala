@@ -78,7 +78,17 @@ object LinkerdBuild extends Base {
         thriftIdl % "test,e2e"
       )
 
-    val all = aggregateDir("router", core, h2, http, mux, thrift)
+    val thriftMux = projectDir("router/thriftmux")
+      .withTwitterLib(Deps.finagle("thriftmux"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thrift,
+        thriftIdl % "test,e2e"
+      )
+
+    val all = aggregateDir("router", core, h2, http, mux, thrift, thriftMux)
   }
 
   object Namer {
@@ -434,13 +444,16 @@ object LinkerdBuild extends Base {
         .withTests()
         .withE2e()
 
+      val thriftMux = projectDir("linkerd/protocol/thriftmux")
+        .dependsOn(core, Router.thriftMux)
+
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, testUtil)
         .enablePlugins(JmhPlugin)
         .settings(publishArtifact := false)
         .withTwitterLib(Deps.twitterUtil("benchmark"))
 
-      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift)
+      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift, thriftMux)
     }
 
     object Tracer {
@@ -528,7 +541,7 @@ object LinkerdBuild extends Base {
       admin, core, main, configCore,
       Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
-      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
+      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
@@ -599,6 +612,7 @@ object LinkerdBuild extends Base {
   val routerHttp = Router.http
   val routerMux = Router.mux
   val routerThrift = Router.thrift
+  val routerThriftMux = Router.thriftMux
   val routerThriftIdl = Router.thriftIdl
 
   val telemetry = Telemetry.all
@@ -653,6 +667,7 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
+  val linkerdProtocolThriftMux = Linkerd.Protocol.thriftMux
   val linkerdTracer = Linkerd.Tracer.all
   val linkerdTracerZipkin = Linkerd.Tracer.zipkin
   val linkerdTelemeter = Linkerd.Telemeter.all

@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.server.StackBasedServer
 import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
@@ -113,7 +113,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   protected def adapter: Filter[ServerReq, ServerRsp, RouterReq, RouterRsp]
 
   /** The default protocol-specific server configuration */
-  protected def defaultServer: StackServer[ServerReq, ServerRsp]
+  protected def defaultServer: StackBasedServer[ServerReq, ServerRsp]
 
   def defaultServerPort: Int
 }
@@ -150,7 +150,7 @@ object ProtocolInitializer {
   private case class ServerInitializer[Req, Rsp](
     protocol: ProtocolInitializer,
     addr: InetSocketAddress,
-    server: StackServer[Req, Rsp],
+    server: StackBasedServer[Req, Rsp],
     factory: ServiceFactory[Req, Rsp],
     announce: Seq[Path]
   ) extends Server.Initializer {
