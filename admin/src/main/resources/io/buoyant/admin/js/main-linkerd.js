@@ -29,14 +29,16 @@ require([
   'src/dashboard',
   'src/delegate',
   'src/namerd',
-  'src/logging'
+  'src/logging',
+  'src/usage'
 ], function (
   $, _, bootstrap,
   adminPage,
   dashboard,
   linkerdDtabPlayground,
   namerd,
-  loggingConfig
+  loggingConfig,
+  usage
 ) {
   // poor man's routing
   if (window.location.pathname.endsWith("/delegator")) {
@@ -50,6 +52,10 @@ require([
   } else if (window.location.pathname.endsWith("/logging")) {
     adminPage.initialize().done(function() {
       new loggingConfig();
+    });
+  } else if (window.location.pathname.endsWith("/usage")) {
+    adminPage.initialize().done(function() {
+      new usage();
     });
   } else {
     adminPage.initialize().done(function(routerConfig) {

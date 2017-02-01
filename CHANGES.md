@@ -1,6 +1,7 @@
 ## Upcoming Release
 
 * Add `io.l5d.usage` telemeter for opt-in usage data collection
+  * Add Usage tab on Admin dashboard
 * Admin dashboard
   * Sorts clients and servers alphabetically
   * Displays routers in the order that they are defined
