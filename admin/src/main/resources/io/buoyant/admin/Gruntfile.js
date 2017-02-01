@@ -1,31 +1,35 @@
 module.exports = function(grunt) {
+  var requireJsConfig = {
+    paths: {
+      requireLib: 'lib/require',
+      'jQuery': 'lib/jquery.min',
+      'lodash': 'lib/lodash.min',
+      'Handlebars': 'lib/handlebars-v4.0.5',
+      'bootstrap': 'lib/bootstrap.min',
+      'Smoothie': 'lib/smoothie',
+      'text': 'lib/text'
+    },
+    shim: {
+      'jQuery': {
+        exports: '$'
+      },
+      'lodash': {
+        exports: '_'
+      },
+      'bootstrap': {
+        deps : ['jQuery'],
+        exports: 'Bootstrap'
+      }
+    }
+  }
+
   grunt.initConfig({
     requirejs: {
-      // !! You can drop your app.build.js config wholesale into 'options'
       linkerd: {
         options: {
           baseUrl: "./js",
-          paths: {
-            requireLib: 'lib/require',
-            'jQuery': 'lib/jquery.min',
-            'lodash': 'lib/lodash.min',
-            'Handlebars': 'lib/handlebars-v4.0.5',
-            'bootstrap': 'lib/bootstrap.min',
-            'Smoothie': 'lib/smoothie',
-            'text': 'lib/text'
-          },
-          shim: {
-            'jQuery': {
-              exports: '$'
-            },
-            'lodash': {
-              exports: '_'
-            },
-            'bootstrap': {
-              deps : ['jQuery'],
-              exports: 'Bootstrap'
-            }
-          },
+          paths: requireJsConfig.paths,
+          shim: requireJsConfig.shim,
           name: "main-linkerd",
           mainConfigFile: 'js/main-linkerd.js',
           out: "js/out/main-linkerd-built.js",
@@ -35,26 +39,8 @@ module.exports = function(grunt) {
       namerd: {
         options: {
           baseUrl: "./js",
-          paths: {
-            requireLib: 'lib/require',
-            'jQuery': 'lib/jquery.min',
-            'lodash': 'lib/lodash.min',
-            'Handlebars': 'lib/handlebars-v4.0.5',
-            'bootstrap': 'lib/bootstrap.min',
-            'text': 'lib/text'
-          },
-          shim: {
-            'jQuery': {
-              exports: '$'
-            },
-            'lodash': {
-              exports: '_'
-            },
-            'bootstrap': {
-              deps : ['jQuery'],
-              exports: 'Bootstrap'
-            }
-          },
+          paths: requireJsConfig.paths,
+          shim: requireJsConfig.shim,
           name: "main-namerd",
           mainConfigFile: 'js/main-namerd.js',
           out: "js/out/main-namerd-built.js",
