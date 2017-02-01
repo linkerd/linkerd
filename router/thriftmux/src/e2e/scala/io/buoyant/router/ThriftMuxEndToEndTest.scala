@@ -78,12 +78,12 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       val dtab = Dtab.read(s"""
         /p/cat => /$$/inet/127.1/${cat.port} ;
 
-        /thrift => /p/cat ;
+        /thriftmux => /p/cat ;
       """)
 
       val factory = ThriftMux.router
         .configured(RoutingFactory.BaseDtab(() => dtab))
-        .configured(RoutingFactory.DstPrefix(Path.Utf8("thrift")))
+        .configured(RoutingFactory.DstPrefix(Path.Utf8("thriftmux")))
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
         .factory()
@@ -94,7 +94,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         .serve(new InetSocketAddress(0), Thrift.Router.IngestingFilter.andThen(factory))
     }
 
-    val path = "/thrift"
+    val path = "/thriftmux"
     val bound = s"/$$/inet/127.1/${cat.port}"
 
     val clientThrift = Upstream.mk(Protocol.PThrift, catRouter)
@@ -134,7 +134,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         s"""
         /p/dog => /$$/inet/127.1/${dog.port} ;
 
-        /thrift => /p/dog ;
+        /thriftmux => /p/dog ;
       """)
 
       val factory = ThriftMux.router
@@ -150,7 +150,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         .serve(new InetSocketAddress(0), Thrift.Router.IngestingFilter.andThen(factory))
     }
 
-    val path = "/thrift"
+    val path = "/thriftmux"
     val bound = s"/$$/inet/127.1/${dog.port}"
 
     val clientThrift = Upstream.mk(Protocol.PThrift, dogRouter)
