@@ -83,7 +83,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           </div>
           $tailContent
 
-          <script data-main="files/js/main-linkerd" src="files/js/out/main-built.js"></script>
+          <script src="files/js/out/main-linkerd-built.js"></script>
 
           <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.5.18/webfont.js"></script>
           <script>

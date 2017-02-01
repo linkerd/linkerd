@@ -20,6 +20,7 @@ var requireConfig = {
     }
   }
 };
+
 require.config(requireConfig);
 
 require([

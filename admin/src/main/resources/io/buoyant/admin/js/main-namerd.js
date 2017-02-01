@@ -1,4 +1,4 @@
-require.config({
+var requireConfig = {
   paths: {
     'jQuery': 'lib/jquery.min',
     'lodash': 'lib/lodash.min',
@@ -18,7 +18,9 @@ require.config({
       exports: 'Bootstrap'
     }
   }
-});
+}
+
+require.config(requireConfig);
 
 require([
   'jQuery',

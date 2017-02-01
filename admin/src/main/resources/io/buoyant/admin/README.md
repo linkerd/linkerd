@@ -51,13 +51,13 @@ To develop, run `grunt watch` which will watch for file changes and re-run the
 r.js optimizer to produce our bundled js.
 
 If you don't want to wait 10s every time you hit save on a file, go to
-AdminHandler.scala and replace
+AdminHandler.scala and replace this line
 
 ```
-<script data-main="files/js/main-linkerd" src="files/js/out/main-built.js"></script>
+<script src="files/js/out/main-built.js"></script>
 ```
 
-with
+with this line
 
 ```
 <script data-main="files/js/main-linkerd" src="files/js/lib/require.js"></script>
