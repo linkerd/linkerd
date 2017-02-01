@@ -1,11 +1,7 @@
 module.exports = function(grunt) {
   grunt.initConfig({
-    /* ... */
-
-    // !! This is the name of the task ('requirejs')
     requirejs: {
       compile: {
-
         // !! You can drop your app.build.js config wholesale into 'options'
         options: {
           baseUrl: "./js",
@@ -58,6 +54,9 @@ module.exports = function(grunt) {
       },
     }
   });
+
+  grunt.registerTask('release', ['eslint', 'karma', 'requirejs']);
+
 
   // !! This loads the plugin into grunt
   grunt.loadNpmTasks('grunt-contrib-requirejs');
