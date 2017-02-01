@@ -32,3 +32,11 @@ when a file changes:
 ```
 karma start --autoWatch=true --singleRun=false
 ```
+
+## Building JS
+
+We use the requirejs optimizer, r.js, to speed up our app.
+
+```
+node r.js -o build.js
+```
