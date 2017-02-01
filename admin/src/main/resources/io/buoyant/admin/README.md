@@ -38,5 +38,6 @@ karma start --autoWatch=true --singleRun=false
 We use the requirejs optimizer, r.js, to speed up our app.
 
 ```
-node r.js -o build.js
+cd /linkerd/admin/src/main/resources/io/buoyant/admin
+node js/lib/r.js -o js/linkerd.build.js
 ```
