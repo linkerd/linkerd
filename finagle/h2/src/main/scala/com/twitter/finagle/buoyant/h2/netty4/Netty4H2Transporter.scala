@@ -8,7 +8,7 @@ import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.{BufferingConnectDelay, Netty4ClientTls}
 import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
 import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPipeline}
-import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
+import io.netty.handler.codec.http2._
 import io.netty.handler.ssl.ApplicationProtocolNames
 
 object Netty4H2Transporter {
@@ -25,7 +25,13 @@ object Netty4H2Transporter {
     // transports are not created) until a connection is fully
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
-    def framer = new Http2FrameCodec(false /*server*/ )
+    def framer = {
+      // TODO replace flow controller
+      val connection = new DefaultHttp2Connection(false /*server*/ )
+      // TODO configure settings from params
+      val settings = new Http2Settings
+      new H2FrameCodec(connection, settings)
+    }
     val pipelineInit: ChannelPipeline => Unit =
       params[TransportSecurity].config match {
         case TransportSecurity.Insecure =>
