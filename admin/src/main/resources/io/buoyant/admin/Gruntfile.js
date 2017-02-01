@@ -42,6 +42,12 @@ module.exports = function(grunt) {
           configFile: 'karma.conf.js'
       }
     },
+    eslint: {
+      options: {
+        configFile: '.eslintrc.json'
+      },
+      target: ['js/*.js', 'js/src/*.js']
+    },
     watch: {
       scripts: {
         files: ['js/*.js', 'js/src/*.js'],
@@ -57,5 +63,5 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-requirejs');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-karma');
-
+  grunt.loadNpmTasks('grunt-eslint');
 };
