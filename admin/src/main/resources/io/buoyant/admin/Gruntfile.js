@@ -36,11 +36,26 @@ module.exports = function(grunt) {
           include: ["requireLib"]
         }
       }
+    },
+    karma: {
+      unit: {
+          configFile: 'karma.conf.js'
+      }
+    },
+    watch: {
+      scripts: {
+        files: ['js/*.js', 'js/src/*.js'],
+        tasks: ['requirejs'],
+        options: {
+          spawn: false,
+        },
+      },
     }
-    /* ... */
   });
 
   // !! This loads the plugin into grunt
   grunt.loadNpmTasks('grunt-contrib-requirejs');
+  grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-karma');
 
 };
