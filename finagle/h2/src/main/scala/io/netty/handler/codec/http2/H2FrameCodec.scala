@@ -75,7 +75,7 @@ class H2FrameCodec(
           connectionListener.onStreamActive(stream)
 
           upgrade.upgradeRequest.headers.setInt(
-            HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(),
+            HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text,
             Http2CodecUtil.HTTP_UPGRADE_STREAM_ID
           )
 
@@ -168,7 +168,7 @@ class H2FrameCodec(
 object H2FrameCodec {
 
   /** Aggressively acknowledge window updates */
-  val DefaultWindowUpdateRatio = 1.0f
+  val DefaultWindowUpdateRatio = 0.99f // on (0.0, 1.0)
 
   def client(
     settings: Http2Settings = new Http2Settings,
@@ -190,6 +190,8 @@ object H2FrameCodec {
     windowUpdateRatio: Float,
     autoRefillConnectionWindow: Boolean = false
   ): H2FrameCodec = {
+    require(0.0 < windowUpdateRatio && windowUpdateRatio < 1.0)
+
     val conn = new DefaultHttp2Connection(isServer)
     val flow = new DefaultHttp2LocalFlowController(conn, windowUpdateRatio, autoRefillConnectionWindow)
     conn.local.flowController(flow)
