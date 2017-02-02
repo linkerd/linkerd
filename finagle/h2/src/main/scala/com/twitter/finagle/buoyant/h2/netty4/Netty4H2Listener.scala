@@ -57,11 +57,8 @@ object Netty4H2Listener {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
 
-            // TODO replace flow controller
-            val connection = new DefaultHttp2Connection(true /*server*/ )
             // TODO configure settings from params
-            val settings = new Http2Settings
-            val codec = new H2FrameCodec(connection, settings)
+            val codec = H2FrameCodec.server()
             ctx.pipeline.replace(PlaceholderKey, "h2 framer", codec); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>
