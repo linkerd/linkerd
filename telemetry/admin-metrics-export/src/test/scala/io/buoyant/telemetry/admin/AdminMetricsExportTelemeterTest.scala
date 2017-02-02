@@ -13,14 +13,15 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
     val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
 
     Time.withCurrentTimeFrozen { tc =>
       val counter = stats.scope("foo", "bar").counter("bas")
       counter.incr()
-      val rsp1 = await(telemeter(Request("/admin/metrics.json"))).contentString
+      val rsp1 = await(handler(Request("/admin/metrics.json"))).contentString
       assert(rsp1 == """{"foo/bar/bas":1}""")
       counter.incr()
-      val rsp2 = await(telemeter(Request("/admin/metrics.json"))).contentString
+      val rsp2 = await(handler(Request("/admin/metrics.json"))).contentString
       assert(rsp2 == """{"foo/bar/bas":2}""")
     }
   }
@@ -30,14 +31,15 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
     val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
 
     Time.withCurrentTimeFrozen { tc =>
       var v = 1.0f
       val gauge = stats.scope("foo", "bar").addGauge("bas") { v }
-      val rsp1 = await(telemeter(Request("/admin/metrics.json"))).contentString
+      val rsp1 = await(handler(Request("/admin/metrics.json"))).contentString
       assert(rsp1 == """{"foo/bar/bas":1.0}""")
       v = 2.0f
-      val rsp2 = await(telemeter(Request("/admin/metrics.json"))).contentString
+      val rsp2 = await(handler(Request("/admin/metrics.json"))).contentString
       assert(rsp2 == """{"foo/bar/bas":2.0}""")
     }
   }
@@ -47,6 +49,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
     val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
     val closable = telemeter.run()
 
     try {
@@ -54,18 +57,18 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
         val stat = stats.scope("foo", "bar").stat("bas")
         // stat added; not yet snapshotted
         stat.add(1.0f)
-        val rsp1 = await(telemeter(Request("/admin/metrics.json"))).contentString
+        val rsp1 = await(handler(Request("/admin/metrics.json"))).contentString
         assert(rsp1 == """{}""")
 
         // snapshot
         tc.advance(1.minute)
         timer.tick()
 
-        val rsp2 = await(telemeter(Request("/admin/metrics.json"))).contentString
+        val rsp2 = await(handler(Request("/admin/metrics.json"))).contentString
         assert(rsp2 == mkHistoJson("foo/bar/bas", 1L))
         stat.add(2.0f)
         // value served only reflects previous snapshot
-        val rsp3 = await(telemeter(Request("/admin/metrics.json"))).contentString
+        val rsp3 = await(handler(Request("/admin/metrics.json"))).contentString
         assert(rsp3 == mkHistoJson("foo/bar/bas", 1L))
 
         // snapshot
@@ -73,7 +76,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
         timer.tick()
 
         // value served from previous snapshot
-        val rsp4 = await(telemeter(Request("/admin/metrics.json"))).contentString
+        val rsp4 = await(handler(Request("/admin/metrics.json"))).contentString
         assert(rsp4 == mkHistoJson("foo/bar/bas", 2L))
       }
     } finally {

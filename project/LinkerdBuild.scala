@@ -135,7 +135,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.finagle("stats"))
       .withTests()
 
-    val admin = projectDir("telemetry/admin")
+    val adminMetricsExport = projectDir("telemetry/admin-metrics-export")
       .dependsOn(LinkerdBuild.admin, core)
       .withLib(Deps.jacksonCore)
       .withTests()
@@ -157,7 +157,7 @@ object LinkerdBuild extends Base {
     val recentRequests = projectDir("telemetry/recent-requests")
       .dependsOn(admin, core, Router.core)
 
-    val all = aggregateDir("telemetry", admin, core, commonMetrics, recentRequests, statsd, tracelog)
+    val all = aggregateDir("telemetry", adminMetricsExport, core, commonMetrics, recentRequests, statsd, tracelog)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -535,7 +535,7 @@ object LinkerdBuild extends Base {
       Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
-      Telemetry.admin, Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog,
       Tracer.zipkin,
       Telemeter.usage,
       tls,
@@ -607,7 +607,7 @@ object LinkerdBuild extends Base {
   val routerThriftIdl = Router.thriftIdl
 
   val telemetry = Telemetry.all
-  val telemetryAdmin = Telemetry.admin
+  val telemetryAdminMetricsExport = Telemetry.adminMetricsExport
   val telemetryCore = Telemetry.core
   val telemetryCommonMetrics = Telemetry.commonMetrics
   val telemetryRecentRequests = Telemetry.recentRequests

@@ -1,1 +1,1 @@
-AdminMetricsExportTelemeterInitializer
+io.buoyant.telemetry.admin.AdminMetricsExportTelemeterInitializer

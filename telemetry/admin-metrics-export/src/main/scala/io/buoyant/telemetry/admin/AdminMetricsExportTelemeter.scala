@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
+import com.twitter.finagle.Service
 import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.telemetry.Metric.{Counter, Gauge, HistogramSummary, Stat}
@@ -23,10 +24,18 @@ class AdminMetricsExportTelemeter(
   metrics: MetricsTree,
   snapshotInterval: Duration,
   timer: Timer
-) extends Admin.Handler with Telemeter with Admin.WithHandlers {
+) extends Telemeter with Admin.WithHandlers {
 
-  val adminHandlers: Admin.Handlers = Seq(
-    "/admin/metrics.json" -> this
+  private[admin] val handler = Service.mk { request: Request =>
+    val pretty = request.getBooleanParam("pretty", false)
+    val response = request.response
+    response.mediaType = MediaType.Json
+    response.withOutputStream(writeJson(_, pretty))
+    Future.value(response)
+  }
+
+  val adminHandlers: Seq[Admin.Handler] = Seq(
+    Admin.Handler("/admin/metrics.json", handler)
   )
 
   val stats = NullStatsReceiver
@@ -46,14 +55,6 @@ class AdminMetricsExportTelemeter(
     new Closable with CloseAwaitably {
       override def close(deadline: Time): Future[Unit] = closeAwaitably(task.close(deadline))
     }
-  }
-
-  def apply(request: Request): Future[Response] = {
-    val pretty = request.getBooleanParam("pretty", false)
-    val response = request.response
-    response.mediaType = MediaType.Json
-    response.withOutputStream(writeJson(_, pretty))
-    Future.value(response)
   }
 
   private[this] var summarySnapshots = Map.empty[Stat, HistogramSummary]
@@ -99,7 +100,7 @@ class AdminMetricsExportTelemeter(
     acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
   ): Seq[(String, Metric)] = {
     acc += (prefix -> tree.metric)
-    for ((child, name) <- tree.children) {
+    for ((name, child) <- tree.children) {
       if (prefix.isEmpty)
         flattenMetricsTree(child, name, acc)
       else

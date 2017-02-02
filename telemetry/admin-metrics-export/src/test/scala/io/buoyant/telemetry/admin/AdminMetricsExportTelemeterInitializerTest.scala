@@ -11,7 +11,7 @@ class AdminMetricsExportTelemeterInitializerTest extends FunSuite {
 
   test("io.l5d.admin telemeter loads") {
     val yaml =
-      """|kind: io.l5d.admin
+      """|kind: io.l5d.adminMetricsExport
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
@@ -24,7 +24,7 @@ class AdminMetricsExportTelemeterInitializerTest extends FunSuite {
 
   test("io.l5d.admin exposes metrics endpoint") {
     val yaml =
-      """|kind: io.l5d.admin
+      """|kind: io.l5d.adminMetricsExport
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
@@ -33,6 +33,6 @@ class AdminMetricsExportTelemeterInitializerTest extends FunSuite {
     val telemeter = config.mk(Stack.Params.empty)
     val handlers = telemeter.asInstanceOf[Admin.WithHandlers].adminHandlers
     assert(handlers.size == 1)
-    assert(handlers(0)._1 == "/admin/metrics.json")
+    assert(handlers.head.url == "/admin/metrics.json")
   }
 }

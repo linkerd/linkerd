@@ -10,7 +10,7 @@ case class AdminMetricsExportTelemeterConfig(
   snapshotIntervalSecs: Option[Int] = None
 ) extends TelemeterConfig {
   @JsonIgnore
-  override def mk(params: Params): Telemeter = new AdminTelemeter(
+  override def mk(params: Params): Telemeter = new AdminMetricsExportTelemeter(
     params[MetricsTree],
     snapshotIntervalSecs.map(_.seconds).getOrElse(1.minute),
     DefaultTimer.twitter
