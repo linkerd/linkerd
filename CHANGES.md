@@ -20,6 +20,7 @@
 * Remove `io.l5d.commonMetrics` telemeter
 * Remove `io.l5d.adminMetricsExport` as a telemeter plugin, it is now always
   loaded
+* Namerd Admin now works with Dtabs of arbitrary size
 
 ## 0.8.6 2017-01-19
 
