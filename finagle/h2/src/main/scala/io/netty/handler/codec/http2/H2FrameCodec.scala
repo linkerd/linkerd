@@ -15,15 +15,15 @@ import io.netty.handler.codec.http.HttpServerUpgradeHandler.UpgradeEvent;
  * Copyright 2016 The Netty Project
  */
 class H2FrameCodec(
-  connection: Http2Connection,
-  initialSettings: Http2Settings
+  http2Handler: Http2ConnectionHandler
 ) extends ChannelDuplexHandler {
 
   import H2FrameCodec._
 
   private[this] var channelCtx, http2HandlerCtx: ChannelHandlerContext = null
 
-  val connectionListener = new Http2ConnectionAdapter {
+  private[this] val connectionListener = new Http2ConnectionAdapter {
+
     override def onStreamActive(stream: Http2Stream): Unit = channelCtx match {
       case null => // UPGRADE stream is active before handlerAdded
       case ctx => ctx.fireUserEventTriggered(new Http2StreamActiveEvent(stream.id)); ()
@@ -38,7 +38,6 @@ class H2FrameCodec(
     }
   }
 
-  private[this] val http2Handler = mkHandler(connection, initialSettings)
   http2Handler.connection.addListener(connectionListener)
 
   def connectionHandler: Http2ConnectionHandler = http2Handler
@@ -76,7 +75,7 @@ class H2FrameCodec(
           connectionListener.onStreamActive(stream)
 
           upgrade.upgradeRequest.headers.setInt(
-            HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(),
+            HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text,
             Http2CodecUtil.HTTP_UPGRADE_STREAM_ID
           )
 
@@ -168,20 +167,51 @@ class H2FrameCodec(
 
 object H2FrameCodec {
 
-  private lazy val frameLogger = new Http2FrameLogger(io.netty.handler.logging.LogLevel.DEBUG, getClass)
+  /** Aggressively acknowledge window updates */
+  val DefaultWindowUpdateRatio = 0.99f // on (0.0, 1.0)
 
-  private def mkHandler(connection: Http2Connection, settings: Http2Settings): Http2ConnectionHandler = {
+  def client(
+    settings: Http2Settings = new Http2Settings,
+    windowUpdateRatio: Float = DefaultWindowUpdateRatio,
+    autoRefillConnectionWindow: Boolean = false
+  ): H2FrameCodec =
+    mk(false, settings, windowUpdateRatio, autoRefillConnectionWindow)
+
+  def server(
+    settings: Http2Settings = new Http2Settings,
+    windowUpdateRatio: Float = DefaultWindowUpdateRatio,
+    autoRefillConnectionWindow: Boolean = false
+  ): H2FrameCodec =
+    mk(true, settings, windowUpdateRatio, autoRefillConnectionWindow)
+
+  private[this] def mk(
+    isServer: Boolean,
+    settings: Http2Settings,
+    windowUpdateRatio: Float,
+    autoRefillConnectionWindow: Boolean = false
+  ): H2FrameCodec = {
+    require(0.0 < windowUpdateRatio && windowUpdateRatio < 1.0)
+
+    val conn = new DefaultHttp2Connection(isServer)
+    val flow = new DefaultHttp2LocalFlowController(conn, windowUpdateRatio, autoRefillConnectionWindow)
+    conn.local.flowController(flow)
+
     val encoder = {
       val fw = new Http2OutboundFrameLogger(new DefaultHttp2FrameWriter, frameLogger)
-      new DefaultHttp2ConnectionEncoder(connection, fw)
+      new DefaultHttp2ConnectionEncoder(conn, fw)
     }
+
     val decoder = {
       val fr = new Http2InboundFrameLogger(new DefaultHttp2FrameReader, frameLogger)
-      new DefaultHttp2ConnectionDecoder(connection, encoder, fr)
+      new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
     decoder.frameListener(new FrameListener)
-    new ConnectionHandler(decoder, encoder, settings)
+
+    val handler = new ConnectionHandler(decoder, encoder, settings)
+    new H2FrameCodec(handler)
   }
+
+  private[this] lazy val frameLogger = new Http2FrameLogger(io.netty.handler.logging.LogLevel.TRACE, getClass)
 
   private class ConnectionHandler(
     decoder: Http2ConnectionDecoder,

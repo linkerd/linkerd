@@ -25,13 +25,10 @@ object Netty4H2Transporter {
     // transports are not created) until a connection is fully
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
-    def framer = {
-      // TODO replace flow controller
-      val connection = new DefaultHttp2Connection(false /*server*/ )
-      // TODO configure settings from params
-      val settings = new Http2Settings
-      new H2FrameCodec(connection, settings)
-    }
+
+    // TODO configure settings from params
+    def framer = H2FrameCodec.client()
+
     val pipelineInit: ChannelPipeline => Unit =
       params[TransportSecurity].config match {
         case TransportSecurity.Insecure =>
