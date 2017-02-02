@@ -3,11 +3,9 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
-  'text!template/barchart.template'
-], function($, _, Handlebars, barChartTemplate) {
-
-  var template = Handlebars.compile(barChartTemplate);
+  'template/compiled_templates'
+], function($, _, templates) {
+  var template = templates.barchart;
   var barContainerWidth = 360; // px
 
   var defaultDisplayData = {

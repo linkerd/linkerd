@@ -2,10 +2,10 @@
 
 define([
   'jQuery',
-  'Handlebars',
-  'text!template/router_option.template',
+  'template/compiled_templates',
   'bootstrap'
-], function($, Handlebars, templateRsp) {
+], function($, templates) {
+  var templateRsp = templates.router_option;
   function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;
@@ -18,7 +18,7 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      var template = Handlebars.compile(templateRsp);
+      var template = templates.router_option;
       var routers = routersRsp.routers;
 
       if (!matches && routers.length > 0) {

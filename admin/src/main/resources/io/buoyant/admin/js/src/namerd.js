@@ -3,25 +3,22 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
   'src/admin',
   'src/delegator',
-  'text!template/dentry.template',
-  'text!template/namerd_namespace.template',
+  'template/compiled_templates'
 ], function(
-  $, _, Handlebars,
+  $, _,
   AdminHelpers,
   Delegator,
-  dentryTemplate,
-  namespaceTemplate
+  templates
 ) {
   return function() {
     var data = JSON.parse($("#dtab-data").html());
     var dtabMap = _.groupBy(data, 'namespace');
 
     var template = {
-      dentry: Handlebars.compile(dentryTemplate),
-      namespace: Handlebars.compile(namespaceTemplate)
+      dentry: templates.dentry,
+      namespace: templates.namerd_namespace
     }
 
     var $namespacesContainer = $("#dtab-namespaces");

@@ -20,7 +20,7 @@ module.exports = function(config) {
       {pattern: 'spec/*.js', included: false},
       {pattern: 'spec/fixtures/*.js', included: false},
       {pattern: 'src/*.js', included: false},
-      {pattern: 'template/*.template', included: false},
+      {pattern: 'template/compiled_templates.js', included: false},
       {pattern: 'lib/*.js', included: false}
     ],
 
