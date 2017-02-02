@@ -9,8 +9,9 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.{HighResTimer, Label}
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
+import com.twitter.server.handler.ResourceHandler
 import com.twitter.util.{NonFatal => _, _}
-import io.buoyant.admin.Admin
+import io.buoyant.admin.{Admin, StaticFilter}
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
@@ -108,8 +109,16 @@ case class NamerdInterpreterConfig(
     new ThriftNamerClient(iface, ns) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
 
-      override def adminHandlers: Seq[Handler] =
-        Seq(Handler("/namerd", handler, css = Seq("delegator.css")))
+      private[this] val staticHandler = StaticFilter andThen ResourceHandler.fromJar(
+        baseRequestPath = "/files/",
+        baseResourcePath = "io/buoyant/namerd/iface"
+      )
+      override def adminHandlers: Seq[Handler] = Seq(
+        Handler("/namerd", handler, css = Seq("delegator.css"), main = Some("namerd-main")),
+        Handler("/files/js/src/namerd.js", staticHandler),
+        Handler("/files/js/template/namerd_namespace.template", staticHandler),
+        Handler("/files/js/namerd-main.js", staticHandler)
+      )
 
       override def navItems: Seq[NavItem] = Seq(NavItem("namerd", "namerd"))
     }

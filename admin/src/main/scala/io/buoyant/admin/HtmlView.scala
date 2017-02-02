@@ -7,6 +7,7 @@ trait HtmlView {
   def html(
     content: String,
     tailContent: String = "",
+    main: String = "",
     csses: Seq[String] = Nil,
     navbar: String = ""
   ): String
