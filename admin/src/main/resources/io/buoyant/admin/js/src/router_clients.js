@@ -9,7 +9,7 @@ define([
   RouterClient,
   CombinedClientGraph,
   templates
-  ) {
+) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
     var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;

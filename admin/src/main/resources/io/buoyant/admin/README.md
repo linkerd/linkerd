@@ -39,6 +39,6 @@ For a slight speed boost we precompile handlebars templates. To add a new
 template, simply add the template in templates/ and then run
 
 ```
-# npm install handlebars if needed
+# npm install if needed
 handlebars -a js/template/ > js/template/compiled_templates.js
 ```
