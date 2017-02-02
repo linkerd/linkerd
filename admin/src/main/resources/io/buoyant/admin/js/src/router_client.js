@@ -8,15 +8,14 @@ define([
   'src/query',
   'src/success_rate_graph',
   'src/bar_chart',
-  'text!template/metric.partial.template',
-  'text!template/router_client.template'
+  'template/compiled_templates'
 ], function($, _, Handlebars,
   Utils,
   Query,
   SuccessRateGraph,
   BarChart,
-  metricPartialTemplate,
-  routerClientTemplate) {
+  templates
+) {
 
   var LoadBalancerBarChart = function($lbContainer) {
     function getColor(percent) {
@@ -50,7 +49,7 @@ define([
   }
 
   var RouterClient = (function() {
-    var template = Handlebars.compile(routerClientTemplate);
+    var template = templates.router_client;
 
     var metricToColorShade = {
       "max": "light",
@@ -135,7 +134,7 @@ define([
     }
 
     return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
-      var metricPartial = Handlebars.compile(metricPartialTemplate);
+      var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
       var $contentContainer = $container.find(".client-content-container");

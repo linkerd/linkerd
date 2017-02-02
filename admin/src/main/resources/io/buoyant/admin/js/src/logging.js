@@ -2,13 +2,12 @@
 
 define([
   'jQuery',
-  'Handlebars',
-  'text!template/logging_row.template'
+  'template/compiled_templates'
 ], function(
-  $, Handlebars,
-  loggingTemplate
+  $,
+  templates
 ) {
-  var template = Handlebars.compile(loggingTemplate);
+  var template = templates.logging_row;
   var logLevels = ["ALL", "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "FATAL", "OFF"];
 
   function modelToView(config) {

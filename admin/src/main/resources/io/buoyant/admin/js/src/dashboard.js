@@ -1,14 +1,14 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars', 'bootstrap',
+  'jQuery', 'bootstrap',
   'src/metrics_collector',
   'src/routers',
   'src/process_info',
   'src/request_totals',
   'src/router_controller'
 ], function(
-  $, Handlebars, bootstrap,
+  $, bootstrap,
   MetricsCollector,
   Routers,
   ProcInfo,

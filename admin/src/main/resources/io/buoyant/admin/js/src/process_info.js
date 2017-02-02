@@ -1,10 +1,10 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars',
+  'jQuery',
   'src/utils',
-  'text!template/process_info.template'
-  ], function($, Handlebars, Utils, overviewStatsTemplate) {
+  'template/compiled_templates'
+  ], function($, Utils, templates) {
   /**
    * Process info for topline summary
    */
@@ -12,7 +12,7 @@ define([
 
     var msToStr = new Utils.MsToStringConverter();
     var bytesToStr = new Utils.BytesToStringConverter();
-    var template = Handlebars.compile(overviewStatsTemplate);
+    var template = templates.process_info;
 
     var stats = [
       { description: "version", dataKey: "" },

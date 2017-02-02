@@ -1,14 +1,13 @@
 "use strict";
 
 define([
-  'Handlebars',
   'src/success_rate_graph',
   'src/query',
   'src/utils',
-  'text!template/router_server.template'
-], function(Handlebars, SuccessRateGraph, Query, Utils, routerServerTemplate) {
+  'template/compiled_templates'
+], function(SuccessRateGraph, Query, Utils, templates) {
   var RouterServer = (function() {
-    var template;
+    var template = templates.router_server;
 
     function getMetricDefinitions(routerName, serverName) {
       return [
@@ -92,7 +91,6 @@ define([
     }
 
     return function (metricsCollector, server, $serverEl, routerName) {
-      template = Handlebars.compile(routerServerTemplate);
       var $metricsEl = $serverEl.find(".server-metrics");
       var $chartEl = $serverEl.find(".server-success-chart");
       var chart = SuccessRateGraph($chartEl, "#4AD8AC");
