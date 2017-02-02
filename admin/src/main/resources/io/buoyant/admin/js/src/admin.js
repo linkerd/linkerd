@@ -5,7 +5,6 @@ define([
   'template/compiled_templates',
   'bootstrap'
 ], function($, templates) {
-  var templateRsp = templates.router_option;
   function initialize(removeRoutersAllOption) {
     // highlight current page in navbar
     var path = window.location.pathname;
