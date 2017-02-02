@@ -25,14 +25,14 @@ object ServerUpgradeHandler {
  * Accept either H2C requests (beginning with a Connection preface)
  * or HTTP requests with h2c protocol upgrading.
  */
-class ServerUpgradeHandler extends ChannelDuplexHandler {
+class ServerUpgradeHandler(settings: Http2Settings) extends ChannelDuplexHandler {
   import ServerUpgradeHandler._
 
   // Parses HTTP/1 objects.
   private[this] val h1Codec = new HttpServerCodec
 
   // Parses HTTP/2 frames
-  private[this] val framer = H2FrameCodec.server()
+  private[this] val framer = H2FrameCodec.server(settings = settings)
 
   // Intercepts HTTP/1 requests with the HTTP2-Settings headers and
   // initiate protocol upgrade.
