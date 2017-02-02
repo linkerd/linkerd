@@ -27,29 +27,29 @@ object Netty4H2Listener {
   private[this] trait ListenerMaker {
     def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
       Netty4Listener(
-        pipelineInit = pipelineInit,
+        pipelineInit = pipelineInit(Netty4H2Settings.mk(params)),
         params = params + Netty4Listener.BackPressure(false)
       )
 
-    protected[this] def pipelineInit: ChannelPipeline => Unit
+    protected[this] def pipelineInit(s: Http2Settings): ChannelPipeline => Unit
   }
 
   private[this] object PlaintextListener extends ListenerMaker {
-    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+    override protected[this] def pipelineInit(settings: Http2Settings) = { p: ChannelPipeline =>
       p.addLast(DirectToHeapInboundHandler)
-      p.addLast(new ServerUpgradeHandler); ()
+      p.addLast(new ServerUpgradeHandler(settings)); ()
     }
   }
 
   private[this] object TlsListener extends ListenerMaker {
     val PlaceholderKey = "h2 framer placeholder"
-    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+    override protected[this] def pipelineInit(settings: Http2Settings) = { p: ChannelPipeline =>
       p.addLast(DirectToHeapInboundHandler)
       p.addLast(PlaceholderKey, new ChannelDuplexHandler)
-        .addLast("alpn", new Alpn); ()
+        .addLast("alpn", new Alpn(settings)); ()
     }
 
-    private class Alpn
+    private class Alpn(settings: Http2Settings)
       extends ApplicationProtocolNegotiationHandler(ApplicationProtocolNames.HTTP_2) {
 
       override protected def configurePipeline(ctx: ChannelHandlerContext, proto: String): Unit =
@@ -57,8 +57,7 @@ object Netty4H2Listener {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
 
-            // TODO configure settings from params
-            val codec = H2FrameCodec.server()
+            val codec = H2FrameCodec.server(settings = settings)
             ctx.pipeline.replace(PlaceholderKey, "h2 framer", codec); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>

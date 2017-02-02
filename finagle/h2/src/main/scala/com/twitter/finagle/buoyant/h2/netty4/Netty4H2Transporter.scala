@@ -26,8 +26,8 @@ object Netty4H2Transporter {
     // initialized (and protocol initialization has completed). All
     // stream frame writes are buffered until this time.
 
-    // TODO configure settings from params
-    def framer = H2FrameCodec.client()
+    val settings = Netty4H2Settings.mk(params).pushEnabled(false)
+    def framer = H2FrameCodec.client(settings = settings)
 
     val pipelineInit: ChannelPipeline => Unit =
       params[TransportSecurity].config match {
