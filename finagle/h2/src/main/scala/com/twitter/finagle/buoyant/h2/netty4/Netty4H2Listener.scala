@@ -9,7 +9,7 @@ import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
-import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
+import io.netty.handler.codec.http2._
 import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
 
 /**
@@ -56,7 +56,10 @@ object Netty4H2Listener {
         proto match {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
-            ctx.pipeline.replace(PlaceholderKey, "h2 framer", new Http2FrameCodec(true)); ()
+
+            // TODO configure settings from params
+            val codec = H2FrameCodec.server()
+            ctx.pipeline.replace(PlaceholderKey, "h2 framer", codec); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>
           case proto => throw new IllegalStateException(s"unknown protocol: $proto")

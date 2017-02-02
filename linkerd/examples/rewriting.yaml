@@ -13,7 +13,7 @@ routers:
   identifier:
     kind: io.l5d.path
     segments: 2
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
     /http => /#/apiToSrv ;
   servers:

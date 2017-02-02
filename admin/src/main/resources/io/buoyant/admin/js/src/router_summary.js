@@ -2,16 +2,15 @@
 
 define([
   'jQuery',
-  'Handlebars',
   'src/query',
   'src/utils',
   'src/bar_chart',
-  'text!template/router_summary.template'
-], function($, Handlebars,
+  'template/compiled_templates'
+], function($,
   Query,
   Utils,
   BarChart,
-  routerSummaryTemplate
+  templates
 ) {
   var RetriesBarChart = function($container) {
     function displayPercent(percent) {
@@ -50,7 +49,7 @@ define([
 
   var RouterSummary = (function() {
     var DEFAULT_BUDGET = 0.2 // default 20%
-    var template = Handlebars.compile(routerSummaryTemplate);
+    var template = templates.router_summary;
 
     function processResponses(data, routerName) {
       var process = function(metricName) { return processServerResponse(data, routerName, metricName); };

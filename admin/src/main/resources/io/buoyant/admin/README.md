@@ -32,3 +32,13 @@ when a file changes:
 ```
 karma start --autoWatch=true --singleRun=false
 ```
+
+## Handlebars templates
+
+For a slight speed boost we precompile handlebars templates. To add a new
+template, simply add the template in templates/ and then run
+
+```
+# npm install if needed
+handlebars -a js/template/ > js/template/compiled_templates.js
+```

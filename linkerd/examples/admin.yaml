@@ -15,7 +15,7 @@ telemetry:
 routers:
 - protocol: http
   label: linkerd-admin
-  baseDtab: |
+  dtab: |
     /http/* => /$/inet/127.1/9990;
   identifier:
     kind: io.l5d.path
@@ -26,7 +26,7 @@ routers:
     ip: 0.0.0.0
 - protocol: http
   label: namerd-admin
-  baseDtab: |
+  dtab: |
     /http/* => /$/inet/127.1/9991;
   identifier:
     kind: io.l5d.path

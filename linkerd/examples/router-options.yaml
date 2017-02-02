@@ -2,7 +2,7 @@
 routers:
 - protocol: http
   label: foobar
-  baseDtab: |
+  dtab: |
     /http/*/*/* => /$/inet/localhost/8080
   failFast: false
   timeoutMs: 1000

@@ -9,7 +9,7 @@ admin:
 routers:
 - protocol: http
   label: int-http
-  baseDtab: |
+  dtab: |
     /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   identifier:
@@ -27,7 +27,7 @@ routers:
   client:
     thriftFramed: true
   thriftMethodInDst: false
-  baseDtab: |
+  dtab: |
     /thrift => /#/io.l5d.fs/thrift;
 
 namers:
@@ -90,6 +90,56 @@ Key | Default Value | Description
 ip | `0.0.0.0` | IP for the admin interface.
 port | `9990` | Port for the admin interface.
 
+#### Administrative endpoints
+
+> Example admin requests
+
+```bash
+curl :9990/admin
+curl :9990/admin/tracing?enable=true
+curl -H "Accept: application/json" :9990/admin/lint
+curl -H "Accept: application/json" :9990/admin/threads
+curl ":9990/admin/pprof/profile?seconds=10&hz=100"
+curl ":9990/delegator.json?path=/http/1.1/GET/foo&dtab=/http/*=>/$/inet/127.1/9990"
+```
+
+Default admin endpoints available in both linkerd and namerd:
+
+Endpoint | Description
+-------- | -----------
+`/admin` | retrieve a list of all available admin endpoints
+`/admin/announcer` | set of announcement chains that have run through the [announcers](#announcers)
+`/admin/contention` | call stacks of blocked and waiting threads
+`/admin/lint` | results for all registered linters, set `Accept: application/json` to force json
+`/admin/lint.json` | identical to `admin/lint`
+`/admin/ping` | simple health check endpoint, returns `pong`
+`/admin/pprof/contention` | CPU contention profile which identifies blocked threads (Thread.State.BLOCKED), in pprof format. The process will be profiled for 10 seconds at a frequency of 100 hz. These values can be controlled via HTTP request parameters `seconds` and `hz` respectively.
+`/admin/pprof/heap` | heap profile computed by the heapster agent, output is in pprof format
+`/admin/pprof/profile` | CPU usage profile in pprof format. The process will be profiled for 10 seconds at a frequency of 100 hz. These values can be controlled via HTTP request parameters `seconds` and `hz` respectively.
+`/admin/registry.json` | displays how linkerd is currently configured across a variety of dimensions including the client stack, server stack, flags, service loader values, system properties, environment variables, build properties and more
+`/admin/server_info` | build information about this linkerd
+`/admin/shutdown` | initiate a graceful shutdown
+`/admin/threads` | capture the current stacktraces, set `Accept: application/json` to force json
+`/admin/threads.json` | identical to `admin/threads`
+`/admin/tracing` | enable (`/admin/tracing?enable=true`) or disable tracing (`/admin/tracing?disable=true`)
+`/config.json` | current linkerd configuration, this should match your config file
+
+Endpoints only available in linkerd:
+
+Endpoint | Description
+-------- | -----------
+`/bound-names.json` | list of all known bound names from configured namers. namers must support the `EnumeratingNamer` trait to make this available, currently only supported by the [io.l5d.k8s](#kubernetes-service-discovery) and [io.l5d.fs](#file-based-service-discovery) namers.
+`/delegator.json` | given `path`, `dtab`, and an optional `namespace` param, return the delegation tree
+`/logging.json` | currently configured loggers and log levels
+
+Note that in addition to a default set of admin endpoints, linkerd plugins may
+dynamically add their own endpoints.
+
+This administrative interface was originally based on
+[TwitterServer](https://twitter.github.io/twitter-server), more information may
+be found at
+[TwitterServer HTTP Admin interface](https://twitter.github.io/twitter-server/Admin.html).
+
 ### Routers Intro
 
 > A minimal linkerd configuration example, which forwards all requests on `localhost:8080` to `localhost:8888`
@@ -97,7 +147,7 @@ port | `9990` | Port for the admin interface.
 ```yaml
 routers:
 - protocol: http
-  baseDtab: /http => /$/inet/127.1/8888
+  dtab: /http => /$/inet/127.1/8888
   servers:
   - port: 8080
 ```

@@ -7,7 +7,7 @@ define([
   var SuccessRateGraph = (function() {
     var neutralLineColor = "#878787"; // greys.neutral
     var defaultWidth = 1181;
-    var colMd6Width = 594; // from our css grid layout spec
+    var colMd6Width = 594 + 15; // from our css grid layout spec + padding
 
     // set default y range such that a graph of purely 100% success rate doesn't
     // blend in to the very top of the graph, and doesn't center

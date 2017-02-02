@@ -32,7 +32,7 @@ class ServerUpgradeHandler extends ChannelDuplexHandler {
   private[this] val h1Codec = new HttpServerCodec
 
   // Parses HTTP/2 frames
-  private[this] val framer = new Http2FrameCodec(true /*server*/ )
+  private[this] val framer = H2FrameCodec.server()
 
   // Intercepts HTTP/1 requests with the HTTP2-Settings headers and
   // initiate protocol upgrade.

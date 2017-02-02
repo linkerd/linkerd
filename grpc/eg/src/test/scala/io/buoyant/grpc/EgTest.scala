@@ -102,7 +102,7 @@ class EgEndToEndTest extends FunSuite {
   }
 
   test("unary request and streaming response") {
-    val tx = Stream[Eg.Rsp]()
+    val tx = Stream.mk[Eg.Rsp]
     val iface = new Eg.Eggman {
       def uplatu(req: Eg.Req): Future[Eg.Rsp] = ???
       def uplats(req: Eg.Req): Stream[Eg.Rsp] = tx
@@ -140,7 +140,7 @@ class EgEndToEndTest extends FunSuite {
   test("streaming request and unary response") {
     val rxP = new Promise[Stream[Eg.Req]]
     val rspP = new Promise[Eg.Rsp]
-    val tx = Stream[Eg.Rsp]()
+    val tx = Stream.mk[Eg.Rsp]
     val iface = new Eg.Eggman {
       def uplatu(req: Eg.Req): Future[Eg.Rsp] = ???
       def uplats(req: Eg.Req): Stream[Eg.Rsp] = ???
@@ -157,7 +157,7 @@ class EgEndToEndTest extends FunSuite {
     val client = new Eg.Eggman.Client(h2client)
 
     try {
-      val tx = Stream[Eg.Req]()
+      val tx = Stream.mk[Eg.Req]
       val rspF = client.splatu(tx)
       val rx = await(rxP)
 
