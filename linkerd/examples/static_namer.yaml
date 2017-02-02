@@ -1,7 +1,7 @@
 # Routes all requests to localhost:8080
 routers:
 - protocol: http
-  baseDtab: |
+  dtab: |
     /http/*/*/* => /$/inet/localhost/8080;
   servers:
   - port: 4140

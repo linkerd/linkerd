@@ -19,7 +19,7 @@ routers:
   bindingCache: ...
   label: myPackIce
   dstPrefix: /walruses/http
-  baseDtab: |
+  dtab: |
     /host                => /#/io.l5d.fs;
     /walruses/http/1.1/* => /host;
   failFast: false
@@ -35,7 +35,7 @@ Key | Default Value | Description
 protocol | _required_ | Either [`http`](#http-1-1-protocol), [`h2`](#http-2-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
 servers | _required_ | A list of [server objects](#servers).
 announcers | an empty list | A list of service discovery [announcers](#announcers) that servers can announce to.
-baseDtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
+dtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
 client | an empty object | An object of [client params](#client-parameters).

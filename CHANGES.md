@@ -8,6 +8,7 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
+* Rename `baseDtab` router property to `dtab`
 
 ## 0.8.6 2017-01-19
 

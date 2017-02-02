@@ -6,7 +6,7 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
+  dtab: |
     /host     => /#/consul/dc1/prod;
     /http/1.1/* => /host;
   servers:
