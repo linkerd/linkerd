@@ -15,7 +15,7 @@ object Admin {
   val label = "adminhttp"
   private val log = Logger.get(label)
 
-  case class Handler(url: String, service: Service[Request, Response], css: Seq[String] = Nil)
+  case class Handler(url: String, service: Service[Request, Response], css: Seq[String] = Nil, main: Option[String] = None)
 
   /**
    * A type for modules that expose admin handlers.
@@ -102,7 +102,7 @@ class Admin(val address: SocketAddress) {
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
-      case (muxer, Handler(url, service, _)) =>
+      case (muxer, Handler(url, service, _, _)) =>
         log.debug(s"admin: $url => ${service.getClass.getName}")
         muxer.withHandler(url, service)
     }

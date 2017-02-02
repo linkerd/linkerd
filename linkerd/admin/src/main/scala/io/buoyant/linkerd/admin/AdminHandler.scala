@@ -58,6 +58,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
   def html(
     content: String,
     tailContent: String = "",
+    main: String = "main-linkerd",
     csses: Seq[String] = Nil,
     navbar: String = navBar
   ): String = {
@@ -84,7 +85,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           </div>
           $tailContent
 
-          <script data-main="files/js/main-linkerd" src="files/js/lib/require.js"></script>
+          <script data-main="files/js/$main" src="files/js/lib/require.js"></script>
 
         </body>
       </html>

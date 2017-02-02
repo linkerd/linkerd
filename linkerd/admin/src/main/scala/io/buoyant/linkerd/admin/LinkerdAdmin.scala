@@ -79,8 +79,11 @@ object LinkerdAdmin {
         linker.routers.map(_.interpreter) ++
         linker.telemeters
     ).map {
-        case Handler(url, service, css) =>
-          val adminFilter = new AdminFilter(adminHandler, css)
+        case Handler(url, service, css, main) =>
+          val adminFilter = main match {
+            case Some(main) => new AdminFilter(adminHandler, css, main)
+            case None => new AdminFilter(adminHandler, css)
+          }
           Handler(url, adminFilter.andThen(service), css)
       }
 
