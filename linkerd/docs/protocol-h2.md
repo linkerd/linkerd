@@ -64,6 +64,13 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `h2` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
 experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
+connectionFlowControl | `true` | Whether connection-level flow control should be enforced in addition to stream-level flow control.
+windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
+initialWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on new streams.
+maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
+maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
+maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 
 When TLS is configured, h2 routers negotiate to communicate over
 HTTP/2 via ALPN.

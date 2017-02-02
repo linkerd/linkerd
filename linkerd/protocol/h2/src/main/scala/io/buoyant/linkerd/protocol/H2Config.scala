@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
+import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
+import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
@@ -67,7 +69,7 @@ object H2Initializer extends H2Initializer
 
 class H2Config extends RouterConfig {
 
-  var client: Option[ClientConfig] = None
+  var client: Option[H2ClientConfig] = None
   var servers: Seq[H2ServerConfig] = Nil
 
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
@@ -101,11 +103,40 @@ class H2Config extends RouterConfig {
   }
 }
 
-class H2ServerConfig extends ServerConfig {
+trait H2EndpointConfig {
+  var connectionFlowControl: Option[Boolean] = None
+  var windowUpdateRatio: Option[Double] = None
+
+  var headerTableBytes: Option[Int] = None
+  var initialWindowBytes: Option[Int] = None
+  var maxConcurrentStreamsPerConnection: Option[Int] = None
+  var maxFrameBytes: Option[Int] = None
+  var maxHeaderListBytes: Option[Int] = None
+
+  def withParams(params: Stack.Params): Stack.Params = params
+    .maybeWith(connectionFlowControl.map(efc => FlowControl.AutoRefillConnectionWindow(!efc)))
+    .maybeWith(windowUpdateRatio.map(r => FlowControl.WindowUpdateRatio(r.toFloat)))
+    .maybeWith(headerTableBytes.map(s => Settings.HeaderTableSize(Some(s.bytes))))
+    .maybeWith(initialWindowBytes.map(s => Settings.InitialWindowSize(Some(s.bytes))))
+    .maybeWith(maxConcurrentStreamsPerConnection.map(s => Settings.MaxConcurrentStreams(Some(s.toLong))))
+    .maybeWith(maxFrameBytes.map(s => Settings.MaxFrameSize(Some(s.bytes))))
+    .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
+}
+
+class H2ClientConfig extends ClientConfig with H2EndpointConfig {
+
+  @JsonIgnore
+  override def clientParams = withParams(super.clientParams)
+}
+
+class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
+
+  @JsonIgnore
+  override def serverParams = withParams(super.serverParams)
 }
 
 trait H2IdentifierConfig extends PolymorphicConfig {
