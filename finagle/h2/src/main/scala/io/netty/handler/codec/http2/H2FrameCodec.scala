@@ -168,7 +168,7 @@ class H2FrameCodec(
 object H2FrameCodec {
 
   /** Aggressively acknowledge window updates */
-  val DefaultWindowUpdateRatio = 0.95f
+  val DefaultWindowUpdateRatio = 1.0f
 
   def client(
     settings: Http2Settings = new Http2Settings,
