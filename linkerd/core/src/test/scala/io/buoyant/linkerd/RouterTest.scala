@@ -101,7 +101,7 @@ servers:
     val yaml = """
 protocol: plain
 label: yoghurt
-baseDtab: /foo => /bah
+dtab: /foo => /bah
 servers:
 - port: 1234
 """

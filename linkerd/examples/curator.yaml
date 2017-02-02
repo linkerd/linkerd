@@ -10,7 +10,7 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
+  dtab: |
     /host => /#/io.l5d.curator;
     /http/1.1/* => /host;
   servers:

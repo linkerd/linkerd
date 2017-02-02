@@ -29,14 +29,14 @@ listening on port 5000
 routers:
 - protocol: http
   label: split-get-and-post
-  baseDtab: |
+  dtab: |
     /method/*    => /$/inet/127.1/8081;
     /method/POST => /$/inet/127.1/8091;
     /http/1.1    => /method;
   servers:
   - port: 5000
 ```
-> The baseDtab above is written to work with the
+> The dtab above is written to work with the
 [`methodAndHost` identifier](#method-and-host-identifier).
 Using a different identifier would require a different set of dtab rules.
 
@@ -389,7 +389,7 @@ from untrusted sources.
 
 ### User Headers
 
-> Append a dtab override to the baseDtab for this request
+> Append a dtab override to the dtab for this request
 
 ```shell
 curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"

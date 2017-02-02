@@ -9,7 +9,7 @@ admin:
 routers:
 - protocol: http
   label: int-http
-  baseDtab: |
+  dtab: |
     /host       => /#/io.l5d.fs;
     /http/1.1/* => /host;
   identifier:
@@ -27,7 +27,7 @@ routers:
   client:
     thriftFramed: true
   thriftMethodInDst: false
-  baseDtab: |
+  dtab: |
     /thrift => /#/io.l5d.fs/thrift;
 
 namers:
@@ -97,7 +97,7 @@ port | `9990` | Port for the admin interface.
 ```yaml
 routers:
 - protocol: http
-  baseDtab: /http => /$/inet/127.1/8888
+  dtab: /http => /$/inet/127.1/8888
   servers:
   - port: 8080
 ```

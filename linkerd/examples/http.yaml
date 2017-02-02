@@ -14,7 +14,7 @@ routers:
   maxResponseKB: 102400 # 100MB
   compressionLevel: 9
   identifier: {kind: io.l5d.header}
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
     /http/* => /host;
@@ -31,7 +31,7 @@ routers:
 - protocol: http
   label: netty4
   identifier: {kind: io.l5d.header.token}
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs;
     /host => /srv;
     /http => /host;

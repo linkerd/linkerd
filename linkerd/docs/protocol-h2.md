@@ -17,7 +17,7 @@ routers:
   identifier:
     kind: io.l5d.headerToken
     header: ":authority"
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
     /h2 => /srv ;
   client:
@@ -41,7 +41,7 @@ routers:
   identifier:
     kind: io.l5d.headerPath
     segments: 2
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
     /h2 => /srv ;
 ```
@@ -201,7 +201,7 @@ from untrusted sources.
 
 ### User Headers
 
-> Append a dtab override to the baseDtab for this request
+> Append a dtab override to the dtab for this request
 
 ```shell
 curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"
