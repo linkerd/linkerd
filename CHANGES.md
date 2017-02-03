@@ -1,5 +1,6 @@
 ## Upcoming Release
 
+* Make `io.l5d.consul` case-insensitive
 * Add `io.l5d.usage` telemeter for opt-in usage data collection
 * Admin dashboard
   * Sorts clients and servers alphabetically
