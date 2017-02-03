@@ -24,7 +24,7 @@ import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
-import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
+import io.buoyant.telemetry.{MetricsTree, Telemeter, TelemeterConfig, TelemeterInitializer}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
@@ -39,7 +39,7 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String]
   ) {
-    def apply(metrics: Map[String, Number]): Future[Unit] = {
+    def apply(metrics: MetricsTree): Future[Unit] = {
       val msg = mkUsageMessage(config, pid, orgId, metrics)
       log.debug(msg.toString)
 
@@ -60,7 +60,7 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    metrics: Map[String, Number]
+    metrics: MetricsTree
   ): UsageMessage =
     UsageMessage(
       pid = Some(pid),
@@ -82,17 +82,20 @@ private[telemeter] object UsageDataTelemeter {
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
     config.namers.getOrElse(Seq()).map(_.kind)
 
-  def mkGauges(metrics: Map[String, Number]): Seq[Gauge] =
+  def mkGauges(metrics: MetricsTree): Seq[Gauge] =
     Seq(
-      Gauge(Some("jvm_mem"), metrics.get("jvm/mem/current/used").map(_.doubleValue())),
-      Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue()))
+      Gauge(Some("jvm_mem"), metrics.resolve(Seq("jvm", "mem", "current", "used")).gauge.map(_.get)),
+      Gauge(Some("jvm/gc/msec"), metrics.resolve(Seq("jvm", "mem", "current", "used")).gauge.map(_.get))
     )
 
-  val RequestPattern = "^.*/srv/.*/requests$".r
-  def mkCounters(metrics: Map[String, Number]): Seq[Counter] =
-    metrics.collect {
-      case (RequestPattern(), v) => Counter(Some("srv_requests"), Some(v.longValue()))
-    }.toSeq
+  def mkCounters(metrics: MetricsTree): Seq[Counter] = {
+    val counters = for {
+      router <- metrics.resolve(Seq("rt")).children.values
+      server <- router.resolve(Seq("srv")).children.values
+      counter <- server.resolve(Seq("requests")).counter
+    } yield Counter(Some("srv_requests"), Some(counter.get))
+    counters.toSeq
+  }
 
   def mkRouters(config: Linker.LinkerConfig): Seq[Router] =
     config.routers.map { r =>
@@ -118,11 +121,11 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    registry: Metrics
+    metrics: MetricsTree
   ) extends Service[Request, Response] {
 
     def apply(request: Request): Future[Response] = {
-      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
+      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, metrics)
       val rsp = Response()
       rsp.contentType = MediaType.Json
       rsp.contentString = mapper.writeValueAsString(msg)
@@ -148,7 +151,7 @@ class UsageDataTelemeter(
   metricsDst: Name,
   withTls: Boolean,
   config: Linker.LinkerConfig,
-  registry: com.twitter.common.metrics.Metrics,
+  metrics: MetricsTree,
   orgId: Option[String],
   dryRun: Boolean
 ) extends Telemeter with Admin.WithHandlers {
@@ -164,7 +167,7 @@ class UsageDataTelemeter(
   val client = Client(metricsService, config, pid, orgId)
 
   val adminHandlers = Seq(
-    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, registry))
+    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
 
   private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap
@@ -175,10 +178,10 @@ class UsageDataTelemeter(
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val _ = client(sample(registry))
+    val _ = client(metrics)
 
     val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
-      val _ = client(sample(registry))
+      val _ = client(metrics)
     }
 
     val closer = Closable.sequence(
@@ -207,7 +210,7 @@ case class UsageDataTelemeterConfig(
       Name.bound(Address("stats.buoyant.io", 443)),
       withTls = true,
       config,
-      com.twitter.common.metrics.Metrics.root,
+      params[MetricsTree],
       orgId,
       dryRun.getOrElse(false)
     )

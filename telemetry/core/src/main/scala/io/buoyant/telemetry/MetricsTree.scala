@@ -12,6 +12,19 @@ trait MetricsTree {
 
   def metric: Metric
 
+  def counter: Option[Metric.Counter] = metric match {
+    case c: Metric.Counter => Some(c)
+    case _ => None
+  }
+  def gauge: Option[Metric.Gauge] = metric match {
+    case g: Metric.Gauge => Some(g)
+    case _ => None
+  }
+  def stat: Option[Metric.Stat] = metric match {
+    case s: Metric.Stat => Some(s)
+    case _ => None
+  }
+
   def mkCounter(): Metric.Counter
   def mkStat(): Metric.Stat
 
