@@ -119,7 +119,7 @@ trait H2EndpointConfig {
     .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
 }
 
-class H2ClientConfig extends ClientConfig extends H2EndpointConfig {
+class H2ClientConfig extends ClientConfig with H2EndpointConfig {
 
   @JsonIgnore
   override def clientParams = withEndpointParams(super.clientParams)
@@ -133,9 +133,11 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
 
+  override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
+    .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
+
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams)
-    .maybeWith(maxConcurrentStreamsPerConnection.map(s => Settings.MaxConcurrentStreams(Some(s.toLong))))
 }
 
 trait H2IdentifierConfig extends PolymorphicConfig {
