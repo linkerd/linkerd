@@ -9,6 +9,8 @@
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
 * Rename `baseDtab` router property to `dtab`
+* Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
+  `io.l5d.commonMetrics` telemeter.
 
 ## 0.8.6 2017-01-19
 
