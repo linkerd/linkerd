@@ -154,7 +154,7 @@ define([
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
       renderMetrics($metricsEl, client, [], []);
-      var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
+      var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
       // collapse client section by default (deal with large # of clients)
@@ -190,7 +190,7 @@ define([
         var summaryData = getSummaryData(filteredData, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
-        chart.updateMetrics(getSuccessRate(summaryData));
+        successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies);
