@@ -12,8 +12,12 @@ routers:
     /srv => /#/io.l5d.fs;
     /h2/localhost:4142 => /$/inet/127.1/8888;
     /h2 => /srv;
-  servers:
-  - port: 4142
   identifier:
     kind: io.l5d.headerToken
     header: ":authority"
+  servers:
+  - port: 4142
+    maxConcurrentStreamsPerConnection: 300
+    initialWindowBytes: 1048576 # 1MB
+  client:
+    initialWindowBytes: 1048576 # 1MB

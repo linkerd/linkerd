@@ -25,21 +25,18 @@ object ServerUpgradeHandler {
  * Accept either H2C requests (beginning with a Connection preface)
  * or HTTP requests with h2c protocol upgrading.
  */
-class ServerUpgradeHandler extends ChannelDuplexHandler {
+class ServerUpgradeHandler(h2Framer: H2FrameCodec) extends ChannelDuplexHandler {
   import ServerUpgradeHandler._
 
   // Parses HTTP/1 objects.
   private[this] val h1Codec = new HttpServerCodec
-
-  // Parses HTTP/2 frames
-  private[this] val framer = H2FrameCodec.server()
 
   // Intercepts HTTP/1 requests with the HTTP2-Settings headers and
   // initiate protocol upgrade.
   private[this] val upgrader =
     new HttpServerUpgradeHandler(h1Codec, new HttpServerUpgradeHandler.UpgradeCodecFactory {
       override def newUpgradeCodec(proto: CharSequence): HttpServerUpgradeHandler.UpgradeCodec =
-        if (isH2C(proto)) new Http2FrameCodecServerUpgrader(framer)
+        if (isH2C(proto)) new Http2FrameCodecServerUpgrader(h2Framer)
         else null
     })
 
@@ -52,7 +49,7 @@ class ServerUpgradeHandler extends ChannelDuplexHandler {
       case bb: ByteBuf if isPreface(bb) =>
         // If the connection starts with the magical prior-knowledge
         // preface, just assume we're speaking plain h2c.
-        ctx.pipeline.addAfter(ctx.name, "h2 framer", framer)
+        ctx.pipeline.addAfter(ctx.name, "h2 framer", h2Framer)
 
       case bb: ByteBuf =>
         // Otherwise, Upgrade from h1 to h2
