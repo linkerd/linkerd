@@ -18,6 +18,11 @@ define([
       };
     }
 
+    function getQuery(routers, routerName) {
+      var clients = _.map(routers.clients(routerName), 'label');
+      return Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
+    }
+
     return function(metricsCollector, routers, routerName, $root, colors) {
       var chart = new Utils.UpdateableChart(
         {
@@ -42,9 +47,7 @@ define([
         timeseriesParamsFn(colors)
       );
 
-      var clients = _.map(routers.clients(routerName), 'label');
-
-      var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
+      var query = getQuery(routers, routerName);
       var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
       chart.setMetrics(desiredMetrics);
 
@@ -55,9 +58,8 @@ define([
           // where the first values from /metrics are very large [linkerd#485]
           count++;
         } else {
-          var clients = _.map(routers.clients(routerName), 'label');
-          var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
-          var filteredData = Query.filter(query, data.specific);
+          var metricQuery = getQuery(routers, routerName);
+          var filteredData = Query.filter(metricQuery, data.specific);
           chart.updateMetrics(filteredData);
         }
       };
