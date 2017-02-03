@@ -1,13 +1,13 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars',
+  'jQuery',
   'src/query',
-  'text!template/request_totals.template'
-  ], function($, Handlebars, Query, requestTotalsTemplate) {
+  'template/compiled_templates'
+  ], function($, Query, templates) {
 
   var RequestTotals = (function() {
-    var template = Handlebars.compile(requestTotalsTemplate);
+    var template = templates.request_totals;
 
     var metricDefinitions = [
       {

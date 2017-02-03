@@ -37,6 +37,7 @@ class DtabHandler(
           <title>namerd admin</title>
           <link rel="shortcut icon" href="../files/images/favicon.png" />
           <link type="text/css" href="../files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/fonts.css" rel="stylesheet"/>
           <link type="text/css" href="../files/css/dashboard.css" rel="stylesheet"/>
           <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
         </head>

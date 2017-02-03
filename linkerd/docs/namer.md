@@ -38,7 +38,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /http/1.1/* => /#/io.l5d.fs
 ```
 
@@ -119,7 +119,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```yaml
-baseDtab: |
+dtab: |
   /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
 ```
 
@@ -169,7 +169,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /http/1.1/* => /#/io.l5d.consul/dc1/prod;
 ```
 
@@ -230,7 +230,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /http/1.1/* => /#/io.l5d.k8s/prod/http;
 ```
 
@@ -281,7 +281,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /http/1.1/* => /#/io.l5d.k8s.external/prod/http;
 ```
 
@@ -342,7 +342,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /http/1.1/* => /host;
@@ -472,7 +472,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /http => /#/io.l5d.rewrite
 ```
 

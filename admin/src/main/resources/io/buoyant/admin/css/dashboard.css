@@ -83,6 +83,11 @@ nav.navbar {
   font-size: 12px;
 }
 
+.col-md-2.router-summary-stat {
+  width: 160px;
+  padding: 0 27px 0 0;
+}
+
 .col-md-2 {
   width: 198px;
   padding: 0 27px 0 0;
@@ -184,6 +189,23 @@ nav.navbar {
 }
 
 /**
+* Router stats
+*/
+
+.router-stats {
+  margin-top: 20px;
+  min-height: 100px;
+}
+
+.retries-stats .warning {
+  font-size: 15px;
+  margin-top: 30px;
+  border-radius: 3px;
+  padding: 8px;
+  background-color: #800808;
+}
+
+/**
 * Router servers
 */
 
@@ -211,8 +233,41 @@ nav.navbar {
   margin-bottom: 10px;
 }
 
+.client-container .client-id {
+  cursor: pointer;
+}
+.client-id .transformer-prefix, .client-id .client-suffix {
+  background-color: #090B34;
+}
+.client-id .client-suffix.is-first {
+  padding-left: 5px;
+}
+.client-id > div:first-child {
+  padding-left: 5px;
+}
+.client-id > div:last-child {
+  padding-right: 5px;
+}
+
+.client-content-container {
+  float: left;
+  width: 100%;
+  margin-top: -13px;
+  border-radius: 3px;
+}
+.client-container .header-line {
+  width: 100%;
+  position: relative;
+  top: 18px;
+}
 .client-container .router-header-large {
-  padding: 8px 0;
+  padding: 8px 15px;
+  position: relative;
+  top: -3px;
+}
+.client-container .router-header-large > div {
+  padding: 0px 5px;
+  background-color: #090B34;
 }
 
 .client-toggle {
@@ -247,6 +302,50 @@ nav.navbar {
 .metric-container {
   padding-left: 15px;
   margin: 20px 0 30px 0;
+}
+
+/*
+* BAR CHART
+*/
+
+.bar-chart-container {
+  margin-top: 20px;
+  min-height: 80px;
+  padding-left: 15px;
+}
+.bar-chart-label {
+  margin: 12px 0;
+  font-size: 15px;
+}
+.bar-chart-label.warning {
+  background-color: #A41818;
+  margin-left: 30px;
+  padding: 0px 3px;
+  border-radius: 2px;
+}
+.overlay-bars {
+  position: absolute;
+  height: 20px;
+}
+.overlay-bars.bar-container {
+  opacity: 0.25;
+}
+
+.graph-gradient {
+  /* https://css-tricks.com/css3-gradients/ */
+  background-image: repeating-linear-gradient(90deg, black, black 4px, grey 0px, grey 8px);
+}
+.graph-gradient.green {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(144, 251, 69) 0px, rgb(144, 251, 69) 8px);
+}
+.graph-gradient.orange {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(248, 169, 68) 0px, rgb(248, 169, 68) 8px);
+}
+.graph-gradient.red {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, #A41818 0px, #A41818 8px);
+}
+.graph-gradient.yellow {
+  background-image: repeating-linear-gradient(90deg, black, black 4px, rgb(228, 211, 60) 0px, rgb(228, 211, 60) 8px);
 }
 
 /*

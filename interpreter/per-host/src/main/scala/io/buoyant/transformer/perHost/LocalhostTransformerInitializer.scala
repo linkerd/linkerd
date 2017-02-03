@@ -23,7 +23,6 @@ class LocalhostTransformerConfig extends TransformerConfig {
       interface <- NetworkInterface.getNetworkInterfaces.asScala
       if interface.isUp
       inet <- interface.getInetAddresses.asScala
-      if !inet.isLoopbackAddress
     } yield inet
     new SubnetLocalTransformer(prefix, localIPs.toSeq, Netmask("255.255.255.255"))
   }

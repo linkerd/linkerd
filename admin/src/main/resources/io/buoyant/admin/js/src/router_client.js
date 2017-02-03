@@ -7,16 +7,49 @@ define([
   'src/utils',
   'src/query',
   'src/success_rate_graph',
-  'text!template/metric.partial.template',
-  'text!template/router_client.template'
+  'src/bar_chart',
+  'template/compiled_templates'
 ], function($, _, Handlebars,
   Utils,
   Query,
   SuccessRateGraph,
-  metricPartialTemplate,
-  routerClientTemplate) {
+  BarChart,
+  templates
+) {
+
+  var LoadBalancerBarChart = function($lbContainer) {
+    function getColor(percent) {
+      return percent < 0.5 ? "orange" : "green";
+    }
+
+    function getPercent(data) {
+      if (!data) return null;
+
+      var numer = data["loadbalancer/available"] || {};
+      var denom = data["loadbalancer/size"] || {};
+      var percent = (!denom || !denom.value) ? 0 : (numer.value || 0) / denom.value;
+
+      return {
+        percent: percent,
+        label: {
+          description: "Endpoints available",
+          value: (_.isNull(numer.value) ? "-" : numer.value)
+            + " / "
+            + (_.isNull(denom.value) ? "-" : denom.value)
+        }
+      }
+    }
+
+    var barChart = new BarChart($lbContainer, getColor);
+    return {
+      update: function(data) {
+        return barChart.update(getPercent(data));
+      }
+    }
+  }
+
   var RouterClient = (function() {
-    var template = Handlebars.compile(routerClientTemplate);
+    var template = templates.router_client;
 
     var metricToColorShade = {
       "max": "light",
@@ -37,7 +70,9 @@ define([
           {suffix: "requests", label: "Requests"},
           {suffix: "connections", label: "Connections"},
           {suffix: "success", label: "Successes"},
-          {suffix: "failures", label: "Failures"}
+          {suffix: "failures", label: "Failures"},
+          {suffix: "loadbalancer/size", label: "Load balancer pool size"},
+          {suffix: "loadbalancer/available", label: "Load balancers available"}
         ], function(metric) {
         return {
           metricSuffix: metric.suffix,
@@ -47,9 +82,8 @@ define([
       });
     }
 
-    function renderMetrics($container, client, summaryData, latencyData, clientColor) {
+    function renderMetrics($container, client, summaryData, latencyData) {
       var clientHtml = template({
-        clientColor: clientColor,
         client: client.label,
         latencies: latencyData,
         data: summaryData
@@ -99,19 +133,29 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $metricsEl, routerName, $chartEl, colors, $toggleLinks, shouldExpandInitially) {
-      var metricPartial = Handlebars.compile(metricPartialTemplate);
+    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
+      var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
-      var clientColor = colors.color;
+      var $contentContainer = $container.find(".client-content-container");
+
+      var $headerLine = $container.find(".header-line");
+      var colorBorder = "2px solid" + colors.color;
+
+      var $metricsEl = $container.find(".metrics-container");
+      var $chartEl = $container.find(".chart-container");
+      var $toggleLinks = $container.find(".client-toggle");
+      var $lbBarChart = $container.find(".lb-bar-chart");
+
       var latencyLegend = createLatencyLegend(colors.colorFamily);
       var metricDefinitions = getMetricDefinitions(routerName, client.label);
 
       var $expandLink = $toggleLinks.find(".client-expand");
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
-      renderMetrics($metricsEl, client, [], [], clientColor);
+      renderMetrics($metricsEl, client, [], []);
       var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
+      var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
       // collapse client section by default (deal with large # of clients)
       if(shouldExpandInitially) {
@@ -125,12 +169,18 @@ define([
 
       function toggleClientDisplay(expand) {
         if (expand) {
+          $contentContainer.css({"border": colorBorder});
+          $headerLine.css("border-bottom", "0px");
+
           metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
         } else {
+          $contentContainer.css({'border': null});
+          $headerLine.css({'border-bottom': colorBorder});
+
           metricsCollector.deregisterListener(metricsHandler);
         }
-        $metricsEl.toggle(expand);
-        $chartEl.toggle(expand);
+
+        $contentContainer.toggle(expand);
         $collapseLink.toggle(expand);
         $expandLink.toggle(!expand);
       }
@@ -141,7 +191,9 @@ define([
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         chart.updateMetrics(getSuccessRate(summaryData));
-        renderMetrics($metricsEl, client, summaryData, latencies, clientColor);
+        lbBarChart.update(summaryData);
+
+        renderMetrics($metricsEl, client, summaryData, latencies);
       }
 
       function getDesiredMetrics(metrics) {

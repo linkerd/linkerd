@@ -1,21 +1,21 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars', 'bootstrap',
+  'jQuery', 'bootstrap',
   'src/metrics_collector',
   'src/routers',
   'src/process_info',
   'src/request_totals',
   'src/router_controller'
 ], function(
-  $, Handlebars, bootstrap,
+  $, bootstrap,
   MetricsCollector,
   Routers,
   ProcInfo,
   RequestTotals,
   RouterController
 ) {
-  return function() {
+  return function(routerConfig) {
     /**
      * Number of millis to wait between data updates.
      */
@@ -31,7 +31,7 @@ define([
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
       RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), _.keys(metricsJson));
-      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"));
+      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"), routerConfig);
 
       $(function() {
         metricsCollector.start(UPDATE_INTERVAL);

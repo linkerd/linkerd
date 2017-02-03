@@ -1,16 +1,18 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars',
+  'jQuery',
   'src/router_client',
   'src/combined_client_graph',
-  'text!template/router_client_container.template'
-], function($, Handlebars,
+  'template/compiled_templates'
+], function($,
   RouterClient,
   CombinedClientGraph,
-  routerClientContainerTemplate) {
+  templates
+) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
+    var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
 
     function assignColorsToClients(colors, clients) {
       return _.reduce(clients, function(clientMapping, client, idx) {
@@ -24,13 +26,13 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, routers, $clientEl, routerName, colors) {
-      var clientContainerTemplate = Handlebars.compile(routerClientContainerTemplate);
+    return function (metricsCollector, routers, $clientEl, $combinedClientGraphEl, routerName, colors) {
+      var clientContainerTemplate = templates.router_client_container;
 
       var clients = routers.clients(routerName);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
-      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $clientEl.find(".router-graph"), clientToColor);
+      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
 
       var expandClients = shouldExpandClients(clients.length);
 
@@ -47,15 +49,25 @@ define([
       function initializeClient(client) {
         $clientEl.show();
         var colorsForClient = clientToColor[client.label];
+        var match = ('/' + client.label).match(TRANSFORMER_RE);
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
-          client: client.label
+          prefix: match[1],
+          client: match[2]
         })).appendTo($clientEl);
-        var $metrics = $container.find(".metrics-container");
-        var $chart = $container.find(".chart-container");
-        var $toggle = $container.find(".client-toggle");
+        if (match[1]) {
+          var $transformerPrefix = $container.find(".transformer-prefix");
+          var $clientSuffix = $container.find(".client-suffix");
 
-        return RouterClient(metricsCollector, routers, client, $metrics, routerName, $chart, colorsForClient, $toggle, expandClients);
+          $container.find(".client-id")
+            .click(function() {
+              $transformerPrefix.toggle("slow", function() {
+                $clientSuffix.toggleClass("is-first", !$transformerPrefix.is(":visible"));
+              });
+            });
+        }
+
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
       }
 
       function addClients(addedClients) {
