@@ -5,11 +5,11 @@ import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
 import org.scalatest._
 
-class TracelogInitializerTest extends FunSuite {
+class ZipkinInitializerTest extends FunSuite {
 
-  test("io.l5d.tracelog telemeter loads") {
+  test("io.l5d.zipkin telemeter loads") {
     val yaml =
-      """|kind: io.l5d.tracelog
+      """|kind: io.l5d.zipkin
          |sampleRate: 0.02
          |""".stripMargin
 
@@ -21,10 +21,11 @@ class TracelogInitializerTest extends FunSuite {
     assert(!telemeter.tracer.isNull)
   }
 
-  test("io.l5d.tracelog telemeter loads, with log level") {
+  test("io.l5d.zipkin telemeter loads, with host and port") {
     val yaml =
-      """|kind: io.l5d.tracelog
-         |level: trace
+      """|kind: io.l5d.zipkin
+         |host: 127.0.0.1
+         |port: 9411
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
@@ -34,17 +35,4 @@ class TracelogInitializerTest extends FunSuite {
     assert(telemeter.stats.isNull)
     assert(!telemeter.tracer.isNull)
   }
-
-  test("io.l5d.tracelog telemeter fails with invalid log level") {
-    val yaml =
-      """|kind: io.l5d.tracelog
-         |level: supergood
-         |""".stripMargin
-
-    val mapper = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
-    val _ = intercept[com.fasterxml.jackson.databind.JsonMappingException] {
-      mapper.readValue[TelemeterConfig](yaml)
-    }
-  }
-
 }
