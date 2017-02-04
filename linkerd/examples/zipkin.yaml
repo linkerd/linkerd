@@ -11,6 +11,7 @@ routers:
   - port: 4140
 
 telemetry:
+- kind: io.l5d.commonMetrics
 - kind: io.l5d.zipkin
   host: localhost
   port: 9410
