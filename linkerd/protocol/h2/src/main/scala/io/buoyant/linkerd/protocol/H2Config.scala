@@ -104,21 +104,17 @@ class H2Config extends RouterConfig {
 }
 
 trait H2EndpointConfig {
-  var connectionFlowControl: Option[Boolean] = None
-  var windowUpdateRatio: Option[Double] = None
 
+  var initialStreamWindowBytes: Option[Int] = None
   var headerTableBytes: Option[Int] = None
-  var initialWindowBytes: Option[Int] = None
-  var maxConcurrentStreamsPerConnection: Option[Int] = None
   var maxFrameBytes: Option[Int] = None
   var maxHeaderListBytes: Option[Int] = None
+  var windowUpdateRatio: Option[Double] = None
 
-  def withParams(params: Stack.Params): Stack.Params = params
-    .maybeWith(connectionFlowControl.map(efc => FlowControl.AutoRefillConnectionWindow(!efc)))
+  def withEndpointParams(params: Stack.Params): Stack.Params = params
     .maybeWith(windowUpdateRatio.map(r => FlowControl.WindowUpdateRatio(r.toFloat)))
     .maybeWith(headerTableBytes.map(s => Settings.HeaderTableSize(Some(s.bytes))))
-    .maybeWith(initialWindowBytes.map(s => Settings.InitialWindowSize(Some(s.bytes))))
-    .maybeWith(maxConcurrentStreamsPerConnection.map(s => Settings.MaxConcurrentStreams(Some(s.toLong))))
+    .maybeWith(initialStreamWindowBytes.map(s => Settings.InitialStreamWindowSize(Some(s.bytes))))
     .maybeWith(maxFrameBytes.map(s => Settings.MaxFrameSize(Some(s.bytes))))
     .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
 }
@@ -126,17 +122,22 @@ trait H2EndpointConfig {
 class H2ClientConfig extends ClientConfig with H2EndpointConfig {
 
   @JsonIgnore
-  override def clientParams = withParams(super.clientParams)
+  override def clientParams = withEndpointParams(super.clientParams)
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
+
+  var maxConcurrentStreamsPerConnection: Option[Int] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
 
+  override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
+    .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
+
   @JsonIgnore
-  override def serverParams = withParams(super.serverParams)
+  override def serverParams = withEndpointParams(super.serverParams)
 }
 
 trait H2IdentifierConfig extends PolymorphicConfig {

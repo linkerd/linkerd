@@ -187,14 +187,19 @@ object H2FrameCodec {
   private[this] def mk(
     isServer: Boolean,
     settings: Http2Settings,
-    windowUpdateRatio: Float,
-    autoRefillConnectionWindow: Boolean = false
+    updateRatio: Float,
+    refillConn: Boolean
   ): H2FrameCodec = {
-    require(0.0 < windowUpdateRatio && windowUpdateRatio < 1.0)
+    require(0.0 < updateRatio && updateRatio < 1.0)
 
     val conn = new DefaultHttp2Connection(isServer)
-    val flow = new DefaultHttp2LocalFlowController(conn, windowUpdateRatio, autoRefillConnectionWindow)
-    conn.local.flowController(flow)
+    conn.local.flowController(new DefaultHttp2LocalFlowController(conn, updateRatio, refillConn) {
+      settings.initialWindowSize match {
+        case null =>
+        case sz => initialWindowSize(sz)
+      }
+    })
+    conn.remote.flowController(new DefaultHttp2RemoteFlowController(conn))
 
     val encoder = {
       val fw = new Http2OutboundFrameLogger(new DefaultHttp2FrameWriter, frameLogger)
@@ -205,6 +210,7 @@ object H2FrameCodec {
       val fr = new Http2InboundFrameLogger(new DefaultHttp2FrameReader, frameLogger)
       new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
+    decoder.localSettings(settings)
     decoder.frameListener(new FrameListener)
 
     val handler = new ConnectionHandler(decoder, encoder, settings)

@@ -21,7 +21,13 @@ package object param {
      */
     case class AutoRefillConnectionWindow(enabled: Boolean)
     implicit object AutoRefillConnectionWindow extends Stack.Param[AutoRefillConnectionWindow] {
-      val default = AutoRefillConnectionWindow(false)
+      /**
+       * By default, the connection window is ignored.
+       *
+       * This should be changed on resolution of
+       * https://github.com/linkerd/linkerd/issues/1044
+       */
+      val default = AutoRefillConnectionWindow(true)
     }
 
     /**
@@ -63,10 +69,12 @@ package object param {
      *       be treated as a connection error (Section 5.4.1) of type
      *       FLOW_CONTROL_ERROR.
      */
-    case class InitialWindowSize(size: Option[StorageUnit])
-    implicit object InitialWindowSize extends Stack.Param[InitialWindowSize] {
-      val default = InitialWindowSize(None)
+    case class InitialStreamWindowSize(size: Option[StorageUnit])
+    implicit object InitialStreamWindowSize extends Stack.Param[InitialStreamWindowSize] {
+      val default = InitialStreamWindowSize(None)
     }
+
+    // TODO case class InitialConnectionWindowSize(size: Option[StorageUnit])
 
     /**
      *    SETTINGS_MAX_CONCURRENT_STREAMS (0x3):  Indicates the maximum number
