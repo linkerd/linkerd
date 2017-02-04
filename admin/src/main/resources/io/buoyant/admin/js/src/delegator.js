@@ -1,8 +1,17 @@
 "use strict";
 
-define(['jQuery', 'src/dtab_viewer'], function($, DtabViewer) {
+define([
+  'jQuery',
+  'src/dtab_viewer',
+  'template/compiled_templates'
+], function($, DtabViewer, compiledTemplates) {
   var Delegator = (function() {
-    var templates;
+    var templates = {
+      dentry: compiledTemplates.dentry,
+      node: compiledTemplates.delegatenode,
+      errorModal: compiledTemplates.error_modal,
+      delegator: compiledTemplates.delegator
+    }
 
     function renderAll(resp) {
       $('.result').html(renderNode(resp));
@@ -31,8 +40,7 @@ define(['jQuery', 'src/dtab_viewer'], function($, DtabViewer) {
       return templates.node(obj);
     }
 
-    return function($root, namespace, dtab, dtabBase, t) {
-      templates = t
+    return function($root, namespace, dtab, dtabBase) {
       $root.html(templates.delegator({}));
 
       $("#dtab").html(dtab.map(function(e) {

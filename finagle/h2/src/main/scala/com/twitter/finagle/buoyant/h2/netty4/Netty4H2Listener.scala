@@ -9,7 +9,7 @@ import com.twitter.finagle.transport.{TlsConfig, Transport}
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
-import io.netty.handler.codec.http2.{Http2FrameCodec, Http2Frame}
+import io.netty.handler.codec.http2._
 import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
 
 /**
@@ -25,38 +25,45 @@ object Netty4H2Listener {
     }
 
   private[this] trait ListenerMaker {
-    def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
-      Netty4Listener(
-        pipelineInit = pipelineInit,
-        params = params + Netty4Listener.BackPressure(false)
+    def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] = {
+      def codec = H2FrameCodec.server(
+        settings = Netty4H2Settings.mk(params),
+        windowUpdateRatio = params[param.FlowControl.WindowUpdateRatio].ratio,
+        autoRefillConnectionWindow = params[param.FlowControl.AutoRefillConnectionWindow].enabled
       )
 
-    protected[this] def pipelineInit: ChannelPipeline => Unit
+      Netty4Listener(
+        pipelineInit = pipelineInit(codec),
+        params = params + Netty4Listener.BackPressure(false)
+      )
+    }
+
+    protected[this] def pipelineInit(c: => H2FrameCodec): ChannelPipeline => Unit
   }
 
   private[this] object PlaintextListener extends ListenerMaker {
-    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+    override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
       p.addLast(DirectToHeapInboundHandler)
-      p.addLast(new ServerUpgradeHandler); ()
+      p.addLast(new ServerUpgradeHandler(codec)); ()
     }
   }
 
   private[this] object TlsListener extends ListenerMaker {
     val PlaceholderKey = "h2 framer placeholder"
-    override protected[this] val pipelineInit = { p: ChannelPipeline =>
+    override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
       p.addLast(DirectToHeapInboundHandler)
       p.addLast(PlaceholderKey, new ChannelDuplexHandler)
-        .addLast("alpn", new Alpn); ()
+        .addLast("alpn", new Alpn(codec)); ()
     }
 
-    private class Alpn
+    private class Alpn(codec: => H2FrameCodec)
       extends ApplicationProtocolNegotiationHandler(ApplicationProtocolNames.HTTP_2) {
 
       override protected def configurePipeline(ctx: ChannelHandlerContext, proto: String): Unit =
         proto match {
           case ApplicationProtocolNames.HTTP_2 =>
             ctx.channel.config.setAutoRead(true)
-            ctx.pipeline.replace(PlaceholderKey, "h2 framer", new Http2FrameCodec(true)); ()
+            ctx.pipeline.replace(PlaceholderKey, "h2 framer", codec); ()
 
           // TODO case ApplicationProtocolNames.HTTP_1_1 =>
           case proto => throw new IllegalStateException(s"unknown protocol: $proto")

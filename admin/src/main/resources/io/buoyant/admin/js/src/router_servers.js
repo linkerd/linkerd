@@ -5,11 +5,10 @@ define([
   'lodash',
   'Handlebars',
   'src/router_server',
-  'text!template/router_server_container.template',
-  'text!template/server_rate_metric.partial.template'
-], function($, _, Handlebars, RouterServer, routerServerContainerTemplate, serverMetricPartialTemplate) {
-    var serverContainerTemplate = Handlebars.compile(routerServerContainerTemplate);
-    var rateMetricPartial = Handlebars.compile(serverMetricPartialTemplate);
+  'template/compiled_templates'
+], function($, _, Handlebars, RouterServer, templates) {
+    var serverContainerTemplate = templates.router_server_container;
+    var rateMetricPartial = templates["server_rate_metric.partial"];
 
     var RouterServers = (function() {
     return function (metricsCollector, routers, $serverEl, routerName) {

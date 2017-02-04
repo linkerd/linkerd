@@ -15,7 +15,7 @@ routers:
   identifier:
     kind: io.l5d.methodAndHost
     httpUriInDst: true
-  baseDtab: |
+  dtab: |
     /marathonId => /#/io.l5d.marathon;
     /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
     /http/1.1/* => /host;

@@ -33,7 +33,7 @@ class TracingFilterTest extends FunSuite with Awaits {
       val f = service(req)
 
       val reqEvents = tracer.iterator.toSeq
-      assert(reqEvents.exists(_.annotation == Annotation.Rpc("HEAD")))
+      assert(reqEvents.exists(_.annotation == Annotation.Rpc("HEAD /foo")))
       assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.uri", "/foo?bar=bah")))
       assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.method", "HEAD")))
       assert(reqEvents.exists(_.annotation == Annotation.BinaryAnnotation("http.req.host", "monkeys")))

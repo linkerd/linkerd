@@ -20,8 +20,6 @@ import sun.misc.{Signal, SignalHandler}
  */
 object Main extends App {
 
-  private[this] val DefaultTelemeter =
-    new CommonMetricsTelemeter
   private[this] val DefaultShutdownGrace =
     Duration.fromSeconds(10)
 
@@ -32,7 +30,7 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
-        val linker = config.mk(DefaultTelemeter)
+        val linker = config.mk()
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))

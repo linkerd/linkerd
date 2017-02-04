@@ -1,6 +1,10 @@
 <div class="client-container clearfix">
-  <div class="router-header-large" style="border-bottom: 2px solid {{clientColor}};">
-    <span class="transformer-prefix client-id" style="display: none">{{prefix}}</span><span class="client-id">{{client}}</span>
+  <div class="header-line">&nbsp;</div>
+  <div class="router-header-large">
+    <div class="client-id">
+      <div class="pull-left transformer-prefix" style="display: none">{{prefix}}</div>
+      <div class="pull-left client-suffix is-first">{{client}}</div>
+    </div>
     <div class="client-toggle pull-right">
       <a class="client-expand" target="blank">expand</a>
       <a class="client-collapse" target="blank">collapse</a>

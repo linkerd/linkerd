@@ -17,7 +17,7 @@ routers:
   identifier:
     kind: io.l5d.headerToken
     header: ":authority"
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
     /h2 => /srv ;
   client:
@@ -41,7 +41,7 @@ routers:
   identifier:
     kind: io.l5d.headerPath
     segments: 2
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
     /h2 => /srv ;
 ```
@@ -73,6 +73,28 @@ When TLS is not configured, h2 servers accept both
 [HTTP Upgrade](https://http2.github.io/http2-spec/#discover-http)
 requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
+
+## HTTP/2 Server Parameters
+
+Key | Default Value | Description
+--- | ------------- | -----------
+windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
+initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
+maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
+maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
+maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
+## HTTP/2 Client Parameters
+
+Key | Default Value | Description
+--- | ------------- | -----------
+windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
+initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
+maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
+maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
 
 <a name="h2-identifiers"></a>
 ## HTTP/2 Identifiers
@@ -201,7 +223,7 @@ from untrusted sources.
 
 ### User Headers
 
-> Append a dtab override to the baseDtab for this request
+> Append a dtab override to the dtab for this request
 
 ```shell
 curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"
