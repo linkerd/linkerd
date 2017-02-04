@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.google.protobuf.CodedOutputStream
-import com.twitter.common.metrics.Metrics
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{MediaType, Method, Request, Response}
@@ -169,8 +168,6 @@ class UsageDataTelemeter(
   val adminHandlers = Seq(
     Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
-
-  private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =

@@ -2,7 +2,6 @@ package io.buoyant.linkerd.telemeter
 
 import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.{TracerConfig, TracerInitializer}
 import io.buoyant.telemetry.{TelemeterConfig, TelemeterInitializer}
 import org.scalatest.FunSuite
 

@@ -1,7 +1,6 @@
 package io.buoyant.linkerd.telemeter
 
 import com.google.protobuf.CodedInputStream
-import com.twitter.common.metrics.Metrics
 import com.twitter.finagle.Address.Inet
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
@@ -13,6 +12,7 @@ import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd._
 import io.buoyant.linkerd.usage.UsageMessage
 import io.buoyant.namer.{NamerInitializer, TestNamerInitializer}
+import io.buoyant.telemetry.MetricsTree
 import io.buoyant.test.{Awaits, FunSuite}
 import java.net.InetSocketAddress
 
@@ -64,11 +64,11 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
 
     val mapper = Parser.objectMapper(yaml, initializer().iter)
     val config = mapper.readValue[LinkerConfig](yaml)
-    val metrics = Metrics.root()
+    val metrics = MetricsTree()
 
-    val requests = metrics.registerCounter("foo/srv/bar/requests")
-    requests.increment()
-    requests.increment()
+    val requests = metrics.resolve(Seq("rt", "foo", "srv", "bar", "requests")).mkCounter()
+    requests.incr()
+    requests.incr()
 
     val telemeter = new UsageDataTelemeter(
       Name.bound(Inet(proxy.address, Map())),
