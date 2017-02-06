@@ -8,11 +8,12 @@ import io.buoyant.linkerd.Build
 
 class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
 
-  private[this] val navHtml = navItems.map { item =>
-    s"""<li><a href="${item.url}">${item.name}</a></li>"""
+  private[this] def navHtml(highlightedItem: String = "") = navItems.map { item =>
+    val activeClass = if (item.name == highlightedItem) "active" else ""
+    s"""<li class=$activeClass><a href="${item.url}">${item.name}</a></li>"""
   }.mkString("\n")
 
-  val navBar =
+  def navBar(highlightedItem: String = "") =
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
         <div class="navbar-header">
@@ -29,7 +30,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-          $navHtml
+          ${navHtml(highlightedItem)}
           </ul>
           <ul class="nav navbar-nav navbar-right">
             <li class="dropdown">
@@ -59,11 +60,18 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    navbar: String = navBar
+    navbar: String = "",
+    navHighlight: String = ""
   ): String = {
     val cssesHtml = csses.map { css =>
       s"""<link type="text/css" href="files/css/$css" rel="stylesheet"/>"""
     }.mkString("\n")
+
+    val navbarWithHighlight = navbar match {
+      case "" => navBar(navHighlight)
+      case _ => navbar
+    }
+
     s"""
       <!doctype html>
       <html>
@@ -77,7 +85,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           $cssesHtml
         </head>
         <body>
-          $navbar
+          $navbarWithHighlight
 
           <div class="container-fluid">
             $content

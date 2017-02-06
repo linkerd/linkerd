@@ -9,7 +9,8 @@ private[admin] class HelpPageHandler(adminHandler: AdminHandler) extends Service
   override def apply(req: Request): Future[Response] = adminHandler.mkResponse(html)
 
   val html = adminHandler.html(
-    content = HelpPageHandler.helpHtml
+    content = HelpPageHandler.helpHtml,
+    navHighlight = "help"
   )
 }
 

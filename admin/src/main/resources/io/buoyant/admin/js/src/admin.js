@@ -6,9 +6,6 @@ define([
   'bootstrap'
 ], function($, templates) {
   function initialize(removeRoutersAllOption) {
-    // highlight current page in navbar
-    var path = window.location.pathname;
-    $('a[href="' + path + '"]').parent().addClass("active");
 
     var matches = window.location.search.match(/router=(.+)(?:&|$)/)
     if (matches && matches.length > 1) {

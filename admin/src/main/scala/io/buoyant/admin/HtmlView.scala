@@ -8,7 +8,8 @@ trait HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    navbar: String = ""
+    navbar: String = "",
+    navHighlight: String = ""
   ): String
 
   def mkResponse(
