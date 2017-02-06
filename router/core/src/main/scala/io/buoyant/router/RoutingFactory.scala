@@ -87,7 +87,7 @@ object RoutingFactory {
    */
   case class DstPrefix(path: Path)
   implicit object DstPrefix extends Stack.Param[DstPrefix] {
-    val default = DstPrefix(Path.Utf8("s"))
+    val default = DstPrefix(Path.Utf8("svc"))
   }
 
   /**

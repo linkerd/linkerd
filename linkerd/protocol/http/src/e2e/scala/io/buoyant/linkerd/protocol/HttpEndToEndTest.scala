@@ -21,7 +21,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/s/$name"),
+      Path.read(s"/svs/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -87,8 +87,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val dtab = Dtab.read(s"""
       /p/cat => /$$/inet/127.1/${cat.port} ;
       /p/dog => /$$/inet/127.1/${dog.port} ;
-      /s/felix => /p/cat ;
-      /s/clifford => /p/dog ;
+      /svc/felix => /p/cat ;
+      /svc/clifford => /p/dog ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
@@ -111,7 +111,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
 
-        val path = "/s/felix"
+        val path = "/svc/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
@@ -159,7 +159,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/s/dog => /$label;")
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
@@ -220,7 +220,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/s/dog => /$label;")
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
     val yaml =
       s"""|routers:
           |- protocol: http
@@ -254,7 +254,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = "s/dog"
+        val name = "svc/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
@@ -330,7 +330,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       req.response
     }
     val dtab = Dtab.read(s"""
-      /s/* => /$$/inet/127.1/${dog.port} ;
+      /svc/* => /$$/inet/127.1/${dog.port} ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
