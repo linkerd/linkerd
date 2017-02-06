@@ -41,7 +41,6 @@ object Linker {
     interpreter: Seq[InterpreterInitializer] = Nil,
     transformer: Seq[TransformerInitializer] = Nil,
     tlsClient: Seq[TlsClientInitializer] = Nil,
-    tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
     classifier: Seq[ResponseClassifierInitializer] = Nil,
     telemetry: Seq[TelemeterInitializer] = Nil,
@@ -49,7 +48,7 @@ object Linker {
     failureAccrual: Seq[FailureAccrualInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
+      Seq(protocol, namer, interpreter, tlsClient, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -66,7 +65,6 @@ object Linker {
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
     LoadService[TransformerInitializer],
     LoadService[TlsClientInitializer],
-    LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
     LoadService[ResponseClassifierInitializer],
     LoadService[TelemeterInitializer],
@@ -93,7 +91,7 @@ object Linker {
     case class LinkerConfig(config: Linker.LinkerConfig)
 
     implicit object LinkerConfig extends Stack.Param[LinkerConfig] {
-      val default = LinkerConfig(Linker.LinkerConfig(None, Seq(), None, None, None))
+      val default = LinkerConfig(Linker.LinkerConfig(None, Seq(), None, None))
     }
 
   }
@@ -101,7 +99,6 @@ object Linker {
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
-    tracers: Option[Seq[TracerConfig]],
     telemetry: Option[Seq[TelemeterConfig]],
     admin: Option[AdminConfig]
   ) {
@@ -128,11 +125,6 @@ object Linker {
       LoadedStatsReceiver.self = stats
       JvmStats.register(stats)
 
-      // Tracers may be provided by telemeters OR by 'tracers'
-      // configuration.
-      //
-      // TODO the TracerInitializer API should be killed and these
-      // modules should be converted to Telemeters.
       val tracer = mkTracer(telemeters)
       DefaultTracer.self = tracer
 
@@ -155,8 +147,7 @@ object Linker {
     }
 
     private[this] def mkTracer(telemeters: Seq[Telemeter]) = {
-      val all = tracers.getOrElse(Nil).map(_.newTracer()) ++
-        telemeters.collect { case t if !t.tracer.isNull => t.tracer }
+      val all = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
       for (t <- all) log.info("tracer: %s", t)
       BroadcastTracer(all)
     }

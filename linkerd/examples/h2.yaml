@@ -1,6 +1,4 @@
 # HTTP/2 protocol.
-tracers: []
-
 namers:
 - kind: io.l5d.fs
   rootDir: linkerd/examples/io.l5d.fs
