@@ -102,5 +102,20 @@ object Grpc extends Base {
       publishArtifact := false
     )
 
-  val all = aggregateDir("grpc", eg, gen, runtime)
+  val usage = projectDir("grpc/usage")
+    .withGrpc
+    .withTests()
+    .settings(
+      publishArtifact := true
+    )
+
+  /** Interop */
+  val interop = projectDir("grpc/interop")
+    .withGrpc
+    .withTests()
+    .settings(
+      publishArtifact := false
+    )
+
+  val all = aggregateDir("grpc", eg, interop, usage, gen, runtime)
 }
