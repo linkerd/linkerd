@@ -152,8 +152,6 @@ class RoutingFactory[Req, Rsp](
 
     def apply(req0: Req): Future[Rsp] = {
       if (Trace.isActivelyTracing) {
-        // we treat the router label as the rpc name for this span
-        Trace.recordRpc(label)
         Trace.recordBinary("router.label", label)
       }
 

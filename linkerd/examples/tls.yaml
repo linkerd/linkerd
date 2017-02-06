@@ -5,8 +5,8 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /s => /#/io.l5d.fs
+  dtab: |
+    /svc => /#/io.l5d.fs
   client:
     # Establish encryped outgoing connections.
     tls:

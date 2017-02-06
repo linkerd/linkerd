@@ -57,7 +57,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   def basicConfig(dtab: Dtab) =
     s"""|routers:
         |- protocol: http
-        |  baseDtab: ${dtab.show}
+        |  dtab: ${dtab.show}
         |  servers:
         |  - port: 0
         |""".stripMargin
@@ -224,7 +224,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val yaml =
       s"""|routers:
           |- protocol: http
-          |  baseDtab: ${dtab.show}
+          |  dtab: ${dtab.show}
           |  responseClassifier:
           |    kind: $kind
           |  servers:

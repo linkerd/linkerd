@@ -6,8 +6,8 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /s     => /#/consul/dc1/prod;
+  dtab: |
+    /svc     => /#/consul/dc1/prod;
   servers:
   - port: 4140
     ip: 0.0.0.0

@@ -1,9 +1,8 @@
 package io.buoyant.router.http
 
-import com.twitter.conversions.storage._
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable, param}
 import com.twitter.finagle.client.StackClient
-import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.Trace
 
 object TracingFilter {
@@ -28,7 +27,7 @@ object TracingFilter {
  * Annotates HTTP method, uri, and status code, content-type, and content-length.
  */
 class TracingFilter extends SimpleFilter[Request, Response] {
-  import TracingFilter.{TransferEncoding, MaxBodySize}
+  import TracingFilter.{MaxBodySize, TransferEncoding}
 
   def apply(req: Request, service: Service[Request, Response]) = {
     recordRequest(req)
@@ -37,7 +36,7 @@ class TracingFilter extends SimpleFilter[Request, Response] {
 
   private[this] def recordRequest(req: Request): Unit =
     if (Trace.isActivelyTracing) {
-      Trace.recordRpc(req.method.toString)
+      Trace.recordRpc(s"${req.method.toString} ${req.path}")
       // http.uri is used here for consistency with finagle-http's tracing filter
       Trace.recordBinary("http.uri", req.uri)
       Trace.recordBinary("http.req.method", req.method.toString)

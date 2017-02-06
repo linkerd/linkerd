@@ -20,6 +20,29 @@ routers:
       for: {kind: ip}
 ```
 
+<<<<<<< HEAD
+=======
+> Below: an example HTTP router config that routes all `POST` requests to 8091
+and all other requests to 8081,
+using the default identifier of `io.l5d.methodAndHost`,
+listening on port 5000
+
+```yaml
+routers:
+- protocol: http
+  label: split-get-and-post
+  dtab: |
+    /method/*    => /$/inet/127.1/8081;
+    /method/POST => /$/inet/127.1/8091;
+    /http/1.1    => /method;
+  servers:
+  - port: 5000
+```
+> The dtab above is written to work with the
+[`methodAndHost` identifier](#method-and-host-identifier).
+Using a different identifier would require a different set of dtab rules.
+
+>>>>>>> master
 protocol: `http`
 
 The HTTP/1.1 protocol is used when the *protocol* option of the
@@ -371,7 +394,7 @@ from untrusted sources.
 
 ### User Headers
 
-> Append a dtab override to the baseDtab for this request
+> Append a dtab override to the dtab for this request
 
 ```shell
 curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"

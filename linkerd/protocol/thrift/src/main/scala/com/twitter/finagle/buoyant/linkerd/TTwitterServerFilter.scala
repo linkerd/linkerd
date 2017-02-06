@@ -61,11 +61,6 @@ class TTwitterServerFilter(
 
         Dtab.local ++= richHeader.dtab
 
-        Trace.recordRpc({
-          val msg = new InputBuffer(request_, protocolFactory)().readMessageBegin()
-          msg.name
-        })
-
         // If `header.client_id` field is non-null, then allow it to take
         // precedence over an id potentially provided by in the key-value pairs
         // when performing tracing.
@@ -110,8 +105,6 @@ class TTwitterServerFilter(
         isUpgraded = true
         successfulUpgradeReply
       } else {
-        // request from client without tracing support
-        Trace.recordRpc(msg.name)
         Trace.recordBinary("srv/thrift/ttwitter", false)
         service(request)
       }

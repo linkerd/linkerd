@@ -19,7 +19,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
           s"""
              |routers:
              |- protocol: http
-             |  baseDtab: |
+             |  dtab: |
              |    /p/dog => /$$/inet/127.1/${dog.port} ;
              |    /s/clifford => /p/dog ;
              |  servers:

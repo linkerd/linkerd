@@ -9,7 +9,7 @@ regardless of kind. Telemeters may also have kind-specific parameters. </aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.commonMetrics`](#commonmetrics), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), or [`io.l5d.recentRequests`](#recent-requests).
+kind | _required_ | Either [`io.l5d.commonMetrics`](#commonmetrics), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), [`io.l5d.usage`](#usage), or [`io.l5d.zipkin`](#zipkin-telemeter).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## CommonMetrics
@@ -30,6 +30,25 @@ Exposes admin endpoints:
 * `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io/) format
 
 This telemeter has no additional parameters.
+
+## Admin Metrics Export
+
+> Example Admin Metrics Export config
+
+```yaml
+telemetry:
+- kind: io.l5d.adminMetricsExport
+  snapshotIntervalSecs: 60
+```
+
+kind: `io.l5d.adminMetricsExport`
+
+Exposes admin endpoint:
+
+* `/admin/metrics.json`: retrieve all metrics in [twitter-server](https://twitter.github.io/twitter-server/) format
+
+This is a replacement for the `io.l5d.commonMetrics` telemeter which will be deprecated in the
+future.
 
 ## StatsD (experimental)
 
@@ -141,3 +160,26 @@ Key | Default Value | Description
 --- | ------------- | -----------
 orgId | empty by default | Optional string of your choosing that identifies your organization
 dryRun | false | If set to true, the usage telemeter is loaded but no data is sent
+
+## Zipkin telemeter
+
+> Example zipkin config
+
+```yaml
+telemetry:
+- kind: io.l5d.zipkin
+  host: localhost
+  port: 9410
+  sampleRate: 0.02
+```
+
+kind: `io.l5d.zipkin`
+
+Finagle's [zipkin-tracer](https://github.com/twitter/finagle/tree/develop/finagle-zipkin).
+Use this telemeter to send trace data to a Zipkin Scribe collector.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+host | `localhost` | Host to send trace data to.
+port | `9410` | Port to send trace data to.
+sampleRate | `0.001` | What percentage of requests to trace.

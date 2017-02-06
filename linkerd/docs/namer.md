@@ -38,8 +38,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.fs
+=======
+dtab: |
+  /http/1.1/* => /#/io.l5d.fs
+>>>>>>> master
 ```
 
 > With the filesystem directory:
@@ -119,8 +124,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```yaml
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.serversets/discovery/prod;
+=======
+dtab: |
+  /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
+>>>>>>> master
 ```
 
 linkerd provides support for [ZooKeeper
@@ -169,8 +179,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.consul/dc1/prod;
+=======
+dtab: |
+  /http/1.1/* => /#/io.l5d.consul/dc1/prod;
+>>>>>>> master
 ```
 
 linker provides support for service discovery via [Consul](https://www.consul.io/).
@@ -229,8 +244,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.k8s/prod/http;
+=======
+dtab: |
+  /http/1.1/* => /#/io.l5d.k8s/prod/http;
+>>>>>>> master
 ```
 
 linkerd provides support for service discovery via
@@ -280,8 +300,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.k8s.external/prod/http;
+=======
+dtab: |
+  /http/1.1/* => /#/io.l5d.k8s.external/prod/http;
+>>>>>>> master
 ```
 
 The [Kubernetes](https://k8s.io/) External namer looks up the IP of the external
@@ -341,7 +366,7 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-baseDtab: |
+dtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
   /s => /host;
@@ -471,8 +496,13 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
+<<<<<<< HEAD
 baseDtab: |
   /s => /#/io.l5d.rewrite
+=======
+dtab: |
+  /http => /#/io.l5d.rewrite
+>>>>>>> master
 ```
 
 A namer that completely rewrites a path.  This is useful to do arbitrary

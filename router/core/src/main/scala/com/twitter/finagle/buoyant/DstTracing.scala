@@ -9,19 +9,21 @@ object DstTracing {
     val role = Stack.Role("DstTracing.Path")
 
     def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-      new Stack.Module1[Dst.Path, ServiceFactory[Req, Rsp]] {
+      new Stack.Module2[Dst.Path, param.Label, ServiceFactory[Req, Rsp]] {
         val role = Path.role
         val description = "Traces unbound destination"
-        def make(dst: Dst.Path, next: ServiceFactory[Req, Rsp]) = new Proxy(dst, next)
+        def make(dst: Dst.Path, label: param.Label, next: ServiceFactory[Req, Rsp]) =
+          new Proxy(dst, label.label, next)
       }
 
-    class Proxy[Req, Rsp](dst: Dst.Path, underlying: ServiceFactory[Req, Rsp])
+    class Proxy[Req, Rsp](dst: Dst.Path, label: String, underlying: ServiceFactory[Req, Rsp])
       extends ServiceFactoryProxy(underlying) {
       private[this] val baseDtabShow = dst.baseDtab.show
       private[this] val localDtabShow = dst.localDtab.show
       private[this] val pathShow = dst.path.show
       override def apply(conn: ClientConnection) = {
         if (Trace.isActivelyTracing) {
+          Trace.recordRpc(s"$label $pathShow")
           Trace.recordBinary("namer.dtab.base", baseDtabShow)
           Trace.recordBinary("namer.dtab.local", localDtabShow)
           Trace.recordBinary("namer.path", pathShow)

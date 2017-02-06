@@ -12,7 +12,7 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /s => /#/io.l5d.k8s/foo/http;
+  dtab: |
+    /svc => /#/io.l5d.k8s/foo/http;
   servers:
   - port: 4140

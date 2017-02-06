@@ -13,8 +13,8 @@ routers:
   identifier:
     kind: io.l5d.path
     segments: 2
-  baseDtab: |
+  dtab: |
     /srv => /#/io.l5d.fs ;
-    /http => /#/apiToSrv ;
+    /svc => /#/apiToSrv ;
   servers:
   - port: 4140

@@ -8,7 +8,7 @@ routers:
 - protocol: mux
   label: power-level-router
   dstPrefix: /overNineThousand
-  baseDtab: |
+  dtab: |
     /overNineThousand => /$/inet/127.0.1/9001;
 ```
 
@@ -21,7 +21,11 @@ protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
 
 Key | Default Value | Description
 --- | ------------- | -----------
+<<<<<<< HEAD
 dstPrefix | `/s` | A path prefix used in `baseDtab`.
+=======
+dstPrefix | `mux` | A path prefix used in `dtab`.
+>>>>>>> master
 
 ## Mux Server Parameters
 

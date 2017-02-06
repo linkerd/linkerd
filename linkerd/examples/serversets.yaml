@@ -14,8 +14,8 @@ routers:
     - host: 127.0.0.1
       port: 2181
     pathPrefix: /discovery/prod
-  baseDtab: |
-    /s => /#/io.l5d.serversets;
+  dtab: |
+    /svc => /#/io.l5d.serversets;
   servers:
   - port: 4140
     ip: 0.0.0.0

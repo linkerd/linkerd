@@ -1,17 +1,17 @@
 "use strict";
 
 define([
-  'lodash', 'Handlebars',
+  'lodash',
   'src/router_summary',
   'src/router_servers',
   'src/router_clients',
-  'text!template/router_container.template'
+  'template/compiled_templates'
 ], function(
-  _, Handlebars,
+  _,
   RouterSummary,
   RouterServers,
   RouterClients,
-  routerContainerTemplate
+  templates
 ) {
 
   var RouterController = (function () {
@@ -96,7 +96,7 @@ define([
     }
 
     function initializeRouterContainers(selectedRouter, routers, $parentContainer) {
-      var template = Handlebars.compile(routerContainerTemplate);
+      var template = templates.router_container;
       var routerData = getSelectedRouterData(selectedRouter, routers);
 
       var routerLabels = [];

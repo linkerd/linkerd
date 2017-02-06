@@ -5,11 +5,14 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /s => /#/io.l5d.fs
+  dtab: |
+    /svc => /#/io.l5d.fs
   servers:
   - port: 4140
 
-tracers:
+telemetry:
+- kind: io.l5d.commonMetrics
 - kind: io.l5d.zipkin
+  host: localhost
+  port: 9410
   sampleRate: 1.0

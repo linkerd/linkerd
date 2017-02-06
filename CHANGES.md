@@ -8,7 +8,10 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol
-* Change the default `dstPrefix` from the protocol name to `/s`
+* Rename `baseDtab` router property to `dtab`
+* Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
+  `io.l5d.commonMetrics` telemeter.
+* Change the default `dstPrefix` from the protocol name to `/svc`
 * Change the default HTTP identifier to the `io.l5d.header.token` identifier
 
 ## 0.8.6 2017-01-19

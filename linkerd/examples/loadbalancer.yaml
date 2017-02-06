@@ -5,8 +5,8 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /s => /#/io.l5d.fs
+  dtab: |
+    /svc => /#/io.l5d.fs
   servers:
   - port: 4140
     maxConcurrentRequests: 10000
