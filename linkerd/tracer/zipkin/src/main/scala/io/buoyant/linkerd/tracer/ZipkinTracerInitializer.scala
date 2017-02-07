@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.tracer
 
+import zipkin.finagle.http.HttpZipkinTracer
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
@@ -23,41 +24,48 @@ object ZipkinTracerInitializer extends ZipkinTracerInitializer
 case class ZipkinConfig(
   host: Option[String],
   port: Option[Int],
-  sampleRate: Option[Double]
+  sampleRate: Option[Double],
+  protocol: Option[String]
 ) extends TracerConfig {
 
   @JsonIgnore
   override def newTracer(): Tracer = new Tracer {
     private[this] val underlying: Tracer = {
-      // Cribbed heavily from com.twitter.finagle.zipkin.thrift.RawZipkinTracer
-      val transport = Thrift.client
-        .withStatsReceiver(ClientStatsReceiver)
-        .withSessionPool.maxSize(5)
-        .configured(DefaultPool.Param.param.default.copy(maxWaiters = 250))
-        // reduce timeouts because trace requests should be fast
-        .withRequestTimeout(100.millis)
-        // disable failure accrual so that we don't evict nodes when connections
-        // are saturated
-        .withSessionQualifier.noFailureAccrual
-        // disable fail fast since we often be sending to a load balancer
-        .withSessionQualifier.noFailFast
-        .withTracer(NullTracer)
-        .newService(Name.bound(Address(host.getOrElse("localhost"), port.getOrElse(9410))), "zipkin-tracer")
+      if (protocol.getOrElse("thrift") == "http") {
+        System.setProperty("zipkin.initialSampleRate", sampleRate.getOrElse(".001").toString)
+        System.setProperty("zipkin.http.host", host.getOrElse("localhost") + ":" + port.getOrElse(9411));
+        new HttpZipkinTracer();
+      } else {
+        // Cribbed heavily from com.twitter.finagle.zipkin.thrift.RawZipkinTracer
+        val transport = Thrift.client
+          .withStatsReceiver(ClientStatsReceiver)
+          .withSessionPool.maxSize(5)
+          .configured(DefaultPool.Param.param.default.copy(maxWaiters = 250))
+          // reduce timeouts because trace requests should be fast
+          .withRequestTimeout(100.millis)
+          // disable failure accrual so that we don't evict nodes when connections
+          // are saturated
+          .withSessionQualifier.noFailureAccrual
+          // disable fail fast since we often be sending to a load balancer
+          .withSessionQualifier.noFailFast
+          .withTracer(NullTracer)
+          .newService(Name.bound(Address(host.getOrElse("localhost"), port.getOrElse(9410))), "zipkin-tracer")
 
-      val client = new Scribe.FinagledClient(
-        new TracelessFilter andThen transport,
-        Protocols.binaryFactory()
-      )
+        val client = new Scribe.FinagledClient(
+          new TracelessFilter andThen transport,
+          Protocols.binaryFactory()
+        )
 
-      val rawTracer = ScribeRawZipkinTracer(
-        client,
-        NullStatsReceiver,
-        DefaultTimer.twitter
-      )
-      new ZipkinTracer(
-        rawTracer,
-        sampleRate.map(_.toFloat).getOrElse(Sampler.DefaultSampleRate)
-      )
+        val rawTracer = ScribeRawZipkinTracer(
+          client,
+          NullStatsReceiver,
+          DefaultTimer.twitter
+        )
+        new ZipkinTracer(
+          rawTracer,
+          sampleRate.map(_.toFloat).getOrElse(Sampler.DefaultSampleRate)
+        )
+      }
     }
 
     def sampleTrace(t: TraceId) = underlying.sampleTrace(t)

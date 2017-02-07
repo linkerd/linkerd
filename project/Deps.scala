@@ -58,4 +58,7 @@ object Deps {
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
+
+  // zipkin-finagle
+  val zipkinFinagle = "io.zipkin.finagle" % "zipkin-finagle-http_2.11" % "0.3.4"
 }
