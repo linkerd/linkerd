@@ -23,7 +23,7 @@ import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
-import io.buoyant.telemetry.{MetricsTree, Telemeter, TelemeterConfig, TelemeterInitializer}
+import io.buoyant.telemetry._
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
@@ -81,18 +81,28 @@ private[telemeter] object UsageDataTelemeter {
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
     config.namers.getOrElse(Seq()).map(_.kind)
 
+  def gagueValue(metric: Metric): Option[Double] = metric match {
+    case g: Metric.Gauge => Some(g.get)
+    case _ => None
+  }
+
   def mkGauges(metrics: MetricsTree): Seq[Gauge] =
     Seq(
-      Gauge(Some("jvm_mem"), metrics.resolve(Seq("jvm", "mem", "current", "used")).gauge.map(_.get)),
-      Gauge(Some("jvm/gc/msec"), metrics.resolve(Seq("jvm", "mem", "current", "used")).gauge.map(_.get))
+      Gauge(Some("jvm_mem"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
+      Gauge(Some("jvm/gc/msec"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric))
     )
+
+  def counterValue(metric: Metric): Option[Long] = metric match {
+    case c: Metric.Counter => Some(c.get)
+    case _ => None
+  }
 
   def mkCounters(metrics: MetricsTree): Seq[Counter] = {
     val counters = for {
       router <- metrics.resolve(Seq("rt")).children.values
       server <- router.resolve(Seq("srv")).children.values
-      counter <- server.resolve(Seq("requests")).counter
-    } yield Counter(Some("srv_requests"), Some(counter.get))
+      counter <- counterValue(server.resolve(Seq("requests")).metric)
+    } yield Counter(Some("srv_requests"), Some(counter))
     counters.toSeq
   }
 
