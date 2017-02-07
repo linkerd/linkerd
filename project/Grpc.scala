@@ -2,6 +2,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbt._
 import sbt.Keys._
 import sbtassembly.AssemblyKeys._
+import sbtdocker.DockerKeys._
 import sbtprotobuf.ProtobufPlugin._
 import scala.language.implicitConversions
 import scoverage.ScoverageKeys._
@@ -98,9 +99,14 @@ object Grpc extends Base {
   val eg = projectDir("grpc/eg")
     .withGrpc
     .withTests()
-    .settings(
-      publishArtifact := false
-    )
+    .settings(publishArtifact := false)
 
-  val all = aggregateDir("grpc", eg, gen, runtime)
+  val interop = projectDir("grpc/interop")
+    .withGrpc
+    .withTests()
+    .withTwitterLib(Deps.twitterServer)
+    .settings(appAssemblySettings)
+    .settings(publishArtifact := false)
+
+  val all = aggregateDir("grpc", eg, gen, interop, runtime)
 }

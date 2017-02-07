@@ -138,8 +138,10 @@ object ServerDispatcher {
     }
   }
 
-  private def fail(status: h2.Status): Future[h2.Response] =
-    Future.value(h2.Response(status, h2.Stream.empty()))
+  private def fail(status: GrpcStatus): Future[h2.Response] = {
+    val stream = h2.Stream.const(status.toTrailers)
+    Future.value(h2.Response(h2.Status.BadRequest, stream))
+  }
 
   def apply(hd: Service, tl: Service*): ServerDispatcher =
     new ServerDispatcher(hd +: tl)
@@ -161,8 +163,8 @@ class ServerDispatcher(services: Seq[ServerDispatcher.Service])
       case h2.Method.Post =>
         rpcByPath.get(req.path) match {
           case Some(dispatch) => dispatch(req)
-          case None => ServerDispatcher.fail(h2.Status.NotFound)
+          case None => ServerDispatcher.fail(GrpcStatus.Unimplemented(req.path))
         }
-      case _ => ServerDispatcher.fail(h2.Status.MethodNotAllowed)
+      case method => ServerDispatcher.fail(GrpcStatus.Unknown(s"unsupported method: $method"))
     }
 }
