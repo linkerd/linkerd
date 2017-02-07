@@ -17,10 +17,6 @@ define([
       var template = templates.router_option;
       var routers = routersRsp.routers;
 
-      if (!matches && routers.length > 0) {
-        selectRouter(routers[0].label || routers[0].protocol);
-      }
-
       //Not every page supports a mult-router view!
       if(!removeRoutersAllOption || routers.length === 0) {
         routers.push({label: "all"});
