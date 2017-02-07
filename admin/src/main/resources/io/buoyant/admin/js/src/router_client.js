@@ -186,8 +186,7 @@ define([
       }
 
       function metricsHandler(data) {
-        var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
-        var summaryData = getSummaryData(filteredData, metricDefinitions);
+        var summaryData = getSummaryData(data.specific, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         chart.updateMetrics(getSuccessRate(summaryData));

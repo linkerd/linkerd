@@ -8,18 +8,7 @@ define(['jQuery'], function($) {
 
   var MetricsCollector = (function() {
     var generalUpdateUri = "admin/metrics.json";
-    var metricsUpdateUri = "admin/metrics";
     var listeners = [];
-
-    function requestBody(listeners, defaultMetrics) {
-      var params = _(listeners)
-        .map(function(listener){ return listener.metrics(defaultMetrics); })
-        .flatten()
-        .uniq()
-        .value();
-      return $.param({ m: params }, true);
-    }
-
     /**
       Register a listener to receive metric updates.
       handler: function called with incoming data of the form:
@@ -38,46 +27,56 @@ define(['jQuery'], function($) {
       _.remove(listeners, function(l) { return l.handler === handler; });
     }
 
+    function generateDeltaPayload(generalData, defaultMetrics, prevMetrics) {
+      var metrics = _(listeners)
+        .map(function(listener){ return listener.metrics(defaultMetrics); })
+        .flatten()
+        .uniq()
+        .value();
+
+      return _.flatMap(metrics, function(metricName) {
+        var prevValue = prevMetrics[metricName];
+        var currentValue = generalData[metricName];
+        if (prevValue !== undefined && currentValue !== undefined) {
+          return [{
+            name: metricName,
+            delta: currentValue - prevValue,
+            value: currentValue
+          }];
+        } else {
+          return [];
+        }
+      })
+
+    }
+
     return function(initialMetrics) {
-      var defaultMetrics = _.keys(initialMetrics);
+      var prevMetrics = initialMetrics;
 
-      function update() {
-        var general = $.ajax({
-          url: generalUpdateUri,
-          dataType: "json",
-          cache: false
-        });
+      function update(resp) {
+        var defaultMetrics = _.keys(resp);
+        var specific = generateDeltaPayload(resp, defaultMetrics, prevMetrics);
+        prevMetrics = resp;
 
-        var metricSpecific = $.ajax({
-          url: metricsUpdateUri,
-          type: "POST",
-          data: requestBody(listeners, defaultMetrics),
-          dataType: "json",
-          cache: false
-        });
-
-        $.when(general, metricSpecific).done(function(generalData, metricSpecificData) {
+        _.each(listeners, function(listener) {
+          var metricNames = listener.metrics(defaultMetrics);
           var data = {
-            general: generalData[0],
-            specific: metricSpecificData[0]
+            general: resp,
+            specific: _.filter(specific, function(d) {return _.includes(metricNames, d.name);})
           }
-
-          defaultMetrics = _.keys(data.general);
-
-          _.each(listeners, function(listener) {
-            listener.handler(data);
-          });
+          listener.handler(data);
         });
       }
 
       return {
         start: function(interval) {
-          update();
-          setInterval(update, interval);
+          $.get(generalUpdateUri, update)
+          setInterval(function(){$.get(generalUpdateUri, update)}, interval);
         },
-        getCurrentMetrics: function() { return defaultMetrics; },
+        getCurrentMetrics: function() { return _.keys(prevMetrics); },
         registerListener: registerListener,
-        deregisterListener: deregisterListener
+        deregisterListener: deregisterListener,
+        __update__: update
       };
     };
   })();
