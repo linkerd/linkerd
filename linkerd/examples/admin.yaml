@@ -2,6 +2,9 @@
 # localhost:9990 and localhost:4140/foo/ should display the same page.
 # when running namerd, localhost:9991 and localhost:4141/foo/ should display the same page.
 # Note, to run namerd in parallel, use `./sbt namerd-examples/basic:run`.
+#
+# Usage admin tab at localhost:9990/usage.
+# Usage data available at localhost:9990/admin/metrics/usage.
 
 admin:
   ip: 0.0.0.0
@@ -11,6 +14,9 @@ telemetry:
 - kind: io.l5d.commonMetrics
 - kind: io.l5d.recentRequests
   sampleRate: 1.0
+- kind: io.l5d.usage
+  orgId: usage-example
+  dryRun: true
 
 routers:
 - protocol: http

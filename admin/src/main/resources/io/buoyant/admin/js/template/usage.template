@@ -1,0 +1,21 @@
+<h1 class="title">Usage Data</h1>
+
+<p>
+You are seeing this page because you have enabled the <b><i>io.l5d.usage</i></b> telemeter in your <a href="config.json">config file</a>
+</p>
+
+<p>
+To see the payload endpoint, you can browse to <a href="admin/metrics/usage">/admin/metrics/usage</a>.
+</p>
+
+<p>
+For more information on configuring this telemeter, head over the <a href="https://linkerd.io/config/head/linkerd/index.html#usage">linkerd config reference</a>.
+</p>
+
+<h3>Payload</h3>
+
+<p>
+Below is a snapshot of the payload sent to Buoyant:
+</p>
+
+<pre><code class="language-json">{{usageJson}}</code></pre>

@@ -18,8 +18,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.admin.Admin
-import io.buoyant.admin.Admin.Handler
+import io.buoyant.admin.Admin.{Handler, NavItem, WithHandlers, WithNavItems}
 import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
@@ -151,7 +150,7 @@ class UsageDataTelemeter(
   registry: com.twitter.common.metrics.Metrics,
   orgId: Option[String],
   dryRun: Boolean
-) extends Telemeter with Admin.WithHandlers {
+) extends Telemeter with WithHandlers with WithNavItems {
   import UsageDataTelemeter._
 
   val tracer = NullTracer
@@ -163,9 +162,12 @@ class UsageDataTelemeter(
   log.info(s"connecting to usageData proxy at $metricsDst")
   val client = Client(metricsService, config, pid, orgId)
 
-  val adminHandlers = Seq(
-    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, registry))
+  override def adminHandlers: Seq[Handler] = Seq(
+    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, registry)),
+    Handler("/usage", new UsageDataAdminHandler)
   )
+
+  override def navItems: Seq[NavItem] = Seq(NavItem("usage", "usage"))
 
   private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap
 
