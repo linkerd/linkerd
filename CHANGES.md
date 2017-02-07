@@ -11,6 +11,7 @@
 * Rename `baseDtab` router property to `dtab`
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
+* Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
 * Change the default `dstPrefix` from the protocol name to `/svc`
 * Change the default HTTP identifier to the `io.l5d.header.token` identifier
 

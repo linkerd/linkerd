@@ -111,8 +111,8 @@ object Stream {
         streamRef = Right(Throw(e))
       }
 
-      override def recv(): Future[Stream.Releasable[T]] =
-        recvMu.acquireAndRun {
+      override def recv(): Future[Stream.Releasable[T]] = {
+        val f = recvMu.acquireAndRun {
           synchronized {
             streamRef match {
               case Left(f) => f.transform(_recv) // first time through
@@ -122,11 +122,30 @@ object Stream {
           }
         }
 
+        val p = new Promise[Stream.Releasable[T]]
+        f.proxyTo(p)
+        p.setInterruptHandler {
+          case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
+            val status = cause match {
+              case Some(s: GrpcStatus) => s
+              case Some(e) => GrpcStatus.Canceled(e.getMessage)
+              case None => GrpcStatus.Canceled()
+            }
+            reset(status)
+            f.raise(e)
+          case e =>
+            reset(GrpcStatus.Canceled(e.getMessage))
+            f.raise(e)
+        }
+        p
+      }
+
       private[this] val _recv: Try[Stream[T]] => Future[Stream.Releasable[T]] = { v =>
         val ret = synchronized {
           streamRef match {
             case Right(reset) =>
-              // If something has happened to update this, just use that update
+              // If something has happened to update this, just use
+              // that update
               reset
             case Left(_) =>
               streamRef = Right(v)
