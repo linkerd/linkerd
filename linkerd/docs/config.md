@@ -34,10 +34,6 @@ namers:
 - kind: io.l5d.fs
   rootDir: disco
 
-tracers:
-- kind: io.l5d.zipkin
-  sampleRate: 0.02
-
 telemetry:
 - kind: io.l5d.commonMetrics
 - kind: io.l5d.statsd
@@ -70,7 +66,6 @@ Key | Required | Description
 [routers](#routers-intro) | yes | Configures linkerd's RPC support for various protocols.
 [namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
 [telemetry](#telemetry-intro) | no | Configures linkerd's metrics instrumentation.
-[tracers](#tracers-intro) | no | Configures linkerd's request instrumentation.
 
 
 ### Administrative interface
@@ -196,15 +191,3 @@ A telemeter may receive stats and trace annotations, i.e. to send to a collector
 or export. Telemetry data can be collected and exported from a linkerd process by
 configuring telemeters via a top-level `telemetry` section. See
 [telemetry](#telemetry).
-
-### Tracers Intro
-
-```yaml
-tracers:
-- kind: io.l5d.zipkin
-  sampleRate: 0.02
-```
-
-Requests that are routed by linkerd are also traceable using Finagle's built-in
-tracing instrumentation. Trace data can be exported from a linkerd process by
-configuring tracers via a top-level `tracers` section. See [tracers](#tracers).
