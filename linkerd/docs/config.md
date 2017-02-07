@@ -9,17 +9,8 @@ admin:
 routers:
 - protocol: http
   label: int-http
-<<<<<<< HEAD
-  baseDtab: |
-    /s       => /#/io.l5d.fs;
-=======
   dtab: |
-    /host       => /#/io.l5d.fs;
-    /http/1.1/* => /host;
-  identifier:
-    kind: io.l5d.methodAndHost
-    httpUriInDst: true
->>>>>>> master
+    /svc       => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -32,13 +23,8 @@ routers:
   client:
     thriftFramed: true
   thriftMethodInDst: false
-<<<<<<< HEAD
-  baseDtab: |
-    /s => /#/io.l5d.fs/thrift;
-=======
   dtab: |
-    /thrift => /#/io.l5d.fs/thrift;
->>>>>>> master
+    /svc => /#/io.l5d.fs/thrift;
 
 namers:
 - kind: io.l5d.fs
@@ -157,11 +143,7 @@ be found at
 ```yaml
 routers:
 - protocol: http
-<<<<<<< HEAD
-  baseDtab: /s/* => /$/inet/127.1/8888
-=======
-  dtab: /http => /$/inet/127.1/8888
->>>>>>> master
+  dtab: /svc/* => /$/inet/127.1/8888
   servers:
   - port: 8080
 ```

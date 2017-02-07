@@ -47,12 +47,12 @@ class HttpConfigTest extends FunSuite with Awaits {
       """.stripMargin
     val config = parse(yaml)
     val identifier = config.routerParams[Http.param.HttpIdentifier]
-      .id(Path.read("/s"), () => Dtab.empty)
+      .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
-        Path.read("/s/host.com")
+        Path.read("/svc/host.com")
     )
   }
 
@@ -66,12 +66,12 @@ class HttpConfigTest extends FunSuite with Awaits {
       """.stripMargin
     val config = parse(yaml)
     val identifier = config.routerParams[Http.param.HttpIdentifier]
-      .id(Path.read("/http"), () => Dtab.empty)
+      .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
-        Path.read("/http/1.1/GET/host.com")
+        Path.read("/svc/1.1/GET/host.com")
     )
   }
 
@@ -86,12 +86,12 @@ class HttpConfigTest extends FunSuite with Awaits {
       """.stripMargin
     val config = parse(yaml)
     val identifier = config.routerParams[Http.param.HttpIdentifier]
-      .id(Path.read("/http"), () => Dtab.empty)
+      .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
-        Path.read("/http/1.1/GET/host.com")
+        Path.read("/svc/1.1/GET/host.com")
     )
   }
 
@@ -106,11 +106,11 @@ class HttpConfigTest extends FunSuite with Awaits {
       """.stripMargin
     val config = parse(yaml)
     val identifier = config.routerParams[Http.param.HttpIdentifier]
-      .id(Path.read("/http"), () => Dtab.empty)
+      .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     assert(
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
-        Path.read("/http/one")
+        Path.read("/svc/one")
     )
   }
 }

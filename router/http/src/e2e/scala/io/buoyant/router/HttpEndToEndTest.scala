@@ -18,7 +18,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/s/$name"),
+      Path.read(s"/svc/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -75,8 +75,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         /p/cat => /$$/inet/127.1/${cat.port} ;
         /p/dog => /$$/inet/127.1/${dog.port} ;
 
-        /s/felix => /p/cat ;
-        /s/clifford => /p/dog ;
+        /svc/felix => /p/cat ;
+        /svc/clifford => /p/dog ;
       """)
 
       val factory = Http.router
@@ -127,7 +127,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val router = {
-      val dtab = Dtab.read(s"/s/* => /$$/inet/127.1/${srv.port};")
+      val dtab = Dtab.read(s"/svc/* => /$$/inet/127.1/${srv.port};")
       val factory = Http.router
         .configured(RoutingFactory.BaseDtab(() => dtab))
         .factory()
@@ -165,7 +165,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     @volatile var retriesToDo = 0
     @volatile var err: Option[Throwable] = None
     val router = {
-      val dtab = Dtab.read(s"/s/ds => /$$/inet/127.1/${downstream.port}")
+      val dtab = Dtab.read(s"/svc/ds => /$$/inet/127.1/${downstream.port}")
       def doReq(req: () => Future[Response], retries: Int = 0): Future[Response] =
         req().transform { ret =>
           if (retries > 0) {
@@ -250,7 +250,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     @volatile var retriesToDo = 0
     @volatile var err: Option[Throwable] = None
     val router = {
-      val dtab = Dtab.read(s"/s => /$$/inet/127.1/${downstream.port}")
+      val dtab = Dtab.read(s"/svc => /$$/inet/127.1/${downstream.port}")
       def doReq(req: () => Future[Response], retries: Int = 0): Future[Response] =
         req().transform { ret =>
           if (retries > 0) {

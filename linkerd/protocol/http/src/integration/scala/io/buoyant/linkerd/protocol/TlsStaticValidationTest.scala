@@ -27,7 +27,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |- protocol: http
              |  dtab: |
              |    /p/dog => /$$/inet/127.1/${dog.port} ;
-             |    /s/clifford => /p/dog ;
+             |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
              |  client:
@@ -68,7 +68,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |- protocol: http
              |  dtab: |
              |    /p/dog => /$$/inet/127.1/${dog.port} ;
-             |    /s/clifford => /p/dog ;
+             |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
              |  client:

@@ -20,29 +20,6 @@ routers:
       for: {kind: ip}
 ```
 
-<<<<<<< HEAD
-=======
-> Below: an example HTTP router config that routes all `POST` requests to 8091
-and all other requests to 8081,
-using the default identifier of `io.l5d.methodAndHost`,
-listening on port 5000
-
-```yaml
-routers:
-- protocol: http
-  label: split-get-and-post
-  dtab: |
-    /method/*    => /$/inet/127.1/8081;
-    /method/POST => /$/inet/127.1/8091;
-    /http/1.1    => /method;
-  servers:
-  - port: 5000
-```
-> The dtab above is written to work with the
-[`methodAndHost` identifier](#method-and-host-identifier).
-Using a different identifier would require a different set of dtab rules.
-
->>>>>>> master
 protocol: `http`
 
 The HTTP/1.1 protocol is used when the *protocol* option of the
@@ -51,7 +28,7 @@ This protocol has additional configuration options on the *routers* block.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
+dstPrefix | `/svc` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
@@ -177,7 +154,7 @@ httpUriInDst | `false` | If `true` http paths are appended to destinations. This
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 method | N/A | The HTTP method of the current request, ie `OPTIONS`, `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `TRACE`, or `CONNECT`.
 host | N/A | The value of the current request's Host header. [Case sensitive!](https://github.com/linkerd/linkerd/issues/106). Not used in HTTP/1.0.
 uri | Not used | Only considered a part of the logical name if the config option `httpUriInDst` is `true`.
@@ -225,7 +202,7 @@ consume | `false` | Whether to additionally strip the consumed segments from the
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | A path from the URL whose number of segments is set in the identifier block.
 
 <a name="header-identifier"></a>
@@ -266,7 +243,7 @@ header | `l5d-name` | The name of the HTTP header to use
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path.
 
 <a name="header-token-identifier"></a>
@@ -307,7 +284,7 @@ header | `Host` | The name of the HTTP header to use
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path segment.
 
 <a name="static-identifier"></a>
@@ -341,7 +318,7 @@ path | _required_    | The name to assign to all requests
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/s` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 path | N/A | The path given in the configuration.
 
 <a name="http-engines"></a>

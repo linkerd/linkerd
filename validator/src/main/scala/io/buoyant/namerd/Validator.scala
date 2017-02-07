@@ -21,7 +21,7 @@ object Validator extends TwitterServer {
 
   val namerdNs = "validation"
   val hostName = "skrrt"
-  val baseDtab = Dtab.read("/s => /host ;")
+  val baseDtab = Dtab.read("/svc => /host ;")
 
   def await[T](a: Awaitable[T], d: Duration = 10.seconds): T = Await.result(a, d)
 

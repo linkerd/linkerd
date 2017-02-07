@@ -38,13 +38,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.fs
-=======
 dtab: |
-  /http/1.1/* => /#/io.l5d.fs
->>>>>>> master
+  /svc => /#/io.l5d.fs
 ```
 
 > With the filesystem directory:
@@ -124,13 +119,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```yaml
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.serversets/discovery/prod;
-=======
 dtab: |
-  /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
->>>>>>> master
+  /svc => /#/io.l5d.serversets/discovery/prod;
 ```
 
 linkerd provides support for [ZooKeeper
@@ -179,13 +169,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.consul/dc1/prod;
-=======
 dtab: |
-  /http/1.1/* => /#/io.l5d.consul/dc1/prod;
->>>>>>> master
+  /svc => /#/io.l5d.consul/dc1/prod;
 ```
 
 linker provides support for service discovery via [Consul](https://www.consul.io/).
@@ -244,13 +229,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.k8s/prod/http;
-=======
 dtab: |
-  /http/1.1/* => /#/io.l5d.k8s/prod/http;
->>>>>>> master
+  /svc => /#/io.l5d.k8s/prod/http;
 ```
 
 linkerd provides support for service discovery via
@@ -300,13 +280,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.k8s.external/prod/http;
-=======
 dtab: |
-  /http/1.1/* => /#/io.l5d.k8s.external/prod/http;
->>>>>>> master
+  /svc => /#/io.l5d.k8s.external/prod/http;
 ```
 
 The [Kubernetes](https://k8s.io/) External namer looks up the IP of the external
@@ -369,7 +344,7 @@ namers:
 dtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-  /s => /host;
+  /svc => /host;
 ```
 
 linkerd provides support for service discovery via
@@ -496,13 +471,8 @@ namers:
 > Then reference the namer in the dtab to use it:
 
 ```
-<<<<<<< HEAD
-baseDtab: |
-  /s => /#/io.l5d.rewrite
-=======
 dtab: |
-  /http => /#/io.l5d.rewrite
->>>>>>> master
+  /svc => /#/io.l5d.rewrite
 ```
 
 A namer that completely rewrites a path.  This is useful to do arbitrary
@@ -549,7 +519,7 @@ of `/#/`, and can be used without explicitly adding them to the
 ```
 /marathonId => /#/io.l5d.marathon;
 /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-/s => /host;
+/svc => /host;
 ```
 
 > Dtab Path Format
@@ -570,7 +540,7 @@ rewritten to `/pfx/io/buoyant/foo/resource/name`.
 ```
 /consulSvc  => /#/io.l5d.consul/.local
 /host       => /$/io.buoyant.http.subdomainOfPfx/service.consul/consulSvc;
-/s => /host;
+/svc => /host;
 ```
 
 > Dtab Path Format

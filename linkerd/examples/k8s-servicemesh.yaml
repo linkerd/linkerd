@@ -34,8 +34,8 @@ routers:
 
 - protocol: http
   label: incoming
-  baseDtab: |
-    /s => /#/io.l5d.k8s/default/http;
+  dtab: |
+    /svc => /#/io.l5d.k8s/default/http;
   interpreter:
     kind: default
     transformers:
