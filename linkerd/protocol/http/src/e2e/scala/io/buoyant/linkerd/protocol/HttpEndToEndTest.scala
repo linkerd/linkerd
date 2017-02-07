@@ -282,7 +282,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = s"s/dog"
+        val name = s"svc/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))

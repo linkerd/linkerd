@@ -73,7 +73,6 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
       val factory = Echo.router
         .configured(RoutingFactory.BaseDtab(() => dtab))
-        .configured(RoutingFactory.DstPrefix(Path.Utf8("s")))
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
         .configured(Originator.Param(true))
