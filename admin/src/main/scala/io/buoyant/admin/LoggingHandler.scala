@@ -59,6 +59,7 @@ class LoggingHandler(
         </thead>
         </table>
         """,
+      navHighlight = "logging",
       tailContent = s"""<script id="logger-data" type="application/json">${mapper.writeValueAsString(loggers)}</script>"""
     ))
 

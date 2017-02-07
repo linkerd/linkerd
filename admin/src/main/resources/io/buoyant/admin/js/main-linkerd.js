@@ -39,7 +39,11 @@ require([
   loggingConfig
 ) {
   // poor man's routing
-  if (window.location.pathname.endsWith("/delegator")) {
+  if (window.location.pathname.endsWith("/")) {
+    adminPage.initialize(false).done(function(routerConfig) {
+      new dashboard(routerConfig);
+    });
+  } else if (window.location.pathname.endsWith("/delegator")) {
     adminPage.initialize(true).done(function() {
       new linkerdDtabPlayground();
     });
@@ -52,8 +56,6 @@ require([
       new loggingConfig();
     });
   } else {
-    adminPage.initialize().done(function(routerConfig) {
-      new dashboard(routerConfig);
-    });
+    adminPage.initialize();
   }
 });

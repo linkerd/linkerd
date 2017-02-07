@@ -6,9 +6,6 @@ define([
   'bootstrap'
 ], function($, templates) {
   function initialize(removeRoutersAllOption) {
-    // highlight current page in navbar
-    var path = window.location.pathname;
-    $('a[href="' + path + '"]').parent().addClass("active");
 
     var matches = window.location.search.match(/router=(.+)(?:&|$)/)
     if (matches && matches.length > 1) {
@@ -19,10 +16,6 @@ define([
     return $.get("config.json").done(function(routersRsp) {
       var template = templates.router_option;
       var routers = routersRsp.routers;
-
-      if (!matches && routers.length > 0) {
-        selectRouter(routers[0].label || routers[0].protocol);
-      }
 
       //Not every page supports a mult-router view!
       if(!removeRoutersAllOption || routers.length === 0) {

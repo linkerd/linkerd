@@ -14,8 +14,9 @@ class AdminFilter(adminHandler: AdminHandler, css: Seq[String] = Nil) extends Si
     service: Service[Request, Response]
   ): Future[Response] = {
     service(request).map { rsp =>
+      val itemToHighlight = request.path.replace("/", "")
       if (rsp.contentType.contains(MediaType.Html))
-        rsp.contentString = adminHandler.html(rsp.contentString, csses = css)
+        rsp.contentString = adminHandler.html(rsp.contentString, csses = css, navHighlight = itemToHighlight)
       rsp
     }
   }
