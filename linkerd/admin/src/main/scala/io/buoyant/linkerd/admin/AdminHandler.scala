@@ -60,17 +60,11 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    navbar: String = "",
     navHighlight: String = ""
   ): String = {
     val cssesHtml = csses.map { css =>
       s"""<link type="text/css" href="files/css/$css" rel="stylesheet"/>"""
     }.mkString("\n")
-
-    val navbarWithHighlight = navbar match {
-      case "" => navBar(navHighlight)
-      case _ => navbar
-    }
 
     s"""
       <!doctype html>
@@ -85,7 +79,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           $cssesHtml
         </head>
         <body>
-          $navbarWithHighlight
+          ${navBar(navHighlight)}
 
           <div class="container-fluid">
             $content
