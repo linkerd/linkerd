@@ -68,7 +68,7 @@ define([
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
           {suffix: "requests", label: "Requests"},
-          {suffix: "connections", label: "Connections"},
+          {suffix: "connections", label: "Connections", isGauge: true},
           {suffix: "success", label: "Successes"},
           {suffix: "failures", label: "Failures"},
           {suffix: "loadbalancer/size", label: "Load balancer pool size"},
@@ -77,6 +77,7 @@ define([
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
+          isGauge: metric.isGauge,
           query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
         }
       });
@@ -114,11 +115,12 @@ define([
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
         var clientData = Query.filter(defn.query, data);
+        var value = _.isEmpty(clientData) ? null :
+          (defn.isGauge ? clientData[0].value : clientData[0].delta);
         mem[defn.metricSuffix] = {
           description: defn.label,
-          value: _.isEmpty(clientData) ? null : clientData[0].delta
+          value: value
         };
-
         return mem;
       }, {});
 

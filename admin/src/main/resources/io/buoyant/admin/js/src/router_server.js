@@ -19,6 +19,7 @@ define([
         {
           description: "Pending",
           metricSuffix: "load",
+          isGauge: true,
           query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("load").build()
         },
         {
@@ -65,7 +66,7 @@ define([
         var serverData = Query.filter(defn.query, data);
 
         if (!_.isEmpty(serverData)) {
-          defn.value = serverData[0].delta;
+          defn.value = defn.isGauge ? serverData[0].value : serverData[0].delta;
           lookup[defn.metricSuffix] = defn.value;
         }
 

@@ -52,13 +52,13 @@ define([
     var template = templates.router_summary;
 
     function processResponses(data, routerName) {
-      var process = function(metricName) { return processServerResponse(data, routerName, metricName); };
+      var process = function(metricName, isGauge) { return processServerResponse(data, routerName, metricName, isGauge); };
       var pathRetries = processPathResponse(data, routerName, "retries/total");
       var requeues = processClientResponse(data, routerName, "retries/requeues");
 
       var result = {
         router: routerName,
-        load: process("load"),
+        load: process("load", true),
         requests: process("requests"),
         success: process("success"),
         failures: process("failures"),
@@ -68,9 +68,9 @@ define([
       return  $.extend(result, rates);
     }
 
-    function processServerResponse(data, routerName, metricName) {
+    function processServerResponse(data, routerName, metricName, isGauge) {
       var datum = Query.filter(Query.serverQuery().allServers().withRouter(routerName).withMetric(metricName).build(), data);
-      return _.sumBy(datum, "delta");
+      return _.sumBy(datum, isGauge ? "value" : "delta");
     }
 
     function processClientResponse(data, routerName, metricName) {
