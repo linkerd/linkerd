@@ -182,7 +182,7 @@ object LinkerdHeaders {
 
       class ClearServerFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) = {
-          clear(req.headerMap)
+          clear(req.headers)
           service(req)
         }
       }
@@ -273,7 +273,7 @@ object LinkerdHeaders {
 
       class ClearServerFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) = {
-          clear(req.headerMap)
+          clear(req.headers)
           service(req)
         }
       }
@@ -323,7 +323,7 @@ object LinkerdHeaders {
 
       class ClearServerFilter extends SimpleFilter[Request, Response] {
         def apply(req: Request, service: Service[Request, Response]) = {
-          clear(req.headerMap)
+          clear(req.headers)
           service(req)
         }
       }
@@ -376,7 +376,7 @@ object LinkerdHeaders {
 
     class ClearServerFilter extends SimpleFilter[Request, Response] {
       def apply(req: Request, service: Service[Request, Response]) = {
-        clear(req.headerMap)
+        clear(req.headers)
         service(req)
       }
     }
