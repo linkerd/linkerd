@@ -3,19 +3,21 @@ package io.buoyant.namerd.iface
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
-import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
+import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
 class ThriftNamerClient(
   client: thrift.Namer.FutureIface,
   namespace: String,
+  statsPrefix: String = "",
   clientId: Path = Path.empty,
   _timer: Timer = DefaultTimer.twitter
 ) extends NameInterpreter with Delegator {
@@ -33,6 +35,11 @@ class ThriftNamerClient(
 
   private[this] val addrCacheMu = new {}
   private[this] var addrCache = Map.empty[Path, Var[Addr]]
+
+  val stats = DefaultStatsReceiver
+  stats.scope("rt", statsPrefix).addGauge("bindcache.size")(bindCache.size)
+  stats.scope("rt", statsPrefix).addGauge("addrcache.size")(addrCache.size)
+  stats.scope("rt", statsPrefix).addGauge("FOOBAR")((Math.random() * 10).toInt)
 
   def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
     Trace.recordBinary("namerd.client/bind.dtab", dtab.show)

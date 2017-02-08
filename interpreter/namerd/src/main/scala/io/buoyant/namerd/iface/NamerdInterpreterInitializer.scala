@@ -105,7 +105,7 @@ case class NamerdInterpreterConfig(
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]
 
-    new ThriftNamerClient(iface, ns) with Admin.WithHandlers with Admin.WithNavItems {
+    new ThriftNamerClient(iface, ns, label) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
 
       override def adminHandlers: Seq[Handler] =
