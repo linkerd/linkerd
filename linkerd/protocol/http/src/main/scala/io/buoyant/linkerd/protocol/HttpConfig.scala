@@ -43,7 +43,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .withPathStack(pathStack)
       .withBoundStack(boundStack)
       .withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   /**

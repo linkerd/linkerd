@@ -6,7 +6,7 @@ namers:
 routers:
 - protocol: http
   dtab: |
-    /http/1.1/* => /#/io.l5d.fs
+    /svc => /#/io.l5d.fs
   client:
     # Establish encryped outgoing connections.
     tls:

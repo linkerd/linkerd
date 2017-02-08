@@ -21,7 +21,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/s/$name"),
+      Path.read(s"/svc/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -66,14 +66,13 @@ class EchoEndToEndTest extends FunSuite with Awaits {
         /p/echo => /${echoDst} ;
         /p/ohce => /${ohceDst} ;
 
-        /s => /p/echo ;
-        /s/idk => /$$/fail ;
-        /s/dog => /p/ohce ;
+        /svc => /p/echo ;
+        /svc/idk => /$$/fail ;
+        /svc/dog => /p/ohce ;
       """)
 
       val factory = Echo.router
         .configured(RoutingFactory.BaseDtab(() => dtab))
-        .configured(RoutingFactory.DstPrefix(Path.Utf8("s")))
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
         .configured(Originator.Param(true))
@@ -89,21 +88,21 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     assert(await(client("cat")) == "cat")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/cat")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/cat")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${echoDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/cat")))
     }
 
     assert(await(client("dog/bark")) == "krab/god")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/dog/bark")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/dog/bark")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${ohceDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/bark")))
     }
 
     assert(await(client("idk")) == "NOBROKERS")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s/idk")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/idk")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.ClientAcquisition.name
@@ -112,7 +111,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     assert(await(client("")) == "ERROR empty request")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/s")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.Service.name
@@ -121,21 +120,21 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     assert(stats.counters(Seq("echo", "dst", "id", echoDst, "requests")) == 1)
     assert(stats.counters(Seq("echo", "dst", "id", echoDst, "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "s/cat", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "s/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "svc/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "svc/cat", "success")) == 1)
     assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "requests")) == 1)
     assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "s/dog/bark", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "s/dog/bark", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "svc/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "svc/dog/bark", "success")) == 1)
 
-    assert(stats.counters(Seq("echo", "dst", "path", "s/cat", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s/cat", "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s/dog/bark", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s/dog/bark", "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s/idk", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s/idk", "failures")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "s", "failures")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/dog/bark", "success")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/idk", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc/idk", "failures")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "dst", "path", "svc", "failures")) == 1)
 
     assert(stats.gauges(Seq("echo", "originator"))() == 1f)
 
@@ -153,12 +152,11 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     val dtab = Dtab.read(s"""
         /p/echo => /$$/inet/127.1/${echo.port} ;
-        /s => /p/echo ;
+        /svc => /p/echo ;
       """)
 
     val router = Echo.router
       .configured(RoutingFactory.BaseDtab(() => dtab))
-      .configured(RoutingFactory.DstPrefix(Path.Utf8("s")))
       .pathFiltered(prefixFilter("path "))
       .boundFiltered(prefixFilter("bound "))
       .clientFiltered(prefixFilter("client "))

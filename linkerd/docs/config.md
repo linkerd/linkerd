@@ -10,11 +10,7 @@ routers:
 - protocol: http
   label: int-http
   dtab: |
-    /host       => /#/io.l5d.fs;
-    /http/1.1/* => /host;
-  identifier:
-    kind: io.l5d.methodAndHost
-    httpUriInDst: true
+    /svc       => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -28,7 +24,7 @@ routers:
     thriftFramed: true
   thriftMethodInDst: false
   dtab: |
-    /thrift => /#/io.l5d.fs/thrift;
+    /svc => /#/io.l5d.fs/thrift;
 
 namers:
 - kind: io.l5d.fs
@@ -142,7 +138,7 @@ be found at
 ```yaml
 routers:
 - protocol: http
-  dtab: /http => /$/inet/127.1/8888
+  dtab: /svc/* => /$/inet/127.1/8888
   servers:
   - port: 8080
 ```

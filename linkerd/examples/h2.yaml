@@ -8,8 +8,8 @@ routers:
   experimental: true
   dtab: |
     /srv => /#/io.l5d.fs;
-    /h2/localhost:4142 => /$/inet/127.1/8888;
-    /h2 => /srv;
+    /svc/localhost:4142 => /$/inet/127.1/8888;
+    /svc => /srv;
   identifier:
     kind: io.l5d.headerToken
     header: ":authority"

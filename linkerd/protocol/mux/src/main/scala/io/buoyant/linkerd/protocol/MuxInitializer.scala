@@ -13,7 +13,6 @@ class MuxInitializer extends ProtocolInitializer.Simple {
   protected type Rsp = com.twitter.finagle.mux.Response
 
   protected val defaultRouter = Mux.router
-    .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
 
   protected val defaultServer = Mux.server
 

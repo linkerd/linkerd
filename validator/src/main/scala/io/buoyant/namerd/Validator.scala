@@ -2,6 +2,7 @@ package io.buoyant.namerd
 
 import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.http.Method
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.server.TwitterServer
 import com.twitter.util._
@@ -20,7 +21,7 @@ object Validator extends TwitterServer {
 
   val namerdNs = "validation"
   val hostName = "skrrt"
-  val baseDtab = Dtab.read("/http/1.1/* => /host ;")
+  val baseDtab = Dtab.read("/svc => /host ;")
 
   def await[T](a: Awaitable[T], d: Duration = 10.seconds): T = Await.result(a, d)
 
@@ -224,7 +225,7 @@ object Validator extends TwitterServer {
           }
         } finally {
           await(linkerdClient.close() join namerdClient.close())
-          await(Future.collect(servers.map(_.close())))
+          val _ = await(Future.collect(servers.map(_.close())))
         }
     }
   }
@@ -269,7 +270,7 @@ object Validator extends TwitterServer {
 
   def withTmpDir(f: String => Unit): Unit = {
     val tmpdir = Process("mktemp" :: "-d" :: "-t" :: "v4l1d4t0r.XXXXX" :: Nil).!!.stripLineEnd
-    try f(tmpdir) finally Process("rm" :: "-rf" :: tmpdir :: Nil).!
+    try f(tmpdir) finally { val _ = Process("rm" :: "-rf" :: tmpdir :: Nil).! }
   }
 
   type Killer = () => Unit
@@ -288,8 +289,7 @@ object Validator extends TwitterServer {
     def kill() = mu.synchronized {
       if (!killed) {
         log.info(s"killing $name")
-        val req = http.Request()
-        req.uri = "/admin/shutdown"
+        val req = http.Request(Method.Post, "/admin/shutdown")
         await(admin(req).liftToTry)
         admin.close() // don't bother awaiting
         Thread.sleep(5.seconds.inMillis)

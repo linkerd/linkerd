@@ -20,11 +20,9 @@ storage:
   kind: io.l5d.inMemory
   namespaces:
     incoming: |
-     /host => /#/io.l5d.k8s/default/http ;
-     /http/*/* => /host ;
+     /svc => /#/io.l5d.k8s/default/http ;
     outgoing: |
-     /host => /#/ds/default/http ;
-     /http/*/* => /host ;
+     /svc => /#/ds/default/http ;
 
 interfaces:
 - kind: io.l5d.thriftNameInterpreter

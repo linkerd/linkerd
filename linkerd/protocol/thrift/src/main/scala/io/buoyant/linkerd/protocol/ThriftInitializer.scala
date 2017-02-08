@@ -24,7 +24,6 @@ class ThriftInitializer extends ProtocolInitializer {
     val clientStack = Thrift.router.clientStack
       .replace(ThriftClientPrep.role, ThriftClientPrep.module)
     Thrift.router.withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   protected val adapter = Thrift.Router.IngestingFilter

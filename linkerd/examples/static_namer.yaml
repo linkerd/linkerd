@@ -2,7 +2,7 @@
 routers:
 - protocol: http
   dtab: |
-    /http/*/*/* => /$/inet/localhost/8080;
+    /svc/* => /$/inet/localhost/8080;
   servers:
   - port: 4140
     ip: 0.0.0.0
