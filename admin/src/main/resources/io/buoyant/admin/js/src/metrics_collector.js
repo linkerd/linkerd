@@ -14,7 +14,7 @@ define(['jQuery'], function($) {
       handler: function called with incoming data of the form:
         {
           general: {}, // data obtained from /metrics.json
-          specific: {} // data obtained from /metrics?m=...
+          specific: {} // deltas derived from current and previous /metrics.json calls
         }
       metrics: returns a list of metrics the listener wants.
         Called with a list of metric names to choose from.
@@ -29,9 +29,9 @@ define(['jQuery'], function($) {
 
     function generateDeltaPayload(generalData, defaultMetrics, prevMetrics) {
       var metrics = _(listeners)
-        .map(function(listener){ return listener.metrics(defaultMetrics); })
-        .flatten()
+        .flatMap(function(listener){ return listener.metrics(defaultMetrics); })
         .uniq()
+        .compact()
         .value();
 
       return _.flatMap(metrics, function(metricName) {
