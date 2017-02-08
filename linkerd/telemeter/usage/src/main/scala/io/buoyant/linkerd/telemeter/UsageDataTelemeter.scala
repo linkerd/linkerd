@@ -41,10 +41,8 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String]
   ) {
-    val startTime = mkStartTime
-
     def apply(metrics: Map[String, Number]): Future[Unit] = {
-      val msg = mkUsageMessage(config, pid, orgId, metrics, startTime)
+      val msg = mkUsageMessage(config, pid, orgId, metrics)
       log.debug(msg.toString)
 
       val sz = UsageMessage.codec.sizeOf(msg)
@@ -64,8 +62,7 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    metrics: Map[String, Number],
-    start: Option[String]
+    metrics: Map[String, Number]
   ): UsageMessage =
     UsageMessage(
       pid = Some(pid),
@@ -74,7 +71,7 @@ private[telemeter] object UsageDataTelemeter {
       containerManager = mkContainerManager,
       osName = Some(System.getProperty("os.name")),
       osVersion = Some(System.getProperty("os.version")),
-      startTime = start,
+      startTime = mkStartTime(metrics),
       routers = mkRouters(config),
       namers = mkNamers(config),
       counters = mkCounters(metrics),
@@ -84,11 +81,12 @@ private[telemeter] object UsageDataTelemeter {
   def mkContainerManager: Option[String] =
     sys.env.get("MESOS_TASK_ID").map(_ => "mesos")
 
-  def mkStartTime: Option[String] = {
+  def mkStartTime(metrics: Map[String, Number]): Option[String] = {
     val tz = TimeZone.getTimeZone("UTC")
     val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
     df.setTimeZone(tz)
-    Some(df.format(new Date()))
+    val uptime = metrics.get("jvm/uptime").map(_.intValue()).getOrElse(0)
+    Some(df.format(new Date(System.currentTimeMillis() - uptime)))
   }
 
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
@@ -97,7 +95,8 @@ private[telemeter] object UsageDataTelemeter {
   def mkGauges(metrics: Map[String, Number]): Seq[Gauge] =
     Seq(
       Gauge(Some("jvm_mem"), metrics.get("jvm/mem/current/used").map(_.doubleValue())),
-      Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue()))
+      Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue())),
+      Gauge(Some("jvm/uptime"), metrics.get("jvm/uptime").map(_.doubleValue()))
     )
 
   val RequestPattern = "^.*/srv/.*/requests$".r
@@ -132,10 +131,9 @@ private[telemeter] object UsageDataTelemeter {
     orgId: Option[String],
     registry: Metrics
   ) extends Service[Request, Response] {
-    val startTime = mkStartTime
 
     def apply(request: Request): Future[Response] = {
-      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap, startTime)
+      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
       val rsp = Response()
       rsp.contentType = MediaType.Json
       rsp.contentString = mapper.writeValueAsString(msg)
