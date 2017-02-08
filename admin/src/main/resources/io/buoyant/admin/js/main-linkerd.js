@@ -2,7 +2,8 @@ require.config({
   paths: {
     'jQuery': 'lib/jquery.min',
     'lodash': 'lib/lodash.min',
-    'Handlebars': 'lib/handlebars-v4.0.5',
+    'Handlebars': 'lib/handlebars-v4.0.5', // we maybe should remove this
+    // 'handlebars.runtime': 'lib/handlebars.runtime',
     'bootstrap': 'lib/bootstrap.min',
     'Smoothie': 'lib/smoothie',
     'text': 'lib/text'
