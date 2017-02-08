@@ -5,6 +5,8 @@ define([
   'src/utils'
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
+    var ignoredClients = [];
+
     function clientToMetric(client) {
       return { name: client }; //TODO: move to clientName only after v2 migration
     }
@@ -16,6 +18,15 @@ define([
           lineWidth: 2
         };
       };
+    }
+
+    function getClientsToQuery(routers, routerName) {
+      return _.difference(routers.clients(routerName), ignoredClients);
+    }
+
+    function getQuery(routerName, clientsToQuery) {
+      var clients = _.map(clientsToQuery, 'label');
+      return Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
     }
 
     return function(metricsCollector, routers, routerName, $root, colors) {
@@ -42,14 +53,20 @@ define([
         timeseriesParamsFn(colors)
       );
 
-      var clients = _.map(routers.clients(routerName), 'label');
-
-      var query = Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
+      var query = getQuery(routerName, getClientsToQuery(routers, routerName));
       var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
       chart.setMetrics(desiredMetrics);
 
       var metricsListener = function(data) {
-        chart.updateMetrics(data.specific);
+        var clientsToQuery = getClientsToQuery(routers, routerName);
+        var dataToDisplay = [];
+
+        if(!_.isEmpty(clientsToQuery)) {
+          var metricQuery = getQuery(routerName, clientsToQuery);
+          dataToDisplay = Query.filter(metricQuery, data.specific);
+        }
+
+        chart.updateMetrics(dataToDisplay);
       };
 
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
@@ -58,6 +75,14 @@ define([
           chart.addMetrics(_.map(clients, function(client) {
             return clientToMetric(client.prefix + "requests");
           }));
+        },
+
+        ignoreClient: function(client) {
+          ignoredClients.push(client);
+        },
+
+        unIgnoreClient: function(client) {
+          _.remove(ignoredClients, client);
         },
 
         updateColors: function(newColors) {

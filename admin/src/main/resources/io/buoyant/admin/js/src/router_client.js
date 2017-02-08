@@ -133,7 +133,7 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
+    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -154,15 +154,11 @@ define([
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
       renderMetrics($metricsEl, client, [], []);
-      var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
+      var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
       // collapse client section by default (deal with large # of clients)
-      if(shouldExpandInitially) {
-        toggleClientDisplay(true);
-      } else {
-        toggleClientDisplay(false);
-      }
+      toggleClientDisplay(shouldExpandInitially);
 
       $expandLink.click(function() { toggleClientDisplay(true); });
       $collapseLink.click(function() { toggleClientDisplay(false); });
@@ -172,11 +168,13 @@ define([
           $contentContainer.css({"border": colorBorder});
           $headerLine.css("border-bottom", "0px");
 
+          combinedClientGraph.unIgnoreClient(client);
           metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
 
+          combinedClientGraph.ignoreClient(client);
           metricsCollector.deregisterListener(metricsHandler);
         }
 
@@ -189,7 +187,7 @@ define([
         var summaryData = getSummaryData(data.specific, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
-        chart.updateMetrics(getSuccessRate(summaryData));
+        successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies);
