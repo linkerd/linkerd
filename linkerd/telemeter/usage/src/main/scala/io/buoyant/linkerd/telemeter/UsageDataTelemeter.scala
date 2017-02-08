@@ -26,6 +26,8 @@ import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
 import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
 import java.nio.ByteBuffer
+import java.text.SimpleDateFormat
+import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 
@@ -39,8 +41,10 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String]
   ) {
+    val startTime = mkStartTime
+
     def apply(metrics: Map[String, Number]): Future[Unit] = {
-      val msg = mkUsageMessage(config, pid, orgId, metrics)
+      val msg = mkUsageMessage(config, pid, orgId, metrics, startTime)
       log.debug(msg.toString)
 
       val sz = UsageMessage.codec.sizeOf(msg)
@@ -60,7 +64,8 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    metrics: Map[String, Number]
+    metrics: Map[String, Number],
+    start: Option[String]
   ): UsageMessage =
     UsageMessage(
       pid = Some(pid),
@@ -69,7 +74,7 @@ private[telemeter] object UsageDataTelemeter {
       containerManager = mkContainerManager,
       osName = Some(System.getProperty("os.name")),
       osVersion = Some(System.getProperty("os.version")),
-      startTime = None, //TODO
+      startTime = start,
       routers = mkRouters(config),
       namers = mkNamers(config),
       counters = mkCounters(metrics),
@@ -78,6 +83,13 @@ private[telemeter] object UsageDataTelemeter {
 
   def mkContainerManager: Option[String] =
     sys.env.get("MESOS_TASK_ID").map(_ => "mesos")
+
+  def mkStartTime: Option[String] = {
+    val tz = TimeZone.getTimeZone("UTC")
+    val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
+    df.setTimeZone(tz)
+    Some(df.format(new Date()))
+  }
 
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
     config.namers.getOrElse(Seq()).map(_.kind)
@@ -120,9 +132,10 @@ private[telemeter] object UsageDataTelemeter {
     orgId: Option[String],
     registry: Metrics
   ) extends Service[Request, Response] {
+    val startTime = mkStartTime
 
     def apply(request: Request): Future[Response] = {
-      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
+      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap, startTime)
       val rsp = Response()
       rsp.contentType = MediaType.Json
       rsp.contentString = mapper.writeValueAsString(msg)

@@ -15,6 +15,9 @@ import io.buoyant.linkerd.usage.UsageMessage
 import io.buoyant.namer.{NamerInitializer, TestNamerInitializer}
 import io.buoyant.test.{Awaits, FunSuite}
 import java.net.InetSocketAddress
+import java.text.SimpleDateFormat
+import java.util.Date
+import scala.util.Try
 
 class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
   case class Downstream(name: String, server: ListeningServer, service: Service[Request, Response]) {
@@ -86,5 +89,8 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     assert(msg.routers.last.protocol == Some("fancy"))
     assert(msg.counters.head.name == Some("srv_requests"))
     assert(msg.counters.head.value == Some(2))
+    assert(msg.startTime.isDefined)
+    val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
+    assert(Try[Date](formatter.parse(msg.startTime.get)).isSuccess)
   }
 }
