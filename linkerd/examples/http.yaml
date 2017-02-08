@@ -15,9 +15,7 @@ routers:
   compressionLevel: 9
   identifier: {kind: io.l5d.header}
   dtab: |
-    /srv => /#/io.l5d.fs;
-    /host => /srv;
-    /http/* => /host;
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -32,9 +30,7 @@ routers:
   label: netty4
   identifier: {kind: io.l5d.header.token}
   dtab: |
-    /srv => /#/io.l5d.fs;
-    /host => /srv;
-    /http => /host;
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4141
     ip: 0.0.0.0

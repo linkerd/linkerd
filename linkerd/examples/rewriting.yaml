@@ -15,6 +15,6 @@ routers:
     segments: 2
   dtab: |
     /srv => /#/io.l5d.fs ;
-    /http => /#/apiToSrv ;
+    /svc => /#/apiToSrv ;
   servers:
   - port: 4140

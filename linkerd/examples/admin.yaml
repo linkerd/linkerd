@@ -16,7 +16,7 @@ routers:
 - protocol: http
   label: linkerd-admin
   dtab: |
-    /http/* => /$/inet/127.1/9990;
+    /svc/* => /$/inet/127.1/9990;
   identifier:
     kind: io.l5d.path
     segments: 1
@@ -27,7 +27,7 @@ routers:
 - protocol: http
   label: namerd-admin
   dtab: |
-    /http/* => /$/inet/127.1/9991;
+    /svc/* => /$/inet/127.1/9991;
   identifier:
     kind: io.l5d.path
     segments: 1

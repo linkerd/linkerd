@@ -17,8 +17,7 @@ routers:
     - kind: io.l5d.port
       port: 4141
   dtab: |
-    /host => /#/io.l5d.fs;
-    /http/1.1/* => /host;
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -32,7 +31,6 @@ routers:
     # only to instances running on localhost.
     - kind: io.l5d.localhost
   dtab: |
-    /host => /#/io.l5d.fs;
-    /http/1.1/* => /host;
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4141

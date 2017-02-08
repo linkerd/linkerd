@@ -39,7 +39,7 @@ namers:
 
 ```
 dtab: |
-  /http/1.1/* => /#/io.l5d.fs
+  /svc => /#/io.l5d.fs
 ```
 
 > With the filesystem directory:
@@ -120,7 +120,7 @@ namers:
 
 ```yaml
 dtab: |
-  /http/1.1/* => /#/io.l5d.serversets/discovery/prod;
+  /svc => /#/io.l5d.serversets/discovery/prod;
 ```
 
 linkerd provides support for [ZooKeeper
@@ -170,7 +170,7 @@ namers:
 
 ```
 dtab: |
-  /http/1.1/* => /#/io.l5d.consul/dc1/prod;
+  /svc => /#/io.l5d.consul/dc1/prod;
 ```
 
 linker provides support for service discovery via [Consul](https://www.consul.io/).
@@ -230,7 +230,7 @@ namers:
 
 ```
 dtab: |
-  /http/1.1/* => /#/io.l5d.k8s/prod/http;
+  /svc => /#/io.l5d.k8s/prod/http;
 ```
 
 linkerd provides support for service discovery via
@@ -281,7 +281,7 @@ namers:
 
 ```
 dtab: |
-  /http/1.1/* => /#/io.l5d.k8s.external/prod/http;
+  /svc => /#/io.l5d.k8s.external/prod/http;
 ```
 
 The [Kubernetes](https://k8s.io/) External namer looks up the IP of the external
@@ -344,7 +344,7 @@ namers:
 dtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-  /http/1.1/* => /host;
+  /svc => /host;
 ```
 
 linkerd provides support for service discovery via
@@ -472,7 +472,7 @@ namers:
 
 ```
 dtab: |
-  /http => /#/io.l5d.rewrite
+  /svc => /#/io.l5d.rewrite
 ```
 
 A namer that completely rewrites a path.  This is useful to do arbitrary
@@ -519,7 +519,7 @@ of `/#/`, and can be used without explicitly adding them to the
 ```
 /marathonId => /#/io.l5d.marathon;
 /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-/http/1.1/* => /host;
+/svc => /host;
 ```
 
 > Dtab Path Format
@@ -540,7 +540,7 @@ rewritten to `/pfx/io/buoyant/foo/resource/name`.
 ```
 /consulSvc  => /#/io.l5d.consul/.local
 /host       => /$/io.buoyant.http.subdomainOfPfx/service.consul/consulSvc;
-/http/1.1/* => /host;
+/svc => /host;
 ```
 
 > Dtab Path Format

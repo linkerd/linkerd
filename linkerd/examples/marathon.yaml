@@ -18,7 +18,7 @@ routers:
   dtab: |
     /marathonId => /#/io.l5d.marathon;
     /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
-    /http/1.1/* => /host;
+    /svc/1.1/* => /host;
   servers:
   - port: 4140
     ip: 0.0.0.0

@@ -21,7 +21,7 @@ define([
       }, {});
     }
 
-    function shouldExpandClients(numClients) {
+    function shouldExpandClient(numClients) {
       // if there are many clients, collapse them by default to improve page perfomance
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
@@ -33,8 +33,6 @@ define([
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
-
-      var expandClients = shouldExpandClients(clients.length);
 
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
@@ -67,7 +65,8 @@ define([
             });
         }
 
-        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
+        var shouldExpand = shouldExpandClient(routers.clients(routerName).length);
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
       }
 
       function addClients(addedClients) {
