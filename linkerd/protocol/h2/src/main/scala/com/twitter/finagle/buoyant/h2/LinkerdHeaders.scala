@@ -74,6 +74,20 @@ object LinkerdHeaders {
           deadline.andThen(dtab).andThen(next)
       }
 
+    val clearServerModule: Stackable[ServiceFactory[Request, Response]] =
+      new Stack.Module0[ServiceFactory[Request, Response]] {
+        val role = serverModule.role
+        val description = "Clears linkerd context from http request headers"
+
+        val deadline = new Deadline.ClearServerFilter
+        val dtab = new Dtab.ClearServerFilter
+        val sample = new Trace.ClearServerFilter
+        val trace = new Trace.ClearServerFilter
+
+        def make(next: ServiceFactory[Request, Response]) =
+          deadline.andThen(dtab).andThen(sample).andThen(trace).andThen(next)
+      }
+
     /**
      * A clientside stack module that injects local contextual
      * information onto downstream requests.  Currently this includes:
@@ -166,6 +180,13 @@ object LinkerdHeaders {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * If a deadline is set, encode it on downstream requests.
        *
@@ -250,6 +271,13 @@ object LinkerdHeaders {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * Encodes the local dtab into the L5d-Ctx-Dtab header.
        *
@@ -291,6 +319,13 @@ object LinkerdHeaders {
 
       def clear(headers: Headers): Unit = {
         val _ = headers.remove(Key)
+      }
+
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
       }
     }
   }
@@ -337,6 +372,13 @@ object LinkerdHeaders {
 
     def clear(headers: Headers): Unit = {
       val _ = headers.remove(Key)
+    }
+
+    class ClearServerFilter extends SimpleFilter[Request, Response] {
+      def apply(req: Request, service: Service[Request, Response]) = {
+        clear(req.headerMap)
+        service(req)
+      }
     }
   }
 

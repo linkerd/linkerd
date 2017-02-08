@@ -351,4 +351,63 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
     assert(!headers.contains("dtab-local"))
   }
+
+  test("with clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap("l5d-ctx-dtab")
+      rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /http/1.1/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    try {
+      val c = upstream(s)
+      try {
+        val localDtab = "/foo=>/bar"
+        val req = Request()
+        req.host = "test"
+        req.headerMap("l5d-dtab") = localDtab
+        assert(await(c(req)).contentString == "")
+      } finally await(c.close())
+    } finally await(s.close())
+  }
+
+  test("without clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap("l5d-ctx-dtab")
+      rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /http/1.1/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    try {
+      val c = upstream(s)
+      try {
+        val localDtab = "/foo=>/bar"
+        val req = Request()
+        req.host = "test"
+        req.headerMap("l5d-dtab") = localDtab
+        assert(await(c(req)).contentString == localDtab)
+      } finally await(c.close())
+    } finally await(s.close())
+  }
 }

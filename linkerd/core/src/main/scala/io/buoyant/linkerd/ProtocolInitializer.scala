@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.stack.nilStack
 import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.router._
@@ -86,9 +87,16 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
         override def close(d: Time) = Future.Unit
       }
 
-      val servable = servers.map { server =>
-        val stackServer = defaultServer.withParams(defaultServer.params ++ server.params)
-        ServerInitializer(protocol, server.addr, stackServer, adapted, server.announce)
+      val servable = servers.map { s =>
+        val stk = s.params[ClearContext.Param] match {
+          case ClearContext.Param(true) => clearServerContext(defaultServer.stack)
+          case ClearContext.Param(false) => defaultServer.stack
+        }
+
+        val stacked = defaultServer
+          .withStack(stk)
+          .withParams(defaultServer.params ++ s.params)
+        ServerInitializer(protocol, s.addr, stacked, adapted, s.announce)
       }
       InitializedRouter(protocol, params, factory, servable, announcers)
     }
@@ -108,12 +116,16 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
    */
   protected type ServerReq
   protected type ServerRsp
+  protected type ServerStack = Stack[ServiceFactory[ServerReq, ServerRsp]]
 
-  /** Adapts a server to a router */
+  /** Adapts a server  to a router */
   protected def adapter: Filter[ServerReq, ServerRsp, RouterReq, RouterRsp]
 
   /** The default protocol-specific server configuration */
   protected def defaultServer: StackServer[ServerReq, ServerRsp]
+
+  protected def clearServerContext(stk: ServerStack): ServerStack =
+    stk ++ (ClearContext.module[ServerReq, ServerRsp] +: nilStack)
 
   def defaultServerPort: Int
 }

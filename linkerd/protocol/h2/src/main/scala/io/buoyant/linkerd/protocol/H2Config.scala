@@ -61,6 +61,11 @@ class H2Initializer extends ProtocolInitializer.Simple {
     .prepend(h2.ErrorReseter.module))
     .configured(param.Monitor(monitor))
 
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    super.clearServerContext(stk)
+      .replace(LinkerdHeaders.Ctx.serverModule.role, LinkerdHeaders.Ctx.clearServerModule)
+  }
+
   override def defaultServerPort: Int = 4142
 }
 

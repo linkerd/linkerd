@@ -1,19 +1,20 @@
 ## Upcoming Release
 
-* Add `io.l5d.usage` telemeter for opt-in usage data collection
+* Add `io.l5d.usage` telemeter for opt-in usage data collection.
 * Admin dashboard
-  * Sorts clients and servers alphabetically
-  * Displays routers in the order that they are defined
-* Update Marathon namer to evaluate an app's running state
+  * Sorts clients and servers alphabetically.
+  * Displays routers in the order that they are defined.
+* Update Marathon namer to evaluate an app's running state.
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
-  TTwitter Thrift protocol
-* Rename `baseDtab` router property to `dtab`
+  TTwitter Thrift protocol.
+* Rename `baseDtab` router property to `dtab`.
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
 * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
-* Change the default `dstPrefix` from the protocol name to `/svc`
-* Change the default HTTP identifier to the `io.l5d.header.token` identifier
+* Change the default `dstPrefix` from the protocol name to `/svc`.
+* Change the default HTTP identifier to the `io.l5d.header.token` identifier.
+* Add the `clearContext` server configuration option.
 
 ## 0.8.6 2017-01-19
 

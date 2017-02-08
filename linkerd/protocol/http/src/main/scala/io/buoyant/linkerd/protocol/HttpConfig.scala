@@ -69,6 +69,12 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     Http.server.withStack(stk)
   }
 
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    super.clearServerContext(stk)
+      .remove(HttpTraceInitializer.role)
+      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.clearServerModule)
+  }
+
   val configClass = classOf[HttpConfig]
 
   override def defaultServerPort: Int = 4140
