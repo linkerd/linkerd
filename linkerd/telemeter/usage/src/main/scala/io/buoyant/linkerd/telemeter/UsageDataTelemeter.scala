@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.google.protobuf.CodedOutputStream
-import com.twitter.common.metrics.Metrics
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{MediaType, Method, Request, Response}
@@ -24,7 +23,7 @@ import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
-import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
+import io.buoyant.telemetry._
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
@@ -39,7 +38,7 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String]
   ) {
-    def apply(metrics: Map[String, Number]): Future[Unit] = {
+    def apply(metrics: MetricsTree): Future[Unit] = {
       val msg = mkUsageMessage(config, pid, orgId, metrics)
       log.debug(msg.toString)
 
@@ -60,7 +59,7 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    metrics: Map[String, Number]
+    metrics: MetricsTree
   ): UsageMessage =
     UsageMessage(
       pid = Some(pid),
@@ -82,17 +81,30 @@ private[telemeter] object UsageDataTelemeter {
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
     config.namers.getOrElse(Seq()).map(_.kind)
 
-  def mkGauges(metrics: Map[String, Number]): Seq[Gauge] =
+  def gagueValue(metric: Metric): Option[Double] = metric match {
+    case g: Metric.Gauge => Some(g.get)
+    case _ => None
+  }
+
+  def mkGauges(metrics: MetricsTree): Seq[Gauge] =
     Seq(
-      Gauge(Some("jvm_mem"), metrics.get("jvm/mem/current/used").map(_.doubleValue())),
-      Gauge(Some("jvm/gc/msec"), metrics.get("jvm/mem/current/used").map(_.doubleValue()))
+      Gauge(Some("jvm_mem"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
+      Gauge(Some("jvm/gc/msec"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric))
     )
 
-  val RequestPattern = "^.*/srv/.*/requests$".r
-  def mkCounters(metrics: Map[String, Number]): Seq[Counter] =
-    metrics.collect {
-      case (RequestPattern(), v) => Counter(Some("srv_requests"), Some(v.longValue()))
-    }.toSeq
+  def counterValue(metric: Metric): Option[Long] = metric match {
+    case c: Metric.Counter => Some(c.get)
+    case _ => None
+  }
+
+  def mkCounters(metrics: MetricsTree): Seq[Counter] = {
+    val counters = for {
+      router <- metrics.resolve(Seq("rt")).children.values
+      server <- router.resolve(Seq("srv")).children.values
+      counter <- counterValue(server.resolve(Seq("requests")).metric)
+    } yield Counter(Some("srv_requests"), Some(counter))
+    counters.toSeq
+  }
 
   def mkRouters(config: Linker.LinkerConfig): Seq[Router] =
     config.routers.map { r =>
@@ -118,11 +130,11 @@ private[telemeter] object UsageDataTelemeter {
     config: Linker.LinkerConfig,
     pid: String,
     orgId: Option[String],
-    registry: Metrics
+    metrics: MetricsTree
   ) extends Service[Request, Response] {
 
     def apply(request: Request): Future[Response] = {
-      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, registry.sample().asScala.toMap)
+      val msg: UsageMessage = mkUsageMessage(config, pid, orgId, metrics)
       val rsp = Response()
       rsp.contentType = MediaType.Json
       rsp.contentString = mapper.writeValueAsString(msg)
@@ -148,7 +160,7 @@ class UsageDataTelemeter(
   metricsDst: Name,
   withTls: Boolean,
   config: Linker.LinkerConfig,
-  registry: com.twitter.common.metrics.Metrics,
+  metrics: MetricsTree,
   orgId: Option[String],
   dryRun: Boolean
 ) extends Telemeter with Admin.WithHandlers {
@@ -164,10 +176,8 @@ class UsageDataTelemeter(
   val client = Client(metricsService, config, pid, orgId)
 
   val adminHandlers = Seq(
-    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, registry))
+    Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
-
-  private[this] def sample(registry: Metrics): Map[String, Number] = registry.sample().asScala.toMap
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
@@ -175,10 +185,10 @@ class UsageDataTelemeter(
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val _ = client(sample(registry))
+    val _ = client(metrics)
 
     val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
-      val _ = client(sample(registry))
+      val _ = client(metrics)
     }
 
     val closer = Closable.sequence(
@@ -207,7 +217,7 @@ case class UsageDataTelemeterConfig(
       Name.bound(Address("stats.buoyant.io", 443)),
       withTls = true,
       config,
-      com.twitter.common.metrics.Metrics.root,
+      params[MetricsTree],
       orgId,
       dryRun.getOrElse(false)
     )
