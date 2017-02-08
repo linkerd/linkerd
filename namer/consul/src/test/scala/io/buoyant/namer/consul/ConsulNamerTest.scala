@@ -555,4 +555,130 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("lookups") -> 1
     ))
   }
+
+  test("Namer strips domain from service name when stripDomain is true") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = false,
+      stripDomain = true,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 1
+    ))
+
+    namer.lookup(Path.read("/dc1/servicename.service.local/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 2
+    ))
+
+    namer.lookup(Path.read("/dc1/servicename.big.bad.wolf/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 3
+    ))
+  }
+
+  test("Namer does not strip domain from service name when stripDomain is false") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = false,
+      stripDomain = true,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 1
+    ))
+
+    namer.lookup(Path.read("/dc1/servicename.service.local/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 2
+    ))
+
+    namer.lookup(Path.read("/dc1/servicename.big.bad.wolf/residual")).states respond { state = _ }
+    assert(stats.counters == Map(
+      Seq("dc", "opens") -> 1,
+      Seq("dc", "updates") -> 1,
+      Seq("dc", "adds") -> 4,
+      Seq("lookups") -> 3
+    ))
+  }
 }

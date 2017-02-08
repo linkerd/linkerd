@@ -38,6 +38,7 @@ case class ConsulConfig(
   useHealthCheck: Option[Boolean],
   token: Option[String] = None,
   setHost: Option[Boolean] = None,
+  stripDomain: Option[Boolean] = None,
   consistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None
 ) extends NamerConfig {
@@ -77,11 +78,11 @@ case class ConsulConfig(
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+          prefix, consul, agent, setHost.getOrElse(false), stripDomain.getOrElse(false), consistencyMode, stats
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+          prefix, consul, agent, setHost.getOrElse(false), stripDomain.getOrElse(false), consistencyMode, stats
         )
     }
   }

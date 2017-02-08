@@ -27,6 +27,7 @@ class ConsulTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
     val consul = mapper.readValue[NamerConfig](yaml).asInstanceOf[ConsulConfig]
     assert(consul.setHost.isEmpty)
+    assert(consul.stripDomain.isEmpty)
     assert(consul.includeTag.isEmpty)
     assert(!consul.disabled)
   }
@@ -39,6 +40,7 @@ class ConsulTest extends FunSuite {
                     |token: some-token
                     |includeTag: true
                     |setHost: true
+                    |stripDomain: true
                     |consistencyMode: stale
       """.stripMargin
 
@@ -48,6 +50,7 @@ class ConsulTest extends FunSuite {
     assert(consul.port == Some(Port(8600)))
     assert(consul.token == Some("some-token"))
     assert(consul.setHost == Some(true))
+    assert(consul.stripDomain == Some(true))
     assert(consul.includeTag == Some(true))
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(!consul.disabled)
