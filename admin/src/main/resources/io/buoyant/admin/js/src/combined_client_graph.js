@@ -21,7 +21,11 @@ define([
     }
 
     function getClientsToQuery(routers, routerName) {
-      return _.difference(routers.clients(routerName), ignoredClients[routerName]);
+      var clients = routers.clients(routerName);
+      var nonIgnoredClients = _.difference(clients, ignoredClients[routerName]);
+
+      // if all clients are collapsed, let the combined graph show all clients
+      return _.isEmpty(nonIgnoredClients) ? clients : nonIgnoredClients;
     }
 
     function getQuery(routerName, clientsToQuery) {
@@ -29,9 +33,7 @@ define([
       return Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
     }
 
-    return function(metricsCollector, routers, routerName, $container, colors) {
-      var $root = $container.find(".router-graph");
-      var $noContentWarning = $container.find(".all-collapsed-warning").hide();
+    return function(metricsCollector, routers, routerName, $root, colors) {
       ignoredClients[routerName] = [];
 
       var chart = new Utils.UpdateableChart(
@@ -63,15 +65,8 @@ define([
 
       var metricsListener = function(data) {
         var clientsToQuery = getClientsToQuery(routers, routerName);
-        var dataToDisplay = [];
-
-        if(_.isEmpty(clientsToQuery)) {
-          _.isEmpty(ignoredClients[routerName]) ? null : $noContentWarning.show("slow");
-        } else {
-          var metricQuery = getQuery(routerName, clientsToQuery);
-          dataToDisplay = Query.filter(metricQuery, data.specific);
-          $noContentWarning.hide("slow");
-        }
+        var metricQuery = getQuery(routerName, clientsToQuery);
+        var dataToDisplay = Query.filter(metricQuery, data.specific);
 
         chart.updateMetrics(dataToDisplay);
       };
