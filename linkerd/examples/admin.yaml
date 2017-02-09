@@ -8,7 +8,6 @@ admin:
   port: 9990
 
 telemetry:
-- kind: io.l5d.commonMetrics
 - kind: io.l5d.recentRequests
   sampleRate: 1.0
 

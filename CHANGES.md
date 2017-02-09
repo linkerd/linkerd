@@ -12,6 +12,10 @@
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
 * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
+* Add `io.l5d.promethus` telemeter
+* Remove `io.l5d.commonMetrics` telemeter
+* Remove `io.l5d.adminMetricsExport` as a telemeter plugin, it is now always
+  loaded
 
 ## 0.8.6 2017-01-19
 
