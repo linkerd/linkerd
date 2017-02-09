@@ -84,8 +84,8 @@ private[telemeter] object UsageDataTelemeter {
     val tz = TimeZone.getTimeZone("UTC")
     val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
     df.setTimeZone(tz)
-    val uptime = gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric).map(_.toInt).getOrElse(0)
-    Some(df.format(new Date(System.currentTimeMillis() - uptime)))
+    val uptime = gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric).map(_.toLong).getOrElse(0l)
+    Some(df.format(new Date((System.currentTimeMillis() - uptime).toInt)))
   }
 
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
