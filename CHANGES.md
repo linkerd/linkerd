@@ -1,5 +1,6 @@
 ## Upcoming Release
 
+* Make `io.l5d.consul` case-insensitive
 * Add `io.l5d.usage` telemeter for opt-in usage data collection
 * Admin dashboard
   * Sorts clients and servers alphabetically
@@ -12,6 +13,8 @@
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
 * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
+* Change the default `dstPrefix` from the protocol name to `/svc`
+* Change the default HTTP identifier to the `io.l5d.header.token` identifier
 * Add `io.l5d.promethus` telemeter
 * Remove `io.l5d.commonMetrics` telemeter
 * Remove `io.l5d.adminMetricsExport` as a telemeter plugin, it is now always

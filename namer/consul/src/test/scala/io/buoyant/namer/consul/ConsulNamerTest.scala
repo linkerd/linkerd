@@ -205,7 +205,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer returns leaf with bound addr when serviceNodes exist") {
+  test("Namer returns leaf with bound addr when serviceNodes exist (case-insensitive)") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
@@ -214,7 +214,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          val rsp = Map("consul" -> Seq(), "serviceNAME" -> Seq("master", "staging"))
           Future.value(Indexed(rsp, Some("1")))
         case _ => Future.never //don't respond to blocking index calls
       }
@@ -242,7 +242,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/dc1/SERVICEname/residual")).states respond { state = _ }
 
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)
@@ -381,7 +381,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer filters by tag") {
+  test("Namer filters by tag (case-insensitive)") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
         datacenter: Option[String] = None,
@@ -390,7 +390,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("MASter", "STAging"))
           Future.value(Indexed(rsp, Some("1")))
         case _ => Future.never // don't respond to blocking index calls
       }
@@ -422,7 +422,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       stats = stats
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
+    namer.lookup(Path.read("/dc1/masTER/servicename/residual")).states respond { state = _ }
 
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)

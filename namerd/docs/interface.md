@@ -91,7 +91,7 @@ curl :4180/api/1/dtabs/default
 > Sample response
 
 ```
-[{"prefix":"/http/1.1/GET","dst":"/#/io.l5d.fs"}]
+[{"prefix":"/svc","dst":"/#/io.l5d.fs"}]
 ```
 
 Returns the requested dtab.  The dtab version is returned in the Etag response
@@ -316,14 +316,14 @@ Content-types: application/json
 > Sample request
 
 ```
-curl ':4180/api/1/bind/delegate?path=/http/1.1/GET/default'
+curl ':4180/api/1/bind/delegate?path=/svc/default'
 ```
 
 > Sample response
 
 ```
 {
-   "path" : "/http/1.1/GET/default",
+   "path" : "/svc/default",
    "type" : "delegate",
    "delegate" : {
       "bound" : {
@@ -343,7 +343,7 @@ curl ':4180/api/1/bind/delegate?path=/http/1.1/GET/default'
       },
       "type" : "leaf",
       "dentry" : {
-         "prefix" : "/http/1.1/GET",
+         "prefix" : "/svc",
          "dst" : "/#/io.l5d.fs"
       },
       "path" : "/#/io.l5d.fs/default"

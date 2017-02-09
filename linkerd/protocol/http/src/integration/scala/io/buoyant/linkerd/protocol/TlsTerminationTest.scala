@@ -19,7 +19,7 @@ class TlsTerminationTest extends FunSuite with Awaits {
              |- protocol: http
              |  dtab: |
              |    /p/dog => /$$/inet/127.1/${dog.port} ;
-             |    /http/1.1/GET/clifford => /p/dog ;
+             |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
              |    tls:
@@ -58,7 +58,7 @@ class TlsTerminationTest extends FunSuite with Awaits {
              |- protocol: http
              |  dtab: |
              |    /p/dog => /$$/inet/127.1/${dog.port} ;
-             |    /http/1.1/GET/clifford => /p/dog ;
+             |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
              |    engine:

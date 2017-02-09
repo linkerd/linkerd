@@ -57,23 +57,16 @@ define([
       var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
       chart.setMetrics(desiredMetrics);
 
-      var count = 0;
       var metricsListener = function(data) {
-        if (count < 5) {
-          // Hacky bug fix: discard the first few data points to fix the issue
-          // where the first values from /metrics are very large [linkerd#485]
-          count++;
-        } else {
-          var clientsToQuery = getClientsToQuery(routers, routerName);
-          var dataToDisplay = [];
+        var clientsToQuery = getClientsToQuery(routers, routerName);
+        var dataToDisplay = [];
 
-          if(!_.isEmpty(clientsToQuery)) {
-            var metricQuery = getQuery(routerName, clientsToQuery);
-            dataToDisplay = Query.filter(metricQuery, data.specific);
-          }
-
-          chart.updateMetrics(dataToDisplay);
+        if(!_.isEmpty(clientsToQuery)) {
+          var metricQuery = getQuery(routerName, clientsToQuery);
+          dataToDisplay = Query.filter(metricQuery, data.specific);
         }
+
+        chart.updateMetrics(dataToDisplay);
       };
 
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
