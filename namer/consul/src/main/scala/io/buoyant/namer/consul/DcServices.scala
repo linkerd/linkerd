@@ -120,7 +120,7 @@ private[consul] object DcServices {
     case v1.Indexed(services, idx) =>
       val keys = services.flatMap {
         case (svcName, tags) =>
-          tags.map(tag => SvcKey(svcName, Some(tag))) :+ SvcKey(svcName, None)
+          tags.map(tag => SvcKey(svcName.toLowerCase, Some(tag.toLowerCase))) :+ SvcKey(svcName.toLowerCase, None)
       }
       v1.Indexed(keys.toSet, idx)
   }
