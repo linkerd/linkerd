@@ -1,4 +1,4 @@
-define(['Handlebars'], function(Handlebars) {
+define(['handlebars.runtime'], function(Handlebars) {
   Handlebars = Handlebars["default"];  var template = Handlebars.template, templates = Handlebars.templates = Handlebars.templates || {};
 templates['barchart'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;

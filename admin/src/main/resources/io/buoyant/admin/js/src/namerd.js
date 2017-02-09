@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/admin',
   'src/delegator',
   'template/compiled_templates'
@@ -11,8 +11,7 @@ define([
   $, _, Handlebars,
   AdminHelpers,
   Delegator,
-  templates,
-  namerdTmplRsp
+  templates
 ) {
   function renderDtabNamespaces() {
     var data = JSON.parse($("#dtab-data").html());
@@ -48,9 +47,7 @@ define([
   }
 
   function renderNamerdStats(data) {
-    var namerdTmpl = templates.namerd_stats;
     var $statsContainer = $("#namerd-stats");
-
     var dataToRender = {
       connections: {
         description: "Connections",
@@ -64,7 +61,7 @@ define([
         description: "Addrcache size",
         value: getStat(data, "addrcache.size")
       }
-    }
+    };
     var html = templates.namerd_stats(dataToRender);
     $statsContainer.html(html);
   }

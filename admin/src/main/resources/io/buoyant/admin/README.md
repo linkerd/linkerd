@@ -1,6 +1,6 @@
 ## Javascript
 
-This app uses RequireJS to load modules. The config is in `/js/main.js`.
+This app uses RequireJS to load modules. The config is in `/js/main-*.js`.
 App code goes in `/js/src` and vendor code in `/js/lib`.
 
 ## Tests
