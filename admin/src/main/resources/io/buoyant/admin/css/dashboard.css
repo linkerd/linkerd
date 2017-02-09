@@ -164,7 +164,7 @@ nav.navbar {
 }
 
 /*
-* Router summary
+* Router summary with combined client graph
 */
 
 .router-summary-stat {
@@ -186,6 +186,10 @@ nav.navbar {
 
 .router-server .router-graph-header {
   margin-top: 0px;
+}
+
+.all-collapsed-warning {
+  margin-top: 10px;
 }
 
 /**

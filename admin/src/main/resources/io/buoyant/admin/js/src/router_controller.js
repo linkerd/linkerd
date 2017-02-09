@@ -126,7 +126,7 @@ define([
         var $summaryEl = $(container.find(".summary")[0]);
         var $serversEl = $(container.find(".servers")[0]);
         var $clientsEl = $(container.find(".clients")[0]);
-        var $combinedClientGraphEl = $(container.find(".router-graph")[0]);
+        var $combinedClientGraphEl = $(container.find(".combined-client-graph")[0]);
         var $routerStatsEl = $(container.find(".router-stats")[0]);
 
         RouterSummary(metricsCollector, $summaryEl, $routerStatsEl, router, routerConfig);

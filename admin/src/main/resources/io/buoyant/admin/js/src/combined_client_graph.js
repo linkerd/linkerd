@@ -5,7 +5,7 @@ define([
   'src/utils'
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
-    var ignoredClients = [];
+    var ignoredClients = {};
 
     function clientToMetric(client) {
       return { name: client }; //TODO: move to clientName only after v2 migration
@@ -21,7 +21,7 @@ define([
     }
 
     function getClientsToQuery(routers, routerName) {
-      return _.difference(routers.clients(routerName), ignoredClients);
+      return _.difference(routers.clients(routerName), ignoredClients[routerName]);
     }
 
     function getQuery(routerName, clientsToQuery) {
@@ -29,7 +29,11 @@ define([
       return Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
     }
 
-    return function(metricsCollector, routers, routerName, $root, colors) {
+    return function(metricsCollector, routers, routerName, $container, colors) {
+      var $root = $container.find(".router-graph");
+      var $noContentWarning = $container.find(".all-collapsed-warning").hide();
+      ignoredClients[routerName] = [];
+
       var chart = new Utils.UpdateableChart(
         {
           minValue: 0,
@@ -61,9 +65,12 @@ define([
         var clientsToQuery = getClientsToQuery(routers, routerName);
         var dataToDisplay = [];
 
-        if(!_.isEmpty(clientsToQuery)) {
+        if(_.isEmpty(clientsToQuery)) {
+          _.isEmpty(ignoredClients[routerName]) ? null : $noContentWarning.show("slow");
+        } else {
           var metricQuery = getQuery(routerName, clientsToQuery);
           dataToDisplay = Query.filter(metricQuery, data.specific);
+          $noContentWarning.hide("slow");
         }
 
         chart.updateMetrics(dataToDisplay);
@@ -78,11 +85,11 @@ define([
         },
 
         ignoreClient: function(client) {
-          ignoredClients.push(client);
+          ignoredClients[routerName].push(client);
         },
 
         unIgnoreClient: function(client) {
-          _.remove(ignoredClients, client);
+          _.remove(ignoredClients[routerName], client);
         },
 
         updateColors: function(newColors) {
