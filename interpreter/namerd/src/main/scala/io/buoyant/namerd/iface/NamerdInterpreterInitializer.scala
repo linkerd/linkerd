@@ -93,6 +93,9 @@ case class NamerdInterpreterConfig(
         }
     }
 
+    val param.Stats(stats0) = params[param.Stats]
+    val stats = stats0.scope(label)
+
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ params)
       .transformed(retryTransformer)
@@ -105,7 +108,7 @@ case class NamerdInterpreterConfig(
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]
 
-    new ThriftNamerClient(iface, ns, label) with Admin.WithHandlers with Admin.WithNavItems {
+    new ThriftNamerClient(iface, ns, stats) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
 
       override def adminHandlers: Seq[Handler] =

@@ -3,7 +3,7 @@ package io.buoyant.namerd.iface
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.util._
-import io.buoyant.namer.{Metadata, DelegateTree}
+import io.buoyant.namer.{DelegateTree, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
 import java.net.{InetAddress, InetSocketAddress}
@@ -78,7 +78,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     val namespace = "yeezy"
     val clientId = Path.read("/rando/x8u4i5j")
     val service = new TestNamerService(clientId)
-    val client = new ThriftNamerClient(service, namespace, clientId)
+    val client = new ThriftNamerClient(service, namespace, clientId = clientId)
 
     val act = client.delegate(Dtab.empty, Path.read("/yeezy/tlop/wolves"))
     val delegation = act.values.toFuture.flatMap(Future.const)
@@ -108,7 +108,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     """)
 
     val service = new TestNamerService(clientId)
-    val client = new ThriftNamerClient(service, namespace, clientId)
+    val client = new ThriftNamerClient(service, namespace, clientId = clientId)
     @volatile var state: Activity.State[NameTree[Name.Bound]] = Activity.Pending
     val closer = client.bind(dtab, wolvesPath).states.respond(state = _)
     try {
