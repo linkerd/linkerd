@@ -71,8 +71,8 @@ define([
           {suffix: "connections", label: "Connections", isGauge: true},
           {suffix: "success", label: "Successes"},
           {suffix: "failures", label: "Failures"},
-          {suffix: "loadbalancer/size", label: "Load balancer pool size"},
-          {suffix: "loadbalancer/available", label: "Load balancers available"}
+          {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
+          {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
         ], function(metric) {
         return {
           metricSuffix: metric.suffix,
