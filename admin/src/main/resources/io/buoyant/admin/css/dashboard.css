@@ -378,3 +378,15 @@ a.router-list-item:after {
 a.router-list-item:last-of-type:after {
     content:''
 }
+
+/*
+* Namerd tab (plugin)
+*/
+.namerd-metrics-container .metric-container {
+  float: left;
+  padding-left: 15px;
+  border-left: 1px solid #ffffff;
+}
+.namerd-metrics-container .metric-container:not(:first-child) {
+  margin-left: 30px;
+}

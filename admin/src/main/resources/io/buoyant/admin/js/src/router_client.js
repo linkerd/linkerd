@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/utils',
   'src/query',
   'src/success_rate_graph',
