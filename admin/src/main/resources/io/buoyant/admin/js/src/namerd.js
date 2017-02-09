@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/admin',
   'src/delegator',
   'template/compiled_templates'
