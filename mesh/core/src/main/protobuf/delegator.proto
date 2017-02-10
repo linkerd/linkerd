@@ -22,7 +22,7 @@ service Delegator {
 }
 
 message DtabReq {
-  string ns = 1;
+  Path root = 1;
 }
 
 message DtabRsp {

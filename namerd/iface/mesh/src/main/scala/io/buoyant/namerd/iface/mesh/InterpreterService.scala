@@ -11,9 +11,11 @@ import io.buoyant.namer.{ConfiguredDtabNamer, Delegator}
 import io.linkerd.mesh
 
 object Errors {
-  val NoNamespaceStatus = GrpcStatus.InvalidArgument("No namespace specified")
-  val NamespaceNotFoundStatus = GrpcStatus.NotFound("Namespace not found")
-  val NoNameStatus = GrpcStatus.NotFound("No name given")
+  val NoRoot = GrpcStatus.InvalidArgument("No namespace specified")
+  val RootNotFound = GrpcStatus.NotFound("Root not found")
+  val NoName = GrpcStatus.NotFound("No name given")
+  def InvalidRoot(p: Path) =
+    GrpcStatus.InvalidArgument(s"Invalid root: `${p.show}` must have exactly one segment")
 }
 
 object InterpreterService {
@@ -33,28 +35,39 @@ object InterpreterService {
   ) extends mesh.Interpreter {
 
     override def getBoundTree(req: mesh.BindReq): Future[mesh.BoundTreeRsp] = req match {
-      case mesh.BindReq(None, _, _) => Future.exception(Errors.NoNamespaceStatus)
-      case mesh.BindReq(_, None | Some(mesh.Path(Nil)), _) => Future.exception(Errors.NoNameStatus)
-      case mesh.BindReq(Some(ns), Some(pname), dtab0) =>
-        val dtab = dtab0 match {
-          case None => Dtab.empty
-          case Some(d) => fromDtab(d)
+      case mesh.BindReq(None, _, _) => Future.exception(Errors.NoRoot)
+      case mesh.BindReq(_, None | Some(mesh.Path(Nil)), _) => Future.exception(Errors.NoName)
+      case mesh.BindReq(Some(proot), Some(pname), dtab0) =>
+        fromPath(proot) match {
+          case Path.Utf8(ns) =>
+
+            val dtab = dtab0 match {
+              case None => Dtab.empty
+              case Some(d) => fromDtab(d)
+            }
+            val name = fromPath(pname)
+            getNs(ns).bind(dtab, name).toFuture.map(toBoundTreeRsp)
+
+          case root => Future.exception(Errors.InvalidRoot(root))
         }
-        val name = fromPath(pname)
-        getNs(ns).bind(dtab, name).toFuture.map(toBoundTreeRsp)
     }
 
     override def streamBoundTree(req: mesh.BindReq): Stream[mesh.BoundTreeRsp] = req match {
-      case mesh.BindReq(None, _, _) => Stream.exception(Errors.NoNamespaceStatus)
-      case mesh.BindReq(_, None | Some(mesh.Path(Nil)), _) => Stream.exception(Errors.NoNameStatus)
-      case mesh.BindReq(Some(ns), Some(pname), dtab0) =>
-        val name = fromPath(pname)
-        val dtab = req.dtab match {
-          case None => Dtab.empty
-          case Some(d) => fromDtab(d)
+      case mesh.BindReq(None, _, _) => Stream.exception(Errors.NoRoot)
+      case mesh.BindReq(_, None | Some(mesh.Path(Nil)), _) => Stream.exception(Errors.NoName)
+      case mesh.BindReq(Some(proot), Some(pname), dtab0) =>
+        fromPath(proot) match {
+          case Path.Utf8(ns) =>
+            val name = fromPath(pname)
+            val dtab = req.dtab match {
+              case None => Dtab.empty
+              case Some(d) => fromDtab(d)
+            }
+            val ev = getNs(ns).bind(dtab, name).values.map(toBoundTreeRspEv)
+            VarEventStream(ev)
+
+          case root => Stream.exception(Errors.InvalidRoot(root))
         }
-        val ev = getNs(ns).bind(dtab, name).values.map(toBoundTreeRspEv)
-        VarEventStream(ev)
     }
 
     private[this] def getNs(ns: String): NameInterpreter with Delegator = {
