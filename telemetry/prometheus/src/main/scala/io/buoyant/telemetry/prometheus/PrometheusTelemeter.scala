@@ -90,8 +90,7 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         val summary = s.summary
         for (
           (stat, value) <- Seq(
-            "count" -> summary.count, "min" -> summary.min,
-            "max" -> summary.max, "sum" -> summary.sum, "avg" -> summary.avg
+            "count" -> summary.count, "sum" -> summary.sum, "avg" -> summary.avg
           )
         ) {
           sb.append(key)
@@ -104,8 +103,10 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         }
         for (
           (percentile, value) <- Seq(
-            "0.5" -> summary.p50, "0.9" -> summary.p90, "0.99" -> summary.p99,
-            "0.999" -> summary.p9990, "0.9999" -> summary.p9999
+            "0" -> summary.min, "0.5" -> summary.p50,
+            "0.9" -> summary.p90, "0.99" -> summary.p99,
+            "0.999" -> summary.p9990, "0.9999" -> summary.p9999,
+            "1" -> summary.max
           )
         ) {
           sb.append(key)

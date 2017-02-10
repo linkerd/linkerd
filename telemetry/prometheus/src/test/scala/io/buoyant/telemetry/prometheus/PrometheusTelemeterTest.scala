@@ -44,28 +44,28 @@ class PrometheusTelemeterTest extends FunSuite {
     stat.add(1.0f)
     val rsp1 = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp1 == """foo:bar:bas_count 1
-                     |foo:bar:bas_min 1
-                     |foo:bar:bas_max 1
                      |foo:bar:bas_sum 1
                      |foo:bar:bas_avg 1.0
+                     |foo:bar:bas{quantile="0"} 1
                      |foo:bar:bas{quantile="0.5"} 1
                      |foo:bar:bas{quantile="0.9"} 1
                      |foo:bar:bas{quantile="0.99"} 1
                      |foo:bar:bas{quantile="0.999"} 1
                      |foo:bar:bas{quantile="0.9999"} 1
+                     |foo:bar:bas{quantile="1"} 1
                      |""".stripMargin)
     stat.add(2.0f)
     val rsp2 = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp2 == """foo:bar:bas_count 2
-                     |foo:bar:bas_min 1
-                     |foo:bar:bas_max 2
                      |foo:bar:bas_sum 3
                      |foo:bar:bas_avg 1.5
+                     |foo:bar:bas{quantile="0"} 1
                      |foo:bar:bas{quantile="0.5"} 1
                      |foo:bar:bas{quantile="0.9"} 2
                      |foo:bar:bas{quantile="0.99"} 2
                      |foo:bar:bas{quantile="0.999"} 2
                      |foo:bar:bas{quantile="0.9999"} 2
+                     |foo:bar:bas{quantile="1"} 2
                      |""".stripMargin)
   }
 
