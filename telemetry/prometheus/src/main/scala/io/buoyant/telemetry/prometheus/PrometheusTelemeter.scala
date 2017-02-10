@@ -46,6 +46,9 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
   private[this] val GaugeLabel = "type" -> "gauge"
   private[this] val StatLabel = "type" -> "stat"
 
+  private[this] def labelExists(labels: Seq[(String, String)], name: String) =
+    labels.exists(_._1 == name)
+
   private[this] def writeMetrics(
     tree: MetricsTree,
     sb: StringBuilder,
@@ -55,10 +58,16 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
 
     // Re-write elements out of the prefix into labels
     val (prefix1, labels1) = prefix0 match {
-      case Seq("rt", router) => (Nil, labels0 :+ ("rt" -> router))
-      case Seq("dst", "path", path) => (Nil, labels0 :+ ("dst_path" -> path))
-      case Seq("dst", "id", id) => (Nil, labels0 :+ ("dst_id" -> id))
-      case Seq("path", path) => (Nil, labels0 :+ ("dst_path" -> path))
+      case Seq("rt", router) if !labelExists(labels0, "rt") =>
+        (Seq("rt"), labels0 :+ ("rt" -> router))
+      case Seq("rt", "dst", "path", path) if !labelExists(labels0, "dst_path") =>
+        (Seq("rt", "dst_path"), labels0 :+ ("dst_path" -> path))
+      case Seq("rt", "dst", "id", id) if !labelExists(labels0, "dst_id") =>
+        (Seq("rt", "dst_id"), labels0 :+ ("dst_id" -> id))
+      case Seq("rt", "dst_id", "path", path) if !labelExists(labels0, "dst_path") =>
+        (Seq("rt", "dst_id"), labels0 :+ ("dst_path" -> path))
+      case Seq("rt", "srv", srv) if !labelExists(labels0, "srv") =>
+        (Seq("rt", "srv"), labels0 :+ ("srv" -> srv))
       case _ => (prefix0, labels0)
     }
 

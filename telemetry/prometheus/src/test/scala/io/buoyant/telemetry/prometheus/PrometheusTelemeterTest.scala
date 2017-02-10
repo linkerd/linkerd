@@ -74,7 +74,7 @@ class PrometheusTelemeterTest extends FunSuite {
     val counter = stats.scope("rt", "incoming", "dst", "path", "/svc/foo").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
-    assert(rsp == "requests{rt=\"incoming\", dst_path=\"/svc/foo\", type=\"counter\"} 1\n")
+    assert(rsp == "rt:dst_path:requests{rt=\"incoming\", dst_path=\"/svc/foo\", type=\"counter\"} 1\n")
   }
 
   test("bound stats are labelled") {
@@ -82,7 +82,7 @@ class PrometheusTelemeterTest extends FunSuite {
     stats.scope("rt", "incoming", "dst", "id", "/#/bar").counter("requests").incr()
     val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp ==
-      "requests{rt=\"incoming\", dst_id=\"/#/bar\", type=\"counter\"} 1\n")
+      "rt:dst_id:requests{rt=\"incoming\", dst_id=\"/#/bar\", type=\"counter\"} 1\n")
   }
 
   test("bound stats with path scope are labelled") {
@@ -90,6 +90,14 @@ class PrometheusTelemeterTest extends FunSuite {
     stats.scope("rt", "incoming", "dst", "id", "/#/bar", "path", "/svc/foo").counter("requests").incr()
     val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp ==
-      "requests{rt=\"incoming\", dst_id=\"/#/bar\", dst_path=\"/svc/foo\", type=\"counter\"} 1\n")
+      "rt:dst_id:requests{rt=\"incoming\", dst_id=\"/#/bar\", dst_path=\"/svc/foo\", type=\"counter\"} 1\n")
+  }
+
+  test("server stats are labelled") {
+    val (stats, handler) = statsAndHandler
+    val counter = stats.scope("rt", "incoming", "srv", "127.0.0.1/4141").counter("requests")
+    counter.incr()
+    val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
+    assert(rsp == "rt:srv:requests{rt=\"incoming\", srv=\"127.0.0.1/4141\", type=\"counter\"} 1\n")
   }
 }
