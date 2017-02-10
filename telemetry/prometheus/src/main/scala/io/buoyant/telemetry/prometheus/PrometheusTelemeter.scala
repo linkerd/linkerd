@@ -65,7 +65,7 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
       case Seq("rt", "dst", "id", id) if !labelExists(labels0, "dst_id") =>
         (Seq("rt", "dst_id"), labels0 :+ ("dst_id" -> id))
       case Seq("rt", "dst_id", "path", path) if !labelExists(labels0, "dst_path") =>
-        (Seq("rt", "dst_id"), labels0 :+ ("dst_path" -> path))
+        (Seq("rt", "dst_id", "dst_path"), labels0 :+ ("dst_path" -> path))
       case Seq("rt", "srv", srv) if !labelExists(labels0, "srv") =>
         (Seq("rt", "srv"), labels0 :+ ("srv" -> srv))
       case _ => (prefix0, labels0)
@@ -90,15 +90,26 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         val summary = s.summary
         for (
           (stat, value) <- Seq(
-            "count" -> summary.count, "min" -> summary.min, "max" -> summary.max, "sum" -> summary.sum,
-            "p50" -> summary.p50, "p90" -> summary.p90, "p99" -> summary.p99, "p9990" -> summary.p9990,
-            "p9999" -> summary.p9999, "avg" -> summary.avg
+            "count" -> summary.count, "min" -> summary.min,
+            "max" -> summary.max, "sum" -> summary.sum, "avg" -> summary.avg
           )
         ) {
           sb.append(key)
           sb.append("_")
           sb.append(stat)
           sb.append(formatLabels(labels1))
+          sb.append(" ")
+          sb.append(value)
+          sb.append("\n")
+        }
+        for (
+          (percentile, value) <- Seq(
+            "0.5" -> summary.p50, "0.9" -> summary.p90, "0.99" -> summary.p99,
+            "0.999" -> summary.p9990, "0.9999" -> summary.p9999
+          )
+        ) {
+          sb.append(key)
+          sb.append(formatLabels(labels1 :+ ("percentile" -> percentile)))
           sb.append(" ")
           sb.append(value)
           sb.append("\n")
