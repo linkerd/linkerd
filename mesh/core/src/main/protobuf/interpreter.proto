@@ -14,7 +14,7 @@ service Interpreter {
 }
 
 message BindReq {
-  Path  = 1;
+  Path root = 1;
   Path name = 2;
   Dtab dtab = 3;
 }

@@ -30,7 +30,7 @@ message DtabRsp {
 }
 
 message DelegateTreeReq {
-  string ns = 1;
+  Path root = 1;
   PathNameTree tree = 2;
   Dtab dtab = 3;
 }

@@ -16,14 +16,15 @@ import io.linkerd.mesh.Converters._
  * An Interpreter backed by the io.buoyant.proto.namerd.Interpreter service.
  */
 object DelegatorService {
+
   def apply(
     store: DtabStore,
     namers: Map[Path, Namer],
     stats: StatsReceiver
   ): mesh.Delegator.Server =
-    new mesh.Delegator.Server(new ServerImpl(store, namers, stats))
+    new mesh.Delegator.Server(new Impl(store, namers, stats))
 
-  private[this] class ServerImpl(
+  private[this] class Impl(
     store: DtabStore,
     namers: Map[Path, Namer],
     stats: StatsReceiver
@@ -42,7 +43,7 @@ object DelegatorService {
     override def getDelegateTree(req: mesh.DelegateTreeReq): Future[mesh.DelegateTreeRsp] = req match {
       case mesh.DelegateTreeReq(None, _, _) => Future.exception(Errors.NoNamespaceStatus)
       case mesh.DelegateTreeReq(_, None, _) => Future.exception(Errors.NoNameStatus)
-      case mesh.DelegateTreeReq(Some(ns), Some(ptree), dtab0) =>
+      case mesh.DelegateTreeReq(Some(proot)), Some(ptree), dtab0) =>
         val tree = fromPathNameTree(ptree).map(Name.Path(_))
         val dtab = dtab0 match {
           case None => Dtab.empty

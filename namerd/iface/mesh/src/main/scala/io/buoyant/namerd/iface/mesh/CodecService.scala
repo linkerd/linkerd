@@ -11,10 +11,9 @@ import io.linkerd.mesh.Converters._
 
 object CodecService {
 
-  private[this] val server = new mesh.Codec.Server(ServerImpl)
-  def apply(): mesh.Codec.Server = server
+  def apply(): mesh.Codec.Server = Server
 
-  private[this] object ServerImpl extends mesh.Codec {
+  private[this] object Impl extends mesh.Codec {
 
     override def readPath(req: mesh.ReadPathReq): Future[mesh.ReadPathRsp] = req match {
       case mesh.ReadPathReq(None) => _transformReadPathRsp(ReturnEmptyPath)
@@ -36,6 +35,8 @@ object CodecService {
       case mesh.ShowDtabReq(Some(d)) => Future.value(mesh.ShowDtabRsp(Some(fromDtab(d).show)))
     }
   }
+
+  private[this] object Server extends mesh.Codec.Server(Impl)
 
   private[this] val ReturnEmptyPath = Return(Path.empty)
   private[this] val ReturnEmptyDtab = Return(Dtab.empty)
