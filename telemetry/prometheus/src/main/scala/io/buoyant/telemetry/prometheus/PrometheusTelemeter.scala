@@ -104,7 +104,7 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         for (
           (percentile, value) <- Seq(
             "0" -> summary.min, "0.5" -> summary.p50,
-            "0.9" -> summary.p90, "0.99" -> summary.p99,
+            "0.9" -> summary.p90, "0.95" -> summary.p95, "0.99" -> summary.p99,
             "0.999" -> summary.p9990, "0.9999" -> summary.p9999,
             "1" -> summary.max
           )

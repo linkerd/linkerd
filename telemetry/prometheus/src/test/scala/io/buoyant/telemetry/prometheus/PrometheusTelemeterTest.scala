@@ -49,6 +49,7 @@ class PrometheusTelemeterTest extends FunSuite {
                      |foo:bar:bas{quantile="0"} 1
                      |foo:bar:bas{quantile="0.5"} 1
                      |foo:bar:bas{quantile="0.9"} 1
+                     |foo:bar:bas{quantile="0.95"} 1
                      |foo:bar:bas{quantile="0.99"} 1
                      |foo:bar:bas{quantile="0.999"} 1
                      |foo:bar:bas{quantile="0.9999"} 1
@@ -62,6 +63,7 @@ class PrometheusTelemeterTest extends FunSuite {
                      |foo:bar:bas{quantile="0"} 1
                      |foo:bar:bas{quantile="0.5"} 1
                      |foo:bar:bas{quantile="0.9"} 2
+                     |foo:bar:bas{quantile="0.95"} 2
                      |foo:bar:bas{quantile="0.99"} 2
                      |foo:bar:bas{quantile="0.999"} 2
                      |foo:bar:bas{quantile="0.9999"} 2
