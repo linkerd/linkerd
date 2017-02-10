@@ -118,7 +118,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
   protected type ServerRsp
   protected type ServerStack = Stack[ServiceFactory[ServerReq, ServerRsp]]
 
-  /** Adapts a server  to a router */
+  /** Adapts a server to a router */
   protected def adapter: Filter[ServerReq, ServerRsp, RouterReq, RouterRsp]
 
   /** The default protocol-specific server configuration */
