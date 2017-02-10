@@ -386,8 +386,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       } finally await(s.close())
     val headers =
       body.split(",").map { kv =>
-        val parts = kv.split("=")
-        parts(0) -> parts(1)
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
       }.toMap
     assert(headers.keySet == Set(
       "l5d-dst-logical",
@@ -430,8 +430,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       } finally await(s.close())
     val headers =
       body.split(",").map { kv =>
-        val parts = kv.split("=")
-        parts(0) -> parts(1)
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
       }.toMap
     assert(headers.keySet == Set(
       "l5d-dst-logical",

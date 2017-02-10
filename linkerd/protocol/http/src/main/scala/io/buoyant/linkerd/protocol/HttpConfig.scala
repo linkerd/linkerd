@@ -70,8 +70,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   }
 
   override def clearServerContext(stk: ServerStack): ServerStack = {
-    super.clearServerContext(stk)
-      .remove(HttpTraceInitializer.role)
+    // Does NOT use the ClearContext module that forcibly clears the
+    // context. Instead, we just strip out headers on inbound requests.
+    stk.remove(HttpTraceInitializer.role)
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.clearServerModule)
   }
 
