@@ -15,13 +15,15 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  * <pre>
  * namers:
  * - kind: io.l5d.consul
- *   experimental: true
  *   host: consul.site.biz
  *   port: 8600
  *   includeTag: true
  *   useHealthCheck: false
  *   setHost: true
  *   token: some-consul-acl-token
+ *   consistencyMode: default
+ *   failFast: false
+ *   preferServiceAddress: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -39,7 +41,8 @@ case class ConsulConfig(
   token: Option[String] = None,
   setHost: Option[Boolean] = None,
   consistencyMode: Option[ConsistencyMode] = None,
-  failFast: Option[Boolean] = None
+  failFast: Option[Boolean] = None,
+  preferServiceAddress: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -77,11 +80,11 @@ case class ConsulConfig(
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
         )
     }
   }
