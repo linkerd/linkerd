@@ -5,7 +5,7 @@ define([
   'src/utils'
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
-    var ignoredClients = [];
+    var ignoredClients = {};
 
     function clientToMetric(client) {
       return { name: client }; //TODO: move to clientName only after v2 migration
@@ -21,7 +21,11 @@ define([
     }
 
     function getClientsToQuery(routers, routerName) {
-      return _.difference(routers.clients(routerName), ignoredClients);
+      var clients = routers.clients(routerName);
+      var nonIgnoredClients = _.difference(clients, ignoredClients[routerName]);
+
+      // if all clients are collapsed, let the combined graph show all clients
+      return _.isEmpty(nonIgnoredClients) ? clients : nonIgnoredClients;
     }
 
     function getQuery(routerName, clientsToQuery) {
@@ -30,6 +34,8 @@ define([
     }
 
     return function(metricsCollector, routers, routerName, $root, colors) {
+      ignoredClients[routerName] = [];
+
       var chart = new Utils.UpdateableChart(
         {
           minValue: 0,
@@ -57,23 +63,12 @@ define([
       var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
       chart.setMetrics(desiredMetrics);
 
-      var count = 0;
       var metricsListener = function(data) {
-        if (count < 5) {
-          // Hacky bug fix: discard the first few data points to fix the issue
-          // where the first values from /metrics are very large [linkerd#485]
-          count++;
-        } else {
-          var clientsToQuery = getClientsToQuery(routers, routerName);
-          var dataToDisplay = [];
+        var clientsToQuery = getClientsToQuery(routers, routerName);
+        var metricQuery = getQuery(routerName, clientsToQuery);
+        var dataToDisplay = Query.filter(metricQuery, data.specific);
 
-          if(!_.isEmpty(clientsToQuery)) {
-            var metricQuery = getQuery(routerName, clientsToQuery);
-            dataToDisplay = Query.filter(metricQuery, data.specific);
-          }
-
-          chart.updateMetrics(dataToDisplay);
-        }
+        chart.updateMetrics(dataToDisplay);
       };
 
       metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
@@ -85,11 +80,11 @@ define([
         },
 
         ignoreClient: function(client) {
-          ignoredClients.push(client);
+          ignoredClients[routerName].push(client);
         },
 
         unIgnoreClient: function(client) {
-          _.remove(ignoredClients, client);
+          _.remove(ignoredClients[routerName], client);
         },
 
         updateColors: function(newColors) {

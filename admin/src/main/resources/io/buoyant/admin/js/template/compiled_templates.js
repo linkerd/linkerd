@@ -1,4 +1,4 @@
-define(['Handlebars'], function(Handlebars) {
+define(['handlebars.runtime'], function(Handlebars) {
   Handlebars = Handlebars["default"];  var template = Handlebars.template, templates = Handlebars.templates = Handlebars.templates || {};
 templates['barchart'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;
@@ -290,6 +290,15 @@ templates['namerd_namespace'] = template({"1":function(container,depth0,helpers,
     + ((stack1 = helpers.each.call(alias1,(depth0 != null ? depth0.routers : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "    </small>\n  </h3>\n</div>\n";
 },"useData":true});
+templates['namerd_stats'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1;
+
+  return "<h2>Namerd stats</h2>\n<div class=\"namerd-metrics-container\">\n"
+    + ((stack1 = container.invokePartial(partials.metricPartial,(depth0 != null ? depth0.connections : depth0),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.metricPartial,(depth0 != null ? depth0.bindcache : depth0),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.metricPartial,(depth0 != null ? depth0.addrcache : depth0),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + "</div>\n";
+},"usePartial":true,"useData":true});
 templates['process_info'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
@@ -384,7 +393,7 @@ templates['router_container'] = template({"1":function(container,depth0,helpers,
     + alias2(alias1(depth0, depth0))
     + " row\" data-router=\""
     + alias2(alias1(depth0, depth0))
-    + "\">\n    <div class=\"summary row\"></div>\n\n    <div class=\"router-graph-header\">Requests per client</div>\n    <canvas class=\"router-graph\" height=\"181\"></canvas>\n\n    <div class=\"router-stats row\">\n      <div class=\"retries-bar-chart col-md-6\"></div>\n      <div class=\"retries-stats col-md-6\"></div>\n      <div class=\"clearfix\"></div>\n    </div>\n\n    <div class=\"clients router-clients\">\n      <div class=\"router-subsection-title\">Clients</div>\n    </div>\n    <div class=\"servers router-servers row\">\n      <div class=\"router-subsection-title\">Servers</div>\n    </div>\n  </div>\n";
+    + "\">\n    <div class=\"summary row\"></div>\n\n    <div class=\"combined-client-graph\">\n      <div class=\"router-graph-header\">Requests per client</div>\n      <canvas class=\"router-graph\" height=\"181\"></canvas>\n    </div>\n\n    <div class=\"router-stats row\">\n      <div class=\"retries-bar-chart col-md-6\"></div>\n      <div class=\"retries-stats col-md-6\"></div>\n      <div class=\"clearfix\"></div>\n    </div>\n\n    <div class=\"clients router-clients\">\n      <div class=\"router-subsection-title\">Clients</div>\n    </div>\n    <div class=\"servers router-servers row\">\n      <div class=\"router-subsection-title\">Servers</div>\n    </div>\n  </div>\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 

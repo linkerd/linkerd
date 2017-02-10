@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/utils',
   'src/query',
   'src/success_rate_graph',
@@ -68,15 +68,16 @@ define([
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
           {suffix: "requests", label: "Requests"},
-          {suffix: "connections", label: "Connections"},
+          {suffix: "connections", label: "Connections", isGauge: true},
           {suffix: "success", label: "Successes"},
           {suffix: "failures", label: "Failures"},
-          {suffix: "loadbalancer/size", label: "Load balancer pool size"},
-          {suffix: "loadbalancer/available", label: "Load balancers available"}
+          {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
+          {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
         ], function(metric) {
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
+          isGauge: metric.isGauge,
           query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
         }
       });
@@ -114,11 +115,12 @@ define([
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
         var clientData = Query.filter(defn.query, data);
+        var value = _.isEmpty(clientData) ? null :
+          (defn.isGauge ? clientData[0].value : clientData[0].delta);
         mem[defn.metricSuffix] = {
           description: defn.label,
-          value: _.isEmpty(clientData) ? null : clientData[0].delta
+          value: value
         };
-
         return mem;
       }, {});
 
@@ -184,8 +186,7 @@ define([
       }
 
       function metricsHandler(data) {
-        var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
-        var summaryData = getSummaryData(filteredData, metricDefinitions);
+        var summaryData = getSummaryData(data.specific, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));

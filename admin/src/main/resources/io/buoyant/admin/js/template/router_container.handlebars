@@ -2,8 +2,10 @@
   <div class="router router-{{this}} row" data-router="{{this}}">
     <div class="summary row"></div>
 
-    <div class="router-graph-header">Requests per client</div>
-    <canvas class="router-graph" height="181"></canvas>
+    <div class="combined-client-graph">
+      <div class="router-graph-header">Requests per client</div>
+      <canvas class="router-graph" height="181"></canvas>
+    </div>
 
     <div class="router-stats row">
       <div class="retries-bar-chart col-md-6"></div>

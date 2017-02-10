@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/router_server',
   'template/compiled_templates'
 ], function($, _, Handlebars, RouterServer, templates) {

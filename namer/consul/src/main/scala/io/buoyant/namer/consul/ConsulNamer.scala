@@ -36,7 +36,7 @@ object ConsulNamer {
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(3) match {
         case id@Path.Utf8(dc, tag, service) =>
-          val k = SvcKey(service, Some(tag))
+          val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
           lookup(dc, k, prefix ++ id, path.drop(3))
 
         case _ => Activity.value(NameTree.Neg)
@@ -48,7 +48,7 @@ object ConsulNamer {
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(2) match {
         case id@Path.Utf8(dc, service) =>
-          val k = SvcKey(service, None)
+          val k = SvcKey(service.toLowerCase, None)
           lookup(dc, k, prefix ++ id, path.drop(2))
 
         case _ => Activity.value(NameTree.Neg)

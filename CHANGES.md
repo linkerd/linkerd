@@ -1,6 +1,6 @@
 ## Upcoming Release
 
-* Add `io.l5d.usage` telemeter for opt-in usage data collection.
+* Add `io.l5d.usage` telemeter for opt-in usage data collection
 * Admin dashboard
   * Sorts clients and servers alphabetically.
   * Displays routers in the order that they are defined.
@@ -15,6 +15,7 @@
 * Change the default `dstPrefix` from the protocol name to `/svc`.
 * Change the default HTTP identifier to the `io.l5d.header.token` identifier.
 * Add the `clearContext` server configuration option.
+* Make `io.l5d.consul` case-insensitive
 
 ## 0.8.6 2017-01-19
 
