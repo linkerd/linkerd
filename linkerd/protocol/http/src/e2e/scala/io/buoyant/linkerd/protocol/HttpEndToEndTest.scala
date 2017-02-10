@@ -362,7 +362,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val yaml =
       s"""|routers:
           |- protocol: http
-          |  dtab: /http/1.1/* => /$$/inet/127.1/${downstream.port}
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  servers:
           |  - port: 0
           |    clearContext: true
@@ -392,7 +392,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val yaml =
       s"""|routers:
           |- protocol: http
-          |  dtab: /http/1.1/* => /$$/inet/127.1/${downstream.port}
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  servers:
           |  - port: 0
           |""".stripMargin
