@@ -48,11 +48,11 @@ class PrometheusTelemeterTest extends FunSuite {
                      |foo:bar:bas_max 1
                      |foo:bar:bas_sum 1
                      |foo:bar:bas_avg 1.0
-                     |foo:bar:bas{percentile="0.5"} 1
-                     |foo:bar:bas{percentile="0.9"} 1
-                     |foo:bar:bas{percentile="0.99"} 1
-                     |foo:bar:bas{percentile="0.999"} 1
-                     |foo:bar:bas{percentile="0.9999"} 1
+                     |foo:bar:bas{quantile="0.5"} 1
+                     |foo:bar:bas{quantile="0.9"} 1
+                     |foo:bar:bas{quantile="0.99"} 1
+                     |foo:bar:bas{quantile="0.999"} 1
+                     |foo:bar:bas{quantile="0.9999"} 1
                      |""".stripMargin)
     stat.add(2.0f)
     val rsp2 = await(handler(Request("/admin/metrics/prometheus"))).contentString
@@ -61,11 +61,11 @@ class PrometheusTelemeterTest extends FunSuite {
                      |foo:bar:bas_max 2
                      |foo:bar:bas_sum 3
                      |foo:bar:bas_avg 1.5
-                     |foo:bar:bas{percentile="0.5"} 1
-                     |foo:bar:bas{percentile="0.9"} 2
-                     |foo:bar:bas{percentile="0.99"} 2
-                     |foo:bar:bas{percentile="0.999"} 2
-                     |foo:bar:bas{percentile="0.9999"} 2
+                     |foo:bar:bas{quantile="0.5"} 1
+                     |foo:bar:bas{quantile="0.9"} 2
+                     |foo:bar:bas{quantile="0.99"} 2
+                     |foo:bar:bas{quantile="0.999"} 2
+                     |foo:bar:bas{quantile="0.9999"} 2
                      |""".stripMargin)
   }
 

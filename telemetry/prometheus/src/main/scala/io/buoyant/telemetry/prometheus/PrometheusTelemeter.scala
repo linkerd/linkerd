@@ -109,7 +109,7 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
           )
         ) {
           sb.append(key)
-          sb.append(formatLabels(labels1 :+ ("percentile" -> percentile)))
+          sb.append(formatLabels(labels1 :+ ("quantile" -> percentile)))
           sb.append(" ")
           sb.append(value)
           sb.append("\n")
