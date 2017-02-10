@@ -37,14 +37,14 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
   private[this] def escapeKey(key: String) = disallowedChars.replaceAllIn(key, "_")
 
   private[this] def formatLabels(labels: Seq[(String, String)]): String =
-    labels.map {
-      case (k, v) =>
-        s"""$k="$v""""
-    }.mkString("{", ", ", "}")
-
-  private[this] val CounterLabel = "type" -> "counter"
-  private[this] val GaugeLabel = "type" -> "gauge"
-  private[this] val StatLabel = "type" -> "stat"
+    if (labels.nonEmpty) {
+      labels.map {
+        case (k, v) =>
+          s"""$k="$v""""
+      }.mkString("{", ", ", "}")
+    } else {
+      ""
+    }
 
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
     labels.exists(_._1 == name)
@@ -76,13 +76,13 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
     tree.metric match {
       case c: Metric.Counter =>
         sb.append(key)
-        sb.append(formatLabels(labels1 :+ CounterLabel))
+        sb.append(formatLabels(labels1))
         sb.append(" ")
         sb.append(c.get)
         sb.append("\n")
       case g: Metric.Gauge =>
         sb.append(key)
-        sb.append(formatLabels(labels1 :+ GaugeLabel))
+        sb.append(formatLabels(labels1))
         sb.append(" ")
         sb.append(g.get)
         sb.append("\n")
@@ -96,7 +96,9 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
           )
         ) {
           sb.append(key)
-          sb.append(formatLabels(labels1 :+ StatLabel :+ ("stat" -> stat)))
+          sb.append("_")
+          sb.append(stat)
+          sb.append(formatLabels(labels1))
           sb.append(" ")
           sb.append(value)
           sb.append("\n")
