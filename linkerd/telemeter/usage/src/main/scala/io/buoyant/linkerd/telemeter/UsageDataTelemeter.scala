@@ -25,6 +25,8 @@ import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
 import io.buoyant.telemetry._
 import java.nio.ByteBuffer
+import java.text.SimpleDateFormat
+import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 
@@ -68,7 +70,7 @@ private[telemeter] object UsageDataTelemeter {
       containerManager = mkContainerManager,
       osName = Some(System.getProperty("os.name")),
       osVersion = Some(System.getProperty("os.version")),
-      startTime = None, //TODO
+      startTime = mkStartTime(metrics),
       routers = mkRouters(config),
       namers = mkNamers(config),
       counters = mkCounters(metrics),
@@ -78,18 +80,27 @@ private[telemeter] object UsageDataTelemeter {
   def mkContainerManager: Option[String] =
     sys.env.get("MESOS_TASK_ID").map(_ => "mesos")
 
+  def mkStartTime(metrics: MetricsTree): Option[String] = {
+    val tz = TimeZone.getTimeZone("UTC")
+    val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
+    df.setTimeZone(tz)
+    val uptime = gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric).map(_.toLong).getOrElse(0l)
+    Some(df.format(new Date((System.currentTimeMillis() - uptime).toInt)))
+  }
+
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
     config.namers.getOrElse(Seq()).map(_.kind)
 
-  def gagueValue(metric: Metric): Option[Double] = metric match {
+  def gaugeValue(metric: Metric): Option[Double] = metric match {
     case g: Metric.Gauge => Some(g.get)
     case _ => None
   }
 
   def mkGauges(metrics: MetricsTree): Seq[Gauge] =
     Seq(
-      Gauge(Some("jvm_mem"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
-      Gauge(Some("jvm/gc/msec"), gagueValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric))
+      Gauge(Some("jvm_mem"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
+      Gauge(Some("jvm/gc/msec"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
+      Gauge(Some("jvm/uptime"), gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric))
     )
 
   def counterValue(metric: Metric): Option[Long] = metric match {
