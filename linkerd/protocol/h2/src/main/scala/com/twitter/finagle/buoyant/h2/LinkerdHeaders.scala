@@ -81,11 +81,12 @@ object LinkerdHeaders {
 
         val deadline = new Deadline.ClearServerFilter
         val dtab = new Dtab.ClearServerFilter
-        val sample = new Trace.ClearServerFilter
+        val sample = new Sample.ClearServerFilter
         val trace = new Trace.ClearServerFilter
+        val misc = new ClearMiscServerFilter
 
         def make(next: ServiceFactory[Request, Response]) =
-          deadline.andThen(dtab).andThen(sample).andThen(trace).andThen(next)
+          deadline.andThen(dtab).andThen(sample).andThen(trace).andThen(misc).andThen(next)
       }
 
     /**
@@ -444,6 +445,17 @@ object LinkerdHeaders {
           def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
             new BoundFilter(dst.name).andThen(factory)
         }
+    }
+  }
+
+  class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
+    def apply(req: Request, service: Service[Request, Response]) = {
+      for (k <- req.headers.keys) {
+        if (k.toLowerCase.startsWith(Headers.Prefix)) {
+          req.headerMap.remove(k)
+        }
+      }
+      service(req)
     }
   }
 

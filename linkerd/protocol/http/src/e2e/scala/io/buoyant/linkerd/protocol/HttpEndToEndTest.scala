@@ -355,9 +355,17 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   test("with clearContext") {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
-      rsp.contentString = req.headerMap("l5d-ctx-dtab")
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
       rsp
     }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
 
     val yaml =
       s"""|routers:
@@ -370,24 +378,39 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.load(yaml)
     val router = linker.routers.head.initialize()
     val s = router.servers.head.serve()
-    try {
-      val c = upstream(s)
+    val body =
       try {
-        val localDtab = "/foo=>/bar"
-        val req = Request()
-        req.host = "test"
-        req.headerMap("l5d-dtab") = localDtab
-        assert(await(c(req)).contentString == "")
-      } finally await(c.close())
-    } finally await(s.close())
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val parts = kv.split("=")
+        parts(0) -> parts(1)
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-trace"
+    ))
   }
 
   test("without clearContext") {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
-      rsp.contentString = req.headerMap("l5d-ctx-dtab")
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
       rsp
     }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
 
     val yaml =
       s"""|routers:
@@ -399,15 +422,25 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.load(yaml)
     val router = linker.routers.head.initialize()
     val s = router.servers.head.serve()
-    try {
-      val c = upstream(s)
+    val body =
       try {
-        val localDtab = "/foo=>/bar"
-        val req = Request()
-        req.host = "test"
-        req.headerMap("l5d-dtab") = localDtab
-        assert(await(c(req)).contentString == localDtab)
-      } finally await(c.close())
-    } finally await(s.close())
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val parts = kv.split("=")
+        parts(0) -> parts(1)
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-dtab",
+      "l5d-ctx-trace",
+      "l5d-ctx-thing"
+    ))
+    assert(headers.get("l5d-ctx-dtab") == Some(localDtab))
   }
 }

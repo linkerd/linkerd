@@ -9,16 +9,16 @@ object ClearContext {
   val role = Stack.Role("ClearContext")
   val description = "May clear local and broadcast contexts from inbound requests"
 
-  case class Param(enabled: Boolean)
-  implicit object Param extends Stack.Param[Param] {
-    val default = Param(false)
+  case class Enabled(enabled: Boolean)
+  implicit object Enabled extends Stack.Param[Enabled] {
+    val default = Enabled(false)
   }
 
   def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-    new Stack.Module1[Param, ServiceFactory[Req, Rsp]] {
+    new Stack.Module1[Enabled, ServiceFactory[Req, Rsp]] {
       val role = ClearContext.role
       val description = ClearContext.description
-      def make(_param: Param, next: ServiceFactory[Req, Rsp]) = {
+      def make(_param: Enabled, next: ServiceFactory[Req, Rsp]) = {
         if (_param.enabled) filter.andThen(next)
         else next
       }

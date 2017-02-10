@@ -95,7 +95,7 @@ class ServerConfig { config =>
   protected def serverParams: Stack.Params = Stack.Params.empty
     .maybeWith(tls.map(netty3Tls(_)))
     .maybeWith(tls.map(netty4Tls(_)))
-    .maybeWith(clearContext.map(ClearContext.Param(_))) +
+    .maybeWith(clearContext.map(ClearContext.Enabled(_))) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore

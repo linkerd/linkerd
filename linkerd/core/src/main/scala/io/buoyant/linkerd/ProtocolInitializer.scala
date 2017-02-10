@@ -88,9 +88,9 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
       }
 
       val servable = servers.map { s =>
-        val stk = s.params[ClearContext.Param] match {
-          case ClearContext.Param(true) => clearServerContext(defaultServer.stack)
-          case ClearContext.Param(false) => defaultServer.stack
+        val stk = s.params[ClearContext.Enabled] match {
+          case ClearContext.Enabled(true) => clearServerContext(defaultServer.stack)
+          case ClearContext.Enabled(false) => defaultServer.stack
         }
 
         val stacked = defaultServer
