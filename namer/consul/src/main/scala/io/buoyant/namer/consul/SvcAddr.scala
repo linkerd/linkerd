@@ -33,6 +33,7 @@ private[consul] object SvcAddr {
     key: SvcKey,
     domain: Option[String],
     consistency: Option[v1.ConsistencyMode] = None,
+    preferServiceAddress: Option[Boolean] = None,
     stats: Stats
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
@@ -45,7 +46,7 @@ private[consul] object SvcAddr {
         blockingIndex = index,
         consistency = consistency,
         retry = true
-      ).map(indexedToAddresses)
+      ).map(indexedToAddresses(preferServiceAddress))
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
@@ -104,9 +105,12 @@ private[consul] object SvcAddr {
         Addr.Metadata(Metadata.authority -> authority)
     }
 
-  private[this] val indexedToAddresses: v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
+  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean]): v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
     case v1.Indexed(nodes, idx) =>
-      val addrs = nodes.flatMap(serviceNodeToAddr).toSet
+      val addrs = preferServiceAddress match {
+        case Some(false) => nodes.flatMap(serviceNodeToNodeAddr).toSet
+        case _ => nodes.flatMap(serviceNodeToAddr).toSet
+      }
       v1.Indexed(addrs, idx)
   }
 
@@ -117,6 +121,16 @@ private[consul] object SvcAddr {
     (n.Address, n.ServiceAddress, n.ServicePort) match {
       case (_, Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
       case (Some(ip), _, Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
+      case _ => None
+    }
+  }
+
+  /**
+   * Always use node IPs. Invalid addresses are ignored.
+   */
+  private val serviceNodeToNodeAddr: v1.ServiceNode => Traversable[Address] = { n =>
+    (n.Address, n.ServicePort) match {
+      case (Some(ip), Some(port)) if !ip.isEmpty => Try(Address(ip, port)).toOption
       case _ => None
     }
   }

@@ -12,7 +12,7 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = ConsulConfig(None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -40,6 +40,8 @@ class ConsulTest extends FunSuite {
                     |includeTag: true
                     |setHost: true
                     |consistencyMode: stale
+                    |failFast: true
+                    |preferServiceAddress: false
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -50,6 +52,8 @@ class ConsulTest extends FunSuite {
     assert(consul.setHost == Some(true))
     assert(consul.includeTag == Some(true))
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
+    assert(consul.failFast == Some(true))
+    assert(consul.preferServiceAddress == Some(false))
     assert(!consul.disabled)
   }
 }

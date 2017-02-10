@@ -8,7 +8,8 @@
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
   TTwitter Thrift protocol.
-* Rename `baseDtab` router property to `dtab`.
+* Add `preferServiceAddress` option to `io.l5d.consul` namer
+* Rename `baseDtab` router property to `dtab`
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
 * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
