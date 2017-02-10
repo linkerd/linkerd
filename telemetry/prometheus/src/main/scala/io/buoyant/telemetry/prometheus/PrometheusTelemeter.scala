@@ -8,6 +8,12 @@ import com.twitter.util.{Awaitable, Closable, Future}
 import io.buoyant.admin.Admin
 import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
 
+/**
+ * This telemeter exposes metrics data in the Prometheus format, served on
+ * an admin endpoint.  It does not provide a StatsReceiver or Tracer.  It reads
+ * histogram summaries directly off of the MetricsTree and assumes that stats
+ * are being snapshotted at some appropriate interval.
+ */
 class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithHandlers {
 
   private[prometheus] val handler = Service.mk { request: Request =>
@@ -40,13 +46,14 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
   private[this] val GaugeLabel = "type" -> "gauge"
   private[this] val StatLabel = "type" -> "stat"
 
-  def writeMetrics(
+  private[this] def writeMetrics(
     tree: MetricsTree,
     sb: StringBuilder,
     prefix0: Seq[String] = Nil,
     labels0: Seq[(String, String)] = Nil
   ): Unit = {
 
+    // Re-write elements out of the prefix into labels
     val (prefix1, labels1) = prefix0 match {
       case Seq("rt", router) => (Nil, labels0 :+ ("rt" -> router))
       case Seq("dst", "path", path) => (Nil, labels0 :+ ("dst_path" -> path))
