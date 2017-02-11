@@ -111,8 +111,7 @@ object Linker {
 
       val metrics = MetricsTree()
 
-      val snapshotInterval = histogramSnapshotInterval().toLong.seconds
-      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, snapshotInterval, DefaultTimer.twitter)
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
 
       val telemeters = telemetry.toSeq.flatten.map {
         case t if t.disabled =>

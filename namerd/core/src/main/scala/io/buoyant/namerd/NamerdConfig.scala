@@ -33,8 +33,7 @@ private[namerd] case class NamerdConfig(
 
     val metrics = MetricsTree()
 
-    val snapshotInterval = histogramSnapshotInterval().toLong.seconds
-    val telemeter = new AdminMetricsExportTelemeter(metrics, snapshotInterval, DefaultTimer.twitter)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
 
     val stats = new MetricsTreeStatsReceiver(metrics)
     JvmStats.register(stats)
