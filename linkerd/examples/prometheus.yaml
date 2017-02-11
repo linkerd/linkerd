@@ -9,5 +9,4 @@ routers:
   - port: 4140
 
 telemetry:
-- kind: io.l5d.recentRequests
-  sampleRate: 1.0
+- kind: io.l5d.prometheus

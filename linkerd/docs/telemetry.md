@@ -9,46 +9,25 @@ regardless of kind. Telemeters may also have kind-specific parameters. </aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.commonMetrics`](#commonmetrics), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), [`io.l5d.usage`](#usage), or [`io.l5d.zipkin`](#zipkin-telemeter).
+kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), [`io.l5d.usage`](#usage), or [`io.l5d.zipkin`](#zipkin-telemeter).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
-## CommonMetrics
+## Prometheus
 
-> Example CommonMetrics config
+> Example Prometheus config
 
 ```yaml
 telemetry:
-- kind: io.l5d.commonMetrics
+- kind: io.l5d.prometheus
 ```
 
-kind: `io.l5d.commonMetrics`
+kind: `io.l5d.prometheus`
 
 Exposes admin endpoints:
 
-* `/admin/metrics`: retrieve a given set of metrics in [twitter-server](https://twitter.github.io/twitter-server/) format
-* `/admin/metrics.json`: retrieve all metrics in [twitter-server](https://twitter.github.io/twitter-server/) format
 * `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io/) format
 
 This telemeter has no additional parameters.
-
-## Admin Metrics Export
-
-> Example Admin Metrics Export config
-
-```yaml
-telemetry:
-- kind: io.l5d.adminMetricsExport
-  snapshotIntervalSecs: 60
-```
-
-kind: `io.l5d.adminMetricsExport`
-
-Exposes admin endpoint:
-
-* `/admin/metrics.json`: retrieve all metrics in [twitter-server](https://twitter.github.io/twitter-server/) format
-
-This is a replacement for the `io.l5d.commonMetrics` telemeter which will be deprecated in the
-future.
 
 ## StatsD (experimental)
 
@@ -131,7 +110,7 @@ capacity   | 10            | The maximum number of recent traces to store
 
 ```yaml
 telemetry:
- - kind: io.l5d.commonMetrics
+ - kind: io.l5d.prometheus
  - kind: io.l5d.usage
 ```
 

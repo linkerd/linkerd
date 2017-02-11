@@ -31,7 +31,6 @@ namers:
   rootDir: disco
 
 telemetry:
-- kind: io.l5d.commonMetrics
 - kind: io.l5d.statsd
   experimental: true
   prefix: linkerd
@@ -170,7 +169,6 @@ namer's prefix. See [namers](#namers).
 
 ```yaml
 telemetry:
-- kind: io.l5d.commonMetrics
 - kind: io.l5d.statsd
   experimental: true
   prefix: linkerd

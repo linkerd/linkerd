@@ -1,11 +1,12 @@
 package io.buoyant.linkerd
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
-import com.twitter.finagle.util.LoadService
+import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
 import com.twitter.logging.Logger
 import com.twitter.server.util.JvmStats
@@ -14,6 +15,7 @@ import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
 import io.buoyant.telemetry._
+import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -103,22 +105,21 @@ object Linker {
     admin: Option[AdminConfig]
   ) {
 
-    def mk(defaultTelemeter: Telemeter = NullTelemeter): Linker = {
+    def mk(): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
       val metrics = MetricsTree()
 
-      val telemeters = telemetry match {
-        case None => Seq(defaultTelemeter)
-        case Some(telemeters) => telemeters.map {
-          case t if t.disabled =>
-            val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
-              "explicitly enabled by setting the `experimental' parameter to `true'."
-            throw new IllegalArgumentException(msg) with NoStackTrace
-          case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
-        }
-      }
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+
+      val telemeters = telemetry.toSeq.flatten.map {
+        case t if t.disabled =>
+          val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
+            "explicitly enabled by setting the `experimental' parameter to `true'."
+          throw new IllegalArgumentException(msg) with NoStackTrace
+        case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
+      } :+ adminTelemeter
 
       // Telemeters may provide StatsReceivers.
       val stats = mkStats(metrics, telemeters)
