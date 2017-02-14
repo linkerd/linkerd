@@ -148,7 +148,7 @@ object Client {
   }
 
   /**
-   * Constructs an ACtivity that, when observed, calls `open()` to obtain a
+   * Constructs an Activity that, when observed, calls `open()` to obtain a
    * gRPC stream, publishing updates into the Activity's state.
    *
    * When the stream returns an error, the state is updated to
