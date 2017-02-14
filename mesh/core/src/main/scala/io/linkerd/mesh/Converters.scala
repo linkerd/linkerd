@@ -63,13 +63,13 @@ object Converters {
 
   val toPathNameTree: finagle.NameTree[finagle.Path] => mesh.PathNameTree = {
     case finagle.NameTree.Neg =>
-      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Nop(mesh.PathNameTree.Nop.NEG)))
+      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Neg(mesh.PathNameTree.Neg())))
 
     case finagle.NameTree.Fail =>
-      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Nop(mesh.PathNameTree.Nop.FAIL)))
+      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Fail(mesh.PathNameTree.Fail())))
 
     case finagle.NameTree.Empty =>
-      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Nop(mesh.PathNameTree.Nop.EMPTY)))
+      mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Empty(mesh.PathNameTree.Empty())))
 
     case finagle.NameTree.Leaf(path: finagle.Path) =>
       val pp = toPath(path)
@@ -88,12 +88,9 @@ object Converters {
   }
 
   val fromPathNameTree: mesh.PathNameTree => finagle.NameTree[finagle.Path] = {
-    case mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Nop(nop))) =>
-      nop match {
-        case mesh.PathNameTree.Nop.NEG => finagle.NameTree.Neg
-        case mesh.PathNameTree.Nop.FAIL => finagle.NameTree.Fail
-        case mesh.PathNameTree.Nop.EMPTY => finagle.NameTree.Empty
-      }
+    case mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Neg(_))) => finagle.NameTree.Neg
+    case mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Fail(_))) => finagle.NameTree.Fail
+    case mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Empty(_))) => finagle.NameTree.Empty
 
     case mesh.PathNameTree(Some(mesh.PathNameTree.OneofNode.Leaf(mesh.PathNameTree.Leaf(Some(path))))) =>
       finagle.NameTree.Leaf(fromPath(path))

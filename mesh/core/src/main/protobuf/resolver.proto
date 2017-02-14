@@ -38,17 +38,12 @@ message Endpoint {
 
   int32 port = 3;
 
-  /** Endpoint-specific metadata */
+  /** Endpoint-specific diagonstic metadata */
   message Meta {
-    /**
-     * Suggested HTTP authority to be used for inbound requests.
-     */
-    string authority = 1;
-
     /**
      * In scheduled environments, a diagnostic name for the parent node.
      */
-    string nodeName = 2;
+    string nodeName = 1;
   }
   Meta meta = 4;
 }
@@ -65,15 +60,6 @@ message Replicas {
 
   message Bound {
     repeated Endpoint endpoints = 1;
-
-    /** Cluster-level metadata */
-    message Meta {
-      /**
-       * Suggested HTTP authority to be used for inbound requests.
-       */
-      string authority = 1;    
-    }
-    Meta meta = 2;
   }
 
   oneof result {

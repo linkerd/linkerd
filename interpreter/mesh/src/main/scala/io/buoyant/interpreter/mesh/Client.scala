@@ -180,7 +180,6 @@ object Client {
       val ipBytes = Buf.ByteArray.Owned.extract(ipBuf)
       val ip = InetAddress.getByAddress(ipBytes)
       val meta = Seq.empty[(String, Any)] ++
-        pmeta.flatMap(_.authority).map(Metadata.authority -> _) ++
         pmeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
       Address.Inet(new InetSocketAddress(ip, port), Addr.Metadata(meta: _*))
   }
@@ -193,11 +192,8 @@ object Client {
       case mesh.Replicas.OneofResult.Failed(mesh.Replicas.Failed(msg)) =>
         Addr.Failed(msg.getOrElse("unknown"))
 
-      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, pmeta)) =>
-        val addrs = paddrs.collect(_collectFromEndpoint)
-        val meta = Seq.empty[(String, Any)] ++
-          pmeta.flatMap(_.authority).map(Metadata.authority -> _)
-        Addr.Bound(addrs.toSet, Addr.Metadata(meta: _*))
+      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs)) =>
+        Addr.Bound(paddrs.collect(_collectFromEndpoint).toSet)
     }
   }
 
@@ -212,9 +208,9 @@ object Client {
     def bindTree(ptree: mesh.BoundNameTree): NameTree[Name.Bound] = {
       ptree.node match {
         case None => throw new IllegalArgumentException("No bound tree")
-        case Some(BoundTreeNeg) => NameTree.Neg
-        case Some(BoundTreeFail) => NameTree.Fail
-        case Some(BoundTreeEmpty) => NameTree.Empty
+        case Some(mesh.BoundNameTree.OneofNode.Neg(_)) => NameTree.Neg
+        case Some(mesh.BoundNameTree.OneofNode.Fail(_)) => NameTree.Fail
+        case Some(mesh.BoundNameTree.OneofNode.Empty(_)) => NameTree.Empty
 
         case Some(mesh.BoundNameTree.OneofNode.Leaf(mesh.BoundNameTree.Leaf(Some(pid), presidual))) =>
           val id = fromPath(pid)
@@ -241,10 +237,6 @@ object Client {
     bindTree _
   }
 
-  private[this] val BoundTreeNeg = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.NEG)
-  private[this] val BoundTreeFail = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.FAIL)
-  private[this] val BoundTreeEmpty = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.EMPTY)
-
   private[this] def mkFromBoundDelegateTree(
     resolve: Path => Var[Addr]
   ): mesh.BoundDelegateTree => DelegateTree[Name.Bound] = {
@@ -253,11 +245,11 @@ object Client {
         val dpath = fromPath(dpath0)
         val dentry = fromDentry(dentry0)
         node match {
-          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.NEG) =>
+          case mesh.BoundDelegateTree.OneofNode.Neg(_) =>
             DelegateTree.Neg(dpath, dentry)
-          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.FAIL) =>
+          case mesh.BoundDelegateTree.OneofNode.Fail(_) =>
             DelegateTree.Fail(dpath, dentry)
-          case mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.EMPTY) =>
+          case mesh.BoundDelegateTree.OneofNode.Empty(_) =>
             DelegateTree.Empty(dpath, dentry)
 
           case mesh.BoundDelegateTree.OneofNode.Leaf(mesh.BoundDelegateTree.Leaf(Some(pid), Some(ppath))) =>

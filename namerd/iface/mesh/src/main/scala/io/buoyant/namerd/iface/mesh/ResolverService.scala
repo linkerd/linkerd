@@ -67,10 +67,7 @@ object ResolverService {
 
     case Addr.Bound(addrs, meta) =>
       val paddrs = addrs.collect(_collectToEndpoint).toSeq
-      val pmeta = mesh.Replicas.Bound.Meta(
-        authority = meta.get(Metadata.authority).map(_.toString)
-      )
-      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, Some(pmeta)))
+      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs))
   }
 
   private[this] val toReplicas: Addr => mesh.Replicas =
@@ -83,7 +80,6 @@ object ResolverService {
     case Address.Inet(isa, meta) =>
       val port = isa.getPort
       val pmeta = mesh.Endpoint.Meta(
-        authority = meta.get(Metadata.authority).map(_.toString),
         nodeName = meta.get(Metadata.nodeName).map(_.toString)
       )
       isa.getAddress match {

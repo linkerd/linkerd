@@ -143,11 +143,11 @@ object DelegatorService {
 
   private[this] val toDelegateTree: DelegateTree[Name.Bound] => mesh.BoundDelegateTree = {
     case DelegateTree.Neg(p, d) =>
-      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.NEG))
+      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Neg(mesh.BoundDelegateTree.Neg()))
     case DelegateTree.Fail(p, d) =>
-      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.FAIL))
+      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Fail(mesh.BoundDelegateTree.Fail()))
     case DelegateTree.Empty(p, d) =>
-      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.EMPTY))
+      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Empty(mesh.BoundDelegateTree.Empty()))
 
     case DelegateTree.Delegate(p, d, t) =>
       mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Delegate(toDelegateTree(t)))
@@ -160,7 +160,7 @@ object DelegatorService {
 
     case DelegateTree.Leaf(p, d, name) =>
       val node = mkBoundDelegateTreeLeaf(name) match {
-        case None => mesh.BoundDelegateTree.OneofNode.Nop(mesh.BoundDelegateTree.Nop.NEG)
+        case None => mesh.BoundDelegateTree.OneofNode.Neg(mesh.BoundDelegateTree.Neg())
         case Some(leaf) => mesh.BoundDelegateTree.OneofNode.Leaf(leaf)
       }
       mkBoundDelegateTree(p, d, node)

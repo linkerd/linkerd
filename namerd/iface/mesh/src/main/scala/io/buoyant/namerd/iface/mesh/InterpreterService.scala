@@ -76,9 +76,9 @@ object InterpreterService {
   private[this] val toBoundWeightedTree: NameTree.Weighted[Name.Bound] => mesh.BoundNameTree.Union.Weighted =
     wt => mesh.BoundNameTree.Union.Weighted(Some(wt.weight), Some(toBoundNameTree(wt.tree)))
 
-  private[this] val BoundTreeNeg = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.NEG)
-  private[this] val BoundTreeFail = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.FAIL)
-  private[this] val BoundTreeEmpty = mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.EMPTY)
+  private[this] val BoundTreeNeg = mesh.BoundNameTree.OneofNode.Neg(mesh.BoundNameTree.Neg())
+  private[this] val BoundTreeFail = mesh.BoundNameTree.OneofNode.Fail(mesh.BoundNameTree.Fail())
+  private[this] val BoundTreeEmpty = mesh.BoundNameTree.OneofNode.Empty(mesh.BoundNameTree.Empty())
 
   private[this] val toBoundNameTree: NameTree[Name.Bound] => mesh.BoundNameTree = { tree =>
     val ptree = tree match {
@@ -95,7 +95,7 @@ object InterpreterService {
             mesh.BoundNameTree.OneofNode.Leaf(leaf)
 
           case _ =>
-            mesh.BoundNameTree.OneofNode.Nop(mesh.BoundNameTree.Nop.NEG)
+            mesh.BoundNameTree.OneofNode.Neg(mesh.BoundNameTree.Neg())
         }
 
       case NameTree.Alt(trees@_*) =>

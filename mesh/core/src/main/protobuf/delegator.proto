@@ -44,20 +44,22 @@ message BoundDelegateTree {
   Path path = 1;
   Dtab.Dentry dentry = 2;
   oneof node {
-    Nop nop = 3;
-    Alt alt = 4;
-    Union union = 5;
-    Leaf leaf = 6;
-    BoundDelegateTree delegate = 7;
-    Transformation transformation = 8;
-    string exception = 9;
+    Neg neg = 3;
+    Fail fail = 4;
+    Empty empty = 5;
+    Alt alt = 6;
+    Union union = 7;
+    Leaf leaf = 8;
+
+    BoundDelegateTree delegate = 9;
+    Transformation transformation = 10;
+    string exception = 11;
   }
 
-  enum Nop {
-    NEG = 0;
-    FAIL = 1;
-    EMPTY = 2;
-  }
+  message Neg {}
+  message Fail {}
+  message Empty {}
+
   message Alt { repeated BoundDelegateTree trees = 1; }
   message Union {
     repeated Weighted trees = 1;

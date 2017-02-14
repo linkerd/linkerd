@@ -17,21 +17,17 @@ message PathNameTree {
    * A PathNameTree is a hierachy of nodes:
    */
   oneof node {
-    Nop nop = 1;
-    Alt alt = 2;
-    Union union = 3;
-    Leaf leaf = 4;
+    Neg neg = 1;
+    Fail fail = 2;
+    Empty empty = 3;
+    Alt alt = 4;
+    Union union = 5;
+    Leaf leaf = 6;
   }
 
-  /**
-   * These states have no associated metadata and don't need the
-   * overhead of a message type.
-   */
-  enum Nop {
-    NEG = 0;
-    FAIL = 1;
-    EMPTY = 2;
-  }
+  message Neg {}
+  message Fail {}
+  message Empty {}
 
   /**
    * Describes a sequence of alternate trees that may be used, from
