@@ -31,21 +31,21 @@ object DelegatorService {
   ) extends mesh.Delegator {
 
     override def getDtab(req: mesh.DtabReq): Future[mesh.DtabRsp] = req match {
+      case mesh.DtabReq(None) => Future.exception(Errors.NoRoot)
       case mesh.DtabReq(Some(proot)) =>
         fromPath(proot) match {
           case Path.Utf8(ns) => store.observe(ns).toFuture.transform(_transformDtabRsp)
           case root => Future.exception(Errors.InvalidRoot(root))
         }
-      case _ => Future.exception(Errors.NoRoot)
     }
 
     override def streamDtab(req: mesh.DtabReq): Stream[mesh.DtabRsp] = req match {
+      case mesh.DtabReq(None) => Stream.exception(Errors.NoRoot)
       case mesh.DtabReq(Some(proot)) =>
         fromPath(proot) match {
           case Path.Utf8(ns) => VarEventStream(store.observe(ns).values.map(toDtabRspEv))
           case root => Stream.exception(Errors.InvalidRoot(root))
         }
-      case _ => Stream.exception(Errors.NoRoot)
     }
 
     override def getDelegateTree(req: mesh.DelegateTreeReq): Future[mesh.DelegateTreeRsp] = req match {

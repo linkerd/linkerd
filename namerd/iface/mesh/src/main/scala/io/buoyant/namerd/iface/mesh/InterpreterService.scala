@@ -9,17 +9,15 @@ import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
 import io.buoyant.grpc.runtime.{GrpcStatus, ServerDispatcher, Stream, VarEventStream}
 import io.buoyant.namer.{ConfiguredDtabNamer, Delegator}
 import io.linkerd.mesh
+import io.linkerd.mesh.Converters._
 
-object Errors {
-  val NoRoot = GrpcStatus.InvalidArgument("No namespace specified")
-  val RootNotFound = GrpcStatus.NotFound("Root not found")
-  val NoName = GrpcStatus.NotFound("No name given")
-  def InvalidRoot(p: Path) =
-    GrpcStatus.InvalidArgument(s"Invalid root: `${p.show}` must have exactly one segment")
-}
-
+/**
+ * Applies a Dtab to a Path, producing a bound name tree.
+ *
+ * Lookups are scoped within a `root` path. Currently this path must
+ * contain a single element, used as the DtabStore's `namespace.`
+ */
 object InterpreterService {
-  import mesh.Converters._
 
   def apply(
     store: DtabStore,
@@ -40,7 +38,6 @@ object InterpreterService {
       case mesh.BindReq(Some(proot), Some(pname), dtab0) =>
         fromPath(proot) match {
           case Path.Utf8(ns) =>
-
             val dtab = dtab0 match {
               case None => Dtab.empty
               case Some(d) => fromDtab(d)
@@ -59,12 +56,12 @@ object InterpreterService {
         fromPath(proot) match {
           case Path.Utf8(ns) =>
             val name = fromPath(pname)
-            val dtab = req.dtab match {
+            val dtab = dtab0 match {
               case None => Dtab.empty
               case Some(d) => fromDtab(d)
             }
-            val ev = getNs(ns).bind(dtab, name).values.map(toBoundTreeRspEv)
-            VarEventStream(ev)
+            val evs = getNs(ns).bind(dtab, name).values.map(toBoundTreeRspEv)
+            VarEventStream(evs)
 
           case root => Stream.exception(Errors.InvalidRoot(root))
         }
