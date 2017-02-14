@@ -61,6 +61,51 @@ class DelegateApiHandlerTest extends FunSuite with Awaits {
       |""".stripMargin.replaceAllLiterally("\n", ""))
   }
 
+  test("/delegate response via POST with JSON content type") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request("/delegate")
+    req.setContentString(s"""{"namespace": "plain", "path": "/boo/humbug", "dtab": "${dtab.show}" }""")
+    req.method = Method.Post
+    req.contentType = MediaType.Json
+    val rsp = await(web(req))
+    assert(rsp.status == Status.Ok)
+    assert(rsp.contentString == """{
+      |"type":"delegate","path":"/boo/humbug","delegate":{
+        |"type":"alt","path":"/foo/humbug","dentry":{"prefix":"/boo","dst":"/foo"},"alt":[
+          |{"type":"neg","path":"/bar/humbug","dentry":{"prefix":"/foo","dst":"/bar"}},
+          |{"type":"delegate","path":"/bah/humbug",
+          |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
+            |"type":"leaf","path":"/$/inet/127.1/8080","dentry":{"prefix":"/bah/humbug",
+              |"dst":"/$/inet/127.1/8080"},
+            |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":8080,"meta":{}}],"meta":{}},
+              |"id":"/$/inet/127.1/8080","path":"/"}}},
+          |{"type":"delegate","path":"/beh/humbug",
+            |"dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"},"delegate":{
+              |"type":"exception","path":"/#/error/humbug","dentry":{"prefix":"/beh","dst":"/#/error"},
+                |"message":"error naming /#/error/humbug"}},
+          |{"type":"fail","path":"/$/fail/humbug","dentry":{"prefix":"/foo","dst":"/bah | /beh | /$/fail"}}]}}
+      |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("/delegate response via POST with JSON content type - wrong content") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request("/delegate")
+    req.setContentString(s"""{"namespace": "plain", "path": "/boo/humbug", "dtab": ... }""")
+    req.method = Method.Post
+    req.contentType = MediaType.Json
+    val rsp = await(web(req))
+    assert(rsp.status == Status.BadRequest)
+  }
+
+  test("/delegate response via POST - wrong content type") {
+    val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
+    val req = Request("/delegate")
+    req.setContentString(s"""{"namespace": "plain", "path": "/boo/humbug", "dtab": "${dtab.show}" }""")
+    req.method = Method.Post
+    val rsp = await(web(req))
+    assert(rsp.status == Status.UnsupportedMediaType)
+  }
+
   test("delegates to neg when no matches found") {
     val web = new DelegateApiHandler(_ => linker.routers.head.interpreter)
     val req = Request()
