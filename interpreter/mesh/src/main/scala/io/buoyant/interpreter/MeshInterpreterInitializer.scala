@@ -46,7 +46,7 @@ case class MeshInterpreterConfig(
   @JsonIgnore
   def newInterpreter(params: Stack.Params): NameInterpreter = {
     val name = dst match {
-      case None => throw new IllegalArgumentException("`dst` is a required field")
+      case None => throw new IllegalArgumentException("`dst` is a required field") with NoStackTrace
       case Some(dst) => Name.Path(dst)
     }
     val label = MeshInterpreterInitializer.configId
@@ -59,32 +59,40 @@ case class MeshInterpreterConfig(
       .transformed(tlsTransformer)
       .newService(name, label)
 
-    Client(root.getOrElse(DefaultRoot), client)
+    root.getOrElse(DefaultRoot) match {
+      case r@Path.Utf8(_) =>
+        Client(r, client)
+
+      case r =>
+        val msg = s"io.l5d.mesh: `root` may only contain a single path element (for now): ${r.show}"
+        throw new IllegalArgumentException(msg) with NoStackTrace
+    }
   }
 
   @JsonIgnore
   private[this] val tlsTransformer: Stack.Transformer = tls match {
     case None =>
       new Stack.Transformer {
-        def apply[Req, Rep](stack: Stack[ServiceFactory[Req, Rep]]): Stack[ServiceFactory[Req, Rep]] = stack
+        def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]): Stack[ServiceFactory[Req, Rep]] = s
       }
 
     case Some(MeshClientTlsConfig(Some(true), _, _)) =>
       new Stack.Transformer {
         private[this] def prep[Req, Rep] = TlsClientPrep.insecure[Req, Rep]
-        override def apply[Req, Rep](underlying: Stack[ServiceFactory[Req, Rep]]) =
-          prep[Req, Rep] +: underlying
+        override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
+          prep[Req, Rep] +: s
       }
 
     case Some(MeshClientTlsConfig(_, Some(cn), certs)) =>
       new Stack.Transformer {
         private[this] def prep[Req, Rep] = TlsClientPrep.static[Req, Rep](cn, certs)
-        override def apply[Req, Rep](underlying: Stack[ServiceFactory[Req, Rep]]) =
-          prep[Req, Rep] +: underlying
+        override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
+          prep[Req, Rep] +: s
       }
 
     case Some(MeshClientTlsConfig(Some(false) | None, None, _)) =>
-      throw new IllegalArgumentException("io.l5d.mesh: tls is configured with validation but `commonName` is not set") with NoStackTrace
+      val msg = "io.l5d.mesh: tls is configured with validation but `commonName` is not set"
+      throw new IllegalArgumentException(msg) with NoStackTrace
   }
 }
 

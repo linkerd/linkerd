@@ -5,7 +5,7 @@ routers:
     kind: io.l5d.mesh
     experimental: true
     dst: /$/inet/127.1/4321
-    namespace: default
+    root: /default
   servers:
   - port: 4140
     ip: 0.0.0.0
