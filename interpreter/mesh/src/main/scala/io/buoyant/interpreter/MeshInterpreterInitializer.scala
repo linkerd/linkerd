@@ -22,17 +22,20 @@ class MeshInterpreterInitializer extends InterpreterInitializer {
 
 object MeshInterpreterInitializer extends MeshInterpreterInitializer
 
+object MeshInterpreterConfig {
+  private val log = Logger.get(getClass.getName)
+
+  val DefaultRoot = Path.Utf8("default")
+
+  // val defaultRetry = Retry(5, 10.minutes.inSeconds)
+}
+
 case class MeshInterpreterConfig(
   dst: Option[Path],
-  namespace: Option[String],
+  root: Option[Path],
   tls: Option[MeshClientTlsConfig]
 ) extends InterpreterConfig {
-
-  @JsonIgnore
-  private[this] val log = Logger.get()
-
-  // @JsonIgnore
-  // val defaultRetry = Retry(5, 10.minutes.inSeconds)
+  import MeshInterpreterConfig._
 
   @JsonIgnore
   override val experimentalRequired = true
@@ -56,7 +59,7 @@ case class MeshInterpreterConfig(
       .transformed(tlsTransformer)
       .newService(name, label)
 
-    Client(namespace.getOrElse("default"), client)
+    Client(root.getOrElse(DefaultRoot), client)
   }
 
   @JsonIgnore

@@ -36,7 +36,7 @@ object DelegatorService {
           case Path.Utf8(ns) => store.observe(ns).toFuture.transform(_transformDtabRsp)
           case root => Future.exception(Errors.InvalidRoot(root))
         }
-      case _ => Future.exception(Errors.NoNamespaceStatus)
+      case _ => Future.exception(Errors.NoRoot)
     }
 
     override def streamDtab(req: mesh.DtabReq): Stream[mesh.DtabRsp] = req match {
@@ -45,12 +45,12 @@ object DelegatorService {
           case Path.Utf8(ns) => VarEventStream(store.observe(ns).values.map(toDtabRspEv))
           case root => Stream.exception(Errors.InvalidRoot(root))
         }
-      case _ => Stream.exception(Errors.NoNamespaceStatus)
+      case _ => Stream.exception(Errors.NoRoot)
     }
 
     override def getDelegateTree(req: mesh.DelegateTreeReq): Future[mesh.DelegateTreeRsp] = req match {
-      case mesh.DelegateTreeReq(None, _, _) => Future.exception(Errors.NoNamespaceStatus)
-      case mesh.DelegateTreeReq(_, None, _) => Future.exception(Errors.NoNameStatus)
+      case mesh.DelegateTreeReq(None, _, _) => Future.exception(Errors.NoRoot)
+      case mesh.DelegateTreeReq(_, None, _) => Future.exception(Errors.NoName)
       case mesh.DelegateTreeReq(Some(proot), Some(ptree), dtab0) =>
         fromPath(proot) match {
           case Path.Utf8(ns) =>
@@ -66,8 +66,8 @@ object DelegatorService {
     }
 
     override def streamDelegateTree(req: mesh.DelegateTreeReq): Stream[mesh.DelegateTreeRsp] = req match {
-      case mesh.DelegateTreeReq(None, _, _) => Stream.exception(Errors.NoNamespaceStatus)
-      case mesh.DelegateTreeReq(_, None, _) => Stream.exception(Errors.NoNameStatus)
+      case mesh.DelegateTreeReq(None, _, _) => Stream.exception(Errors.NoRoot)
+      case mesh.DelegateTreeReq(_, None, _) => Stream.exception(Errors.NoName)
       case mesh.DelegateTreeReq(Some(proot), Some(ptree), dtab0) =>
         fromPath(proot) match {
           case Path.Utf8(ns) =>
@@ -95,7 +95,7 @@ object DelegatorService {
   }
 
   private[this] val _transformDtabRsp: Try[Option[VersionedDtab]] => Future[mesh.DtabRsp] = {
-    case Return(None) => Future.exception(Errors.NamespaceNotFoundStatus)
+    case Return(None) => Future.exception(Errors.RootNotFound)
     case Return(Some(vdtab)) => Future.value(toDtabRsp(vdtab))
     case Throw(e) => Future.exception(GrpcStatus.Internal(e.getMessage))
   }
@@ -108,7 +108,7 @@ object DelegatorService {
 
   private[this] val toDtabRspEv: Try[Option[VersionedDtab]] => VarEventStream.Ev[mesh.DtabRsp] = {
     case Return(Some(vdtab)) => VarEventStream.Val(toDtabRsp(vdtab))
-    case Return(None) => VarEventStream.End(Throw(Errors.NamespaceNotFoundStatus)) // TODO empty dtab?
+    case Return(None) => VarEventStream.End(Throw(Errors.RootNotFound)) // TODO empty dtab?
     case Throw(e) => VarEventStream.End(Throw(GrpcStatus.Internal(e.getMessage)))
   }
 

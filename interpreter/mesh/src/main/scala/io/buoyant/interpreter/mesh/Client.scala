@@ -19,25 +19,25 @@ import scala.util.control.NoStackTrace
 object Client {
 
   def apply(
-    namespace: String,
+    root: Path,
     service: Service[h2.Request, h2.Response]
   ): NameInterpreter with Delegator = {
     val interpreter = new mesh.Interpreter.Client(service)
     val resolver = new mesh.Resolver.Client(service)
     val delegator = new mesh.Delegator.Client(service)
-    new Impl(namespace, interpreter, resolver, delegator)
+    new Impl(root, interpreter, resolver, delegator)
   }
 
   def apply(
-    namespace: String,
+    root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
     delegator: mesh.Delegator
   ): NameInterpreter with Delegator =
-    new Impl(namespace, interpreter, resolver, delegator)
+    new Impl(root, interpreter, resolver, delegator)
 
   private[this] class Impl(
-    namespace: String,
+    root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
     delegator: mesh.Delegator
@@ -50,7 +50,7 @@ object Client {
      * replica resolutions from the mesh Resolver.
      */
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
-      val open = () => interpreter.streamBoundTree(mkBindReq(namespace, path, dtab))
+      val open = () => interpreter.streamBoundTree(mkBindReq(root, path, dtab))
       streamActivity(open, decodeBoundTree)
     }
 
@@ -58,7 +58,7 @@ object Client {
      * When observed, streams dtabs from the mesh server and
      */
     override lazy val dtab: Activity[Dtab] = {
-      val open = () => delegator.streamDtab(mkDtabReq(namespace))
+      val open = () => delegator.streamDtab(mkDtabReq(root))
       streamActivity(open, decodeDtab)
     }
 
@@ -66,7 +66,7 @@ object Client {
       dtab: Dtab,
       tree: NameTree[Name.Path]
     ): Activity[DelegateTree[Name.Bound]] = {
-      val open = () => delegator.streamDelegateTree(mkDelegateTreeReq(namespace, dtab, tree))
+      val open = () => delegator.streamDelegateTree(mkDelegateTreeReq(root, dtab, tree))
       streamActivity(open, decodeDelegateTree)
     }
 
@@ -118,7 +118,7 @@ object Client {
     // bueffers.
     @volatile var closed = false
     def loop(releasePrior: () => Future[Unit]): Future[Unit] =
-      if (closed) Future.Unit
+      if (closed) releasePrior()
       else rsps.recv().transform {
         case Throw(e) =>
           toT(Throw(e)) match {
@@ -160,10 +160,11 @@ object Client {
   ): Activity[T] = {
     val toState: Try[S] => Option[Activity.State[T]] = {
       case Throw(e) => Some(Activity.Failed(e))
-      case Return(s) => toT(s) match {
-        case None => None
-        case Some(t) => Some(Activity.Ok(t))
-      }
+      case Return(s) =>
+        toT(s) match {
+          case None => None
+          case Some(t) => Some(Activity.Ok(t))
+        }
     }
     Activity(streamVar(Activity.Pending, open, toState))
   }
@@ -208,29 +209,34 @@ object Client {
   private[this] def mkFromBoundNameTree(
     resolve: Path => Var[Addr]
   ): mesh.BoundNameTree => NameTree[Name.Bound] = {
-    def bindTree(ptree: mesh.BoundNameTree): NameTree[Name.Bound] = ptree.node match {
-      case None => throw new IllegalArgumentException("No bound tree")
-      case Some(BoundTreeNeg) => NameTree.Neg
-      case Some(BoundTreeFail) => NameTree.Fail
-      case Some(BoundTreeEmpty) => NameTree.Empty
+    def bindTree(ptree: mesh.BoundNameTree): NameTree[Name.Bound] = {
+      ptree.node match {
+        case None => throw new IllegalArgumentException("No bound tree")
+        case Some(BoundTreeNeg) => NameTree.Neg
+        case Some(BoundTreeFail) => NameTree.Fail
+        case Some(BoundTreeEmpty) => NameTree.Empty
 
-      case Some(mesh.BoundNameTree.OneofNode.Leaf(mesh.BoundNameTree.Leaf(Some(pid), Some(ppath)))) =>
-        val id = fromPath(pid)
-        val path = fromPath(ppath)
-        NameTree.Leaf(Name.Bound(resolve(id), id, path))
+        case Some(mesh.BoundNameTree.OneofNode.Leaf(mesh.BoundNameTree.Leaf(Some(pid), presidual))) =>
+          val id = fromPath(pid)
+          val residual = presidual match {
+            case Some(p) => fromPath(p)
+            case None => Path.empty
+          }
+          NameTree.Leaf(Name.Bound(resolve(id), id, residual))
 
-      case Some(mesh.BoundNameTree.OneofNode.Alt(mesh.BoundNameTree.Alt(ptrees))) =>
-        val trees = ptrees.map(bindTree)
-        NameTree.Alt(trees: _*)
+        case Some(mesh.BoundNameTree.OneofNode.Alt(mesh.BoundNameTree.Alt(ptrees))) =>
+          val trees = ptrees.map(bindTree(_))
+          NameTree.Alt(trees: _*)
 
-      case Some(mesh.BoundNameTree.OneofNode.Union(mesh.BoundNameTree.Union(pwtrees))) =>
-        val wtrees = pwtrees.collect {
-          case mesh.BoundNameTree.Union.Weighted(Some(w), Some(t)) =>
-            NameTree.Weighted(w, bindTree(t))
-        }
-        NameTree.Union(wtrees: _*)
+        case Some(mesh.BoundNameTree.OneofNode.Union(mesh.BoundNameTree.Union(pwtrees))) =>
+          val wtrees = pwtrees.collect {
+            case mesh.BoundNameTree.Union.Weighted(Some(w), Some(t)) =>
+              NameTree.Weighted(w, bindTree(t))
+          }
+          NameTree.Union(wtrees: _*)
 
-      case Some(tree) => throw new IllegalArgumentException(s"Illegal bound tree: $tree")
+        case Some(tree) => throw new IllegalArgumentException(s"Illegal bound tree: $tree")
+      }
     }
     bindTree _
   }
@@ -287,17 +293,17 @@ object Client {
     bindTree _
   }
 
-  private[this] def mkBindReq(ns: String, path: Path, dtab: Dtab) =
-    mesh.BindReq(Some(ns), Some(toPath(path)), Some(toDtab(dtab)))
+  private[this] def mkBindReq(root: Path, path: Path, dtab: Dtab) =
+    mesh.BindReq(Some(toPath(root)), Some(toPath(path)), Some(toDtab(dtab)))
 
   private[this] def mkReplicasReq(id: Path) =
     mesh.ReplicasReq(Some(toPath(id)))
 
-  private[this] def mkDelegateTreeReq(ns: String, dtab: Dtab, tree: NameTree[Name.Path]) =
-    mesh.DelegateTreeReq(Some(ns), Some(toPathNameTree(tree.map(_.path))), Some(toDtab(dtab)))
+  private[this] def mkDelegateTreeReq(root: Path, dtab: Dtab, tree: NameTree[Name.Path]) =
+    mesh.DelegateTreeReq(Some(toPath(root)), Some(toPathNameTree(tree.map(_.path))), Some(toDtab(dtab)))
 
-  private[this] def mkDtabReq(ns: String) =
-    mesh.DtabReq(Some(ns))
+  private[this] def mkDtabReq(root: Path) =
+    mesh.DtabReq(Some(toPath(root)))
 }
 
 case class DelegateException(msg: String)

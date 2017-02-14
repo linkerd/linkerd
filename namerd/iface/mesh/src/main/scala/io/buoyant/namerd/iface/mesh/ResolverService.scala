@@ -9,7 +9,7 @@ import io.buoyant.grpc.runtime.{Stream, VarEventStream}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import io.buoyant.namer.Metadata
-import java.net.{InetAddress, Inet6Address, InetSocketAddress}
+import java.net.Inet6Address
 
 object ResolverService {
 
