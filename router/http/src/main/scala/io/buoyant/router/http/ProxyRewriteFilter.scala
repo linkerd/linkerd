@@ -33,14 +33,20 @@ object ProxyRewriteFilter {
    * the URI is absolute.
    */
   private[this] def guessAbsolute(uri: String): URI =
-    if (uri.contains("://")) new URI(uri)
+    if (uri.contains("://"))
+      new URI(uri) // it's safe since single-parameter constructor doesn't mess with URL-encoding
     else null
 
   /**
    * Return only the path, query, and fragment segments of a URI.
    */
-  private def unproxifyUri(uri: URI): String =
-    new URI(null, null, uri.getPath, uri.getQuery, uri.getFragment).toString
+  private def unproxifyUri(uri: URI): String = {
+    // Re-creating a URI from components messes up URL-encoding of the query component
+    // Instead of constructing a desired URI
+    // we construct a URI that describes a prefix we want to strip off
+    val schemeAuthority = new URI(uri.getScheme, uri.getAuthority, null, null, null)
+    uri.toString.stripPrefix(schemeAuthority.toString)
+  }
 
   val filter: Filter[Request, Response, Request, Response] =
     new SimpleFilter[Request, Response] {
