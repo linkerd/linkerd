@@ -450,9 +450,9 @@ object LinkerdHeaders {
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
     def apply(req: Request, service: Service[Request, Response]) = {
-      for (k <- req.headers.keys) {
-        if (k.toLowerCase.startsWith(Headers.Prefix)) {
-          req.headerMap.remove(k)
+      for ((k, _) <- req.headers.toSeq) {
+        if (k.toLowerCase.startsWith(LinkerdHeaders.Prefix)) {
+          req.headers.remove(k)
         }
       }
       service(req)
