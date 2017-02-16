@@ -17,6 +17,11 @@
 * Change the default HTTP identifier to the `io.l5d.header.token` identifier.
 * Add the `clearContext` server configuration option.
 * Make `io.l5d.consul` case-insensitive
+* Add `io.l5d.prometheus` telemeter
+* Remove `io.l5d.commonMetrics` telemeter
+* Remove `io.l5d.adminMetricsExport` as a telemeter plugin, it is now always
+  loaded
+* Namerd Admin now works with Dtabs of arbitrary size
 
 ## 0.8.6 2017-01-19
 

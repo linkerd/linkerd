@@ -2,6 +2,8 @@ package io.buoyant.telemetry.admin
 
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
+import com.twitter.app.GlobalFlag
+import com.twitter.conversions.time._
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
@@ -122,3 +124,5 @@ class AdminMetricsExportTelemeter(
   }
 
 }
+
+object histogramSnapshotInterval extends GlobalFlag(1.minute, "Interval to snapshot histrograms")
