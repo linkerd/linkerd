@@ -87,33 +87,35 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         sb.append(g.get)
         sb.append("\n")
       case s: Metric.Stat =>
-        val summary = s.summary
-        for (
-          (stat, value) <- Seq(
-            "count" -> summary.count, "sum" -> summary.sum, "avg" -> summary.avg
-          )
-        ) {
-          sb.append(key)
-          sb.append("_")
-          sb.append(stat)
-          sb.append(formatLabels(labels1))
-          sb.append(" ")
-          sb.append(value)
-          sb.append("\n")
-        }
-        for (
-          (percentile, value) <- Seq(
-            "0" -> summary.min, "0.5" -> summary.p50,
-            "0.9" -> summary.p90, "0.95" -> summary.p95, "0.99" -> summary.p99,
-            "0.999" -> summary.p9990, "0.9999" -> summary.p9999,
-            "1" -> summary.max
-          )
-        ) {
-          sb.append(key)
-          sb.append(formatLabels(labels1 :+ ("quantile" -> percentile)))
-          sb.append(" ")
-          sb.append(value)
-          sb.append("\n")
+        val summary = s.snapshottedSummary
+        if (summary != null) {
+          for (
+            (stat, value) <- Seq(
+              "count" -> summary.count, "sum" -> summary.sum, "avg" -> summary.avg
+            )
+          ) {
+            sb.append(key)
+            sb.append("_")
+            sb.append(stat)
+            sb.append(formatLabels(labels1))
+            sb.append(" ")
+            sb.append(value)
+            sb.append("\n")
+          }
+          for (
+            (percentile, value) <- Seq(
+              "0" -> summary.min, "0.5" -> summary.p50,
+              "0.9" -> summary.p90, "0.95" -> summary.p95, "0.99" -> summary.p99,
+              "0.999" -> summary.p9990, "0.9999" -> summary.p9999,
+              "1" -> summary.max
+            )
+          ) {
+            sb.append(key)
+            sb.append(formatLabels(labels1 :+ ("quantile" -> percentile)))
+            sb.append(" ")
+            sb.append(value)
+            sb.append("\n")
+          }
         }
       case _ =>
     }

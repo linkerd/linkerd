@@ -3,7 +3,7 @@ package io.buoyant.telemetry.prometheus
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
 import com.twitter.util.{MockTimer, Time}
-import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}
+import io.buoyant.telemetry.{Metric, MetricsTree, MetricsTreeStatsReceiver}
 import io.buoyant.test.FunSuite
 
 class PrometheusTelemeterTest extends FunSuite {
@@ -41,7 +41,18 @@ class PrometheusTelemeterTest extends FunSuite {
   test("stat") {
     val (stats, handler) = statsAndHandler
     val stat = stats.scope("foo", "bar").stat("bas")
+    val metricsTreeStat =
+      stats.tree.resolve(Seq("foo", "bar", "bas")).metric.asInstanceOf[Metric.Stat]
+
+    // first data point
     stat.add(1.0f)
+
+    // endpoint should return no data before first snapshot
+    val rsp0 = await(handler(Request("/admin/metrics/prometheus"))).contentString
+    assert(rsp0 == "")
+
+    metricsTreeStat.snapshot()
+
     val rsp1 = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp1 == """foo:bar:bas_count 1
                      |foo:bar:bas_sum 1
@@ -55,7 +66,11 @@ class PrometheusTelemeterTest extends FunSuite {
                      |foo:bar:bas{quantile="0.9999"} 1
                      |foo:bar:bas{quantile="1"} 1
                      |""".stripMargin)
+
+    // second data point
     stat.add(2.0f)
+    metricsTreeStat.snapshot()
+
     val rsp2 = await(handler(Request("/admin/metrics/prometheus"))).contentString
     assert(rsp2 == """foo:bar:bas_count 2
                      |foo:bar:bas_sum 3
