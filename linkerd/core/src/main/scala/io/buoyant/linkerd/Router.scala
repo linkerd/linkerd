@@ -251,7 +251,7 @@ case class RetriesConfig(
   new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
   new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
 ))
-trait BackoffConfig extends PolymorphicConfig {
+abstract class BackoffConfig extends PolymorphicConfig {
   @JsonIgnore
   def mk: Stream[Duration]
 }

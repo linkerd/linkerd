@@ -15,7 +15,7 @@ import io.buoyant.config.PolymorphicConfig
   new Type(value = classOf[Heap], name = "heap"),
   new Type(value = classOf[RoundRobin], name = "roundRobin")
 ))
-trait LoadBalancerConfig extends PolymorphicConfig {
+abstract class LoadBalancerConfig extends PolymorphicConfig {
   val factory: LoadBalancerFactory
 
   val enableProbation: Option[Boolean] = None

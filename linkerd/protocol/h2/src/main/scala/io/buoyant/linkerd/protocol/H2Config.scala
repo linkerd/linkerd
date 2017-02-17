@@ -145,7 +145,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   override def serverParams = withEndpointParams(super.serverParams)
 }
 
-trait H2IdentifierConfig extends PolymorphicConfig {
+abstract class H2IdentifierConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]
