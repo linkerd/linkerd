@@ -59,6 +59,8 @@ object Admin {
     .withStatsReceiver(NullStatsReceiver)
     .withTracer(NullTracer)
 
+  val threadsJs = "<script src='files/js/threads.js'></script>"
+
   def appHandlers(app: TApp): Seq[Handler] = Seq(
     Handler("/admin/server_info", new TextBlockView().andThen(new ServerInfoHandler(app))),
     Handler("/admin/shutdown", new ShutdownHandler(app))
@@ -66,9 +68,9 @@ object Admin {
 
   def baseHandlers: Seq[Handler] = Seq(
     Handler("/admin/contention", new TextBlockView andThen new ContentionHandler),
-    Handler("/admin/lint", new LintHandler),
+    Handler("/admin/lint", new AdminAssetsFilter andThen new LintHandler),
     Handler("/admin/lint.json", new LintHandler),
-    Handler("/admin/threads", new ThreadsHandler),
+    Handler("/admin/threads", new AdminAssetsFilter(threadsJs) andThen new ThreadsHandler),
     Handler("/admin/threads.json", new ThreadsHandler),
     Handler("/admin/announcer", new TextBlockView andThen new AnnouncerHandler),
     Handler("/admin/pprof/heap", new HeapResourceHandler),
@@ -77,10 +79,11 @@ object Admin {
     Handler("/admin/ping", new ReplyHandler("pong")),
     Handler("/admin/tracing", new TracingHandler),
     Handler("/admin/registry.json", new RegistryHandler),
-    Handler("/favicon.png", ResourceHandler.fromJar(
-      baseRequestPath = "/",
-      baseResourcePath = "io/buoyant/linkerd/admin/images"
-    ))
+    Handler("/admin/files/", StaticFilter.andThen(ResourceHandler.fromDirectoryOrJar( // for Admin handlers
+      baseRequestPath = "/admin/files/",
+      baseResourcePath = "io/buoyant/admin/twitter-server",
+      localFilePath = "admin/src/main/resources/io/buoyant/admin"
+    )))
   )
 
   /** Generate an index of the provided handlers */
