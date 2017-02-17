@@ -75,6 +75,21 @@ object Headers {
           deadline.andThen(dtab).andThen(next)
       }
 
+    val clearServerModule: Stackable[ServiceFactory[Request, Response]] =
+      new Stack.Module0[ServiceFactory[Request, Response]] {
+        val role = serverModule.role
+        val description = "Clears linkerd context from http request headers"
+
+        val deadline = new Deadline.ClearServerFilter
+        val dtab = new Dtab.ClearServerFilter
+        val sample = new Sample.ClearServerFilter
+        val trace = new Trace.ClearServerFilter
+        val misc = new ClearMiscServerFilter
+
+        def make(next: ServiceFactory[Request, Response]) =
+          deadline.andThen(dtab).andThen(sample).andThen(trace).andThen(misc).andThen(next)
+      }
+
     /**
      * A clientside stack module that injects local contextual
      * information onto downstream requests.  Currently this includes:
@@ -170,6 +185,13 @@ object Headers {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * If a deadline is set, encode it on downstream requests.
        *
@@ -254,6 +276,13 @@ object Headers {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * Encodes the local dtab into the L5d-Ctx-Dtab header.
        *
@@ -295,6 +324,13 @@ object Headers {
 
       def clear(headers: HeaderMap): Unit = {
         val _ = headers.remove(Key)
+      }
+
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
       }
     }
   }
@@ -340,6 +376,13 @@ object Headers {
 
     def clear(headers: HeaderMap): Unit = {
       val _ = headers.remove(Key)
+    }
+
+    class ClearServerFilter extends SimpleFilter[Request, Response] {
+      def apply(req: Request, service: Service[Request, Response]) = {
+        clear(req.headerMap)
+        service(req)
+      }
     }
   }
 
@@ -407,6 +450,17 @@ object Headers {
           def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
             new BoundFilter(dst.name).andThen(factory)
         }
+    }
+  }
+
+  class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
+    def apply(req: Request, service: Service[Request, Response]) = {
+      for (k <- req.headerMap.keys) {
+        if (k.toLowerCase.startsWith(Headers.Prefix)) {
+          req.headerMap -= k
+        }
+      }
+      service(req)
     }
   }
 

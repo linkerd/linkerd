@@ -93,7 +93,7 @@ ip | loopback address | The local IP address. A value like 0.0.0.0 configures th
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
-
+clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
 
 <a name="client-parameters"></a>
 ## Client Parameters

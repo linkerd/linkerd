@@ -1,21 +1,22 @@
 ## Upcoming Release
 
-* Make `io.l5d.consul` case-insensitive
 * Add `io.l5d.usage` telemeter for opt-in usage data collection
 * Admin dashboard
-  * Sorts clients and servers alphabetically
-  * Displays routers in the order that they are defined
-* Update Marathon namer to evaluate an app's running state
+  * Sorts clients and servers alphabetically.
+  * Displays routers in the order that they are defined.
+* Update Marathon namer to evaluate an app's running state.
 * Add `roundRobin` as a load balancer option.
 * Add the ability to route basted on the `dest` request header when using the
-  TTwitter Thrift protocol
+  TTwitter Thrift protocol.
 * Add `preferServiceAddress` option to `io.l5d.consul` namer
 * Rename `baseDtab` router property to `dtab`
 * Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
   `io.l5d.commonMetrics` telemeter.
 * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
-* Change the default `dstPrefix` from the protocol name to `/svc`
-* Change the default HTTP identifier to the `io.l5d.header.token` identifier
+* Change the default `dstPrefix` from the protocol name to `/svc`.
+* Change the default HTTP identifier to the `io.l5d.header.token` identifier.
+* Add the `clearContext` server configuration option.
+* Make `io.l5d.consul` case-insensitive
 * Add `io.l5d.prometheus` telemeter
 * Remove `io.l5d.commonMetrics` telemeter
 * Remove `io.l5d.adminMetricsExport` as a telemeter plugin, it is now always

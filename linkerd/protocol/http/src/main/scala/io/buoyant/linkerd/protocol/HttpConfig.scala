@@ -69,6 +69,13 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     Http.server.withStack(stk)
   }
 
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    // Does NOT use the ClearContext module that forcibly clears the
+    // context. Instead, we just strip out headers on inbound requests.
+    stk.remove(HttpTraceInitializer.role)
+      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.clearServerModule)
+  }
+
   val configClass = classOf[HttpConfig]
 
   override def defaultServerPort: Int = 4140
