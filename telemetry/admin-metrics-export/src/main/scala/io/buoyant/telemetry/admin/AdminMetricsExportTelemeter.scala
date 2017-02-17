@@ -51,15 +51,13 @@ class AdminMetricsExportTelemeter(
 
   private[this] def run0() = {
     val task = timer.schedule(snapshotInterval) {
-      summarySnapshots = snapshotHistograms(metrics)
+      snapshotHistograms(metrics)
     }
 
     new Closable with CloseAwaitably {
       override def close(deadline: Time): Future[Unit] = closeAwaitably(task.close(deadline))
     }
   }
-
-  private[this] var summarySnapshots = Map.empty[Stat, HistogramSummary]
 
   private[this] val json = new JsonFactory()
   private[this] def writeJson(out: OutputStream, pretty: Boolean = false): Unit = {
@@ -75,7 +73,7 @@ class AdminMetricsExportTelemeter(
       case (name, g: Gauge) =>
         jg.writeNumberField(name, g.get)
       case (name, s: Stat) =>
-        for (summary <- summarySnapshots.get(s)) {
+        for (summary <- Option(s.snapshottedSummary)) {
           jg.writeNumberField(s"$name.count", summary.count)
           if (summary.count > 0) {
             jg.writeNumberField(s"$name.max", summary.max)
@@ -112,15 +110,14 @@ class AdminMetricsExportTelemeter(
   }
 
   /** Snapshot histograms to produce histogram summaries, resetting as we go. */
-  private[this] def snapshotHistograms(tree: MetricsTree): Map[Stat, HistogramSummary] = {
-    val snapshot = tree.metric match {
+  private[this] def snapshotHistograms(tree: MetricsTree): Unit = {
+    tree.metric match {
       case stat: Stat =>
-        val snap = Some(stat -> stat.summary)
+        stat.snapshot()
         stat.reset()
-        snap
       case _ => None
     }
-    tree.children.values.map(snapshotHistograms).foldLeft(snapshot.toMap)(_ ++ _)
+    for (child <- tree.children.values) snapshotHistograms(child)
   }
 
 }

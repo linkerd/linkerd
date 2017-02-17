@@ -22,6 +22,7 @@ object Metric {
   class Stat extends FStat with Metric {
     // Access must be synchronized
     private[this] val underlying = BucketedHistogram()
+    private[this] var summarySnapshot: HistogramSummary = null
 
     private[this] var resetTime = Time.now
     def startingAt: Time = resetTime
@@ -33,6 +34,11 @@ object Metric {
 
     def peek: Seq[BucketAndCount] = underlying.synchronized {
       underlying.bucketAndCounts
+    }
+
+    def snapshot(): HistogramSummary = underlying.synchronized {
+      summarySnapshot = summary
+      summarySnapshot
     }
 
     def reset(): (Seq[BucketAndCount], Duration) = underlying.synchronized {
@@ -59,6 +65,8 @@ object Metric {
         underlying.average
       )
     }
+
+    def snapshottedSummary: HistogramSummary = summarySnapshot
   }
 
   class Gauge(f: => Float) extends Metric {
