@@ -24,19 +24,38 @@ class ProxyRewriteFilterTest extends FunSuite with Awaits {
     await(stk.make(Stack.Params.empty)())
   }
 
-  test("rewrite proxy requests as non-proxy requests") {
-    val req = Request(Method.Get, "http://acme.co:8080/foo;matrix=uri;/bar?x=1&y=2&z=%28%20hi%20%29")
+  test("rewrite host header for HTTP/1.1 requests") {
+    val req = Request(Method.Get, "http://acme.co:8080/foo")
     req.host = "example.com:9000"
     req.headerMap.set("Proxy-Foo", "Bar")
     req.headerMap.set("Pragma", "42")
 
     val result = await(service(req))
-    assert(result.getContentString() == "/foo;matrix=uri;/bar?x=1&y=2&z=(%20hi%20)")
     assert(result.headerMap == Map(
       "Host" -> "acme.co:8080",
       "Pragma" -> "42",
       "Proxy-Foo" -> "Bar"
     ))
+  }
+
+  test("don't double URL-encode query parameter values") {
+    val req = Request(Method.Get, "http://acme.co:8080/foo?text=hello%20world")
+    req.host = "example.com:9000"
+    req.headerMap.set("Proxy-Foo", "Bar")
+    req.headerMap.set("Pragma", "42")
+
+    val result = await(service(req))
+    assert(result.getContentString() == "/foo?text=hello%20world")
+  }
+
+  test("don't URL-decode url-encoded query parameter values") {
+    val req = Request(Method.Get, "http://acme.co:8080/foo?x=R%26D")
+    req.host = "example.com:9000"
+    req.headerMap.set("Proxy-Foo", "Bar")
+    req.headerMap.set("Pragma", "42")
+
+    val result = await(service(req))
+    assert(result.getContentString() == "/foo?x=R%26D")
   }
 
 }
