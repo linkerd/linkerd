@@ -78,8 +78,7 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
       withTls = false,
       config,
       metrics,
-      Some("orgId"),
-      dryRun = false)
+      Some("orgId"))
     telemeter.run()
 
     val msg = await(promise)

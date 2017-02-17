@@ -23,6 +23,7 @@
   loaded
 * Namerd Admin now works with Dtabs of arbitrary size
 * Fix query parameter decoding when rewriting proxied requests
+* Usage reporting is now opt-out.
 
 ## 0.8.6 2017-01-19
 

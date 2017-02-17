@@ -206,7 +206,7 @@ class LinkerTest extends FunSuite with Exceptions {
       case Seq((_, namer: TestNamer)) =>
       case namers => fail(s"unexpected namers: $namers")
     }
-    assert(linker.telemeters.size == 4)
+    assert(linker.telemeters.size == 5)
 
     val ttracers = linker.telemeters.map(_.tracer).collect { case t: BufferingTracer => t }
     assert(ttracers.size == 2)
