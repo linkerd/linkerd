@@ -1,6 +1,7 @@
 package io.buoyant.interpreter.mesh
 
 import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Path}
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise, Var}
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
@@ -37,7 +38,7 @@ class ClientTest extends FunSuite {
           addrRsps
         }
       }
-      Client(Path.Utf8("foons"), interp, resolv, unusedDelegator)
+      Client(Path.Utf8("foons"), interp, resolv, unusedDelegator, scala.Stream.empty, DefaultTimer.twitter)
     }
 
     val act = client.bind(Dtab.read("/stuff => /mas"), Path.read("/some/name"))

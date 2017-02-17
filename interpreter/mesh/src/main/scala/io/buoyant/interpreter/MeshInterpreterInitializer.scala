@@ -1,10 +1,12 @@
 package io.buoyant.interpreter
 
-// import com.twitter.conversions.time._
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{H2, TlsClientPrep}
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.interpreter.mesh.Client
@@ -27,13 +29,19 @@ object MeshInterpreterConfig {
 
   val DefaultRoot = Path.Utf8("default")
 
-  // val defaultRetry = Retry(5, 10.minutes.inSeconds)
+  val defaultRetry = Retry(1, 10.minutes.inSeconds)
 }
+
+case class Retry(
+  baseSeconds: Int,
+  maxSeconds: Int
+)
 
 case class MeshInterpreterConfig(
   dst: Option[Path],
   root: Option[Path],
-  tls: Option[MeshClientTlsConfig]
+  tls: Option[MeshClientTlsConfig],
+  retry: Option[Retry]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
 
@@ -51,8 +59,8 @@ case class MeshInterpreterConfig(
     }
     val label = MeshInterpreterInitializer.configId
 
-    //val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
-    //val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
+    val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
+    val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
 
     val client = H2.client
       .withParams(H2.client.params ++ params)
@@ -61,7 +69,7 @@ case class MeshInterpreterConfig(
 
     root.getOrElse(DefaultRoot) match {
       case r@Path.Utf8(_) =>
-        Client(r, client)
+        Client(r, client, backoffs, DefaultTimer.twitter)
 
       case r =>
         val msg = s"io.l5d.mesh: `root` may only contain a single path element (for now): ${r.show}"
@@ -78,16 +86,14 @@ case class MeshInterpreterConfig(
 
     case Some(MeshClientTlsConfig(Some(true), _, _)) =>
       new Stack.Transformer {
-        private[this] def prep[Req, Rep] = TlsClientPrep.insecure[Req, Rep]
         override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
-          prep[Req, Rep] +: s
+          TlsClientPrep.insecure[Req, Rep] +: s
       }
 
     case Some(MeshClientTlsConfig(_, Some(cn), certs)) =>
       new Stack.Transformer {
-        private[this] def prep[Req, Rep] = TlsClientPrep.static[Req, Rep](cn, certs)
         override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
-          prep[Req, Rep] +: s
+          TlsClientPrep.static[Req, Rep](cn, certs) +: s
       }
 
     case Some(MeshClientTlsConfig(Some(false) | None, None, _)) =>

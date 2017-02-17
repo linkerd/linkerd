@@ -5,13 +5,13 @@ import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Closable, Future, Return, Throw, Try, Var}
+import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
 import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree, Metadata}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
-import scala.util.control.NoStackTrace
+import scala.util.control.{NoStackTrace, NonFatal}
 
 /**
  * XXX TODO retry/backoff
@@ -20,27 +20,38 @@ object Client {
 
   def apply(
     root: Path,
-    service: Service[h2.Request, h2.Response]
+    service: Service[h2.Request, h2.Response],
+    backoffs: scala.Stream[Duration],
+    timer: Timer
   ): NameInterpreter with Delegator = {
     val interpreter = new mesh.Interpreter.Client(service)
     val resolver = new mesh.Resolver.Client(service)
     val delegator = new mesh.Delegator.Client(service)
-    new Impl(root, interpreter, resolver, delegator)
+    new Impl(root, interpreter, resolver, delegator, backoffs, timer)
   }
 
   def apply(
     root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
-    delegator: mesh.Delegator
+    delegator: mesh.Delegator,
+    backoffs: scala.Stream[Duration],
+    timer: Timer
   ): NameInterpreter with Delegator =
-    new Impl(root, interpreter, resolver, delegator)
+    new Impl(root, interpreter, resolver, delegator, backoffs, timer)
+
+  private[this] val _releaseNop = () => Future.Unit
+  private[this] val _rescueUnit: PartialFunction[Throwable, Future[Unit]] = {
+    case NonFatal(_) => Future.Unit
+  }
 
   private[this] class Impl(
     root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
-    delegator: mesh.Delegator
+    delegator: mesh.Delegator,
+    backoffs: scala.Stream[Duration],
+    timer: Timer
   ) extends NameInterpreter with Delegator {
 
     /**
@@ -51,7 +62,7 @@ object Client {
      */
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
       val open = () => interpreter.streamBoundTree(mkBindReq(root, path, dtab))
-      streamActivity(open, decodeBoundTree)
+      streamActivity(open, decodeBoundTree, backoffs, timer)
     }
 
     /**
@@ -59,7 +70,7 @@ object Client {
      */
     override lazy val dtab: Activity[Dtab] = {
       val open = () => delegator.streamDtab(mkDtabReq(root))
-      streamActivity(open, decodeDtab)
+      streamActivity(open, decodeDtab, backoffs, timer)
     }
 
     override def delegate(
@@ -67,14 +78,14 @@ object Client {
       tree: NameTree[Name.Path]
     ): Activity[DelegateTree[Name.Bound]] = {
       val open = () => delegator.streamDelegateTree(mkDelegateTreeReq(root, dtab, tree))
-      streamActivity(open, decodeDelegateTree)
+      streamActivity(open, decodeDelegateTree, backoffs, timer)
     }
 
     private[this] val resolve: Path => Var[Addr] = {
       case Path.empty => Var.value(Addr.Failed("empty"))
       case id =>
         val open = () => resolver.streamReplicas(mkReplicasReq(id))
-        streamVar(Addr.Pending, open, replicasToAddr)
+        streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer)
     }
 
     private[this] val fromBoundNameTree: mesh.BoundNameTree => NameTree[Name.Bound] =
@@ -94,8 +105,6 @@ object Client {
     }
   }
 
-  private[this] val releaseNop = () => Future.Unit
-
   /**
    * Constructs a Var that, when observed, calls `open()` to obtain a
    * gRPC stream, publishing updates into the Var's state.
@@ -107,9 +116,11 @@ object Client {
   private[this] def streamVar[S, T](
     init: T,
     open: () => Stream[S],
-    toT: Try[S] => Option[T]
+    toT: Try[S] => Option[T],
+    backoffs0: scala.Stream[Duration],
+    timer: Timer
   ): Var[T] = Var.async[T](init) { state =>
-    val rsps = open()
+    implicit val timer0 = timer
 
     // As we receive streamed messages, we are careful not to release
     // them until the state has been updated to a new value. This is
@@ -117,33 +128,44 @@ object Client {
     // importantly (2) later integrate with netty's reference counted
     // bueffers.
     @volatile var closed = false
-    def loop(releasePrior: () => Future[Unit]): Future[Unit] =
-      if (closed) releasePrior()
+    def loop(
+      rsps: Stream[S],
+      backoffs: scala.Stream[Duration],
+      releasePrior: () => Future[Unit]
+    ): Future[Unit] =
+      if (closed) releasePrior().rescue(_rescueUnit)
       else rsps.recv().transform {
-        case Throw(e) =>
-          toT(Throw(e)) match {
-            case None =>
-            case Some(t) =>
-              state() = t
+        case Throw(_) if closed =>
+          releasePrior().rescue(_rescueUnit)
+
+        case Throw(NonFatal(e)) =>
+          val releasePriorNoError = () => releasePrior().rescue(_rescueUnit)
+          backoffs match {
+            case wait #:: moreBackoffs =>
+              Future.sleep(wait).before(loop(open(), moreBackoffs, releasePriorNoError))
+
+            case _ => // empty: fail
+              releasePriorNoError().before(Future.exception(e))
           }
-          releasePrior().before(Future.exception(e))
+
+        case Throw(e) => // fatal
+          Future.exception(e)
 
         case Return(Stream.Releasable(s, release)) =>
           toT(Return(s)) match {
             case None =>
-              release().before(loop(releasePrior))
+              release().before(loop(rsps, backoffs0, releasePrior))
             case Some(t) =>
               state() = t
-              releasePrior().before(loop(release))
+              releasePrior().before(loop(rsps, backoffs0, release))
           }
       }
 
-    val f = loop(releaseNop)
+    val f = loop(open(), backoffs0, _releaseNop)
     Closable.make { _ =>
       closed = true
       f.raise(Failure("closed", Failure.Interrupted))
-      rsps.reset(GrpcStatus.Ok())
-      Future.Unit
+      f
     }
   }
 
@@ -156,7 +178,9 @@ object Client {
    */
   private[this] def streamActivity[S, T](
     open: () => Stream[S],
-    toT: S => Option[T]
+    toT: S => Option[T],
+    bos: scala.Stream[Duration],
+    timer: Timer
   ): Activity[T] = {
     val toState: Try[S] => Option[Activity.State[T]] = {
       case Throw(e) => Some(Activity.Failed(e))
@@ -166,7 +190,7 @@ object Client {
           case Some(t) => Some(Activity.Ok(t))
         }
     }
-    Activity(streamVar(Activity.Pending, open, toState))
+    Activity(streamVar(Activity.Pending, open, toState, bos, timer))
   }
 
   private[this] val decodeDtab: mesh.DtabRsp => Option[Dtab] = {
