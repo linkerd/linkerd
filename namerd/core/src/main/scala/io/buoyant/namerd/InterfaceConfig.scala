@@ -10,7 +10,7 @@ import java.net.{InetAddress, InetSocketAddress}
 /**
  * Configures a network interface to namerd functionality.
  */
-trait InterfaceConfig extends PolymorphicConfig {
+abstract class InterfaceConfig extends PolymorphicConfig {
   var ip: Option[InetAddress] = None
   var port: Option[Port] = None
 

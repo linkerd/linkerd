@@ -6,7 +6,7 @@ import com.twitter.finagle.{Dtab, Path}
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.RoutingFactory.Identifier
 
-trait HttpIdentifierConfig extends PolymorphicConfig {
+abstract class HttpIdentifierConfig extends PolymorphicConfig {
   @JsonIgnore
   def newIdentifier(
     prefix: Path,

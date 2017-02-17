@@ -5,7 +5,7 @@ import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 abstract class DtabStoreInitializer extends ConfigInitializer
 
-trait DtabStoreConfig extends PolymorphicConfig {
+abstract class DtabStoreConfig extends PolymorphicConfig {
   /** This property must be set to true in order to use this dtab store if it is experimental */
   @JsonProperty("experimental")
   var _experimentalEnenabled: Option[Boolean] = None
