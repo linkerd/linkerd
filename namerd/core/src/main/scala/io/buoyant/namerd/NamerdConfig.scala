@@ -3,7 +3,7 @@ package io.buoyant.namerd
 import com.twitter.conversions.time._
 import com.twitter.finagle.stats.{LoadedStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
-import com.twitter.finagle.{Namer, Path, Stack}
+import com.twitter.finagle.{Namer, Path, param, Stack}
 import com.twitter.server.util.JvmStats
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
@@ -40,14 +40,14 @@ private[namerd] case class NamerdConfig(
     LoadedStatsReceiver.self = stats
 
     val dtabStore = storage.mkDtabStore
-    val namersByPfx = mkNamers()
+    val namersByPfx = mkNamers(Stack.Params.empty + param.Stats(stats))
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
     val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
     val telemeters = Seq(telemeter)
     new Namerd(ifaces, dtabStore, namersByPfx, adminImpl, telemeters)
   }
 
-  private[this] def mkNamers(): Map[Path, Namer] =
+  private[this] def mkNamers(params: Stack.Params): Map[Path, Namer] =
     namers.foldLeft(Map.empty[Path, Namer]) {
       case (namers, config) =>
         if (config.prefix.isEmpty)
@@ -57,7 +57,7 @@ private[namerd] case class NamerdConfig(
           if (prefix.startsWith(config.prefix) || config.prefix.startsWith(prefix))
             throw NamerdConfig.ConflictingNamers(prefix, config.prefix)
 
-        namers + (config.prefix -> config.mk(Stack.Params.empty))
+        namers + (config.prefix -> config.mk(params))
     }
 
   private[this] def mkInterfaces(
