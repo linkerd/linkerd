@@ -55,10 +55,8 @@ object LinkerdHeaders {
      *   - Deadline
      *   - Dtab
      *
-     * Note that currently, the dtabs read by this module are
-     * appeneded to that specified by the `l5d-dtab` header.  The
-     * `dtab-local` header should be considered deprecated in favor of
-     * `l5d-dtab`, and will not be supported in the future.
+     * Note that the dtabs read by this module are appeneded to that specified
+     * by the `l5d-dtab` header.
      *
      * Note that trace configuration is handled separately.
      */
@@ -93,11 +91,6 @@ object LinkerdHeaders {
      * A clientside stack module that injects local contextual
      * information onto downstream requests.  Currently this includes:
      *   - Deadline
-     *
-     * Note that Dtabs are *not* encoded by this filter, since the
-     * HttpClientDispatcher is currently responsible for encoding the
-     * `dtab-local` header. In a future release, Dtabs will be encoded
-     * into the `l5d-ctx-dtab` header.
      *
      * Note that trace configuration is handled separately.
      */
@@ -210,11 +203,6 @@ object LinkerdHeaders {
      *   1. `l5d-ctx-dtab` is read and _written_ by linkerd. It is
      *      intended to managed entirely by linkerd, and applications
      *      should only forward requests prefixed by `l5d-ctx-*`.
-     *
-     *      *NOTE*: the client module does not yet encode
-     *      `l5d-ctx-dtab`. `dtab-local` is still to be relied on
-     *      until https://github.com/twitter/finagle/pull/514 is
-     *      complete.
      *
      *   2. `l5d-dtab` is to be provided by users. Applications are
      *       not required to forward `l5d-dtab` when fronted by
