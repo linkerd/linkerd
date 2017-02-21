@@ -11,6 +11,10 @@
   box-shadow: none;
 }
 
+.panel-default>.panel-heading-primary, .panel>.list-group .list-group>.list-group-item-primary {
+  border-left: 10px solid green;
+}
+
 .panel {
   margin-bottom: 0px;
 }

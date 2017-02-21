@@ -14,29 +14,63 @@ define([
     }
 
     function renderAll(resp) {
-      $('.result').html(renderNode(resp));
+      $('.result').html(renderNode(resp, true));
     }
 
-    function renderNode(obj, weight){
+    function isNeg(obj){
       switch(obj.type) {
-        case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate); break;
+        case "delegate": return isNeg(obj.delegate);
+        case "transformation": return isNeg(obj.tree);
+        case "alt": return obj.alt.some(function(e,_i){
+            return isNeg(e);
+          });
+        case "union": return obj.alt.every(function(e,_i){
+            return isNeg(e);
+          });
+        case "neg": return true;
+        case "fail": return false;
+        case "leaf": return false;
+        case "exception": return false;
+      }
+    }
+
+    function renderNode(obj, primary, weight){
+      switch(obj.type) {
+        case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate, primary); break;
         case "transformation":
           obj.isLeaf = true;
           obj.dentry = obj.tree.dentry;
           obj.tree.dentry = null;
           obj.tree.transformation = obj.name;
           obj.tree.isTransformation = true;
-          obj.bound.transformed = renderNode(obj.tree);
-          obj.child = renderNode(obj.bound);
+          obj.bound.transformed = renderNode(obj.tree, primary);
+          obj.child = renderNode(obj.bound, primary);
           break;
-        case "alt": obj.isAlt = true; obj.child = obj.alt.map(function(e,_i){ return renderNode(e); }).join(""); break;
-        case "union": obj.isUnion = true; obj.child = obj.union.map(function(e,_i){ return renderNode(e.tree, e.weight); }).join(""); break;
+        case "alt":
+          obj.isAlt = true;
+          var foundPrimaryBranch = false;
+          obj.child = obj.alt.map(function(e,_i){
+            if (primary && !foundPrimaryBranch && !isNeg(e)){
+              foundPrimaryBranch = true;
+              return renderNode(e, true);
+            } else {
+              return renderNode(e, false);
+            }
+          }).join("");
+          break;
+        case "union":
+          obj.isUnion = true;
+          obj.child = obj.union.map(function(e,_i){
+            return renderNode(e.tree, primary, e.weight);
+          }).join("");
+          break;
         case "neg": obj.isNeg = true; break;
         case "fail": obj.isFail = true; break;
-        case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound); break;
+        case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound, primary); break;
         case "exception": obj.isException = true; break;
       }
       obj.weight = weight;
+      obj.primary = primary;
       return templates.node(obj);
     }
 
