@@ -83,6 +83,11 @@ object Admin {
       baseRequestPath = "/admin/files/",
       baseResourcePath = "io/buoyant/admin/twitter-server",
       localFilePath = "admin/src/main/resources/io/buoyant/admin"
+    ))),
+    Handler("/favicon.ico", StaticFilter.andThen(ResourceHandler.fromDirectoryOrJar(
+      baseRequestPath = "/",
+      baseResourcePath = "io/buoyant/admin/twitter-server/images",
+      localFilePath = "admin/src/main/resources/io/buoyant/admin/twitter-server/images"
     )))
   )
 
