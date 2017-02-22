@@ -14,22 +14,25 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      var template = templates.router_option;
-      var routers = routersRsp.routers;
-
-      //Not every page supports a mult-router view!
-      if(!removeRoutersAllOption || routers.length === 0) {
-        routers.push({label: "all"});
-      }
-      var routerHtml = routers.map(template);
-
-      $(".dropdown-menu").html(routerHtml.join(""));
-
-      $(".router-menu-option").click(function() {
-        selectRouter($(this).text());
-      });
-
+      addAllRoutersLabel(routersRsp, removeRoutersAllOption);
       return routersRsp;
+    });
+  }
+
+  function addAllRoutersLabel(routersRsp, removeRoutersAllOption) {
+    var template = templates.router_option;
+    var routers = routersRsp.routers;
+
+    //Not every page supports a mult-router view!
+    if(!removeRoutersAllOption || routers.length === 0) {
+      // routers.push({label: "all"});
+    }
+    var routerHtml = routers.map(template);
+
+    $(".dropdown-menu").html(routerHtml.join(""));
+
+    $(".router-menu-option").click(function() {
+      selectRouter($(this).text());
     });
   }
 
