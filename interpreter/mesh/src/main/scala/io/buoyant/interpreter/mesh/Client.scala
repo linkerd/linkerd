@@ -13,9 +13,6 @@ import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
 import scala.util.control.{NoStackTrace, NonFatal}
 
-/**
- * XXX TODO retry/backoff
- */
 object Client {
 
   def apply(
