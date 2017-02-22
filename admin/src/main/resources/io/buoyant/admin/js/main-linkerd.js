@@ -38,10 +38,9 @@ require([
   namerd,
   loggingConfig
 ) {
-  var $routerDropdown = $(".navbar-right .dropdown");
   // poor man's routing
   if (window.location.pathname.endsWith("/")) {
-    adminPage.initialize(false).done(function(routerConfig) {
+    adminPage.initialize().done(function(routerConfig) {
       new dashboard(routerConfig);
     });
   } else if (window.location.pathname.endsWith("/delegator")) {
@@ -50,16 +49,13 @@ require([
     });
   } else if (window.location.pathname.endsWith("/namerd")) {
     adminPage.initialize().done(function() {
-      $routerDropdown.addClass("hide");
       new namerd();
     });
   } else if (window.location.pathname.endsWith("/logging")) {
     adminPage.initialize().done(function() {
-      $routerDropdown.addClass("hide");
       new loggingConfig();
     });
   } else {
     adminPage.initialize();
-    $routerDropdown.addClass("hide");
   }
 });
