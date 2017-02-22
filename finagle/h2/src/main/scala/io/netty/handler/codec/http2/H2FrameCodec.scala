@@ -95,8 +95,8 @@ class H2FrameCodec(
   }
 
   /**
-   * Processes all {@link Http2Frame}s. {@link Http2StreamFrame}s may
-   * only originate in child streams.
+   * Processes all Http2Frame messages. Http2StreamFrame messages
+   * may only originate in child streams.
    */
   override def write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise): Unit =
     msg match {
