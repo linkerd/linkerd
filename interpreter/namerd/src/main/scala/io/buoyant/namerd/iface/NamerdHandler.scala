@@ -23,7 +23,7 @@ class NamerdHandler(
         namerdInterpreters.get(key) match {
           case Some(delegator) =>
             val dtab = delegator.dtab.values.toFuture().flatMap(Future.const)
-            Some(dtab.map(DelegatorConfig(key, config.namespace.getOrElse("default"), _)))
+            Some(dtab.map(DelegatorConfig(key, config.namespace.get, _)))
           case None => None
         }
     }
