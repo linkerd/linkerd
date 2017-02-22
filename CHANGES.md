@@ -1,8 +1,8 @@
 ## 0.9.0 2017-02-22
 
 * Admin dashboard:
-  * Added reties stat, retry budget bar, and client pool bar.
-  * Added colored border to clients to make them easier to distinguish.
+  * Add retries stat, retry budget bar, and client pool bar.
+  * Add colored border to clients to make them easier to distinguish.
   * Sorts clients and servers alphabetically.
   * Displays routers in the order that they are defined.
   * Namerd Admin now works with Dtabs of arbitrary size.
