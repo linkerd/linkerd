@@ -14,7 +14,12 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      addAllRoutersLabel(routersRsp.routers, removeRoutersAllOption);
+      var routers = routersRsp.routers;
+      addAllRoutersLabel(routers, removeRoutersAllOption);
+
+      if(window.location.pathname === "/" && !matches && routers.length > 0) {
+        selectRouter(routers[0].label || routers[0].protocol);
+      }
       return routersRsp;
     });
   }
