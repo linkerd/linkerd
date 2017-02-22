@@ -14,18 +14,17 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      addAllRoutersLabel(routersRsp, removeRoutersAllOption);
+      addAllRoutersLabel(routersRsp.routers, removeRoutersAllOption);
       return routersRsp;
     });
   }
 
-  function addAllRoutersLabel(routersRsp, removeRoutersAllOption) {
+  function addAllRoutersLabel(routers, removeRoutersAllOption) {
     var template = templates.router_option;
-    var routers = routersRsp.routers;
 
     //Not every page supports a mult-router view!
     if(!removeRoutersAllOption || routers.length === 0) {
-      // routers.push({label: "all"});
+      routers.push({label: "all"});
     }
     var routerHtml = routers.map(template);
 
