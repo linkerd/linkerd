@@ -36,6 +36,9 @@ define([
         case "leaf": obj.isLeaf = true; obj.child = renderNode(obj.bound); break;
         case "exception": obj.isException = true; break;
       }
+      if (obj.addr && obj.addr.type == "neg") {
+        obj.isNeg = true;
+      }
       obj.weight = weight;
       return templates.node(obj);
     }
