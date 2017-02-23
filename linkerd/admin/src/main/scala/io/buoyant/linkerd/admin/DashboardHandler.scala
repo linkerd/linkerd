@@ -27,7 +27,8 @@ private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Servic
         <div class="dashboard-container"></div>
         <div class="row proc-info">
         </div>
-      """
+      """,
+      showRouterDropdown = true
     )
   }
 }
