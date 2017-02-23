@@ -53,6 +53,7 @@ define(['jQuery'], function($) {
     function getTreeDeltaPayload(metricNames, resp, prevResp) {
       _.each(metricNames, function(metric) {
         if(_.isArray(metric)) {
+          // console.log(metric);
           var prevValue = _.get(prevResp, metric);
           var currentValue = _.get(resp, metric);
           if (prevValue !== undefined && currentValue !== undefined) {
