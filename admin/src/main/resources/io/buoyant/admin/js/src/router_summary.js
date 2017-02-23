@@ -7,7 +7,7 @@ define([
   'src/bar_chart',
   'template/compiled_templates'
 ], function($,
-  Query,
+  Query, // TODO: remove
   Utils,
   BarChart,
   templates
@@ -53,8 +53,8 @@ define([
 
     function processResponses(data, routerName) {
       var process = function(metricName, isGauge) { return processServerResponse(data, routerName, metricName, isGauge); };
-      var pathRetries = processPathResponse(data, routerName, "retries/total");
-      var requeues = processClientResponse(data, routerName, "retries/requeues");
+      var pathRetries = processPathResponse(data, routerName, ["retries", "total", "delta"]);
+      var requeues = processClientResponse(data, routerName, ["retries", "requeues", "delta"]);
 
       var result = {
         router: routerName,
@@ -69,18 +69,27 @@ define([
     }
 
     function processServerResponse(data, routerName, metricName, isGauge) {
-      var datum = Query.filter(Query.serverQuery().allServers().withRouter(routerName).withMetric(metricName).build(), data);
-      return _.sumBy(datum, isGauge ? "value" : "delta");
+      var datum = _(data).get(["rt", routerName, "srv"]);
+      return _.reduce(datum, function(mem, d) {
+        mem += _.get(d, [metricName, isGauge ? "value" : "delta"]) || 0;
+        return mem;
+      }, 0);
     }
 
     function processClientResponse(data, routerName, metricName) {
-      var datum = Query.filter(Query.clientQuery().allClients().withRouter(routerName).withMetric(metricName).build(), data);
-      return _.sumBy(datum, "delta");
+      var datum = _(data).get(["rt", routerName, "dst", "id"]);
+      return _.reduce(datum, function(mem, d) {
+        mem += _.get(d, metricName) || 0;
+        return mem;
+      }, 0);
     }
 
     function processPathResponse(data, routerName, metricName) {
-      var datum = Query.filter(Query.pathQuery().allPaths().withRouter(routerName).withMetric(metricName).build(), data);
-      return _.sumBy(datum, "delta");
+      var datum = _(data).get(["rt", routerName, "dst", "path"]);
+      return _.reduce(datum, function(mem, d) {
+        mem += _.get(d, metricName) || 0;
+        return mem;
+      }, 0);
     }
 
     function getSuccessAndFailureRate(result) {
@@ -119,9 +128,9 @@ define([
     }
 
     return function(metricsCollector, $summaryEl, $barChartEl, routerName, routerConfig) {
-      var serverQuery = Query.serverQuery().allServers().withRouter(routerName).withMetrics(["load", "requests", "success", "failures"]).build();
-      var clientQuery = Query.clientQuery().allClients().withRouter(routerName).withMetrics(["retries/requeues"]).build();
-      var pathQuery = Query.pathQuery().allPaths().withRouter(routerName).withMetrics(["requests", "retries/total"]).build();
+      var serverMetrics = [{name: "load", isGauge: true}, {name: "requests"}, {name: "success"}, {name: "failures"}];
+      var clientMetrics = [["retries", "requeues", "counter"]];
+      var pathMetrics = [["requests", "counter"], ["retries", "total", "counter"]];
 
       var $retriesBarChart = $barChartEl.find(".retries-bar-chart");
 
@@ -132,16 +141,38 @@ define([
 
       metricsCollector.registerListener(
         function(data) {
-          var summaryData = processResponses(data.specific, routerName);
+          var summaryData = processResponses(data.treeSpecific, routerName);
 
           retriesBarChart.update(summaryData, retryBudget);
           renderRouterSummary(summaryData, routerName, $summaryEl);
         },
-        function(metrics) {
-          var pathMetrics = Query.filter(pathQuery, metrics);
-          var clientMetrics = Query.filter(clientQuery, metrics);
-          var serverMetrics = Query.filter(serverQuery, metrics);
-          return _.concat(pathMetrics, clientMetrics, serverMetrics);
+        function(metrics, treeMetrics) {
+          if (treeMetrics) {
+            var raw = _.map(treeMetrics.rt, function(routerData, router) {
+              var servers = _.flatMap(_.keys(routerData.srv), function(server) {
+                return _.map(serverMetrics, function(metric) {
+                  return ["rt", router, "srv", server, metric.name, metric.isGauge ? "gauge" : "counter"];
+                });
+              });
+
+              var clients = _.flatMap(_.keys(_.get(routerData, "dst.id")), function(client) {
+                return _.map(clientMetrics, function(metric) {
+                  return ["rt", router, "dst", "id", client].concat(metric);
+                });
+              });
+
+              var paths = _.map(_.keys(_.get(routerData, "dst.path")), function(path) {
+                return _.map(pathMetrics, function(metric) {
+                  return ["rt", router, "dst", "path", "svc"].concat(metric);
+                });
+              });
+
+              return _.concat(servers, clients, paths);
+            });
+            return _.flatMap(raw);
+          } else {
+            return [];
+          }
         }
       );
 

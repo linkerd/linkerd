@@ -51,6 +51,7 @@ define(['jQuery'], function($) {
     }
 
     function getTreeDeltaPayload(metricNames, resp, prevResp) {
+      // console.log(metricNames);
       _.each(metricNames, function(metric) {
         if(_.isArray(metric)) {
           // console.log(metric);
@@ -73,14 +74,14 @@ define(['jQuery'], function($) {
         var defaultMetrics = _.keys(resp);
         var specific = generateDeltaPayload(resp, defaultMetrics, prevMetrics);
 
-        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(); });
+        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp, treeResp); }); // remove resp when done
         var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
 
         prevMetrics = resp;
         prevTreeMetrics = treeResp;
 
         _.each(listeners, function(listener) {
-          var metricNames = listener.metrics();
+          var metricNames = listener.metrics(prevMetrics, prevTreeMetrics); // remove when done
           var data = {
             general: resp,
             specific: _.filter(specific, function(d) {return _.includes(metricNames, d.name);}),

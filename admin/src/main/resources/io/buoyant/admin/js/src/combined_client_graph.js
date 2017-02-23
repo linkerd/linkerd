@@ -60,7 +60,8 @@ define([
       );
 
       var query = getQuery(routerName, getClientsToQuery(routers, routerName));
-      var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
+      // var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
+      var desiredMetrics = [];
       chart.setMetrics(desiredMetrics);
 
       var metricsListener = function(data) {
@@ -71,7 +72,10 @@ define([
         chart.updateMetrics(dataToDisplay);
       };
 
-      metricsCollector.registerListener(metricsListener, function(metrics) { return Query.filter(query, metrics); });
+      metricsCollector.registerListener(metricsListener, function(metrics) {
+        // return Query.filter(query, metrics);
+        return [];
+      });
       return {
         addClients: function(clients) {
           chart.addMetrics(_.map(clients, function(client) {

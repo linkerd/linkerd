@@ -119,7 +119,7 @@ define([
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 
-      var getDesiredMetrics = function(metrics) {
+      var getDesiredMetrics = function() {
         var metricDefinitions = getMetricDefinitions(routerName, server.label);
         return _.map(metricDefinitions, "treeMetric");
       }

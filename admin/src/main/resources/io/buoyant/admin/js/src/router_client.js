@@ -197,7 +197,7 @@ define([
         renderMetrics($metricsEl, client, summaryData, latencies);
       }
 
-      function getDesiredMetrics(metrics) {
+      function getDesiredMetrics() {
         return  _.map(metricDefinitions, function(d) {
           return d.treeMetric;
         });
