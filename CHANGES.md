@@ -1,3 +1,7 @@
+## In the next release
+
+* Add tree and q params to /admin/metrics.json
+
 ## 0.9.0 2017-02-22
 
 * Admin dashboard:
