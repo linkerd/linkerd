@@ -1,7 +1,7 @@
 "use strict";
 
 define([
-  'src/query',
+  'src/query', //TODO: remove
   'src/utils'
 ], function(Query, Utils) {
   var CombinedClientGraph = (function() {
@@ -14,7 +14,7 @@ define([
     function timeseriesParamsFn(clientColors) {
       return function(name) {
         return {
-          strokeStyle: clientColors[name.match(Query.clientQuery().build())[2]].color,
+          strokeStyle: clientColors[name.split("/requests")[0]].color,
           lineWidth: 2
         };
       };
@@ -26,11 +26,6 @@ define([
 
       // if all clients are collapsed, let the combined graph show all clients
       return _.isEmpty(nonIgnoredClients) ? clients : nonIgnoredClients;
-    }
-
-    function getQuery(routerName, clientsToQuery) {
-      var clients = _.map(clientsToQuery, 'label');
-      return Query.clientQuery().withRouter(routerName).withClients(clients).withMetric("requests").build();
     }
 
     return function(metricsCollector, routers, routerName, $root, colors) {
@@ -59,22 +54,29 @@ define([
         timeseriesParamsFn(colors)
       );
 
-      var query = getQuery(routerName, getClientsToQuery(routers, routerName));
-      // var desiredMetrics = _.map(Query.filter(query, metricsCollector.getCurrentMetrics()), clientToMetric);
-      var desiredMetrics = [];
+      var clientsToQuery = getClientsToQuery(routers, routerName);
+      var desiredMetrics = _.map(clientsToQuery, function(client) {
+        return { name: client.label + "/requests" };
+      });
       chart.setMetrics(desiredMetrics);
 
       var metricsListener = function(data) {
-        var clientsToQuery = getClientsToQuery(routers, routerName);
-        var metricQuery = getQuery(routerName, clientsToQuery);
-        var dataToDisplay = Query.filter(metricQuery, data.specific);
-
+        var clientData = _.get(data.treeSpecific, ["rt", routerName, "dst", "id"]);
+        var dataToDisplay = _.map(clientData, function(d, name) {
+          return {
+            name: name + "/requests",
+            delta: _.get(d, "requests.delta")
+          };
+        });
         chart.updateMetrics(dataToDisplay);
       };
 
-      metricsCollector.registerListener(metricsListener, function(metrics) {
-        // return Query.filter(query, metrics);
-        return [];
+      metricsCollector.registerListener(metricsListener, function() {
+        var clientsToQuery = getClientsToQuery(routers, routerName);
+        var metrics = _.map(clientsToQuery, function(client) {
+          return ["rt", routerName, "dst", "id", client.label, "requests", "counter"];
+        });
+        return metrics;
       });
       return {
         addClients: function(clients) {

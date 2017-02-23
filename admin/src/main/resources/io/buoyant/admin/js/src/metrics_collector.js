@@ -103,6 +103,7 @@ define(['jQuery'], function($) {
           }, interval);
         },
         getCurrentMetrics: function() { return _.keys(prevMetrics); },
+        initialTreeMetrics: initialTreeMetrics, // for combined client chart init // remove
         registerListener: registerListener,
         deregisterListener: deregisterListener,
         __update__: update
