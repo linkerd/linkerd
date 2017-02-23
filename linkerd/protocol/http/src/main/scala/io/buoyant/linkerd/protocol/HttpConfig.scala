@@ -61,7 +61,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultServer = {
     val stk = Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
-      .prepend(Headers.Ctx.serverModule)
+      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)

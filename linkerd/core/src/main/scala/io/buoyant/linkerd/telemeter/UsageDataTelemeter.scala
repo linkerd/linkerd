@@ -11,6 +11,7 @@ import com.google.protobuf.CodedOutputStream
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{MediaType, Method, Request, Response}
+import com.twitter.finagle.service.RetryBudget
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.DefaultTimer
@@ -20,7 +21,6 @@ import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.Handler
 import io.buoyant.linkerd.Linker.param.LinkerConfig
-import io.buoyant.linkerd.protocol.HttpConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
 import io.buoyant.linkerd.{Build, Linker}
 import io.buoyant.telemetry._
@@ -29,6 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
+import scala.language.reflectiveCalls
 
 private[telemeter] object UsageDataTelemeter {
   val DefaultPeriod = 1.hour
@@ -40,6 +41,11 @@ private[telemeter] object UsageDataTelemeter {
     pid: String,
     orgId: Option[String]
   ) {
+
+    private[this] val blackholeMonitor = Monitor.mk {
+      case _ => true
+    }
+
     def apply(metrics: MetricsTree): Future[Unit] = {
       val msg = mkUsageMessage(config, pid, orgId, metrics)
       log.debug(msg.toString)
@@ -53,7 +59,9 @@ private[telemeter] object UsageDataTelemeter {
       req.host = "stats.buoyant.io"
       req.content = Buf.ByteBuffer.Owned(bb0)
       req.contentType = ContentType
-      service(req).map(r => log.debug(r.contentString)).unit
+      Monitor.using(blackholeMonitor) {
+        service(req).map(r => log.debug(r.contentString)).unit
+      }
     }
   }
 
@@ -85,7 +93,7 @@ private[telemeter] object UsageDataTelemeter {
     val df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
     df.setTimeZone(tz)
     val uptime = gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric).map(_.toLong).getOrElse(0l)
-    Some(df.format(new Date((System.currentTimeMillis() - uptime).toInt)))
+    Some(df.format(new Date(System.currentTimeMillis() - uptime)))
   }
 
   def mkNamers(config: Linker.LinkerConfig): Seq[String] =
@@ -117,13 +125,16 @@ private[telemeter] object UsageDataTelemeter {
     counters.toSeq
   }
 
+  type HttpRouter = { def identifier: Option[Seq[{ def kind: String }]] }
+
   def mkRouters(config: Linker.LinkerConfig): Seq[Router] =
     config.routers.map { r =>
 
-      val identifiers = r match {
-        case httpRouter: HttpConfig =>
-          httpRouter.identifier.getOrElse(Seq()).map(_.kind)
-        case _ => Seq()
+      val identifiers = try {
+        val httpRouter = r.asInstanceOf[HttpRouter]
+        httpRouter.identifier.getOrElse(Seq()).map(_.kind)
+      } catch {
+        case e: NoSuchMethodException => Seq()
       }
 
       val transformers = r.interpreter.transformers.getOrElse(Seq()).map(_.kind)
@@ -167,19 +178,24 @@ private[telemeter] object UsageDataTelemeter {
  *
  * Defines neither its own tracer nor its own stats receiver.
  */
-class UsageDataTelemeter(
+case class UsageDataTelemeter(
   metricsDst: Name,
   withTls: Boolean,
   config: Linker.LinkerConfig,
   metrics: MetricsTree,
-  orgId: Option[String],
-  dryRun: Boolean
+  orgId: Option[String]
 ) extends Telemeter with Admin.WithHandlers {
   import UsageDataTelemeter._
 
   val tracer = NullTracer
   val stats = NullStatsReceiver
-  private[this] val httpClient = if (withTls) Http.client.withTls("stats.buoyant.io") else Http.client
+
+  private[this] val baseHttpClient = Http.client
+    .withStatsReceiver(NullStatsReceiver)
+    .withSessionQualifier.noFailFast
+    .withSessionQualifier.noFailureAccrual
+    .withRetryBudget(RetryBudget.Empty)
+  private[this] val httpClient = if (withTls) baseHttpClient.withTls("stats.buoyant.io") else baseHttpClient
   private[this] val metricsService = httpClient.newService(metricsDst, "usageData")
   private[this] val started = new AtomicBoolean(false)
   private[this] val pid = java.util.UUID.randomUUID().toString
@@ -192,7 +208,7 @@ class UsageDataTelemeter(
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
-    if (!dryRun && started.compareAndSet(false, true)) run0()
+    if (started.compareAndSet(false, true)) run0()
     else Telemeter.nopRun
 
   private[this] def run0() = {
@@ -216,29 +232,23 @@ class UsageDataTelemeter(
 }
 
 case class UsageDataTelemeterConfig(
-  orgId: Option[String],
-  dryRun: Option[Boolean]
-) extends TelemeterConfig {
+  orgId: Option[String] = None,
+  enabled: Option[Boolean] = None
+) {
 
   @JsonIgnore
-  def mk(params: Stack.Params): UsageDataTelemeter = {
-    val LinkerConfig(config) = params[LinkerConfig]
+  def mk(params: Stack.Params): Telemeter =
+    if (enabled.getOrElse(true)) {
+      val LinkerConfig(config) = params[LinkerConfig]
 
-    new UsageDataTelemeter(
-      Name.bound(Address("stats.buoyant.io", 443)),
-      withTls = true,
-      config,
-      params[MetricsTree],
-      orgId,
-      dryRun.getOrElse(false)
-    )
-  }
-}
-
-object UsageDataTelemeterInitializer extends UsageDataTelemeterInitializer
-
-class UsageDataTelemeterInitializer extends TelemeterInitializer {
-  type Config = UsageDataTelemeterConfig
-  def configClass = classOf[UsageDataTelemeterConfig]
-  override def configId = "io.l5d.usage"
+      new UsageDataTelemeter(
+        Name.bound(Address("stats.buoyant.io", 443)),
+        withTls = true,
+        config,
+        params[MetricsTree],
+        orgId
+      )
+    } else {
+      NullTelemeter
+    }
 }

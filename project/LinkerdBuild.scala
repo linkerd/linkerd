@@ -411,7 +411,9 @@ object LinkerdBuild extends Base {
         Router.core
       )
       .withLib(Deps.jacksonCore)
+      .withGrpc
       .withTests()
+      .withE2e()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
@@ -454,19 +456,6 @@ object LinkerdBuild extends Base {
         .withTwitterLib(Deps.twitterUtil("benchmark"))
 
       val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift)
-    }
-
-    object Telemeter {
-      val usage = projectDir("linkerd/telemeter/usage")
-        .dependsOn(core % "compile->compile;test->test")
-        .dependsOn(Namer.core  % "compile->compile;test->test")
-        .dependsOn(Protocol.http)
-        .withLibs(Deps.jackson)
-        .withGrpc
-        .withTests()
-        .withE2e()
-
-      val all = aggregateDir("linkerd/telemeter", usage)
     }
 
     object Announcer {
@@ -535,7 +524,6 @@ object LinkerdBuild extends Base {
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
-      Telemeter.usage,
       tls,
       failureAccrual
     )
@@ -548,7 +536,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all, Telemeter.all)
+        Announcer.all, Namer.all, Protocol.all)
       .configs(Bundle, LowMem)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
@@ -658,8 +646,6 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
-  val linkerdTelemeter = Linkerd.Telemeter.all
-  val linkerdTelemeterUsage = Linkerd.Telemeter.usage
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls

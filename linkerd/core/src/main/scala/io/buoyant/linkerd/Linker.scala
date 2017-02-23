@@ -14,6 +14,7 @@ import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
+import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.telemetry._
 import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
 import java.net.InetSocketAddress
@@ -93,7 +94,7 @@ object Linker {
     case class LinkerConfig(config: Linker.LinkerConfig)
 
     implicit object LinkerConfig extends Stack.Param[LinkerConfig] {
-      val default = LinkerConfig(Linker.LinkerConfig(None, Seq(), None, None))
+      val default = LinkerConfig(Linker.LinkerConfig(None, Seq(), None, None, None))
     }
 
   }
@@ -102,7 +103,8 @@ object Linker {
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
     telemetry: Option[Seq[TelemeterConfig]],
-    admin: Option[AdminConfig]
+    admin: Option[AdminConfig],
+    usage: Option[UsageDataTelemeterConfig]
   ) {
 
     def mk(): Linker = {
@@ -111,15 +113,17 @@ object Linker {
 
       val metrics = MetricsTree()
 
+      val telemeterParams = Stack.Params.empty + param.LinkerConfig(this) + metrics
       val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+      val usageTelemeter = usage.getOrElse(UsageDataTelemeterConfig()).mk(telemeterParams)
 
       val telemeters = telemetry.toSeq.flatten.map {
         case t if t.disabled =>
           val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
             "explicitly enabled by setting the `experimental' parameter to `true'."
           throw new IllegalArgumentException(msg) with NoStackTrace
-        case t => t.mk(Stack.Params.empty + param.LinkerConfig(this) + metrics)
-      } :+ adminTelemeter
+        case t => t.mk(telemeterParams)
+      } :+ adminTelemeter :+ usageTelemeter
 
       // Telemeters may provide StatsReceivers.
       val stats = mkStats(metrics, telemeters)

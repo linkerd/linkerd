@@ -61,6 +61,7 @@ Key | Required | Description
 [routers](#routers-intro) | yes | Configures linkerd's RPC support for various protocols.
 [namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
 [telemetry](#telemetry-intro) | no | Configures linkerd's metrics instrumentation.
+[usage](#usage) | no | Configures linkerd usage reporting.
 
 
 ### Administrative interface
@@ -185,3 +186,33 @@ A telemeter may receive stats and trace annotations, i.e. to send to a collector
 or export. Telemetry data can be collected and exported from a linkerd process by
 configuring telemeters via a top-level `telemetry` section. See
 [telemetry](#telemetry).
+
+### Usage
+
+> Example usage config
+
+```yaml
+usage:
+ orgId: my-org
+```
+
+In order to make improvements and prioritize features, we'd like to gain a
+broader picture of how users run linkerd. Linkerd gathers anonymized usage data,
+and sends to buoyant once an hour.  This behavior can be configured or disabled
+in the usage config.
+
+The kind of data captured is as follows:
+
+1. How linkerds are configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
+2. What environments are linkerds running in (Operating System, Container orchestration solution),
+3. How do linkerds perform in those contexts (JVM performance, Number of requests served)
+
+We do not collect the labels of namers/routers, designated service addresses or
+directories, dtabs, request/response data, or any other possibly identifying information.
+
+To see the exact payload that is sent query `localhost:9990/admin/metrics/usage`
+
+Key | Default Value | Description
+--- | ------------- | -----------
+orgId | empty by default | Optional string of your choosing that identifies your organization
+enabled | true | If set to true, data is sent to Buoyant once per hour
