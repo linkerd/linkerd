@@ -50,19 +50,40 @@ define(['jQuery'], function($) {
 
     }
 
-    return function(initialMetrics) {
-      var prevMetrics = initialMetrics;
+    function getTreeDeltaPayload(metricNames, resp, prevResp) {
+      _.each(metricNames, function(metric) {
+        if(_.isArray(metric)) {
+          var prevValue = _.get(prevResp, metric);
+          var currentValue = _.get(resp, metric);
+          if (prevValue !== undefined && currentValue !== undefined) {
+            _.set(resp, _.take(metric, metric.length - 1).concat(["delta"]), currentValue - prevValue);
+            _.set(resp, _.take(metric, metric.length - 1).concat(["value"]), currentValue);
+          }
+        }
+      });
+      return resp;
+    }
 
-      function update(resp) {
+    return function(initialMetrics, initialTreeMetrics) {
+      var prevMetrics = initialMetrics;
+      var prevTreeMetrics = initialTreeMetrics;
+
+      function update(resp, treeResp) {
         var defaultMetrics = _.keys(resp);
         var specific = generateDeltaPayload(resp, defaultMetrics, prevMetrics);
+
+        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(); });
+        var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
+
         prevMetrics = resp;
+        prevTreeMetrics = treeResp;
 
         _.each(listeners, function(listener) {
-          var metricNames = listener.metrics(defaultMetrics);
+          var metricNames = listener.metrics();
           var data = {
             general: resp,
-            specific: _.filter(specific, function(d) {return _.includes(metricNames, d.name);})
+            specific: _.filter(specific, function(d) {return _.includes(metricNames, d.name);}),
+            treeSpecific: treeSpecific
           }
           listener.handler(data);
         });
@@ -70,8 +91,14 @@ define(['jQuery'], function($) {
 
       return {
         start: function(interval) {
-          $.get(generalUpdateUri, update)
-          setInterval(function(){$.get(generalUpdateUri, update)}, interval);
+          $.when($.get(generalUpdateUri), $.get(generalUpdateUri+"?tree=1")).done(function(r1, r2) {
+            update(r1[0], r2[0]);
+          });
+          setInterval(function(){
+            $.when($.get(generalUpdateUri), $.get(generalUpdateUri+"?tree=1")).done(function(r1, r2) {
+            update(r1[0], r2[0]);
+          });
+          }, interval);
         },
         getCurrentMetrics: function() { return _.keys(prevMetrics); },
         registerListener: registerListener,

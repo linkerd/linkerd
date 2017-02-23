@@ -50,7 +50,9 @@ define([
       if (metricsCollector) {
         metricsCollector.registerListener(
           function(data){ render($root, data.specific); },
-          function() { return _.map(stats, "dataKey"); });
+          function() {
+            return _.map(stats, "dataKey");
+          });
       }
 
       return {};

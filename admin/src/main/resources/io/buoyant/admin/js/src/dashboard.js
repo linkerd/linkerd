@@ -21,8 +21,14 @@ define([
      */
     var UPDATE_INTERVAL = 1000;
 
-    $.get("admin/metrics.json").done(function(metricsJson) {
-      var metricsCollector = MetricsCollector(metricsJson);
+    $.when(
+      $.get("admin/metrics.json"),
+      $.get("admin/metrics.json?tree=1")
+    )
+    .done(function(r1, r2) {
+      var metricsJson = r1[0];
+      var metricsJsonTree = r2[0];
+      var metricsCollector = MetricsCollector(metricsJson, metricsJsonTree);
       var routers = Routers(metricsJson, metricsCollector);
 
       var $serverData = $(".server-data");

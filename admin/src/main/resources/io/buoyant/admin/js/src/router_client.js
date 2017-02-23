@@ -5,13 +5,11 @@ define([
   'lodash',
   'handlebars.runtime',
   'src/utils',
-  'src/query',
   'src/success_rate_graph',
   'src/bar_chart',
   'template/compiled_templates'
 ], function($, _, Handlebars,
   Utils,
-  Query,
   SuccessRateGraph,
   BarChart,
   templates
@@ -74,11 +72,15 @@ define([
           {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
           {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
         ], function(metric) {
+          var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
+          var treeKey = treeKeyRoot.concat([metric.isGauge ? "gauge" : "counter"]);
+
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
           isGauge: metric.isGauge,
-          query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
+          treeMetric: treeKey,
+          treeMetricRoot: treeKeyRoot
         }
       });
     }
@@ -114,9 +116,9 @@ define([
 
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
-        var clientData = Query.filter(defn.query, data);
+        var clientData = _.get(data, defn.treeMetricRoot);
         var value = _.isEmpty(clientData) ? null :
-          (defn.isGauge ? clientData[0].value : clientData[0].delta);
+          (defn.isGauge ? clientData.value : clientData.delta);
         mem[defn.metricSuffix] = {
           description: defn.label,
           value: value
@@ -186,7 +188,7 @@ define([
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data.specific, metricDefinitions);
+        var summaryData = getSummaryData(data.treeSpecific, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
@@ -196,8 +198,8 @@ define([
       }
 
       function getDesiredMetrics(metrics) {
-        return  _.flatMap(metricDefinitions, function(d) {
-          return Query.filter(d.query, metrics);
+        return  _.map(metricDefinitions, function(d) {
+          return d.treeMetric;
         });
       }
 
