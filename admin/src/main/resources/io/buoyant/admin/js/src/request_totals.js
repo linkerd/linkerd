@@ -44,22 +44,18 @@ define([
     ];
 
     function getTreeServerMetric(data, metric, isGauge) {
-      return _.reduce(data, function(mem, d) {
-        _.map(d.rt, function(routerData, router) {
-          _.map(routerData.srv, function(serverData, server) {
-            mem += _.get(serverData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
-          });
+      return _.reduce(data, function(mem, routerData, router) {
+        _.map(routerData.srv, function(serverData, server) {
+          mem += _.get(serverData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
         });
         return mem;
       }, 0);
     }
 
     function getTreeClientMetric(data, metric, isGauge) {
-      return _.reduce(data, function(mem, d) {
-        _.map(d.rt, function(routerData, router) {
-          _.map(_.get(routerData, "dst.id"), function(clientData, client) {
-            mem += _.get(clientData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
-          });
+      return _.reduce(data, function(mem, routerData, router) {
+        _.map(_.get(routerData, "dst.id"), function(clientData, client) {
+          mem += _.get(clientData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
         });
         return mem;
       }, 0);
@@ -93,8 +89,8 @@ define([
     return function(metricsCollector, selectedRouter, $root) {
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
-          var metrics = defn.getMetrics(data);
-          // console.log(defn.description, metrics);
+          var metrics = defn.getMetrics(data.treeSpecific.rt);
+
           return {
             description: defn.description,
             value: metrics
