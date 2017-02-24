@@ -17,24 +17,40 @@ define([
       $('.result').html(renderNode(resp, true));
     }
 
-    function isNeg(obj){
+    function treeType(obj){
       switch(obj.type) {
-        case "delegate": return isNeg(obj.delegate);
-        case "transformation": return isNeg(obj.tree);
-        case "alt": return obj.alt.some(function(e,_i){
-            return isNeg(e);
+        case "delegate": return treeType(obj.delegate);
+        case "transformation": return treeType(obj.tree);
+        case "alt":
+          obj.alt.forEach(function(e,_i){
+            var subtreeType = treeType(e);
+            if (subtreeType != "neg") {
+              return subtreeType;
+            }
           });
-        case "union": return obj.alt.every(function(e,_i){
-            return isNeg(e);
-          });
-        case "neg": return true;
-        case "fail": return false;
-        case "leaf": return false;
-        case "exception": return false;
+          return "neg";
+        case "union":
+          if (obj.union.some(function(e,_i){return subtreeType(e) == "fail";})) {
+            return "fail";
+          } else if (obj.union.some(function(e,_i){return subtreeType(e) == "success";})) {
+            return "success";
+          } else {
+            return "neg";
+          }
+        case "neg": return "neg";
+        case "fail": return "fail";
+        case "leaf":
+          if (obj.bound.addr.type == "neg") {
+            return "neg";
+          } else {
+            return "success";
+          }
+        case "exception": return "fail";
       }
     }
 
     function renderNode(obj, primary, weight){
+      var ttype = treeType(obj);
       switch(obj.type) {
         case "delegate": obj.isDelegate = true; obj.child = renderNode(obj.delegate, primary); break;
         case "transformation":
@@ -50,7 +66,7 @@ define([
           obj.isAlt = true;
           var foundPrimaryBranch = false;
           obj.child = obj.alt.map(function(e,_i){
-            if (primary && !foundPrimaryBranch && !isNeg(e)){
+            if (primary && !foundPrimaryBranch && ttype != "neg"){
               foundPrimaryBranch = true;
               return renderNode(e, true);
             } else {
@@ -70,7 +86,8 @@ define([
         case "exception": obj.isException = true; break;
       }
       obj.weight = weight;
-      obj.primary = primary;
+      obj.isPrimary = primary;
+      obj.isSuccess = ttype == "success";
       return templates.node(obj);
     }
 
