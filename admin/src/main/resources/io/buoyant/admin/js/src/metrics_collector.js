@@ -27,34 +27,9 @@ define(['jQuery'], function($) {
       _.remove(listeners, function(l) { return l.handler === handler; });
     }
 
-    function generateDeltaPayload(generalData, defaultMetrics, prevMetrics) {
-      var metrics = _(listeners)
-        .flatMap(function(listener){ return listener.metrics(defaultMetrics); })
-        .uniq()
-        .compact()
-        .value();
-
-      return _.flatMap(metrics, function(metricName) {
-        var prevValue = prevMetrics[metricName];
-        var currentValue = generalData[metricName];
-        if (prevValue !== undefined && currentValue !== undefined) {
-          return [{
-            name: metricName,
-            delta: currentValue - prevValue,
-            value: currentValue
-          }];
-        } else {
-          return [];
-        }
-      })
-
-    }
-
     function getTreeDeltaPayload(metricNames, resp, prevResp) {
-      // console.log(metricNames);
       _.each(metricNames, function(metric) {
         if(_.isArray(metric)) {
-          // console.log(metric);
           var prevValue = _.get(prevResp, metric);
           var currentValue = _.get(resp, metric);
           if (prevValue !== undefined && currentValue !== undefined) {
@@ -72,7 +47,6 @@ define(['jQuery'], function($) {
 
       function update(resp, treeResp) {
         var defaultMetrics = _.keys(resp);
-        var specific = generateDeltaPayload(resp, defaultMetrics, prevMetrics);
 
         var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp, treeResp); }); // remove resp when done
         var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
@@ -84,7 +58,6 @@ define(['jQuery'], function($) {
           var metricNames = listener.metrics(prevMetrics, prevTreeMetrics); // remove when done
           var data = {
             general: resp,
-            specific: _.filter(specific, function(d) {return _.includes(metricNames, d.name);}),
             treeSpecific: treeSpecific
           }
           listener.handler(data);

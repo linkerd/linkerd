@@ -32,7 +32,6 @@ define([
     }
 
     function render($root, data) {
-      console.log(data);
       var templateData = _.map(stats, function(stat) {
         if (stat.dataKey) {
           var value = pretty(stat.description, _.get(data, stat.dataKey));
