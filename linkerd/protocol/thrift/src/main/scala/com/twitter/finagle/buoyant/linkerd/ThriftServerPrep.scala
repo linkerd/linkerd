@@ -21,13 +21,15 @@ object ThriftServerPrep {
     ): ServiceFactory[Array[Byte], Array[Byte]] = {
       val Label(label) = params[Label]
       val Thrift.param.ProtocolFactory(pf) = params[Thrift.param.ProtocolFactory]
-      val payloadSize = new PayloadSizeFilter[Array[Byte], Array[Byte]](
-        params[param.Stats].statsReceiver, _.length, _.length
-      )
       val uncaughtExceptionsFilter = new UncaughtAppExceptionFilter(pf)
-      val ttwitter = new TTwitterServerFilter(label, pf)
 
-      payloadSize.andThen(ttwitter).andThen(uncaughtExceptionsFilter).andThen(next)
+      next.map { service =>
+        val payloadSize = new PayloadSizeFilter[Array[Byte], Array[Byte]](
+          params[param.Stats].statsReceiver, _.length, _.length
+        )
+        val ttwitter = new TTwitterServerFilter(label, pf)
+        payloadSize.andThen(ttwitter).andThen(uncaughtExceptionsFilter).andThen(service)
+      }
     }
   }
 }
