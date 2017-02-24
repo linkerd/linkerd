@@ -22,12 +22,12 @@ define([
         case "delegate": return treeType(obj.delegate);
         case "transformation": return treeType(obj.tree);
         case "alt":
-          obj.alt.forEach(function(e,_i){
-            var subtreeType = treeType(e);
+          for (var i = 0; i < obj.alt.length; i++) {
+            var subtreeType = treeType(obj.alt[i]);
             if (subtreeType != "neg") {
               return subtreeType;
             }
-          });
+          }
           return "neg";
         case "union":
           if (obj.union.some(function(e,_i){return subtreeType(e) == "fail";})) {
@@ -39,13 +39,13 @@ define([
           }
         case "neg": return "neg";
         case "fail": return "fail";
-        case "leaf":
-          if (obj.bound.addr.type == "neg") {
-            return "neg";
-          } else {
-            return "success";
-          }
+        case "leaf": return treeType(obj.bound);
         case "exception": return "fail";
+      }
+      if (obj.addr.type == "neg") {
+        return "neg";
+      } else {
+        return "success";
       }
     }
 
@@ -66,7 +66,7 @@ define([
           obj.isAlt = true;
           var foundPrimaryBranch = false;
           obj.child = obj.alt.map(function(e,_i){
-            if (primary && !foundPrimaryBranch && ttype != "neg"){
+            if (primary && !foundPrimaryBranch && treeType(e) != "neg"){
               foundPrimaryBranch = true;
               return renderNode(e, true);
             } else {

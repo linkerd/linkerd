@@ -1,13 +1,13 @@
 {{#if child}}
-  <div class='panel panel-default
+  <div class='panel panel-default'>
+    <div class='panel-heading
   {{#if isPrimary}}
     {{#if isSuccess}}
-      panel-success
+      panel-heading-success
     {{else}}
-      panel-danger
+      panel-heading-danger
     {{/if}}
-  {{/if}}'>
-    <div class='panel-heading'{{#with dentry}}
+  {{/if}}'{{#with dentry}}
       data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
     {{/with}}>
       <div class='node-info'>
@@ -44,6 +44,8 @@
       {{else}}
         list-group-item-danger
       {{/if}}
+    {{else}}
+      list-group-item-plain
     {{/if}}'
     {{#with dentry}}
       data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
