@@ -2,7 +2,7 @@
 
 define([
   'jQuery',
-  'src/query',
+  'src/query', // TODO: remove
   'template/compiled_templates'
   ], function($, Query, templates) {
 
@@ -12,28 +12,76 @@ define([
     var metricDefinitions = [
       {
         description: "Current requests",
-        query: Query.serverQuery().allRouters().allServers().withMetric("requests").build()
+        metric: "requests",
+        getMetrics: function(data) {
+          return getTreeServerMetric(data, "requests");
+        }
       },
       {
         description: "Pending",
-        query: Query.serverQuery().allRouters().allServers().withMetric("load").build(),
+        metric: "load",
+        getMetrics: function(data) {
+          return getTreeServerMetric(data, "load", true);
+        },
         isGauge: true
       },
       {
         description: "Incoming Connections",
-        query: Query.serverQuery().allRouters().allServers().withMetric("connections").build(),
+        getMetrics: function(data) {
+          return getTreeServerMetric(data, "connections", true);
+        },
+        metric: "connections",
         isGauge: true
       },
       {
         description: "Outgoing Connections",
-        query: Query.clientQuery().allRouters().allClients().withMetric("connections").build(),
+        getMetrics: function(data) {
+          return getTreeClientMetric(data, "connections", true); // is this connections or connects? is this right?
+        },
+        metric: "connections",
         isGauge: true
       }
     ];
 
-    function desiredMetrics(possibleMetrics) {
-      var metaQuery = _.map(metricDefinitions, "query.source");
-      return Query.filter(new RegExp(metaQuery.join("|")), possibleMetrics);
+    function getTreeServerMetric(data, metric, isGauge) {
+      return _.reduce(data, function(mem, d) {
+        _.map(d.rt, function(routerData, router) {
+          _.map(routerData.srv, function(serverData, server) {
+            mem += _.get(serverData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
+          });
+        });
+        return mem;
+      }, 0);
+    }
+
+    function getTreeClientMetric(data, metric, isGauge) {
+      return _.reduce(data, function(mem, d) {
+        _.map(d.rt, function(routerData, router) {
+          _.map(_.get(routerData, "dst.id"), function(clientData, client) {
+            mem += _.get(clientData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
+          });
+        });
+        return mem;
+      }, 0);
+    }
+
+    function desiredMetrics(possibleMetrics, treeMetrics) {
+      if (!treeMetrics) return [];
+      else {
+        var metrics = _.map(treeMetrics.rt, function(routerData, router) {
+          var serverData = _.map(routerData.srv, function(serverData, server) {
+            return _.map(metricDefinitions, function(defn) {
+              return ["rt", router, "srv", server, defn.metric, defn.isGauge ? "gauge" : "counter"];
+            });
+          });
+
+          var clientData = _.map(_.get(routerData, "dst.id"), function(clientData, client) {
+            return ["rt", router, "dst", "id", client, "connects", "gauge"];
+          });
+          return _.flatMap(serverData).concat(clientData);
+        });
+      }
+      return _.flatMap(metrics);
     }
 
     function render($root, metricData) {
@@ -45,12 +93,11 @@ define([
     return function(metricsCollector, selectedRouter, $root) {
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
-          var metricsByQuery = Query.filter(defn.query, data.specific);
-          var sumBy = defn.isGauge ? 'value' : 'delta';
-          var value = _.sumBy(metricsByQuery, sumBy);
+          var metrics = defn.getMetrics(data);
+          // console.log(defn.description, metrics);
           return {
             description: defn.description,
-            value: value
+            value: metrics
           };
         });
 
