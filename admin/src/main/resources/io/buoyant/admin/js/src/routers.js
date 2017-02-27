@@ -36,10 +36,6 @@ define([
    *   }
    */
   var Routers = (function() {
-
-    var clientRE = Query.clientQuery().withMetric("connects").build(),
-        serverRE = Query.serverQuery().withMetric("requests").build();
-
     function mk(router, label, prefix) {
       return {
         router: router,
@@ -83,18 +79,16 @@ define([
     function update(routers, metrics) {
       // first, check for new clients and add them
       var addedClients = [];
-
-      _.each(metrics, function(metric, key) {
-        var match = key.match(clientRE);
-        if (match) {
-          var name = match[1], id = match[2],
-              router = routers[name];
-          if (router && !router.dstIds[id]) {
-            var addedClient = mkDst(name, id);
-            addedClients.push(addedClient)
-            router.dstIds[id] = addedClient;
+      _.each(metrics.rt, function(routerData, routerName) {
+        var router = routers[routerName];
+        if(!router) return;
+        _.each(_.get(routerData, "dst.id"), function(clientData, client) {
+          if(!router.dstIds[client]) {
+            var addedClient = mkDst(routerName, client);
+            addedClients.push(addedClient);
+            router.dstIds[client] = addedClient;
           }
-        }
+        });
       });
 
       if (addedClients.length)
@@ -103,27 +97,16 @@ define([
 
       // TODO: Remove any unused clients. This will require more intelligent
       // color assignment to ensure client => color mapping is deterministic.
-
-      // then, attach metrics to each appropriate scope
-
-      _.each(metrics, function(metric, key){
-        var scope = findByMetricKey(routers, key);
-        if (scope) {
-          var descoped = key.slice(scope.prefix.length);
-          scope.metrics[descoped] = metric;
-        }
-      });
     }
 
     function updateServers(routers, metrics) {
-      _.each(metrics, function(metric, key) {
-        var match = key.match(serverRE);
-        if (match) {
-          var name = match[1], ipAndPort = match[2].split("/");
+      _.each(metrics.rt, function(routerData, routerName) {
+        var router = routers[routerName] = routers[routerName] || mkRouter(routerName);
+        _.each(routerData.srv, function(serverData, serverName) {
+          var ipAndPort = serverName.split("/");
           var ip = ipAndPort[0], port = ipAndPort[1];
-          var router = routers[name] = routers[name] || mkRouter(name);
           router.servers.push(mkServer(name, ip, port));
-        }
+        });
       });
     }
 
@@ -164,7 +147,7 @@ define([
       update(routers, metrics);
 
       if (!_.isEmpty(metricsCollector)) {
-        var metricsHandler = function(data) { update(routers, data.general); }
+        var metricsHandler = function(data) { update(routers, data.treeSpecific); }
         metricsCollector.registerListener(metricsHandler, function(_metrics) {});
       }
 
@@ -173,12 +156,6 @@ define([
 
         /** Updates metrics (and clients) on the underlying router data structure. */
         update: function(metrics) { update(this.data, metrics); },
-
-        /** Finds a scope (router, dst, or server) associated with a scoped metric name. */
-        findByMetricKey: function(key) { return findByMetricKey(this.data, key); },
-
-        /** Finds a router associated with a scoped metric name. */
-        findMatchingRouter: function(key) { return findMatchingRouter(this.data, key); },
 
         /** Add event handler for new clients */
         onAddedClients: onAddedClients,

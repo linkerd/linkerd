@@ -29,7 +29,7 @@ define([
       var metricsJson = r1[0];
       var metricsJsonTree = r2[0];
       var metricsCollector = MetricsCollector(metricsJsonTree);
-      var routers = Routers(metricsJson, metricsCollector);
+      var routers = Routers(metricsJsonTree, metricsCollector);
 
       var $serverData = $(".server-data");
       var buildVersion = $serverData.data("linkerd-version");

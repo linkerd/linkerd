@@ -20,16 +20,21 @@ define([
       };
     }
 
-    function getClientsToQuery(routers, routerName) {
+    function getClientsToDisplay(routers, routerName) {
       var clients = routers.clients(routerName);
-      var nonIgnoredClients = _.difference(clients, ignoredClients[routerName]);
+
+      var nonIgnoredClients = _(clients).map(function(client) {
+        if(!ignoredClients[routerName][client.label]) {
+          return client;
+        } else return null;
+      }).compact().value();
 
       // if all clients are collapsed, let the combined graph show all clients
       return _.isEmpty(nonIgnoredClients) ? clients : nonIgnoredClients;
     }
 
     return function(metricsCollector, routers, routerName, $root, colors) {
-      ignoredClients[routerName] = [];
+      ignoredClients[routerName] = {};
 
       var chart = new Utils.UpdateableChart(
         {
@@ -54,26 +59,27 @@ define([
         timeseriesParamsFn(colors)
       );
 
-      var clientsToQuery = getClientsToQuery(routers, routerName);
-      var desiredMetrics = _.map(clientsToQuery, function(client) {
+      var desiredMetrics = _.map(routers.clients(routerName), function(client) {
         return { name: client.label + "/requests" };
       });
       chart.setMetrics(desiredMetrics);
 
       var metricsListener = function(data) {
         var clientData = _.get(data.treeSpecific, ["rt", routerName, "dst", "id"]);
-        var dataToDisplay = _.map(clientData, function(d, name) {
+        var clientsToDisplay = getClientsToDisplay(routers, routerName);
+
+        var dataToDisplay = _.map(clientsToDisplay, function(client) {
           return {
-            name: name + "/requests",
-            delta: _.get(d, "requests.delta")
+            name: client.label + "/requests",
+            delta: _.get(clientData, [client.label, "requests", "delta"])
           };
         });
+
         chart.updateMetrics(dataToDisplay);
       };
 
       metricsCollector.registerListener(metricsListener, function() {
-        var clientsToQuery = getClientsToQuery(routers, routerName);
-        var metrics = _.map(clientsToQuery, function(client) {
+        var metrics = _.map(routers.clients(routerName), function(client) {
           return ["rt", routerName, "dst", "id", client.label, "requests", "counter"];
         });
         return metrics;
@@ -81,16 +87,16 @@ define([
       return {
         addClients: function(clients) {
           chart.addMetrics(_.map(clients, function(client) {
-            return clientToMetric(client.prefix + "requests");
+            return clientToMetric(client.label + "/requests");
           }));
         },
 
         ignoreClient: function(client) {
-          ignoredClients[routerName].push(client);
+          ignoredClients[routerName][client.label] = true;
         },
 
         unIgnoreClient: function(client) {
-          _.remove(ignoredClients[routerName], client);
+          ignoredClients[routerName][client.label] = false;
         },
 
         updateColors: function(newColors) {

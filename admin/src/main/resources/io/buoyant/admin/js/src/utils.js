@@ -128,7 +128,7 @@ define([
       millisPerPixel: 30
     }
 
-    this.chart = new SmoothieChart(_.merge(defaults, userOpts));
+    this.chart = new SmoothieChart(_.merge({}, defaults, userOpts));
     this.chart.streamTo(this.canvas, 1000);
 
     window.addEventListener('resize', this._resize.bind(this), false);
