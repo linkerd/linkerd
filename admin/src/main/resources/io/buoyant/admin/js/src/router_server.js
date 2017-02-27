@@ -2,7 +2,7 @@
 
 define([
   'src/success_rate_graph',
-  'src/query',
+  'src/query', // TOOD: remove
   'src/utils',
   'template/compiled_templates'
 ], function(SuccessRateGraph, Query, Utils, templates) {

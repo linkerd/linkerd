@@ -41,8 +41,7 @@ define(['jQuery'], function($) {
       return resp;
     }
 
-    return function(initialMetrics, initialTreeMetrics) {
-      var prevMetrics = initialMetrics;
+    return function(initialTreeMetrics) {
       var prevTreeMetrics = initialTreeMetrics;
 
       function update(resp, treeResp) {
@@ -51,11 +50,10 @@ define(['jQuery'], function($) {
         var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp, treeResp); }); // remove resp when done
         var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
 
-        prevMetrics = resp;
         prevTreeMetrics = treeResp;
 
         _.each(listeners, function(listener) {
-          var metricNames = listener.metrics(prevMetrics, prevTreeMetrics); // remove when done
+          var metricNames = listener.metrics(null, prevTreeMetrics); // TODO: remove  null when done
           var data = {
             general: resp,
             treeSpecific: treeSpecific
@@ -75,8 +73,6 @@ define(['jQuery'], function($) {
           });
           }, interval);
         },
-        getCurrentMetrics: function() { return _.keys(prevMetrics); },
-        // initialTreeMetrics: initialTreeMetrics, // for combined client chart init
         registerListener: registerListener,
         deregisterListener: deregisterListener,
         __update__: update

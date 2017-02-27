@@ -28,7 +28,7 @@ define([
     .done(function(r1, r2) {
       var metricsJson = r1[0];
       var metricsJsonTree = r2[0];
-      var metricsCollector = MetricsCollector(metricsJson, metricsJsonTree);
+      var metricsCollector = MetricsCollector(metricsJsonTree);
       var routers = Routers(metricsJson, metricsCollector);
 
       var $serverData = $(".server-data");
@@ -36,7 +36,7 @@ define([
       var selectedRouter = $serverData.data("router-name");
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
-      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), _.keys(metricsJson));
+      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"));
       RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"), routerConfig);
 
       $(function() {
