@@ -14,21 +14,18 @@ define([
         {
           description: "Requests",
           metricSuffix: "requests",
-          treeMetric: genServerStat(routerName, serverName, "requests"),
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("requests").build()
+          treeMetric: genServerStat(routerName, serverName, "requests")
         },
         {
           description: "Pending",
           metricSuffix: "load",
           isGauge: true,
-          treeMetric: genServerStat(routerName, serverName, "load", true),
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("load").build()
+          treeMetric: genServerStat(routerName, serverName, "load", true)
         },
         {
           description: "Successes",
           metricSuffix: "success",
           treeMetric: genServerStat(routerName, serverName, "success"),
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("success").build(),
           getRate: function(data) {
             var successRate = new Utils.SuccessRate(data.success || 0, data.failures || 0);
             return {
@@ -40,8 +37,7 @@ define([
         {
           description: "Failures",
           metricSuffix: "failures",
-          treeMetric: genServerStat(routerName, serverName, "failures"),
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("failures").build()
+          treeMetric: genServerStat(routerName, serverName, "failures")
         }
       ];
       return _.map(defs, function(def) {

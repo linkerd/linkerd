@@ -72,7 +72,7 @@ define([
           });
 
           var clientData = _.map(_.get(routerData, "dst.id"), function(clientData, client) {
-            return ["rt", router, "dst", "id", client, "connects", "gauge"];
+            return ["rt", router, "dst", "id", client, "connections", "gauge"];
           });
           return _.flatMap(serverData).concat(clientData);
         });
