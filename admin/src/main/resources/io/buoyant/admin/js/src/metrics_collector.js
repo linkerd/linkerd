@@ -7,7 +7,7 @@
 define(['jQuery'], function($) {
 
   var MetricsCollector = (function() {
-    var generalUpdateUri = "admin/metrics.json";
+    var updateUri = "admin/metrics.json?tree=1";
     var listeners = [];
     /**
       Register a listener to receive metric updates.
@@ -44,18 +44,14 @@ define(['jQuery'], function($) {
     return function(initialTreeMetrics) {
       var prevTreeMetrics = initialTreeMetrics;
 
-      function update(resp, treeResp) {
-        var defaultMetrics = _.keys(resp);
-
-        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp, treeResp); }); // remove resp when done
+      function update(treeResp) {
+        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(treeResp); }); // remove resp when done
         var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
 
         prevTreeMetrics = treeResp;
 
         _.each(listeners, function(listener) {
-          var metricNames = listener.metrics(null, prevTreeMetrics); // TODO: remove  null when done
           var data = {
-            general: resp,
             treeSpecific: treeSpecific
           }
           listener.handler(data);
@@ -64,13 +60,10 @@ define(['jQuery'], function($) {
 
       return {
         start: function(interval) {
-          $.when($.get(generalUpdateUri), $.get(generalUpdateUri+"?tree=1")).done(function(r1, r2) {
-            update(r1[0], r2[0]);
-          });
+          $.get(updateUri).done(update);
+
           setInterval(function(){
-            $.when($.get(generalUpdateUri), $.get(generalUpdateUri+"?tree=1")).done(function(r1, r2) {
-            update(r1[0], r2[0]);
-          });
+            $.get(updateUri).done(update);
           }, interval);
         },
         registerListener: registerListener,

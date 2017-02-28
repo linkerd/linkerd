@@ -21,15 +21,9 @@ define([
      */
     var UPDATE_INTERVAL = 1000;
 
-    $.when(
-      $.get("admin/metrics.json"),
-      $.get("admin/metrics.json?tree=1")
-    )
-    .done(function(r1, r2) {
-      var metricsJson = r1[0];
-      var metricsJsonTree = r2[0];
-      var metricsCollector = MetricsCollector(metricsJsonTree);
-      var routers = Routers(metricsJsonTree, metricsCollector);
+    $.get("admin/metrics.json?tree=1").done(function(metricsJson) {
+      var metricsCollector = MetricsCollector(metricsJson);
+      var routers = Routers(metricsJson, metricsCollector);
 
       var $serverData = $(".server-data");
       var buildVersion = $serverData.data("linkerd-version");

@@ -1,9 +1,8 @@
 "use strict";
 
 define([
-  'jQuery',
-  'src/query'
-], function($, Query) {
+  'jQuery'
+], function($) {
   /**
    * Utilities for building and updating router information from raw
    * key-val metrics.
@@ -108,27 +107,6 @@ define([
           router.servers.push(mkServer(name, ip, port));
         });
       });
-    }
-
-    function findMatchingRouter(routers, key) {
-      return _.find(routers, function(router) { return key.indexOf(router.prefix) === 0; });
-    }
-    function findMatchingServer(servers, key) {
-      return _.find(servers, function(server) { return key.indexOf(server.prefix) === 0; });
-    }
-    function findMatchingDst(dsts, key) {
-      return _.find(dsts, function(dst) { return key.indexOf(dst.prefix) === 0; });
-    }
-    function findByMetricKey(routers, key) {
-      var router = findMatchingRouter(routers, key);
-      if (router) {
-        var server = findMatchingServer(router.servers, key);
-        if (server) return server;
-
-        var dst = findMatchingDst(router.dstIds, key);
-        if (dst) return dst;
-      }
-      return router; // may be undefined
     }
 
     /**

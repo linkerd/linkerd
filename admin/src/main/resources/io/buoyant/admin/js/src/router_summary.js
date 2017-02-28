@@ -139,42 +139,41 @@ define([
 
       renderRouterSummary({ router: routerName }, routerName, $summaryEl);
 
-      metricsCollector.registerListener(
-        function(data) {
-          var summaryData = processResponses(data.treeSpecific, routerName);
+      metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
 
-          retriesBarChart.update(summaryData, retryBudget);
-          renderRouterSummary(summaryData, routerName, $summaryEl);
-        },
-        function(metrics, treeMetrics) {
-          if (treeMetrics) {
-            var raw = _.map(treeMetrics.rt, function(routerData, router) {
-              var servers = _.flatMap(_.keys(routerData.srv), function(server) {
-                return _.map(serverMetrics, function(metric) {
-                  return ["rt", router, "srv", server, metric.name, metric.isGauge ? "gauge" : "counter"];
-                });
+      function metricsHandler(data) {
+        var summaryData = processResponses(data.treeSpecific, routerName);
+
+        retriesBarChart.update(summaryData, retryBudget);
+        renderRouterSummary(summaryData, routerName, $summaryEl);
+      }
+
+      function getDesiredMetrics(treeMetrics) {
+        if (treeMetrics) {
+          var raw = _.map(treeMetrics.rt, function(routerData, router) {
+            var servers = _.flatMap(_.keys(routerData.srv), function(server) {
+              return _.map(serverMetrics, function(metric) {
+                return ["rt", router, "srv", server, metric.name, metric.isGauge ? "gauge" : "counter"];
               });
-
-              var clients = _.flatMap(_.keys(_.get(routerData, "dst.id")), function(client) {
-                return _.map(clientMetrics, function(metric) {
-                  return ["rt", router, "dst", "id", client].concat(metric);
-                });
-              });
-
-              var paths = _.map(_.keys(_.get(routerData, "dst.path")), function(path) {
-                return _.map(pathMetrics, function(metric) {
-                  return ["rt", router, "dst", "path", "svc"].concat(metric);
-                });
-              });
-
-              return _.concat(servers, clients, paths);
             });
-            return _.flatMap(raw);
-          } else {
-            return [];
-          }
+
+            var clients = _.flatMap(_.keys(_.get(routerData, "dst.id")), function(client) {
+              return _.map(clientMetrics, function(metric) {
+                return ["rt", router, "dst", "id", client].concat(metric);
+              });
+            });
+
+            var paths = [_.map(pathMetrics, function(metric) {
+              return ["rt", router, "dst", "path", "svc"].concat(metric);
+            })];
+
+            return _.concat(servers, clients, paths);
+          });
+          return _.flatMap(raw);
+        } else {
+          return [];
         }
-      );
+      }
 
       return {};
     };
