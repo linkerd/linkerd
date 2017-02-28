@@ -13,70 +13,46 @@ define([
         description: "Current requests",
         metric: "requests",
         getMetrics: function(data) {
-          return getTreeServerMetric(data, "requests");
-        }
+          return sumMetric(data, "requests", false, this.prefix);
+        },
+        prefix: "srv"
       },
       {
         description: "Pending",
         metric: "load",
         getMetrics: function(data) {
-          return getTreeServerMetric(data, "load", true);
+          return sumMetric(data, "load", true, this.prefix);
         },
+        prefix: "srv",
         isGauge: true
       },
       {
         description: "Incoming Connections",
         getMetrics: function(data) {
-          return getTreeServerMetric(data, "connections", true);
+          return sumMetric(data, "connections", true, this.prefix);
         },
+        prefix: "srv",
         metric: "connections",
         isGauge: true
       },
       {
         description: "Outgoing Connections",
         getMetrics: function(data) {
-          return getTreeClientMetric(data, "connections", true); // is this connections or connects? is this right?
+          return sumMetric(data, "connections", true, this.prefix); // is this connections or connects? is this right?
         },
+        prefix: "dst.id",
         metric: "connections",
         isGauge: true
       }
     ];
 
-    function getTreeServerMetric(data, metric, isGauge) {
-      return _.reduce(data, function(mem, routerData) {
-        _.mapValues(routerData.srv, function(serverData) {
-          mem += _.get(serverData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
+    function sumMetric(data, metric, isGauge, prefix) {
+      return _.reduce(data, function(mem, routerData, router) {
+        _.mapValues(_(routerData).get(prefix), function(entityData) {
+          mem += _.get(entityData, [metric, isGauge ? "value" : "delta"]) || 0;
         });
         return mem;
       }, 0);
-    }
-
-    function getTreeClientMetric(data, metric, isGauge) {
-      return _.reduce(data, function(mem, routerData) {
-        _.mapValues(_.get(routerData, "dst.id"), function(clientData) {
-          mem += _.get(clientData, [metric, isGauge ? "value" : "delta"]) || 0; // can replace value with gauge?
-        });
-        return mem;
-      }, 0);
-    }
-
-    function desiredMetrics(treeMetrics) {
-      if (!treeMetrics) return [];
-      else {
-        var metrics = _.map(treeMetrics.rt, function(routerData, router) {
-          var serverData = _.map(routerData.srv, function(serverData, server) {
-            return _.map(metricDefinitions, function(defn) {
-              return ["rt", router, "srv", server, defn.metric, defn.isGauge ? "gauge" : "counter"];
-            });
-          });
-
-          var clientData = _.map(_.get(routerData, "dst.id"), function(clientData, client) {
-            return ["rt", router, "dst", "id", client, "connections", "gauge"];
-          });
-          return _.flatMap(serverData).concat(clientData);
-        });
-      }
-      return _.flatMap(metrics);
     }
 
     function render($root, metricData) {
@@ -97,6 +73,25 @@ define([
         });
 
         render($root, transformedData);
+      }
+
+      function desiredMetrics(treeMetrics) {
+        if (!treeMetrics) return [];
+        else {
+          var metrics = _.map(treeMetrics.rt, function(routerData, router) {
+            var serverData = _.map(routerData.srv, function(serverData, server) {
+              return _.map(metricDefinitions, function(defn) {
+                return ["rt", router, "srv", server, defn.metric, defn.isGauge ? "gauge" : "counter"];
+              });
+            });
+
+            var clientData = _.map(_.get(routerData, "dst.id"), function(clientData, client) {
+              return ["rt", router, "dst", "id", client, "connections", "gauge"];
+            });
+            return _.concat(serverData, clientData);
+          });
+        }
+        return _.flatMap(metrics);
       }
 
       if (!selectedRouter || selectedRouter === "all") { //welcome to my world of hacks
