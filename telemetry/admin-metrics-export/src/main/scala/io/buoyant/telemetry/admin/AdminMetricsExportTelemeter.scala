@@ -1,6 +1,6 @@
 package io.buoyant.telemetry.admin
 
-import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.{JsonFactory, JsonGenerator}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.twitter.app.GlobalFlag
 import com.twitter.conversions.time._
@@ -30,9 +30,19 @@ class AdminMetricsExportTelemeter(
 
   private[admin] val handler = Service.mk { request: Request =>
     val pretty = request.getBooleanParam("pretty", false)
+    val tree = request.getBooleanParam("tree", false)
+    val q = request.getParam("q")
+    val subtree = if (q != null) {
+      metrics.resolve(q.split("/").toSeq)
+    } else {
+      metrics
+    }
     val response = request.response
     response.mediaType = MediaType.Json
-    response.withOutputStream(writeJson(_, pretty))
+    if (tree)
+      response.withOutputStream(writeJsonTree(_, subtree))
+    else
+      response.withOutputStream(writeFlatJson(_, subtree, pretty))
     Future.value(response)
   }
 
@@ -60,14 +70,9 @@ class AdminMetricsExportTelemeter(
   }
 
   private[this] val json = new JsonFactory()
-  private[this] def writeJson(out: OutputStream, pretty: Boolean = false): Unit = {
-    val jg = json.createGenerator(out)
-    if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
-    jg.writeStartObject()
-    val flattened =
-      if (pretty) flattenMetricsTree(metrics).sortBy(_._1)
-      else flattenMetricsTree(metrics)
-    flattened.foreach {
+
+  private[this] def writeJsonMetric(jg: JsonGenerator, metric: (String, Metric)): Unit =
+    metric match {
       case (name, c: Counter) =>
         jg.writeNumberField(name, c.get)
       case (name, g: Gauge) =>
@@ -90,8 +95,37 @@ class AdminMetricsExportTelemeter(
         }
       case (_, Metric.None) =>
     }
+
+  private[this] def writeFlatJson(out: OutputStream, tree: MetricsTree, pretty: Boolean = false): Unit = {
+    val jg = json.createGenerator(out)
+    if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
+    jg.writeStartObject()
+    val flattened =
+      if (pretty) flattenMetricsTree(tree).sortBy(_._1)
+      else flattenMetricsTree(tree)
+    flattened.foreach(writeJsonMetric(jg, _))
     jg.writeEndObject()
     jg.close()
+  }
+
+  private[this] def writeJsonTree(out: OutputStream, tree: MetricsTree): Unit = {
+    val jg = json.createGenerator(out)
+    writeJsonTree(jg, tree)
+    jg.close()
+  }
+  private[this] def writeJsonTree(jg: JsonGenerator, tree: MetricsTree): Unit = {
+    jg.writeStartObject()
+    tree.metric match {
+      case c: Counter => writeJsonMetric(jg, "counter" -> c)
+      case g: Gauge => writeJsonMetric(jg, "gauge" -> g)
+      case s: Stat => writeJsonMetric(jg, "stat" -> s)
+      case _ =>
+    }
+    for ((name, child) <- tree.children) {
+      jg.writeFieldName(name)
+      writeJsonTree(jg, child)
+    }
+    jg.writeEndObject()
   }
 
   private[this] def flattenMetricsTree(

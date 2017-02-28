@@ -1,6 +1,6 @@
 require.config({
   paths: {
-    'jQuery': 'lib/jquery.min',
+    'jQuery': 'lib/jquery-3.1.1.min',
     'lodash': 'lib/lodash.min',
     'handlebars.runtime': 'lib/handlebars.runtime',
     'bootstrap': 'lib/bootstrap.min',
@@ -40,7 +40,7 @@ require([
 ) {
   // poor man's routing
   if (window.location.pathname.endsWith("/")) {
-    adminPage.initialize(false).done(function(routerConfig) {
+    adminPage.initialize().done(function(routerConfig) {
       new dashboard(routerConfig);
     });
   } else if (window.location.pathname.endsWith("/delegator")) {
