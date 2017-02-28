@@ -50,7 +50,7 @@ object LinkerdBuild extends Base {
       .settings(coverageExcludedPackages := ".*XXX_.*")
 
     val h2 = projectDir("router/h2")
-      .dependsOn(core, Finagle.h2)
+      .dependsOn(core, Finagle.h2, k8s)
       .withTests()
       .withE2e()
 

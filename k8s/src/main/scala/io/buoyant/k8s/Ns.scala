@@ -5,7 +5,9 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
+import io.buoyant.k8s.EndpointsNamer.SvcCache
 import io.buoyant.k8s.Ns.ObjectCache
+import io.buoyant.k8s.v1beta1.{IngressList, IngressWatch, Ingress}
 
 abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, Cache <: ObjectCache[O, W, L]](
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds),
@@ -51,7 +53,7 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
     }
   }
 
-  protected def mkResource(name: String): NsListResource[O, W, L]
+  protected def mkResource(name: String): ListResource[O, W, L]
 
   protected def mkCache(name: String): Cache
 
@@ -94,4 +96,75 @@ object Ns {
     def initialize(list: L): Unit
     def update(event: W): Unit
   }
+
+  type VarUp[T] = Var[T] with Updatable[T]
+
+  abstract class NsListCache[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, V, K](namespace: String) extends Ns.ObjectCache[O, W, L] {
+
+    val state = Var[Activity.State[Map[K, VarUp[V]]]](Activity.Pending)
+
+    val items: Activity[Map[K, VarUp[V]]] = Activity(state)
+
+    def mkItem(item: O): Option[V]
+    def updateItem(item: O): Option[V]
+    def getName(item: O): Option[K]
+
+    /**
+     * Initialize a namespaces of services.  The activity is updated
+     * once with the entire state of the namespace (i.e. not
+     * incrementally service by service).
+     */
+    def initialize(items: L): Unit = {
+      val initItems = items.items.flatMap { item =>
+        mkItem(item).map { i => getName(item).get -> Var(i) }
+      }
+
+      synchronized {
+        state() = Activity.Ok(initItems.toMap)
+      }
+    }
+
+    def add(obj: O): Unit =
+      for (item <- mkItem(obj)) synchronized {
+        val name = getName(obj).get //todo
+        log.debug("k8s ns %s added: %s", namespace, name)
+        val items = state.sample() match {
+          case Activity.Ok(items) => items
+          case _ => Map.empty[K, VarUp[V]]
+        }
+        state() = Activity.Ok(items + (name -> Var(item)))
+      }
+
+    def modify(obj: O): Unit =
+      for (name <- getName(obj)) synchronized {
+        log.debug("k8s ns %s modified: %s", namespace, name)
+        state.sample() match {
+          case Activity.Ok(snap) =>
+            snap.get(name) match {
+              case None =>
+                log.warning("k8s ns %s received modified watch for unknown service %s", namespace, name)
+              case Some(item) =>
+                updateItem(obj) match {
+                  case Some(i) => item() = i
+                  case None => state() = Activity.Ok(snap - name)
+                }
+            }
+          case _ =>
+        }
+      }
+
+    def delete(obj: O): Unit =
+      for (name <- getName(obj)) synchronized {
+        log.debug("k8s ns %s deleted: %s", namespace, name)
+        state.sample() match {
+          case Activity.Ok(snap) =>
+            for (svc <- snap.get(name)) {
+              state() = Activity.Ok(snap - name)
+            }
+
+          case _ =>
+        }
+      }
+  }
+
 }
