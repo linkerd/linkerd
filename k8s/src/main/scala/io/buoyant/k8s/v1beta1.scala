@@ -48,14 +48,14 @@ package object v1beta1 {
   implicit private val ingressWatch = new TypeReference[IngressWatch] {}
 
   case class Api(client: Client) extends Version[Object] {
-    def group = v1.group
-    def version = v1.version
+    def group = v1beta1.group
+    def version = v1beta1.version
     override def withNamespace(ns: String) = new NsApi(client, ns)
     def ingresses = listResource[Ingress, IngressWatch, IngressList]()
   }
 
   class NsApi(client: Client, ns: String)
-    extends NsVersion[Object](client, v1.group, v1.version, ns) {
+    extends NsVersion[Object](client, v1beta1.group, v1beta1.version, ns) {
     def ingresses = listResource[Ingress, IngressWatch, IngressList]()
   }
 

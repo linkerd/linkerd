@@ -37,7 +37,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       reqCount match {
         case 1 =>
           try {
-            assert(req.uri == s"/api/v1/namespaces/srv/ingresses/test-ingress")
+            assert(req.uri == s"/apis/extensions/v1beta1/namespaces/srv/ingresses/test-ingress")
             val rsp = Response()
             rsp.version = req.version
             rsp.setContentTypeJson()

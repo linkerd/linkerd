@@ -56,9 +56,9 @@ class IngressIdentifier(
       val resourceSample = ingressResource.sample()
       val matchingPath = resourceSample.rules.find { rule =>
         (rule.host, rule.path) match {
-          case (Some(host), Some(path)) if requestPath.startsWith(path) => hostHeader.map(h => h == host).getOrElse(false)
+          case (Some(host), Some(path)) => requestPath.startsWith(path) && hostHeader.map(h => h == host).getOrElse(false)
           case (Some(host), None) => hostHeader.map(h => h == host).getOrElse(false)
-          case (None, Some(path)) if requestPath.startsWith(path) => true
+          case (None, Some(path)) => requestPath.startsWith(path)
           case (None, None) => false
         }
       }
@@ -127,7 +127,7 @@ class IngressCache(namespace: String) extends Ns.NsListCache[v1beta1.Ingress, v1
           path <- http.paths
         ) yield {
           ingress.metadata.get.namespace.get
-          IngressPaths(path.path, rule.host, namespace, path.backend.serviceName, path.backend.servicePort)
+          IngressPaths(rule.host, path.path, namespace, path.backend.serviceName, path.backend.servicePort)
         }
 
         val fallback = spec.backend.map(b => IngressPaths(None, None, namespace, b.serviceName, b.servicePort))
