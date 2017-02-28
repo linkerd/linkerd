@@ -2,9 +2,8 @@
 
 define([
   'jQuery',
-  'src/query', // TODO: remove
   'template/compiled_templates'
-  ], function($, Query, templates) {
+  ], function($, templates) {
 
   var RequestTotals = (function() {
     var template = templates.request_totals;

@@ -1,9 +1,8 @@
 "use strict";
 
 define([
-  'src/query', //TODO: remove
   'src/utils'
-], function(Query, Utils) {
+], function(Utils) {
   var CombinedClientGraph = (function() {
     var ignoredClients = {};
 

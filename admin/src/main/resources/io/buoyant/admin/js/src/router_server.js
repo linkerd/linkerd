@@ -2,10 +2,9 @@
 
 define([
   'src/success_rate_graph',
-  'src/query', // TOOD: remove
   'src/utils',
   'template/compiled_templates'
-], function(SuccessRateGraph, Query, Utils, templates) {
+], function(SuccessRateGraph, Utils, templates) {
   var RouterServer = (function() {
     var template = templates.router_server;
 

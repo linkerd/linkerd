@@ -2,12 +2,10 @@
 
 define([
   'jQuery',
-  'src/query',
   'src/utils',
   'src/bar_chart',
   'template/compiled_templates'
 ], function($,
-  Query, // TODO: remove
   Utils,
   BarChart,
   templates
@@ -68,17 +66,22 @@ define([
       return  $.extend(result, rates);
     }
 
-    function processServerResponse(data, routerName, metricName, isGauge) {
-      var datum = _(data).get(["rt", routerName, "srv"]);
-      return _.reduce(datum, function(mem, d) {
+    function sumMetric(rawData, metricName, isGauge) {
+      return _.reduce(rawData, function(mem, d) {
         mem += _.get(d, [metricName, isGauge ? "value" : "delta"]) || 0;
         return mem;
       }, 0);
     }
 
+    function processServerResponse(data, routerName, metricName, isGauge) {
+      var datum = _(data).get(["rt", routerName, "srv"]);
+      return sumMetric(datum, metricName, isGauge);
+    }
+
     function processClientResponse(data, routerName, metricName) {
       var datum = _(data).get(["rt", routerName, "dst", "id"]);
       return _.reduce(datum, function(mem, d) {
+        console.log(d, metricName);
         mem += _.get(d, metricName) || 0;
         return mem;
       }, 0);
@@ -127,6 +130,28 @@ define([
       return _.get(routerObj, 'client.retries.budget.percentCanRetry', DEFAULT_BUDGET);
     }
 
+    function generateServerMetrics(rawData, router, metrics) {
+      return _.flatMap(_.keys(rawData.srv), function(server) {
+        return _.map(metrics, function(metric) {
+          return ["rt", router, "srv", server, metric.name, metric.isGauge ? "gauge" : "counter"];
+        });
+      });
+    }
+
+    function generateClientMetrics(rawData, router, metrics) {
+      return _.flatMap(_.keys(_.get(rawData, "dst.id")), function(client) {
+        return _.map(metrics, function(metric) {
+          return ["rt", router, "dst", "id", client].concat(metric);
+        });
+      });
+    }
+
+    function generatePathMetrics(metrics) {
+      return _.map(metrics, function(metric) {
+        return ["rt", router, "dst", "path", "svc"].concat(metric);
+      });
+    }
+
     return function(metricsCollector, $summaryEl, $barChartEl, routerName, routerConfig) {
       var serverMetrics = [{name: "load", isGauge: true}, {name: "requests"}, {name: "success"}, {name: "failures"}];
       var clientMetrics = [["retries", "requeues", "counter"]];
@@ -151,21 +176,9 @@ define([
       function getDesiredMetrics(treeMetrics) {
         if (treeMetrics) {
           var raw = _.map(treeMetrics.rt, function(routerData, router) {
-            var servers = _.flatMap(_.keys(routerData.srv), function(server) {
-              return _.map(serverMetrics, function(metric) {
-                return ["rt", router, "srv", server, metric.name, metric.isGauge ? "gauge" : "counter"];
-              });
-            });
-
-            var clients = _.flatMap(_.keys(_.get(routerData, "dst.id")), function(client) {
-              return _.map(clientMetrics, function(metric) {
-                return ["rt", router, "dst", "id", client].concat(metric);
-              });
-            });
-
-            var paths = [_.map(pathMetrics, function(metric) {
-              return ["rt", router, "dst", "path", "svc"].concat(metric);
-            })];
+            var servers = generateServerMetrics(routerData, router, serverMetrics);
+            var clients = generateClientMetrics(routerData, router, clientMetrics);
+            var paths = [generatePathMetrics(routerData, router, pathMetrics)];
 
             return _.concat(servers, clients, paths);
           });
