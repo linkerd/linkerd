@@ -104,7 +104,7 @@ define([
         _.each(routerData.srv, function(serverData, serverName) {
           var ipAndPort = serverName.split("/");
           var ip = ipAndPort[0], port = ipAndPort[1];
-          router.servers.push(mkServer(name, ip, port));
+          router.servers.push(mkServer(routerName, ip, port));
         });
       });
     }

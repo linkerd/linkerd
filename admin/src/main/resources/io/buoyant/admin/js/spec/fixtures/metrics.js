@@ -480,7 +480,7 @@ return {
             "counter": 0
           },
           "misses": {
-            "counter": 0
+            "counter": 7
           },
           "oneshots": {
             "counter": 0
@@ -685,7 +685,7 @@ return {
           }
         },
         "id": {
-          "$/inet/127.1/9089": {
+          "$/inet/127.1/9091": {
             "connect_latency_ms": {
               "stat.count": 86,
               "stat.max": 6,
@@ -969,7 +969,7 @@ return {
               "gauge": 0.0
             }
           },
-          "$/inet/127.1/9088": {
+          "$/inet/127.1/9090": {
             "connect_latency_ms": {
               "stat.count": 92,
               "stat.max": 31,
@@ -1253,7 +1253,7 @@ return {
               "gauge": 0.0
             }
           },
-          "$/inet/127.1/9085": {
+          "$/inet/127.1/9093": {
             "connect_latency_ms": {
               "stat.count": 82,
               "stat.max": 49,
@@ -1551,7 +1551,7 @@ return {
               "gauge": 1.0
             }
           },
-          "$/inet/127.1/9072": {
+          "$/inet/127.1/9070": {
             "connect_latency_ms": {
               "stat.count": 85,
               "stat.max": 3,
@@ -2133,7 +2133,7 @@ return {
               "gauge": 0.0
             }
           },
-          "$/inet/127.1/9073": {
+          "$/inet/127.1/9085": {
             "connect_latency_ms": {
               "stat.count": 90,
               "stat.max": 46,
@@ -2431,7 +2431,7 @@ return {
               "gauge": 1.0
             }
           },
-          "$/inet/127.1/9077": {
+          "$/inet/127.1/9089": {
             "connect_latency_ms": {
               "stat.count": 82,
               "stat.max": 48,
