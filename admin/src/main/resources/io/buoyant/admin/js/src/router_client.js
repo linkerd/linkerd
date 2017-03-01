@@ -119,8 +119,8 @@ define([
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
         var clientData = _.get(data, defn.treeMetricRoot);
-        var value = _.isEmpty(clientData) ? null :
-          (defn.isGauge ? clientData.value : clientData.delta);
+        var value = _.isEmpty(clientData) ? null : clientData[defn.isGauge ? "gauge" : "delta"];
+
         mem[defn.metricSuffix] = {
           description: defn.label,
           value: value
@@ -200,9 +200,7 @@ define([
       }
 
       function getDesiredMetrics() {
-        return  _.map(metricDefinitions, function(d) {
-          return d.treeMetric;
-        });
+        return  _.map(metricDefinitions, "treeMetric");
       }
 
       return {

@@ -54,34 +54,38 @@ define([
       var clientAccessor = ["rt", routerName, "dst", "id"];
       var pathAccessor = ["rt", routerName, "dst", "path", "svc"];
 
-      return {
+      return _.each({
         load: {
-          metricAccessor: ["load"],
+          metricKey: ["load", "gauge"],
           accessor: serverAccessor,
           isGauge: true,
         },
         requests: {
-          metricAccessor: ["requests"],
+          metricKey: ["requests", "counter"],
           accessor: serverAccessor,
         },
         success: {
-          metricAccessor: ["success"],
+          metricKey: ["success", "counter"],
           accessor: serverAccessor,
         },
         failures: {
-          metricAccessor: ["failures"],
+          metricKey: ["failures", "counter"],
           accessor: serverAccessor,
         },
         requeues: {
-          accessor: clientAccessor,
-          metricAccessor: ["retries", "requeues"],
+          metricKey: ["retries", "requeues", "counter"],
+          accessor: clientAccessor
         },
         pathRetries: {
+          metricKey: ["retries", "total", "counter"],
           accessor: pathAccessor,
-          metricAccessor: ["retries", "total"],
           isPath: true
         },
-      };
+      }, function(defn) {
+        var key = _.clone(defn.metricKey);
+        key[key.length - 1] = defn.isGauge ? "gauge" : "delta";
+        defn.metricAccessor = key;
+      });
     }
 
     function processResponses(data, routerName, metrics) {
@@ -90,10 +94,10 @@ define([
         var m = metrics[metric];
 
         if(m.isPath) {
-          return _.get(datum, m.metricAccessor.concat(m.isGauge ? "value" : "delta")) || 0;
+          return _.get(datum, m.metricAccessor) || 0;
         } else {
           return _.reduce(datum, function(mem, entityData) {
-            mem += _.get(entityData, m.metricAccessor.concat(m.isGauge ? "value" : "delta")) || 0;
+            mem += _.get(entityData, m.metricAccessor) || 0;
             return mem;
           }, 0);
         }
@@ -147,7 +151,7 @@ define([
     }
 
     function getMetricAccessor(metric, entity) {
-      return _.concat(metric.accessor, entity || [], metric.metricAccessor, metric.isGauge ? "gauge" : "counter");
+      return _.concat(metric.accessor, entity || [], metric.metricKey);
     }
 
     return function(metricsCollector, $summaryEl, $barChartEl, routerName, routerConfig) {

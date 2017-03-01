@@ -12,19 +12,16 @@ define([
       var defs = [
         {
           description: "Requests",
-          metricSuffix: "requests",
-          treeMetric: genServerStat(routerName, serverName, "requests")
+          metricSuffix: "requests"
         },
         {
           description: "Pending",
           metricSuffix: "load",
-          isGauge: true,
-          treeMetric: genServerStat(routerName, serverName, "load", true)
+          isGauge: true
         },
         {
           description: "Successes",
           metricSuffix: "success",
-          treeMetric: genServerStat(routerName, serverName, "success"),
           getRate: function(data) {
             var successRate = new Utils.SuccessRate(data.success || 0, data.failures || 0);
             return {
@@ -35,8 +32,7 @@ define([
         },
         {
           description: "Failures",
-          metricSuffix: "failures",
-          treeMetric: genServerStat(routerName, serverName, "failures")
+          metricSuffix: "failures"
         }
       ];
       return _.map(defs, function(def) {
@@ -48,10 +44,10 @@ define([
     }
 
     function genServerStat(routerName, serverName, stat, isGauge) {
-      var metricKeysRoot = ["rt", routerName, "srv", serverName, stat];
+      var metricKeys = ["rt", routerName, "srv", serverName, stat, isGauge ? "gauge" : "counter"];
       return {
-        metric: metricKeysRoot.concat(!isGauge ? "counter" : "gauge"),
-        metricRoot: metricKeysRoot
+        metric: metricKeys,
+        metricRoot: _.take(metricKeys, 5)
       };
     }
 
@@ -78,7 +74,7 @@ define([
         var serverData = _.get(data, defn.treeMetricRoot);
 
         if (!_.isEmpty(serverData)) {
-          defn.value = defn.isGauge ? serverData.value : serverData.delta;
+          defn.value = serverData[defn.isGauge ? "gauge" : "delta"];
           lookup[defn.metricSuffix] = defn.value;
         }
 

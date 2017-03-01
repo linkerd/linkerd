@@ -28,7 +28,7 @@ define([
         var result = _.get(data, ["rt", "subtractor", "bindcache", "path", "misses"]);
 
         expect(result.delta).toEqual(expectedDelta);
-        expect(result.value).toEqual(_.get(metricsJson, targetMetric) + expectedDelta);
+        expect(result.counter).toEqual(_.get(metricsJson, targetMetric) + expectedDelta);
       });
 
       it("registers listener to receive full metrics response on update", function() {

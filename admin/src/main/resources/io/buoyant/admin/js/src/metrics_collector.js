@@ -32,27 +32,29 @@ define(['jQuery'], function($) {
         if(_.isArray(metric)) {
           var prevValue = _.get(prevResp, metric);
           var currentValue = _.get(resp, metric);
+          var metricCopy = _.clone(metric);
+
           if (prevValue !== undefined && currentValue !== undefined) {
-            _.set(resp, _.take(metric, metric.length - 1).concat(["delta"]), currentValue - prevValue);
-            _.set(resp, _.take(metric, metric.length - 1).concat(["value"]), currentValue);
+            metricCopy[metricCopy.length - 1] = "delta";
+            _.set(resp, metricCopy, currentValue - prevValue);
           }
         }
       });
       return resp;
     }
 
-    return function(initialTreeMetrics) {
-      var prevTreeMetrics = initialTreeMetrics;
+    return function(initialMetrics) {
+      var prevMetrics = initialMetrics;
 
-      function update(treeResp) {
-        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(treeResp); }); // remove resp when done
-        var treeSpecific = getTreeDeltaPayload(metricsToGet, treeResp, prevTreeMetrics);
+      function update(resp) {
+        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp); });
+        var metricsWithDeltas = getTreeDeltaPayload(metricsToGet, resp, prevMetrics);
 
-        prevTreeMetrics = treeResp;
+        prevMetrics = resp;
 
         _.each(listeners, function(listener) {
           var data = {
-            treeSpecific: treeSpecific
+            treeSpecific: metricsWithDeltas
           }
           listener.handler(data);
         });

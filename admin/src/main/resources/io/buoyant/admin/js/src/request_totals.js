@@ -38,7 +38,7 @@ define([
       {
         description: "Outgoing Connections",
         getMetrics: function(data) {
-          return sumMetric(data, "connections", true, this.prefix); // is this connections or connects? is this right?
+          return sumMetric(data, "connections", true, this.prefix);
         },
         prefix: "dst.id",
         metric: "connections",
@@ -49,7 +49,7 @@ define([
     function sumMetric(data, metric, isGauge, prefix) {
       return _.reduce(data, function(mem, routerData) {
         _.mapValues(_(routerData).get(prefix), function(entityData) {
-          mem += _.get(entityData, [metric, isGauge ? "value" : "delta"]) || 0;
+          mem += _.get(entityData, [metric, isGauge ? "gauge" : "delta"]) || 0;
         });
         return mem;
       }, 0);
