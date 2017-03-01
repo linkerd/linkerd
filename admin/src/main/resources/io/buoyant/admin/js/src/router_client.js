@@ -20,6 +20,10 @@ define([
       return percent < 0.5 ? "orange" : "green";
     }
 
+    function display(value) {
+      return _.isNumber(value) ? value : "-";
+    }
+
     function getPercent(data) {
       if (!data) return null;
 
@@ -31,9 +35,7 @@ define([
         percent: percent,
         label: {
           description: "Endpoints available",
-          value: (_.isNull(numer.value) ? "-" : numer.value)
-            + " / "
-            + (_.isNull(denom.value) ? "-" : denom.value)
+          value: display(numer.value) + " / " + display(denom.value)
         }
       }
     }

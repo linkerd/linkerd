@@ -47,7 +47,7 @@ define([
     ];
 
     function sumMetric(data, metric, isGauge, prefix) {
-      return _.reduce(data, function(mem, routerData, router) {
+      return _.reduce(data, function(mem, routerData) {
         _.mapValues(_(routerData).get(prefix), function(entityData) {
           mem += _.get(entityData, [metric, isGauge ? "value" : "delta"]) || 0;
         });

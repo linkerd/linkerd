@@ -12,7 +12,7 @@ define([
 ) {
   var RetriesBarChart = function($container) {
     function displayPercent(percent) {
-      return _.isNull(percent) ? " - " : Math.round(percent * 100) + "%";
+      return _.isNumber(percent) ? Math.round(percent * 100) + "%" : " - ";
     }
 
     function getColor(percent) {
@@ -92,7 +92,7 @@ define([
         if(m.isPath) {
           return _.get(datum, m.metricAccessor.concat(m.isGauge ? "value" : "delta")) || 0;
         } else {
-          return _.reduce(datum, function(mem, entityData, entity) {
+          return _.reduce(datum, function(mem, entityData) {
             mem += _.get(entityData, m.metricAccessor.concat(m.isGauge ? "value" : "delta")) || 0;
             return mem;
           }, 0);
