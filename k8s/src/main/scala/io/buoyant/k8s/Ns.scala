@@ -142,7 +142,7 @@ object Ns {
           case Activity.Ok(snap) =>
             snap.get(name) match {
               case None =>
-                log.warning("k8s ns %s received modified watch for unknown service %s", namespace, name)
+                log.warning("k8s ns %s received modified watch for unknown resource %s", namespace, name)
               case Some(item) =>
                 updateItem(obj) match {
                   case Some(i) => item() = i

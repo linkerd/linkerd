@@ -148,12 +148,11 @@ case class IngressIdentifierConfig(
   override def portNum: Option[Int] = k8sPort.map(_.port)
 
   @JsonIgnore
-  override def newIdentifier(params: Stack.Params) =
+  override def newIdentifier(params: Stack.Params) = {
+    val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
+    val mkApi = (ns: String) => v1beta1.Api(client.newService(dst))
     IngressIdentifier.mk(params, mkApi)
-
-  val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
-  def mkApi(ns: String) = v1beta1.Api(client.newService(dst))
-
+  }
 }
 
 object IngressIdentifierConfig {
