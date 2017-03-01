@@ -8,6 +8,7 @@ case class NamespacedName(
 )
 
 case class IngressHTTP(
+  name: Option[String],
   fallbackBackend: Option[IngressPaths] = None,
   rules: Seq[IngressPaths]
 )
@@ -19,6 +20,13 @@ case class IngressPaths(
   svc: String,
   port: String
 )
+
+/**
+  * IngressCache watches for ingress changes
+  * and checks incoming requests against cached ingress rules
+  *
+  * @param namespace: the k8s namespace to filter on
+  */
 
 class IngressCache(namespace: String) extends Ns.NsListCache[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressHTTP, NamespacedName](namespace) {
   def update(watch: v1beta1.IngressWatch): Unit = watch match {
@@ -53,7 +61,7 @@ class IngressCache(namespace: String) extends Ns.NsListCache[v1beta1.Ingress, v1
         }
 
         val fallback = spec.backend.map(b => IngressPaths(None, None, namespace, b.serviceName, b.servicePort))
-        Some(IngressHTTP(fallback, paths))
+        Some(IngressHTTP(ingress.metadata.flatMap(meta => meta.name), fallback, paths))
       case None => None
     }
   }
@@ -71,9 +79,15 @@ class IngressCache(namespace: String) extends Ns.NsListCache[v1beta1.Ingress, v1
           }
         }
         (matchingPath, resourceSample.fallbackBackend) match {
-          case (Some(path), _) => Some(path)
-          case (None, Some(default)) => Some(default)
-          case _ => None
+          case (Some(path), _) =>
+            log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
+            Some(path)
+          case (None, Some(default)) =>
+            log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
+            Some(default)
+          case _ =>
+            log.info("k8s no suitable rule found in %s for request %s %s", resourceSample.name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
+            None
         }
       }
     }.values.toFuture.flatMap(Future.const)
