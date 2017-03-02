@@ -116,7 +116,9 @@ object Ns {
      */
     def initialize(items: L): Unit = {
       val initItems = items.items.flatMap { item =>
-        mkItem(item).map { i => getName(item).get -> Var(i) }
+        getName(item).flatMap { name =>
+          mkItem(item).map { i => name -> Var(i) }
+        }
       }
 
       synchronized {

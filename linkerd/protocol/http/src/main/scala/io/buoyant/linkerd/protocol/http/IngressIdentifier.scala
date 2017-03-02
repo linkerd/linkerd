@@ -34,8 +34,8 @@ class IngressIdentifier(
     }
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val hostHeader = req.headerMap.get("Host").lastOption
-    val matchingPaths = ingressWithCache.get("", None).getMatchingRules(hostHeader, req.path)
+    val hostHeader = req.headerMap.get("Host")
+    val matchingPaths = ingressWithCache.get("", None).getMatchingPath(hostHeader, req.path)
     matchingPaths.flatMap { paths =>
       paths.headOption match {
         case None => Future.value(unidentified)

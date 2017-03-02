@@ -85,7 +85,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
 
   test("falls back to the default backend") {
     val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, (str) => api)
-    val req0 = Request("http", Method.Get, "authority", "", Stream.empty())
+    val req0 = Request("http", Method.Get, "authority", "/", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(name == Path.read("/svc/fooNamespace/defaultPort/defaultService"))
