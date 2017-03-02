@@ -1,4 +1,3 @@
-
 package io.buoyant.namer.fs
 
 import com.twitter.finagle.{Addr, Address, Path, Stack}
