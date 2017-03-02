@@ -1,7 +1,11 @@
 package io.buoyant.k8s
 
-import com.twitter.finagle.Path
-import com.twitter.util.Future
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Service, Http, Path}
+import com.twitter.util.{Timer, Duration, Future}
+import com.twitter.util.TimeConversions._
 
 case class NamespacedName(
   namespace: Option[String],
@@ -22,14 +26,28 @@ case class IngressPath(
   port: String
 )
 
-/**
-  * IngressCache watches for ingress changes
-  * and checks incoming requests against cached ingress rules
-  *
-  * @param namespace: the k8s namespace to filter on
-  */
+object IngressCache {
+  type IngressesResource = ListResource[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList]
 
-class IngressCache(namespace: String)
+  def cachedNs(ns: Option[String], apiClient: Service[Request, Response]) =
+    new Ns[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressCache]() {
+      override protected def mkResource(name: Option[String]) = ns match {
+        case Some(ns) => v1beta1.Api(apiClient).withNamespace(ns).ingresses
+        case None => v1beta1.Api(apiClient).ingresses
+      }
+      override protected def mkCache(name: Option[String]) = new IngressCache(name)
+    }
+
+}
+
+/**
+ * IngressCache watches for ingress changes
+ * and checks incoming requests against cached ingress rules
+ *
+ * @param namespace: the k8s namespace to filter on
+ */
+
+class IngressCache(namespace: Option[String])
   extends Ns.NsListCache[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressSpec, NamespacedName](namespace) {
   def update(watch: v1beta1.IngressWatch): Unit = watch match {
     case v1beta1.IngressError(e) => log.error("k8s watch error: %s", e)
@@ -68,7 +86,7 @@ class IngressCache(namespace: String)
     }
   }
 
-  def isPrefix(pfx: Path, str: Path):Boolean =
+  def isPrefix(pfx: Path, str: Path): Boolean =
     pfx.showElems.corresponds(str.take(pfx.size).showElems) { _ == _ }
 
   def getMatchingPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] = {

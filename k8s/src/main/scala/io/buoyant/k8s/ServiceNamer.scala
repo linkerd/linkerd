@@ -28,12 +28,12 @@ class ServiceNamer(
 
   def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
     case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map(toNameTree(path, _))
+      val nameTree = serviceNs.get(Some(nsName), None).get(serviceName, portName).map(toNameTree(path, _))
       Activity(nameTree.map(Activity.Ok(_)))
 
     case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
       val nameTree = serviceNs
-        .get(nsName, Some(s"$label=$labelValue"))
+        .get(Some(nsName), Some(s"$label=$labelValue"))
         .get(serviceName, portName)
         .map(toNameTree(path, _))
 
@@ -60,8 +60,8 @@ class ServiceNamer(
     } yield port.port
 
   private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
-    override protected def mkResource(name: String) = mkApi(name).services
-    override protected def mkCache(name: String) = new ServiceCache(name)
+    override protected def mkResource(name: Option[String]) = mkApi(name.get).services
+    override protected def mkCache(name: Option[String]) = new ServiceCache(name.get)
   }
 }
 

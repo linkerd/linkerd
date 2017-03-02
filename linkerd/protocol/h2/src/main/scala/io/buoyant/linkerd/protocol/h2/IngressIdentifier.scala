@@ -1,51 +1,35 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers, Request}
+import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle._
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.service.Backoff
-import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Stack, Dtab, Path}
-import com.twitter.util.{Timer, Duration, Future}
+import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.{IngressCache, ClientConfig, Ns, v1beta1}
+import io.buoyant.k8s._
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest, _}
-
-object IngressIdentifier {
-  def mk(params: Stack.Params, mkApi: String => v1beta1.Api): Identifier[Request] = {
-    val DstPrefix(pfx) = params[DstPrefix]
-    val BaseDtab(baseDtab) = params[BaseDtab]
-    new IngressIdentifier(pfx, baseDtab, mkApi)
-  }
-}
+import io.buoyant.router.RoutingFactory._
 
 class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
-  mkApi: String => v1beta1.Api,
-  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter)
-  extends Identifier[Request] {
+  namespace: Option[String],
+  apiClient: Service[http.Request, http.Response]
+) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressWithCache =
-    new Ns[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressCache](backoff, timer) {
-      override protected def mkResource(name: String) = mkApi(name).ingresses
-      override protected def mkCache(name: String) = new IngressCache(name)
-    }
+  private[this] val ingressWithCache = IngressCache.cachedNs(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val hostHeader = req.headers.get("Host").lastOption
-    val matchingPaths = ingressWithCache.get("", None).getMatchingPath(hostHeader, req.path)
+    val matchingPaths = ingressWithCache.get(None, None).getMatchingPath(hostHeader, req.path)
     matchingPaths.flatMap { paths =>
-      paths.headOption match {
+      paths match {
         case None => Future.value(unidentified)
         case Some(a) =>
           val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
@@ -57,20 +41,18 @@ class IngressIdentifier(
 }
 
 case class IngressIdentifierConfig(
-  k8sHost: Option[String],
-  k8sPort: Option[Port]
+  host: Option[String],
+  port: Option[Port],
+  namespace: Option[String]
 ) extends H2IdentifierConfig with ClientConfig {
-  @JsonIgnore
-  override def host: Option[String] = k8sHost
-
-  @JsonIgnore
-  override def portNum: Option[Int] = k8sPort.map(_.port)
+  override def portNum: Option[Int] = port.map(_.port)
 
   @JsonIgnore
   override def newIdentifier(params: Stack.Params) = {
+    val DstPrefix(pfx) = params[DstPrefix]
+    val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
-    val mkApi = (ns: String) => v1beta1.Api(client.newService(dst))
-    IngressIdentifier.mk(params, mkApi)
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
   }
 }
 

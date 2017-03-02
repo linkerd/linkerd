@@ -20,7 +20,7 @@ class IngressCacheTest extends FunSuite with Awaits {
   val host = Some("myhost")
 
   test("on multiple path matches, return first match") {
-    val cache = new IngressCache("default")
+    val cache = new IngressCache(None)
     val paths = Seq(
       IngressPath(host, Some(Path.Utf8("path")), "default", "primarySvc", "80"),
       IngressPath(host, Some(Path.Utf8("path")), "default", "secondarySvc", "80")
@@ -32,7 +32,7 @@ class IngressCacheTest extends FunSuite with Awaits {
   }
 
   test("on multiple host matches, return first match") {
-    val cache = new IngressCache("default")
+    val cache = new IngressCache(None)
     val resource1 = resourceFixture(host, Some("r1"), Seq(IngressPath(host, None, "default", "svc1", "80")))
     val resource2 = resourceFixture(host, Some("r2"), Seq(IngressPath(host, None, "default", "svc2", "80")))
 
@@ -43,7 +43,7 @@ class IngressCacheTest extends FunSuite with Awaits {
   }
 
   test("match on path prefix") {
-    val cache = new IngressCache("default")
+    val cache = new IngressCache(None)
     val paths = Seq(
       IngressPath(host, Some(Path.read("/prefix")), "default", "svc1", "80")
     )
@@ -54,7 +54,7 @@ class IngressCacheTest extends FunSuite with Awaits {
   }
 
   test("don't match on path prefix if it's not a prefix on the path boundary") {
-    val cache = new IngressCache("default")
+    val cache = new IngressCache(None)
     val paths = Seq(
       IngressPath(host, Some(Path.read("/prefix")), "default", "svc1", "80")
     )

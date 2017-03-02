@@ -17,7 +17,7 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
   private[this] val caches = Var[Map[String, Cache]](Map.empty[String, Cache])
   // XXX once a namespace is watched, it is watched forever.
   private[this] var _watches = Map.empty[String, Activity[Closable]]
-
+  val noNamespace = "all-namespaces"
   /**
    * Returns an Activity backed by a Future.  The resultant Activity is pending until the
    * original future is satisfied.  When the Future is successful, the Activity becomes
@@ -53,25 +53,26 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
     }
   }
 
-  protected def mkResource(name: String): ListResource[O, W, L]
+  protected def mkResource(name: Option[String]): ListResource[O, W, L]
 
-  protected def mkCache(name: String): Cache
+  protected def mkCache(name: Option[String]): Cache
 
-  def get(name: String, labelSelector: Option[String]): Cache = synchronized {
-    caches.sample.get(name) match {
+  def get(name: Option[String], labelSelector: Option[String]): Cache = synchronized {
+    val nsName = name.getOrElse(noNamespace)
+    caches.sample.get(nsName) match {
       case Some(ns) => ns
       case None =>
         val ns = mkCache(name)
         val closable = retryToActivity { watch(name, labelSelector, ns) }
-        _watches += (name -> closable)
-        caches() = caches.sample + (name -> ns)
+        _watches += (nsName -> closable)
+        caches() = caches.sample + (nsName -> ns)
         ns
     }
   }
 
   val namespaces: Var[Set[String]] = caches.map(_.keySet)
 
-  private[this] def watch(namespace: String, labelSelector: Option[String], cache: Cache): Future[Closable] = {
+  private[this] def watch(namespace: Option[String], labelSelector: Option[String], cache: Cache): Future[Closable] = {
     val resource = mkResource(namespace)
     Trace.letClear {
       log.info("k8s initializing %s", namespace)
@@ -99,7 +100,7 @@ object Ns {
 
   type VarUp[T] = Var[T] with Updatable[T]
 
-  abstract class NsListCache[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, V, K](namespace: String) extends Ns.ObjectCache[O, W, L] {
+  abstract class NsListCache[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, V, K](namespace: Option[String]) extends Ns.ObjectCache[O, W, L] {
 
     val state = Var[Activity.State[Map[K, VarUp[V]]]](Activity.Pending)
 
@@ -129,7 +130,7 @@ object Ns {
     def add(obj: O): Unit =
       for (item <- mkItem(obj)) synchronized {
         val name = getName(obj).get //todo
-        log.debug("k8s ns %s added: %s", namespace, name)
+        log.debug("k8s ns %s added: %s", namespace.getOrElse(""), name)
         val items = state.sample() match {
           case Activity.Ok(items) => items
           case _ => Map.empty[K, VarUp[V]]
@@ -139,12 +140,12 @@ object Ns {
 
     def modify(obj: O): Unit =
       for (name <- getName(obj)) synchronized {
-        log.debug("k8s ns %s modified: %s", namespace, name)
+        log.debug("k8s ns %s modified: %s", namespace.getOrElse(""), name)
         state.sample() match {
           case Activity.Ok(snap) =>
             snap.get(name) match {
               case None =>
-                log.warning("k8s ns %s received modified watch for unknown resource %s", namespace, name)
+                log.warning("k8s ns %s received modified watch for unknown resource %s", namespace.getOrElse(""), name)
               case Some(item) =>
                 updateItem(obj) match {
                   case Some(i) => item() = i
@@ -157,7 +158,7 @@ object Ns {
 
     def delete(obj: O): Unit =
       for (name <- getName(obj)) synchronized {
-        log.debug("k8s ns %s deleted: %s", namespace, name)
+        log.debug("k8s ns %s deleted: %s", namespace.getOrElse(""), name)
         state.sample() match {
           case Activity.Ok(snap) =>
             for (svc <- snap.get(name)) {

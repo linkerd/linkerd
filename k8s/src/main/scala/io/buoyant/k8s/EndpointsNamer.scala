@@ -30,12 +30,12 @@ class EndpointsNamer(
     case (id@Path.Utf8(nsName, _, _), None) =>
       val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      lookupServices(endpointNs.get(nsName, None), id, residual)
+      lookupServices(endpointNs.get(Some(nsName), None), id, residual)
 
     case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
       val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-      lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
+      lookupServices(endpointNs.get(Some(nsName), Some(s"$label=$labelValue")), id, residual)
 
     case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
       log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -79,8 +79,8 @@ class EndpointsNamer(
 
   private[this] val endpointNs =
     new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
-      override protected def mkResource(name: String) = mkApi(name).endpoints
-      override protected def mkCache(name: String) = new NsCache(name)
+      override protected def mkResource(name: Option[String]) = mkApi(name.get).endpoints
+      override protected def mkCache(name: Option[String]) = new NsCache(name.get)
     }
 
   override val getAllNames: Activity[Set[Path]] = {
@@ -88,7 +88,7 @@ class EndpointsNamer(
     // versions of flatMap and map
     val namespaces: ActSet[String] = Activity(endpointNs.namespaces.map(Activity.Ok(_)))
     namespaces.flatMap { namespace: String =>
-      val services: ActSet[SvcCache] = endpointNs.get(namespace, None).services.map(_.values.toSet)
+      val services: ActSet[SvcCache] = endpointNs.get(Some(namespace), None).services.map(_.values.toSet)
       services.flatMap { service: SvcCache =>
         val ports: ActSet[Port] = service.ports.map(_.values.toSet)
         ports.map { port: Port =>

@@ -8,7 +8,7 @@ import com.twitter.finagle.http.Request
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{http, Service, Dtab, Path}
 import com.twitter.util.{Duration, Future, Timer}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{ClientConfig, IngressCache, Ns, v1beta1}
@@ -19,23 +19,18 @@ import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentificatio
 class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
-  mkApi: String => v1beta1.Api,
-  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter)
-  extends Identifier[Request] {
+  namespace: Option[String],
+  apiClient: Service[http.Request, http.Response]
+) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressWithCache =
-    new Ns[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressCache](backoff, timer) {
-      override protected def mkResource(name: String) = mkApi(name).ingresses
-      override protected def mkCache(name: String) = new IngressCache(name)
-    }
+  private[this] val ingressWithCache = IngressCache.cachedNs(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val hostHeader = req.headerMap.get("Host")
-    val matchingPaths = ingressWithCache.get("", None).getMatchingPath(hostHeader, req.path)
+    val matchingPaths = ingressWithCache.get(None, None).getMatchingPath(hostHeader, req.path)
     matchingPaths.flatMap { paths =>
       paths.headOption match {
         case None => Future.value(unidentified)
@@ -50,22 +45,19 @@ class IngressIdentifier(
 }
 
 case class IngressIdentifierConfig(
-  k8sHost: Option[String],
-  k8sPort: Option[Port]
+  host: Option[String],
+  port: Option[Port],
+  namespace: Option[String]
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
-  override def host: Option[String] = k8sHost
-
-  @JsonIgnore
-  override def portNum: Option[Int] = k8sPort.map(_.port)
+  override def portNum: Option[Int] = port.map(_.port)
 
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
     val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
-    val mkApi = (ns: String) => v1beta1.Api(client.newService(dst))
-    new IngressIdentifier(prefix, baseDtab, mkApi)
+    new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst))
   }
 }
 
