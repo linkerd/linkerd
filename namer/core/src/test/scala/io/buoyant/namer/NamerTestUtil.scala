@@ -6,20 +6,20 @@ import org.scalatest.FunSuite
 
 trait NamerTestUtil { self: FunSuite =>
 
-  protected def assertBoundIdAutobinds(namer: Namer, path: Path, prefix: Path): Unit = {
-    def lookup(p: Path) = {
-      assert(p.startsWith(prefix))
-      val pathWithoutPrefix = p.drop(prefix.size)
-      Await.result(namer.lookup(pathWithoutPrefix).values.toFuture.flatMap(Future.const))
-    }
+  protected def lookup(namer: Namer, p: Path): NameTree[Name] =
+    Await.result(namer.lookup(p).values.toFuture.flatMap(Future.const))
 
-    val nameTree = lookup(path)
-    val boundNames = nameTree.eval.toSet.flatten.collect {
+  protected def lookupBound(namer: Namer, p: Path): Seq[Name.Bound] =
+    lookup(namer, p).eval.toSeq.flatten.collect {
       case bound: Name.Bound => bound
     }
-    for (bound <- boundNames) {
+
+  protected def assertBoundIdAutobinds(namer: Namer, path: Path, prefix: Path): Unit = {
+    assert(path.startsWith(prefix))
+    for (bound <- lookupBound(namer, path.drop(prefix.size))) {
       val idPath = bound.id.asInstanceOf[Path]
-      val NameTree.Leaf(rebound: Name.Bound) = lookup(idPath)
+      assert(path.startsWith(prefix))
+      val NameTree.Leaf(rebound: Name.Bound) = lookup(namer, idPath.drop(prefix.size))
       assert(rebound.id == bound.id)
     }
   }
