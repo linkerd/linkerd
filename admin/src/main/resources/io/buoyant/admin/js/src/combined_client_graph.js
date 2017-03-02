@@ -70,7 +70,7 @@ define([
         var dataToDisplay = _.map(clientsToDisplay, function(client) {
           return {
             name: client.label + "/requests",
-            delta: _.get(clientData, [client.label, "requests", "delta"])
+            delta: _.get(clientData, [client.label, "requests", "delta"]) || 0
           };
         });
 
