@@ -1,7 +1,8 @@
 package io.buoyant.namer.fs
 
+import com.twitter.finagle.{Addr, Address, Path, Stack}
+import com.twitter.finagle.addr.WeightedAddress
 import com.twitter.finagle.util.LoadService
-import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Directory
 import io.buoyant.namer.{NamerConfig, NamerInitializer, NamerTestUtil}
@@ -63,6 +64,43 @@ class FsTest extends FunSuite with NamerTestUtil {
     } finally {
       val _ = Seq("rm", "-rf", dir.getPath).!
     }
+  }
 
+  test("supports weights") {
+    val path = Path.read("/#/io.l5d.fs/default")
+
+    val dir = new File("mktemp -d -t disco.XXX".!!.stripLineEnd)
+    try {
+
+      val default = new File(dir, "default")
+      val writer = new PrintWriter(default)
+      writer.println("127.0.0.1 8080")
+      writer.println("127.0.0.1 8081 * 0.23")
+      writer.close()
+
+      val yaml = s"""
+                    |kind: io.l5d.fs
+                    |rootDir: ${dir.getAbsolutePath}
+      """.stripMargin
+
+      val mapper = Parser.objectMapper(yaml, Iterable(Seq(FsInitializer)))
+      val fs = mapper.readValue[NamerConfig](yaml)
+      val namer = fs.mk(Stack.Params.empty)
+
+      val bound = lookupBound(namer, path.drop(fs.prefix.size))
+      assert(bound.size == 1)
+      bound.head.addr.sample() match {
+        case Addr.Bound(addrs, _) =>
+          assert(addrs == Set(
+            Address("127.0.0.1", 8080),
+            WeightedAddress(Address("127.0.0.1", 8081), 0.23)
+          ))
+
+        case addr => fail(s"unexpected addr: $addr")
+      }
+
+    } finally {
+      val _ = Seq("rm", "-rf", dir.getPath).!
+    }
   }
 }

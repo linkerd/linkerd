@@ -55,7 +55,7 @@ apps    users   web
 $ cat config/web
 192.0.2.220 8080
 192.0.2.105 8080
-192.0.2.210 8080
+192.0.2.210 8080 * 2.0
 ```
 
 linkerd ships with a simple file-based service discovery mechanism, called the
