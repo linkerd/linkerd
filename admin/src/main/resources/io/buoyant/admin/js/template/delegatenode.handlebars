@@ -1,13 +1,13 @@
 {{#if child}}
   <div class='panel panel-default'>
     <div class='panel-heading
-  {{#if isPrimary}}
-    {{#if isSuccess}}
-      panel-heading-success
-    {{else}}
-      panel-heading-danger
-    {{/if}}
-  {{/if}}'{{#with dentry}}
+    {{#if isPrimary}}
+      {{#if isSuccess}}
+        panel-heading-success
+      {{else}}
+        panel-heading-danger
+      {{/if}}
+    {{/if}}'{{#with dentry}}
       data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
     {{/with}}>
       <div class='node-info'>

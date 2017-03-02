@@ -47,11 +47,11 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     var stack1;
 
   return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isSuccess : depth0),{"name":"if","hash":{},"fn":container.program(3, data, 0),"inverse":container.program(5, data, 0),"data":data})) != null ? stack1 : "")
-    + "  ";
+    + "    ";
 },"3":function(container,depth0,helpers,partials,data) {
-    return "      panel-heading-success\n";
+    return "        panel-heading-success\n";
 },"5":function(container,depth0,helpers,partials,data) {
-    return "      panel-heading-danger\n";
+    return "        panel-heading-danger\n";
 },"7":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 

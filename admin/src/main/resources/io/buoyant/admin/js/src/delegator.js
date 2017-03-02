@@ -30,9 +30,9 @@ define([
           }
           return "neg";
         case "union":
-          if (obj.union.some(function(e,_i){return subtreeType(e) == "fail";})) {
+          if (obj.union.some(function(e,_i){return treeType(e.tree) == "fail";})) {
             return "fail";
-          } else if (obj.union.some(function(e,_i){return subtreeType(e) == "success";})) {
+          } else if (obj.union.some(function(e,_i){return treeType(e.tree) == "success";})) {
             return "success";
           } else {
             return "neg";
