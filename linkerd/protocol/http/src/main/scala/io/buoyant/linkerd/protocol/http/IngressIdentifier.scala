@@ -26,7 +26,7 @@ class IngressIdentifier(
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressWithCache = IngressCache.cachedNs(namespace, apiClient)
+  private[this] val ingressWithCache = IngressCache.mk(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val hostHeader = req.headerMap.get("Host")

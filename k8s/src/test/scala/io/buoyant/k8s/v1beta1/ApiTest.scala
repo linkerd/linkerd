@@ -28,7 +28,6 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
   }""")
 
-
   test("get ingress") {
     @volatile var reqCount = 0
     @volatile var failure: Throwable = null
@@ -57,11 +56,13 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val ns = Api(service).withNamespace("srv")
     val ingress = await(ns.ingresses.named("test-ingress").get)
 
-    val paths = for (spec <- ingress.spec.toSeq;
-         rules <- spec.rules.toSeq;
-         rule <- rules;
-         http <- rule.http.toSeq;
-         path <- http.paths) yield {
+    val paths = for (
+      spec <- ingress.spec.toSeq;
+      rules <- spec.rules.toSeq;
+      rule <- rules;
+      http <- rule.http.toSeq;
+      path <- http.paths
+    ) yield {
       assert(path.path == Some("/fooPath"))
       assert(path.backend.serviceName == "/fooService")
       assert(path.backend.servicePort == "/fooPort")

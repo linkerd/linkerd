@@ -6,14 +6,15 @@ import org.scalatest.FunSuite
 
 class IngressCacheTest extends FunSuite with Awaits {
   def resourceFixture(host: Option[String], name: Option[String], paths: Seq[IngressPath]) = {
-    val pathResource = paths.map(path => v1beta1.HTTPIngressPath(path.path.map(_.show),v1beta1.IngressBackend(path.svc, path.port)))
+    val pathResource = paths.map(path => v1beta1.HTTPIngressPath(path.path.map(_.show), v1beta1.IngressBackend(path.svc, path.port)))
     val http = v1beta1.HTTPIngressRuleValue(pathResource)
     v1beta1.IngressList(Seq(
       v1beta1.Ingress(
         Some(v1beta1.IngressSpec(None, None, Some(Seq(v1beta1.IngressRule(host, Some(http)))))),
         None,
         Some("list"),
-        Some(ObjectMeta(name, name, paths.headOption.map(_.namespace))))
+        Some(ObjectMeta(name, name, paths.headOption.map(_.namespace)))
+      )
     ))
   }
 
