@@ -90,8 +90,8 @@ define([
 
     function processResponses(data, routerName, metrics) {
       function process(metric) {
-        var datum = _(data).get(metrics[metric].accessor);
         var m = metrics[metric];
+        var datum = _(data).get(m.accessor);
 
         if(m.isPath) {
           return _.get(datum, m.metricAccessor) || 0;

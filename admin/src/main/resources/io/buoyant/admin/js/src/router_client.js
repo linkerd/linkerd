@@ -58,7 +58,8 @@ define([
       "p95": "shade",
       "p50": "dark"
     }
-    var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
+    var latencyKeys = _.keys(metricToColorShade);
+
     function createLatencyLegend(colorLookup) {
       return _.mapValues(metricToColorShade, function(shade) {
         return colorLookup[shade];
@@ -98,14 +99,13 @@ define([
       $container.html($clientHtml);
     }
 
-    function getLatencyData(client, latencyKeys, chartLegend) {
-      var latencyData = _.pick(client.metrics, latencyKeys);
+    function getLatencyData(data, routerName, clientName, chartLegend) {
+      var latencyData = _.get(data, ["rt", routerName, "dst", "id", clientName, "request_latency_ms"]);
 
-      return _.map(latencyData, function(latencyValue, metricName) {
-        var key = metricName.split(".")[1];
+      return _.map(latencyKeys, function(key) {
         return {
           latencyLabel: key,
-          latencyValue: latencyValue,
+          latencyValue: _.get(latencyData, "stat." + key),
           latencyColor: chartLegend[key]
         };
       });
@@ -191,7 +191,7 @@ define([
 
       function metricsHandler(data) {
         var summaryData = getSummaryData(data.treeSpecific, metricDefinitions);
-        var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
+        var latencies = getLatencyData(data.treeSpecific, routerName, client.label, latencyLegend);
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
