@@ -61,6 +61,15 @@
   font-family: monospace;
 }
 
+.dentry .dentry-part {
+  word-wrap: break-word;
+}
+
+.dentry .fake-column {
+  width: 3%;
+  padding: 0px 3px;
+}
+
 .dentry-part {
   display: inline-block;
   font-family: monospace;
