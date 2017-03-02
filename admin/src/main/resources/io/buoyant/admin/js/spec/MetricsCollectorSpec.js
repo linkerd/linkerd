@@ -18,7 +18,7 @@ define([
         var expectedDelta = 3;
         var data;
         var handler = function(resp) {
-          data = resp.treeSpecific;
+          data = resp;
         }
         collector.registerListener(handler, function() { return [targetMetric];})
         var updateMetrics = _.cloneDeep(metricsJson);
@@ -34,7 +34,7 @@ define([
       it("registers listener to receive full metrics response on update", function() {
         var data;
         var handler = function(resp) {
-          data = resp.treeSpecific;
+          data = resp;
         }
         collector.registerListener(handler, function() { return [];})
         collector.__update__(metricsJson);

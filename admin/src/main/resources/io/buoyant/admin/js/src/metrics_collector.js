@@ -53,10 +53,7 @@ define(['jQuery'], function($) {
         prevMetrics = resp;
 
         _.each(listeners, function(listener) {
-          var data = {
-            treeSpecific: metricsWithDeltas
-          }
-          listener.handler(data);
+          listener.handler(metricsWithDeltas);
         });
       }
 

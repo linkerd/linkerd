@@ -105,7 +105,7 @@ define([
       var chart = SuccessRateGraph($chartEl, "#4AD8AC");
 
       var metricsHandler = function(data) {
-        var transformedData = processData(data.treeSpecific, routerName, server.label);
+        var transformedData = processData(data, routerName, server.label);
         renderServer($metricsEl, server, transformedData);
         chart.updateMetrics(getSuccessRate(transformedData));
       }

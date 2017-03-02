@@ -64,7 +64,7 @@ define([
     return function(metricsCollector, selectedRouter, $root) {
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
-          var metrics = defn.getMetrics(data.treeSpecific.rt);
+          var metrics = defn.getMetrics(data.rt);
 
           return {
             description: defn.description,

@@ -190,8 +190,8 @@ define([
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data.treeSpecific, metricDefinitions);
-        var latencies = getLatencyData(data.treeSpecific, routerName, client.label, latencyLegend);
+        var summaryData = getSummaryData(data, metricDefinitions);
+        var latencies = getLatencyData(data, routerName, client.label, latencyLegend);
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);

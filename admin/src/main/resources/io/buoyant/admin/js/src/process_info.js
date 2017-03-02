@@ -48,7 +48,7 @@ define([
 
       if (metricsCollector) {
         metricsCollector.registerListener(
-          function(data){ render($root, data.treeSpecific.jvm); },
+          function(data){ render($root, data.jvm); },
           _.noop
         );
       }

@@ -167,7 +167,7 @@ define([
       metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
 
       function metricsHandler(data) {
-        var summaryData = processResponses(data.treeSpecific, routerName, routerMetrics);
+        var summaryData = processResponses(data, routerName, routerMetrics);
 
         retriesBarChart.update(summaryData, retryBudget);
         renderRouterSummary(summaryData, routerName, $summaryEl);

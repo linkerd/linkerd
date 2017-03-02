@@ -64,7 +64,7 @@ define([
       chart.setMetrics(desiredMetrics);
 
       var metricsListener = function(data) {
-        var clientData = _.get(data.treeSpecific, ["rt", routerName, "dst", "id"]);
+        var clientData = _.get(data, ["rt", routerName, "dst", "id"]);
         var clientsToDisplay = getClientsToDisplay(routers, routerName);
 
         var dataToDisplay = _.map(clientsToDisplay, function(client) {

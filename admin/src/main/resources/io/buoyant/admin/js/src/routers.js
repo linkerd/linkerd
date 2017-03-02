@@ -125,7 +125,7 @@ define([
       update(routers, metrics);
 
       if (!_.isEmpty(metricsCollector)) {
-        var metricsHandler = function(data) { update(routers, data.treeSpecific); }
+        var metricsHandler = function(data) { update(routers, data); }
         metricsCollector.registerListener(metricsHandler, function(_metrics) {});
       }
 
