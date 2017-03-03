@@ -9,6 +9,7 @@
 .panel, .panel-heading, .list-group-item, .list-group {
   border: none;
   box-shadow: none;
+  word-wrap: break-word;
 }
 
 .list-group-item.list-group-item-plain {
