@@ -23,9 +23,7 @@ define([
       var clients = routers.clients(routerName);
 
       var nonIgnoredClients = _(clients).map(function(client) {
-        if(!ignoredClients[routerName][client.label]) {
-          return client;
-        } else return null;
+        return !ignoredClients[routerName][client.label] ? client : null;
       }).compact().value();
 
       // if all clients are collapsed, let the combined graph show all clients
