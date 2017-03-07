@@ -104,7 +104,7 @@ object DstBindingFactory {
   }
 
   implicit object Capacity extends Stack.Param[Capacity] {
-    val default = Capacity(100, 100, 100, 10)
+    val default = Capacity(1000, 1000, 1000, 1000)
   }
 
   case class BindingTimeout(timeout: Duration)
