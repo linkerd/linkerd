@@ -1,7 +1,7 @@
 package io.buoyant.telemetry.prometheus
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{MediaType, Request, Response}
+import com.twitter.finagle.http.{MediaType, Response, Request}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, Future}

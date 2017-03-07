@@ -63,7 +63,7 @@ object Netty4H2Transporter {
           }
       }
 
-    Netty4Transporter(pipelineInit, params)
+    Netty4Transporter.raw(pipelineInit, params)
   }
 
   private val FramerKey = "h2 framer"

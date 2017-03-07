@@ -106,7 +106,7 @@ class Netty4ClientDispatchTest extends FunSuite {
     assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
-      new DefaultHttp2HeadersFrame(hs, false).setStreamId(5)
+      new DefaultHttp2HeadersFrame(hs, false).streamId(5)
     }))
 
     assert(rsp0f.poll == None)
@@ -118,7 +118,7 @@ class Netty4ClientDispatchTest extends FunSuite {
     assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
-      new DefaultHttp2HeadersFrame(hs, false).setStreamId(3)
+      new DefaultHttp2HeadersFrame(hs, false).streamId(3)
     }))
     assert(rsp0f.isDefined)
     val rsp0 = await(rsp0f)
@@ -127,11 +127,11 @@ class Netty4ClientDispatchTest extends FunSuite {
 
     assert(recvq.offer({
       val buf = Buf.Utf8("sup")
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).setStreamId(3)
+      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).streamId(3)
     }))
     assert(recvq.offer({
       val buf = Buf.Utf8("yo")
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).setStreamId(5)
+      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).streamId(5)
     }))
 
     val d0f = rsp0.stream.read()

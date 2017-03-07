@@ -394,7 +394,7 @@ object Headers {
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
       private[this] val pathShow = path.show
       def apply(req: Request, service: Service[Request, Response]) = {
-        req.headers().set(Path, pathShow)
+        req.headerMap.set(Path, pathShow)
         service(req)
       }
     }
@@ -419,7 +419,7 @@ object Headers {
         case path => Some(path.show)
       }
       private[this] def annotate(msg: Message): Unit = {
-        val headers = msg.headers()
+        val headers = msg.headerMap
         val _b = headers.set(Bound, boundShow)
         pathShow match {
           case None =>
