@@ -58,6 +58,10 @@
   color: #f4f4f4;
 }
 
+.dentry .dentry-content {
+  float: left;
+}
+
 .dentry {
   font-family: monospace;
 }
@@ -67,7 +71,7 @@
 }
 
 .dentry .fake-column {
-  width: 3%;
+  width: 36px;
   padding: 0px 3px;
 }
 

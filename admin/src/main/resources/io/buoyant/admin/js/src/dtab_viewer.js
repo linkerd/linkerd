@@ -6,9 +6,8 @@ define(['jQuery'], function($) {
     this.template = dentryTemplate;
 
     this.render();
-
-    this._resize($(".dentry-prefix"), $(".dentry-dst"))
-    window.addEventListener('resize', this._resize.bind(this, $(".dentry-prefix"), $(".dentry-dst")), false);
+    // window.addEventListener('resize', this._resize.bind(this, $(".dentry-prefix"), $(".dentry-dst")), false);
+    window.addEventListener('resize', this.render.bind(this), false);
 
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
 
@@ -53,30 +52,25 @@ define(['jQuery'], function($) {
   };
 
   DtabViewer.prototype._resize = function($prefix, $dst) {
-    $(".dentry-prefix").attr("width", null);
-    $(".dentry-dst").attr("width", null);
-    console.log("resize");
+    var maxWidth = 0;
+    var halfPageWidth = ($(window).width() / 2) * 0.85;
 
-    var prefixWidth = $prefix.width()
-    var dstWidth = $dst.width();
-    var maxDefaultWidth = Math.max(prefixWidth, dstWidth);
+    $dst.width(halfPageWidth); // expand to find max content width
+    $dst.find(".dst-content").map(function(_i, ea) {
+      var w = $(ea).width();
+      maxWidth = w > maxWidth ? w : maxWidth;
+    });
 
-    var prefixContentWidth = $prefix.find(".prefix-content").width();
-    var dstContentWidth = $dst.find(".dst-content").width();
-    var maxContentWidth = Math.max(prefixContentWidth, dstContentWidth);
-
-    console.log(prefixContentWidth, dstContentWidth);
-    console.log(maxDefaultWidth, maxContentWidth);
-
-    if (maxContentWidth < maxDefaultWidth) {
-      $prefix.width(maxContentWidth);
-      $dst.width(maxContentWidth);
+    if (maxWidth < halfPageWidth) {
+      $prefix.width(maxWidth);
+      $dst.width(maxWidth);
     }
   }
 
   DtabViewer.prototype.render = function() {
     this._renderDtabHtml();
     this._renderDtabInput();
+    this._resize($(".dentry-prefix"), $(".dentry-dst"))
 
     //dentry click handlers
     $(".dentry-prefix").click(this._activateDentries.bind(this, "data-dentry-prefix"));
