@@ -34,7 +34,8 @@ class RecentRequestsAdminHandler(tracer: RecentRequetsTracer) extends Service[Re
       "Timestamp", "Source", "Server", "Router", "Logical Name", "Concrete Name", "Destination"
     ).map(cell => s"<th>$cell</th>").mkString
 
-    req.response.contentString =
+    val response = Response()
+    response.contentString =
       s"""
        |<div class="container main">
        |<h1 class="title">Recent Requests</h1>
@@ -46,7 +47,7 @@ class RecentRequestsAdminHandler(tracer: RecentRequetsTracer) extends Service[Re
        |</div>
        |</div>
      """.stripMargin
-    req.response.contentType = MediaType.Html
-    Future.value(req.response)
+    response.contentType = MediaType.Html
+    Future.value(response)
   }
 }

@@ -2,7 +2,6 @@ package io.buoyant.etcd
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Filter, Path, Service}
-import com.twitter.finagle.buoyant.FormParams
 import com.twitter.finagle.http.{Message, Method, Request, Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util.{Events => _, _}
@@ -29,7 +28,9 @@ class KeyTest extends FunSuite with Exceptions {
       val (path, params) = req.method match {
         case Method.Post | Method.Put =>
           val path = Path.read(req.uri)
-          val params = FormParams.get(req)
+          val params = req.params.keysIterator.map { k =>
+            k -> req.params.getAll(k).toSeq
+          }.toMap
           (path, params)
 
         case _ =>

@@ -1,7 +1,7 @@
 package io.buoyant.telemetry.prometheus
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{MediaType, Request}
+import com.twitter.finagle.http.{MediaType, Response, Request}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, Future}
@@ -17,7 +17,7 @@ import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
 class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithHandlers {
 
   private[prometheus] val handler = Service.mk { request: Request =>
-    val response = request.response
+    val response = Response()
     response.mediaType = MediaType.Txt
     val sb = new StringBuilder()
     writeMetrics(metrics, sb)

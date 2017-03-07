@@ -168,7 +168,7 @@ object DstBindingFactory {
         pathMk(dst, dyn)
       }
 
-      new ServiceFactoryCache(mk, statsReceiver.scope("path"), capacity.paths)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("path"), capacity.paths)
     }
 
     // The tree cache is effectively keyed on a NameTree of Bound names
@@ -177,7 +177,7 @@ object DstBindingFactory {
       def mk(tree: Dst.BoundTree): ServiceFactory[Req, Rsp] =
         NameTreeFactory(tree.path, tree.nameTree, boundCache)
 
-      new ServiceFactoryCache(mk, statsReceiver.scope("tree"), capacity.trees)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("tree"), capacity.trees)
     }
 
     // The bound cache is effectively keyed on the underlying service id
@@ -196,13 +196,13 @@ object DstBindingFactory {
         boundMk(bound, client)
       }
 
-      new ServiceFactoryCache(mk, statsReceiver.scope("bound"), capacity.bounds)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("bound"), capacity.bounds)
     }
 
     // The bottom cache is effectively keyed on the bound destination id
     // (i.e. concrete service name).
     private[this] val clientCache: Cache[Name.Bound] =
-      new ServiceFactoryCache(mkClient, statsReceiver.scope("client"), capacity.clients)
+      new ServiceFactoryCache(mkClient, timer, statsReceiver.scope("client"), capacity.clients)
 
     private[this] val caches: Seq[Cache[_]] =
       Seq(pathCache, treeCache, boundCache, clientCache)

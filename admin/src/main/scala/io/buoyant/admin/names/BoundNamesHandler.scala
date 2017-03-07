@@ -13,7 +13,7 @@ class BoundNamesHandler(namers: Seq[EnumeratingNamer]) extends Service[Request, 
       .flatMap(Future.const)
       .map { names =>
         val json = names.toSet.flatten.map(_.show).mkString("[\"", "\",\"", "\"]")
-        val rsp = req.response
+        val rsp = Response()
         rsp.contentString = json
         rsp.contentType = MediaType.Json
         rsp
