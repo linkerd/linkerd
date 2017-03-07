@@ -213,13 +213,13 @@ templates['dentry'] = template({"compiler":[7,">= 4.0.0"],"main":function(contai
 
   return "<div class='dentry row'>\n  <div class='dentry-part dentry-prefix col-md-5' data-dentry-prefix='"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
-    + "'>\n    "
+    + "'>\n    <span class='prefix-content'>"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
-    + "\n  </div>\n  <div class='fake-column text-center col-md-1'>=></div>\n  <div class='dentry-part dentry-dst col-md-6' data-dentry-dst='"
+    + "</span>\n  </div>\n  <div class='fake-column text-center col-md-1'>=></div>\n  <div class='dentry-part dentry-dst col-md-5' data-dentry-dst='"
     + alias4(((helper = (helper = helpers.dst || (depth0 != null ? depth0.dst : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"dst","hash":{},"data":data}) : helper)))
-    + "'>\n    "
+    + "'>\n    <span class='dst-content'>"
     + alias4(((helper = (helper = helpers.dst || (depth0 != null ? depth0.dst : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"dst","hash":{},"data":data}) : helper)))
-    + "\n  </div>\n  <div class='fake-column col-md-1'>;</div>\n</div>\n";
+    + "</span>\n  </div>\n  <div class='fake-column col-md-1'>;</div>\n</div>\n<div  class=\"row\">\n  <div class=\"col-md-5\"></div>\n</div>\n";
 },"useData":true});
 templates['error_modal'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     return "<div class=\"modal-dialog modal-sm\">\n  <div class=\"modal-content\">\n    <div class=\"modal-header\">\n      <button type=\"button\" class=\"close\" data-dismiss=\"modal\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>\n      <h4 class=\"modal-title\">Whoops!</h4>\n    </div>\n    <div class=\"modal-body\">\n      <p>Looks like there was an issue completing your request.</p>\n      <pre>"

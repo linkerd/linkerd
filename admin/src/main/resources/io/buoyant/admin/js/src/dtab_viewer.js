@@ -7,6 +7,9 @@ define(['jQuery'], function($) {
 
     this.render();
 
+    this._resize($(".dentry-prefix"), $(".dentry-dst"))
+    window.addEventListener('resize', this._resize.bind(this, $(".dentry-prefix"), $(".dentry-dst")), false);
+
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
 
     $('#save-dtab-btn').click(function(_e){
@@ -48,6 +51,28 @@ define(['jQuery'], function($) {
       $("#save-dtab-btn").removeClass("hide");
     }
   };
+
+  DtabViewer.prototype._resize = function($prefix, $dst) {
+    $(".dentry-prefix").attr("width", null);
+    $(".dentry-dst").attr("width", null);
+    console.log("resize");
+
+    var prefixWidth = $prefix.width()
+    var dstWidth = $dst.width();
+    var maxDefaultWidth = Math.max(prefixWidth, dstWidth);
+
+    var prefixContentWidth = $prefix.find(".prefix-content").width();
+    var dstContentWidth = $dst.find(".dst-content").width();
+    var maxContentWidth = Math.max(prefixContentWidth, dstContentWidth);
+
+    console.log(prefixContentWidth, dstContentWidth);
+    console.log(maxDefaultWidth, maxContentWidth);
+
+    if (maxContentWidth < maxDefaultWidth) {
+      $prefix.width(maxContentWidth);
+      $dst.width(maxContentWidth);
+    }
+  }
 
   DtabViewer.prototype.render = function() {
     this._renderDtabHtml();
