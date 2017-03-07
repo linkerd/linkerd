@@ -37,7 +37,6 @@ define([
       ];
       return _.map(defs, function(def) {
         var treeMetricKeys = genServerStat(routerName, serverName, def.metricSuffix);
-        def.treeMetric = treeMetricKeys.metric;
         def.treeMetricRoot = treeMetricKeys.metricRoot;
         return def;
       })
@@ -110,12 +109,7 @@ define([
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 
-      var getDesiredMetrics = function() {
-        var metricDefinitions = getMetricDefinitions(routerName, server.label);
-        return _.map(metricDefinitions, "treeMetric");
-      }
-
-      metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
+      metricsCollector.registerListener(metricsHandler);
 
       return {};
     };

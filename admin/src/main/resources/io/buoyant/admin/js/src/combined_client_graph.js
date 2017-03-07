@@ -75,12 +75,7 @@ define([
         chart.updateMetrics(dataToDisplay);
       };
 
-      metricsCollector.registerListener(metricsListener, function() {
-        var metrics = _.map(routers.clients(routerName), function(client) {
-          return ["rt", routerName, "dst", "id", client.label, "requests", "counter"];
-        });
-        return metrics;
-      });
+      metricsCollector.registerListener(metricsListener);
       return {
         addClients: function(clients) {
           chart.addMetrics(_.map(clients, function(client) {

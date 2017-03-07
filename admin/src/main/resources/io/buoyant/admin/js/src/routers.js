@@ -126,7 +126,7 @@ define([
 
       if (!_.isEmpty(metricsCollector)) {
         var metricsHandler = function(data) { update(routers, data); }
-        metricsCollector.registerListener(metricsHandler, function(_metrics) {});
+        metricsCollector.registerListener(metricsHandler);
       }
 
       return {

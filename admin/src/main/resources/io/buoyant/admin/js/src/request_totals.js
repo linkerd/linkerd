@@ -75,28 +75,9 @@ define([
         render($root, transformedData);
       }
 
-      function desiredMetrics(treeMetrics) {
-        if (!treeMetrics) return [];
-        else {
-          var metrics = _.map(treeMetrics.rt, function(routerData, router) {
-            var serverData = _.map(routerData.srv, function(serverData, server) {
-              return _.map(metricDefinitions, function(defn) {
-                return ["rt", router, "srv", server, defn.metric, defn.isGauge ? "gauge" : "counter"];
-              });
-            });
-
-            var clientData = _.map(_.get(routerData, "dst.id"), function(clientData, client) {
-              return ["rt", router, "dst", "id", client, "connections", "gauge"];
-            });
-            return _.concat(serverData, clientData);
-          });
-        }
-        return _.flatMap(metrics);
-      }
-
       if (!selectedRouter || selectedRouter === "all") { //welcome to my world of hacks
         render($root, metricDefinitions);
-        metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
+        metricsCollector.registerListener(onMetricsUpdate);
       } else {
         $root.hide();
       }

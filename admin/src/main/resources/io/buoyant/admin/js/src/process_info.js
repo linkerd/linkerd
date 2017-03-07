@@ -47,10 +47,7 @@ define([
       stats[0].value = buildVersion;
 
       if (metricsCollector) {
-        metricsCollector.registerListener(
-          function(data){ render($root, data.jvm); },
-          _.noop
-        );
+        metricsCollector.registerListener(function(data){ render($root, data.jvm); });
       }
 
       return {};

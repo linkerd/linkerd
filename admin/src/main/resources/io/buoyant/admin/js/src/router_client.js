@@ -68,21 +68,19 @@ define([
 
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
-          {suffix: "requests", label: "Requests"},
-          {suffix: "connections", label: "Connections", isGauge: true},
-          {suffix: "success", label: "Successes"},
-          {suffix: "failures", label: "Failures"},
-          {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
-          {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
-        ], function(metric) {
-          var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
-          var treeKey = treeKeyRoot.concat([metric.isGauge ? "gauge" : "counter"]);
+        {suffix: "requests", label: "Requests"},
+        {suffix: "connections", label: "Connections", isGauge: true},
+        {suffix: "success", label: "Successes"},
+        {suffix: "failures", label: "Failures"},
+        {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
+        {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
+      ], function(metric) {
+        var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
 
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
           isGauge: metric.isGauge,
-          treeMetric: treeKey,
           treeMetricRoot: treeKeyRoot
         }
       });
@@ -175,7 +173,7 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
+          metricsCollector.registerListener(metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
@@ -197,10 +195,6 @@ define([
         lbBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies);
-      }
-
-      function getDesiredMetrics() {
-        return  _.map(metricDefinitions, "treeMetric");
       }
 
       return {

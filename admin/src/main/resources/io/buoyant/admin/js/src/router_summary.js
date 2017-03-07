@@ -150,10 +150,6 @@ define([
       return _.get(routerObj, 'client.retries.budget.percentCanRetry', DEFAULT_BUDGET);
     }
 
-    function getMetricAccessor(metric, entity) {
-      return _.concat(metric.accessor, entity || [], metric.metricKey);
-    }
-
     return function(metricsCollector, $summaryEl, $barChartEl, routerName, routerConfig) {
       var $retriesBarChart = $barChartEl.find(".retries-bar-chart");
 
@@ -164,31 +160,13 @@ define([
 
       renderRouterSummary({ router: routerName }, routerName, $summaryEl);
 
-      metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
+      metricsCollector.registerListener(metricsHandler);
 
       function metricsHandler(data) {
         var summaryData = processResponses(data, routerName, routerMetrics);
 
         retriesBarChart.update(summaryData, retryBudget);
         renderRouterSummary(summaryData, routerName, $summaryEl);
-      }
-
-      function getDesiredMetrics(treeMetrics) {
-        if (treeMetrics) {
-          var metricsList =  _.map(routerMetrics, function(metric) {
-            if(metric.isPath) {
-              return [getMetricAccessor(metric)];
-            } else {
-              var entities = _.get(treeMetrics, metric.accessor); // servers or clients
-              return _.map(entities, function(entityData, entity) {
-                return getMetricAccessor(metric, entity);
-              });
-            }
-          });
-          return _.flatMap(metricsList);
-        } else {
-          return [];
-        }
       }
 
       return {};

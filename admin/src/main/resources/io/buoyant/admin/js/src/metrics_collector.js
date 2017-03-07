@@ -1,8 +1,7 @@
 "use strict";
 /**
   A module to consolidate our backend metric requests. Collects all metrics that
-  we need and gets them in two requests - one to metrics.json and one to metrics
-  with the desired params.
+  we need.
 */
 define(['jQuery'], function($) {
 
@@ -11,49 +10,41 @@ define(['jQuery'], function($) {
     var listeners = [];
     /**
       Register a listener to receive metric updates.
-      handler: function called with incoming data of the form:
-        {
-          general: {}, // data obtained from /metrics.json
-          specific: {} // deltas derived from current and previous /metrics.json calls
-        }
-      metrics: returns a list of metrics the listener wants.
-        Called with a list of metric names to choose from.
+      handler: function called with incoming tree data
     */
-    function registerListener(handler, metrics) {
-      listeners.push({handler: handler, metrics: metrics});
+    function registerListener(handler) {
+      listeners.push({handler: handler});
     }
 
     function deregisterListener(handler) {
       _.remove(listeners, function(l) { return l.handler === handler; });
     }
 
-    function getTreeDeltaPayload(metricNames, resp, prevResp) {
-      _.each(metricNames, function(metric) {
-        if(_.isArray(metric)) {
-          var prevValue = _.get(prevResp, metric);
-          var currentValue = _.get(resp, metric);
-          var metricCopy = _.clone(metric);
+    function calculateDeltas(resp, prevResp, path) {
+      // modifies resp!
+      _.each(resp, function(v, k) {
+        if (k === "counter") {
+          var prevValue = _.get(prevResp, k);
+          var currentValue = _.get(resp, k);
 
           if (prevValue !== undefined && currentValue !== undefined) {
-            metricCopy[metricCopy.length - 1] = "delta";
-            _.set(resp, metricCopy, currentValue - prevValue);
+            _.set(resp, "delta", currentValue - prevValue);
           }
+        } else {
+          calculateDeltas(resp[k], prevResp[k]);
         }
       });
-      return resp;
     }
 
     return function(initialMetrics) {
       var prevMetrics = initialMetrics;
 
       function update(resp) {
-        var metricsToGet = _.flatMap(listeners, function(l) { return l.metrics(resp); });
-        var metricsWithDeltas = getTreeDeltaPayload(metricsToGet, resp, prevMetrics);
-
+        calculateDeltas(resp, prevMetrics, []);
         prevMetrics = resp;
 
         _.each(listeners, function(listener) {
-          listener.handler(metricsWithDeltas);
+          listener.handler(resp);
         });
       }
 
