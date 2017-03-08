@@ -44,12 +44,13 @@ define([
 
   function resizeWidths($namespaceContainer) {
     var maxWidth = 0;
+    var limitWidth = $(window).width() / 2 * 0.8;
     var dentries = $namespaceContainer.find(".dentry-content.dentry-part");
     $(dentries).map(function(_i, dentry) {
       var w = $(dentry).width();
       maxWidth = w > maxWidth ? w : maxWidth;
     })
-    $(dentries).width(maxWidth);
+    $(dentries).width(Math.min(maxWidth, limitWidth));
   }
 
   function getStat(metrics, stat) {
