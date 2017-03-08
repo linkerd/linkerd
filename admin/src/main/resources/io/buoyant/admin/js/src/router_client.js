@@ -88,7 +88,7 @@ define([
 
     function renderMetrics($container, client, summaryData, latencyData) {
       var clientHtml = template({
-        client: client.label,
+        client: client,
         latencies: latencyData,
         data: summaryData
       });
@@ -137,7 +137,7 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+    return function (metricsCollector, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -152,7 +152,7 @@ define([
       var $lbBarChart = $container.find(".lb-bar-chart");
 
       var latencyLegend = createLatencyLegend(colors.colorFamily);
-      var metricDefinitions = getMetricDefinitions(routerName, client.label);
+      var metricDefinitions = getMetricDefinitions(routerName, client);
 
       var $expandLink = $toggleLinks.find(".client-expand");
       var $collapseLink = $toggleLinks.find(".client-collapse");
@@ -189,7 +189,7 @@ define([
 
       function metricsHandler(data) {
         var summaryData = getSummaryData(data, metricDefinitions);
-        var latencies = getLatencyData(data, routerName, client.label, latencyLegend);
+        var latencies = getLatencyData(data, routerName, client, latencyLegend);
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
@@ -198,7 +198,7 @@ define([
       }
 
       return {
-        label: client.label
+        label: client
       };
     };
   })();

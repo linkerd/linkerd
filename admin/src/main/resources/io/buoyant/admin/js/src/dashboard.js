@@ -23,7 +23,14 @@ define([
 
     $.get("admin/metrics.json?tree=1").done(function(metricsJson) {
       var metricsCollector = MetricsCollector(metricsJson);
-      var routers = Routers(metricsJson, metricsCollector);
+
+      var initialRouters = _.get(metricsJson, "rt");
+      var routers = _.reduce(initialRouters, function(mem, data, router) {
+        mem[router] = {};
+        mem[router]["servers"] = _.keys(data.srv);
+        mem[router]["clients"] = _.keys(_.get(data, "dst.id"));
+        return mem;
+      }, {});
 
       var $serverData = $(".server-data");
       var buildVersion = $serverData.data("linkerd-version");

@@ -84,25 +84,14 @@ define([
       }
     });
 
-    function getSelectedRouterData(selectedRouter, routers) {
-      var routerData = {};
-
-      if (!selectedRouter || !routers.data[selectedRouter]) {
-        routerData = routers.data;
-      } else {
-        routerData[selectedRouter] = routers.data[selectedRouter];
-      }
-      return routerData;
-    }
-
     function initializeRouterContainers(selectedRouter, routers, $parentContainer) {
       var template = templates.router_container;
-      var routerData = getSelectedRouterData(selectedRouter, routers);
+      var routerKeys = _.keys(routers);
 
       var routerLabels = [];
       $(".router-menu-option").each(function() {
         var label = $(this).text();
-        if (_.has(routerData, label)) {
+        if (_.has(routers, label)) {
           routerLabels.push(label);
         }
       });

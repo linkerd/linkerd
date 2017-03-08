@@ -20,7 +20,7 @@ define([
         var handler = function(resp) {
           data = resp;
         }
-        collector.registerListener(handler, function() { return [targetMetric];})
+        collector.registerListener(handler);
         var updateMetrics = _.cloneDeep(metricsJson);
         _.set(updateMetrics, targetMetric, _.get(metricsJson, targetMetric) + expectedDelta);
         collector.__update__(updateMetrics);
@@ -36,7 +36,7 @@ define([
         var handler = function(resp) {
           data = resp;
         }
-        collector.registerListener(handler, function() { return [];})
+        collector.registerListener(handler);
         collector.__update__(metricsJson);
 
         expect(typeof data).toEqual("object");
