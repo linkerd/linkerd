@@ -14,7 +14,7 @@ case class IngressSpec(
 
 case class IngressPath(
   host: Option[String] = None,
-  path: Option[Path] = None,
+  uri: Option[String] = None,
   namespace: String,
   svc: String,
   port: String
@@ -23,31 +23,35 @@ case class IngressPath(
 object IngressCache {
   type IngressState = Activity.State[Seq[IngressSpec]]
 
-  private[k8s] def isPrefix(pfx: Path, str: Path): Boolean = pfx.showElems == str.take(pfx.size).showElems
+  private[k8s] def isPrefix(pfx: String, uri: String): Boolean = {
+    val pfxSegments = pfx.split("/")
+    val uriSegments = uri.split("/")
+    pfxSegments.corresponds(uriSegments.take(pfxSegments.size)) { _ == _ }
+  }
+
   private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ns: Option[String], ingresses: Seq[IngressSpec]): Option[IngressPath] = {
-    val pathToMatch = Path.read(requestPath)
-      ingresses.flatMap { ingressResource =>
-        val matchingPath = ingressResource.rules.find { rule =>
-          (rule.host, rule.path, rule.namespace) match {
-            case (Some(host), Some(path), ns) =>
-              isPrefix(path, pathToMatch) && hostHeader.contains(host)
-            case (Some(host), None, ns) => hostHeader.contains(host)
-            case (None, Some(path), ns) => isPrefix(path, pathToMatch)
-            case (None, None, ns) => false
-          }
+    ingresses.flatMap { ingressResource =>
+      val matchingPath = ingressResource.rules.find { rule =>
+        (rule.host, rule.uri, rule.namespace) match {
+          case (Some(host), Some(path), ns) =>
+            isPrefix(path, requestPath) && hostHeader.contains(host)
+          case (Some(host), None, ns) => hostHeader.contains(host)
+          case (None, Some(path), ns) => isPrefix(path, requestPath)
+          case (None, None, ns) => false
         }
-        (matchingPath, ingressResource.fallbackBackend) match {
-          case (Some(path), _) =>
-            log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
-            Some(path)
-          case (None, Some(default)) if ns.map(_ == default.namespace).getOrElse(true) =>
-            log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
-            Some(default)
-          case _ =>
-            log.info("k8s no suitable rule found in %s for request %s %s", ingressResource.name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
-            None
-        }
-      }.headOption
+      }
+      (matchingPath, ingressResource.fallbackBackend) match {
+        case (Some(path), _) =>
+          log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
+          Some(path)
+        case (None, Some(default)) if ns.map(_ == default.namespace).getOrElse(true) =>
+          log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
+          Some(default)
+        case _ =>
+          log.info("k8s no suitable rule found in %s for request %s %s", ingressResource.name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
+          None
+      }
+    }.headOption
   }
 }
 
@@ -108,7 +112,7 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
           http <- rule.http.toSeq;
           path <- http.paths
         ) yield {
-          IngressPath(rule.host, path.path.map(Path.read(_)), namespace, path.backend.serviceName, path.backend.servicePort)
+          IngressPath(rule.host, path.path, namespace, path.backend.serviceName, path.backend.servicePort)
         }
 
         val fallback = spec.backend.map(b => IngressPath(None, None, namespace, b.serviceName, b.servicePort))

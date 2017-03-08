@@ -10,8 +10,8 @@ class IngressCacheTest extends FunSuite with Awaits {
 
   test("on multiple path matches, return first match") {
     val paths = Seq(
-      IngressPath(host, Some(Path.Utf8("path")), ns.get, "primary-svc", "80"),
-      IngressPath(host, Some(Path.Utf8("path")), ns.get, "secondary-svc", "80")
+      IngressPath(host, Some("/path"), ns.get, "primary-svc", "80"),
+      IngressPath(host, Some("/path"), ns.get, "secondary-svc", "80")
     )
     val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
     val matchingPath = IngressCache.getMatchingPath(host, "/path", ns, Seq(spec))
@@ -26,14 +26,14 @@ class IngressCacheTest extends FunSuite with Awaits {
   }
 
   test("match on path prefix") {
-    val paths = Seq(IngressPath(host, Some(Path.read("/prefix")), ns.get, "svc1", "80"))
+    val paths = Seq(IngressPath(host, Some("/prefix"), ns.get, "svc1", "80"))
     val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
     val matchingPath = IngressCache.getMatchingPath(host, "/prefix/and-other-stuff", None, Seq(spec))
     assert(matchingPath.isDefined)
   }
 
   test("don't match on path prefix if it's not a prefix on the path boundary") {
-    val paths = Seq(IngressPath(host, Some(Path.read("/prefix")), ns.get, "svc1", "80"))
+    val paths = Seq(IngressPath(host, Some("/prefix"), ns.get, "svc1", "80"))
     val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
     val matchingPath = IngressCache.getMatchingPath(host, "/prefix707", None, Seq(spec))
     assert(matchingPath.isEmpty)
