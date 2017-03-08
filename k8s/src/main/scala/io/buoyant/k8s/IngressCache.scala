@@ -2,20 +2,12 @@ package io.buoyant.k8s
 
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Path, Service}
-import com.twitter.util.{Updatable, Activity, Var, Future}
-import io.buoyant.k8s
-
-/**
- * Ingress resource names can be reused across namespaces.
- * This tuple is to guarantee uniqueness
- */
-case class NamespacedName(
-  namespace: Option[String],
-  name: Option[String]
-)
+import com.twitter.util._
+import java.util.concurrent.atomic.AtomicReference
 
 case class IngressSpec(
   name: Option[String],
+  namespace: Option[String],
   fallbackBackend: Option[IngressPath] = None,
   rules: Seq[IngressPath]
 )
@@ -29,18 +21,34 @@ case class IngressPath(
 )
 
 object IngressCache {
+  type IngressState = Activity.State[Seq[IngressSpec]]
 
-  type VarUp[T] = Var[T] with Updatable[T]
-
-  def mk(ns: Option[String], apiClient: Service[Request, Response]) =
-    new Ns[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList, IngressCache]() {
-      override protected def mkResource(name: Option[String]) = ns match {
-        case Some(ns) => v1beta1.Api(apiClient).withNamespace(ns).ingresses
-        case None => v1beta1.Api(apiClient).ingresses
-      }
-      override protected def mkCache(name: Option[String]) = new IngressCache(name)
-    }
-
+  private[k8s] def isPrefix(pfx: Path, str: Path): Boolean = pfx.showElems == str.take(pfx.size).showElems
+  private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ns: Option[String], ingresses: Seq[IngressSpec]): Option[IngressPath] = {
+    val pathToMatch = Path.read(requestPath)
+      ingresses.flatMap { ingressResource =>
+        val matchingPath = ingressResource.rules.find { rule =>
+          (rule.host, rule.path, rule.namespace) match {
+            case (Some(host), Some(path), ns) =>
+              isPrefix(path, pathToMatch) && hostHeader.contains(host)
+            case (Some(host), None, ns) => hostHeader.contains(host)
+            case (None, Some(path), ns) => isPrefix(path, pathToMatch)
+            case (None, None, ns) => false
+          }
+        }
+        (matchingPath, ingressResource.fallbackBackend) match {
+          case (Some(path), _) =>
+            log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
+            Some(path)
+          case (None, Some(default)) if ns.map(_ == default.namespace).getOrElse(true) =>
+            log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
+            Some(default)
+          case _ =>
+            log.info("k8s no suitable rule found in %s for request %s %s", ingressResource.name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
+            None
+        }
+      }.headOption
+  }
 }
 
 /**
@@ -50,91 +58,46 @@ object IngressCache {
  * @param namespace: The k8s namespace to filter on. If None, it watches all namespaces.
  */
 
-class IngressCache(namespace: Option[String])
-  extends Ns.ObjectCache[v1beta1.Ingress, v1beta1.IngressWatch, v1beta1.IngressList]() {
-  import k8s.IngressCache._
+class IngressCache(namespace: Option[String], apiClient: Service[Request, Response]) {
+  import IngressCache._
 
-  val state = Var[Activity.State[Map[NamespacedName, VarUp[IngressSpec]]]](Activity.Pending)
-  val ingresses: Activity[Map[NamespacedName, VarUp[IngressSpec]]] = Activity(state)
+  val api = namespace match {
+    case Some(ns) => v1beta1.Api(apiClient).withNamespace(ns).ingresses
+    case None => v1beta1.Api(apiClient).ingresses
+  }
 
-  /**
-   * Boilerplate methods for streaming updates
-   */
-
-  def initialize(items: v1beta1.IngressList): Unit = {
-    val initItems = items.items.flatMap { item =>
-      getName(item).flatMap { name =>
-        mkItem(item).map { i => name -> Var(i) }
-      }
+  private[this] object Closed extends Throwable
+  private[this] val state = Var.async[IngressState](Activity.Pending) { state =>
+    val closeRef = new AtomicReference[Closable](Closable.nop)
+    val pending = api.get(None, None, None, retryIndefinitely = true).respond {
+      case Throw(e) => state.update(Activity.Failed(e))
+      case Return(ingressList) =>
+        val initState: Seq[IngressSpec] = ingressList.items.flatMap(item => mkItem(item))
+        state.update(Activity.Ok(initState))
+        val (stream, close) = api.watch(None, None, None)
+        closeRef.set(close)
+        val _ = stream.foldLeft(initState) { (ingresses, watchEvent) =>
+          val newState: Seq[IngressSpec] = watchEvent match {
+            case v1beta1.IngressAdded(a) => mkItem(a).map(item => ingresses :+ item).getOrElse(ingresses)
+            case v1beta1.IngressModified(m) => mkItem(m).map(item => ingresses.filterNot(i => isNameEqual(i, item)) :+ item).getOrElse(ingresses)
+            case v1beta1.IngressDeleted(d) => mkItem(d).map(item => ingresses.filterNot(i => isNameEqual(i, item))).getOrElse(ingresses)
+            case v1beta1.IngressError(e) =>
+              log.error("k8s watch error: %s", e)
+              ingresses
+          }
+          state.update(Activity.Ok(newState))
+          newState
+        }
     }
-
-    synchronized {
-      state() = Activity.Ok(initItems.toMap)
+    Closable.make { t =>
+      pending.raise(Closed)
+      Closable.ref(closeRef).close(t)
     }
   }
 
-  def add(obj: v1beta1.Ingress): Unit =
-    for (item <- mkItem(obj)) synchronized {
-      val name = getName(obj).get //todo
-      log.debug("k8s ns %s added: %s", namespace.getOrElse(""), name)
-      val items = state.sample() match {
-        case Activity.Ok(items) => items
-        case _ => Map.empty[NamespacedName, VarUp[IngressSpec]]
-      }
-      state() = Activity.Ok(items + (name -> Var(item)))
-    }
-
-  def modify(obj: v1beta1.Ingress): Unit =
-    for (name <- getName(obj)) synchronized {
-      log.debug("k8s ns %s modified: %s", namespace.getOrElse(""), name)
-      state.sample() match {
-        case Activity.Ok(snap) =>
-          snap.get(name) match {
-            case None =>
-              log.warning("k8s ns %s received modified watch for unknown resource %s", namespace.getOrElse(""), name)
-            case Some(item) =>
-              mkItem(obj) match {
-                case Some(i) => item() = i
-                case None => state() = Activity.Ok(snap - name)
-              }
-          }
-        case _ =>
-      }
-    }
-
-  def delete(obj: v1beta1.Ingress): Unit =
-    for (name <- getName(obj)) synchronized {
-      log.debug("k8s ns %s deleted: %s", namespace.getOrElse(""), name)
-      state.sample() match {
-        case Activity.Ok(snap) =>
-          for (svc <- snap.get(name)) {
-            state() = Activity.Ok(snap - name)
-          }
-
-        case _ =>
-      }
-    }
-
-  def update(watch: v1beta1.IngressWatch): Unit = watch match {
-    case v1beta1.IngressError(e) => log.error("k8s watch error: %s", e)
-    case v1beta1.IngressAdded(ingress) => add(ingress)
-    case v1beta1.IngressModified(ingress) => modify(ingress)
-    case v1beta1.IngressDeleted(ingress) => delete(ingress)
-  }
-
-  /**
-   * Ingress-specific methods
-   */
-
-  def getName(ingress: v1beta1.Ingress): Option[NamespacedName] =
-    ingress.metadata.flatMap { i =>
-      (i.namespace, i.name) match {
-        case (Some(ns), Some(n)) => Some(NamespacedName(i.namespace, i.name))
-        case _ => None
-      }
-    }
-
-  def mkItem(ingress: v1beta1.Ingress): Option[IngressSpec] = {
+  private[this] val ingresses: Activity[Seq[IngressSpec]] = Activity(state)
+  private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean = x.name == y.name && x.namespace == y.namespace
+  private[this] def mkItem(ingress: v1beta1.Ingress): Option[IngressSpec] = {
     val namespace = ingress.metadata.flatMap(meta => meta.namespace).getOrElse("default")
     ingress.spec match {
       case Some(spec) =>
@@ -149,40 +112,13 @@ class IngressCache(namespace: Option[String])
         }
 
         val fallback = spec.backend.map(b => IngressPath(None, None, namespace, b.serviceName, b.servicePort))
-        Some(IngressSpec(ingress.metadata.flatMap(meta => meta.name), fallback, paths))
+        Some(IngressSpec(ingress.metadata.flatMap(_.name), ingress.metadata.flatMap(_.namespace), fallback, paths))
       case None => None
     }
   }
 
-  def isPrefix(pfx: Path, str: Path): Boolean = pfx.showElems == str.take(pfx.size).showElems
-  def matchesNs(ns: String): Boolean = namespace.map(_ == ns).getOrElse(true)
-
-  def getMatchingPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] = {
-    val pathToMatch = Path.read(requestPath)
-    ingresses.map { cache =>
-      cache.values.flatMap { ingressResource =>
-        val resourceSample = ingressResource.sample()
-        val matchingPath = resourceSample.rules.find { rule =>
-          (rule.host, rule.path, rule.namespace) match {
-            case (Some(host), Some(path), ns) =>
-              isPrefix(path, pathToMatch) && hostHeader.contains(host) && matchesNs(ns)
-            case (Some(host), None, ns) => hostHeader.contains(host) && matchesNs(ns)
-            case (None, Some(path), ns) => isPrefix(path, pathToMatch) && matchesNs(ns)
-            case (None, None, ns) => false
-          }
-        }
-        (matchingPath, resourceSample.fallbackBackend) match {
-          case (Some(path), _) =>
-            log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
-            Some(path)
-          case (None, Some(default)) if namespace.map(_ == default.namespace).getOrElse(true) =>
-            log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
-            Some(default)
-          case _ =>
-            log.info("k8s no suitable rule found in %s for request %s %s", resourceSample.name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
-            None
-        }
-      }.headOption
+  def matchPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] =
+    ingresses.map { cache: Seq[IngressSpec] =>
+      getMatchingPath(hostHeader, requestPath, namespace, cache)
     }.values.toFuture.flatMap(Future.const)
-  }
 }

@@ -2,9 +2,9 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2.Request
-import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
@@ -23,12 +23,12 @@ class IngressIdentifier(
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressWithCache = IngressCache.mk(namespace, apiClient)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val hostHeader = req.headers.get("Host").lastOption
-    val matchingPaths = ingressWithCache.get(None, None).getMatchingPath(hostHeader, req.path)
-    matchingPaths.flatMap { paths =>
+    val matchingPath = ingressCache.matchPath(hostHeader, req.path)
+    matchingPath.flatMap { paths =>
       paths match {
         case None => Future.value(unidentified)
         case Some(a) =>
