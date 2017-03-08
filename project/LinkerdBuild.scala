@@ -253,7 +253,7 @@ object LinkerdBuild extends Base {
 
     val main = projectDir("namerd/main")
       .dependsOn(core, admin, configCore)
-      .withBuildProperties()
+      .withBuildProperties("io/buoyant/namerd")
       .settings(coverageExcludedPackages := ".*")
 
     /**
@@ -415,7 +415,6 @@ object LinkerdBuild extends Base {
       .withTests()
       .withE2e()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
-      .withBuildProperties()
 
     val tls = projectDir("linkerd/tls")
       .dependsOn(core)
@@ -477,7 +476,7 @@ object LinkerdBuild extends Base {
       .dependsOn(admin, configCore, core)
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
-      .withBuildProperties()
+      .withBuildProperties("io/buoyant/linkerd")
       .settings(coverageExcludedPackages := ".*")
 
     /*

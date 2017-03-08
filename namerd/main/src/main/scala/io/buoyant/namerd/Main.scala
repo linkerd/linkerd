@@ -1,13 +1,16 @@
 package io.buoyant.namerd
 
 import com.twitter.util.{Await, Closable}
-import io.buoyant.admin.App
+import io.buoyant.admin.{App, Build}
 import java.io.File
 import scala.io.Source
 
 object Main extends App {
 
   def main(): Unit = {
+    val build = Build.load("/io/buoyant/namerd/build.properties")
+    log.info("namerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
+
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
