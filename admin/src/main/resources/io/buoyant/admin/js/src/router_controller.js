@@ -84,14 +84,13 @@ define([
       }
     });
 
-    function initializeRouterContainers(selectedRouter, routers, $parentContainer) {
+    function initializeRouterContainers(selectedRouter, initialData, $parentContainer) {
       var template = templates.router_container;
-      var routerKeys = _.keys(routers);
 
       var routerLabels = [];
       $(".router-menu-option").each(function() {
         var label = $(this).text();
-        if (_.has(routers, label)) {
+        if (_.has(initialData, label)) {
           routerLabels.push(label);
         }
       });
@@ -108,8 +107,8 @@ define([
       return routerContainers;
     }
 
-    return function(metricsCollector, selectedRouter, routers, $parentContainer, routerConfig) {
-      var routerContainerEls = initializeRouterContainers(selectedRouter, routers, $parentContainer);
+    return function(metricsCollector, selectedRouter, initialData, $parentContainer, routerConfig) {
+      var routerContainerEls = initializeRouterContainers(selectedRouter, initialData, $parentContainer);
 
       _.each(routerContainerEls, function(container, router) {
         var $summaryEl = $(container.find(".summary")[0]);
@@ -119,8 +118,8 @@ define([
         var $routerStatsEl = $(container.find(".router-stats")[0]);
 
         RouterSummary(metricsCollector, $summaryEl, $routerStatsEl, router, routerConfig);
-        RouterServers(metricsCollector, routers, $serversEl, router);
-        RouterClients(metricsCollector, routers, $clientsEl, $combinedClientGraphEl, router, colorOrder);
+        RouterServers(metricsCollector, initialData, $serversEl, router);
+        RouterClients(metricsCollector, initialData, $clientsEl, $combinedClientGraphEl, router, colorOrder);
       });
 
       return {};
