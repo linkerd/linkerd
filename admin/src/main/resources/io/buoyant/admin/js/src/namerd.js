@@ -38,7 +38,18 @@ define([
         $namespaceContainer.append("<p>unable to fetch dtab</p>")
       }
       $namespaceContainer.appendTo($namespacesContainer);
+      resizeWidths($namespaceContainer);
     }
+  }
+
+  function resizeWidths($namespaceContainer) {
+    var maxWidth = 0;
+    var dentries = $namespaceContainer.find(".dentry-content.dentry-part");
+    $(dentries).map(function(_i, dentry) {
+      var w = $(dentry).width();
+      maxWidth = w > maxWidth ? w : maxWidth;
+    })
+    $(dentries).width(maxWidth);
   }
 
   function getStat(metrics, stat) {
