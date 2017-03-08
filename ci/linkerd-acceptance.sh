@@ -29,12 +29,36 @@ cleanup() {
 }
 
 wait_for_running() {
+  echo "Waiting for linkerd to initialize\c"
   for i in $(seq $1); do
     pong=$(curl -s localhost:9990/admin/ping)
     if [ "$pong" = "pong" ]; then
+      echo "ready in 3\c"
+      sleep 1
+      echo " 2\c"
+      sleep 1
+      echo " 1\c"
+      sleep 1
+      echo " 0"
       return 0
     fi
+    echo ".\c"
     sleep 1
+  done
+  return 1
+}
+
+wait_for_shutdown() {
+  echo "Waiting for linkerd to shutdown\c"
+  for i in $(seq $1); do
+    pong=$(curl -s localhost:9990/admin/ping)
+    if [ "$pong" = "pong" ]; then
+      echo ".\c"
+      sleep 1
+    else
+      echo "shutdown complete"
+      return 0
+    fi
   done
   return 1
 }
@@ -42,7 +66,16 @@ wait_for_running() {
 run_tests() {
   export LOG_LEVEL=DEBUG
 
-  curl -s localhost:9990/admin/shutdown || true
+  if curl -s -X POST localhost:9990/admin/shutdown ; then
+    echo "Shutting down previously running linkerd"
+    if ! wait_for_shutdown 30 ; then
+      echo "could not shutdown previous linkerd" >&2
+      cleanup
+      exit 1
+    fi
+  fi
+
+  echo "Starting linkerd"
   ./sbt linkerd-examples/acceptance-test:run &
 
   # Wait for linkerd to initialize
@@ -58,7 +91,7 @@ run_tests() {
   http_test
 
   # Stop linkerd
-  curl -s localhost:9990/admin/shutdown
+  curl -s -X POST localhost:9990/admin/shutdown
 
   if [ $request_failed = true ]; then
     # Report failure, leave tmp dir intact

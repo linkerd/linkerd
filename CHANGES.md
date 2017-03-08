@@ -1,6 +1,8 @@
 ## In the next release
 
 * Add tree and q params to /admin/metrics.json
+* Fix: rewrite Location & Refresh HTTP response headers when Linkerd
+  rewrites request Host header 
 
 ## 0.9.0 2017-02-22
 

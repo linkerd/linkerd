@@ -410,15 +410,18 @@ class ThriftNamerInterface(
    * Converts Addr.Metadata into Thrift AddrMeta
    */
   private[this] def convertMeta(scalaMeta: Addr.Metadata): Option[thrift.AddrMeta] = {
-    // TODO translate metadata (weight info, latency compensation, etc)
+    // TODO translate metadata (latency compensation, etc)
 
     val authority = scalaMeta.get(Metadata.authority).map(_.toString)
     val nodeName = scalaMeta.get(Metadata.nodeName).map(_.toString)
+    val weight = scalaMeta.get(Metadata.endpointWeight)
+      .flatMap(w => Try(w.toString.toDouble).toOption)
 
     if (authority.isDefined || nodeName.isDefined)
       Some(thrift.AddrMeta(
         authority = authority,
-        nodeName = nodeName
+        nodeName = nodeName,
+        endpointAddrWeight = weight
       ))
     else
       None

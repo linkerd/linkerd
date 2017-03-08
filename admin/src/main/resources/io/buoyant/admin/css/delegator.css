@@ -11,6 +11,21 @@
   box-shadow: none;
 }
 
+.list-group-item.list-group-item-plain {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.panel-default>.panel-heading-danger {
+  color: #a94442;
+  background-color: #f2dede;
+}
+
+.panel-default>.panel-heading-success {
+  color: #3c763d;
+  background-color: #dff0d8;
+}
+
 .panel {
   margin-bottom: 0px;
 }

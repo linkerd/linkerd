@@ -4,6 +4,8 @@
 
 ## Quickstart ##
 
+Before starting on, you'll need to install protoc 3.0+ either via a package manager like homebrew, or by downloading a binary from the protobuf release page: https://github.com/google/protobuf/releases.
+
 To get up and running quickly, run:
 
 ```

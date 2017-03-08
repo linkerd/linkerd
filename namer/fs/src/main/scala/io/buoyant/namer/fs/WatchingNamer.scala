@@ -1,6 +1,7 @@
 package io.buoyant.namer.fs
 
 import com.twitter.finagle._
+import com.twitter.finagle.addr.WeightedAddress
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -28,12 +29,19 @@ object WatchingNamer {
       Try(s.toInt).toOption.filter { p => (0 < p && p <= Max) }
   }
 
+  private object WeightNum {
+    def unapply(s: String): Option[Double] = Try(s.toDouble).toOption
+  }
+
+  private[this] val Whitespace = """\s+""".r
+
   /**
    * lines are in the format:
    *   host port
    */
-  private def txtToAddress(txt: String): Try[Address] = txt.split(' ') match {
+  private def txtToAddress(txt: String): Try[Address] = Whitespace.split(txt) match {
     case Array(host, PortNum(port)) => Try(Address(host, port))
+    case Array(host, PortNum(port), "*", WeightNum(weight)) => Try(WeightedAddress(Address(host, port), weight))
     case _ => Throw(MalformedAddress(txt))
   }
 }
