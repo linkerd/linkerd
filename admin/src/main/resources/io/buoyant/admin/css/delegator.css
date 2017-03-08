@@ -58,7 +58,7 @@
   color: #f4f4f4;
 }
 
-.dentry .dentry-content {
+.dentry > div {
   float: left;
 }
 
@@ -72,11 +72,10 @@
 
 .dentry .fake-column {
   width: 36px;
-  padding: 0px 3px;
+  padding: 5px 3px;
 }
 
 .dentry-part {
-  display: inline-block;
   font-family: monospace;
   padding: 5px 10px;
   margin-bottom: 5px;

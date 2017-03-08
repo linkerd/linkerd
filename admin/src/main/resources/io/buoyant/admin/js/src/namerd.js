@@ -13,6 +13,8 @@ define([
   Delegator,
   templates
 ) {
+  var limitWidth = $(window).width() / 2 * 0.8;
+
   function renderDtabNamespaces() {
     var data = JSON.parse($("#dtab-data").html());
     var dtabMap = _.groupBy(data, 'namespace');
@@ -44,7 +46,6 @@ define([
 
   function resizeWidths($namespaceContainer) {
     var maxWidth = 0;
-    var limitWidth = $(window).width() / 2 * 0.8;
     var dentries = $namespaceContainer.find(".dentry-content.dentry-part");
     $(dentries).map(function(_i, dentry) {
       var w = $(dentry).width();
