@@ -42,7 +42,7 @@ define([
         $clientEl.hide();
       }
 
-      // routers.onAddedClients(addClients); // need to replace
+      metricsCollector.onAddedClients(addClients);
 
       function initializeClient(client) {
         $clientEl.show();
@@ -71,15 +71,13 @@ define([
 
       function addClients(addedClients) {
         // filter new clients
-        var filteredClients = _.filter(addedClients, function(client) {
-          return client.router === routerName;
-        });
+        var filteredClients = _.keys(addedClients[routerName]);
 
         // combine with existing clients
-        var combinedClients = routerClients.concat(filteredClients);
+        clients = _(clients).concat(filteredClients).uniq().value();
 
         // reassign colors
-        clientToColor = assignColorsToClients(colorList, combinedClients);
+        clientToColor = assignColorsToClients(colorList, clients);
 
         // pass new colors to combined request graph, add new clients to graph
         combinedClientGraph.updateColors(clientToColor);

@@ -3,14 +3,12 @@
 define([
   'jQuery', 'bootstrap',
   'src/metrics_collector',
-  'src/routers',
   'src/process_info',
   'src/request_totals',
   'src/router_controller'
 ], function(
   $, bootstrap,
   MetricsCollector,
-  Routers,
   ProcInfo,
   RequestTotals,
   RouterController
@@ -25,7 +23,7 @@ define([
       var metricsCollector = MetricsCollector(metricsJson);
 
       var initialRouters = _.get(metricsJson, "rt");
-      var routers = _.reduce(initialRouters, function(mem, data, router) {
+      var initialData = _.reduce(initialRouters, function(mem, data, router) {
         mem[router] = {};
         mem[router]["servers"] = _.keys(data.srv);
         mem[router]["clients"] = _.keys(_.get(data, "dst.id"));
@@ -38,10 +36,10 @@ define([
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
       RequestTotals(metricsCollector, selectedRouter, $(".request-totals"));
-      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"), routerConfig);
+      RouterController(metricsCollector, selectedRouter, initialData, $(".dashboard-container"), routerConfig);
 
       $(function() {
-        metricsCollector.start(UPDATE_INTERVAL);
+        metricsCollector.start(UPDATE_INTERVAL, initialData);
       });
     });
   }
