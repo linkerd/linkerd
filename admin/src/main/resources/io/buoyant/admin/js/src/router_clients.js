@@ -29,7 +29,7 @@ define([
     return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName, colors) {
       var clientContainerTemplate = templates.router_client_container;
 
-      var clients = initialData[routerName].clients;
+      var clients = _.sortBy(initialData[routerName].clients);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
@@ -74,7 +74,7 @@ define([
         var filteredClients = _.keys(addedClients[routerName]);
 
         // combine with existing clients
-        clients = _(clients).concat(filteredClients).uniq().value();
+        clients = _(clients).concat(filteredClients).sortBy().uniq().value();
 
         // reassign colors
         clientToColor = assignColorsToClients(colorList, clients);
