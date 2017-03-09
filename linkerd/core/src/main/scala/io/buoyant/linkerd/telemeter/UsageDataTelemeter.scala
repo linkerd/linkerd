@@ -18,11 +18,11 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.admin.Admin
+import io.buoyant.admin.{Admin, Build}
 import io.buoyant.admin.Admin.Handler
 import io.buoyant.linkerd.Linker.param.LinkerConfig
 import io.buoyant.linkerd.usage.{Counter, Gauge, Router, UsageMessage}
-import io.buoyant.linkerd.{Build, Linker}
+import io.buoyant.linkerd.Linker
 import io.buoyant.telemetry._
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
@@ -74,7 +74,7 @@ private[telemeter] object UsageDataTelemeter {
     UsageMessage(
       pid = Some(pid),
       orgId = orgId,
-      linkerdVersion = Some(Build.load().version),
+      linkerdVersion = Some(Build.load("/io/buoyant/linkerd/build.properties").version),
       containerManager = mkContainerManager,
       osName = Some(System.getProperty("os.name")),
       osVersion = Some(System.getProperty("os.version")),

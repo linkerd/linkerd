@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.util._
-import io.buoyant.admin.App
+import io.buoyant.admin.{App, Build}
 import io.buoyant.linkerd.admin.LinkerdAdmin
 import java.io.File
 import java.net.{InetSocketAddress, NetworkInterface}
@@ -23,7 +23,7 @@ object Main extends App {
     Duration.fromSeconds(10)
 
   def main() {
-    val build = Build.load(getClass.getResourceAsStream("/io/buoyant/linkerd-main/build.properties"))
+    val build = Build.load("/io/buoyant/linkerd/build.properties")
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
 
     args match {
