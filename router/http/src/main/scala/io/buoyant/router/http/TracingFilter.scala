@@ -41,7 +41,9 @@ class TracingFilter extends SimpleFilter[Request, Response] {
       Trace.recordBinary("http.uri", req.uri)
       Trace.recordBinary("http.req.method", req.method.toString)
       req.host match {
-        case Some(h) => Trace.recordBinary("http.req.host", h)
+        case Some(h) =>
+          Trace.recordServiceName(h)
+          Trace.recordBinary("http.req.host", h)
         case None =>
       }
       Trace.recordBinary("http.req.version", req.version.toString)
