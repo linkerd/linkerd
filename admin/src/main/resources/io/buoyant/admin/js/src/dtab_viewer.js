@@ -4,6 +4,7 @@ define(['jQuery'], function($) {
   function DtabViewer(initialDtab, dentryTemplate) {
     this.dtab = initialDtab;
     this.template = dentryTemplate;
+    this.seenSoFar = 0;
 
     this.render();
     window.addEventListener('resize', this.render.bind(this), false);
@@ -21,6 +22,7 @@ define(['jQuery'], function($) {
         return { prefix: tuple[0], dst: tuple[1] };
       });
       this.render();
+      $(window).trigger("resize");
       this._toggleEdit();
     }.bind(this));
 
@@ -58,13 +60,15 @@ define(['jQuery'], function($) {
     $dst.width(halfPageWidth); // expand to find max content width
     $dst.find(".dst-content").map(function(_i, ea) {
       var w = $(ea).width();
-      maxWidth = !w ? minWidth : w > maxWidth ? w : maxWidth;
-    });
+      maxWidth = !w ? this.seenSoFar : w > maxWidth ? w : maxWidth;
+      console.log({maxWidth});
+    }.bind(this));
 
     if (maxWidth < halfPageWidth) {
       $prefix.width(maxWidth);
       $dst.width(maxWidth);
       $dst.find(".dst-content").width(maxWidth);
+      this.seenSoFar = maxWidth; // keep track of this for if we edit the dtab
     } else {
       $prefix.width(halfPageWidth);
     }
