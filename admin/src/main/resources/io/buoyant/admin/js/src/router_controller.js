@@ -92,7 +92,6 @@ define([
       $(".router-menu-option").each(function() {
         var label = $(this).text();
         if (routersToShow.indexOf(label) !== -1) {
-          console.log(label);
           routerLabels.push(label);
         }
       });
