@@ -29,7 +29,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
           "host": "foo.bar.com",
           "http": {
             "paths": [{
-              "path": "/fooPath",
+              "path": "/fooPath/.*",
               "backend": {
                 "serviceName": "fooPathService",
                 "servicePort": "fooPathPort"
@@ -62,8 +62,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
 
   test("identifies requests by host, without path") {
     val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service)
-    val req0 = Request("http", Method.Get, "authority", "/penguins", Stream.empty())
-    req0.headers.set("Host", "foo.bar.com")
+    val req0 = Request("http", Method.Get, "foo.bar.com", "/penguins", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(name == Path.read("/svc/fooNamespace/fooHostPort/fooHostService"))
@@ -73,8 +72,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
 
   test("identifies requests by host & path") {
     val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service)
-    val req0 = Request("http", Method.Get, "authority", "/fooPath/penguins", Stream.empty())
-    req0.headers.set("Host", "foo.bar.com")
+    val req0 = Request("http", Method.Get, "foo.bar.com", "/fooPath/penguins", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(name == Path.read("/svc/fooNamespace/fooPathPort/fooPathService"))

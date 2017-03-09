@@ -14,28 +14,37 @@ class IngressCacheTest extends FunSuite with Awaits {
       IngressPath(host, Some("/path"), ns.get, "secondary-svc", "80")
     )
     val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
-    val matchingPath = IngressCache.getMatchingPath(host, "/path", ns, Seq(spec))
+    val matchingPath = IngressCache.getMatchingPath(host, "/path", Seq(spec))
     assert(matchingPath.get.svc == "primary-svc")
   }
 
   test("on multiple host matches, return first match") {
     val resource1 = IngressSpec(Some("polar-bear1"), ns, None, Seq(IngressPath(host, None, ns.get, "svc1", "80")))
     val resource2 = IngressSpec(Some("polar-bear2"), ns, None, Seq(IngressPath(host, None, ns.get, "svc2", "80")))
-    val matchingPath = IngressCache.getMatchingPath(host, "/path", None, Seq(resource1, resource2))
+    val matchingPath = IngressCache.getMatchingPath(host, "/path", Seq(resource1, resource2))
     assert(matchingPath.get.svc == "svc1")
   }
 
-  test("match on path prefix") {
-    val paths = Seq(IngressPath(host, Some("/prefix"), ns.get, "svc1", "80"))
-    val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
-    val matchingPath = IngressCache.getMatchingPath(host, "/prefix/and-other-stuff", None, Seq(spec))
-    assert(matchingPath.isDefined)
+  test("match on path regex") {
+    val path = IngressPath(host, Some("/prefix/.*"), ns.get, "svc1", "80")
+    assert(path.matches(host, "/prefix/and-other-stuff"))
   }
 
-  test("don't match on path prefix if it's not a prefix on the path boundary") {
-    val paths = Seq(IngressPath(host, Some("/prefix"), ns.get, "svc1", "80"))
-    val spec = IngressSpec(Some("my-ingress"), ns, None, paths)
-    val matchingPath = IngressCache.getMatchingPath(host, "/prefix707", None, Seq(spec))
-    assert(matchingPath.isEmpty)
+  test("match / with reqs with empty paths only") {
+    val path = IngressPath(host, Some("/"), ns.get, "svc1", "80")
+    assert(path.matches(host, "/"))
+    assert(!path.matches(host, "/foo"))
+  }
+
+  test("match empty string with all reqs") {
+    val path = IngressPath(host, Some(""), ns.get, "svc1", "80")
+    assert(path.matches(host, "/"))
+    assert(path.matches(host, "/foo"))
+  }
+
+  test("match omitted path with all reqs") {
+    val path = IngressPath(host, None, ns.get, "svc1", "80")
+    assert(path.matches(host, "/"))
+    assert(path.matches(host, "/foo"))
   }
 }

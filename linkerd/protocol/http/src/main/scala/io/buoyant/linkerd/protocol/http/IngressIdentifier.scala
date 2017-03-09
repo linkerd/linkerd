@@ -26,10 +26,8 @@ class IngressIdentifier(
   private[this] val ingressCache = new IngressCache(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val hostHeader = req.headerMap.get("Host")
-    val matchingPath = ingressCache.matchPath(hostHeader, req.path)
-    matchingPath.flatMap { paths =>
-      paths match {
+    val matchingPath = ingressCache.matchPath(req.host, req.path)
+    matchingPath.flatMap {
         case None => Future.value(unidentified)
         case Some(a) =>
           val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)

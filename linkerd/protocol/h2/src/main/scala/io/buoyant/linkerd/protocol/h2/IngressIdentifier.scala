@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle.buoyant.h2.{Headers, Request}
 import com.twitter.finagle.param.Label
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
@@ -26,16 +26,14 @@ class IngressIdentifier(
   private[this] val ingressCache = new IngressCache(namespace, apiClient)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val hostHeader = req.headers.get("Host").lastOption
-    val matchingPath = ingressCache.matchPath(hostHeader, req.path)
-    matchingPath.flatMap { paths =>
-      paths match {
-        case None => Future.value(unidentified)
-        case Some(a) =>
-          val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
-          val dst = Dst.Path(path, baseDtab(), Dtab.local)
-          Future.value(new IdentifiedRequest(dst, req))
-      }
+    val headerToMatch = req.headers.get(Headers.Authority).lastOption
+    val matchingPath = ingressCache.matchPath(headerToMatch, req.path)
+    matchingPath.flatMap {
+      case None => Future.value(unidentified)
+      case Some(a) =>
+        val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
+        val dst = Dst.Path(path, baseDtab(), Dtab.local)
+        Future.value(new IdentifiedRequest(dst, req))
     }
   }
 }
@@ -51,7 +49,7 @@ case class IngressIdentifierConfig(
   override def newIdentifier(params: Stack.Params) = {
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
-    val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
+    val client = mkClient(params).configured(Label("ingress-identifier"))
     new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
   }
 }

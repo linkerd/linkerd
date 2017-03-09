@@ -292,7 +292,7 @@ headerValue | N/A | The value of the HTTP header as a path segment.
 
 kind: `io.l5d.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP requests to all ingress resources' rules, and assigns a name composed of service name and port defined by those rules.
+Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
 
 #### Identifier Configuration:
 
@@ -306,7 +306,6 @@ routers:
     namespace: default
   servers:
   - port: 4140
-    ip: 0.0.0.0
   dtab: /svc => /#/io.l5d.k8s
 
 namers:
@@ -353,8 +352,8 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 namespace | N/A | The Kubernetes namespace.
-port-name | N/A | The port name.
-svc-name | N/A | The name of the service.
+port | N/A | The port name.
+svc | N/A | The name of the service.
 
 <a name="static-identifier"></a>
 ### Static Identifier
