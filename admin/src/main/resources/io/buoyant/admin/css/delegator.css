@@ -60,14 +60,11 @@
 
 .dentry > div {
   float: left;
+  word-wrap: break-word;
 }
 
 .dentry {
   font-family: monospace;
-}
-
-.dentry .dentry-part {
-  word-wrap: break-word;
 }
 
 .dentry .fake-column {
