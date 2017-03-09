@@ -61,7 +61,6 @@ define(['jQuery'], function($) {
     $dst.find(".dst-content").map(function(_i, ea) {
       var w = $(ea).width();
       maxWidth = !w ? this.seenSoFar : w > maxWidth ? w : maxWidth;
-      console.log({maxWidth});
     }.bind(this));
 
     if (maxWidth < halfPageWidth) {
