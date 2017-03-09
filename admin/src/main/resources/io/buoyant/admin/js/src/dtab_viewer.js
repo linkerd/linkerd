@@ -55,7 +55,6 @@ define(['jQuery'], function($) {
   DtabViewer.prototype._resize = function($prefix, $dst) {
     var halfPageWidth = ($(window).width() / 2) * 0.85;
     var maxWidth = 0;
-    var minWidth = halfPageWidth;
 
     $dst.width(halfPageWidth); // expand to find max content width
     $dst.find(".dst-content").map(function(_i, ea) {
