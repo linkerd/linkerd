@@ -74,7 +74,7 @@ define([
         var filteredClients = _.keys(addedClients[routerName]);
 
         // combine with existing clients
-        clients = _(clients).concat(filteredClients).sortBy().uniq().value();
+        clients = _(clients).concat(filteredClients).uniq().value();
 
         // reassign colors
         clientToColor = assignColorsToClients(colorList, clients);
