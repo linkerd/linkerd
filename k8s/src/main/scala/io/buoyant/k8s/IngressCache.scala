@@ -1,7 +1,7 @@
 package io.buoyant.k8s
 
+import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.{Path, Service}
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 
@@ -22,6 +22,8 @@ case class IngressPath(
 
 object IngressCache {
   type IngressState = Activity.State[Seq[IngressSpec]]
+  val annotationKey = "kubernetes.io/ingress.class"
+  val annotationValue = "linkerd"
 
   private[k8s] def isPrefix(pfx: String, uri: String): Boolean = {
     val pfxSegments = pfx.split("/")
@@ -83,8 +85,8 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
         val _ = stream.foldLeft(initState) { (ingresses, watchEvent) =>
           val newState: Seq[IngressSpec] = watchEvent match {
             case v1beta1.IngressAdded(a) => mkItem(a).map(item => ingresses :+ item).getOrElse(ingresses)
-            case v1beta1.IngressModified(m) => mkItem(m).map(item => ingresses.filterNot(i => isNameEqual(i, item)) :+ item).getOrElse(ingresses)
-            case v1beta1.IngressDeleted(d) => mkItem(d).map(item => ingresses.filterNot(i => isNameEqual(i, item))).getOrElse(ingresses)
+            case v1beta1.IngressModified(m) => mkItem(m).map(item => ingresses.filterNot(isNameEqual(_, item)) :+ item).getOrElse(ingresses)
+            case v1beta1.IngressDeleted(d) => mkItem(d).map(item => ingresses.filterNot(isNameEqual(_, item))).getOrElse(ingresses)
             case v1beta1.IngressError(e) =>
               log.error("k8s watch error: %s", e)
               ingresses
@@ -102,7 +104,14 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
   private[this] val ingresses: Activity[Seq[IngressSpec]] = Activity(state)
   private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean = x.name == y.name && x.namespace == y.namespace
   private[this] def mkItem(ingress: v1beta1.Ingress): Option[IngressSpec] = {
-    val namespace = ingress.metadata.flatMap(meta => meta.namespace).getOrElse("default")
+    //make sure that this ingress resource is not specified for someone else
+    val annotations = ingress.metadata.flatMap(meta => meta.annotations).getOrElse(Map.empty)
+    annotations.get(annotationKey) match {
+      case Some(ingressClass) if ingressClass != annotationValue => return None
+      case _ =>
+    }
+
+    val namespace = ingress.metadata.flatMap(meta => meta.namespace)
     ingress.spec match {
       case Some(spec) =>
         val paths = for (
@@ -112,11 +121,11 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
           http <- rule.http.toSeq;
           path <- http.paths
         ) yield {
-          IngressPath(rule.host, path.path, namespace, path.backend.serviceName, path.backend.servicePort)
+          IngressPath(rule.host, path.path, namespace.getOrElse("default"), path.backend.serviceName, path.backend.servicePort)
         }
 
-        val fallback = spec.backend.map(b => IngressPath(None, None, namespace, b.serviceName, b.servicePort))
-        Some(IngressSpec(ingress.metadata.flatMap(_.name), ingress.metadata.flatMap(_.namespace), fallback, paths))
+        val fallback = spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort))
+        Some(IngressSpec(ingress.metadata.flatMap(_.name), namespace, fallback, paths))
       case None => None
     }
   }

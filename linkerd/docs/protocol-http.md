@@ -287,6 +287,75 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the HTTP header as a path segment.
 
+<a name="ingress-identifier"></a>
+### Ingress Identifier
+
+kind: `io.l5d.ingress`
+
+Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP requests to all ingress resources' rules, and assigns a name composed of service name and port defined by those rules.
+
+#### Identifier Configuration:
+
+> This example watches all ingress resources in the default namespace:
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.ingress
+    namespace: default
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+  dtab: /svc => /#/io.l5d.k8s
+
+namers:
+- kind: io.l5d.k8s
+```
+
+> An example ingress resource watched by the linkerd ingress controller:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-first-ingress
+  namespace: default
+annotations:
+  kubernetes.io/ingress.class: "linkerd"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /testpath
+        backend:
+          serviceName: test
+          servicePort: 80
+```
+
+> So an HTTP request like `http://localhost:4140/testpath` would have an identified name of `/svc/default/80/test`
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master port.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format
+
+```
+  / dstPrefix / namespace / port / service
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+namespace | N/A | The Kubernetes namespace.
+port-name | N/A | The port name.
+svc-name | N/A | The name of the service.
+
 <a name="static-identifier"></a>
 ### Static Identifier
 
