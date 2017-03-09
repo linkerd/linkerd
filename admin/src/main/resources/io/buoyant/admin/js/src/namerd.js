@@ -13,7 +13,7 @@ define([
   Delegator,
   templates
 ) {
-  var limitWidth = $(window).width() / 2 * 0.8;
+  var limitWidth;
 
   function renderDtabNamespaces() {
     var data = JSON.parse($("#dtab-data").html());
@@ -25,6 +25,7 @@ define([
     }
 
     var $namespacesContainer = $("#dtab-namespaces");
+    limitWidth = $namespacesContainer.width() / 2 - 60;
 
     for (var label in dtabMap) {
       var routers = dtabMap[label];

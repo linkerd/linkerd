@@ -22,7 +22,6 @@ define(['jQuery'], function($) {
         return { prefix: tuple[0], dst: tuple[1] };
       });
       this.render();
-      $(window).trigger("resize");
       this._toggleEdit();
     }.bind(this));
 
@@ -59,7 +58,7 @@ define(['jQuery'], function($) {
     $dst.width(halfPageWidth); // expand to find max content width
     $dst.find(".dst-content").map(function(_i, ea) {
       var w = $(ea).width();
-      maxWidth = !w ? this.seenSoFar : w > maxWidth ? w : maxWidth;
+      maxWidth = !w ? this.seenSoFar : (w > maxWidth ? w : maxWidth);
     }.bind(this));
 
     if (maxWidth < halfPageWidth) {
