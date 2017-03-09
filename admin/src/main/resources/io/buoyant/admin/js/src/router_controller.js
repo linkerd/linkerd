@@ -86,11 +86,13 @@ define([
 
     function initializeRouterContainers(selectedRouter, initialData, $parentContainer) {
       var template = templates.router_container;
+      var routersToShow = selectedRouter === "all" ? _.keys(initialData) : [selectedRouter];
 
       var routerLabels = [];
       $(".router-menu-option").each(function() {
         var label = $(this).text();
-        if (_.has(initialData, label)) {
+        if (routersToShow.indexOf(label) !== -1) {
+          console.log(label);
           routerLabels.push(label);
         }
       });
