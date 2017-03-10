@@ -7,7 +7,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
 import io.buoyant.namer.{EnumeratingNamer, Metadata}
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.mutable
 
 class EndpointsNamer(
@@ -30,15 +30,15 @@ class EndpointsNamer(
     case (id@Path.Utf8(nsName, _, _), None) =>
       val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s", id.show, path.show)
-      lookupServices(endpointNs.get(nsName, None), id, residual)
+      lookupServices(endpointNs.get(nsName.toLowerCase, None), id, residual)
 
     case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
       val residual = path.drop(variablePrefixLength)
       log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-      lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
+      lookupServices(endpointNs.get(nsName.toLowerCase, Some(s"$label=$labelValue")), id, residual)
 
     case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
-      log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
+      log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName.toLowerCase, serviceName.toLowerCase, portName.toLowerCase, label)
       Activity.value(NameTree.Neg)
 
     case _ =>
@@ -52,24 +52,29 @@ class EndpointsNamer(
   ): Activity[NameTree[Name]] = id.take(PrefixLen) match {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       cache.services.flatMap { services =>
-        log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
-        services.get(serviceName) match {
+        log.debug("k8s ns %s initial state: %s", nsName.toLowerCase, services.keys.mkString(", "))
+        services.get(serviceName.toLowerCase) match {
           case None =>
-            log.debug("k8s ns %s service %s missing", nsName, serviceName)
+            log.debug("k8s ns %s service %s missing", nsName.toLowerCase, serviceName.toLowerCase)
             Activity.value(NameTree.Neg)
 
-          case Some(services) =>
-            log.debug("k8s ns %s service %s found", nsName, serviceName)
-            services.ports.map { ports =>
-              ports.get(portName) match {
-                case None =>
-                  log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
-                  NameTree.Neg
-
-                case Some(port) =>
-                  log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
-                  NameTree.Leaf(Name.Bound(port.addr, idPrefix ++ id, residual))
-              }
+          case Some(service) =>
+            log.debug("k8s ns %s service %s found", nsName.toLowerCase, serviceName.toLowerCase)
+            Try(portName.toInt).toOption match {
+              case Some(portNumber) =>
+                val addr = service.port(portNumber)
+                log.debug("k8s ns %s service %s port :%d found + %s", nsName.toLowerCase, serviceName.toLowerCase, portNumber, residual.show)
+                Activity.value(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+              case None =>
+                val state: Var[Activity.State[NameTree[Name.Bound]]] = service.port(portName.toLowerCase).map {
+                  case Some(addr) =>
+                    log.debug("k8s ns %s service %s port %s found + %s", nsName.toLowerCase, serviceName.toLowerCase, portName.toLowerCase, residual.show)
+                    Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+                  case None =>
+                    log.debug("k8s ns %s service %s port %s missing", nsName.toLowerCase, serviceName.toLowerCase, portName.toLowerCase)
+                    Activity.Ok(NameTree.Neg)
+                }
+                Activity(state)
             }
         }
       }
@@ -90,10 +95,14 @@ class EndpointsNamer(
     namespaces.flatMap { namespace: String =>
       val services: ActSet[SvcCache] = endpointNs.get(namespace, None).services.map(_.values.toSet)
       services.flatMap { service: SvcCache =>
-        val ports: ActSet[Port] = service.ports.map(_.values.toSet)
-        ports.map { port: Port =>
-          idPrefix ++ Path.Utf8(namespace, port.name, service.name)
+        val ports: Var[Set[String]] = service.ports.map(_.keys.toSet)
+        val states = ports.map { ports =>
+          val paths = ports.map { port =>
+            idPrefix ++ Path.Utf8(namespace, port, service.name)
+          }
+          Activity.Ok(paths)
         }
+        Activity(states)
       }
     }
   }
@@ -102,112 +111,72 @@ class EndpointsNamer(
 private object EndpointsNamer {
   val PrefixLen = 3
 
-  case class Port(name: String, init: Addr) {
+  case class Endpoint(ip: InetAddress, nodeName: Option[String])
 
-    val addr = Var(init)
+  case class Svc(endpoints: Set[Endpoint], ports: Map[String, Int])
 
-    def update(a: Addr) = addr.update(a)
-    def sample() = addr.sample()
+  private[this] def getEndpoints(subsets: Seq[v1.EndpointSubset]): Set[Endpoint] = {
+    val endpoints = mutable.Set.empty[Endpoint]
+    for {
+      subset <- subsets
+      addresses <- subset.addresses
+      addrs <- addresses
+    } {
+      endpoints += Endpoint(InetAddress.getByName(addrs.ip), addrs.nodeName)
+    }
+    endpoints.toSet
   }
 
-  private[this] def getAddrs(subsets: Seq[v1.EndpointSubset]): Map[String, Set[Address]] = {
-    val addrsByPort = mutable.Map.empty[String, Set[Address]]
-
-    for (subset <- subsets) {
-      val ips = subset.addresses match {
-        case None => Set.empty
-        case Some(addrs) => addrs.map { addr => (addr.ip, addr.nodeName) }.toSet
+  private[this] def getPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Int] = {
+    val portSet = mutable.Map.empty[String, Int]
+    for {
+      subset <- subsets
+      ports <- subset.ports
+      port <- ports
+      name <- port.name
+    } {
+      val proto = port.protocol.map(_.toUpperCase).getOrElse("TCP")
+      if (proto == "TCP") {
+        portSet(name) = port.port
       }
+    }
+    portSet.toMap
+  }
 
-      for {
-        ports <- subset.ports
-        port <- ports
-      } {
-        val proto = port.protocol.map(_.toUpperCase).getOrElse("TCP")
-        (proto, port.name) match {
-          case ("TCP", Some(name)) =>
-            val addrs: Set[Address] = ips.map {
-              case (ip, nodeName) =>
-                val isa = new InetSocketAddress(ip, port.port)
-                Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap)
-            }
-            addrsByPort(name) = addrsByPort.getOrElse(name, Set.empty) ++ addrs
+  case class SvcCache(name: String, init: Svc) {
 
-          case _ =>
+    private[this] val endpointsState = Var[Set[Endpoint]](init.endpoints)
+    private[this] val portsState = Var[Map[String, Int]](init.ports)
+
+    def port(portName: String): Var[Option[Var[Addr]]] = {
+      portsState.map { portMap =>
+        val portNumber = portMap.get(portName)
+        portNumber.map(port)
+      }
+    }
+
+    def port(portNumber: Int): Var[Addr] =
+      endpointsState.map { endpoints =>
+        val addrs: Set[Address] = endpoints.map { endpoint =>
+          val isa = new InetSocketAddress(endpoint.ip, portNumber)
+          Address.Inet(isa, endpoint.nodeName.map(Metadata.nodeName -> _).toMap)
         }
+        Addr.Bound(addrs)
+      }
+
+    def ports: Var[Map[String, Int]] = portsState
+
+    def update(subsets: Seq[v1.EndpointSubset]): Unit = {
+      val newEndpoints = getEndpoints(subsets)
+      val newPorts = getPorts(subsets)
+
+      synchronized {
+        val oldEndpoints = endpointsState.sample()
+        if (newEndpoints != oldEndpoints) endpointsState() = newEndpoints
+        val oldPorts = portsState.sample()
+        if (newPorts != oldPorts) portsState() = newPorts
       }
     }
-
-    addrsByPort.toMap
-  }
-
-  private[this] def mkPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Port] =
-    getAddrs(subsets).map {
-      case (name, addrs) => name -> Port(name, Addr.Bound(addrs))
-    }
-
-  case class SvcCache(name: String, init: Map[String, Port]) {
-
-    private[this] val state = Var[Activity.State[Map[String, Port]]](Activity.Ok(init))
-
-    val ports = Activity(state)
-
-    def delete(name: String): Unit = synchronized {
-      state.sample() match {
-        case Activity.Ok(snap) =>
-          for (port <- snap.get(name)) {
-            port() = Addr.Neg
-            state() = Activity.Ok(snap - name)
-          }
-
-        case _ =>
-      }
-    }
-
-    def update(subsets: Seq[v1.EndpointSubset]): Unit =
-      getAddrs(subsets) match {
-        case addrs if addrs.isEmpty =>
-          synchronized {
-            state.sample() match {
-              case Activity.Ok(ps) =>
-                for (port <- ps.values) {
-                  port() = Addr.Neg
-                }
-
-              case _ =>
-            }
-          }
-
-        case addrs =>
-          synchronized {
-            val base = state.sample() match {
-              case Activity.Ok(base) => base
-              case _ => Map.empty[String, Port]
-            }
-
-            val updated = addrs.foldLeft(base) {
-              case (base, (name, addrs)) =>
-                val addr = if (addrs.isEmpty) Addr.Neg else Addr.Bound(addrs)
-                base.get(name) match {
-                  case Some(port) =>
-                    port() = addr
-                    base
-
-                  case None =>
-                    val port = Port(name, addr)
-                    base + (name -> port)
-
-                  case state =>
-                    log.warning("did not update port %s in state %s", name, state)
-                    base
-                }
-            }
-
-            if (updated.size > base.size) {
-              state() = Activity.Ok(updated)
-            }
-          }
-      }
   }
 
   class NsCache(namespace: String) extends Ns.ObjectCache[Endpoints, EndpointsWatch, EndpointsList] {
@@ -243,8 +212,10 @@ private object EndpointsNamer {
 
     private[this] def mkSvc(endpoints: v1.Endpoints): Option[SvcCache] =
       getName(endpoints).map { name =>
-        val ports = mkPorts(endpoints.subsets)
-        SvcCache(name, ports)
+        SvcCache(name, Svc(
+          getEndpoints(endpoints.subsets),
+          getPorts(endpoints.subsets)
+        ))
       }
 
     private[this] def add(endpoints: v1.Endpoints): Unit =

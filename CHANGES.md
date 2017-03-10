@@ -4,6 +4,8 @@
 * Fix: rewrite Location & Refresh HTTP response headers when Linkerd
   rewrites request Host header
 * Increase default binding cache size
+* Allow k8s namer to accept port numbers
+* Make k8s namer case insensitive
 
 ## 0.9.0 2017-02-22
 
