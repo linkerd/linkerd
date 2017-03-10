@@ -4,8 +4,10 @@ define(['jQuery'], function($) {
   function DtabViewer(initialDtab, dentryTemplate) {
     this.dtab = initialDtab;
     this.template = dentryTemplate;
+    this.seenSoFar = 0;
 
     this.render();
+    window.addEventListener('resize', this.render.bind(this), false);
 
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
 
@@ -49,9 +51,30 @@ define(['jQuery'], function($) {
     }
   };
 
+  DtabViewer.prototype._resize = function($prefix, $dst) {
+    var halfPageWidth = ($(window).width() / 2) * 0.85;
+    var maxWidth = 0;
+
+    $dst.width(halfPageWidth); // expand to find max content width
+    $dst.find(".dst-content").map(function(_i, ea) {
+      var w = $(ea).width();
+      maxWidth = !w ? this.seenSoFar : (w > maxWidth ? w : maxWidth);
+    }.bind(this));
+
+    if (maxWidth < halfPageWidth) {
+      $prefix.width(maxWidth);
+      $dst.width(maxWidth);
+      $dst.find(".dst-content").width(maxWidth);
+      this.seenSoFar = maxWidth; // keep track of this for if we edit the dtab
+    } else {
+      $prefix.width(halfPageWidth);
+    }
+  }
+
   DtabViewer.prototype.render = function() {
     this._renderDtabHtml();
     this._renderDtabInput();
+    this._resize($(".dentry-prefix"), $(".dentry-dst"));
 
     //dentry click handlers
     $(".dentry-prefix").click(this._activateDentries.bind(this, "data-dentry-prefix"));

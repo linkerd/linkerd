@@ -13,6 +13,8 @@ define([
   Delegator,
   templates
 ) {
+  var limitWidth;
+
   function renderDtabNamespaces() {
     var data = JSON.parse($("#dtab-data").html());
     var dtabMap = _.groupBy(data, 'namespace');
@@ -23,6 +25,7 @@ define([
     }
 
     var $namespacesContainer = $("#dtab-namespaces");
+    limitWidth = $namespacesContainer.width() / 2 - 60;
 
     for (var label in dtabMap) {
       var routers = dtabMap[label];
@@ -38,7 +41,18 @@ define([
         $namespaceContainer.append("<p>unable to fetch dtab</p>")
       }
       $namespaceContainer.appendTo($namespacesContainer);
+      resizeWidths($namespaceContainer);
     }
+  }
+
+  function resizeWidths($namespaceContainer) {
+    var maxWidth = 0;
+    var dentries = $namespaceContainer.find(".dentry-part");
+    $(dentries).map(function(_i, dentry) {
+      var w = $(dentry).width();
+      maxWidth = w > maxWidth ? w : maxWidth;
+    })
+    $(dentries).width(Math.min(maxWidth, limitWidth));
   }
 
   function getStat(metrics, stat) {
