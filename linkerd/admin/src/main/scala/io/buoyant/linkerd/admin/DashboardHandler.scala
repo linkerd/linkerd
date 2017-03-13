@@ -3,9 +3,11 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.Service
 import com.twitter.util.Future
-import io.buoyant.linkerd.Build
+import io.buoyant.admin.Build
 
 private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Service[Request, Response] {
+
+  private[this] val build = Build.load("/io/buoyant/linkerd/build.properties")
 
   override def apply(req: Request): Future[Response] = req.path match {
     case "/" =>
@@ -21,7 +23,7 @@ private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Servic
       content = s"""
         <div class="request-totals"></div>
         <div class="server-data"
-          data-linkerd-version="${Build.load().version}"
+          data-linkerd-version="${build.version}"
           data-router-name="${router}"
           style="visibility:hidden"></div>
         <div class="dashboard-container"></div>

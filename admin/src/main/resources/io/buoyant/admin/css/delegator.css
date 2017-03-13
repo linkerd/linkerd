@@ -9,6 +9,7 @@
 .panel, .panel-heading, .list-group-item, .list-group {
   border: none;
   box-shadow: none;
+  word-wrap: break-word;
 }
 
 .list-group-item.list-group-item-plain {
@@ -57,12 +58,21 @@
   color: #f4f4f4;
 }
 
+.dentry > div {
+  float: left;
+  word-wrap: break-word;
+}
+
 .dentry {
   font-family: monospace;
 }
 
+.dentry .fake-column {
+  width: 36px;
+  padding: 5px 3px;
+}
+
 .dentry-part {
-  display: inline-block;
   font-family: monospace;
   padding: 5px 10px;
   margin-bottom: 5px;

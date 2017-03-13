@@ -1,4 +1,4 @@
-package io.buoyant.linkerd
+package io.buoyant.admin
 
 import java.io.InputStream
 import java.util.Properties
@@ -9,7 +9,7 @@ case class Build(version: String, revision: String, name: String)
 object Build {
   val unknown = Build("?", "?", "?")
 
-  def load(resource: String = "/io/buoyant/linkerd-core/build.properties"): Build =
+  def load(resource: String): Build =
     load(getClass.getResourceAsStream(resource))
 
   def load(stream: InputStream): Build =
