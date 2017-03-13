@@ -2,24 +2,24 @@
 
 set -e
 
-if [ `uname -s` = "Darwin" ]; then
+if [ "$(uname -s)" = "Darwin" ]; then
   os=osx
 else
   os=linux
 fi
-arch=`uname -m`
+arch=$(uname -m)
 
 protocbin=.protoc
 protocversion=3.0.0
-protocurl=https://github.com/google/protobuf/releases/download/v$protocversion/protoc-$protocversion-$os-$arch.zip
+protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
 
-if [ ! -f $protocbin ]; then
+if [ ! -f "$protocbin" ]; then
   echo "downloading $protocbin" >&2
-  tmp=`mktemp -d -t protoc.XXX`
-  curl -L --silent --fail -o $tmp/$protocbin.zip $protocurl
-  unzip -q $tmp/$protocbin.zip -d $tmp
-  mv $tmp/bin/protoc $protocbin
-  rm -rf $tmp
+  tmp=$(mktemp -d -t protoc.XXX)
+  curl -L --silent --fail -o "$tmp/$protocbin.zip" "$protocurl"
+  unzip -q "$tmp/$protocbin.zip" -d "$tmp"
+  mv "$tmp/bin/protoc" "$protocbin"
+  rm -rf "$tmp"
 fi
 
-./$protocbin $@
+./$protocbin "$@"
