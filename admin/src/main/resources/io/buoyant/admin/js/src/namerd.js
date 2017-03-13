@@ -3,25 +3,23 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/admin',
   'src/delegator',
-  'text!template/dentry.template',
-  'text!template/namerd_namespace.template',
+  'template/compiled_templates'
 ], function(
   $, _, Handlebars,
   AdminHelpers,
   Delegator,
-  dentryTemplate,
-  namespaceTemplate
+  templates
 ) {
-  return function() {
+  function renderDtabNamespaces() {
     var data = JSON.parse($("#dtab-data").html());
     var dtabMap = _.groupBy(data, 'namespace');
 
     var template = {
-      dentry: Handlebars.compile(dentryTemplate),
-      namespace: Handlebars.compile(namespaceTemplate)
+      dentry: templates.dentry,
+      namespace: templates.namerd_namespace
     }
 
     var $namespacesContainer = $("#dtab-namespaces");
@@ -41,5 +39,37 @@ define([
       }
       $namespaceContainer.appendTo($namespacesContainer);
     }
+  }
+
+  function getStat(metrics, stat) {
+    var prefix = 'rt/interpreter/io.buoyant.namerd.iface.NamerdInterpreterConfig/';
+    return metrics[prefix + stat];
+  }
+
+  function renderNamerdStats(data) {
+    var $statsContainer = $("#namerd-stats");
+    var dataToRender = {
+      connections: {
+        description: "Connections",
+        value: getStat(data, "connections")
+      },
+      bindcache: {
+        description: "Bindcache size",
+        value: getStat(data, "bindcache.size")
+      },
+      addrcache: {
+        description: "Addrcache size",
+        value: getStat(data, "addrcache.size")
+      }
+    };
+    var html = templates.namerd_stats(dataToRender);
+    $statsContainer.html(html);
+  }
+
+  return function() {
+    Handlebars.registerPartial('metricPartial', templates["metric.partial"]);
+
+    renderDtabNamespaces();
+    $.get("admin/metrics.json", renderNamerdStats);
   }
 });

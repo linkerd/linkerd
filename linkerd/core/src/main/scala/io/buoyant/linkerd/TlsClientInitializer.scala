@@ -13,7 +13,7 @@ import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
  */
 abstract class TlsClientInitializer extends ConfigInitializer
 
-trait TlsClientConfig extends PolymorphicConfig {
+abstract class TlsClientConfig extends PolymorphicConfig {
   @JsonIgnore
   def tlsClientPrep[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]]
 }

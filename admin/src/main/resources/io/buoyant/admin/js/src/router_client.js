@@ -3,20 +3,19 @@
 define([
   'jQuery',
   'lodash',
-  'Handlebars',
+  'handlebars.runtime',
   'src/utils',
   'src/query',
   'src/success_rate_graph',
   'src/bar_chart',
-  'text!template/metric.partial.template',
-  'text!template/router_client.template'
+  'template/compiled_templates'
 ], function($, _, Handlebars,
   Utils,
   Query,
   SuccessRateGraph,
   BarChart,
-  metricPartialTemplate,
-  routerClientTemplate) {
+  templates
+) {
 
   var LoadBalancerBarChart = function($lbContainer) {
     function getColor(percent) {
@@ -50,7 +49,7 @@ define([
   }
 
   var RouterClient = (function() {
-    var template = Handlebars.compile(routerClientTemplate);
+    var template = templates.router_client;
 
     var metricToColorShade = {
       "max": "light",
@@ -69,15 +68,16 @@ define([
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
           {suffix: "requests", label: "Requests"},
-          {suffix: "connections", label: "Connections"},
+          {suffix: "connections", label: "Connections", isGauge: true},
           {suffix: "success", label: "Successes"},
           {suffix: "failures", label: "Failures"},
-          {suffix: "loadbalancer/size", label: "Load balancer pool size"},
-          {suffix: "loadbalancer/available", label: "Load balancers available"}
+          {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
+          {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
         ], function(metric) {
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
+          isGauge: metric.isGauge,
           query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
         }
       });
@@ -115,11 +115,12 @@ define([
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
         var clientData = Query.filter(defn.query, data);
+        var value = _.isEmpty(clientData) ? null :
+          (defn.isGauge ? clientData[0].value : clientData[0].delta);
         mem[defn.metricSuffix] = {
           description: defn.label,
-          value: _.isEmpty(clientData) ? null : clientData[0].delta
+          value: value
         };
-
         return mem;
       }, {});
 
@@ -134,8 +135,8 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially) {
-      var metricPartial = Handlebars.compile(metricPartialTemplate);
+    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+      var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
       var $contentContainer = $container.find(".client-content-container");
@@ -155,15 +156,11 @@ define([
       var $collapseLink = $toggleLinks.find(".client-collapse");
 
       renderMetrics($metricsEl, client, [], []);
-      var chart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
+      var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
       // collapse client section by default (deal with large # of clients)
-      if(shouldExpandInitially) {
-        toggleClientDisplay(true);
-      } else {
-        toggleClientDisplay(false);
-      }
+      toggleClientDisplay(shouldExpandInitially);
 
       $expandLink.click(function() { toggleClientDisplay(true); });
       $collapseLink.click(function() { toggleClientDisplay(false); });
@@ -173,11 +170,13 @@ define([
           $contentContainer.css({"border": colorBorder});
           $headerLine.css("border-bottom", "0px");
 
+          combinedClientGraph.unIgnoreClient(client);
           metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
 
+          combinedClientGraph.ignoreClient(client);
           metricsCollector.deregisterListener(metricsHandler);
         }
 
@@ -187,11 +186,10 @@ define([
       }
 
       function metricsHandler(data) {
-        var filteredData = _.filter(data.specific, function (d) { return d.name.indexOf(routerName) !== -1 });
-        var summaryData = getSummaryData(filteredData, metricDefinitions);
+        var summaryData = getSummaryData(data.specific, metricDefinitions);
         var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
 
-        chart.updateMetrics(getSuccessRate(summaryData));
+        successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
 
         renderMetrics($metricsEl, client, summaryData, latencies);

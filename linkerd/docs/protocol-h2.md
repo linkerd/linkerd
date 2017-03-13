@@ -17,9 +17,8 @@ routers:
   identifier:
     kind: io.l5d.headerToken
     header: ":authority"
-  baseDtab: |
-    /srv => /#/io.l5d.fs ;
-    /h2 => /srv ;
+  dtab: |
+    /svc => /#/io.l5d.fs ;
   client:
     tls:
       kind: io.l5d.boundPath
@@ -41,9 +40,8 @@ routers:
   identifier:
     kind: io.l5d.headerPath
     segments: 2
-  baseDtab: |
-    /srv => /#/io.l5d.fs ;
-    /h2 => /srv ;
+  dtab: |
+    /svc => /#/io.l5d.fs ;
 ```
 > because gRPC encodes URLs as /_serviceName_/_methodName_, we can
 simply register service names into a discovery system and route
@@ -62,7 +60,7 @@ additional issues with this protocol!
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `h2` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
+dstPrefix | `/svc` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
 experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
 
 When TLS is configured, h2 routers negotiate to communicate over
@@ -73,6 +71,28 @@ When TLS is not configured, h2 servers accept both
 [HTTP Upgrade](https://http2.github.io/http2-spec/#discover-http)
 requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
+
+## HTTP/2 Server Parameters
+
+Key | Default Value | Description
+--- | ------------- | -----------
+windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
+initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
+maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
+maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
+maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
+## HTTP/2 Client Parameters
+
+Key | Default Value | Description
+--- | ------------- | -----------
+windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
+initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
+maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
+maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
 
 <a name="h2-identifiers"></a>
 ## HTTP/2 Identifiers
@@ -127,7 +147,7 @@ header | `:authority` | The name of the header to extract a token from.  If ther
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `http` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the header.
 
 <a name="header-path-identifier"></a>
@@ -172,7 +192,7 @@ segments | None | If specified, the number of path segments that are required ex
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `h2` | The `dstPrefix` as set in the routers block.
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | The first `segments` elements of the path from the URL
 
 <a name="h2-headers"></a>
@@ -201,7 +221,7 @@ from untrusted sources.
 
 ### User Headers
 
-> Append a dtab override to the baseDtab for this request
+> Append a dtab override to the dtab for this request
 
 ```shell
 curl -H 'l5d-dtab: /host/web => /host/web-v2' "localhost:5000"

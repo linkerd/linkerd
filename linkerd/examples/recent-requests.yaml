@@ -4,11 +4,10 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: /http/*/*/* => /$/inet/localhost/8888
+  dtab: /svc/* => /$/inet/localhost/8888
   servers:
   - port: 4140
 
 telemetry:
-- kind: io.l5d.commonMetrics
 - kind: io.l5d.recentRequests
   sampleRate: 1.0

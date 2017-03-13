@@ -71,6 +71,7 @@ object Headers {
     def remove(key: String) = synchronized {
       val isMatch: ((String, String)) => Boolean = { case (k, _) => key == k }
       val (removed, updated) = current.partition(isMatch)
+      current = updated
       removed.map(toVal)
     }
     private[this] val toVal: ((String, String)) => String = { case (_, v) => v }

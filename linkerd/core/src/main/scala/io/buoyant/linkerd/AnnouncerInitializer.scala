@@ -5,7 +5,7 @@ import com.twitter.finagle.Path
 import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 import io.buoyant.namer.Paths
 
-trait AnnouncerConfig extends PolymorphicConfig {
+abstract class AnnouncerConfig extends PolymorphicConfig {
 
   @JsonProperty("prefix")
   var _prefix: Option[Path] = None

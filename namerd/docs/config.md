@@ -8,7 +8,7 @@ storage:
   namespaces:
     galaxyquest: |
       /host       => /#/io.l5d.fs;
-      /http/1.1/* => /host;
+      /svc => /host;
 namers:
 - kind: io.l5d.fs
   rootDir: examples/disco
@@ -54,3 +54,16 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | IP for the admin interface.
 port | `9991` | Port for the admin interface.
+
+#### Administrative endpoints
+
+Namerd's admin interface mirrors linkerd's, with one exception: the
+`/delegator.json` endpoint in linkerd is served as `/dtab/delegator.json` in
+namerd.
+
+For default admin endpoints have a look at
+[linkerd's administrative interface](https://linkerd.io/config/head/linkerd/index.html#administrative-interface).
+
+For metrics information, namerd also exposes
+[linkerd's CommonMetrics endpoints](https://linkerd.io/config/head/linkerd/index.html#commonmetrics)
+by default.

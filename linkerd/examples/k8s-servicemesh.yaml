@@ -15,8 +15,8 @@ routers:
 - protocol: http
   label: outgoing
   originator: true
-  baseDtab: |
-    /http/*/* => /#/io.l5d.k8s/default/http;
+  dtab: |
+    /svc => /#/io.l5d.k8s/default/http;
   interpreter:
     kind: default
     transformers:
@@ -34,6 +34,8 @@ routers:
 
 - protocol: http
   label: incoming
+  dtab: |
+    /svc => /#/io.l5d.k8s/default/http;
   interpreter:
     kind: default
     transformers:

@@ -237,6 +237,10 @@ object DelegateApiHandler {
 
     def writeStr[T](t: T): String = mapper.writeValueAsString(t)
     def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
+    def readBuf[T: Manifest](buf: Buf): Try[T] = {
+      val Buf.ByteBuffer.Owned(bb) = Buf.ByteBuffer.coerce(buf)
+      Try { mapper.readValue[T](bb.array) }
+    }
   }
 
   def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
@@ -263,6 +267,29 @@ object DelegateApiHandler {
   }
 
   private implicit val timer = DefaultTimer.twitter
+
+  case class DelegationRequest(
+    namespace: Option[String],
+    dtab: Option[String],
+    path: Option[String]
+  )
+
+  sealed trait DelegationRequestCodec {
+    def contentTypes: Set[String]
+    def read(buf: Buf): Try[DelegationRequest]
+  }
+
+  object DelegationRequestCodec {
+
+    object JsonCodec extends DelegationRequestCodec {
+      val contentTypes = Set(MediaType.Json)
+      def read(buf: Buf): Try[DelegationRequest] = Codec.readBuf[DelegationRequest](buf)
+    }
+
+    def byContentType(ct: String): Option[DelegationRequestCodec] =
+      if (JsonCodec.contentTypes(ct)) Some(DelegationRequestCodec.JsonCodec) else None
+  }
+
 }
 
 class DelegateApiHandler(
@@ -273,18 +300,29 @@ class DelegateApiHandler(
   import DelegateApiHandler._
 
   def apply(req: Request): Future[Response] = req.method match {
-    case Method.Get =>
-      req.params.get("namespace") match {
-        case Some(ns) =>
-          interpreters(ns) match {
-            case delegator: Delegator =>
-              getDelegateRsp(req.getParam("dtab"), req.getParam("path"), delegator)
-            case _ =>
-              err(Status.NotImplemented, s"Name Interpreter for $ns cannot show delegations")
+    case Method.Post =>
+      req.contentType.flatMap(DelegationRequestCodec.byContentType) match {
+        case Some(codec) =>
+          codec.read(req.content) match {
+            case Return(DelegationRequest(ns, Some(dtab), Some(path))) => getResponse(ns, dtab, path)
+            case _ => err(Status.BadRequest, s"Malformed delegation request: ${req.getContentString}")
           }
-        case None =>
-          getDelegateRsp(req.getParam("dtab"), req.getParam("path"), ConfiguredNamersInterpreter(namers))
+        case _ => err(Status.UnsupportedMediaType)
       }
+    case Method.Get =>
+      getResponse(req.params.get("namespace"), req.getParam("dtab"), req.getParam("path"))
     case _ => err(Status.MethodNotAllowed)
+  }
+
+  private def getResponse(ns: Option[String], dtab: String, path: String) = ns match {
+    case Some(namesapce) =>
+      interpreters(namesapce) match {
+        case delegator: Delegator =>
+          getDelegateRsp(dtab, path, delegator)
+        case _ =>
+          err(Status.NotImplemented, s"Name Interpreter for $namesapce cannot show delegations")
+      }
+    case None =>
+      getDelegateRsp(dtab, path, ConfiguredNamersInterpreter(namers))
   }
 }

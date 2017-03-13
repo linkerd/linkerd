@@ -4,7 +4,6 @@ import com.twitter.finagle.Path
 import com.twitter.util._
 import io.buoyant.admin.App
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import java.net.{InetSocketAddress, NetworkInterface}
 import scala.collection.JavaConverters._
@@ -20,8 +19,6 @@ import sun.misc.{Signal, SignalHandler}
  */
 object Main extends App {
 
-  private[this] val DefaultTelemeter =
-    new CommonMetricsTelemeter
   private[this] val DefaultShutdownGrace =
     Duration.fromSeconds(10)
 
@@ -32,7 +29,7 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
-        val linker = config.mk(DefaultTelemeter)
+        val linker = config.mk()
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))

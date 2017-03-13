@@ -14,10 +14,8 @@ routers:
   maxResponseKB: 102400 # 100MB
   compressionLevel: 9
   identifier: {kind: io.l5d.header}
-  baseDtab: |
-    /srv => /#/io.l5d.fs;
-    /host => /srv;
-    /http/* => /host;
+  dtab: |
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4140
     ip: 0.0.0.0
@@ -31,10 +29,8 @@ routers:
 - protocol: http
   label: netty4
   identifier: {kind: io.l5d.header.token}
-  baseDtab: |
-    /srv => /#/io.l5d.fs;
-    /host => /srv;
-    /http => /host;
+  dtab: |
+    /svc => /#/io.l5d.fs;
   servers:
   - port: 4141
     ip: 0.0.0.0

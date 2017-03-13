@@ -50,7 +50,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     }
     val namers = Map(Path.read("/io.l5d.w00t") -> namer)
     val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId)
+    val client = new ThriftNamerClient(service, ns, clientId = clientId)
 
     val act = client.bind(reqDtab, reqPath)
     val obs = act.states.respond { s =>
@@ -126,20 +126,20 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     }
     val namers = Seq(id -> namer)
     def interpreter(ns: String) = new ConfiguredDtabNamer(
-      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /http/1.1/* => /host")),
+      Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /svc => /host")),
       namers
     )
     val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId)
+    val client = new ThriftNamerClient(service, ns, clientId = clientId)
 
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
-      Path.read("/http/1.1/GET/poop")
+      Path.read("/svc/poop")
     ).toFuture)
 
     assert(tree ==
       DelegateTree.Delegate(
-        Path.read("/http/1.1/GET/poop"),
+        Path.read("/svc/poop"),
         Dentry.nop,
         DelegateTree.Alt(
           Path.read("/host/poop"),
@@ -175,18 +175,18 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     }
     val namers = Seq(id -> namer)
     def interpreter(ns: String) = new ConfiguredDtabNamer(
-      Activity.value(Dtab.read("/http => /io.l5d.w00t")),
+      Activity.value(Dtab.read("/svc => /io.l5d.w00t")),
       namers
     )
     val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId)
+    val client = new ThriftNamerClient(service, ns, clientId = clientId)
     witness.notify(Return(NameTree.Leaf(Name.Bound(
       Var(Addr.Bound(Address("localhost", 9000))),
       Path.read("/io.l5d.w00t/foo"),
       Path.empty
     ))))
 
-    val bindAct = client.bind(Dtab.empty, Path.read("/http/foo"))
+    val bindAct = client.bind(Dtab.empty, Path.read("/svc/foo"))
     var bound: NameTree[Name.Bound] = null
     // hold activity open so that it doesn't get restarted and lose state
     val bindObs = bindAct.values.respond(_ => ())

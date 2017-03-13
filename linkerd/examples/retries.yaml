@@ -5,8 +5,8 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: |
-    /http/1.1/* => /#/io.l5d.fs
+  dtab: |
+    /svc => /#/io.l5d.fs
   responseClassifier:
     # Retry 5XXs for GETs, HEADs, OPTIONs, PUTs, and DELETEs.
     kind: io.l5d.retryableIdempotent5XX

@@ -95,7 +95,7 @@ object TlsUtils {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/s/$name"),
+      Path.read(s"/svc/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }

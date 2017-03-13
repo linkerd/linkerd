@@ -1,14 +1,15 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars',
+  'jQuery',
   'src/router_client',
   'src/combined_client_graph',
-  'text!template/router_client_container.template'
-], function($, Handlebars,
+  'template/compiled_templates'
+], function($,
   RouterClient,
   CombinedClientGraph,
-  routerClientContainerTemplate) {
+  templates
+) {
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
     var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
@@ -20,20 +21,18 @@ define([
       }, {});
     }
 
-    function shouldExpandClients(numClients) {
+    function shouldExpandClient(numClients) {
       // if there are many clients, collapse them by default to improve page perfomance
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
     return function (metricsCollector, routers, $clientEl, $combinedClientGraphEl, routerName, colors) {
-      var clientContainerTemplate = Handlebars.compile(routerClientContainerTemplate);
+      var clientContainerTemplate = templates.router_client_container;
 
       var clients = routers.clients(routerName);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
-
-      var expandClients = shouldExpandClients(clients.length);
 
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
@@ -66,7 +65,8 @@ define([
             });
         }
 
-        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, expandClients);
+        var shouldExpand = shouldExpandClient(routers.clients(routerName).length);
+        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
       }
 
       function addClients(addedClients) {

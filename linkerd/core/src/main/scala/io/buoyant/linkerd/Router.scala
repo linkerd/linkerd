@@ -40,9 +40,10 @@ trait Router {
 
   protected def configureServer(s: Server): Server
 
-  def withParams(ps: Stack.Params): Router =
-    _withParams(ps)
-      .withServers(servers.map(configureServer(_)))
+  def withParams(ps: Stack.Params): Router = {
+    val routerWithParams = _withParams(ps)
+    routerWithParams.withServers(routerWithParams.servers.map(routerWithParams.configureServer))
+  }
 
   def configured[P: Stack.Param](p: P): Router = withParams(params + p)
   def configured(ps: Stack.Params): Router = withParams(params ++ ps)
@@ -96,7 +97,7 @@ trait RouterConfig {
   def servers: Seq[ServerConfig]
   def client: Option[ClientConfig]
 
-  var baseDtab: Option[Dtab] = None
+  var dtab: Option[Dtab] = None
   var failFast: Option[Boolean] = None
   var originator: Option[Boolean] = None
   var timeoutMs: Option[Int] = None
@@ -183,7 +184,7 @@ trait RouterConfig {
 
   @JsonIgnore
   def routerParams = (Stack.Params.empty + defaultBudget)
-    .maybeWith(baseDtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
+    .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(originator.map(Originator.Param(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
@@ -250,7 +251,7 @@ case class RetriesConfig(
   new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
   new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
 ))
-trait BackoffConfig extends PolymorphicConfig {
+abstract class BackoffConfig extends PolymorphicConfig {
   @JsonIgnore
   def mk: Stream[Duration]
 }

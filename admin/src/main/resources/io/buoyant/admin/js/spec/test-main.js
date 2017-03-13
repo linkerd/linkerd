@@ -19,9 +19,9 @@ require.config({
   // grab this from our app's main.js, but make sure the paths are correct
   // relative to karma.conf.js's perspective
   paths: {
-    'jQuery': 'lib/jquery.min',
+    'jQuery': 'lib/jquery-3.1.1.min',
     'lodash': 'lib/lodash.min',
-    'Handlebars': 'lib/handlebars-v4.0.5',
+    'handlebars.runtime': 'lib/handlebars.runtime',
     'bootstrap': 'lib/bootstrap.min',
     'Smoothie': 'lib/smoothie',
     'text': 'lib/text'

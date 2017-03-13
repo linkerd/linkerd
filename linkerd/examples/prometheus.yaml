@@ -1,0 +1,12 @@
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  dtab: /svc/* => /$/inet/localhost/8888
+  servers:
+  - port: 4140
+
+telemetry:
+- kind: io.l5d.prometheus

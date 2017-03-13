@@ -9,7 +9,7 @@ import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.util._
-import io.buoyant.router.Http
+import io.buoyant.router.{Http, RoutingFactory}
 import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -21,7 +21,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/s/$name"),
+      Path.read(s"/svs/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -29,7 +29,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   object Downstream {
     def mk(name: String)(f: Request=>Response): Downstream = {
       val service = Service.mk { req: Request => Future(f(req)) }
-      val server = FinagleHttp.server
+      val stack = FinagleHttp.server.stack.remove(Headers.Ctx.serverModule.role)
+      val server = FinagleHttp.server.withStack(stack)
         .configured(param.Label(name))
         .configured(param.Tracer(NullTracer))
         .serve(":*", service)
@@ -48,16 +49,17 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   def upstream(server: ListeningServer) = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    FinagleHttp.client
+    val stack = FinagleHttp.client.stack.remove(Headers.Ctx.clientModule.role)
+    FinagleHttp.client.withStack(stack)
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
       .newClient(name, "upstream").toService
   }
 
-  def basicConfig(dtab: Dtab) = 
+  def basicConfig(dtab: Dtab) =
     s"""|routers:
         |- protocol: http
-        |  baseDtab: ${dtab.show}
+        |  dtab: ${dtab.show}
         |  servers:
         |  - port: 0
         |""".stripMargin
@@ -87,14 +89,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val dtab = Dtab.read(s"""
       /p/cat => /$$/inet/127.1/${cat.port} ;
       /p/dog => /$$/inet/127.1/${dog.port} ;
-      /http/1.1/GET/felix => /p/cat ;
-      /http/1.1/GET/clifford => /p/dog ;
+      /svc/felix => /p/cat ;
+      /svc/clifford => /p/dog ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
@@ -112,28 +113,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
 
-        val path = "/http/1.1/GET/felix"
+        val path = "/svc/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
           assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
-        }
-      }
-
-      get("clifford", "/the/big/red/dog") { rsp =>
-        assert(rsp.status == Status.Ok)
-        assert(rsp.contentString == "woof")
-
-        val path = "/http/1.1/GET/clifford/the/big/red/dog"
-        val bound = s"/$$/inet/127.1/${dog.port}"
-        val residual = "/the/big/red/dog"
-        withAnnotations { anns =>
-          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", residual)))
         }
       }
 
@@ -175,12 +161,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/http/1.1/GET/dog => /$label;")
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -237,11 +222,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
 
     val label = s"$$/inet/127.1/${downstream.port}"
-    val dtab = Dtab.read(s"/http/1.1/*/dog => /$label;")
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
     val yaml =
       s"""|routers:
           |- protocol: http
-          |  baseDtab: ${dtab.show}
+          |  dtab: ${dtab.show}
           |  responseClassifier:
           |    kind: $kind
           |  servers:
@@ -250,7 +235,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val linker = Linker.load(yaml)
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)
@@ -272,7 +256,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = s"http/1.1/$method/dog"
+        val name = "svc/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
@@ -300,7 +284,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
         assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
-        val name = s"http/1.1/$method/dog"
+        val name = s"svc/dog"
         assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
         assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
@@ -336,10 +320,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   for (readHeader <- dtabReadHeaders) test(s"dtab read from $readHeader header") {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
-    def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
-      f(tracer.iterator.map(_.annotation).toSeq)
-      tracer.clear()
-    }
 
     @volatile var headers: HeaderMap = null
 
@@ -348,13 +328,12 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       req.response
     }
     val dtab = Dtab.read(s"""
-      /http/*/*/* => /$$/inet/127.1/${dog.port} ;
+      /svc/* => /$$/inet/127.1/${dog.port} ;
     """)
 
     val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
       .configured(param.Stats(stats))
       .configured(param.Tracer(tracer))
-      .configured(Http.param.HttpIdentifier((path, dtab) => MethodAndHostIdentifier(path, true, dtab)))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
 
@@ -369,5 +348,127 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       else assert(!headers.contains(header))
     }
     assert(!headers.contains("dtab-local"))
+  }
+
+  test("dtab-local header is ignored") {
+    val stats = NullStatsReceiver
+    val tracer = new BufferingTracer
+
+    @volatile var headers: HeaderMap = null
+
+    val dog = Downstream.mk("dog") { req =>
+      headers = req.headerMap
+      req.response
+    }
+    val dtab = Dtab.read(s"""
+      /svc/* => /$$/inet/127.1/${dog.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.set("dtab-local", "/a=>/b")
+    await(client(req))
+    assert(headers("dtab-local") == "/a=>/b")
+    assert(!headers.contains(dtabWriteHeader))
+  }
+
+  test("with clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
+      rsp
+    }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    val body =
+      try {
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-trace"
+    ))
+  }
+
+  test("without clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
+      rsp
+    }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    val body =
+      try {
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-dtab",
+      "l5d-ctx-trace",
+      "l5d-ctx-thing"
+    ))
+    assert(headers.get("l5d-ctx-dtab") == Some(localDtab))
   }
 }

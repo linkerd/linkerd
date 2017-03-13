@@ -1,0 +1,84 @@
+{{#if child}}
+  <div class='panel panel-default'>
+    <div class='panel-heading
+    {{#if isPrimary}}
+      {{#if isSuccess}}
+        panel-heading-success
+      {{else}}
+        panel-heading-danger
+      {{/if}}
+    {{/if}}'{{#with dentry}}
+      data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
+    {{/with}}>
+      <div class='node-info'>
+        {{#if isDelegate}}
+          Possible Resolution Path
+        {{else if isAlt}}
+          Several Possible Resolution Paths
+        {{else if isUnion}}
+          Several Simultaneous Resolution Paths
+        {{else if isTransformation}}
+          Transformation
+        {{else if isLeaf}}
+          Namer Match
+        {{/if}}
+        {{#if weight}}
+          (weight: {{weight}})
+        {{/if}}
+      </div>
+      {{path}}
+      {{#with dentry}}
+        <span class='node-dentry'>{{prefix}} => {{dst}}</span>
+      {{/with}}
+      {{#if transformation}}
+        <span class='node-dentry'>{{transformation}}</span>
+      {{/if}}
+    </div>
+    <ul class='list-group'>{{{child}}}</ul>
+  </div>
+{{else}}
+  <li class='list-group-item
+    {{#if isPrimary}}
+      {{#if isSuccess}}
+        list-group-item-success
+      {{else}}
+        list-group-item-danger
+      {{/if}}
+    {{else}}
+      list-group-item-plain
+    {{/if}}'
+    {{#with dentry}}
+      data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
+    {{/with}}>
+    <div class='node-info'>
+      {{#if isNeg}}
+        No Further Branch Matches
+      {{else if isFail}}
+        Explicit Failure
+      {{else if isException}}
+        {{#if message}}
+          Exception: {{message}}
+        {{else}}
+          Unknown Exception
+        {{/if}}
+      {{else}}
+        Bound Path
+      {{/if}}
+      {{#if weight}}
+        (weight: {{weight}})
+      {{/if}}
+    </div>
+    {{#with addr}}
+      {{#each addrs}}
+        {{ip}}:{{port}}
+      {{/each}}
+    {{/with}}
+    {{path}}
+    {{#with dentry}}
+      <span class='node-dentry'>{{prefix}} => {{dst}}</span>
+    {{/with}}
+  </li>
+  {{#if transformed}}
+  <ul class='list-group'>{{{transformed}}}</ul>
+  {{/if}}
+{{/if}}

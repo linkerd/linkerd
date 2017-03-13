@@ -48,11 +48,13 @@ class DelegateHandler(
         <div class="delegator">
         </div>
       """,
+      navHighlight = "dtab",
       tailContent = s"""
         <script id="dtab-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
         <script id="dtab-base-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtabBase)}</script>
       """,
-      csses = Seq("delegator.css")
+      csses = Seq("delegator.css"),
+      showRouterDropdown = true
     )
   }.tupled
 
@@ -65,6 +67,7 @@ class DelegateHandler(
           </div>
         </div>
       """,
-    csses = Seq("delegator.css")
+    csses = Seq("delegator.css"),
+    showRouterDropdown = true
   )
 }

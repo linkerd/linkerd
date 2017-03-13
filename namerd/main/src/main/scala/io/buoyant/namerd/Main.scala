@@ -2,19 +2,16 @@ package io.buoyant.namerd
 
 import com.twitter.util.{Await, Closable}
 import io.buoyant.admin.App
-import io.buoyant.telemetry.CommonMetricsTelemeter
 import java.io.File
 import scala.io.Source
 
 object Main extends App {
 
-  private[this] val DefaultTelemeter = new CommonMetricsTelemeter
-
   def main(): Unit = {
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
-        val namerd = config.mk(DefaultTelemeter)
+        val namerd = config.mk()
 
         val admin = namerd.admin.serve(this, NamerdAdmin(config, namerd))
         log.info(s"serving http admin on ${admin.boundAddress}")
@@ -24,12 +21,14 @@ object Main extends App {
           log.info(s"serving ${iface.kind} interface on ${server.boundAddress}")
           server
         }
+        val telemeters = namerd.telemeters.map(_.run())
 
         closeOnExit(Closable.sequence(
           Closable.all(servers: _*),
           admin
         ))
         Await.all(servers: _*)
+        Await.all(telemeters: _*)
         Await.result(admin)
 
       case _ => exitOnError("usage: namerd path/to/config")

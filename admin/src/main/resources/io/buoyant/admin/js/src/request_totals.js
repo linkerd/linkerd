@@ -1,13 +1,13 @@
 "use strict";
 
 define([
-  'jQuery', 'Handlebars',
+  'jQuery',
   'src/query',
-  'text!template/request_totals.template'
-  ], function($, Handlebars, Query, requestTotalsTemplate) {
+  'template/compiled_templates'
+  ], function($, Query, templates) {
 
   var RequestTotals = (function() {
-    var template = Handlebars.compile(requestTotalsTemplate);
+    var template = templates.request_totals;
 
     var metricDefinitions = [
       {
@@ -16,15 +16,18 @@ define([
       },
       {
         description: "Pending",
-        query: Query.serverQuery().allRouters().allServers().withMetric("load").build()
+        query: Query.serverQuery().allRouters().allServers().withMetric("load").build(),
+        isGauge: true
       },
       {
         description: "Incoming Connections",
-        query: Query.serverQuery().allRouters().allServers().withMetric("connections").build()
+        query: Query.serverQuery().allRouters().allServers().withMetric("connections").build(),
+        isGauge: true
       },
       {
         description: "Outgoing Connections",
-        query: Query.clientQuery().allRouters().allClients().withMetric("connections").build()
+        query: Query.clientQuery().allRouters().allClients().withMetric("connections").build(),
+        isGauge: true
       }
     ];
 
@@ -43,7 +46,8 @@ define([
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
           var metricsByQuery = Query.filter(defn.query, data.specific);
-          var value = _.sumBy(metricsByQuery, 'delta');
+          var sumBy = defn.isGauge ? 'value' : 'delta';
+          var value = _.sumBy(metricsByQuery, sumBy);
           return {
             description: defn.description,
             value: value
@@ -53,7 +57,7 @@ define([
         render($root, transformedData);
       }
 
-      if (!selectedRouter) {
+      if (!selectedRouter || selectedRouter === "all") { //welcome to my world of hacks
         render($root, metricDefinitions);
         metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
       } else {

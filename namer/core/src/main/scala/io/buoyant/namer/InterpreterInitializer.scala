@@ -6,7 +6,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 import scala.util.control.NoStackTrace
 
-trait InterpreterConfig extends PolymorphicConfig {
+abstract class InterpreterConfig extends PolymorphicConfig {
 
   /** This property must be set to true in order to use this interpreter if it is experimental */
   @JsonProperty("experimental")

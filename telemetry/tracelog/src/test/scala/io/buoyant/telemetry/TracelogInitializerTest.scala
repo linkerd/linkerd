@@ -2,13 +2,12 @@ package io.buoyant.telemetry
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.util.LoadService
-import com.twitter.util._
 import io.buoyant.config.Parser
 import org.scalatest._
 
 class TracelogInitializerTest extends FunSuite {
 
-  test("io.l5d.default telemeter loads") {
+  test("io.l5d.tracelog telemeter loads") {
     val yaml =
       """|kind: io.l5d.tracelog
          |sampleRate: 0.02
@@ -22,7 +21,7 @@ class TracelogInitializerTest extends FunSuite {
     assert(!telemeter.tracer.isNull)
   }
 
-  test("io.l5d.default telemeter loads, with log level") {
+  test("io.l5d.tracelog telemeter loads, with log level") {
     val yaml =
       """|kind: io.l5d.tracelog
          |level: trace
@@ -36,7 +35,7 @@ class TracelogInitializerTest extends FunSuite {
     assert(!telemeter.tracer.isNull)
   }
 
-  test("io.l5d.default telemeter fails with invalid log level") {
+  test("io.l5d.tracelog telemeter fails with invalid log level") {
     val yaml =
       """|kind: io.l5d.tracelog
          |level: supergood

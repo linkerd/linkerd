@@ -20,5 +20,8 @@
   "rules": {
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+  },
+  "parserOptions": {
+    "ecmaVersion": 6
   }
 }

@@ -3,19 +3,21 @@ package io.buoyant.namerd.iface
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import com.twitter.util.TimeConversions._
-import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
+import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
 class ThriftNamerClient(
   client: thrift.Namer.FutureIface,
   namespace: String,
+  statsReceiver: StatsReceiver = NullStatsReceiver,
   clientId: Path = Path.empty,
   _timer: Timer = DefaultTimer.twitter
 ) extends NameInterpreter with Delegator {
@@ -33,6 +35,9 @@ class ThriftNamerClient(
 
   private[this] val addrCacheMu = new {}
   private[this] var addrCache = Map.empty[Path, Var[Addr]]
+
+  statsReceiver.addGauge("bindcache.size")(bindCache.size)
+  statsReceiver.addGauge("addrcache.size")(addrCache.size)
 
   def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
     Trace.recordBinary("namerd.client/bind.dtab", dtab.show)
@@ -152,7 +157,8 @@ class ThriftNamerClient(
   private[this] def convertMeta(thriftMeta: Option[thrift.AddrMeta]): Addr.Metadata = {
     val authority = thriftMeta.flatMap(_.authority).map(Metadata.authority -> _)
     val nodeName = thriftMeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
-    (authority ++ nodeName).toMap
+    val weight = thriftMeta.flatMap(_.endpointAddrWeight).map(Metadata.endpointWeight -> _)
+    (authority ++ nodeName ++ weight).toMap
   }
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {

@@ -37,6 +37,7 @@ private[consul] object DcServices {
     name: String,
     domain: Option[String],
     consistency: Option[v1.ConsistencyMode],
+    preferServiceAddress: Option[Boolean] = None,
     stats: Stats
   ): Activity[Map[SvcKey, Var[Addr]]] = {
 
@@ -88,7 +89,7 @@ private[consul] object DcServices {
                 case None =>
                   log.debug("consul added: %s", k)
                   stats.adds.incr()
-                  SvcAddr(consulApi, name, k, domain, consistency, stats.service)
+                  SvcAddr(consulApi, name, k, domain, consistency, preferServiceAddress, stats.service)
               }
               k -> svc
             }.toMap
@@ -120,7 +121,7 @@ private[consul] object DcServices {
     case v1.Indexed(services, idx) =>
       val keys = services.flatMap {
         case (svcName, tags) =>
-          tags.map(tag => SvcKey(svcName, Some(tag))) :+ SvcKey(svcName, None)
+          tags.map(tag => SvcKey(svcName.toLowerCase, Some(tag.toLowerCase))) :+ SvcKey(svcName.toLowerCase, None)
       }
       v1.Indexed(keys.toSet, idx)
   }

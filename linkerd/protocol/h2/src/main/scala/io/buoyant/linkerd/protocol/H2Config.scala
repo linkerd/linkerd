@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
+import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
+import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
@@ -50,7 +52,6 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .withPathStack(pathStack)
       .withBoundStack(boundStack)
       .withClientStack(clientStack)
-      .configured(RoutingFactory.DstPrefix(Path.Utf8(name)))
   }
 
   private[this] val monitor = Monitor.mk { case NonFatal(_) => true }
@@ -60,6 +61,12 @@ class H2Initializer extends ProtocolInitializer.Simple {
     .prepend(h2.ErrorReseter.module))
     .configured(param.Monitor(monitor))
 
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    // Does NOT use the ClearContext module that forcibly clears the
+    // context. Instead, we just strip out headers on inbound requests.
+    stk.replace(LinkerdHeaders.Ctx.serverModule.role, LinkerdHeaders.Ctx.clearServerModule)
+  }
+
   override def defaultServerPort: Int = 4142
 }
 
@@ -67,7 +74,7 @@ object H2Initializer extends H2Initializer
 
 class H2Config extends RouterConfig {
 
-  var client: Option[ClientConfig] = None
+  var client: Option[H2ClientConfig] = None
   var servers: Seq[H2ServerConfig] = Nil
 
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
@@ -101,14 +108,44 @@ class H2Config extends RouterConfig {
   }
 }
 
-class H2ServerConfig extends ServerConfig {
+trait H2EndpointConfig {
+
+  var initialStreamWindowBytes: Option[Int] = None
+  var headerTableBytes: Option[Int] = None
+  var maxFrameBytes: Option[Int] = None
+  var maxHeaderListBytes: Option[Int] = None
+  var windowUpdateRatio: Option[Double] = None
+
+  def withEndpointParams(params: Stack.Params): Stack.Params = params
+    .maybeWith(windowUpdateRatio.map(r => FlowControl.WindowUpdateRatio(r.toFloat)))
+    .maybeWith(headerTableBytes.map(s => Settings.HeaderTableSize(Some(s.bytes))))
+    .maybeWith(initialStreamWindowBytes.map(s => Settings.InitialStreamWindowSize(Some(s.bytes))))
+    .maybeWith(maxFrameBytes.map(s => Settings.MaxFrameSize(Some(s.bytes))))
+    .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
+}
+
+class H2ClientConfig extends ClientConfig with H2EndpointConfig {
+
+  @JsonIgnore
+  override def clientParams = withEndpointParams(super.clientParams)
+}
+
+class H2ServerConfig extends ServerConfig with H2EndpointConfig {
+
+  var maxConcurrentStreamsPerConnection: Option[Int] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
+
+  override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
+    .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
+
+  @JsonIgnore
+  override def serverParams = withEndpointParams(super.serverParams)
 }
 
-trait H2IdentifierConfig extends PolymorphicConfig {
+abstract class H2IdentifierConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]

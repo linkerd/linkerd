@@ -9,7 +9,7 @@ import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 abstract class FailureAccrualInitializer extends ConfigInitializer
 
-trait FailureAccrualConfig extends PolymorphicConfig {
+abstract class FailureAccrualConfig extends PolymorphicConfig {
   @JsonIgnore
   def policy: () => FailureAccrualPolicy
 

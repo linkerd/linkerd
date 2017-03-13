@@ -55,17 +55,15 @@ object Headers {
      *   - Deadline
      *   - Dtab
      *
-     * Note that currently, the dtabs read by this module are
-     * appeneded to that specified by the `l5d-dtab` header.  The
-     * `dtab-local` header should be considered deprecated in favor of
-     * `l5d-dtab`, and will not be supported in the future.
+     * Note that the dtabs read by this module are appeneded to that specified
+     * by the `l5d-dtab` header.
      *
      * Note that trace configuration is handled by
      * [[HttpTraceInitializer.serverModule]].
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {
-        val role = Stack.Role("ServerContextFilter")
+        val role = Stack.Role("ServerContext")
         val description = "Extracts linkerd context from http headers"
 
         val deadline = new Deadline.ServerFilter
@@ -75,15 +73,26 @@ object Headers {
           deadline.andThen(dtab).andThen(next)
       }
 
+    val clearServerModule: Stackable[ServiceFactory[Request, Response]] =
+      new Stack.Module0[ServiceFactory[Request, Response]] {
+        val role = serverModule.role
+        val description = "Clears linkerd context from http request headers"
+
+        val deadline = new Deadline.ClearServerFilter
+        val dtab = new Dtab.ClearServerFilter
+        val sample = new Sample.ClearServerFilter
+        val trace = new Trace.ClearServerFilter
+        val misc = new ClearMiscServerFilter
+
+        def make(next: ServiceFactory[Request, Response]) =
+          deadline.andThen(dtab).andThen(sample).andThen(trace).andThen(misc).andThen(next)
+      }
+
     /**
      * A clientside stack module that injects local contextual
      * information onto downstream requests.  Currently this includes:
      *   - Deadline
-     *
-     * Note that Dtabs are *not* encoded by this filter, since the
-     * HttpClientDispatcher is currently responsible for encoding the
-     * `dtab-local` header. In a future release, Dtabs will be encoded
-     * into the `l5d-ctx-dtab` header.
+     *   - Dtab
      *
      * Note that trace configuration is handled by
      * [[HttpTraceInitializer.clientModule]].
@@ -170,6 +179,13 @@ object Headers {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * If a deadline is set, encode it on downstream requests.
        *
@@ -192,11 +208,6 @@ object Headers {
      *   1. `l5d-ctx-dtab` is read and _written_ by linkerd. It is
      *      intended to managed entirely by linkerd, and applications
      *      should only forward requests prefixed by `l5d-ctx-*`.
-     *
-     *      *NOTE*: the client module does not yet encode
-     *      `l5d-ctx-dtab`. `dtab-local` is still to be relied on
-     *      until https://github.com/twitter/finagle/pull/514 is
-     *      complete.
      *
      *   2. `l5d-dtab` is to be provided by users. Applications are
      *       not required to forward `l5d-dtab` when fronted by
@@ -254,6 +265,13 @@ object Headers {
           }
       }
 
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
+      }
+
       /**
        * Encodes the local dtab into the L5d-Ctx-Dtab header.
        *
@@ -295,6 +313,13 @@ object Headers {
 
       def clear(headers: HeaderMap): Unit = {
         val _ = headers.remove(Key)
+      }
+
+      class ClearServerFilter extends SimpleFilter[Request, Response] {
+        def apply(req: Request, service: Service[Request, Response]) = {
+          clear(req.headerMap)
+          service(req)
+        }
       }
     }
   }
@@ -340,6 +365,13 @@ object Headers {
 
     def clear(headers: HeaderMap): Unit = {
       val _ = headers.remove(Key)
+    }
+
+    class ClearServerFilter extends SimpleFilter[Request, Response] {
+      def apply(req: Request, service: Service[Request, Response]) = {
+        clear(req.headerMap)
+        service(req)
+      }
     }
   }
 
@@ -407,6 +439,17 @@ object Headers {
           def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
             new BoundFilter(dst.name).andThen(factory)
         }
+    }
+  }
+
+  class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
+    def apply(req: Request, service: Service[Request, Response]) = {
+      for (k <- req.headerMap.keys) {
+        if (k.toLowerCase.startsWith(Headers.Prefix)) {
+          req.headerMap -= k
+        }
+      }
+      service(req)
     }
   }
 

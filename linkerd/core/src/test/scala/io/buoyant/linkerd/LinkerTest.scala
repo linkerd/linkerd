@@ -16,9 +16,8 @@ class LinkerTest extends FunSuite with Exceptions {
   def initializer(
     protos: Seq[ProtocolInitializer] = Seq(TestProtocol.Plain, TestProtocol.Fancy),
     namers: Seq[NamerInitializer] = Seq(TestNamerInitializer),
-    tracers: Seq[TracerInitializer] = Seq(TestTracerInitializer),
     telemeters: Seq[TelemeterInitializer] = Seq(new TestTelemeterInitializer)
-  ) = Linker.Initializers(protocol = protos, namer = namers, tracer = tracers, telemetry = telemeters)
+  ) = Linker.Initializers(protocol = protos, namer = namers, telemetry = telemeters)
 
   def parse(yaml: String) = initializer().load(yaml)
 
@@ -181,26 +180,9 @@ class LinkerTest extends FunSuite with Exceptions {
     assert(linker.namers != Nil)
   }
 
-  test("with tracers") {
+  test("with namers & telemetry") {
     val yaml =
-      """|tracers:
-         |- kind: test
-         |routers:
-         |- protocol: plain
-         |  servers:
-         |  - port: 1
-         |""".stripMargin
-    val linker = parse(yaml)
-    val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]
-    assert(tracer != DefaultTracer)
-    assert(linker.tracer != DefaultTracer)
-  }
-
-  test("with namers & tracers & telemetry") {
-    val yaml =
-      """|tracers:
-         |- kind: test
-         |telemetry:
+      """|telemetry:
          |- kind: io.l5d.testTelemeter
          |  metrics: true
          |- kind: io.l5d.testTelemeter
@@ -224,7 +206,7 @@ class LinkerTest extends FunSuite with Exceptions {
       case Seq((_, namer: TestNamer)) =>
       case namers => fail(s"unexpected namers: $namers")
     }
-    assert(linker.telemeters.size == 3)
+    assert(linker.telemeters.size == 5)
 
     val ttracers = linker.telemeters.map(_.tracer).collect { case t: BufferingTracer => t }
     assert(ttracers.size == 2)

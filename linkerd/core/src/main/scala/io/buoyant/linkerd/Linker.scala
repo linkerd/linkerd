@@ -1,18 +1,22 @@
 package io.buoyant.linkerd
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
-import com.twitter.finagle.util.LoadService
+import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
 import com.twitter.logging.Logger
+import com.twitter.server.util.JvmStats
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
+import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.telemetry._
+import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -40,7 +44,6 @@ object Linker {
     interpreter: Seq[InterpreterInitializer] = Nil,
     transformer: Seq[TransformerInitializer] = Nil,
     tlsClient: Seq[TlsClientInitializer] = Nil,
-    tracer: Seq[TracerInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
     classifier: Seq[ResponseClassifierInitializer] = Nil,
     telemetry: Seq[TelemeterInitializer] = Nil,
@@ -48,7 +51,7 @@ object Linker {
     failureAccrual: Seq[FailureAccrualInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, tracer, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
+      Seq(protocol, namer, interpreter, tlsClient, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -65,7 +68,6 @@ object Linker {
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
     LoadService[TransformerInitializer],
     LoadService[TlsClientInitializer],
-    LoadService[TracerInitializer],
     LoadService[IdentifierInitializer],
     LoadService[ResponseClassifierInitializer],
     LoadService[TelemeterInitializer],
@@ -100,35 +102,34 @@ object Linker {
   case class LinkerConfig(
     namers: Option[Seq[NamerConfig]],
     routers: Seq[RouterConfig],
-    tracers: Option[Seq[TracerConfig]],
     telemetry: Option[Seq[TelemeterConfig]],
-    admin: Option[AdminConfig]
+    admin: Option[AdminConfig],
+    usage: Option[UsageDataTelemeterConfig]
   ) {
 
-    def mk(defaultTelemeter: Telemeter = NullTelemeter): Linker = {
+    def mk(): Linker = {
       // At least one router must be specified
       if (routers.isEmpty) throw NoRoutersSpecified
 
-      val telemeters = telemetry match {
-        case None => Seq(defaultTelemeter)
-        case Some(telemeters) => telemeters.map {
-          case t if t.disabled =>
-            val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
-              "explicitly enabled by setting the `experimental' parameter to `true'."
-            throw new IllegalArgumentException(msg) with NoStackTrace
-          case t => t.mk(Stack.Params.empty + param.LinkerConfig(this))
-        }
-      }
+      val metrics = MetricsTree()
+
+      val telemeterParams = Stack.Params.empty + param.LinkerConfig(this) + metrics
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+      val usageTelemeter = usage.getOrElse(UsageDataTelemeterConfig()).mk(telemeterParams)
+
+      val telemeters = telemetry.toSeq.flatten.map {
+        case t if t.disabled =>
+          val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
+            "explicitly enabled by setting the `experimental' parameter to `true'."
+          throw new IllegalArgumentException(msg) with NoStackTrace
+        case t => t.mk(telemeterParams)
+      } :+ adminTelemeter :+ usageTelemeter
 
       // Telemeters may provide StatsReceivers.
-      val stats = mkStats(telemeters)
+      val stats = mkStats(metrics, telemeters)
       LoadedStatsReceiver.self = stats
+      JvmStats.register(stats)
 
-      // Tracers may be provided by telemeters OR by 'tracers'
-      // configuration.
-      //
-      // TODO the TracerInitializer API should be killed and these
-      // modules should be converted to Telemeters.
       val tracer = mkTracer(telemeters)
       DefaultTracer.self = tracer
 
@@ -144,15 +145,14 @@ object Linker {
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
     }
 
-    private[this] def mkStats(telemeters: Seq[Telemeter]) = {
-      val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats }
+    private[this] def mkStats(metrics: MetricsTree, telemeters: Seq[Telemeter]) = {
+      val receivers = telemeters.collect { case t if !t.stats.isNull => t.stats } :+ new MetricsTreeStatsReceiver(metrics)
       for (r <- receivers) log.debug("stats: %s", r)
       BroadcastStatsReceiver(receivers)
     }
 
     private[this] def mkTracer(telemeters: Seq[Telemeter]) = {
-      val all = tracers.getOrElse(Nil).map(_.newTracer()) ++
-        telemeters.collect { case t if !t.tracer.isNull => t.tracer }
+      val all = telemeters.collect { case t if !t.tracer.isNull => t.tracer }
       for (t <- all) log.info("tracer: %s", t)
       BroadcastTracer(all)
     }

@@ -2,7 +2,6 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
-import com.twitter.finagle.Stack.{Param, Params}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.{TlsConfig, Transport}
@@ -37,7 +36,6 @@ trait Server {
 object Server {
 
   case class RouterLabel(label: String)
-
   implicit object RouterLabel extends Stack.Param[RouterLabel] {
     val default = RouterLabel("")
   }
@@ -72,9 +70,9 @@ object Server {
     params: Stack.Params,
     announce: Seq[Path]
   ) extends Server {
-    override def configured[T: Param](t: T): Server = copy(params = params + t)
+    override def configured[T: Stack.Param](t: T): Server = copy(params = params + t)
 
-    override def withParams(ps: Params): Server = copy(params = ps)
+    override def withParams(ps: Stack.Params): Server = copy(params = ps)
   }
 
 }
@@ -88,13 +86,16 @@ class ServerConfig { config =>
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
 
+  var clearContext: Option[Boolean] = None
+
   private[this] def requestSemaphore =
     maxConcurrentRequests.map(new AsyncSemaphore(_, 0))
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
     .maybeWith(tls.map(netty3Tls(_)))
-    .maybeWith(tls.map(netty4Tls(_))) +
+    .maybeWith(tls.map(netty4Tls(_)))
+    .maybeWith(clearContext.map(ClearContext.Enabled(_))) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore

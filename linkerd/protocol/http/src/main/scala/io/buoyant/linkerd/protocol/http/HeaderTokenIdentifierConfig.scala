@@ -1,6 +1,7 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.http.Fields
 import com.twitter.finagle.{Dtab, Path}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
@@ -15,7 +16,7 @@ object HeaderTokenIdentifierInitializer extends HeaderTokenIdentifierInitializer
 
 object HeaderTokenIdentifierConfig {
   val kind = "io.l5d.header.token"
-  val defaultHeader = "Host"
+  val defaultHeader = Fields.Host
 }
 
 case class HeaderTokenIdentifierConfig(

@@ -8,7 +8,7 @@ trait App extends TApp
   with Linters
   with Logging
   with EventSink
-  with LogFormat
+  with TimeZoneLogFormat
   with Hooks
   with Lifecycle
   with Stats

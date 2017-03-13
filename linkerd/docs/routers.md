@@ -19,9 +19,9 @@ routers:
   bindingCache: ...
   label: myPackIce
   dstPrefix: /walruses/http
-  baseDtab: |
+  dtab: |
     /host                => /#/io.l5d.fs;
-    /walruses/http/1.1/* => /host;
+    /walruses/http => /host;
   failFast: false
   originator: true
   timeoutMs: 10000
@@ -35,7 +35,7 @@ Key | Default Value | Description
 protocol | _required_ | Either [`http`](#http-1-1-protocol), [`h2`](#http-2-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
 servers | _required_ | A list of [server objects](#servers).
 announcers | an empty list | A list of service discovery [announcers](#announcers) that servers can announce to.
-baseDtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
+dtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
 client | an empty object | An object of [client params](#client-parameters).
@@ -93,7 +93,7 @@ ip | loopback address | The local IP address. A value like 0.0.0.0 configures th
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
-
+clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
 
 <a name="client-parameters"></a>
 ## Client Parameters

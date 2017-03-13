@@ -4,7 +4,6 @@ admin:
   port: 9990
 
 telemetry:
-- kind: io.l5d.commonMetrics
 - kind: io.l5d.statsd
   experimental: true
   prefix: linkerd
@@ -20,7 +19,7 @@ namers:
 
 routers:
 - protocol: http
-  baseDtab: /http/1.1/* => /#/io.l5d.fs
+  dtab: /svc => /#/io.l5d.fs
   servers:
   - port: 4140
     ip: 0.0.0.0

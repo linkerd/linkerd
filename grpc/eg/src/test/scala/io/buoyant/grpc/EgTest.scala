@@ -123,8 +123,8 @@ class EgEndToEndTest extends FunSuite {
       val rf1 = rsps.recv()
 
       assert(!rf0.isDefined)
-      await(tx.send(Eg.Rsp(None)))
-      assert(getAndRelease(rf0) == Eg.Rsp(None))
+      await(tx.send(Eg.Rsp()))
+      assert(getAndRelease(rf0) == Eg.Rsp())
       assert(!rf1.isDefined)
       await(tx.send(Eg.Rsp(Some(Eg.Message.Enumeration.ONE))))
       eventually { assert(rf1.isDefined) }
@@ -167,7 +167,7 @@ class EgEndToEndTest extends FunSuite {
       val rf1 = rx.recv()
       assert(!rf1.isDefined)
 
-      await(tx.send(Eg.Req(None, Some(true))))
+      await(tx.send(Eg.Req(destroyFascism = Some(true))))
       val req0 = getAndRelease(rf0)
       assert(req0.value == None)
       assert(req0.destroyFascism == Some(true))

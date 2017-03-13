@@ -109,11 +109,14 @@ object Stream {
   def apply(): Stream with Writer =
     new AsyncQueueReaderWriter
 
-  def const(buf: Buf): Stream = {
+  def const(f: Frame): Stream = {
     val q = new AsyncQueue[Frame]
-    q.offer(Frame.Data.eos(buf))
+    q.offer(f)
     apply(q)
   }
+
+  def const(buf: Buf): Stream =
+    const(Frame.Data.eos(buf))
 
   def const(s: String): Stream =
     const(Buf.Utf8(s))
