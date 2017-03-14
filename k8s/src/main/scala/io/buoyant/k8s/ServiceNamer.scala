@@ -28,13 +28,13 @@ class ServiceNamer(
 
   def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
     case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-      val nameTree = serviceNs.get(nsName, None).get(serviceName, portName).map(toNameTree(path, _))
+      val nameTree = serviceNs.get(nsName.toLowerCase, None).get(serviceName.toLowerCase, portName.toLowerCase).map(toNameTree(path, _))
       Activity(nameTree.map(Activity.Ok(_)))
 
     case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
       val nameTree = serviceNs
-        .get(nsName, Some(s"$label=$labelValue"))
-        .get(serviceName, portName)
+        .get(nsName.toLowerCase, Some(s"$label=$labelValue"))
+        .get(serviceName.toLowerCase, portName.toLowerCase)
         .map(toNameTree(path, _))
 
       Activity(nameTree.map(Activity.Ok(_)))

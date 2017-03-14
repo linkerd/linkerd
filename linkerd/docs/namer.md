@@ -261,7 +261,7 @@ Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
 namespace | yes | The Kubernetes namespace.
-port-name | yes | The port name.
+port-name | yes | The port name or port number.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The value used to filter services.
 
