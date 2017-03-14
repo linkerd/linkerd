@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package io.buoyant.proto;
+
+message Path {
+  repeated bytes elems = 1;
+}
+
+message PathNameTree {
+  oneof node {
+    Nop nop = 1;
+    Alt alt = 2;
+    Union union = 3;
+    Leaf leaf = 4;
+  }
+
+  enum Nop {
+    NEG = 0;
+    FAIL = 1;
+    EMPTY = 2;
+  }
+  message Alt { repeated PathNameTree trees = 1; }
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      PathNameTree tree = 2;
+    }
+  }
+  message Leaf { Path path = 1; }
+}
+
+message Dtab {
+  repeated Dentry dentries = 1;
+
+  message Dentry {
+    Prefix prefix = 1;
+    PathNameTree dst = 2;
+
+    message Prefix {
+      repeated Elem elems = 1;
+
+      message Elem {
+        oneof value {
+          bytes label = 1;
+          Wildcard wildcard = 2;
+        }
+        message Wildcard {}
+      }
+    }
+  }
+}
+
+message BoundNameTree {
+  oneof node {
+    Nop nop = 1;
+    Alt alt = 2;
+    Union union = 3;
+    Leaf leaf = 4;
+  }
+
+  enum Nop {
+    NEG = 0;
+    FAIL = 1;
+    EMPTY = 2;
+  }
+  message Alt { repeated BoundNameTree trees = 1; }
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      BoundNameTree tree = 2;
+    }
+  }
+  message Leaf {
+    Path id = 1;
+    Path residual = 2;
+  }
+}
+
+
+message BoundDelegateTree {
+  Path path = 1;
+  Dtab.Dentry dentry = 2;
+  oneof node {
+    Nop nop = 3;
+    Alt alt = 4;
+    Union union = 5;
+    Leaf leaf = 6;
+    BoundDelegateTree delegate = 7;
+    Transformation transformation = 8;
+    string exception = 9;
+  }
+
+  enum Nop {
+    NEG = 0;
+    FAIL = 1;
+    EMPTY = 2;
+  }
+  message Alt { repeated BoundDelegateTree trees = 1; }
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      BoundDelegateTree tree = 2;
+    }
+  }
+  message Leaf {
+    Path id = 1;
+    Path residual = 2;
+  }
+
+  message Transformation {
+    string name = 1;
+    Leaf leaf = 2;
+    BoundDelegateTree tree = 3;
+  }
+}

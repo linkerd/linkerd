@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package io.buoyant.proto.namerd;
+
+import "dtab.proto";
+
+/*
+ * Highly experimental
+ *
+ * TODO
+ * - remove error types in favor of grpc-status/grpc-message
+ */
+
+
+/**
+ * A read-only interface (i.e. for interpreters in linkerd).
+ */
+service Interpreter {
+
+  rpc Parse (ParseReq) returns (ParseRsp) {}
+  
+  rpc GetDtab (DtabReq) returns (DtabRsp) {}
+  rpc StreamDtab (DtabReq) returns (stream DtabRsp) {}
+
+  rpc GetBoundTree (BindReq) returns (BoundTreeRsp) {}
+  rpc StreamBoundTree (BindReq) returns (stream BoundTreeRsp) {}
+
+  rpc GetAddr (AddrReq) returns (Addr) {}
+  rpc StreamAddr (AddrReq) returns (stream Addr) {}
+
+  rpc GetDelegateTree (DelegateTreeReq) returns (DelegateTreeRsp) {}
+  rpc StreamDelegateTree (DelegateTreeReq) returns (stream DelegateTreeRsp) {}
+
+  // TODO GetNsList 
+  // TODO StreamNsList 
+}
+
+/*
+ * Parse -- parsing a DTAB from a string
+ */
+
+message ParseReq {
+  string text = 1;
+}
+
+message ParseRsp {
+  io.buoyant.proto.Dtab dtab = 1;
+}
+
+/*
+ * GetDtab, StreamDtab
+ */
+
+message DtabReq {
+  string ns = 1;
+}
+
+message VersionedDtab {
+  message Version {
+    bytes stamp = 1;
+  }
+
+  Version version = 1;
+  io.buoyant.proto.Dtab dtab = 2;
+}
+
+message DtabRsp {
+  VersionedDtab dtab = 1;
+}
+
+/*
+ * GetBoundTree, StreamBoundTree
+ */
+
+message BindReq {
+  string ns = 1;
+  Path name = 2;
+  Dtab dtab = 3;
+}
+
+message BoundTreeRsp {
+  BoundNameTree tree = 1;
+}
+
+/*
+ * GetAddr, StreamAddr
+ */
+
+message AddrReq {
+  Path id = 1;
+}
+
+message Endpoint {
+
+  enum AddressFamily {
+    INET4 = 0;
+    INET6 = 1;
+  }
+  AddressFamily family = 1;
+
+  /** An opaque address (according to family). */
+  bytes address = 2;
+
+  int32 port = 3;
+
+  /** Endpoint-specific metadata */
+  message Meta {
+    /**
+     * Suggested HTTP authority to be used for inbound requests.
+     */
+    string authority = 1;
+
+    /**
+     * In scheduled environments, a diagnostic name for the parent node.
+     */
+    string nodeName = 2;
+  }
+  Meta meta = 4;
+}
+
+message Addr {
+
+  message Pending {}
+
+  message Neg {}
+
+  message Failed {
+    string message = 1;
+  }
+
+  message Bound {
+    repeated Endpoint endpoints = 1;
+
+    /** Cluster-level metadata */
+    message Meta {
+      /**
+       * Suggested HTTP authority to be used for inbound requests.
+       */
+      string authority = 1;    
+    }
+    Meta meta = 2;
+  }
+
+  oneof result {
+    Pending pending = 1;
+    Neg neg = 2;
+    Failed failed = 3;
+    Bound bound = 4;
+  }
+}
+
+
+/*
+ * GetDelegateTree, StreamDelegateTree
+ */
+
+message DelegateTreeReq {
+  string ns = 1;
+  PathNameTree tree = 2;
+  Dtab dtab = 3;
+}
+
+
+message DelegateTreeRsp {
+  BoundDelegateTree tree = 1;
+}
+

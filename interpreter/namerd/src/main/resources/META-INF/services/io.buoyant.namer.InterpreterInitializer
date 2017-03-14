@@ -1,2 +1,3 @@
+io.buoyant.namerd.iface.NamerdGrpcInterpreterInitializer
 io.buoyant.namerd.iface.NamerdHttpInterpreterInitializer
 io.buoyant.namerd.iface.NamerdInterpreterInitializer
