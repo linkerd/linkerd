@@ -459,7 +459,7 @@ object LinkerdBuild extends Base {
         .withE2e()
 
       val thriftMux = projectDir("linkerd/protocol/thriftmux")
-        .dependsOn(core, Router.thriftMux)
+        .dependsOn(core, thrift, Router.thriftMux)
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, testUtil)
