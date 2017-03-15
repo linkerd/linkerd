@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package io.linkerd.mesh;
+
+/**
+ * Names are represented as hierarchical paths.
+ *
+ * A path element MAY contain binary-encoded segments.
+ */
+message Path {
+  repeated bytes elems = 1;
+}
+
+message PathNameTree {
+
+  /**
+   * A PathNameTree is a hierachy of nodes:
+   */
+  oneof node {
+    Neg neg = 1;
+    Fail fail = 2;
+    Empty empty = 3;
+    Alt alt = 4;
+    Union union = 5;
+    Leaf leaf = 6;
+  }
+
+  message Neg {}
+  message Fail {}
+  message Empty {}
+
+  /**
+   * Describes a sequence of alternate trees that may be used, from
+   * greatest preference to least.
+   */
+  message Alt { repeated PathNameTree trees = 1; }
+
+  /**
+   * Describes a set of trees to be used together.
+   */
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      PathNameTree tree = 2;
+    }
+  }
+
+  /**
+   * A terminal node with a value.
+   */
+  message Leaf { Path id = 1; }
+}
+
+/**
+ * A delegation table comprises a sequence of rewrite rules.  Each
+ * Dentry describes a prefix upon which paths are matched and a
+ * destination to use as the new prefix.
+ *
+ * These rules are applied until the tree cannot be refined any
+ * further.
+ */
+message Dtab {
+  repeated Dentry dentries = 1;
+
+  message Dentry {
+    Prefix prefix = 1;
+    PathNameTree dst = 2;
+
+    message Prefix {
+      repeated Elem elems = 1;
+
+      message Elem {
+        oneof value {
+          bytes label = 1;
+          Wildcard wildcard = 2;
+        }
+        message Wildcard {}
+      }
+    }
+  }
+}
+
+/**
+ * A Dtab with a unique identifier.  Useful for compare-and-swap
+ * writes.
+ */
+message VersionedDtab {
+  message Version {
+    bytes id = 1;
+  }
+
+  Version version = 1;
+  Dtab dtab = 2;
+}

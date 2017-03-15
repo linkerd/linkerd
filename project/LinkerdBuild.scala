@@ -81,6 +81,14 @@ object LinkerdBuild extends Base {
     val all = aggregateDir("router", core, h2, http, mux, thrift)
   }
 
+  object Mesh {
+    val core = projectDir("mesh/core")
+      .dependsOn(Grpc.runtime)
+      .withGrpc
+
+    val all = aggregateDir("mesh", core)
+  }
+
   object Namer {
     val core = projectDir("namer/core")
       .dependsOn(configCore)
@@ -242,13 +250,18 @@ object LinkerdBuild extends Base {
         .settings(coverageExcludedPackages := ".*thriftscala.*")
 
       val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
-        .dependsOn(core)
-        .dependsOn(interpreterThriftIdl)
+        .dependsOn(core, interpreterThriftIdl)
         .withLib(Deps.guava)
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
         .withTests()
 
-      val all = aggregateDir("namerd/iface", controlHttp, interpreterThriftIdl, interpreterThrift)
+      val mesh = projectDir("namerd/iface/mesh")
+        .dependsOn(core, Mesh.core)
+
+      val all = aggregateDir(
+        "namerd/iface",
+        controlHttp, interpreterThriftIdl, interpreterThrift, mesh
+      )
     }
 
     val main = projectDir("namerd/main")
@@ -288,8 +301,9 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
-      Iface.controlHttp, Iface.interpreterThrift,
+      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
       Telemetry.adminMetricsExport
@@ -376,13 +390,21 @@ object LinkerdBuild extends Base {
   }
 
   object Interpreter {
-    val namerd = projectDir("interpreter/namerd")
-      .withTests()
-      .dependsOn(Namer.core, Namerd.Iface.interpreterThrift, Namerd.Iface.controlHttp, Router.core)
-
     val fs = projectDir("interpreter/fs")
       .withTests()
       .dependsOn(Namer.core, Namer.fs)
+
+    val namerd = projectDir("interpreter/namerd")
+      .withTests()
+      .dependsOn(
+        Namer.core,
+        Namerd.Iface.interpreterThrift,
+        Namerd.Iface.controlHttp,
+        Router.core)
+
+    val mesh = projectDir("interpreter/mesh")
+      .withTests()
+      .dependsOn(Namer.core, Mesh.core, Grpc.runtime)
 
     val subnet = projectDir("interpreter/subnet")
       .dependsOn(Namer.core)
@@ -396,7 +418,7 @@ object LinkerdBuild extends Base {
         .dependsOn(Namer.core, LinkerdBuild.k8s, perHost, subnet)
         .withTests()
 
-    val all = aggregateDir("interpreter", fs, k8s, namerd, perHost, subnet)
+    val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
   }
 
   object Linkerd {
@@ -519,7 +541,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
       Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
-      Interpreter.namerd, Interpreter.fs, Interpreter.perHost, Interpreter.k8s,
+      Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
@@ -591,6 +613,9 @@ object LinkerdBuild extends Base {
   val routerThrift = Router.thrift
   val routerThriftIdl = Router.thriftIdl
 
+  val mesh = Mesh.all
+  val meshCore = Mesh.core
+
   val telemetry = Telemetry.all
   val telemetryAdminMetricsExport = Telemetry.adminMetricsExport
   val telemetryCore = Telemetry.core
@@ -614,22 +639,24 @@ object LinkerdBuild extends Base {
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
   val namerdDcosBootstrap = Namerd.dcosBootstrap
+  val namerdIface = Namerd.Iface.all
   val namerdIfaceControlHttp = Namerd.Iface.controlHttp
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
+  val namerdIfaceMesh = Namerd.Iface.mesh
   val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
   val namerdStorageZk = Namerd.Storage.zk
   val namerdStorageConsul = Namerd.Storage.consul
   val namerdStorage = Namerd.Storage.all
-  val namerdIface = Namerd.Iface.all
   val namerdMain = Namerd.main
 
   val interpreter = Interpreter.all
-  val interpreterNamerd = Interpreter.namerd
   val interpreterFs = Interpreter.fs
   val interpreterK8s = Interpreter.k8s
+  val interpreterMesh = Interpreter.mesh
+  val interpreterNamerd = Interpreter.namerd
   val interpreterPerHost = Interpreter.perHost
   val interpreterSubnet = Interpreter.subnet
 

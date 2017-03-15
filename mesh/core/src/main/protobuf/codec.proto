@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package io.linkerd.mesh;
+
+import "dtab.proto";
+
+/**
+ * A truly stateless service, providing utility functions for thin
+ * clients that don't want to implement parsing & formatting.
+ */
+service Codec {
+
+  /** Read a textual dtab into a structure. */
+  rpc ReadDtab (ReadDtabReq) returns (ReadDtabRsp) {}
+
+  /** Textualize a structured dtab. */
+  rpc ShowDtab (ShowDtabReq) returns (ShowDtabRsp) {}
+  
+  /** Read a textual path into a structure. */
+  rpc ReadPath(ReadPathReq) returns (ReadPathRsp) {}
+
+  /** Textualize a structured path. */
+  rpc ShowPath(ShowPathReq) returns (ShowPathRsp) {}
+}
+
+/* ReadDtab, ShowDtab */
+
+message ReadDtabReq {
+  string text = 1;
+}
+
+message ReadDtabRsp {
+  Dtab dtab = 1;
+}
+
+message ShowDtabReq {
+  Dtab dtab = 1;
+}
+
+message ShowDtabRsp {
+  string text = 1;
+}
+
+/* ReadPath, ShowPath */
+
+message ReadPathReq {
+  string text = 1;
+}
+
+message ReadPathRsp {
+  Path path = 1;
+}
+
+message ShowPathReq {
+  Path path = 1;
+}
+
+message ShowPathRsp {
+  string text = 1;
+}
