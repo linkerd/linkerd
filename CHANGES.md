@@ -1,12 +1,18 @@
-## In the next release
+## 0.9.1 2017-03-15
 
-* Add `tree` and `q` params to /admin/metrics.json
-* Add tree and q params to /admin/metrics.json
-* Fix: rewrite Location & Refresh HTTP response headers when Linkerd
-  rewrites request Host header
-* Increase default binding cache size
-* Allow k8s namer to accept port numbers
-* Make k8s namer case insensitive
+* Admin dashboard:
+  * Fix display issues for long dtabs in the namerd tab.
+  * Indicate the primary path in the dtab tab.
+  * Add `tree` and `q` params to /admin/metrics.json.
+* Kubernetes:
+  * Allow k8s namer to accept port numbers.
+  * Make k8s namer case insensitive.
+  * Add k8s ingress identifiers to allow linkerd to act as an ingress controller.
+* Fix TTwitter thrift protocol upgrade bug.
+* Rewrite Location & Refresh HTTP response headers when Linkerd
+  rewrites request Host header.
+* Increase default binding cache size to reduce connection churn.
+* Fetch correct protoc version on demand.
 * Introduce the `io.l5d.mesh` linkerd interpreter and namerd iface. The mesh
   iface exposes a gRPC API that can be used for multiplexed, streaming updates.
   (*Experimental*)
