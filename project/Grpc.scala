@@ -76,6 +76,7 @@ object Grpc extends Base {
       javaSource <<= (javaSource in Compile),
       scalaSource <<= (sourceManaged in Compile) { _ / "compiled_protobuf" },
       generatedTargets <<= scalaSource { d => Seq(d -> "*.pb.scala") },
+      protoc := "./protoc",
       grpcGenExec <<= grpcGenExec0,
       runProtoc <<= runProtoc0,
       protocOptions <<= scalaSource { ss =>

@@ -82,6 +82,42 @@ class ThriftEndToEndTest extends FunSuite {
     }
   }
 
+  test("multiple clients") {
+    val cat = Downstream.const("cat", "meow")
+    val router = {
+      val config = new ThriftConfig(None) {
+        dtab = Some(Dtab.read(s"""/svc/cat => /$$/inet/127.1/${cat.port} ;"""))
+        servers = Seq(
+          new ThriftServerConfig(None, None) {
+            port = Some(Port(0))
+          }
+        )
+        _client = Some(ThriftClientConfig(attemptTTwitterUpgrade = Some(true)))
+      }
+      config.router(Stack.Params.empty).initialize().servers.head.serve()
+    }
+
+    val client1 = upstream(router)
+    val client2 = upstream(router)
+    def ping(client: PingService[Future], dst: Path, msg: String = "")(f: String => Unit): Unit = {
+      Dest.local = dst
+      val rsp = await(client.ping(msg))
+      f(rsp)
+    }
+
+    try {
+      ping(client1, Path.read("/cat")) { rsp =>
+        assert(rsp == "meow")
+      }
+      ping(client2, Path.read("/cat")) { rsp =>
+        assert(rsp == "meow")
+      }
+    } finally {
+      await(cat.server.close())
+      await(router.close())
+    }
+  }
+
   test("linker-to-linker echo routing") {
     val cat = Downstream.const("cat", "meow")
     val incoming = {

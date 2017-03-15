@@ -10,12 +10,9 @@ import org.scalatest.FunSuite
 
 class RewriteHostHeaderTest extends FunSuite with Awaits {
 
-  def makeService(meta: Addr.Metadata) = {
+  def makeService(meta: Addr.Metadata)(transform: Request => Response) = {
     val svc = Service.mk[Request, Response] { req =>
-      val rsp = Response()
-      rsp.status = Status.Ok
-      rsp.setContentString(req.host.get)
-      Future.value(rsp)
+      Future.value(transform(req))
     }
 
     val stk = RewriteHostHeader.module.toStack(
@@ -26,7 +23,11 @@ class RewriteHostHeaderTest extends FunSuite with Awaits {
   }
 
   test("filter rewrites host header when authority meta present") {
-    val service = makeService(Addr.Metadata(Metadata.authority -> "acme.co"))
+    val service = makeService(Addr.Metadata(Metadata.authority -> "acme.co")) { req =>
+      val rsp = Response(Status.Ok)
+      rsp.setContentString(req.host.get)
+      rsp
+    }
 
     val req = Request(Method.Get, "/")
     req.host = "monkeys"
@@ -36,12 +37,57 @@ class RewriteHostHeaderTest extends FunSuite with Awaits {
   }
 
   test("filter doesn't rewrite host header normally") {
-    val service = makeService(Addr.Metadata.empty)
+    val service = makeService(Addr.Metadata.empty) { req =>
+      val rsp = Response(Status.Ok)
+      rsp.setContentString(req.host.get)
+      rsp
+    }
 
     val req = Request(Method.Get, "/")
     req.host = "monkeys"
 
     val result = await(service(req))
     assert(result.getContentString() == "monkeys")
+  }
+
+  test("filter rewrites Refresh response header") {
+    val service = makeService(Addr.Metadata(Metadata.authority -> "acme.co")) { req =>
+      val rsp = Response(Status.Ok)
+      rsp.headerMap.set("Refresh", s"5; url=http://${req.host.getOrElse("")}/bar")
+      rsp
+    }
+
+    val req = Request(Method.Get, "/foo")
+    req.host = "monkeys"
+
+    val result = await(service(req))
+    assert(result.headerMap.get("Refresh").contains("5; url=http://monkeys/bar"))
+  }
+
+  test("filter rewrites Location response header") {
+    val service = makeService(Addr.Metadata(Metadata.authority -> "acme.co")) { req =>
+      val rsp = Response(Status.Ok)
+      rsp.headerMap.set(Fields.Location, s"http://${req.host.getOrElse("")}/bar")
+      rsp
+    }
+
+    val req = Request(Method.Get, "/foo")
+    req.host = "monkeys"
+
+    val result = await(service(req))
+    assert(result.headerMap.get(Fields.Location).contains("http://monkeys/bar"))
+  }
+
+  test("filter doesn't add Location/Refresh headers if they're not present in original response") {
+    val service = makeService(Addr.Metadata(Metadata.authority -> "acme.co")) { req =>
+      Response(Status.Ok)
+    }
+
+    val req = Request(Method.Get, "/foo")
+    req.host = "monkeys"
+
+    val result = await(service(req))
+    assert(result.headerMap.get(Fields.Location).isEmpty)
+    assert(result.headerMap.get("Refresh").isEmpty)
   }
 }

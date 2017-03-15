@@ -256,13 +256,13 @@ class Base extends Build {
       .dependsOn(testUtil % IntegrationTest)
 
     /** Writes build metadata into the projects resources */
-    def withBuildProperties(): Project = project
+    def withBuildProperties(path: String): Project = project
       .settings((resourceGenerators in Compile) <+=
         (resourceManaged in Compile, name, version).map { (dir, name, ver) =>
           val rev = Process("git" :: "rev-parse" :: "HEAD" :: Nil).!!.trim
           val build = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date)
           val contents = s"name=$name\nversion=$ver\nbuild_revision=$rev\nbuild_name=$build"
-          val file = dir / "io" / "buoyant" / name / "build.properties"
+          val file = dir / path / "build.properties"
           IO.write(file, contents)
           Seq(file)
         })

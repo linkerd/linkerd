@@ -1,6 +1,12 @@
 ## In the next release
 
 * Add `tree` and `q` params to /admin/metrics.json
+* Add tree and q params to /admin/metrics.json
+* Fix: rewrite Location & Refresh HTTP response headers when Linkerd
+  rewrites request Host header
+* Increase default binding cache size
+* Allow k8s namer to accept port numbers
+* Make k8s namer case insensitive
 * Introduce the `io.l5d.mesh` linkerd interpreter and namerd iface. The mesh
   iface exposes a gRPC API that can be used for multiplexed, streaming updates.
   (*Experimental*)

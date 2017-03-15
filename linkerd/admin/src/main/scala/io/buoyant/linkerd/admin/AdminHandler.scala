@@ -3,10 +3,11 @@ package io.buoyant.linkerd.admin
 import com.twitter.finagle.http.{MediaType, Response}
 import com.twitter.util.Future
 import io.buoyant.admin.Admin.NavItem
-import io.buoyant.admin.HtmlView
-import io.buoyant.linkerd.Build
+import io.buoyant.admin.{Build, HtmlView}
 
 class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
+
+  private[this] val build = Build.load("/io/buoyant/linkerd/build.properties")
 
   private[this] def navHtml(highlightedItem: String = "") = navItems.map { item =>
     val activeClass = if (item.name == highlightedItem) "active" else ""
@@ -46,7 +47,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           </ul>
           <ul class="nav navbar-nav navbar-right">
             ${routerDropdown}
-            <li class="version">version ${Build.load().version}</li>
+            <li class="version">version ${build.version}</li>
           </ul>
         </div>
       </div>

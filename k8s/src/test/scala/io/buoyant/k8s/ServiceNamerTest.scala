@@ -179,4 +179,18 @@ class ServiceNamerTest extends FunSuite with Awaits {
       await(writer.write(Rsps.Created))
     }
   }
+
+  test("is case insensitive") {
+    val _ = new Fixtures {
+      def lookup = Path.read("/pYtHoNsKy/ExTeRnAl/L5D/rEsIdUaL")
+
+      // initial value
+      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val NameTree.Leaf(bound0: Name.Bound) = init
+      val Addr.Bound(addresses0, meta0) = await(bound0.addr.changes.toFuture)
+      assert(addresses0 == Set(Address(new InetSocketAddress("104.155.170.94", 80))))
+      assert(bound0.id == Path.read("/test/pYtHoNsKy/ExTeRnAl/L5D"))
+      assert(bound0.path == Path.read("/rEsIdUaL"))
+    }
+  }
 }
