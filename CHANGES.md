@@ -1,6 +1,9 @@
 ## In the next release
 
-* Add tree and q params to /admin/metrics.json
+* Add `tree` and `q` params to /admin/metrics.json
+* Introduce the `io.l5d.mesh` linkerd interpreter and namerd iface. The mesh
+  iface exposes a gRPC API that can be used for multiplexed, streaming updates.
+  (*Experimental*)
 
 ## 0.9.0 2017-02-22
 
