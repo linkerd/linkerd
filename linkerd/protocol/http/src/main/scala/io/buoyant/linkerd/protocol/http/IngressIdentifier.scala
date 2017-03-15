@@ -28,12 +28,11 @@ class IngressIdentifier(
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val matchingPath = ingressCache.matchPath(req.host, req.path)
     matchingPath.flatMap {
-        case None => Future.value(unidentified)
-        case Some(a) =>
-          val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
-          val dst = Dst.Path(path, baseDtab(), Dtab.local)
-          Future.value(new IdentifiedRequest(dst, req))
-      }
+      case None => Future.value(unidentified)
+      case Some(a) =>
+        val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
+        val dst = Dst.Path(path, baseDtab(), Dtab.local)
+        Future.value(new IdentifiedRequest(dst, req))
     }
   }
 }
