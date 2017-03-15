@@ -1,20 +1,33 @@
-## Upcoming Release
+## In the next release
 
-* Make `io.l5d.consul` case-insensitive
-* Add `io.l5d.usage` telemeter for opt-in usage data collection
-* Admin dashboard
-  * Sorts clients and servers alphabetically
-  * Displays routers in the order that they are defined
-* Update Marathon namer to evaluate an app's running state
+* Add tree and q params to /admin/metrics.json
+
+## 0.9.0 2017-02-22
+
+* Admin dashboard:
+  * Add retries stat, retry budget bar, and client pool bar.
+  * Add colored border to clients to make them easier to distinguish.
+  * Sorts clients and servers alphabetically.
+  * Displays routers in the order that they are defined.
+  * Namerd Admin now works with Dtabs of arbitrary size.
+* Naming and Routing:
+  * Rename `baseDtab` router property to `dtab`.
+  * Change the default `dstPrefix` from the protocol name to `/svc`.
+  * Change the default HTTP identifier to the `io.l5d.header.token` identifier.
+  * Add the ability to route basted on the `dest` request header when using the
+    TTwitter Thrift protocol.
+* Metrics and Tracing:
+  * Remove `io.l5d.commonMetrics` telemeter.
+  * Add `io.l5d.prometheus` telemeter.
+  * Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
+  * Add opt-out usage data collection.
+* Namers:
+  * Update Marathon namer to evaluate an app's running state.
+  * Add `preferServiceAddress` option to `io.l5d.consul` namer
+  * Make `io.l5d.consul` case-insensitive
 * Add `roundRobin` as a load balancer option.
-* Add the ability to route basted on the `dest` request header when using the
-  TTwitter Thrift protocol
-* Rename `baseDtab` router property to `dtab`
-* Add `io.l5d.adminMetricsExport` telemeter as an eventual replacement for the
-  `io.l5d.commonMetrics` telemeter.
-* Remove the `tracers` router config in favor of the `io.l5d.zipkin` telemeter.
-* Change the default `dstPrefix` from the protocol name to `/svc`
-* Change the default HTTP identifier to the `io.l5d.header.token` identifier
+* Add the `clearContext` server configuration option.
+* Fix query parameter decoding when rewriting proxied requests
 
 ## 0.8.6 2017-01-19
 

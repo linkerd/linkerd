@@ -6,7 +6,7 @@ import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
 abstract class ResponseClassifierInitializer extends ConfigInitializer
 
-trait ResponseClassifierConfig extends PolymorphicConfig {
+abstract class ResponseClassifierConfig extends PolymorphicConfig {
   @JsonIgnore
   def mk: ResponseClassifier
 }

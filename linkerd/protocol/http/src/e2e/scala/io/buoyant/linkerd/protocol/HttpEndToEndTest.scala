@@ -29,7 +29,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   object Downstream {
     def mk(name: String)(f: Request=>Response): Downstream = {
       val service = Service.mk { req: Request => Future(f(req)) }
-      val server = FinagleHttp.server
+      val stack = FinagleHttp.server.stack.remove(Headers.Ctx.serverModule.role)
+      val server = FinagleHttp.server.withStack(stack)
         .configured(param.Label(name))
         .configured(param.Tracer(NullTracer))
         .serve(":*", service)
@@ -48,7 +49,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   def upstream(server: ListeningServer) = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    FinagleHttp.client
+    val stack = FinagleHttp.client.stack.remove(Headers.Ctx.clientModule.role)
+    FinagleHttp.client.withStack(stack)
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
       .newClient(name, "upstream").toService
@@ -318,10 +320,6 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   for (readHeader <- dtabReadHeaders) test(s"dtab read from $readHeader header") {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
-    def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
-      f(tracer.iterator.map(_.annotation).toSeq)
-      tracer.clear()
-    }
 
     @volatile var headers: HeaderMap = null
 
@@ -350,5 +348,127 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       else assert(!headers.contains(header))
     }
     assert(!headers.contains("dtab-local"))
+  }
+
+  test("dtab-local header is ignored") {
+    val stats = NullStatsReceiver
+    val tracer = new BufferingTracer
+
+    @volatile var headers: HeaderMap = null
+
+    val dog = Downstream.mk("dog") { req =>
+      headers = req.headerMap
+      req.response
+    }
+    val dtab = Dtab.read(s"""
+      /svc/* => /$$/inet/127.1/${dog.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.set("dtab-local", "/a=>/b")
+    await(client(req))
+    assert(headers("dtab-local") == "/a=>/b")
+    assert(!headers.contains(dtabWriteHeader))
+  }
+
+  test("with clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
+      rsp
+    }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    val body =
+      try {
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-trace"
+    ))
+  }
+
+  test("without clearContext") {
+    val downstream = Downstream.mk("dog") { req =>
+      val rsp = Response()
+      rsp.contentString = req.headerMap.collect {
+        case (k, v) if k.startsWith("l5d-") => s"$k=$v"
+      }.mkString(",")
+      rsp
+    }
+
+    val localDtab = "/foo=>/bar"
+    val req = Request()
+    req.host = "test"
+    req.headerMap("l5d-dtab") = localDtab
+    req.headerMap("l5d-ctx-thing") = "yoooooo"
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+    val body =
+      try {
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    val headers =
+      body.split(",").map { kv =>
+        val Array(k, v) = kv.split("=", 2)
+        k -> v
+      }.toMap
+    assert(headers.keySet == Set(
+      "l5d-dst-logical",
+      "l5d-dst-concrete",
+      "l5d-reqid",
+      "l5d-ctx-dtab",
+      "l5d-ctx-trace",
+      "l5d-ctx-thing"
+    ))
+    assert(headers.get("l5d-ctx-dtab") == Some(localDtab))
   }
 }

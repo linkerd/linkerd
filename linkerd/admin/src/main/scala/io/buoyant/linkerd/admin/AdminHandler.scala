@@ -13,7 +13,19 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
     s"""<li class=$activeClass><a href="${item.url}">${item.name}</a></li>"""
   }.mkString("\n")
 
-  def navBar(highlightedItem: String = "") =
+  def navBar(highlightedItem: String = "", showRouterDropdown: Boolean = false) = {
+    val routerDropdown = if (showRouterDropdown) {
+      """
+      <li class="dropdown">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+          <span class="router-label">all</span> <span class="caret"></span>
+        </a>
+        <ul class="dropdown-menu">
+        </ul>
+      </li>
+      """
+    } else ""
+
     s"""<nav class="navbar navbar-inverse">
       <div class="navbar-container">
         <div class="navbar-header">
@@ -33,18 +45,13 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           ${navHtml(highlightedItem)}
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                <span class="router-label">all</span> <span class="caret"></span>
-              </a>
-              <ul class="dropdown-menu">
-              </ul>
-            </li>
+            ${routerDropdown}
             <li class="version">version ${Build.load().version}</li>
           </ul>
         </div>
       </div>
     </nav>"""
+  }
 
   def mkResponse(
     content: String,
@@ -60,7 +67,8 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
     content: String,
     tailContent: String = "",
     csses: Seq[String] = Nil,
-    navHighlight: String = ""
+    navHighlight: String = "",
+    showRouterDropdown: Boolean = false
   ): String = {
     val cssesHtml = csses.map { css =>
       s"""<link type="text/css" href="files/css/$css" rel="stylesheet"/>"""
@@ -79,7 +87,7 @@ class AdminHandler(navItems: Seq[NavItem]) extends HtmlView {
           $cssesHtml
         </head>
         <body>
-          ${navBar(navHighlight)}
+          ${navBar(navHighlight, showRouterDropdown)}
 
           <div class="container-fluid">
             $content

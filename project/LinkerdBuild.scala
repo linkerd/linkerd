@@ -148,7 +148,7 @@ object LinkerdBuild extends Base {
       .withLib(Deps.jacksonCore)
       .withTests()
 
-    val commonMetrics = projectDir("telemetry/common-metrics")
+    val prometheus = projectDir("telemetry/prometheus")
       .dependsOn(LinkerdBuild.admin, core)
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
       .withTests()
@@ -170,7 +170,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core, Router.core)
       .withTests()
 
-    val all = aggregateDir("telemetry", adminMetricsExport, core, commonMetrics, recentRequests, statsd, tracelog, zipkin)
+    val all = aggregateDir("telemetry", adminMetricsExport, core, prometheus, recentRequests, statsd, tracelog, zipkin)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -202,7 +202,8 @@ object LinkerdBuild extends Base {
         configCore,
         Namer.core,
         Namer.fs % "test",
-        Telemetry.core
+        Telemetry.core,
+        Telemetry.adminMetricsExport
       )
       .withTests()
 
@@ -264,7 +265,7 @@ object LinkerdBuild extends Base {
     }
 
     val main = projectDir("namerd/main")
-      .dependsOn(core, admin, configCore, Telemetry.commonMetrics)
+      .dependsOn(core, admin, configCore)
       .withBuildProperties()
       .settings(coverageExcludedPackages := ".*")
 
@@ -304,7 +305,8 @@ object LinkerdBuild extends Base {
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
-      Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul
+      Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
+      Telemetry.adminMetricsExport
     )
 
     val LowMemSettings = BundleSettings ++ Seq(
@@ -426,11 +428,14 @@ object LinkerdBuild extends Base {
         configCore,
         LinkerdBuild.admin,
         Telemetry.core % "compile->compile;test->test",
+        Telemetry.adminMetricsExport,
         Namer.core % "compile->compile;test->test",
         Router.core
       )
       .withLib(Deps.jacksonCore)
+      .withGrpc
       .withTests()
+      .withE2e()
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
 
@@ -475,19 +480,6 @@ object LinkerdBuild extends Base {
       val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift)
     }
 
-    object Telemeter {
-      val usage = projectDir("linkerd/telemeter/usage")
-        .dependsOn(core % "compile->compile;test->test")
-        .dependsOn(Namer.core  % "compile->compile;test->test")
-        .dependsOn(Protocol.http)
-        .withLibs(Deps.jackson)
-        .withGrpc
-        .withTests()
-        .withE2e()
-
-      val all = aggregateDir("linkerd/telemeter", usage)
-    }
-
     object Announcer {
       val serversets = projectDir("linkerd/announcer/serversets")
         .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
@@ -504,7 +496,7 @@ object LinkerdBuild extends Base {
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, configCore, core, Telemetry.commonMetrics)
+      .dependsOn(admin, configCore, core)
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties()
@@ -553,8 +545,7 @@ object LinkerdBuild extends Base {
       Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
       Announcer.serversets,
-      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
-      Telemeter.usage,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
       failureAccrual
     )
@@ -567,7 +558,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all, Telemeter.all)
+        Announcer.all, Namer.all, Protocol.all)
       .configs(Bundle, LowMem)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
@@ -629,7 +620,7 @@ object LinkerdBuild extends Base {
   val telemetry = Telemetry.all
   val telemetryAdminMetricsExport = Telemetry.adminMetricsExport
   val telemetryCore = Telemetry.core
-  val telemetryCommonMetrics = Telemetry.commonMetrics
+  val telemetryPrometheus = Telemetry.prometheus
   val telemetryRecentRequests = Telemetry.recentRequests
   val telemetryStatsD = Telemetry.statsd
   val telemetryTracelog = Telemetry.tracelog
@@ -682,8 +673,6 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
-  val linkerdTelemeter = Linkerd.Telemeter.all
-  val linkerdTelemeterUsage = Linkerd.Telemeter.usage
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls

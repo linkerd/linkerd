@@ -1,6 +1,5 @@
 # Do service discovery lookups against Curator.
 namers:
-namers:
 - kind: io.l5d.curator
   experimental: true
   zkAddrs:

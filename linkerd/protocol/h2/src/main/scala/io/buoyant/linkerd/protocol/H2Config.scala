@@ -61,6 +61,12 @@ class H2Initializer extends ProtocolInitializer.Simple {
     .prepend(h2.ErrorReseter.module))
     .configured(param.Monitor(monitor))
 
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    // Does NOT use the ClearContext module that forcibly clears the
+    // context. Instead, we just strip out headers on inbound requests.
+    stk.replace(LinkerdHeaders.Ctx.serverModule.role, LinkerdHeaders.Ctx.clearServerModule)
+  }
+
   override def defaultServerPort: Int = 4142
 }
 
@@ -139,7 +145,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   override def serverParams = withEndpointParams(super.serverParams)
 }
 
-trait H2IdentifierConfig extends PolymorphicConfig {
+abstract class H2IdentifierConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def newIdentifier(params: Stack.Params): RoutingFactory.Identifier[Request]

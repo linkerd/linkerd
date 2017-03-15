@@ -12,7 +12,7 @@ trait TelemeterInitializer extends ConfigInitializer {
   def configClass: Class[Config]
 }
 
-trait TelemeterConfig extends PolymorphicConfig {
+abstract class TelemeterConfig extends PolymorphicConfig {
   /**
    * This property must be set to true in order to use this telemeter if it is
    * experimental

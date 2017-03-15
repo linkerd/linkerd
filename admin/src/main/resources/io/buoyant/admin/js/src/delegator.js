@@ -54,9 +54,12 @@ define([
         e.preventDefault();
         var path = $('#path-input').val();
         window.location.hash = encodeURIComponent(path);
-        var request = $.get(
-          "delegator.json?" + $.param({ path: path, dtab: dtabViewer.dtabStr(), namespace: namespace }),
-          renderAll.bind(this));
+        var request = $.ajax({
+            url: 'delegator.json',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ namespace: namespace, dtab: dtabViewer.dtabStr(), path: path })
+        }).done(renderAll.bind(this));
         request.fail(function( jqXHR ) {
           $(".error-modal").html(templates.errorModal(jqXHR.responseText));
           $('.error-modal').modal();

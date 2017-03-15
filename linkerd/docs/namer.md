@@ -55,7 +55,7 @@ apps    users   web
 $ cat config/web
 192.0.2.220 8080
 192.0.2.105 8080
-192.0.2.210 8080
+192.0.2.210 8080 * 2.0
 ```
 
 linkerd ships with a simple file-based service discovery mechanism, called the
@@ -186,6 +186,7 @@ token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
+preferServiceAddress | `true` | If `true` use the service address if defined and default to the node address. If `false` always use the node address.
 
 ### Consul Path Parameters
 
@@ -555,3 +556,45 @@ Rewrites the path's prefix with `<prefix>` first, followed by `<host>` with the
 For example,
 `/$/io.buoyant.http.subdomainOfPfx/buoyant.io/pfx/foo.buoyant.io/resource/name`
 would be rewritten to `/pfx/foo/resource/name`
+
+### hostportPfx
+
+```
+/ip-hostport => /$/inet;
+/svc         => /$/io.buoyant.hostportPfx/ip-hostport;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.hostportPfx/<prefix>/<host>:<port>/etc
+```
+
+Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
+not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-
+is, due to bracket characters).
+
+For example,
+`/$/io.buoyant.hostportPfx/pfx/host:port/etc`
+would be rewritten to `/pfx/host/port/etc`.
+
+### porthostPfx
+
+```
+/k8s-porthost => /#/io.l5d.k8s/default;
+/svc          => /$/io.buoyant.porthostPfx/k8s-porthost;
+```
+
+> Dtab Path Format
+
+```yaml
+/$/io.buoyant.porthostPfx/<prefix>/<host>:<port>/etc
+```
+
+Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
+not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-
+is, due to bracket characters).
+
+For example,
+`/$/io.buoyant.porthostPfx/pfx/host:port/etc`
+would be rewritten to `/pfx/port/host/etc`.

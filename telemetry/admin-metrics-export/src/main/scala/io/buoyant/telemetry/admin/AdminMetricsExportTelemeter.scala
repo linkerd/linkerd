@@ -1,7 +1,9 @@
 package io.buoyant.telemetry.admin
 
-import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.{JsonFactory, JsonGenerator}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
+import com.twitter.app.GlobalFlag
+import com.twitter.conversions.time._
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
@@ -28,9 +30,19 @@ class AdminMetricsExportTelemeter(
 
   private[admin] val handler = Service.mk { request: Request =>
     val pretty = request.getBooleanParam("pretty", false)
+    val tree = request.getBooleanParam("tree", false)
+    val q = request.getParam("q")
+    val subtree = if (q != null) {
+      metrics.resolve(q.split("/").toSeq)
+    } else {
+      metrics
+    }
     val response = request.response
     response.mediaType = MediaType.Json
-    response.withOutputStream(writeJson(_, pretty))
+    if (tree)
+      response.withOutputStream(writeJsonTree(_, subtree))
+    else
+      response.withOutputStream(writeFlatJson(_, subtree, pretty))
     Future.value(response)
   }
 
@@ -49,7 +61,7 @@ class AdminMetricsExportTelemeter(
 
   private[this] def run0() = {
     val task = timer.schedule(snapshotInterval) {
-      summarySnapshots = snapshotHistograms(metrics)
+      snapshotHistograms(metrics)
     }
 
     new Closable with CloseAwaitably {
@@ -57,23 +69,16 @@ class AdminMetricsExportTelemeter(
     }
   }
 
-  private[this] var summarySnapshots = Map.empty[Stat, HistogramSummary]
-
   private[this] val json = new JsonFactory()
-  private[this] def writeJson(out: OutputStream, pretty: Boolean = false): Unit = {
-    val jg = json.createGenerator(out)
-    if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
-    jg.writeStartObject()
-    val flattened =
-      if (pretty) flattenMetricsTree(metrics).sortBy(_._1)
-      else flattenMetricsTree(metrics)
-    flattened.foreach {
+
+  private[this] def writeJsonMetric(jg: JsonGenerator, metric: (String, Metric)): Unit =
+    metric match {
       case (name, c: Counter) =>
         jg.writeNumberField(name, c.get)
       case (name, g: Gauge) =>
         jg.writeNumberField(name, g.get)
       case (name, s: Stat) =>
-        for (summary <- summarySnapshots.get(s)) {
+        for (summary <- Option(s.snapshottedSummary)) {
           jg.writeNumberField(s"$name.count", summary.count)
           if (summary.count > 0) {
             jg.writeNumberField(s"$name.max", summary.max)
@@ -90,8 +95,37 @@ class AdminMetricsExportTelemeter(
         }
       case (_, Metric.None) =>
     }
+
+  private[this] def writeFlatJson(out: OutputStream, tree: MetricsTree, pretty: Boolean = false): Unit = {
+    val jg = json.createGenerator(out)
+    if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
+    jg.writeStartObject()
+    val flattened =
+      if (pretty) flattenMetricsTree(tree).sortBy(_._1)
+      else flattenMetricsTree(tree)
+    flattened.foreach(writeJsonMetric(jg, _))
     jg.writeEndObject()
     jg.close()
+  }
+
+  private[this] def writeJsonTree(out: OutputStream, tree: MetricsTree): Unit = {
+    val jg = json.createGenerator(out)
+    writeJsonTree(jg, tree)
+    jg.close()
+  }
+  private[this] def writeJsonTree(jg: JsonGenerator, tree: MetricsTree): Unit = {
+    jg.writeStartObject()
+    tree.metric match {
+      case c: Counter => writeJsonMetric(jg, "counter" -> c)
+      case g: Gauge => writeJsonMetric(jg, "gauge" -> g)
+      case s: Stat => writeJsonMetric(jg, "stat" -> s)
+      case _ =>
+    }
+    for ((name, child) <- tree.children) {
+      jg.writeFieldName(name)
+      writeJsonTree(jg, child)
+    }
+    jg.writeEndObject()
   }
 
   private[this] def flattenMetricsTree(
@@ -110,15 +144,16 @@ class AdminMetricsExportTelemeter(
   }
 
   /** Snapshot histograms to produce histogram summaries, resetting as we go. */
-  private[this] def snapshotHistograms(tree: MetricsTree): Map[Stat, HistogramSummary] = {
-    val snapshot = tree.metric match {
+  private[this] def snapshotHistograms(tree: MetricsTree): Unit = {
+    tree.metric match {
       case stat: Stat =>
-        val snap = Some(stat -> stat.summary)
+        stat.snapshot()
         stat.reset()
-        snap
       case _ => None
     }
-    tree.children.values.map(snapshotHistograms).foldLeft(snapshot.toMap)(_ ++ _)
+    for (child <- tree.children.values) snapshotHistograms(child)
   }
 
 }
+
+object histogramSnapshotInterval extends GlobalFlag(1.minute, "Interval to snapshot histrograms")

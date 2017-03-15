@@ -157,7 +157,8 @@ class ThriftNamerClient(
   private[this] def convertMeta(thriftMeta: Option[thrift.AddrMeta]): Addr.Metadata = {
     val authority = thriftMeta.flatMap(_.authority).map(Metadata.authority -> _)
     val nodeName = thriftMeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
-    (authority ++ nodeName).toMap
+    val weight = thriftMeta.flatMap(_.endpointAddrWeight).map(Metadata.endpointWeight -> _)
+    (authority ++ nodeName ++ weight).toMap
   }
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {

@@ -61,12 +61,19 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultServer = {
     val stk = Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
-      .prepend(Headers.Ctx.serverModule)
+      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
     Http.server.withStack(stk)
+  }
+
+  override def clearServerContext(stk: ServerStack): ServerStack = {
+    // Does NOT use the ClearContext module that forcibly clears the
+    // context. Instead, we just strip out headers on inbound requests.
+    stk.remove(HttpTraceInitializer.role)
+      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.clearServerModule)
   }
 
   val configClass = classOf[HttpConfig]

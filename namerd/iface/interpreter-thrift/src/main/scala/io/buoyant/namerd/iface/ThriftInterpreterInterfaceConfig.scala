@@ -6,6 +6,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Stack, Path, Namer, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
@@ -43,10 +44,10 @@ case class ThriftInterpreterInterfaceConfig(
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
       stats
     )
-    val params = tls match {
+    val params = (tls match {
       case Some(tlsConfig) => Stack.Params.empty + tlsConfig.param
       case None => Stack.Params.empty
-    }
+    }) + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
     ThriftServable(addr, iface, params)
   }
 }

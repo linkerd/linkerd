@@ -84,6 +84,47 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     }
   }
 
+  test("tree mode") {
+    val metrics = MetricsTree()
+    val stats = new MetricsTreeStatsReceiver(metrics)
+    val timer = new MockTimer
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
+
+    val counter = stats.scope("foo", "bar").counter("bas")
+    counter.incr()
+    val rsp = await(handler(Request("/admin/metrics.json?tree=1"))).contentString
+    assert(rsp == """{"foo":{"bar":{"bas":{"counter":1}}}}""")
+  }
+
+  test("subtree selector") {
+    val metrics = MetricsTree()
+    val stats = new MetricsTreeStatsReceiver(metrics)
+    val timer = new MockTimer
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
+
+    stats.scope("foo", "bar").counter("bas").incr()
+    stats.scope("foo", "bar").counter("bass").incr()
+    stats.scope("x", "y").counter("z").incr()
+    val rsp = await(handler(Request("/admin/metrics.json?q=foo/bar"))).contentString
+    assert(rsp == """{"bass":1,"bas":1}""")
+  }
+
+  test("subtree selector in tree mode") {
+    val metrics = MetricsTree()
+    val stats = new MetricsTreeStatsReceiver(metrics)
+    val timer = new MockTimer
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val handler = telemeter.handler
+
+    stats.scope("foo", "bar").counter("bas").incr()
+    stats.scope("foo", "bar").counter("bass").incr()
+    stats.scope("x", "y").counter("z").incr()
+    val rsp = await(handler(Request("/admin/metrics.json?q=foo/bar&tree=1"))).contentString
+    assert(rsp == """{"bass":{"counter":1},"bas":{"counter":1}}""")
+  }
+
   private[this] def mkHistoJson(name: String, datum: Long): String =
     Seq(
       s""""$name.count":1""",
