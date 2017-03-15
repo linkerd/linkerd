@@ -29,20 +29,26 @@ case class IngressSpec(
 
 case class IngressPath(
   host: Option[String] = None,
-  uri: Option[String] = None,
+  path: Option[String] = None,
   namespace: String,
   svc: String,
   port: String
 ) {
-  def uriMatches(uri: String, path: String): Boolean = path.isEmpty || uri.matches(path)
+  val compiledPath = path.map(_.r)
+  def uriMatches(uri: String, p: String): Boolean = p.isEmpty || (compiledPath exists { cp =>
+    uri match {
+      case cp() => true
+      case _ => false
+    }
+  })
 
   def matches(hostHeader: Option[String], requestPath: String) = {
-    (host, uri) match {
-      case (Some(host), Some(path)) =>
-        uriMatches(requestPath, path) && hostHeader.contains(host)
+    (host, path) match {
+      case (Some(host), Some(p)) =>
+        uriMatches(requestPath, p) && hostHeader.contains(host)
       case (Some(host), None) => hostHeader.contains(host)
-      case (None, Some(path)) => uriMatches(requestPath, path)
-      case (None, None) => false
+      case (None, Some(p)) => uriMatches(requestPath, p)
+      case (None, None) => true
     }
   }
 

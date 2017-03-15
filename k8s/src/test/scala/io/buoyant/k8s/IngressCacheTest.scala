@@ -1,6 +1,5 @@
 package io.buoyant.k8s
 
-import com.twitter.finagle.Path
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -30,7 +29,7 @@ class IngressCacheTest extends FunSuite with Awaits {
     assert(path.matches(host, "/prefix/and-other-stuff"))
   }
 
-  test("match / with reqs with empty paths only") {
+  test("match / with reqs that have empty paths only") {
     val path = IngressPath(host, Some("/"), ns.get, "svc1", "80")
     assert(path.matches(host, "/"))
     assert(!path.matches(host, "/foo"))
