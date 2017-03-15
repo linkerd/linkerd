@@ -449,7 +449,7 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2)
+        .dependsOn(core, Router.h2, k8s)
         .withTests()
         .withTwitterLibs(Deps.finagle("netty4"))
 
@@ -458,6 +458,7 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
+          k8s,
           tls % "integration",
           Namer.fs % "integration",
           Router.http)
