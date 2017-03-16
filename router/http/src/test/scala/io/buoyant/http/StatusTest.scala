@@ -7,7 +7,7 @@ import io.buoyant.test.FunSuite
 class StatusTest extends FunSuite {
 
   def lookup(path: Path) =
-    await(Namer.global.lookup(path).values.toFuture()).get
+    await(Namer.global.lookup(path).values.toFuture).get
 
   test("status") {
     val client = Http.newService("/$/io.buoyant.http.status/401/foo/bar.a.b/bah")

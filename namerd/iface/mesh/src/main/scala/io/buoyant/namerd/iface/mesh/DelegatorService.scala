@@ -8,7 +8,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Closable, Future, Return, Throw, Try, Var}
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream, VarEventStream}
-import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree}
+import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree, RichActivity}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 
