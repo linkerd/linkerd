@@ -11,8 +11,8 @@ define([
     var rateMetricPartial = templates["server_rate_metric.partial"];
 
     var RouterServers = (function() {
-    return function (metricsCollector, routers, $serverEl, routerName) {
-      var servers = routers.servers(routerName);
+    return function (metricsCollector, initialData, $serverEl, routerName) {
+      var servers = initialData[routerName].servers;
       Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
       _.map(servers, function(server) {

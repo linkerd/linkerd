@@ -16,7 +16,7 @@ define([
 
     function assignColorsToClients(colors, clients) {
       return _.reduce(clients, function(clientMapping, client, idx) {
-        clientMapping[client.label] = colors[idx % colors.length];
+        clientMapping[client] = colors[idx % colors.length];
         return clientMapping;
       }, {});
     }
@@ -26,13 +26,13 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, routers, $clientEl, $combinedClientGraphEl, routerName, colors) {
+    return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName, colors) {
       var clientContainerTemplate = templates.router_client_container;
 
-      var clients = routers.clients(routerName);
+      var clients = _.sortBy(initialData[routerName].clients);
       var colorList = colors;
       var clientToColor = assignColorsToClients(colorList, clients);
-      var combinedClientGraph = CombinedClientGraph(metricsCollector, routers, routerName, $combinedClientGraphEl, clientToColor);
+      var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
@@ -42,12 +42,12 @@ define([
         $clientEl.hide();
       }
 
-      routers.onAddedClients(addClients);
+      metricsCollector.onAddedClients(addClients);
 
       function initializeClient(client) {
         $clientEl.show();
-        var colorsForClient = clientToColor[client.label];
-        var match = ('/' + client.label).match(TRANSFORMER_RE);
+        var colorsForClient = clientToColor[client];
+        var match = ('/' + client).match(TRANSFORMER_RE);
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
           prefix: match[1],
@@ -65,21 +65,19 @@ define([
             });
         }
 
-        var shouldExpand = shouldExpandClient(routers.clients(routerName).length);
-        return RouterClient(metricsCollector, routers, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
+        var shouldExpand = shouldExpandClient(initialData[routerName].clients.length);
+        return RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
       }
 
       function addClients(addedClients) {
         // filter new clients
-        var filteredClients = _.filter(addedClients, function(client) {
-          return client.router === routerName;
-        });
+        var filteredClients = _.keys(addedClients[routerName]);
 
         // combine with existing clients
-        var combinedClients = routerClients.concat(filteredClients);
+        clients = _(clients).concat(filteredClients).uniq().value();
 
         // reassign colors
-        clientToColor = assignColorsToClients(colorList, combinedClients);
+        clientToColor = assignColorsToClients(colorList, clients);
 
         // pass new colors to combined request graph, add new clients to graph
         combinedClientGraph.updateColors(clientToColor);

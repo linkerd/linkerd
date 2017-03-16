@@ -3,14 +3,12 @@
 define([
   'jQuery', 'bootstrap',
   'src/metrics_collector',
-  'src/routers',
   'src/process_info',
   'src/request_totals',
   'src/router_controller'
 ], function(
   $, bootstrap,
   MetricsCollector,
-  Routers,
   ProcInfo,
   RequestTotals,
   RouterController
@@ -21,20 +19,27 @@ define([
      */
     var UPDATE_INTERVAL = 1000;
 
-    $.get("admin/metrics.json").done(function(metricsJson) {
+    $.get("admin/metrics.json?tree=1").done(function(metricsJson) {
       var metricsCollector = MetricsCollector(metricsJson);
-      var routers = Routers(metricsJson, metricsCollector);
+
+      var initialRouters = _.get(metricsJson, "rt");
+      var initialData = _.reduce(initialRouters, function(mem, data, router) {
+        mem[router] = {};
+        mem[router]["servers"] = _.keys(data.srv);
+        mem[router]["clients"] = _.keys(_.get(data, "dst.id"));
+        return mem;
+      }, {});
 
       var $serverData = $(".server-data");
       var buildVersion = $serverData.data("linkerd-version");
       var selectedRouter = $serverData.data("router-name");
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
-      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"), _.keys(metricsJson));
-      RouterController(metricsCollector, selectedRouter, routers, $(".dashboard-container"), routerConfig);
+      RequestTotals(metricsCollector, selectedRouter, $(".request-totals"));
+      RouterController(metricsCollector, selectedRouter, initialData, $(".dashboard-container"), routerConfig);
 
       $(function() {
-        metricsCollector.start(UPDATE_INTERVAL);
+        metricsCollector.start(UPDATE_INTERVAL, initialData);
       });
     });
   }

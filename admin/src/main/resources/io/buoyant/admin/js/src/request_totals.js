@@ -2,9 +2,8 @@
 
 define([
   'jQuery',
-  'src/query',
   'template/compiled_templates'
-  ], function($, Query, templates) {
+  ], function($, templates) {
 
   var RequestTotals = (function() {
     var template = templates.request_totals;
@@ -12,28 +11,48 @@ define([
     var metricDefinitions = [
       {
         description: "Current requests",
-        query: Query.serverQuery().allRouters().allServers().withMetric("requests").build()
+        metric: "requests",
+        getMetrics: function(data) {
+          return sumMetric(data, "requests", false, this.prefix);
+        },
+        prefix: "srv"
       },
       {
         description: "Pending",
-        query: Query.serverQuery().allRouters().allServers().withMetric("load").build(),
+        metric: "load",
+        getMetrics: function(data) {
+          return sumMetric(data, "load", true, this.prefix);
+        },
+        prefix: "srv",
         isGauge: true
       },
       {
         description: "Incoming Connections",
-        query: Query.serverQuery().allRouters().allServers().withMetric("connections").build(),
+        getMetrics: function(data) {
+          return sumMetric(data, "connections", true, this.prefix);
+        },
+        prefix: "srv",
+        metric: "connections",
         isGauge: true
       },
       {
         description: "Outgoing Connections",
-        query: Query.clientQuery().allRouters().allClients().withMetric("connections").build(),
+        getMetrics: function(data) {
+          return sumMetric(data, "connections", true, this.prefix);
+        },
+        prefix: "dst.id",
+        metric: "connections",
         isGauge: true
       }
     ];
 
-    function desiredMetrics(possibleMetrics) {
-      var metaQuery = _.map(metricDefinitions, "query.source");
-      return Query.filter(new RegExp(metaQuery.join("|")), possibleMetrics);
+    function sumMetric(data, metric, isGauge, prefix) {
+      return _.reduce(data, function(mem, routerData) {
+        _.mapValues(_(routerData).get(prefix), function(entityData) {
+          mem += _.get(entityData, [metric, isGauge ? "gauge" : "delta"]) || 0;
+        });
+        return mem;
+      }, 0);
     }
 
     function render($root, metricData) {
@@ -45,12 +64,11 @@ define([
     return function(metricsCollector, selectedRouter, $root) {
       function onMetricsUpdate(data) {
         var transformedData = _.map(metricDefinitions, function(defn) {
-          var metricsByQuery = Query.filter(defn.query, data.specific);
-          var sumBy = defn.isGauge ? 'value' : 'delta';
-          var value = _.sumBy(metricsByQuery, sumBy);
+          var metrics = defn.getMetrics(data.rt);
+
           return {
             description: defn.description,
-            value: value
+            value: metrics
           };
         });
 
@@ -59,7 +77,7 @@ define([
 
       if (!selectedRouter || selectedRouter === "all") { //welcome to my world of hacks
         render($root, metricDefinitions);
-        metricsCollector.registerListener(onMetricsUpdate, desiredMetrics);
+        metricsCollector.registerListener(onMetricsUpdate);
       } else {
         $root.hide();
       }

@@ -5,13 +5,11 @@ define([
   'lodash',
   'handlebars.runtime',
   'src/utils',
-  'src/query',
   'src/success_rate_graph',
   'src/bar_chart',
   'template/compiled_templates'
 ], function($, _, Handlebars,
   Utils,
-  Query,
   SuccessRateGraph,
   BarChart,
   templates
@@ -20,6 +18,10 @@ define([
   var LoadBalancerBarChart = function($lbContainer) {
     function getColor(percent) {
       return percent < 0.5 ? "orange" : "green";
+    }
+
+    function display(value) {
+      return _.isNumber(value) ? value : "-";
     }
 
     function getPercent(data) {
@@ -33,9 +35,7 @@ define([
         percent: percent,
         label: {
           description: "Endpoints available",
-          value: (_.isNull(numer.value) ? "-" : numer.value)
-            + " / "
-            + (_.isNull(denom.value) ? "-" : denom.value)
+          value: display(numer.value) + " / " + display(denom.value)
         }
       }
     }
@@ -58,7 +58,8 @@ define([
       "p95": "shade",
       "p50": "dark"
     }
-    var latencyKeys = _.map(metricToColorShade, function(val, key) { return "request_latency_ms." + key });
+    var latencyKeys = _.keys(metricToColorShade);
+
     function createLatencyLegend(colorLookup) {
       return _.mapValues(metricToColorShade, function(shade) {
         return colorLookup[shade];
@@ -67,25 +68,27 @@ define([
 
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
-          {suffix: "requests", label: "Requests"},
-          {suffix: "connections", label: "Connections", isGauge: true},
-          {suffix: "success", label: "Successes"},
-          {suffix: "failures", label: "Failures"},
-          {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
-          {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
-        ], function(metric) {
+        {suffix: "requests", label: "Requests"},
+        {suffix: "connections", label: "Connections", isGauge: true},
+        {suffix: "success", label: "Successes"},
+        {suffix: "failures", label: "Failures"},
+        {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
+        {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
+      ], function(metric) {
+        var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
+
         return {
           metricSuffix: metric.suffix,
           label: metric.label,
           isGauge: metric.isGauge,
-          query: Query.clientQuery().withRouter(routerName).withClient(clientName).withMetric(metric.suffix).build()
+          treeMetricRoot: treeKeyRoot
         }
       });
     }
 
     function renderMetrics($container, client, summaryData, latencyData) {
       var clientHtml = template({
-        client: client.label,
+        client: client,
         latencies: latencyData,
         data: summaryData
       });
@@ -94,14 +97,13 @@ define([
       $container.html($clientHtml);
     }
 
-    function getLatencyData(client, latencyKeys, chartLegend) {
-      var latencyData = _.pick(client.metrics, latencyKeys);
+    function getLatencyData(data, routerName, clientName, chartLegend) {
+      var latencyData = _.get(data, ["rt", routerName, "dst", "id", clientName, "request_latency_ms"]);
 
-      return _.map(latencyData, function(latencyValue, metricName) {
-        var key = metricName.split(".")[1];
+      return _.map(latencyKeys, function(key) {
         return {
           latencyLabel: key,
-          latencyValue: latencyValue,
+          latencyValue: _.get(latencyData, "stat." + key),
           latencyColor: chartLegend[key]
         };
       });
@@ -114,9 +116,9 @@ define([
 
     function getSummaryData(data, metricDefinitions) {
       var summary = _.reduce(metricDefinitions, function(mem, defn) {
-        var clientData = Query.filter(defn.query, data);
-        var value = _.isEmpty(clientData) ? null :
-          (defn.isGauge ? clientData[0].value : clientData[0].delta);
+        var clientData = _.get(data, defn.treeMetricRoot);
+        var value = _.isEmpty(clientData) ? null : clientData[defn.isGauge ? "gauge" : "delta"];
+
         mem[defn.metricSuffix] = {
           description: defn.label,
           value: value
@@ -135,7 +137,7 @@ define([
       return summary;
     }
 
-    return function (metricsCollector, routers, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+    return function (metricsCollector, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -150,7 +152,7 @@ define([
       var $lbBarChart = $container.find(".lb-bar-chart");
 
       var latencyLegend = createLatencyLegend(colors.colorFamily);
-      var metricDefinitions = getMetricDefinitions(routerName, client.label);
+      var metricDefinitions = getMetricDefinitions(routerName, client);
 
       var $expandLink = $toggleLinks.find(".client-expand");
       var $collapseLink = $toggleLinks.find(".client-collapse");
@@ -171,7 +173,7 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
+          metricsCollector.registerListener(metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
@@ -186,8 +188,8 @@ define([
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data.specific, metricDefinitions);
-        var latencies = getLatencyData(client, latencyKeys, latencyLegend); // this legend is no longer used in any charts: consider removing
+        var summaryData = getSummaryData(data, metricDefinitions);
+        var latencies = getLatencyData(data, routerName, client, latencyLegend);
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);
@@ -195,14 +197,8 @@ define([
         renderMetrics($metricsEl, client, summaryData, latencies);
       }
 
-      function getDesiredMetrics(metrics) {
-        return  _.flatMap(metricDefinitions, function(d) {
-          return Query.filter(d.query, metrics);
-        });
-      }
-
       return {
-        label: client.label
+        label: client
       };
     };
   })();

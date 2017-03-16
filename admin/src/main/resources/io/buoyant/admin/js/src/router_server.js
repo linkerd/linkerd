@@ -2,30 +2,26 @@
 
 define([
   'src/success_rate_graph',
-  'src/query',
   'src/utils',
   'template/compiled_templates'
-], function(SuccessRateGraph, Query, Utils, templates) {
+], function(SuccessRateGraph, Utils, templates) {
   var RouterServer = (function() {
     var template = templates.router_server;
 
     function getMetricDefinitions(routerName, serverName) {
-      return [
+      var defs = [
         {
           description: "Requests",
-          metricSuffix: "requests",
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("requests").build()
+          metricSuffix: "requests"
         },
         {
           description: "Pending",
           metricSuffix: "load",
-          isGauge: true,
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("load").build()
+          isGauge: true
         },
         {
           description: "Successes",
           metricSuffix: "success",
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("success").build(),
           getRate: function(data) {
             var successRate = new Utils.SuccessRate(data.success || 0, data.failures || 0);
             return {
@@ -36,10 +32,22 @@ define([
         },
         {
           description: "Failures",
-          metricSuffix: "failures",
-          query: Query.serverQuery().withRouter(routerName).withServer(serverName).withMetric("failures").build()
+          metricSuffix: "failures"
         }
       ];
+      return _.map(defs, function(def) {
+        var treeMetricKeys = genServerStat(routerName, serverName, def.metricSuffix);
+        def.treeMetricRoot = treeMetricKeys.metricRoot;
+        return def;
+      })
+    }
+
+    function genServerStat(routerName, serverName, stat, isGauge) {
+      var metricKeys = ["rt", routerName, "srv", serverName, stat, isGauge ? "gauge" : "counter"];
+      return {
+        metric: metricKeys,
+        metricRoot: _.take(metricKeys, 5)
+      };
     }
 
     function renderServer($container, server, data) {
@@ -53,7 +61,7 @@ define([
       }, {});
 
       $container.html(template({
-        server: server.label,
+        server: server,
         metrics: metrics
       }));
     }
@@ -61,12 +69,11 @@ define([
     function processData(data, router, server) {
       var lookup = {}; // track success/failure # for SuccessRate() calculation
       var metricDefinitions = getMetricDefinitions(router, server);
-
       var populatedMetrics = _.map(metricDefinitions, function(defn) {
-        var serverData = Query.filter(defn.query, data);
+        var serverData = _.get(data, defn.treeMetricRoot);
 
         if (!_.isEmpty(serverData)) {
-          defn.value = defn.isGauge ? serverData[0].value : serverData[0].delta;
+          defn.value = serverData[defn.isGauge ? "gauge" : "delta"];
           lookup[defn.metricSuffix] = defn.value;
         }
 
@@ -97,19 +104,12 @@ define([
       var chart = SuccessRateGraph($chartEl, "#4AD8AC");
 
       var metricsHandler = function(data) {
-        var transformedData = processData(data.specific, routerName, server.label);
+        var transformedData = processData(data, routerName, server);
         renderServer($metricsEl, server, transformedData);
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 
-      var getDesiredMetrics = function(metrics) {
-        var metricDefinitions = getMetricDefinitions(routerName, server.label);
-        return _.flatMap(metricDefinitions, function(d) {
-          return Query.filter(d.query, metrics);
-        });
-      }
-
-      metricsCollector.registerListener(metricsHandler, getDesiredMetrics);
+      metricsCollector.registerListener(metricsHandler);
 
       return {};
     };
