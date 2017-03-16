@@ -1,3 +1,6 @@
+## In the next release
+* Experimental ThriftMux protocol support
+
 ## 0.9.1 2017-03-15
 
 * Admin dashboard:
