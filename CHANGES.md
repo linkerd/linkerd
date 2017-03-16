@@ -1,3 +1,7 @@
+## In the next release...
+
+* Allow dtab fallback when consul returns an empty address set.
+
 ## 0.9.1 2017-03-15
 
 * Admin dashboard:
