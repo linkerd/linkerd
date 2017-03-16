@@ -195,6 +195,79 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | The first `segments` elements of the path from the URL
 
+<a name="h2-ingress-identifier"></a>
+### Ingress Identifier
+
+kind: `io.l5d.h2.ingress`
+
+Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP/2 requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
+
+<aside class="notice">
+The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the `:authority` header, instead of the `host` header.
+</aside>
+
+#### Identifier Configuration:
+
+> This example watches all ingress resources in the default namespace:
+
+```yaml
+routers:
+- protocol: h2
+  experimental: true
+  identifier:
+    kind: io.l5d.ingress
+    namespace: default
+  servers:
+  - port: 4140
+  dtab: /svc => /#/io.l5d.k8s
+
+namers:
+- kind: io.l5d.k8s
+```
+
+> An example ingress resource watched by the linkerd ingress controller:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-first-ingress
+  namespace: default
+annotations:
+  kubernetes.io/ingress.class: "linkerd"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /testpath
+        backend:
+          serviceName: test
+          servicePort: 80
+```
+
+> So an HTTP/2 request like `https://localhost:4140/testpath` would have an identified name of `/svc/default/80/test`
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master port.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format
+
+```
+  / dstPrefix / namespace / port / service
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+namespace | N/A | The Kubernetes namespace.
+port | N/A | The port name.
+svc | N/A | The name of the service.
+
 <a name="h2-headers"></a>
 ## Headers
 

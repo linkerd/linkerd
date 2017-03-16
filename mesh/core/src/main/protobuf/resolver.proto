@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package io.linkerd.mesh;
+
+import "dtab.proto";
+
+/**
+ * Supports resolution of a concrete name to a replica set.
+ *
+ * Status: Experimental; this API is not yet finalized.
+ */
+service Resolver {
+
+  rpc GetReplicas (ReplicasReq) returns (Replicas) {}
+  rpc StreamReplicas (ReplicasReq) returns (stream Replicas) {}
+}
+
+message ReplicasReq {
+  /**
+   * A concrete cluster id.
+   */
+  Path id = 1;
+}
+
+/**
+ * Describes a TCP endpoint.
+ */
+message Endpoint {
+
+  enum AddressFamily {
+    INET4 = 0;
+    INET6 = 1;
+  }
+  AddressFamily inet_af = 1;
+
+  /** An opaque address (according to family). */
+  bytes address = 2;
+
+  int32 port = 3;
+
+  /** Endpoint-specific diagonstic metadata */
+  message Meta {
+    /**
+     * In scheduled environments, a diagnostic name for the parent node.
+     */
+    string nodeName = 1;
+  }
+  Meta meta = 4;
+}
+
+message Replicas {
+
+  message Pending {}
+
+  message Neg {}
+
+  message Failed {
+    string message = 1;
+  }
+
+  message Bound {
+    repeated Endpoint endpoints = 1;
+  }
+
+  oneof result {
+    Pending pending = 1;
+    Neg neg = 2;
+    Failed failed = 3;
+    Bound bound = 4;
+  }
+}

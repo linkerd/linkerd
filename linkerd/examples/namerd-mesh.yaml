@@ -1,0 +1,11 @@
+# Use the experimental namerd HTTP API for name resolution.
+routers:
+- protocol: http
+  interpreter:
+    kind: io.l5d.mesh
+    experimental: true
+    dst: /$/inet/127.1/4321
+    root: /default
+  servers:
+  - port: 4140
+    ip: 0.0.0.0

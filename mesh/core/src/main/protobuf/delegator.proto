@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package io.linkerd.mesh;
+
+import "dtab.proto";
+
+/**
+ * Supports navigation and inspection of naming.
+ *
+ * Status: Experimental; this API is not yet finalized and may be
+ * moved entirely. This should probably be merged with Interpreter,
+ * but we need to decide whether a Dtab is really the canonical
+ * representation for a namespace.
+ */
+service Delegator {
+
+  rpc GetDtab (DtabReq) returns (DtabRsp) {}
+  rpc StreamDtab (DtabReq) returns (stream DtabRsp) {}
+
+  rpc GetDelegateTree (DelegateTreeReq) returns (DelegateTreeRsp) {}
+  rpc StreamDelegateTree (DelegateTreeReq) returns (stream DelegateTreeRsp) {}
+}
+
+message DtabReq {
+  Path root = 1;
+}
+
+message DtabRsp {
+  VersionedDtab dtab = 1;
+}
+
+message DelegateTreeReq {
+  Path root = 1;
+  PathNameTree tree = 2;
+  Dtab dtab = 3;
+}
+
+
+message DelegateTreeRsp {
+  BoundDelegateTree tree = 1;
+}
+
+message BoundDelegateTree {
+  Path path = 1;
+  Dtab.Dentry dentry = 2;
+  oneof node {
+    Neg neg = 3;
+    Fail fail = 4;
+    Empty empty = 5;
+    Alt alt = 6;
+    Union union = 7;
+    Leaf leaf = 8;
+
+    BoundDelegateTree delegate = 9;
+    Transformation transformation = 10;
+    string exception = 11;
+  }
+
+  message Neg {}
+  message Fail {}
+  message Empty {}
+
+  message Alt { repeated BoundDelegateTree trees = 1; }
+  message Union {
+    repeated Weighted trees = 1;
+    message Weighted {
+      double weight = 1;
+      BoundDelegateTree tree = 2;
+    }
+  }
+  message Leaf {
+    Path id = 1;
+    Path residual = 2;
+  }
+
+  message Transformation {
+    string name = 1;
+    Leaf leaf = 2;
+    BoundDelegateTree tree = 3;
+  }
+}
