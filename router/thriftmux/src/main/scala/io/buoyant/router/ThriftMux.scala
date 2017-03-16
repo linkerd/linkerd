@@ -3,16 +3,16 @@ package io.buoyant.router
 import java.net.SocketAddress
 
 import com.twitter.finagle.Thrift.param.ProtocolFactory
-import com.twitter.finagle.ThriftMux.ServerMuxer
-import com.twitter.finagle.{ListeningServer, ServiceFactory, Stack, Server => FinagleServer, Thrift => FinagleThrift, ThriftMux => FinagleThriftMux}
+import com.twitter.finagle.{Filter, ListeningServer, Service, ServiceFactory, Stack, mux}
+import com.twitter.finagle.{Server => FinagleServer, Thrift => FinagleThrift, ThriftMux => FinagleThriftMux}
 import com.twitter.finagle.client.StackClient
-import com.twitter.finagle.mux.{Request, Response}
 import com.twitter.finagle.param.ProtocolLibrary
-import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.thrift.ThriftClientRequest
+import com.twitter.io.Buf
+import com.twitter.util.Future
 import io.buoyant.router.thrift.{Identifier => ThriftIdentifier}
 
-object ThriftMux extends Router[ThriftClientRequest, Array[Byte]] with FinagleServer[Array[Byte], Array[Byte]] {
+object ThriftMux extends Router[ThriftClientRequest, Array[Byte]] with FinagleServer[mux.Request, mux.Response] {
   object Router {
     val pathStack: Stack[ServiceFactory[ThriftClientRequest, Array[Byte]]] =
       StackRouter.newPathStack[ThriftClientRequest, Array[Byte]]
@@ -25,6 +25,15 @@ object ThriftMux extends Router[ThriftClientRequest, Array[Byte]] with FinagleSe
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams + ProtocolLibrary("thriftmux")
+
+    object IngestingFilter extends Filter[mux.Request, mux.Response, ThriftClientRequest, Array[Byte]] {
+      def apply(request: mux.Request, service: Service[ThriftClientRequest, Array[Byte]]): Future[mux.Response] = {
+        val reqBytes = Buf.ByteArray.Owned.extract(request.body)
+        service(new ThriftClientRequest(reqBytes, false)) map { repBytes =>
+          mux.Response(Buf.ByteArray.Owned(repBytes))
+        }
+      }
+    }
   }
 
   case class Router(
@@ -52,8 +61,7 @@ object ThriftMux extends Router[ThriftClientRequest, Array[Byte]] with FinagleSe
   val router = Router()
   def factory(): ServiceFactory[ThriftClientRequest, Array[Byte]] = router.factory()
 
-  val server = FinagleThriftMux.Server()
-  def server(muxer: StackServer[Request, Response] = ServerMuxer()) = FinagleThriftMux.Server(muxer)
-  def serve(addr: SocketAddress, factory: ServiceFactory[Array[Byte], Array[Byte]]): ListeningServer =
-    server.serve(addr, factory)
+  val server = FinagleThriftMux.Server().muxer
+  def serve(addr: SocketAddress, service: ServiceFactory[mux.Request, mux.Response]): ListeningServer =
+    server.serve(addr, service)
 }

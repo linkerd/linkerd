@@ -460,6 +460,7 @@ object LinkerdBuild extends Base {
 
       val thriftMux = projectDir("linkerd/protocol/thriftmux")
         .dependsOn(core, thrift, Router.thriftMux)
+        .withTests()
 
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, testUtil)

@@ -91,7 +91,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       ThriftMux.server
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
-        .serve(new InetSocketAddress(0), Thrift.Router.IngestingFilter.andThen(factory))
+        .serve(new InetSocketAddress(0), ThriftMux.Router.IngestingFilter.andThen(factory))
     }
 
     val path = "/thriftmux"
@@ -147,7 +147,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       ThriftMux.server
         .configured(param.Stats(stats))
         .configured(param.Tracer(tracer))
-        .serve(new InetSocketAddress(0), Thrift.Router.IngestingFilter.andThen(factory))
+        .serve(new InetSocketAddress(0), ThriftMux.Router.IngestingFilter.andThen(factory))
     }
 
     val path = "/thriftmux"

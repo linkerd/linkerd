@@ -2,15 +2,12 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
-import com.twitter.finagle.Path
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftServerPrep, ThriftTraceInitializer}
-import io.buoyant.config.Parser
 import io.buoyant.config.types.ThriftProtocol
-import io.buoyant.router.{RoutingFactory, Thrift}
-import org.apache.thrift.protocol.TProtocolFactory
+import io.buoyant.router.Thrift
 
 class ThriftInitializer extends ProtocolInitializer {
   val name = "thrift"
@@ -29,7 +26,7 @@ class ThriftInitializer extends ProtocolInitializer {
   protected val adapter = Thrift.Router.IngestingFilter
   protected val defaultServer = {
     val stack = Thrift.server.stack
-      .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule)
+      .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule[Array[Byte], Array[Byte]])
       .replace(ThriftServerPrep.role, ThriftServerPrep.module)
     Thrift.server.withStack(stack)
   }
