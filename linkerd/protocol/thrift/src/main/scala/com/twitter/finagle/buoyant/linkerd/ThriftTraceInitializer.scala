@@ -15,7 +15,7 @@ object ThriftTraceInitializer {
         val param.Tracer(tracer) = _tracer
         new ServerFilter(tracer) andThen next
       }
-  }
+    }
 
   class ServerFilter[Req, Rep](tracer: Tracer)
     extends SimpleFilter[Req, Rep] {

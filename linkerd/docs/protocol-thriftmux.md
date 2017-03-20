@@ -5,6 +5,7 @@
 ```yaml
 routers:
 - protocol: thriftmux
+  experimental: true
   label: port-shifter
   dtab: |
     /svc => /$/inet/127.1/5005;

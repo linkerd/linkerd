@@ -27,7 +27,7 @@ object ThriftMuxServerPrep {
   object MuxToArrayBytesFilter extends Filter[mux.Request, mux.Response, Array[Byte], Array[Byte]] {
     def apply(request: mux.Request, service: Service[Array[Byte], Array[Byte]]): Future[mux.Response] = {
       val reqBytes = Buf.ByteArray.Owned.extract(request.body)
-      service(reqBytes) map { repBytes =>
+      service(reqBytes).map { repBytes =>
         mux.Response(Buf.ByteArray.Owned(repBytes))
       }
     }
@@ -36,7 +36,7 @@ object ThriftMuxServerPrep {
   object ArrayBytesToMuxFilter extends Filter[Array[Byte], Array[Byte], mux.Request, mux.Response] {
     def apply(request: Array[Byte], service: Service[mux.Request, mux.Response]): Future[Array[Byte]] = {
       val req = mux.Request(Path.empty, Buf.ByteArray.Owned(request))
-      service(req) map { rep =>
+      service(req).map { rep =>
         Buf.ByteArray.Owned.extract(rep.body)
       }
     }
