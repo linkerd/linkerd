@@ -78,7 +78,17 @@ object LinkerdBuild extends Base {
         thriftIdl % "test,e2e"
       )
 
-    val all = aggregateDir("router", core, h2, http, mux, thrift)
+    val thriftMux = projectDir("router/thriftmux")
+      .withTwitterLib(Deps.finagle("thriftmux"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thrift,
+        thriftIdl % "test,e2e"
+      )
+
+    val all = aggregateDir("router", core, h2, http, mux, thrift, thriftMux)
   }
 
   object Mesh {
@@ -471,13 +481,17 @@ object LinkerdBuild extends Base {
         .withTests()
         .withE2e()
 
+      val thriftMux = projectDir("linkerd/protocol/thriftmux")
+        .dependsOn(core, thrift, Router.thriftMux)
+        .withTests()
+
       val benchmark = projectDir("linkerd/protocol/benchmark")
         .dependsOn(http, testUtil)
         .enablePlugins(JmhPlugin)
         .settings(publishArtifact := false)
         .withTwitterLib(Deps.twitterUtil("benchmark"))
 
-      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift)
+      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift, thriftMux)
     }
 
     object Announcer {
@@ -543,7 +557,7 @@ object LinkerdBuild extends Base {
       admin, core, main, configCore,
       Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
       Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
-      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift,
+      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
@@ -612,6 +626,7 @@ object LinkerdBuild extends Base {
   val routerHttp = Router.http
   val routerMux = Router.mux
   val routerThrift = Router.thrift
+  val routerThriftMux = Router.thriftMux
   val routerThriftIdl = Router.thriftIdl
 
   val mesh = Mesh.all
@@ -673,6 +688,7 @@ object LinkerdBuild extends Base {
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
+  val linkerdProtocolThriftMux = Linkerd.Protocol.thriftMux
   val linkerdAnnouncer = Linkerd.Announcer.all
   val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
   val linkerdTls = Linkerd.tls

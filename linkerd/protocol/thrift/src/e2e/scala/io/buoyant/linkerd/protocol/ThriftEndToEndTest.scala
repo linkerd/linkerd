@@ -24,7 +24,7 @@ class ThriftEndToEndTest extends FunSuite {
         override def ping(msg: String): Future[String] = Future(f(msg))
       }
       val stack = FinagleThrift.server.stack
-        .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule)
+        .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule[Array[Byte], Array[Byte]])
         .replace(ThriftServerPrep.role, ThriftServerPrep.module)
       val server = FinagleThrift.server.withStack(stack)
         .configured(param.Label(name))

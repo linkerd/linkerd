@@ -6,21 +6,21 @@ import com.twitter.finagle.tracing.{Trace, TraceInitializerFilter, Tracer}
 object ThriftTraceInitializer {
   val role = TraceInitializerFilter.role
 
-  val serverModule: Stackable[ServiceFactory[Array[Byte], Array[Byte]]] =
-    new Stack.Module1[param.Tracer, ServiceFactory[Array[Byte], Array[Byte]]] {
+  def serverModule[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
+    new Stack.Module1[param.Tracer, ServiceFactory[Req, Rep]] {
       val role = ThriftTraceInitializer.role
       val description = "Ensure that there is a trace id set"
 
-      def make(_tracer: param.Tracer, next: ServiceFactory[Array[Byte], Array[Byte]]) = {
+      def make(_tracer: param.Tracer, next: ServiceFactory[Req, Rep]) = {
         val param.Tracer(tracer) = _tracer
         new ServerFilter(tracer) andThen next
       }
     }
 
-  class ServerFilter(tracer: Tracer)
-    extends SimpleFilter[Array[Byte], Array[Byte]] {
+  class ServerFilter[Req, Rep](tracer: Tracer)
+    extends SimpleFilter[Req, Rep] {
 
-    def apply(req: Array[Byte], service: Service[Array[Byte], Array[Byte]]) = {
+    def apply(req: Req, service: Service[Req, Rep]) = {
       if (!Trace.hasId)
         Trace.letTracerAndNextId(tracer) {
           service(req)
