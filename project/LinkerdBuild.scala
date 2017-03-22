@@ -15,6 +15,7 @@ object LinkerdBuild extends Base {
   val LowMem = config("lowmem") extend Bundle
 
   val configCore = projectDir("config")
+    .dependsOn(Finagle.buoyantCore)
     .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
     .withLib(Deps.jacksonYaml)

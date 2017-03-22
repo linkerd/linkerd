@@ -1,11 +1,12 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
+import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
@@ -74,7 +75,7 @@ object H2Initializer extends H2Initializer
 
 class H2Config extends RouterConfig {
 
-  var client: Option[H2ClientConfig] = None
+  var client: Option[H2Client] = None
   var servers: Seq[H2ServerConfig] = Nil
 
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
@@ -124,10 +125,30 @@ trait H2EndpointConfig {
     .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
 }
 
-class H2ClientConfig extends ClientConfig with H2EndpointConfig {
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[H2DefaultClient]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[H2DefaultClient], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[H2StaticClient], name = "io.l5d.static")
+))
+abstract class H2Client extends Client
+
+class H2DefaultClient extends H2Client with DefaultClient with H2ClientConfig
+
+class H2StaticClient(val configs: Seq[H2PrefixConfig]) extends H2Client with StaticClient
+
+class H2PrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with H2ClientConfig
+
+trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
 
   @JsonIgnore
-  override def clientParams = withEndpointParams(super.clientParams)
+  override def params(vars: Map[String, String]) = withEndpointParams(super.params(vars))
+
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

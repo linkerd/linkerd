@@ -1,4 +1,4 @@
-package io.buoyant.namer.util
+package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.Path
 import org.scalatest.FunSuite

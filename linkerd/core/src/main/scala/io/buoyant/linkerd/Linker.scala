@@ -43,7 +43,6 @@ object Linker {
     namer: Seq[NamerInitializer] = Nil,
     interpreter: Seq[InterpreterInitializer] = Nil,
     transformer: Seq[TransformerInitializer] = Nil,
-    tlsClient: Seq[TlsClientInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
     classifier: Seq[ResponseClassifierInitializer] = Nil,
     telemetry: Seq[TelemeterInitializer] = Nil,
@@ -51,7 +50,7 @@ object Linker {
     failureAccrual: Seq[FailureAccrualInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
+      Seq(protocol, namer, interpreter, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -67,7 +66,6 @@ object Linker {
     LoadService[NamerInitializer],
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
     LoadService[TransformerInitializer],
-    LoadService[TlsClientInitializer],
     LoadService[IdentifierInitializer],
     LoadService[ResponseClassifierInitializer],
     LoadService[TelemeterInitializer],

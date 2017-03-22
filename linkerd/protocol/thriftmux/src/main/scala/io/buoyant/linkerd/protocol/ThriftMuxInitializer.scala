@@ -45,9 +45,9 @@ case class ThriftMuxConfig(
 
   var servers: Seq[ThriftServerConfig] = Nil
   @JsonProperty("client")
-  var _client: Option[ThriftClientConfig] = None
+  var _client: Option[ThriftClient] = None
 
-  def client: Option[ThriftClientConfig] = _client.orElse(Some(ThriftClientConfig()))
+  def client: Option[ThriftClient] = _client.orElse(Some(new ThriftDefaultClient))
 
   @JsonIgnore
   override def protocol = ThriftMuxInitializer

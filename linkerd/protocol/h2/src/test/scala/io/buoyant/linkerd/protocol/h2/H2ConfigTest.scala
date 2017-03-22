@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol
 package h2
 
 import com.twitter.conversions.storage._
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.buoyant.h2.param.FlowControl._
 import com.twitter.finagle.buoyant.h2.param.Settings._
 import io.buoyant.config.Parser
@@ -36,7 +36,7 @@ class H2ConfigTest extends FunSuite {
           |""".stripMargin
     val config = parse(yaml)
 
-    val cparams = config.client.get.withEndpointParams(Stack.Params.empty)
+    val cparams = config.client.get.clientParams.paramsFor(Path.read("/foo"))
     assert(cparams[AutoRefillConnectionWindow] == AutoRefillConnectionWindow(true))
     assert(cparams[WindowUpdateRatio] == WindowUpdateRatio(0.9f))
     assert(cparams[HeaderTableSize] == HeaderTableSize(Some(1.kilobyte)))

@@ -5,3 +5,4 @@ io.buoyant.config.types.InetAddressSerializer
 io.buoyant.config.types.LogLevelSerializer
 io.buoyant.config.types.PathSerializer
 io.buoyant.config.types.PortSerializer
+io.buoyant.config.types.PathMatcherSerializer

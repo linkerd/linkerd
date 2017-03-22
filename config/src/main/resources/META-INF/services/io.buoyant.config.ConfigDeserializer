@@ -4,4 +4,5 @@ io.buoyant.config.types.FileDeserializer
 io.buoyant.config.types.InetAddressDeserializer
 io.buoyant.config.types.LogLevelDeserializer
 io.buoyant.config.types.PathDeserializer
+io.buoyant.config.types.PathMatcherDeserializer
 io.buoyant.config.types.PortDeserializer

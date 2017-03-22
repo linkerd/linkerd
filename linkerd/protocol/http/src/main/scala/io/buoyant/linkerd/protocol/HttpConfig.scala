@@ -1,12 +1,13 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
 import com.twitter.finagle.http.{param => hparam}
+import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.http.Request
@@ -83,14 +84,33 @@ class HttpInitializer extends ProtocolInitializer.Simple {
 
 object HttpInitializer extends HttpInitializer
 
-case class HttpClientConfig(
-  engine: Option[HttpEngine]
-) extends ClientConfig {
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[HttpDefaultClient]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[HttpDefaultClient], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[HttpStaticClient], name = "io.l5d.static")
+))
+abstract class HttpClient extends Client
+
+class HttpDefaultClient extends HttpClient with DefaultClient with HttpClientConfig
+
+class HttpStaticClient(val configs: Seq[HttpPrefixConfig]) extends HttpClient with StaticClient
+
+class HttpPrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with HttpClientConfig
+
+trait HttpClientConfig extends ClientConfig {
+
+  var engine: Option[HttpEngine] = None
 
   @JsonIgnore
-  override def clientParams = engine match {
-    case Some(engine) => engine.mk(super.clientParams)
-    case None => super.clientParams
+  override def params(vars: Map[String, String]) = engine match {
+    case Some(engine) => engine.mk(super.params(vars))
+    case None => super.params(vars)
   }
 }
 
@@ -135,7 +155,7 @@ case class HttpConfig(
   compressionLevel: Option[Int]
 ) extends RouterConfig {
 
-  var client: Option[HttpClientConfig] = None
+  var client: Option[HttpClient] = None
   var servers: Seq[HttpServerConfig] = Nil
 
   @JsonIgnore
