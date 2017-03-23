@@ -4,7 +4,6 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.Failure
 import com.twitter.finagle.http.{Status, Request}
-import io.buoyant.linkerd.clientTls.StaticInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -12,8 +11,7 @@ import org.scalatest.FunSuite
 class TlsStaticValidationTest extends FunSuite with Awaits {
 
   val init = Linker.Initializers(
-    protocol = Seq(HttpInitializer),
-    tlsClient = Seq(StaticInitializer)
+    protocol = Seq(HttpInitializer)
   )
 
   test("tls router + plain upstream with static validation") {
@@ -32,9 +30,9 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |  - port: 0
              |  client:
              |    tls:
-             |      kind: io.l5d.static
              |      commonName: linkerd
-             |      caCertPath: ${certs.caCert.getPath}
+             |      trustCerts:
+             |      - ${certs.caCert.getPath}
              |""".stripMargin
         val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
@@ -77,9 +75,9 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |        minRetriesPerSec: 0
              |        percentCanRetry: 0.0
              |    tls:
-             |      kind: io.l5d.static
              |      commonName: wrong
-             |      caCertPath: ${certs.caCert.getPath}
+             |      trustCerts:
+             |      - ${certs.caCert.getPath}
              |""".stripMargin
         val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
