@@ -35,17 +35,17 @@ class ClientConfigImpl extends ClientConfig
 case class TlsClientConfig(
   disableValidation: Option[Boolean],
   commonName: Option[String],
-  trustCerts: Seq[String] = Nil
+  trustCerts: Option[Seq[String]] = None
 ) {
   def params(vars: Map[String, String]): Stack.Params = this match {
     case TlsClientConfig(Some(true), _, _) =>
       Stack.Params.empty +
-        TransportSecurity(TransportSecurity.Insecure) +
-        Trust(Trust.NotConfigured)
+        TransportSecurity(TransportSecurity.Secure()) +
+        Trust(Trust.UnsafeNotVerified)
     case TlsClientConfig(_, Some(cn), certs) =>
       Stack.Params.empty +
         TransportSecurity(TransportSecurity.Secure()) +
-        Trust(Trust.Verified(PathMatcher.substitute(vars, cn), trustCerts.map(TlsClientPrep.loadCert(_))))
+        Trust(Trust.Verified(PathMatcher.substitute(vars, cn), trustCerts.getOrElse(Nil).map(TlsClientPrep.loadCert(_))))
     case TlsClientConfig(Some(false) | None, None, _) =>
       val msg = "tls is configured with validation but `commonName` is not set"
       throw new IllegalArgumentException(msg) with NoStackTrace

@@ -238,8 +238,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
             case id: Path => id
             case _ => Path.empty
           }
-          val clientParams = params[StackRouter.Client.PerClientParams].paramsFor(name)
-          // client stats are scoped by label within .newClient
+          val clientParams = params[StackRouter.Client.PerClientParams].paramsFor(name) // client stats are scoped by label within .newClient
           client.withParams(params ++ clientParams + clientStats + withdrawOnlyBudget)
             .newClient(bound, mkClientLabel(bound))
         }
@@ -317,7 +316,6 @@ object StackRouter {
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
       val stk = new StackBuilder(stack.nilStack[Req, Rsp])
       stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
-      stk.push(TlsClientPrep.insecure[Req, Rsp])
       (orig ++ stk.result)
         .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
