@@ -12,6 +12,11 @@ import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.ClassifiedRetries
 import scala.util.control.NoStackTrace
 
+/**
+ * ClientConfig is a trait containing protocol agnostic client configuration
+ * options.  This trait can be mixed into a class to allow these options to be
+ * set on that class as part of config deserialization.
+ */
 trait ClientConfig {
 
   var tls: Option[TlsClientConfig] = None
@@ -29,8 +34,6 @@ trait ClientConfig {
     .maybeWith(retries.flatMap(_.mkBudget)) +
     FailureAccrualConfig.param(failureAccrual)
 }
-
-class ClientConfigImpl extends ClientConfig
 
 case class TlsClientConfig(
   disableValidation: Option[Boolean],

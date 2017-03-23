@@ -6,6 +6,10 @@ import com.twitter.finagle.buoyant.PathMatcher
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.StackRouter.Client.{ClientParams, PerClientParams}
 
+/**
+ * Client is the polymorphic type the jackson will use to deserialize the
+ * `config` section of a linkerd config.
+ */
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
   include = JsonTypeInfo.As.EXISTING_PROPERTY,
@@ -22,6 +26,11 @@ abstract class Client extends PolymorphicConfig {
   def clientParams: PerClientParams
 }
 
+/**
+ * DefaultClient mixes in ClientConfig so that client configuration properties
+ * can be specified directly on the `client` object in the linkerd config.  This
+ * is a trait so that it can be mixed in to protocol specific versions.
+ */
 trait DefaultClient extends Client with ClientConfig {
   kind = "io.l5d.default"
 
@@ -39,6 +48,10 @@ trait DefaultClient extends Client with ClientConfig {
 
 class DefaultClientImpl extends Client with DefaultClient
 
+/**
+ * StaticClient consists of a list of PrefixConfigs.  This is a trait so that it
+ * can be mixed in to protocol specific versions.
+ */
 trait StaticClient {
   val configs: Seq[PrefixConfig]
 

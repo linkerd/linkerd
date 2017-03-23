@@ -38,7 +38,7 @@ announcers | an empty list | A list of service discovery [announcers](#announcer
 dtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
-client | an empty object | An object of [client params](#client-parameters).
+client | an empty object | A [client configuration](#client-configuration) object.
 dstPrefix | protocol dependent | A path prefix to be used on request destinations.
 failFast | `false` | If `true`, connection failures are punished more aggressively. Should not be used with small destination pools.
 originator | `false` | If `true`, indicates that this router is the first hop for linker-to-linker requests, and reflects that in the router's stats. Useful for deduping linker-to-linker stats.
@@ -95,14 +95,70 @@ maxConcurrentRequests | unlimited | The maximum number of concurrent requests th
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
 clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
 
-<a name="client-parameters"></a>
-## Client Parameters
+<a name="client-configuration"></a>
+## Client Configuration
 
+This section defines how the clients that linkerd creates will be configured.  The structure of this section depends on
+its `kind`.
+
+Key  | Default Value    | Description
+---- | ---------------- | --------------
+kind | `io.l5d.default` | Either [io.l5d.default](#default-client-configuration) or [io.l5d.static](#static-client-configuration)
+
+<a name="default-client-configuration"></a>
+### Default Client Config
+
+```yaml
+- protocol: http
+  client:
+    kind: io.l5d.default
+    loadBalancer:
+      kind: ewma
+    failureAccrual:
+      kind: io.l5d.consecutiveFailures
+      failures: 10
+```
+
+This client configuration allows you to specify [client parameters](#client-parameters)
+which will be applied to all clients.
+
+<a name="static-client-configuration"></a>
+### Static Client Config
+
+```yaml
+- protocol: http
+  client:
+    kind: io.l5d.static
+    configs:
+    - prefix: /#/io.l5d.fs
+      loadBalancer:
+        kind: ewma
+    - prefix: /#/io.l5d.fs/{service}
+      tls:
+        commonName: "{service}.linkerd.io"
+    - prefix: /$/inet/*/80
+      failureAccrual:
+        kind: io.l5d.consecutiveFailures
+        failures: 10
+```
+
+This client configuration allows you to specify [client parameters](#client-parameters)
+which will be applied to all clients that match a specified prefix.  The client
+configuration must contain a property called `configs` which contains a list
+of config objects.  Each config object must specify a prefix and the
+[client parameters](#client-parameters) to apply to clients that match that prefix.
+A prefix may contain wildcards (`*`) and capture variables (`{foo}`) which can
+be referenced in some client parameters.
+If a client matches more than one config's prefix, all parameters from the
+matching configs will be applied, with parameters from later configs taking
+precedence.
+
+<a name="client-parameters"></a>
+### Client Parameters
 
 <aside class="notice">
 These parameters are available to the client regardless of protocol. Clients may also have protocol-specific parameters.
 </aside>
-
 
 ```yaml
 client:
