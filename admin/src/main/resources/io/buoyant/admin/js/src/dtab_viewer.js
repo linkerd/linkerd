@@ -9,10 +9,14 @@ define(['jQuery'], function($) {
     this.render();
     window.addEventListener('resize', this.render.bind(this), false);
 
+    this.$saveWarning = $(".save-warning");
+    this.$textArea = $("#dtab-input");
+
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
+    this.$saveWarning.hide();
 
     $('#save-dtab-btn').click(function(_e){
-      var text = $("#dtab-input").val().replace(/\s+/g, '');
+      var text = this.$textArea.val().replace(/\s+/g, '');
       var dentries = text.split(";");
       if (dentries[dentries.length - 1] === "") {
         dentries = dentries.slice(0, -1);
@@ -26,7 +30,7 @@ define(['jQuery'], function($) {
     }.bind(this));
 
     //make the input bigger when you hit enter
-    $("#dtab-input").on('paste input', function () {
+    this.$textArea.on('paste input', function () {
       if ($(this).outerHeight() > this.scrollHeight){
         $(this).height(1);
       }
@@ -44,10 +48,13 @@ define(['jQuery'], function($) {
     if($('#edit-dtab-btn').hasClass("active")) {
       $('#edit-dtab-btn').removeClass("active").text("Edit");
       $("#save-dtab-btn").addClass("hide disabled");
+      this.$saveWarning.hide();
       this._renderDtabInput();
     } else {
       $('#edit-dtab-btn').addClass("active").text("Cancel");
       $("#save-dtab-btn").removeClass("hide");
+      this.$saveWarning.show();
+      this._resizeDtabTextArea();
     }
   };
 
@@ -69,6 +76,10 @@ define(['jQuery'], function($) {
     } else {
       $prefix.width(halfPageWidth);
     }
+  }
+
+  DtabViewer.prototype._resizeDtabTextArea = function() {
+    this.$textArea.height(this.$textArea[0].scrollHeight);
   }
 
   DtabViewer.prototype.render = function() {
