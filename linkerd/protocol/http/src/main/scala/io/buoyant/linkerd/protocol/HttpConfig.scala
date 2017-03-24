@@ -92,7 +92,7 @@ object HttpInitializer extends HttpInitializer
   defaultImpl = classOf[HttpDefaultClient]
 )
 @JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[HttpDefaultClient], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[HttpDefaultClient], name = "io.l5d.global"),
   new JsonSubTypes.Type(value = classOf[HttpStaticClient], name = "io.l5d.static")
 ))
 abstract class HttpClient extends Client

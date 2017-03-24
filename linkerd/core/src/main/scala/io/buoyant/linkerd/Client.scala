@@ -18,7 +18,7 @@ import io.buoyant.router.StackRouter.Client.{ClientParams, PerClientParams}
   defaultImpl = classOf[DefaultClientImpl]
 )
 @JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[DefaultClientImpl], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[DefaultClientImpl], name = "io.l5d.global"),
   new JsonSubTypes.Type(value = classOf[StaticClientImpl], name = "io.l5d.static")
 ))
 abstract class Client extends PolymorphicConfig {
@@ -32,7 +32,7 @@ abstract class Client extends PolymorphicConfig {
  * is a trait so that it can be mixed in to protocol specific versions.
  */
 trait DefaultClient extends Client with ClientConfig {
-  kind = "io.l5d.default"
+  kind = "io.l5d.global"
 
   @JsonIgnore
   private[this] val matchAll = PathMatcher("/")

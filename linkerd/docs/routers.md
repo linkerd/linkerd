@@ -103,15 +103,15 @@ its `kind`.
 
 Key  | Default Value    | Description
 ---- | ---------------- | --------------
-kind | `io.l5d.default` | Either [io.l5d.default](#default-client-configuration) or [io.l5d.static](#static-client-configuration)
+kind | `io.l5d.global` | Either [io.l5d.global](#global-client-configuration) or [io.l5d.static](#static-client-configuration)
 
-<a name="default-client-configuration"></a>
-### Default Client Config
+<a name="global-client-configuration"></a>
+### Global Client Config
 
 ```yaml
 - protocol: http
   client:
-    kind: io.l5d.default
+    kind: io.l5d.global
     loadBalancer:
       kind: ewma
     failureAccrual:

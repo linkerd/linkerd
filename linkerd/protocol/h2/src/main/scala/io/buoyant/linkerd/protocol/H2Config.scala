@@ -133,7 +133,7 @@ trait H2EndpointConfig {
   defaultImpl = classOf[H2DefaultClient]
 )
 @JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[H2DefaultClient], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[H2DefaultClient], name = "io.l5d.global"),
   new JsonSubTypes.Type(value = classOf[H2StaticClient], name = "io.l5d.static")
 ))
 abstract class H2Client extends Client

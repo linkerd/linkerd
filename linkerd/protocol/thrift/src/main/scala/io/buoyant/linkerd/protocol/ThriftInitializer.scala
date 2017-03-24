@@ -75,7 +75,7 @@ case class ThriftServerConfig(
   defaultImpl = classOf[ThriftDefaultClient]
 )
 @JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[ThriftDefaultClient], name = "io.l5d.default"),
+  new JsonSubTypes.Type(value = classOf[ThriftDefaultClient], name = "io.l5d.global"),
   new JsonSubTypes.Type(value = classOf[ThriftStaticClient], name = "io.l5d.static")
 ))
 abstract class ThriftClient extends Client
