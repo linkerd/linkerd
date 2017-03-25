@@ -68,6 +68,18 @@ class AppIdNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Ok(NameTree.Leaf(output)))
   }
 
+  test("Namer handles looking up /app/id case-insensitive") {
+    val api = TestApi(ids = Future.value(Set(Path.read("/service/name"))))
+    val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
+
+    val input = Path.Utf8("service", "Name", "residual")
+    val output = Path.Utf8("io.l5d.marathon", "service", "name")
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(input).states.respond(state = _)
+
+    assert(state == Activity.Ok(NameTree.Leaf(output)))
+  }
+
   test("Namer updates when blocking call from getAppIds returns") {
     val promisedAppIds = new Promise[Api.AppIds]
     val api = TestApi(ids = promisedAppIds)
