@@ -5,7 +5,7 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Promise}
 import io.buoyant.consul.v1._
-import io.buoyant.namer.Metadata
+import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -15,6 +15,15 @@ class ConsulNamerTest extends FunSuite with Awaits {
   val testServiceNode = ServiceNode(
     Some("node"),
     Some("192.168.1.35"),
+    Some("servicename"),
+    Some("servicename"),
+    Some(Seq.empty),
+    Some(""),
+    Some(8080)
+  )
+  val testServiceNode2 = ServiceNode(
+    Some("node2"),
+    Some("192.168.1.36"),
     Some("servicename"),
     Some("servicename"),
     Some(Seq.empty),
@@ -321,7 +330,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
   }
 
   test("Addrs update when blocking call for serviceNodes returns") {
-    val blockingCallResponder = new Promise[Unit]
+    val scaleUp = new Promise[Unit]
+    val scaleToEmpty = new Promise[Unit]
 
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
@@ -347,7 +357,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
         case Some("0") | None =>
           Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
         case Some("1") =>
-          blockingCallResponder before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("2")))
+          scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
+        case Some("2") =>
+          scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
         case _ => Future.never
       }
     }
@@ -360,13 +372,27 @@ class ConsulNamerTest extends FunSuite with Awaits {
       setHost = false,
       stats = stats
     )
+    val interpreter = ConfiguredDtabNamer(Activity.value(Dtab.empty), Seq(Path.read("/#/io.l5d.consul") -> namer))
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    @volatile var nameTreeUpdates: Int = 0
+    interpreter.bind(Dtab.empty, Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
+      nameTreeUpdates += 1
+      state = s
+    }
 
     assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 1) }
+    assert(nameTreeUpdates == 1)
 
-    blockingCallResponder.setDone()
+    scaleUp.setDone()
 
+    // NameTree activity should not have updated due to scale up
+    assert(nameTreeUpdates == 1)
+    assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2) }
+
+    scaleToEmpty.setDone()
+
+    // NameTree activity DOES update when replica set becomes empty
+    assert(nameTreeUpdates == 2)
     assert(state == Activity.Ok(NameTree.Neg))
 
     assert(stats.counters == Map(
@@ -374,7 +400,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("dc", "updates") -> 1,
       Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 2,
+      Seq("service", "updates") -> 3,
       Seq("lookups") -> 1
     ))
   }
