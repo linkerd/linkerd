@@ -1,0 +1,22 @@
+# A simplistic thriftmux-routing linkerd configuration.
+
+# An example service discovery that backend uses the filesystem to resolve endpoints.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+# A simple thriftmux router that looks up each thriftmux method in io.l5d.fs.
+routers:
+- protocol: thriftmux
+  thriftMethodInDst: true
+  experimental: true
+  dtab: |
+    /svc => /#/io.l5d.fs/thrift;
+  servers:
+  - port: 4400
+    thriftProtocol: binary
+    thriftFramed: true
+  client:
+    thriftProtocol: binary
+    thriftFramed: true
+    attemptTTwitterUpgrade: true

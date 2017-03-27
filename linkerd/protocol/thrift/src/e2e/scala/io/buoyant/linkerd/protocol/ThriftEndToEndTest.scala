@@ -24,7 +24,7 @@ class ThriftEndToEndTest extends FunSuite {
         override def ping(msg: String): Future[String] = Future(f(msg))
       }
       val stack = FinagleThrift.server.stack
-        .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule)
+        .replace(ThriftTraceInitializer.role, ThriftTraceInitializer.serverModule[Array[Byte], Array[Byte]])
         .replace(ThriftServerPrep.role, ThriftServerPrep.module)
       val server = FinagleThrift.server.withStack(stack)
         .configured(param.Label(name))
@@ -60,7 +60,9 @@ class ThriftEndToEndTest extends FunSuite {
             port = Some(Port(0))
           }
         )
-        _client = Some(ThriftClientConfig(attemptTTwitterUpgrade = Some(true)))
+        val c = new ThriftDefaultClient
+        c.attemptTTwitterUpgrade = Some(true)
+        _client = Some(c)
       }
       config.router(Stack.Params.empty).initialize().servers.head.serve()
     }
@@ -92,7 +94,9 @@ class ThriftEndToEndTest extends FunSuite {
             port = Some(Port(0))
           }
         )
-        _client = Some(ThriftClientConfig(attemptTTwitterUpgrade = Some(true)))
+        val c = new ThriftDefaultClient
+        c.attemptTTwitterUpgrade = Some(true)
+        _client = Some(c)
       }
       config.router(Stack.Params.empty).initialize().servers.head.serve()
     }
@@ -129,7 +133,9 @@ class ThriftEndToEndTest extends FunSuite {
             port = Some(Port(0))
           }
         )
-        _client = Some(ThriftClientConfig(attemptTTwitterUpgrade = Some(true)))
+        val c = new ThriftDefaultClient
+        c.attemptTTwitterUpgrade = Some(true)
+        _client = Some(c)
       }
       config.router(Stack.Params.empty).initialize().servers.head.serve()
     }
@@ -143,7 +149,9 @@ class ThriftEndToEndTest extends FunSuite {
             port = Some(Port(0))
           }
         )
-        _client = Some(ThriftClientConfig(attemptTTwitterUpgrade = Some(true)))
+        val c = new ThriftDefaultClient
+        c.attemptTTwitterUpgrade = Some(true)
+        _client = Some(c)
       }
       config.router(Stack.Params.empty).initialize().servers.head.serve()
     }

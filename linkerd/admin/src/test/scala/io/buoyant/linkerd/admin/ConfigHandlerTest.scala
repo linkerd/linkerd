@@ -45,7 +45,7 @@ routers:
       |    {
       |      "protocol":"thrift",
       |      "servers":[{"thriftProtocol":"compact", "port":2}],
-      |      "client":{"thriftProtocol":"binary"}
+      |      "client":{"thriftProtocol":"binary", "kind": "io.l5d.global"}
       |    }
       |  ]
       |}""".stripMargin.replaceAll("\\s", ""))

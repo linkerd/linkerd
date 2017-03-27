@@ -1,7 +1,7 @@
 package io.buoyant.namer
 
 import com.twitter.finagle.{Name, NameTree, Namer, Path}
-import io.buoyant.namer.util.PathMatcher
+import com.twitter.finagle.buoyant.PathMatcher
 import io.buoyant.test.FunSuite
 
 class RewritingNamerTest extends FunSuite {
