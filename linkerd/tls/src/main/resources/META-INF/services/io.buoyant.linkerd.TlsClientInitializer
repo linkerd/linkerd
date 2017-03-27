@@ -1,3 +1,0 @@
-io.buoyant.linkerd.clientTls.BoundPathInitializer
-io.buoyant.linkerd.clientTls.NoValidationInitializer
-io.buoyant.linkerd.clientTls.StaticInitializer

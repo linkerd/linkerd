@@ -152,7 +152,8 @@ servers:
          |      minRetriesPerSec: 3
          |      percentCanRetry: 0.33
          |""".stripMargin
-    assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
+    val client = parseConfig(yaml).client.get.asInstanceOf[DefaultClient]
+    assert(client.retries == Some(RetriesConfig(
       Some(JitteredBackoffConfig(Some(1), Some(1000))),
       Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
     )))

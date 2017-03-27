@@ -1,17 +1,15 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
 import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
-import io.buoyant.config.PolymorphicConfig
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
-import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
+import io.buoyant.router.{Originator, RoutingFactory}
 
 /**
  * A router configuration builder api.
@@ -61,9 +59,6 @@ trait Router {
 
   def serving(ss: Seq[Server]): Router = ss.foldLeft(this)(_ serving _)
 
-  /** Return a router with TLS configuration read from the provided config. */
-  def withTls(tls: TlsClientConfig): Router
-
   def withAnnouncers(announcers: Seq[(Path, Announcer)]): Router
 
   /**
@@ -95,7 +90,7 @@ trait RouterConfig {
   // RouterConfig subtypes are required to implement these so that they may
   // refine to more specific config types.
   def servers: Seq[ServerConfig]
-  def client: Option[ClientConfig]
+  def client: Option[Client]
 
   var dtab: Option[Dtab] = None
   var failFast: Option[Boolean] = None
@@ -205,120 +200,9 @@ trait RouterConfig {
     protocol.router.configured(prms)
       .serving(servers.map(_.mk(protocol, label)))
       .withAnnouncers(announcers)
-      .maybeTransform(client.flatMap(_.tls).map(tls => _.withTls(tls)))
   }
 
   @JsonIgnore
   def protocol: ProtocolInitializer
 }
 
-class ClientConfig {
-
-  var tls: Option[TlsClientConfig] = None
-  var loadBalancer: Option[LoadBalancerConfig] = None
-  var hostConnectionPool: Option[HostConnectionPool] = None
-  var retries: Option[RetriesConfig] = None
-  var failureAccrual: Option[FailureAccrualConfig] = None
-
-  @JsonIgnore
-  def clientParams: Stack.Params = Stack.Params.empty
-    .maybeWith(loadBalancer.map(_.clientParams))
-    .maybeWith(hostConnectionPool.map(_.param))
-    .maybeWith(retries.flatMap(_.mkBackoff))
-    .maybeWith(retries.flatMap(_.mkBudget)) +
-    FailureAccrualConfig.param(failureAccrual)
-}
-
-case class RetriesConfig(
-  backoff: Option[BackoffConfig] = None,
-  budget: Option[RetryBudgetConfig] = None
-) {
-
-  @JsonIgnore
-  def mkBackoff: Option[ClassifiedRetries.Backoffs] =
-    backoff.map(_.mk).map(ClassifiedRetries.Backoffs(_))
-
-  // We use an empty backoff for Retries.Budget, since this informs
-  // _requeue_ delay. Requeues are explicitly for Nacks and
-  // non-application-level failures, and so we want to reenqueue
-  // these as quickly as possible.
-  @JsonIgnore
-  def mkBudget: Option[Retries.Budget] =
-    budget.map { b => Retries.Budget(b.mk, Backoff.const(Duration.Zero)) }
-}
-
-@JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
-  new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
-))
-abstract class BackoffConfig extends PolymorphicConfig {
-  @JsonIgnore
-  def mk: Stream[Duration]
-}
-
-case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {
-  // ms defaults to 0 when not specified
-  def mk = Backoff.constant(ms.millis)
-}
-
-/** See http://www.awsarchitectureblog.com/2015/03/backoff.html */
-case class JitteredBackoffConfig(minMs: Option[Int], maxMs: Option[Int]) extends BackoffConfig {
-  def mk = {
-    val min = minMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'minMs' must be specified")
-    }
-    val max = maxMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'maxMs' must be specified")
-    }
-    Backoff.decorrelatedJittered(min, max)
-  }
-}
-
-case class RetryBudgetConfig(
-  ttlSecs: Option[Int],
-  minRetriesPerSec: Option[Int],
-  percentCanRetry: Option[Double]
-) {
-  @JsonIgnore
-  def mk: RetryBudget = {
-    val ttl = ttlSecs.map(_.seconds).getOrElse(10.seconds)
-    RetryBudget(ttl, minRetriesPerSec.getOrElse(10), percentCanRetry.getOrElse(0.2))
-  }
-}
-
-case class HostConnectionPool(
-  minSize: Option[Int],
-  maxSize: Option[Int],
-  idleTimeMs: Option[Int],
-  maxWaiters: Option[Int]
-) {
-  @JsonIgnore
-  private[this] val default = DefaultPool.Param.param.default
-
-  @JsonIgnore
-  def param = DefaultPool.Param(
-    low = minSize.getOrElse(default.low),
-    high = maxSize.getOrElse(default.high),
-    bufferSize = 0,
-    idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime),
-    maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
-  )
-}
-
-case class BindingCacheConfig(
-  paths: Option[Int],
-  trees: Option[Int],
-  bounds: Option[Int],
-  clients: Option[Int]
-) {
-  private[this] val default = DstBindingFactory.Capacity.default
-
-  def capacity = DstBindingFactory.Capacity(
-    paths = paths.getOrElse(default.paths),
-    trees = trees.getOrElse(default.trees),
-    bounds = bounds.getOrElse(default.bounds),
-    clients = clients.getOrElse(default.clients)
-  )
-}

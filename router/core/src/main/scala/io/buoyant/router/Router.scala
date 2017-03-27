@@ -233,10 +233,15 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           case _ => "unknown"
         }
 
-        // client stats are scoped by label within .newClient
-        def clientMk(bound: Name.Bound) =
-          client.withParams(params + clientStats + withdrawOnlyBudget)
+        def clientMk(bound: Name.Bound) = {
+          val name = bound.id match {
+            case id: Path => id
+            case _ => Path.empty
+          }
+          val clientParams = params[StackRouter.Client.PerClientParams].paramsFor(name) // client stats are scoped by label within .newClient
+          client.withParams(params ++ clientParams + clientStats + withdrawOnlyBudget)
             .newClient(bound, mkClientLabel(bound))
+        }
 
         val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
         val cache = new DstBindingFactory.Cached[Req, Rsp](
@@ -280,6 +285,23 @@ object StackRouter {
 
   object Client {
 
+    case class ClientParams(prefix: PathMatcher, mk: Map[String, String] => Stack.Params)
+
+    case class PerClientParams(params: Seq[ClientParams]) {
+      def paramsFor(name: Path): Stack.Params = {
+        params.foldLeft(Stack.Params.empty) {
+          case (params, ClientParams(prefix, mk)) =>
+            prefix.extract(name) match {
+              case Some(vars) => params ++ mk(vars)
+              case None => params
+            }
+        }
+      }
+    }
+    implicit object PerClientParams extends Stack.Param[PerClientParams] {
+      val default: PerClientParams = PerClientParams(Seq.empty)
+    }
+
     /**
      * Install the ClassifiedTracing filter immediately above any
      * protocol-specific annotating tracing filters, to provide response
@@ -294,7 +316,6 @@ object StackRouter {
     def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
       val stk = new StackBuilder(stack.nilStack[Req, Rsp])
       stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
-      stk.push(TlsClientPrep.insecure[Req, Rsp])
       (orig ++ stk.result)
         .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])

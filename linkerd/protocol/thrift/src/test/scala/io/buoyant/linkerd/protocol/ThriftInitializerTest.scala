@@ -1,9 +1,11 @@
 package io.buoyant.linkerd.protocol
 
 import com.fasterxml.jackson.databind.JsonMappingException
+import com.twitter.finagle.Path
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.Thrift.param.AttemptTTwitterUpgrade
 import io.buoyant.linkerd.Linker
+import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.router.Thrift.param.MethodInDst
 import io.buoyant.test.Exceptions
 import org.apache.thrift.protocol.TCompactProtocol
@@ -27,12 +29,13 @@ class ThriftInitializerTest extends FunSuite with Exceptions {
 
     val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
     val router = linker.routers.head
+    val params = router.params[PerClientParams].paramsFor(Path.read("/foo"))
     assert(router.params[MethodInDst].enabled)
-    assert(!router.params[param.Framed].enabled)
-    assert(!router.params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
+    assert(!params[param.Framed].enabled)
+    assert(!params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
     assert(router.servers.head.params[param.Framed].enabled)
     assert(router.servers.head.params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
-    assert(!router.params[AttemptTTwitterUpgrade].upgrade)
+    assert(!params[AttemptTTwitterUpgrade].upgrade)
   }
 
   test("unsupported thrift protocol") {
@@ -58,7 +61,7 @@ class ThriftInitializerTest extends FunSuite with Exceptions {
                  """.stripMargin
 
     val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
-    val router = linker.routers.head
-    assert(!router.params[AttemptTTwitterUpgrade].upgrade)
+    val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
+    assert(!params[AttemptTTwitterUpgrade].upgrade)
   }
 }
