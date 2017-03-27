@@ -2,6 +2,7 @@
 * Experimental ThriftMux protocol support
 * Add support for per-client configuration.
 * Simplify TLS configuration.
+* Move timeoutMs from router section to client section in linkerd config.
 
 ## 0.9.1 2017-03-15
 

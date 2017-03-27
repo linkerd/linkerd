@@ -24,7 +24,6 @@ routers:
     /walruses/http => /host;
   failFast: false
   originator: true
-  timeoutMs: 10000
   bindingTimeoutMs: 5000
   responseClassifier:
     kind: io.l5d.nonRetryable5XX
@@ -45,7 +44,6 @@ originator | `false` | If `true`, indicates that this router is the first hop fo
 interpreter | default interpreter | An [interpreter object](#interpreter) determining what module will be used to process destinations.
 label | the value of *protocol* | The name of the router (in stats and the admin ui)
 response Classifier | `io.l5d.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
-timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 ### Binding Cache
 
@@ -162,10 +160,12 @@ These parameters are available to the client regardless of protocol. Clients may
 
 ```yaml
 client:
+
   tls:
     kind: io.l5d.noValidation
     commonName: foo
     caCertPath: /foo/caCert.pem
+  timeoutMs: 100
   loadBalancer:
     kind: ewma
     enableProbation: false
@@ -186,6 +186,7 @@ tls | no tls | The router will make requests using TLS if this parameter is prov
 loadBalancer | [p2c](#power-of-two-choices-least-loaded) | A [load balancer](#load-balancer) object.
 retries | see [retries](#retries) | A [retry policy](#retries) for all clients created by this router.
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
+timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 #### Host Connection Pool
 
