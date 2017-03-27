@@ -1,4 +1,4 @@
-package io.buoyant.namer.util
+package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.Path
 import scala.annotation.tailrec
@@ -16,22 +16,17 @@ trait PathMatcher {
   def extract(path: Path): Option[Map[String, String]]
 
   /**
-   * Substitute the given variable values into the pattern.
-   */
-  def substitute(vars: Map[String, String], pattern: String): String
-
-  /**
    * Extract variable values from the Path and substitute them into the
    * pattern.
    */
   def substitute(path: Path, pattern: String): Option[String] =
-    extract(path).map(substitute(_, pattern))
+    extract(path).map(PathMatcher.substitute(_, pattern))
 
   /**
    * Substitute the given variable values into the pattern and build a Path.
    */
   def substitutePath(vars: Map[String, String], pattern: String): Path =
-    Path.read(substitute(vars, pattern))
+    Path.read(PathMatcher.substitute(vars, pattern))
 
   /**
    * Extract variable values from the Path, substitute them into the
@@ -54,6 +49,12 @@ object PathMatcher {
    * `"{foo}"` will be replaced with foo's value.
    */
   def apply(expr: String): PathMatcher = new Matcher(expr)
+
+  def substitute(vars: Map[String, String], pattern: String): String =
+    vars.foldRight(pattern) {
+      case ((k, v), pat) =>
+        pat.replace(s"{$k}", v)
+    }
 
   private class Matcher(expr: String) extends PathMatcher {
 
@@ -86,10 +87,6 @@ object PathMatcher {
         case (None, _) => None
       }
 
-    override def substitute(vars: Map[String, String], pattern: String): String =
-      vars.foldRight(pattern) {
-        case ((k, v), pat) =>
-          pat.replace(s"{$k}", v)
-      }
+    override def toString: String = expr
   }
 }
