@@ -5,8 +5,8 @@ import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.logging.Level
 import com.twitter.util._
-import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree, Metadata}
-import io.buoyant.namerd.{NullDtabStore, RichActivity}
+import io.buoyant.namer.{ConfiguredDtabNamer, DelegateTree, Metadata, RichActivity}
+import io.buoyant.namerd.NullDtabStore
 import io.buoyant.test.{Awaits, FunSuite}
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.time._

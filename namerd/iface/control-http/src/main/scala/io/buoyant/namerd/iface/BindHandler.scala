@@ -6,8 +6,7 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.admin.names.DelegateApiHandler.JsonDelegateTree
-import io.buoyant.namer.DelegateTree
-import io.buoyant.namerd.RichActivity
+import io.buoyant.namer.{DelegateTree, RichActivity}
 
 object BindUri extends NsPathUri {
   import HttpControlService._

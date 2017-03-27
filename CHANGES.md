@@ -2,6 +2,7 @@
 * Experimental ThriftMux protocol support
 * Add support for per-client configuration.
 * Simplify TLS configuration.
+* Allow dtab fallback when consul returns an empty address set.
 
 ## 0.9.1 2017-03-15
 

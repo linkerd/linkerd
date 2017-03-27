@@ -1,12 +1,13 @@
 package io.buoyant
 
 import com.twitter.finagle._
+import io.buoyant.namer.RichActivity
 import io.buoyant.test.FunSuite
 
 class HttpTest extends FunSuite {
 
   def lookup(path: Path) =
-    await(Namer.global.lookup(path).values.toFuture()).get
+    await(Namer.global.lookup(path).toFuture)
 
   test("anyMethod") {
     val path = Path.read("/$/io.buoyant.http.anyMethod/GET/foo/bar/bah")
