@@ -2,6 +2,7 @@
 * Experimental ThriftMux protocol support
 * Add support for per-client configuration.
 * Simplify TLS configuration.
+* Port numbers in k8s names will now have the service's port mapping applied.
 
 ## 0.9.1 2017-03-15
 

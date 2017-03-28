@@ -158,6 +158,7 @@ package object v1 {
 
   case class ServicePort(
     port: Int,
+    targetPort: Option[Int],
     name: String
   )
 }
