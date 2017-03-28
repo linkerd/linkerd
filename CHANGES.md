@@ -3,6 +3,7 @@
 * Add support for per-client configuration.
 * Simplify TLS configuration.
 * Allow dtab fallback when consul returns an empty address set.
+* Automatically upgrade all HTTP/1.0 messages to HTTP/1.1.
 
 ## 0.9.1 2017-03-15
 
