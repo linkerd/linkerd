@@ -7,7 +7,7 @@ import org.scalatest.FunSuite
 trait NamerTestUtil { self: FunSuite =>
 
   protected def lookup(namer: Namer, p: Path): NameTree[Name] =
-    Await.result(namer.lookup(p).values.toFuture.flatMap(Future.const))
+    Await.result(namer.lookup(p).toFuture)
 
   protected def lookupBound(namer: Namer, p: Path): Seq[Name.Bound] =
     lookup(namer, p).eval.toSeq.flatten.collect {

@@ -46,7 +46,7 @@ trait BaseApi extends Closable {
       infiniteRetryFilter
     else
       Filter.identity[http.Request, http.Response]
-    retryFilter andThen apiErrorFilter andThen client
+    apiErrorFilter andThen retryFilter andThen client
   }
 
   private[v1] def mkreq(

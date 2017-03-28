@@ -4,6 +4,7 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
+import io.buoyant.namer.RichActivity
 
 case class IngressSpec(
   name: Option[String],
@@ -146,5 +147,5 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
   def matchPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] =
     ingresses.map { cache: Seq[IngressSpec] =>
       getMatchingPath(hostHeader, requestPath, cache)
-    }.values.toFuture.flatMap(Future.const)
+    }.toFuture
 }
