@@ -7,7 +7,7 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 /**
  * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request and response.
- * After the header is appended, the message is upgrade to HTTP/1.1.
+ * After the header is appended, the message is upgraded to HTTP/1.1.
  */
 object ViaHeaderAppenderFilter {
 
