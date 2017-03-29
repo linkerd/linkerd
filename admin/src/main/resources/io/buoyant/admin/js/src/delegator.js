@@ -67,6 +67,9 @@ define([
           obj.tree.transformation = obj.name;
           obj.tree.isTransformation = true;
           obj.bound.transformed = renderNode(obj.tree, primary);
+          if (ttype != success) {
+            obj.bound.addr.type = "neg";
+          }
           obj.child = renderNode(obj.bound, primary);
           break;
         case "alt":
