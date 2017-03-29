@@ -80,6 +80,7 @@ servers:
     certPath: /foo/cert.pem
     keyPath: /foo/key.pem
   maxConcurrentRequests: 1000
+  timeoutMs: 500ms
   announce:
     - /#/io.l5d.serversets/discovery/prod/web
 ```
@@ -92,6 +93,7 @@ tls | no tls | The server will serve over TLS if this parameter is provided. see
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
 clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
+timeoutMs | no timeout | Total timeout in milliseconds for a request and all of its retries.
 
 <a name="client-configuration"></a>
 ## Client Configuration
