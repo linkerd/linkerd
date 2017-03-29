@@ -3,6 +3,7 @@ package io.buoyant.namerd
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.util.Future
+import io.buoyant.namer.RichActivity
 
 class DtabListHandler(
   store: DtabStore

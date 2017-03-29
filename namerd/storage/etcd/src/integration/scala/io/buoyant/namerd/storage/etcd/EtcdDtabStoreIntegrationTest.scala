@@ -4,8 +4,9 @@ import com.twitter.finagle.Dtab
 import com.twitter.io.Buf
 import com.twitter.util.Activity
 import io.buoyant.etcd.{Etcd, EtcdFixture}
+import io.buoyant.namer.RichActivity
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
-import io.buoyant.namerd.{RichActivity, VersionedDtab}
+import io.buoyant.namerd.VersionedDtab
 import io.buoyant.test.Exceptions
 
 class EtcdDtabStoreIntegrationTest extends EtcdFixture with Exceptions {

@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.util.{Drv, Rng}
 import com.twitter.util.{Activity, Future}
-import io.buoyant.namerd.RichActivity
+import io.buoyant.namer.RichActivity
 
 object ResolveUri extends NsPathUri {
   import HttpControlService._

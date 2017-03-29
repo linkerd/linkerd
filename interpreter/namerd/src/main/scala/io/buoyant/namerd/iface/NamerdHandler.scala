@@ -4,7 +4,7 @@ import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.namer.{Delegator, NamespacedInterpreterConfig}
+import io.buoyant.namer.{Delegator, NamespacedInterpreterConfig, RichActivity}
 
 case class DelegatorConfig(
   routerLabel: String,
@@ -22,7 +22,7 @@ class NamerdHandler(
       case (key, config) =>
         namerdInterpreters.get(key) match {
           case Some(delegator) =>
-            val dtab = delegator.dtab.values.toFuture().flatMap(Future.const)
+            val dtab = delegator.dtab.toFuture
             Some(dtab.map(DelegatorConfig(key, config.namespace.getOrElse("default"), _)))
           case None => None
         }

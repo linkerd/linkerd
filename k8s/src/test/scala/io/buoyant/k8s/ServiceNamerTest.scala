@@ -5,6 +5,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.{Writer, Buf}
 import com.twitter.util._
+import io.buoyant.namer.RichActivity
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
@@ -64,7 +65,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       }
 
       // initial value
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       val NameTree.Leaf(bound0: Name.Bound) = init
       val Addr.Bound(addresses0, meta0) = await(bound0.addr.changes.toFuture)
       assert(addresses0 == Set(Address(new InetSocketAddress("104.155.170.94", 80))))
@@ -75,7 +76,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       noChanges = true // modifying the address should not update the NameTree
       await(writer.write(Rsps.Modified))
 
-      val modified = await(activity.values.toFuture().flatMap(Future.const))
+      val modified = await(activity.toFuture)
       val NameTree.Leaf(bound1: Name.Bound) = init
       val Addr.Bound(addresses1, meta1) = await(bound1.addr.changes.toFuture)
       assert(addresses1 == Set(Address(new InetSocketAddress("104.155.170.95", 80))))
@@ -86,7 +87,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       noChanges = false
       await(writer.write(Rsps.Deleted))
 
-      val deleted = await(activity.values.toFuture().flatMap(Future.const))
+      val deleted = await(activity.toFuture)
       assert(deleted == NameTree.Neg)
     }
   }
@@ -95,7 +96,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
     val _ = new Fixtures {
       def lookup = Path.read("/pythonsky/external/foo/residual")
 
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       assert(init == NameTree.Neg)
     }
   }
@@ -104,7 +105,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
     val _ = new Fixtures {
       def lookup = Path.read("/pythonsky/foo/l5d/residual")
 
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       assert(init == NameTree.Neg)
     }
   }
@@ -113,13 +114,13 @@ class ServiceNamerTest extends FunSuite with Awaits {
     val _ = new Fixtures {
       def lookup = Path.read("/pythonsky/external/foo/residual")
 
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       assert(init == NameTree.Neg)
 
       // created
       await(writer.write(Rsps.Created))
 
-      val created = await(activity.values.toFuture().flatMap(Future.const))
+      val created = await(activity.toFuture)
       val NameTree.Leaf(bound: Name.Bound) = created
       val Addr.Bound(addresses, meta) = await(bound.addr.changes.toFuture)
       assert(addresses == Set(Address(new InetSocketAddress("104.155.170.95", 80))))
@@ -132,13 +133,13 @@ class ServiceNamerTest extends FunSuite with Awaits {
     val _ = new Fixtures {
       def lookup = Path.read("/pythonsky/admin2/l5d/residual")
 
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       assert(init == NameTree.Neg)
 
       // modified (port created)
       await(writer.write(Rsps.Modified))
 
-      val modified0 = await(activity.values.toFuture().flatMap(Future.const))
+      val modified0 = await(activity.toFuture)
       val NameTree.Leaf(bound0: Name.Bound) = modified0
       val Addr.Bound(addresses0, meta0) = await(bound0.addr.changes.toFuture)
       assert(addresses0 == Set(Address(new InetSocketAddress("104.155.170.95", 9991))))
@@ -148,7 +149,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       // modified (port deleted)
       await(writer.write(Rsps.DeletePort))
 
-      val modified1 = await(activity.values.toFuture().flatMap(Future.const))
+      val modified1 = await(activity.toFuture)
       assert(modified1 == NameTree.Neg)
     }
   }
@@ -163,7 +164,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       }
 
       // initial value
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       val NameTree.Leaf(bound: Name.Bound) = init
       val Addr.Bound(addresses, meta) = await(bound.addr.changes.toFuture)
       assert(addresses == Set(Address(new InetSocketAddress("104.155.170.94", 80))))
@@ -185,7 +186,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
       def lookup = Path.read("/pYtHoNsKy/ExTeRnAl/L5D/rEsIdUaL")
 
       // initial value
-      val init = await(activity.values.toFuture().flatMap(Future.const))
+      val init = await(activity.toFuture)
       val NameTree.Leaf(bound0: Name.Bound) = init
       val Addr.Bound(addresses0, meta0) = await(bound0.addr.changes.toFuture)
       assert(addresses0 == Set(Address(new InetSocketAddress("104.155.170.94", 80))))

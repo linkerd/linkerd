@@ -2,13 +2,14 @@ package io.buoyant
 
 import com.twitter.finagle._
 import com.twitter.util.Future
+import io.buoyant.namer.RichActivity
 import io.buoyant.test.FunSuite
 
 class RinetTest extends FunSuite {
 
   test("rinet binds") {
     val path = Path.read("/$/io.buoyant.rinet/12345/localhost/residual")
-    val tree = await(Namer.global.bind(NameTree.Leaf(path)).values.toFuture.flatMap(Future.const))
+    val tree = await(Namer.global.bind(NameTree.Leaf(path)).toFuture)
     val NameTree.Leaf(bound) = tree
     assert(bound.id == Path.read("/$/io.buoyant.rinet/12345/localhost"))
     assert(bound.path == Path.read("/residual"))
