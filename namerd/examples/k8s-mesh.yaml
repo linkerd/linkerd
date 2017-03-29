@@ -2,7 +2,6 @@ admin:
   port: 9990
 namers:
 - kind: io.l5d.k8s
-  experimental: true
   host: localhost
   port: 8001
   prefix: /ds
@@ -12,7 +11,6 @@ namers:
     port: incoming
     service: l5d
 - kind: io.l5d.k8s
-  experimental: true
   host: localhost
   port: 8001
 

@@ -12,9 +12,6 @@ case class K8sConfig(
 ) extends DtabStoreConfig with ClientConfig {
 
   @JsonIgnore
-  override val experimentalRequired = true
-
-  @JsonIgnore
   def portNum = port.map(_.port)
 
   @JsonIgnore

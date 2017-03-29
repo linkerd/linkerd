@@ -1,6 +1,5 @@
 namers:
 - kind: io.l5d.consul
-  experimental: true
   useHealthCheck: true
 admin:
   port: 9991
