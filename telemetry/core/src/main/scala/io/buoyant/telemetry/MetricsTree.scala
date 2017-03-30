@@ -1,6 +1,7 @@
 package io.buoyant.telemetry
 
 import com.twitter.finagle.Stack
+import com.twitter.util.{Duration, Time}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
@@ -17,6 +18,9 @@ trait MetricsTree {
 
   def registerGauge(f: => Float): Unit
   def deregisterGauge(): Unit
+
+  def expireIfIdle(ttl: Duration): Unit
+  def prune(): Unit
 }
 
 object MetricsTree {
@@ -95,6 +99,19 @@ object MetricsTree {
         if (!metricRef.compareAndSet(orig, Metric.None)) deregisterGauge()
       case _ =>
         throw new IllegalArgumentException("non-gauge metric already exists")
+    }
+
+    def expireIfIdle(ttl: Duration): Unit = {
+      if (metric != Metric.None && metric.lastUpdated < Time.now - ttl) {
+        metricRef.set(Metric.None)
+      }
+    }
+
+    def prune(): Unit = {
+      val _ = trees.retain {
+        case (key, child) =>
+          child.metric != Metric.None || child.children.nonEmpty
+      }
     }
   }
 }

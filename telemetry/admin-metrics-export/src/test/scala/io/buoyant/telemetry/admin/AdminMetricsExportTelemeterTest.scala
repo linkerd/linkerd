@@ -2,7 +2,7 @@ package io.buoyant.telemetry.admin
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
-import com.twitter.util.{MockTimer, Time}
+import com.twitter.util.{Closable, MockTimer, Time}
 import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}
 import io.buoyant.test.FunSuite
 
@@ -12,7 +12,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
 
     Time.withCurrentTimeFrozen { tc =>
@@ -30,7 +30,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
 
     Time.withCurrentTimeFrozen { tc =>
@@ -48,7 +48,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
     val closable = telemeter.run()
 
@@ -88,7 +88,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
 
     val counter = stats.scope("foo", "bar").counter("bas")
@@ -101,7 +101,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
 
     stats.scope("foo", "bar").counter("bas").incr()
@@ -115,7 +115,7 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
     val timer = new MockTimer
-    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, timer)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
     val handler = telemeter.handler
 
     stats.scope("foo", "bar").counter("bas").incr()
@@ -123,6 +123,52 @@ class AdminMetricsExportTelemeterTest extends FunSuite {
     stats.scope("x", "y").counter("z").incr()
     val rsp = await(handler(Request("/admin/metrics.json?q=foo/bar&tree=1"))).contentString
     assert(rsp == """{"bass":{"counter":1},"bas":{"counter":1}}""")
+  }
+
+  test("idle metrics are expired") {
+    val metrics = MetricsTree()
+    val stats = new MetricsTreeStatsReceiver(metrics)
+    val timer = new MockTimer
+    val telemeter = new AdminMetricsExportTelemeter(metrics, 1.minute, 24.hours, timer)
+    var closable: Closable = null
+
+    try {
+      Time.withCurrentTimeFrozen { tc =>
+        closable = telemeter.run()
+        val counter = stats.scope("foo", "bar").counter("c")
+        val stat = stats.scope("foo", "bar").stat("s")
+        val gauge = stats.scope("foo").addGauge("g")(1.0f)
+
+        counter.incr()
+        stat.add(1.0f)
+
+        assert(metrics.children("foo").children("bar").children.keySet == Set("c", "s"))
+
+        tc.advance(13.hours)
+        timer.tick()
+
+        counter.incr()
+
+        tc.advance(13.hours)
+        timer.tick()
+
+        assert(metrics.children("foo").children("bar").children.keySet == Set("c"))
+
+        tc.advance(13.hours)
+        timer.tick()
+
+        assert(metrics.children("foo").children.keySet == Set("g"))
+
+        gauge.remove()
+
+        tc.advance(1.minute)
+        timer.tick()
+
+        assert(metrics.children.isEmpty)
+      }
+    } finally {
+      val _ = closable.close()
+    }
   }
 
   private[this] def mkHistoJson(name: String, datum: Long): String =

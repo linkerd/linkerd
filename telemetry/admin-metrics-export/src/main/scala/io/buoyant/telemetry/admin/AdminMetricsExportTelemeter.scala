@@ -20,11 +20,14 @@ import scala.collection.mutable
  * AdminMetricsExportTelemeter provides the /admin/metrics.json admin endpoint, backed by a
  * MetricsTree.  It does not provide a StatsReciever or Tracer.  Histograms are snapshotted into
  * summaries at a regular interval and the values served on /admin/metrics.json are taken from the
- * most recent summary snapshot.  Counter and gauge values are served live.
+ * most recent summary snapshot.  Counter and gauge values are served live.  At the same time as
+ * snapshotting, metrics that haven't been updated since the TTL are expired and pruned from the
+ * tree.
  */
 class AdminMetricsExportTelemeter(
   metrics: MetricsTree,
   snapshotInterval: Duration,
+  ttl: Duration,
   timer: Timer
 ) extends Telemeter with Admin.WithHandlers {
 
@@ -144,8 +147,12 @@ class AdminMetricsExportTelemeter(
     acc.toSeq
   }
 
-  /** Snapshot histograms to produce histogram summaries, resetting as we go. */
+  /**
+   * Snapshot histograms to produce histogram summaries, resetting as we go.
+   * Also expire metrics that have been idle for the TTL and prune them from the tree.
+   */
   private[this] def snapshotHistograms(tree: MetricsTree): Unit = {
+    tree.expireIfIdle(ttl)
     tree.metric match {
       case stat: Stat =>
         stat.snapshot()
@@ -153,8 +160,10 @@ class AdminMetricsExportTelemeter(
       case _ => None
     }
     for (child <- tree.children.values) snapshotHistograms(child)
+    tree.prune()
   }
 
 }
 
 object histogramSnapshotInterval extends GlobalFlag(1.minute, "Interval to snapshot histrograms")
+object metricsExpiryTtl extends GlobalFlag(24.hours, "Expire metrics that are idle for this long")
