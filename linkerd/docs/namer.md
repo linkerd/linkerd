@@ -376,7 +376,7 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 
 ### Marathon Authentication
 
-> Example environment variable
+> Example DCOS environment variable
 
 ```json
 {
@@ -387,12 +387,20 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 }
 ```
 
-The Marathon namer supports loading authentication data from a
-`DCOS_SERVICE_ACCOUNT_CREDENTIAL` environment variable at boot time.
+> Example basic HTTP authentication variable
+
+```bash
+dXNlcm5hbWU6cGFzc3dvcmQ=
+```
+
+The Marathon namer supports loading authentication data from an environment variable for DCOS private key in the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` variable and standalone Marathon basic HTTP authentication in the `MARATHON_HTTP_AUTH_CREDENTIAL` environment variable. If both are provided the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` takes precedence.
+
+Basic authentication token is base64 encoded and should not include the `Basic` prefix, only in the format `username:password`.
 
 Further reading:
 
-* [Mesosphere Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Mesosphere DCOS Authentication Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Marathon basic HTTP Authentication Docs](https://mesosphere.github.io/marathon/docs/ssl-basic-access-authentication.html#enabling-basic-access-authentication)
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>

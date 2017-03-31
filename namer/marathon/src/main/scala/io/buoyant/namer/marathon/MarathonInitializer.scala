@@ -59,7 +59,8 @@ case class MarathonSecret(
  *   - https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL
  */
 object MarathonSecret {
-  val EnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
+  val DCOSEnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
+  val basicEnvKey = "MARATHON_HTTP_AUTH_CREDENTIAL"
 
   case class Invalid(secret: MarathonSecret) extends NoStackTrace
 
@@ -71,7 +72,7 @@ object MarathonSecret {
   }
 
   def load(): Option[MarathonSecret] =
-    sys.env.get(EnvKey) match {
+    sys.env.get(DCOSEnvKey) match {
       case None => None
       case Some(json) =>
         Api.readJson[MarathonSecret](Buf.Utf8(json)) match {
@@ -125,11 +126,15 @@ case class MarathonConfig(
       .filtered(SetHost(host0))
       .newService(dst0)
 
-    val service = MarathonSecret.load() match {
-      case None => client
-      case Some(secret) =>
+    val service = (MarathonSecret.load(), sys.env.get(MarathonSecret.basicEnvKey)) match {
+      case (Some(secret), _) =>
         val auth = MarathonSecret.mkAuthRequest(secret)
         new Authenticator.Authenticated(client, auth)
+      case (None, Some(http_auth_token)) =>
+        val filter = new BasicAuthenticatorFilter(http_auth_token)
+        filter.andThen(client)
+      case (None, None) => client
+
     }
 
     val uriPrefix0 = uriPrefix.getOrElse("")
