@@ -1,10 +1,11 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
+import com.twitter.finagle.buoyant.h2.{Request, Reset, Response}
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.param
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
+import com.twitter.finagle.param.{WithConcurrentLoadBalancer, WithSessionPool}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.stack.nilStack
@@ -38,7 +39,9 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
   case class Client(
     stack: Stack[ServiceFactory[Request, Response]] = Client.newStack,
     params: Stack.Params = Client.defaultParams
-  ) extends StdStackClient[Request, Response, Client] {
+  ) extends StdStackClient[Request, Response, Client]
+    with WithSessionPool[Client]
+    with WithConcurrentLoadBalancer[Client] {
 
     protected type In = Http2Frame
     protected type Out = Http2Frame
