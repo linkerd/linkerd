@@ -31,7 +31,6 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
 namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
@@ -116,10 +115,8 @@ data:
       port: 9991
     storage:
       kind: io.l5d.k8s
-      experimental: true
     namers:
       - kind: io.l5d.k8s
-        experimental: true
         host: 127.0.0.1
         port: 8001
     interfaces:
@@ -184,7 +181,6 @@ Stores the dtab in ZooKeeper.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
 pathPrefix | `/dtabs` | The ZooKeeper path under which dtabs should be stored.
 sessionTimeoutMs | `10000` | ZooKeeper session timeout in milliseconds.
@@ -227,7 +223,6 @@ Stores the dtab in Consul KV storage.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The location of the consul API.
 port | `8500` | The port used to connect to the consul API.
 pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.

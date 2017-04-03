@@ -19,7 +19,6 @@ import scala.util.control.NoStackTrace
  * <pre>
  * namers:
  * - kind:           io.l5d.marathon
- *   experimental:   true
  *   prefix:         /io.l5d.marathon
  *   host:           marathon.mesos
  *   port:           80
@@ -104,9 +103,6 @@ case class MarathonConfig(
   useHealthCheck: Option[Boolean]
 ) extends NamerConfig {
   import MarathonConfig._
-
-  @JsonIgnore
-  override val experimentalRequired = true
 
   @JsonIgnore
   override def defaultPrefix: Path = DefaultPrefix
