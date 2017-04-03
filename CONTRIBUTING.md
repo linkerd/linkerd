@@ -47,5 +47,5 @@ Thank you for getting involved!
 :heart: Team Buoyant
 
 [cla]: https://buoyant.io/cla/
-[issue]: https://github.com/buoyantio/linkerd/issues/new
+[issue]: https://github.com/linkerd/linkerd/issues/new
 [slack]: http://slack.linkerd.io/
