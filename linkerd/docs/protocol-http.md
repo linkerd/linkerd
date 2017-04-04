@@ -51,7 +51,8 @@ significantly alter linkerd's performance characteristics.
 HTTP servers accept additional configuration parameters.
 
 > Example: default
-```
+
+```yaml
 addForwardedHeader: {}
 ```
 
@@ -80,8 +81,7 @@ The `Forwarded` header includes labels describing the endpoints of the
 upstream connection. Because this is sensitive information, it is
 typically randomized.
 
-> Example
-```
+```yaml
 addForwardedHeader:
   for: {kind: ip}
   by:
@@ -90,7 +90,7 @@ addForwardedHeader:
 ```
 
 Kind | Description
----- |
+---- | -----------
 ip | A textual IP address like `192.168.1.1` or `"[2001:db8:cafe::17]"`.
 ip:port | A textual IP:PORT address like `"192.168.1.1:80"` or `"[2001:db8:cafe::17]:80"`.
 connectionRandom | An obfuscated random label like `_6Oq8jJ` _generated for all requests on a connection_.
@@ -211,8 +211,8 @@ urlPath | N/A | A path from the URL whose number of segments is set in the ident
 kind: `io.l5d.header`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.  The value of the HTTP header is interpreted as a path and therefore must
-start with a `/`.
+value of an HTTP header.  The value of the HTTP header is interpreted as a path
+and therefore must start with a `/`.
 
 #### Identifier Configuration:
 
@@ -252,8 +252,8 @@ headerValue | N/A | The value of the HTTP header as a path.
 kind: `io.l5d.header.token`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.  The name is a path with one segment and the value of that segment is
-taken from the HTTP header.
+value of an HTTP header.  The name is a path with one segment and the value of
+that segment is taken from the HTTP header.
 
 #### Identifier Configuration:
 
@@ -290,9 +290,12 @@ headerValue | N/A | The value of the HTTP header as a path segment.
 <a name="ingress-identifier"></a>
 ### Ingress Identifier
 
-kind: `io.l5d.ingress`
+kind: `io.l5d.http.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
+Using this identifier enables linkerd to function as a Kubernetes ingress
+controller. The ingress identifier compares HTTP requests to [ingress
+resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a
+name based on those rules.
 
 #### Identifier Configuration:
 
@@ -302,7 +305,7 @@ Using this identifier enables linkerd to function as a Kubernetes ingress contro
 routers:
 - protocol: http
   identifier:
-    kind: io.l5d.ingress
+    kind: io.l5d.http.ingress
     namespace: default
   servers:
   - port: 4140
