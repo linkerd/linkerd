@@ -101,4 +101,37 @@ class DaemonSetTransformerTest extends FunSuite {
       assert(addrs == Set(Address.Inet(new InetSocketAddress(expected, 4141), Map(Metadata.nodeName -> expected))))
     }
   }
+
+  test("returns Addr.Neg when no daemonsets available") {
+    val daemonset = Activity.value(
+      NameTree.Leaf(Name.Bound(Var(Addr.Bound(
+        Address("1.1.1.1", 4141),
+        Address("1.1.2.1", 4141),
+        Address("1.1.3.1", 4141)
+      )), Path.read("/#/io.l5d.k8s/default/incoming/l5d"), Path.empty))
+    )
+
+    val transformer = new SubnetGatewayTransformer(Path.empty, daemonset, Netmask("255.255.255.0"))
+
+    val interpreter = new NameInterpreter {
+      override def bind(
+        dtab: Dtab,
+        path: Path
+      ): Activity[NameTree[Bound]] = Activity.value(
+        NameTree.Leaf(Name.Bound(Var(Addr.Bound(
+          Address(Path.Utf8.unapplySeq(path).get.head, 8888)
+        )), path, Path.empty))
+      )
+    }
+
+    val transformed = transformer.wrap(interpreter)
+
+    val bounds = await(
+      transformed.bind(Dtab.empty, Path.read("/1.1.4.55")).toFuture
+    ).eval.get
+
+    val addrs = for (bound <- bounds) {
+      assert(bound.addr.sample == Addr.Neg)
+    }
+  }
 }

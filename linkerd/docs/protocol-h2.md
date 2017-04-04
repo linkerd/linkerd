@@ -106,10 +106,10 @@ logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | The name of an identifier plugin, such as [`io.l5d.headerToken`](#header-token-identifier) or [`io.l5d.headerPath`](#headerpath-identifier).
+kind | _required_ | Either [`io.l5d.headerToken`](#http-2-header-token-identifier), [`io.l5d.headerPath`](#http-2-headerpath-identifier), or [`io.l5d.h2.ingress`](#http-2-ingress-identifier).
 
 <a name="header-token-identifier"></a>
-### Header Token identifier
+### HTTP/2 Header Token identifier
 
 kind: `io.l5d.headerToken`.
 
@@ -151,7 +151,7 @@ dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the header.
 
 <a name="header-path-identifier"></a>
-### Header Path Identifier
+### HTTP/2 Header Path Identifier
 
 kind: `io.l5d.headerPath`
 
@@ -196,14 +196,18 @@ dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | The first `segments` elements of the path from the URL
 
 <a name="h2-ingress-identifier"></a>
-### Ingress Identifier
+### HTTP/2 Ingress Identifier
 
 kind: `io.l5d.h2.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP/2 requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
+Using this identifier enables linkerd to function as a Kubernetes ingress
+controller. The ingress identifier compares HTTP/2 requests to [ingress
+resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a
+name based on those rules.
 
 <aside class="notice">
-The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the `:authority` header, instead of the `host` header.
+The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the
+`:authority` header, instead of the `host` header.
 </aside>
 
 #### Identifier Configuration:
@@ -215,7 +219,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.ingress
+    kind: io.l5d.h2.ingress
     namespace: default
   servers:
   - port: 4140

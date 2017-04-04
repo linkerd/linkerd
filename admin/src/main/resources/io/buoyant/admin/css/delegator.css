@@ -99,3 +99,9 @@
 #edit-dtab-btn {
   margin-left: 20px;
 }
+
+.save-warning {
+  font-size: 12px;
+  color: grey;
+  padding: 5px 0;
+}

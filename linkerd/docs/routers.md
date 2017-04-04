@@ -62,10 +62,10 @@ timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 Key | Default Value | Description
 -------------- | -------------- | --------------
-paths | `100` | Max number of paths in the path cache.
-trees | `100` | Max number of trees in the tree cache.
-bounds | `100` | Max number of bounds in the bounds cache.
-clients | `10` | Max number of clients in the clients cache.
+paths | `1000` | Max number of paths in the path cache.
+trees | `1000` | Max number of trees in the tree cache.
+bounds | `1000` | Max number of bounds in the bounds cache.
+clients | `1000` | Max number of clients in the clients cache.
 
 <a name="server-parameters"></a>
 ## Server Parameters
