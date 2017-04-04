@@ -219,7 +219,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.http.ingress
+    kind: io.l5d.h2.ingress
     namespace: default
   servers:
   - port: 4140
