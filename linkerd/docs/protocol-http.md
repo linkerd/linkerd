@@ -94,7 +94,7 @@ Kind | Description
 ip | A textual IP address like `192.168.1.1` or `"[2001:db8:cafe::17]"`.
 ip:port | A textual IP:PORT address like `"192.168.1.1:80"` or `"[2001:db8:cafe::17]:80"`.
 connectionRandom | An obfuscated random label like `_6Oq8jJ` _generated for all requests on a connection_.
-**requestRandom** | An obfuscated random label like `_6Oq8jJ` _generated for each request_.
+requestRandom | An obfuscated random label like `_6Oq8jJ` _generated for each request_.
 router | Uses the router's `label` as an obfuscated static label.
 static | Accepts a `label` parameter. Produces obfuscated static labels like `_linkerd`.
 
