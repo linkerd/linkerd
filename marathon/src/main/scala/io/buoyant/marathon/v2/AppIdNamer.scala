@@ -42,8 +42,10 @@ class AppIdNamer(
       val possibleIds = (1 to path.size).map(path.take(_))
       appsActivity.map { apps =>
         Trace.recordBinary("marathon.path", path.show)
-        val found = possibleIds.collectFirst {
-          case app if apps(app) =>
+        val found = possibleIds.toStream.map { app =>
+          apps.find(_.show.toLowerCase == app.show.toLowerCase)
+        }.collectFirst {
+          case Some(app) =>
             Trace.recordBinary("marathon.appId", app.show)
             val residual = path.drop(app.size)
             val id = prefix ++ app
