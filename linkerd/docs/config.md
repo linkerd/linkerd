@@ -198,8 +198,8 @@ usage:
 
 In order to make improvements and prioritize features, we'd like to gain a
 broader picture of how users run linkerd. Linkerd gathers anonymized usage data,
-and sends to buoyant once an hour.  This behavior can be configured or disabled
-in the usage config.
+and sends it to Buoyant once an hour.  This behavior can be configured or
+disabled in the usage config.
 
 The kind of data captured is as follows:
 

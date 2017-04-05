@@ -1,7 +1,6 @@
 # Do service discovery lookups against the marathon app API.
 namers:
 - kind:           io.l5d.marathon
-  experimental:   true
   prefix:         /io.l5d.marathon
   # The host and port of the marathon master are statically configured here.
   host:           localhost

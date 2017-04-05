@@ -24,7 +24,6 @@ routers:
     /walruses/http => /host;
   failFast: false
   originator: true
-  timeoutMs: 10000
   bindingTimeoutMs: 5000
   responseClassifier:
     kind: io.l5d.nonRetryable5XX
@@ -45,7 +44,6 @@ originator | `false` | If `true`, indicates that this router is the first hop fo
 interpreter | default interpreter | An [interpreter object](#interpreter) determining what module will be used to process destinations.
 label | the value of *protocol* | The name of the router (in stats and the admin ui)
 response Classifier | `io.l5d.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
-timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 ### Binding Cache
 
@@ -62,10 +60,10 @@ timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 Key | Default Value | Description
 -------------- | -------------- | --------------
-paths | `100` | Max number of paths in the path cache.
-trees | `100` | Max number of trees in the tree cache.
-bounds | `100` | Max number of bounds in the bounds cache.
-clients | `10` | Max number of clients in the clients cache.
+paths | `1000` | Max number of paths in the path cache.
+trees | `1000` | Max number of trees in the tree cache.
+bounds | `1000` | Max number of bounds in the bounds cache.
+clients | `1000` | Max number of clients in the clients cache.
 
 <a name="server-parameters"></a>
 ## Server Parameters
@@ -82,6 +80,7 @@ servers:
     certPath: /foo/cert.pem
     keyPath: /foo/key.pem
   maxConcurrentRequests: 1000
+  timeoutMs: 500ms
   announce:
     - /#/io.l5d.serversets/discovery/prod/web
 ```
@@ -94,6 +93,7 @@ tls | no tls | The server will serve over TLS if this parameter is provided. see
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
 clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
+timeoutMs | no timeout | Total timeout in milliseconds for a request and all of its retries.
 
 <a name="client-configuration"></a>
 ## Client Configuration
@@ -162,10 +162,12 @@ These parameters are available to the client regardless of protocol. Clients may
 
 ```yaml
 client:
+
   tls:
     kind: io.l5d.noValidation
     commonName: foo
     caCertPath: /foo/caCert.pem
+  timeoutMs: 100
   loadBalancer:
     kind: ewma
     enableProbation: false
@@ -186,6 +188,7 @@ tls | no tls | The router will make requests using TLS if this parameter is prov
 loadBalancer | [p2c](#power-of-two-choices-least-loaded) | A [load balancer](#load-balancer) object.
 retries | see [retries](#retries) | A [retry policy](#retries) for all clients created by this router.
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
+timeoutMs | no timeout | Per-request timeout in milliseconds.
 
 #### Host Connection Pool
 

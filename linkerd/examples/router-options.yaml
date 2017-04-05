@@ -5,7 +5,6 @@ routers:
   dtab: |
     /svc/* => /$/inet/localhost/8080
   failFast: false
-  timeoutMs: 1000
   bindingTimeoutMs: 1000
   bindingCache:
     paths: 100
