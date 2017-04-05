@@ -5,6 +5,7 @@
 * Allow dtab fallback when consul returns an empty address set.
 * Move timeoutMs from router section to client section in linkerd config.
 * Add timeoutMs option to server section in linkerd config.
+* Automatically upgrade all HTTP/1.0 messages to HTTP/1.1.
 
 ## 0.9.1 2017-03-15
 
