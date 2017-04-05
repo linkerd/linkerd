@@ -231,4 +231,86 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       await(downstream.server.close())
     }
   }
+
+  test("http/1.0: server closes connection after response") {
+    val downstream = Downstream.mk("ds") { req =>
+      Response(Version.Http10, Status.Ok)
+    }
+
+    val stats = new InMemoryStatsReceiver
+    def downstreamCounter(name: String) = {
+      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      stats.counters.get(k)
+    }
+    def serverCounter(name: String) = {
+      val k = Seq("srv", name)
+      stats.counters.get(k)
+    }
+
+    @volatile var retriesToDo = 0
+    @volatile var err: Option[Throwable] = None
+    val router = {
+      val dtab = Dtab.read(s"/svc => /$$/inet/127.1/${downstream.port}")
+      def doReq(req: () => Future[Response], retries: Int = 0): Future[Response] =
+        req().transform { ret =>
+          if (retries > 0) {
+            doReq(req, retries - 1)
+          } else Future.const(ret)
+        }
+      val retryFilter = Filter.mk[Request, Response, Request, Response] { (req, svc) =>
+        doReq(() => svc(req), retriesToDo)
+      }
+      val errFilter = Filter.mk[Request, Response, Request, Response] { (req, svc) =>
+        svc(req).onFailure { e =>
+          err = Some(e)
+        }
+      }
+      val factory = Http.router
+        .withPathStack(Http.router.pathStack
+          .replace(ClassifiedRetries.role, retryFilter)
+          .insertBefore(ClassifiedRetries.role, errFilter))
+        .configured(RoutingFactory.BaseDtab(() => dtab))
+        .configured(param.Stats(stats))
+        .factory()
+      Http.server
+        .configured(param.Stats(stats.scope("srv")))
+        .serve(new InetSocketAddress(0), factory)
+    }
+
+    val client = upstream(router)
+    def get() = {
+      val req = Request()
+      req.host = "ds"
+      req.version = Version.Http10
+      await(client(req))
+    }
+
+    // Issue a request
+    try {
+      val rsp0 = get()
+      assert(err == None)
+      assert(rsp0.status == Status.Ok)
+      assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(1))
+
+      val rsp1 = get()
+      assert(err == None)
+      assert(rsp1.status == Status.Ok)
+      // downstream connection is reused but upstream is not
+      assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(2))
+
+      retriesToDo = 1
+      val rsp2 = get()
+      assert(err == None)
+      assert(rsp2.status == Status.Ok)
+      assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(3))
+
+    } finally {
+      await(client.close())
+      await(router.close())
+      await(downstream.server.close())
+    }
+  }
 }
