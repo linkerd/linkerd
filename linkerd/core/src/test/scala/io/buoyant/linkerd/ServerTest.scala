@@ -1,7 +1,9 @@
 package io.buoyant.linkerd
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.config.Parser
@@ -111,5 +113,14 @@ fancyRouter: true
         |- /#/io.l5d.foo/bar
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(Path.read("/#/io.l5d.foo/bar")))
+  }
+
+  test("timeout") {
+    val yaml =
+      """
+        |timeoutMs: 500
+      """.stripMargin
+    assert(parse(TestProtocol.Plain, yaml).get.params[TimeoutFilter.Param].timeout == 500.millis)
+
   }
 }

@@ -54,16 +54,13 @@ servers:
   test("with timeout") {
     val yaml =
       """|protocol: plain
-         |timeoutMs: 1234
+         |client:
+         |  timeoutMs: 1234
          |servers:
          |- port: 4321
          |""".stripMargin
-    val router = parse(yaml)
-    assert(router.servers.size == 1)
-    assert(router.servers.head.params[TimeoutFilter.Param] ==
-      TimeoutFilter.Param(1234.millis))
-    assert(router.params[TimeoutFilter.Param] ==
-      TimeoutFilter.Param(1234.millis))
+    val client = parseConfig(yaml).client.get.asInstanceOf[DefaultClient]
+    assert(client.timeoutMs == Some(1234))
   }
 
   test("loopback & protocol-specific default port used when no ports specified") {

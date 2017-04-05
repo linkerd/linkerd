@@ -3,6 +3,8 @@
 * Add support for per-client configuration.
 * Simplify TLS configuration.
 * Allow dtab fallback when consul returns an empty address set.
+* Move timeoutMs from router section to client section in linkerd config.
+* Add timeoutMs option to server section in linkerd config.
 
 ## 0.9.1 2017-03-15
 

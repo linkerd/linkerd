@@ -95,7 +95,6 @@ trait RouterConfig {
   var dtab: Option[Dtab] = None
   var failFast: Option[Boolean] = None
   var originator: Option[Boolean] = None
-  var timeoutMs: Option[Int] = None
   var dstPrefix: Option[String] = None
 
   @JsonProperty("announcers")
@@ -182,7 +181,6 @@ trait RouterConfig {
     .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(originator.map(Originator.Param(_)))
-    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(bindingCache.map(_.capacity))
     .maybeWith(client.map(_.clientParams)) +
