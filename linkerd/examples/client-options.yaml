@@ -13,6 +13,7 @@ routers:
     configs:
     # Options set on the / prefix will apply to all clients
     - prefix: /
+      timeoutMs: 1000
       loadBalancer:
         kind: ewma
     # Options can be set for specific clients as well

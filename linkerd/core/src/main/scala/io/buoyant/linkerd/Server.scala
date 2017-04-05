@@ -2,9 +2,11 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
+import com.twitter.conversions.time._
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.{ListeningServer, Path, Stack}
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
@@ -85,6 +87,7 @@ class ServerConfig { config =>
   var label: Option[String] = None
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
+  var timeoutMs: Option[Int] = None
 
   var clearContext: Option[Boolean] = None
 
@@ -95,7 +98,8 @@ class ServerConfig { config =>
   protected def serverParams: Stack.Params = Stack.Params.empty
     .maybeWith(tls.map(netty3Tls(_)))
     .maybeWith(tls.map(netty4Tls(_)))
-    .maybeWith(clearContext.map(ClearContext.Enabled(_))) +
+    .maybeWith(clearContext.map(ClearContext.Enabled(_)))
+    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis))) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore

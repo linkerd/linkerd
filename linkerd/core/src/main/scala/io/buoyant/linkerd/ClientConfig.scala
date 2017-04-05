@@ -6,7 +6,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.{DstBindingFactory, PathMatcher, TlsClientPrep}
 import com.twitter.finagle.buoyant.TlsClientPrep.{TransportSecurity, Trust}
 import com.twitter.finagle.client.DefaultPool
-import com.twitter.finagle.service.{Backoff, Retries, RetryBudget}
+import com.twitter.finagle.service._
 import com.twitter.util.Duration
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.ClassifiedRetries
@@ -24,6 +24,7 @@ trait ClientConfig {
   var hostConnectionPool: Option[HostConnectionPool] = None
   var retries: Option[RetriesConfig] = None
   var failureAccrual: Option[FailureAccrualConfig] = None
+  var timeoutMs: Option[Int] = None
 
   @JsonIgnore
   def params(vars: Map[String, String]): Stack.Params = Stack.Params.empty
@@ -31,6 +32,7 @@ trait ClientConfig {
     .maybeWith(loadBalancer.map(_.clientParams))
     .maybeWith(hostConnectionPool.map(_.param))
     .maybeWith(retries.flatMap(_.mkBackoff))
+    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(retries.flatMap(_.mkBudget)) +
     FailureAccrualConfig.param(failureAccrual)
 }
