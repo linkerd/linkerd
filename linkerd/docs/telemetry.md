@@ -25,7 +25,30 @@ kind: `io.l5d.prometheus`
 
 Exposes admin endpoints:
 
-* `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io/) format
+* `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io) format
+
+This telemeter has no additional parameters.
+
+## InfluxDB
+
+> Example InfluxDB config
+
+```yaml
+telemetry:
+- kind: io.l5d.influxdb
+```
+
+kind: `io.l5d.influxdb`
+
+This telemeter is intended for collection by
+[Telegraf](https://github.com/influxdata/telegraf). Each measurement will have a
+`host` tag, set from the `Host` header on the collector's incoming request.
+Recommended Telegraf configuration is using `inputs.exec` plugin with
+`curl -s http://[LINKERD_IP]/admin/metrics/influxdb`.
+
+Exposes admin endpoints:
+
+* `/admin/metrics/influxdb`: retrieve all metrics in [InfluxDB](https://influxdata.com) LINE protocol format
 
 This telemeter has no additional parameters.
 

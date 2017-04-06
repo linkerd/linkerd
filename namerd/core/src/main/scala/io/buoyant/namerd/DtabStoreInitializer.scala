@@ -8,7 +8,7 @@ abstract class DtabStoreInitializer extends ConfigInitializer
 abstract class DtabStoreConfig extends PolymorphicConfig {
   /** This property must be set to true in order to use this dtab store if it is experimental */
   @JsonProperty("experimental")
-  var _experimentalEnenabled: Option[Boolean] = None
+  var _experimentalEnabled: Option[Boolean] = None
 
   /**
    * Indicates whether this is an experimental dtab store.  Experimental dtab stores must have the
@@ -19,7 +19,7 @@ abstract class DtabStoreConfig extends PolymorphicConfig {
 
   /** If this dtab store is experimental but has not set the `experimental` property. */
   @JsonIgnore
-  def disabled = experimentalRequired && !_experimentalEnenabled.contains(true)
+  def disabled = experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
   def mkDtabStore: DtabStore
