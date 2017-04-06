@@ -9,7 +9,8 @@ import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
 import com.twitter.util.Duration
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.router.ClassifiedRetries
+import io.buoyant.router.RetryBudgetConfig
+import io.buoyant.router.RetryBudgetModule.param
 import scala.util.control.NoStackTrace
 
 /**
@@ -22,18 +23,19 @@ trait ClientConfig {
   var tls: Option[TlsClientConfig] = None
   var loadBalancer: Option[LoadBalancerConfig] = None
   var hostConnectionPool: Option[HostConnectionPool] = None
-  var retries: Option[RetriesConfig] = None
+  var failFast: Option[Boolean] = None
   var failureAccrual: Option[FailureAccrualConfig] = None
-  var timeoutMs: Option[Int] = None
+  var requestAttemptTimeoutMs: Option[Int] = None
+  var requeueBudget: Option[RetryBudgetConfig] = None
 
   @JsonIgnore
   def params(vars: Map[String, String]): Stack.Params = Stack.Params.empty
     .maybeWith(tls.map(_.params(vars)))
     .maybeWith(loadBalancer.map(_.clientParams))
     .maybeWith(hostConnectionPool.map(_.param))
-    .maybeWith(retries.flatMap(_.mkBackoff))
-    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
-    .maybeWith(retries.flatMap(_.mkBudget)) +
+    .maybeWith(requestAttemptTimeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
+    .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
+    .maybeWith(requeueBudget) +
     FailureAccrualConfig.param(failureAccrual)
 }
 
@@ -54,65 +56,6 @@ case class TlsClientConfig(
     case TlsClientConfig(Some(false) | None, None, _) =>
       val msg = "tls is configured with validation but `commonName` is not set"
       throw new IllegalArgumentException(msg) with NoStackTrace
-  }
-}
-
-case class RetriesConfig(
-  backoff: Option[BackoffConfig] = None,
-  budget: Option[RetryBudgetConfig] = None
-) {
-
-  @JsonIgnore
-  def mkBackoff: Option[ClassifiedRetries.Backoffs] =
-    backoff.map(_.mk).map(ClassifiedRetries.Backoffs(_))
-
-  // We use an empty backoff for Retries.Budget, since this informs
-  // _requeue_ delay. Requeues are explicitly for Nacks and
-  // non-application-level failures, and so we want to reenqueue
-  // these as quickly as possible.
-  @JsonIgnore
-  def mkBudget: Option[Retries.Budget] =
-    budget.map { b => Retries.Budget(b.mk, Backoff.const(Duration.Zero)) }
-}
-
-@JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
-  new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
-))
-abstract class BackoffConfig extends PolymorphicConfig {
-  @JsonIgnore
-  def mk: Stream[Duration]
-}
-
-case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {
-  // ms defaults to 0 when not specified
-  def mk = Backoff.constant(ms.millis)
-}
-
-/** See http://www.awsarchitectureblog.com/2015/03/backoff.html */
-case class JitteredBackoffConfig(minMs: Option[Int], maxMs: Option[Int]) extends BackoffConfig {
-  def mk = {
-    val min = minMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'minMs' must be specified")
-    }
-    val max = maxMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'maxMs' must be specified")
-    }
-    Backoff.decorrelatedJittered(min, max)
-  }
-}
-
-case class RetryBudgetConfig(
-  ttlSecs: Option[Int],
-  minRetriesPerSec: Option[Int],
-  percentCanRetry: Option[Double]
-) {
-  @JsonIgnore
-  def mk: RetryBudget = {
-    val ttl = ttlSecs.map(_.seconds).getOrElse(10.seconds)
-    RetryBudget(ttl, minRetriesPerSec.getOrElse(10), percentCanRetry.getOrElse(0.2))
   }
 }
 

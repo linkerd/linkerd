@@ -2,8 +2,9 @@ package io.buoyant.router
 
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
-import com.twitter.finagle.param.ProtocolLibrary
+import com.twitter.finagle.param.{ProtocolLibrary, ResponseClassifier}
 import com.twitter.finagle.server.StackServer
+import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http => fhttp, _}
 import io.buoyant.router.Http.param.HttpIdentifier
 import io.buoyant.router.http._
@@ -22,6 +23,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
     val pathStack: Stack[ServiceFactory[Request, Response]] =
       ViaHeaderAppenderFilter.module +:
         StripHopByHopHeadersFilter.module +:
+        ClassifierFilter.module +:
         StackRouter.newPathStack[Request, Response]
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
@@ -74,6 +76,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
     val defaultParams: Stack.Params =
       StackServer.defaultParams +
+        ResponseClassifier(ClassifierFilter.successClassClassifier) +
         fhttp.param.Streaming(true) +
         fhttp.param.Decompression(false) +
         ProtocolLibrary("http")

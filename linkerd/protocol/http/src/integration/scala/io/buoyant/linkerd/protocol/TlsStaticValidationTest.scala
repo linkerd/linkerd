@@ -69,11 +69,12 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
-             |  client:
+             |  service:
              |    retries:
              |      budget:
              |        minRetriesPerSec: 0
              |        percentCanRetry: 0.0
+             |  client:
              |    tls:
              |      commonName: wrong
              |      trustCerts:

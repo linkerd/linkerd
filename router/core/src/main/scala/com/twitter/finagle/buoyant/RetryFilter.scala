@@ -39,6 +39,8 @@ class RetryFilter[Req, Rep](
   private[this] val budgetExhausted =
     statsReceiver.scope("retries").counter("budget_exhausted")
 
+  private[this] val budgetGauge = statsReceiver.scope("retries").addGauge("budget") { retryBudget.balance }
+
   @inline
   private[this] def schedule(d: Duration)(f: => Future[Rep]) = {
     if (d > 0.seconds) {

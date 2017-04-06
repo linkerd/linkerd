@@ -3,10 +3,10 @@
 
 ```yaml
 routers:
-- ...
-  client:
-  responseClassifier:
-    kind: io.l5d.retryableRead5XX
+- protocol: http
+  service:
+    responseClassifier:
+      kind: io.l5d.retryableRead5XX
 ```
 
 Response classifiers determine which HTTP responses are considered to

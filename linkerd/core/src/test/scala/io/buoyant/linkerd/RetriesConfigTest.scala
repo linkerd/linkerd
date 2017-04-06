@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle.service.Retries
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
+import io.buoyant.router.RetryBudgetConfig
 import org.scalatest.FunSuite
 
 class RetriesConfigTest extends FunSuite {

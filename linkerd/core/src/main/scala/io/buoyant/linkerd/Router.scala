@@ -9,7 +9,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
 import com.twitter.util.{Closable, Duration}
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
-import io.buoyant.router.{Originator, RoutingFactory}
+import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
 /**
  * A router configuration builder api.
@@ -90,10 +90,10 @@ trait RouterConfig {
   // RouterConfig subtypes are required to implement these so that they may
   // refine to more specific config types.
   def servers: Seq[ServerConfig]
+  def service: Option[Svc]
   def client: Option[Client]
 
   var dtab: Option[Dtab] = None
-  var failFast: Option[Boolean] = None
   var originator: Option[Boolean] = None
   var dstPrefix: Option[String] = None
 
@@ -133,34 +133,10 @@ trait RouterConfig {
   /*
    * binding cache size
    */
-
   var bindingCache: Option[BindingCacheConfig] = None
 
-  /*
-   * responseClassifier categorizes responses to determine whether
-   * they are failures and if they are retryable.
-   */
-
-  @JsonProperty("responseClassifier")
-  var _responseClassifier: Option[ResponseClassifierConfig] = None
-
-  @JsonIgnore
-  def baseResponseClassifier: ResponseClassifier =
-    ResponseClassifier.Default
-
-  @JsonIgnore
-  def responseClassifier: ResponseClassifier =
-    _responseClassifier.map(_.mk).getOrElse(PartialFunction.empty) orElse baseResponseClassifier
-
-  /**
-   * Budgets are mutable and intended to be shared across clients.
-   * However, we want to ensure that budgets are not shared across
-   * routers, so we install a default default budget in each router's
-   * routerParams.  It may be overridden by clientParams.
-   */
-  @JsonIgnore
-  private def defaultBudget: Retries.Budget =
-    Retries.Budget(RetryBudget(), Backoff.const(Duration.Zero))
+  @JsonIgnore protected[this] def defaultResponseClassifier: ResponseClassifier =
+    ClassifiedRetries.Default
 
   /**
    * This property must be set to true in order to use this router if it
@@ -177,14 +153,13 @@ trait RouterConfig {
   def disabled = protocol.experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
-  def routerParams = (Stack.Params.empty + defaultBudget)
+  def routerParams = (Stack.Params.empty + param.ResponseClassifier(defaultResponseClassifier))
     .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
-    .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(originator.map(Originator.Param(_)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(bindingCache.map(_.capacity))
-    .maybeWith(client.map(_.clientParams)) +
-    param.ResponseClassifier(responseClassifier) +
+    .maybeWith(client.map(_.clientParams))
+    .maybeWith(service.map(_.pathParams)) +
     param.Label(label) +
     DstBindingFactory.BindingTimeout(bindingTimeout)
 

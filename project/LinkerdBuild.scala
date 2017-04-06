@@ -476,6 +476,7 @@ object LinkerdBuild extends Base {
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           k8s,
+          failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",
           Router.http)

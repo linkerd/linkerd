@@ -227,8 +227,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       s"""|routers:
           |- protocol: http
           |  dtab: ${dtab.show}
-          |  responseClassifier:
-          |    kind: $kind
+          |  service:
+          |    responseClassifier:
+          |      kind: $kind
           |  servers:
           |  - port: 0
           |""".stripMargin
