@@ -13,9 +13,9 @@ Do you have an improvement?
 
 1. Submit an [issue][issue] describing your proposed change.
 2. We will try to respond to your issue promptly.
-3. If your proposed change is accepted, and you haven't already done so, sign our [Contributor License Agreement][cla].
-4. Fork this repo, develop and test your code changes. See the project's [README](README.md) for further information about working in this repository.
-5. Submit a pull request against this repo's `master` branch.
+3. Fork this repo, develop and test your code changes. See the project's [README](README.md) for further information about working in this repository.
+4. Submit a pull request against this repo's `master` branch.
+5. You'll need to have signed our [Contributor License Agreement][cla] before we can accept any non-trivial changes.
 6. Your branch may be merged once all configured checks pass, including:
     - 2 code review approvals, at least 1 of which is from a [linkerd organization member][members].
     - The branch has passed tests in CI.
