@@ -1,21 +1,20 @@
 ![linkerd][l5d-logo]
 
-[![GitHub license](https://img.shields.io/github/license/linkerd/linkerd.svg)](LICENSE)
-[![Circle CI][l5d-ci-status]][l5d-ci]
-[![Slack Status](http://slack.linkerd.io/badge.svg)](http://slack.linkerd.io)
-[![Docker Pulls](https://img.shields.io/docker/pulls/buoyantio/linkerd.svg)](https://hub.docker.com/r/buoyantio/linkerd/)
+[![GitHub license][license-badge]](LICENSE)
+[![Circle CI][l5d-ci-badge]][l5d-ci]
+[![Slack Status][slack-badge]][slack]
+[![Docker Pulls][docker-badge]][docker]
 
 :balloon: Welcome to linkerd! :wave:
 
 linkerd is a transparent *service mesh*, designed to make modern applications
-safe and sane by transparently adding service discovery, load balancing,
-failure handling, instrumentation, and routing to all inter-service
-communication.
+safe and sane by transparently adding service discovery, load balancing, failure
+handling, instrumentation, and routing to all inter-service communication.
 
 linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
 proxy, and can usually be dropped into existing applications with a minimum of
-configuration, regardless of what language they're written in. It works with many
-common protocols and service discovery backends, including scheduled
+configuration, regardless of what language they're written in. It works with
+many common protocols and service discovery backends, including scheduled
 environments like Mesos and Kubernetes.
 
 linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
@@ -26,8 +25,9 @@ linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 
 ## Want to try it? ##
 
-We distribute binaries which you can download from
-the [linkerd releases page](releases).
+We distribute binaries which you can download from the [linkerd releases
+page](releases). We also publish docker images for each release, which you can
+find on [docker hub][docker].
 
 For instructions on how to configure and run linkerd, see the [user
 documentation on linkerd.io](https://linkerd.io).
@@ -35,14 +35,15 @@ documentation on linkerd.io](https://linkerd.io).
 ## Working in this repo ##
 
 [BUILD.md](BUILD.md) includes general information on how to work in this repo.
-Additionally, there are documents on how to build several of the application subprojects:
+Additionally, there are documents on how to build several of the application
+subprojects:
 
 * [linkerd](linkerd/README.md) -- produces `linkerd` router artifacts
 * [namerd](namerd/README.md) -- produces `namerd` service discovery artifacts
 * [grpc](grpc/README.md) -- produces the `protoc-gen-io.buoyant.grpc` code generator
 
-We :heart: pull requests! See [CONTRIBUTING.md](CONTRIBUTING.md) for info on contributing
-changes.
+We :heart: pull requests! See [CONTRIBUTING.md](CONTRIBUTING.md) for info on
+contributing changes.
 
 ## Related Repos ##
 
@@ -54,8 +55,8 @@ changes.
 
 ## Code of Conduct ##
 
-This project is for everyone. We ask that our users and contributors take a few minutes to
-review our [code of conduct][coc].
+This project is for everyone. We ask that our users and contributors take a few
+minutes to review our [code of conduct][coc].
 
 ## License ##
 
@@ -73,16 +74,22 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- references -->
-[coc]: wiki/Linkerd-code-of-conduct
 [cncf]: https://www.cncf.io/about
+[coc]: wiki/Linkerd-code-of-conduct
+[docker-badge]: https://img.shields.io/docker/pulls/buoyantio/linkerd.svg
+[docker]: https://hub.docker.com/r/buoyantio/linkerd/
 [finagle]: https://twitter.github.io/finagle/
 [k8s]: https://k8s.io/
-[l5d-ci-status]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-ci-badge]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-ci]: https://circleci.com/gh/linkerd/linkerd
 [l5d-eg]: https://github.com/linkerd/linkerd-examples
 [l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
 [l5d-tcp]: https://github.com/linkerd/linkerd-tcp
 [l5d-viz]: https://github.com/linkerd/linkerd-viz
 [l5d-zipkin]: https://github.com/linkerd/linkerd-zipkin
+[license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [namerctl]: https://github.com/linkerd/namerctl
 [netty]: https://netty.io/
+[slack-badge]: http://slack.linkerd.io/badge.svg
+[slack]: http://slack.linkerd.io
 [zipkin]: https://github.com/openzipkin/zipkin

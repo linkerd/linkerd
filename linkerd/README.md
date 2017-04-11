@@ -25,7 +25,7 @@ The `linkerd` project's packaging configurations may also be used to
 run linkerd locally, e.g.:
 
 ```
-> linkerd/minimal:run path/to/config.yml
+> linkerd/bundle:run path/to/config.yml
 ```
 
 #### Example configurations ####

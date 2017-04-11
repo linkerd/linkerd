@@ -2,8 +2,8 @@
 
 This document will help you build linkerd from source.
 
-This repo contains two main application build targets: 
-- linkerd, a service mesh router 
+This repo contains two main application build targets:
+- linkerd, a service mesh router
 - namerd, a service for centrally managing routing policy and fronting service discovery.
 
 More details at [namerd's quickstart](namerd/README.md#quickstart)
@@ -63,12 +63,12 @@ or
 The _inspect_ command helps describe how a command is configured:
 
 ```
-> inspect tree examples/http:run
-[info] examples/http:run = InputTask[Unit]
-[info]   +-examples/http:configFile = examples/http.yaml
-[info]   | +-examples/http:configuration = http
+> inspect tree linkerd-examples/http:run
+[info] linkerd-examples/http:run = InputTask[Unit]
+[info]   +-linkerd-examples/http:configFile = linkerd/examples/http.yaml
+[info]   | +-linkerd-examples/http:configuration = http
 [info]   |
-[info]   +-examples/http:runtimeConfiguration = minimal
+[info]   +-linkerd-examples/http:runtimeConfiguration = bundle
 [info]   +-*/*:settingsData = Task[sbt.Settings[sbt.Scope]]
 [info]
 ```
@@ -152,20 +152,6 @@ configurations to support packaging:
 [info] Packaging ...linkerd/target/scala-2.11/linkerd-0.0.10-SNAPSHOT-exec ...
 [info] Done packaging.
 [success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
-```
-
-##### _minimal_ build configuration #####
-
-The '_minimal_' sbt configuration, supporting only the `http` protocol
-and the `io.l5d.fs` namer, is useful for running linkerd during
-development. This configuration may be specified explicitly to scope
-build commands:
-
-```
-> linkerd/minimal:assembly
-[info] Packaging ...linkerd/target/scala-2.11/linkerd-minimal-0.0.10-SNAPSHOT-exec ...
-[info] Done packaging.
-[success] Total time: 13 s, completed Jan 29, 2016 4:30:58 PM
 ```
 
 Similarly, a namerd executable can be produced with the command:
