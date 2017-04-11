@@ -1,13 +1,13 @@
-# Contributing to linkerd
+# Contributing to linkerd #
 
 :balloon: Thanks for your help improving the project!
 
-## Getting Help
+## Getting Help ##
 
 If you have a question about linkerd or have encountered problems using it, you
 may [file an issue][issue] or join us on [Slack][slack].
 
-## Submitting a Pull Request
+## Submitting a Pull Request ##
 
 Do you have an improvement?
 
@@ -20,19 +20,19 @@ Do you have an improvement?
     - 2 code review approvals, at least 1 of which is from a [linkerd organization member][members].
     - The branch has passed tests in CI.
 
-## Code Style
+## Code Style ##
 
 We generally follow [Effective Scala][es] and the [Scala Style Guide][ssg]. When
 in doubt, we try to use Finagle's idioms.
 
-## Committing
+## Committing ##
 
 We prefer squash or rebase commits so that all changes from a branch are
 committed to master as a single commit. All pull requests are squashed when
 merged, but rebasing prior to merge gives you better control over the commit
 message.
 
-### Commit messages
+### Commit messages ###
 
 Finalized commit messages should be in the following format:
 
@@ -46,7 +46,7 @@ Solution
 Validation
 ```
 
-#### Subject
+#### Subject ####
 
 - one line, <= 50 characters
 - describe what is done; not the result
@@ -55,7 +55,7 @@ Validation
 - do not end in a period — this is a title/subject
 - reference the github issue by number
 
-##### Examples
+##### Examples #####
 
 ```
 bad: server disconnects should cause dst client disconnects.
@@ -67,17 +67,17 @@ bad: support tls servers
 good: Introduce support for server-side TLS (#347)
 ```
 
-#### Problem
+#### Problem ####
 
 Explain the context and why you're making that change.  What is the problem
 you're trying to solve? In some cases there is not a problem and this can be
 thought of as being the motivation for your change.
 
-#### Solution
+#### Solution ####
 
 Describe the modifications you've made.
 
-#### Validation
+#### Validation ####
 
 Describe the testing you've done to validate your change.  Performance-related
 changes should include before- and after- benchmark results.
