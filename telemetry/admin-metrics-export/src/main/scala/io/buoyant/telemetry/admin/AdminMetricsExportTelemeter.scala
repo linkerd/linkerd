@@ -37,7 +37,8 @@ class AdminMetricsExportTelemeter(
     } else {
       metrics
     }
-    val response = request.response
+    val response = Response()
+    response.version = request.version
     response.mediaType = MediaType.Json
     if (tree)
       response.withOutputStream(writeJsonTree(_, subtree))

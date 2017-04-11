@@ -1,7 +1,7 @@
 package io.buoyant.telemetry.prometheus
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{MediaType, Request}
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, Future}
@@ -17,7 +17,8 @@ import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
 class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithHandlers {
 
   private[prometheus] val handler = Service.mk { request: Request =>
-    val response = request.response
+    val response = Response()
+    response.version = request.version
     response.mediaType = MediaType.Txt
     val sb = new StringBuilder()
     writeMetrics(metrics, sb)
@@ -46,8 +47,9 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
       ""
     }
 
+  private[this] val first: ((String, String)) => String = _._1
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
-    labels.exists(_._1 == name)
+    labels.toIterator.map(first).contains(name)
 
   private[this] def writeMetrics(
     tree: MetricsTree,
