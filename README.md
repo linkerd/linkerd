@@ -75,7 +75,7 @@ specific language governing permissions and limitations under the License.
 
 <!-- references -->
 [cncf]: https://www.cncf.io/about
-[coc]: wiki/Linkerd-code-of-conduct
+[coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [docker-badge]: https://img.shields.io/docker/pulls/buoyantio/linkerd.svg
 [docker]: https://hub.docker.com/r/buoyantio/linkerd/
 [finagle]: https://twitter.github.io/finagle/
