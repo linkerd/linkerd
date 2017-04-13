@@ -25,6 +25,7 @@ kind | `io.l5d.nonRetryable5XX` | Either [`io.l5d.nonRetryable5XX`](#non-retryab
 ## Non-Retryable 5XX
 
 kind: `io.l5d.nonRetryable5XX`
+kind: `io.l5d.h2.nonRetryable5XX`
 
 All 5XX responses are considered to be failures and none of these
 requests are considered to be retryable.
@@ -32,6 +33,7 @@ requests are considered to be retryable.
 ## Retryable Read 5XX
 
 kind: `io.l5d.retryableRead5XX`
+kind: `io.l5d.h2.retryableRead5XX`
 
 All 5XX responses are considered to be failures. However, `GET`,
 `HEAD`, `OPTIONS`, and `TRACE` requests may be retried automatically.
@@ -43,6 +45,7 @@ Requests with chunked bodies are NEVER considered to be retryable.
 ## Retryable Idempotent 5XX
 
 kind: `io.l5d.retryableIdempotent5XX`
+kind: `io.l5d.h2.retryableIdempotent5XX`
 
 Like _io.l5d.retryableRead5XX_, but `PUT` and `DELETE` requests may
 also be retried.

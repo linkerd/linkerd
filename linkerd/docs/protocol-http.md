@@ -290,7 +290,7 @@ headerValue | N/A | The value of the HTTP header as a path segment.
 <a name="ingress-identifier"></a>
 ### Ingress Identifier
 
-kind: `io.l5d.http.ingress`
+kind: `io.l5d.ingress`
 
 Using this identifier enables linkerd to function as a Kubernetes ingress
 controller. The ingress identifier compares HTTP requests to [ingress
@@ -305,7 +305,7 @@ name based on those rules.
 routers:
 - protocol: http
   identifier:
-    kind: io.l5d.http.ingress
+    kind: io.l5d.ingress
     namespace: default
   servers:
   - port: 4140

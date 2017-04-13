@@ -11,7 +11,7 @@ routers:
     /svc/localhost:4142 => /$/inet/127.1/8888;
     /svc => /srv;
   identifier:
-    kind: io.l5d.headerToken
+    kind: io.l5d.header.token
     header: ":authority"
   servers:
   - port: 4142
