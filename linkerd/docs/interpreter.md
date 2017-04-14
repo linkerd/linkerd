@@ -92,7 +92,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because the mesh interpreter is still considered experimental, you must set this to `true` to use it.
 dst | _required_ | A Finagle path locating the namerd service.
-namespace | `default` | The name of the namerd dtab to use.
+root | `/default` | A single-element Finagle path representing the namerd namespace.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
 tls | no tls | The namerd mesh interface does not support server TLS configuration at this time.
 
