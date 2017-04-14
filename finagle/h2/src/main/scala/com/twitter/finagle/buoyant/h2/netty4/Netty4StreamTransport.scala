@@ -531,8 +531,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] def writeStream(stream: Stream): Future[Unit] = {
     def loop(): Future[Unit] =
       stream.read().rescue(wrapLocalEx)
-        .flatMap(writeFrame)
-        .before(loop())
+        .flatMap { f =>
+          writeFrame(f).flatMap { _ =>
+            if (!f.isEnd) loop() else Future.Unit
+          }
+        }
 
     localResetOnCancel(loop())
   }
