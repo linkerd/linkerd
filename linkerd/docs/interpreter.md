@@ -35,9 +35,9 @@ kind: `io.l5d.namerd`
 
 The namerd thrift interpreter offloads the responsibilities of name resolution
 to the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter users namerd's long-poll thrift interface. Note that the protocol
-that the interpreter uses to talk to namerd is unrelated to the protocols of
-linkerd's routers.
+interpreter users namerd's long-poll thrift interface
+(`io.l5d.thriftNameInterpreter`). Note that the protocol that the interpreter
+uses to talk to namerd is unrelated to the protocols of linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -66,9 +66,9 @@ kind: `io.l5d.namerd.http`
 
 The namerd http interpreter offloads the responsibilities of name resolution to
 the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter uses namerd's HTTP streaming interface.  Note that the protocol that
-the interpreter uses to talk to namerd is unrelated to the protocols of
-linkerd's routers.
+interpreter uses namerd's HTTP streaming interface (`io.l5d.httpController`).
+Note that the protocol that the interpreter uses to talk to namerd is unrelated
+to the protocols of linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -84,9 +84,9 @@ kind: `io.l5d.mesh`
 
 The namerd mesh interpreter offloads the responsibilities of name resolution to
 the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter uses namerd's mesh interface via gRPC.  Note that the protocol that
-the interpreter uses to talk to namerd is unrelated to the protocols of
-linkerd's routers.
+interpreter uses namerd's gRPC mesh interface (`io.l5d.mesh`). Note that the
+protocol that the interpreter uses to talk to namerd is unrelated to the
+protocols of linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------

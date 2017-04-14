@@ -1,9 +1,16 @@
 # Interfaces
 
-An interface is a published network interface to namerd.
+An interface is a published network interface to namerd. All of the interfaces
+listed below provide Finage's [`NameInterpreter`](
+https://twitter.github.io/finagle/docs/com/twitter/finagle/naming/NameInterpreter.html)
+functionality for remote resolution of destinations using dtabs stored in
+namerd. Additionally, the [`io.l5d.httpController`](#http-controller) interface
+provides a dtab read/write API that's used by
+[namerctl](https://github.com/linkerd/namerctl).
 
 <aside class="notice">
-These parameters are available to the interface regardless of kind. Interfaces may also have kind-specific parameters.
+These parameters are available to the interface regardless of kind. Interfaces
+may also have kind-specific parameters.
 </aside>
 
 Key | Default Value | Description
@@ -16,7 +23,9 @@ port | interface dependent | The port number on which to server the namer interf
 
 kind: `io.l5d.thriftNameInterpreter`
 
-A read-only interface providing `NameInterpreter` functionality over the ThriftMux protocol.
+A read-only interface providing `NameInterpreter` functionality over the
+ThriftMux protocol. Use linkerd's `io.l5d.namerd` interpreter to resolve
+destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -49,7 +58,9 @@ keyPath | _required_ | File path to the TLS key file.
 
 kind: `io.l5d.mesh`
 
-An interface providing `NameInterpreter` functionality over gRPC.
+A read-only interface providing `NameInterpreter` functionality over the gRCP
+protocol. Use linkerd's `io.l5d.mesh` interpreter to resolve destinations via
+this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -63,6 +74,9 @@ kind: `io.l5d.httpController`
 The HTTP controller provides APIs for reading and writing dtabs, as well as for
 viewing how names are resolved.  This API can also be accessed using the
 [namerctl](https://github.com/linkerd/namerctl) command line tool.
+Additionally, this API provides an HTTP implementation of the `NameInterpreter`
+interface. Use linkerd's `io.l5d.namerd.http` interpreter to resolve
+destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
