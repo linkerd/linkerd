@@ -8,7 +8,7 @@ These parameters are available to the interface regardless of kind. Interfaces m
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter) or [`io.l5d.httpController`](#http-controller).
+kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter), [`io.l5d.mesh`](#grpc-mesh-interface), or [`io.l5d.httpController`](#http-controller).
 ip | interface dependent | The local IP address on which to serve the namer interface.
 port | interface dependent | The port number on which to server the namer interface.
 
@@ -44,6 +44,17 @@ Key | Default Value | Description
 --- | ------------- | -----------
 certPath | _required_ | File path to the TLS certificate file.
 keyPath | _required_ | File path to the TLS key file.
+
+## gRPC Mesh Interface
+
+kind: `io.l5d.mesh`
+
+An interface providing `NameInterpreter` functionality over gRPC.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
+port | `4321` | The port number on which to server the namer interface.
 
 ## Http Controller
 

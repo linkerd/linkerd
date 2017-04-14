@@ -18,7 +18,7 @@ These parameters are available to the identifier regardless of kind. Identifiers
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd), or [`io.l5d.fs`](#file-system).
+kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd-thrift), [`io.l5d.namerd.http`](#namerd-http), [`io.l5d.mesh`](#namerd-mesh), or [`io.l5d.fs`](#file-system).
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 ## Default
@@ -29,21 +29,18 @@ The default interpreter resolves names via the configured
 [`namers`](#namers), with a fallback to the default Finagle
 `Namer.Global` that handles paths of the form `/$/`.
 
-## namerd
+## namerd thrift
 
 kind: `io.l5d.namerd`
-kind: `io.l5d.namerd.http`
 
-The namerd interpreter offloads the responsibilities of name resolution to the
-namerd service.  Any namers configured in this linkerd are not used.  The
-`io.l5d.namerd` interpreter uses namerd's long-poll thrift interface and the
-`io.l5d.namerd.http` interpreter uses namerd's HTTP streaming interface.  Note
-that the protocol that the interpreter uses to talk to namerd is unrelated to
-the protocols of linkerd's routers.
+The namerd thrift interpreter offloads the responsibilities of name resolution
+to the namerd service.  Any namers configured in this linkerd are not used.  The
+interpreter users namerd's long-poll thrift interface. Note that the protocol
+that the interpreter uses to talk to namerd is unrelated to the protocols of
+linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because the http version is still considered experimental, you must set this to `true` to use it.
 dst | _required_ | A Finagle path locating the namerd service.
 namespace | `default` | The name of the namerd dtab to use.
 retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
@@ -62,6 +59,42 @@ Key | Default Value | Description
 --- | ------------- | -----------
 commonName | _required_ | The common name to use for namerd requests.
 caCert | N/A | The path to the CA cert used for common name validation.
+
+## namerd http
+
+kind: `io.l5d.namerd.http`
+
+The namerd http interpreter offloads the responsibilities of name resolution to
+the namerd service.  Any namers configured in this linkerd are not used.  The
+interpreter uses namerd's HTTP streaming interface.  Note that the protocol that
+the interpreter uses to talk to namerd is unrelated to the protocols of
+linkerd's routers.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because the http interpreter is still considered experimental, you must set this to `true` to use it.
+dst | _required_ | A Finagle path locating the namerd service.
+namespace | `default` | The name of the namerd dtab to use.
+retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
+tls | no tls | Requests to namerd will be made using TLS if this parameter is provided.  It must be a [namerd client TLS](#namerd-client-tls) object.
+
+## namerd mesh
+
+kind: `io.l5d.mesh`
+
+The namerd mesh interpreter offloads the responsibilities of name resolution to
+the namerd service.  Any namers configured in this linkerd are not used.  The
+interpreter uses namerd's mesh interface via gRPC.  Note that the protocol that
+the interpreter uses to talk to namerd is unrelated to the protocols of
+linkerd's routers.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because the mesh interpreter is still considered experimental, you must set this to `true` to use it.
+dst | _required_ | A Finagle path locating the namerd service.
+namespace | `default` | The name of the namerd dtab to use.
+retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
+tls | no tls | The namerd mesh interface does not support server TLS configuration at this time.
 
 ## File-System
 
