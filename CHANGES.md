@@ -7,6 +7,11 @@
 * Add timeoutMs option to server section in linkerd config.
 * Automatically upgrade all HTTP/1.0 messages to HTTP/1.1.
 * Add `io.l5d.influxdb` LINE telemeter
+* Refactor http and h2 identifiers for consistency:
+  * The `io.l5d.headerToken` id has been renamed to `io.l5d.header.token`.
+  * The `io.l5d.headerPath` id has been renamed to `io.l5d.header.path`.
+  * The `io.l5d.h2.ingress` id has been renamed to `io.l5d.ingress`.
+  * The `io.l5d.http.ingress` id has been renamed to `io.l5d.ingress`.
 
 ## 0.9.1 2017-03-15
 

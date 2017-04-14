@@ -53,7 +53,7 @@ class HeaderTokenIdentifierConfig extends H2IdentifierConfig {
 }
 
 object HeaderTokenIdentifierConfig {
-  val kind = "io.l5d.headerToken"
+  val kind = "io.l5d.header.token"
 }
 
 class HeaderTokenIdentifierInitializer extends IdentifierInitializer {
