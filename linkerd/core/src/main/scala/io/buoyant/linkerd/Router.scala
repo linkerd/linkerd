@@ -153,7 +153,9 @@ trait RouterConfig {
   def disabled = protocol.experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
-  def routerParams = (Stack.Params.empty + param.ResponseClassifier(defaultResponseClassifier))
+  def routerParams = (Stack.Params.empty +
+    param.ResponseClassifier(defaultResponseClassifier) +
+    FailureAccrualConfig.default)
     .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
     .maybeWith(originator.map(Originator.Param(_)))
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
