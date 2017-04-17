@@ -79,13 +79,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
+        def budget = stats.gauges(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
         def requeues = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
+          Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
           0
         )
         def requestLimit = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
+          Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
           0
         )
 
@@ -178,13 +178,13 @@ class RetriesEndToEndTest extends FunSuite {
 
 
         def budget(ds: Downstream) = 
-          stats.gauges(Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
+          stats.gauges(Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
         def requeues(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
+          Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
           0
         )
         def requestLimit(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
+          Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
           0
         )
 
@@ -289,13 +289,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "dst", "path", "svc/foo", "retries", "budget"))
+        def budget = stats.gauges(Seq("http", "service", "svc/foo", "retries", "budget"))
         def retries = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          Seq("http", "service", "svc/foo", "retries", "total"),
           0
         )
         def budgetExhausted = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "budget_exhausted"),
+          Seq("http", "service", "svc/foo", "retries", "budget_exhausted"),
           0
         )
 
@@ -390,13 +390,13 @@ class RetriesEndToEndTest extends FunSuite {
 
 
         def budget(ds: Downstream) = 
-          stats.gauges(Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "budget"))
+          stats.gauges(Seq("http", "service", s"svc/${ds.name}", "retries", "budget"))
         def retries(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "total"),
+          Seq("http", "service", s"svc/${ds.name}", "retries", "total"),
           0
         )
         def budgetExhausted(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "budget_exhausted"),
+          Seq("http", "service", s"svc/${ds.name}", "retries", "budget_exhausted"),
           0
         )
 
@@ -483,9 +483,9 @@ class RetriesEndToEndTest extends FunSuite {
         // Each budget starts with a balance of 100 from minRetriesPerSec
         // we subtract that off to see just the deposits
         def retryBudget(svc: String): Int =
-          stats.gauges.get(Seq("http", "dst", "path", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+          stats.gauges.get(Seq("http", "service", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
         def requeueBudget(clnt: String): Int = 
-          stats.gauges.get(Seq("http", "dst", "id", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+          stats.gauges.get(Seq("http", "client", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
 
         // 20% budget
         assert(retryBudget("svc/a") == 2)

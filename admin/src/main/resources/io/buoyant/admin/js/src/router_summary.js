@@ -51,8 +51,8 @@ define([
 
     function getMetrics(routerName) {
       var serverAccessor = ["rt", routerName, "srv"];
-      var clientAccessor = ["rt", routerName, "dst", "id"];
-      var pathAccessor = ["rt", routerName, "dst", "path", "svc"];
+      var clientAccessor = ["rt", routerName, "client"];
+      var pathAccessor = ["rt", routerName, "service", "svc"];
 
       return _.each({
         load: {

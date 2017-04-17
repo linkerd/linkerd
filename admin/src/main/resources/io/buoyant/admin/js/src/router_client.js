@@ -75,7 +75,7 @@ define([
         {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
         {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
       ], function(metric) {
-        var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
+        var treeKeyRoot = ["rt", routerName, "client", clientName].concat(metric.suffix.split("/"));
 
         return {
           metricSuffix: metric.suffix,
@@ -98,7 +98,7 @@ define([
     }
 
     function getLatencyData(data, routerName, clientName, chartLegend) {
-      var latencyData = _.get(data, ["rt", routerName, "dst", "id", clientName, "request_latency_ms"]);
+      var latencyData = _.get(data, ["rt", routerName, "client", clientName, "request_latency_ms"]);
 
       return _.map(latencyKeys, function(key) {
         return {

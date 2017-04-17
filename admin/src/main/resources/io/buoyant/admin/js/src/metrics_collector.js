@@ -43,7 +43,7 @@ define(['jQuery'], function($) {
     function getAddedClients(resp) {
       var addedClients = {};
       _.each(resp.rt, function(routerData, router) {
-        _.each(_.get(routerData, "dst.id"), function(clientData, client) {
+        _.each(_.get(routerData, "client"), function(clientData, client) {
           clients[router] = clients[router] || {};
           if(!clients[router][client]) {
             addedClients[router] = addedClients[router] || {};
