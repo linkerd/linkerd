@@ -55,7 +55,7 @@ case class IngressIdentifierConfig(
 }
 
 object IngressIdentifierConfig {
-  val kind = "io.l5d.http.ingress"
+  val kind = "io.l5d.ingress"
 }
 
 class IngressIdentifierInitializer extends IdentifierInitializer {

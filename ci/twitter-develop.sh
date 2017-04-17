@@ -10,7 +10,7 @@ set -xeu
 # Optionally accept the scala version as an argument
 SCALA_VERSION=${1:-2.11.7}
 
-# Allow git shas to be cached so that rebuilds aer only done as needed.
+# Allow git shas to be cached so that rebuilds are only done as needed.
 function tracking_shas(){
   [ -z "${IGNORE_GIT_SHA_DIR:-}" ] && [ -n "$GIT_SHA_DIR" ] && [ -d $GIT_SHA_DIR ]
 }

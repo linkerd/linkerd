@@ -19,6 +19,7 @@ object LinkerdBuild extends Base {
     .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
     .withLib(Deps.jacksonYaml)
+    .withTests()
 
   val consul = projectDir("consul")
     .dependsOn(configCore)
