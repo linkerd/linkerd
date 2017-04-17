@@ -30,6 +30,7 @@ import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 import scala.language.reflectiveCalls
+import scala.util.Random
 
 private[telemeter] object UsageDataTelemeter {
   val DefaultPeriod = 1.hour
@@ -206,15 +207,17 @@ case class UsageDataTelemeter(
     Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
 
+  def jitter(i: Duration): Duration = (Random.nextGaussian() * i.inSeconds).toInt.seconds
+
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
     if (started.compareAndSet(false, true)) run0()
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val _ = client(metrics)
+    Future.sleep(jitter(1.minute))(DefaultTimer.twitter).before(client(metrics))
 
-    val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
+    val task = DefaultTimer.twitter.schedule(DefaultPeriod.plus(jitter(1.minute))) {
       val _ = client(metrics)
     }
 
