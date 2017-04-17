@@ -45,7 +45,6 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
     server.configured(param.Label(s"$ip/$port"))
       .configured(Server.RouterLabel(routerLabel))
       .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[param.ResponseClassifier])
       .configured(router.params[param.Tracer])
   }
 

@@ -1,9 +1,9 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{Stack, Stackable, ServiceFactory, param}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.RetryFilter
 import com.twitter.finagle.service.{RetryFilter => _, _}
-import com.twitter.util.{Duration, Try}
+import com.twitter.util._
 
 object ClassifiedRetries {
   val role = Stack.Role("ClassifiedRetries")
@@ -19,6 +19,15 @@ object ClassifiedRetries {
     val default = Backoffs(Backoff.const(Duration.Zero))
   }
 
+  // Note that we don't retry RetryableWriteExceptions here.  We are assuming
+  // that those requeues happen in the requeue filter and if a requeuable
+  // exception has made it here, the requeue budget must be exhausted or the 
+  // requeue limit must have been reached.
+  val Default: ResponseClassifier = ResponseClassifier.named("DefaultResponseClassifier") {
+    case ReqRep(_, Return(_)) => ResponseClass.Success
+    case ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+  }
+
   /**
    * A RetryPolicy that uses a ResponseClassifier.
    */
@@ -27,13 +36,17 @@ object ClassifiedRetries {
 
     def apply(in: (Req, Try[Rsp])): Option[(Duration, RetryPolicy[(Req, Try[Rsp])])] = {
       val (req, rsp) = in
-      classifier.applyOrElse(ReqRep(req, rsp), ResponseClassifier.Default) match {
-        case ResponseClass.RetryableFailure =>
-          backoff match {
-            case pause #:: rest => Some((pause, new ClassifiedPolicy(rest, classifier)))
+      rsp match {
+        case Throw(f: Failure) if f.isFlagged(Failure.Interrupted) => None
+        case _ =>
+          classifier.applyOrElse(ReqRep(req, rsp), ClassifiedRetries.Default) match {
+            case ResponseClass.RetryableFailure =>
+              backoff match {
+                case pause #:: rest => Some((pause, new ClassifiedPolicy(rest, classifier)))
+                case _ => None
+              }
             case _ => None
           }
-        case _ => None
       }
     }
   }

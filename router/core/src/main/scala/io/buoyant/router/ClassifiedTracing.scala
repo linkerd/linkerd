@@ -1,9 +1,10 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{Stack, Stackable, Service, ServiceFactory, SimpleFilter, param}
+import com.twitter.finagle.{Stack, Stackable, Service, ServiceFactory, SimpleFilter, param, Path}
 import com.twitter.finagle.tracing.{Trace, Tracer}
 import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.util.{Duration, Future}
+import io.buoyant.router.context.ResponseClassifierCtx
 
 object ClassifiedTracing {
   val role = Stack.Role("ClassifiedTracing")
@@ -35,19 +36,27 @@ object ClassifiedTracing {
    * based on response classifications.
    */
   def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-    new Stack.Module2[param.Tracer, param.ResponseClassifier, ServiceFactory[Req, Rsp]] {
+    new Stack.Module1[param.Tracer, ServiceFactory[Req, Rsp]] {
       val role = ClassifiedTracing.role
       val description = "Traces response classification annotations"
       def make(
         _tracer: param.Tracer,
-        _classifier: param.ResponseClassifier,
         next: ServiceFactory[Req, Rsp]
       ): ServiceFactory[Req, Rsp] = {
         val param.Tracer(tracer) = _tracer
         if (tracer.isNull) next
         else {
-          val param.ResponseClassifier(classifier) = _classifier
-          new Filter[Req, Rsp](classifier) andThen next
+
+          // We memoize on the dst path.  The assumes that the response classifier for a dst path
+          // never changes.
+          def mkClassifiedTracingFilter(path: Path) = {
+            val param.ResponseClassifier(classifier) =
+              ResponseClassifierCtx.current.getOrElse(param.ResponseClassifier.param.default)
+            new Filter[Req, Rsp](classifier)
+          }
+
+          val filter = new PerDstPathFilter(mkClassifiedTracingFilter _)
+          filter.andThen(next)
         }
       }
     }

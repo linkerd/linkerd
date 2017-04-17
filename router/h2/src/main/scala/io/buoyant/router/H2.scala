@@ -30,7 +30,7 @@ object H2 extends Router[Request, Response]
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] = {
       val stk = StackRouter.newPathStack[Request, Response]
-      h2.ViaHeaderFilter.module +: stk
+      h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +: stk
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
@@ -79,9 +79,11 @@ object H2 extends Router[Request, Response]
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
+
+    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(h2.ClassifierFilter.successClassClassifier)
   }
 
-  val server = FinagleH2.server.withStack(Server.newStack)
+  val server = FinagleH2.Server(Server.newStack, Server.defaultParams)
 
   def serve(addr: SocketAddress, service: ServiceFactory[Request, Response]): ListeningServer =
     server.serve(addr, service)

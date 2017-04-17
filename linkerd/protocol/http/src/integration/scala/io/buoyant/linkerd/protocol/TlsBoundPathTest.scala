@@ -250,16 +250,17 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |
              |  servers:
              |  - port: 0
+             |  service:
+             |    retries:
+             |      budget:
+             |        minRetriesPerSec: 0
+             |        percentCanRetry: 0.0
              |  client:
              |    kind: io.l5d.static
              |    configs:
              |    - prefix: "/#/io.l5d.fs/{host}"
              |      engine:
              |        kind: netty4
-             |      retries:
-             |        budget:
-             |          minRetriesPerSec: 0
-             |          percentCanRetry: 0.0
              |      tls:
              |        commonName: "{host}.buoyant.io"
              |        trustCerts:

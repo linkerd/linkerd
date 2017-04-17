@@ -5,12 +5,14 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.http.{param => hparam}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
-import com.twitter.finagle.service.{Retries, RetryBudget}
+import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Reader
 import com.twitter.util.{Future, MockTimer, Promise, Time}
 import io.buoyant.linkerd.protocol.http.ResponseClassifiers
+import io.buoyant.router.RetryBudgetConfig
+import io.buoyant.router.RetryBudgetModule.{param => ev}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.Eventually
@@ -92,10 +94,9 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
         (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
-    val budget = RetryBudget(10.seconds, 0, 0.5)
     val params = Stack.Params.empty +
       param.ResponseClassifier(ResponseClassifiers.RetryableReadFailures) +
-      Retries.Budget(budget)
+      RetryBudgetConfig(Some(10), Some(0), Some(0.5))
     val factory = http.make(params)
 
     val service = await(factory())

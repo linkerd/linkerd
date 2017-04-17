@@ -114,13 +114,4 @@ fancyRouter: true
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(Path.read("/#/io.l5d.foo/bar")))
   }
-
-  test("timeout") {
-    val yaml =
-      """
-        |timeoutMs: 500
-      """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params[TimeoutFilter.Param].timeout == 500.millis)
-
-  }
 }

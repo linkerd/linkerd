@@ -61,48 +61,6 @@ class RouterTest extends FunSuite {
     }
   }
 
-  val depositModule: Stackable[ServiceFactory[String, Int]] =
-    new Stack.Module1[Retries.Budget, ServiceFactory[String, Int]] {
-      def role = Stack.Role("Desposit")
-      def description = "deposits into the retry budget"
-      def make(_budget: Retries.Budget, next: ServiceFactory[String, Int]) = {
-        val Retries.Budget(budget, _) = _budget
-        val filter = Filter.mk[String, Int, String, Int] { (s, svc) =>
-          budget.deposit()
-          svc(s)
-        }
-        filter andThen next
-      }
-    }
-
-  test("path retry budget deposits, client retry budget does not") {
-    val deposits = new AtomicInteger(0)
-    val budget = new RetryBudget {
-      def deposit(): Unit = {
-        val _ = deposits.incrementAndGet()
-      }
-      def tryWithdraw() = true
-      def balance = 1L
-    }
-    val namer = new NameInterpreter {
-      def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
-        Activity.value(NameTree.Leaf(Name.Bound(Var.value(Addr.Pending), Path.Utf8("svc"))))
-    }
-
-    val factory = TestRouter()
-      .configured(Retries.Budget(budget, Backoff.const(Duration.Zero)))
-      .configured(DstBindingFactory.Namer(namer))
-      .withPathStack(depositModule +: nilStack)
-      .withBoundStack(depositModule +: nilStack)
-      .withClientStack(depositModule +: nilStack)
-      .factory()
-
-    val svc = await(factory())
-    assert(deposits.get() == 0)
-    assert(await(svc("12")) == 12)
-    assert(deposits.get() == 1)
-  }
-
   test("client labeling") {
     @volatile var label: Option[String] = None
     val labelModule: Stackable[ServiceFactory[String, Int]] =
