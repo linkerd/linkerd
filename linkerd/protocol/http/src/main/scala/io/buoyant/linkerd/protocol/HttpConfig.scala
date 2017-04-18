@@ -141,7 +141,11 @@ trait HttpSvcConfig extends SvcConfig {
 
   @JsonIgnore
   override def responseClassifier =
-    super.responseClassifier.map(ResponseClassifiers.NonRetryableChunked(_))
+    super.responseClassifier.map { classifier =>
+      ResponseClassifiers.NonRetryableChunked(
+        ResponseClassifiers.HeaderRetryable(classifier)
+      )
+    }
 }
 
 case class HttpServerConfig(
@@ -194,7 +198,9 @@ case class HttpConfig(
 
   @JsonIgnore
   override val defaultResponseClassifier = ResponseClassifiers.NonRetryableChunked(
-    ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+    ResponseClassifiers.HeaderRetryable(
+      ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+    )
   )
 
   @JsonIgnore
@@ -203,7 +209,6 @@ case class HttpConfig(
       RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
     }
   }
-
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))

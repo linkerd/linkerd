@@ -14,6 +14,7 @@
 * Split the timeoutMs router option into a requestAttemptTimeoutMs client option
   and a totalTimeoutMs service option.
 * Fixed k8s namer to handle null endpoint subsets.
+* Encode retryability on HTTP responses in the `l5d-retryable` header.
 
 ## 0.9.1 2017-03-15
 
