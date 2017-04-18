@@ -13,6 +13,7 @@
 * Add support for per-service configuration.
 * Split the timeoutMs router option into a requestAttemptTimeoutMs client option
   and a totalTimeoutMs service option.
+* Fixed k8s namer to handle null endpoint subsets.
 
 ## 0.9.1 2017-03-15
 

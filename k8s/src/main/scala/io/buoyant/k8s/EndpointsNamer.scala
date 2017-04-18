@@ -120,10 +120,10 @@ private object EndpointsNamer {
 
   case class Svc(endpoints: Set[Endpoint], ports: Map[String, Int])
 
-  private[this] def getEndpoints(subsets: Seq[v1.EndpointSubset]): Set[Endpoint] = {
+  private[this] def getEndpoints(subsets: Option[Seq[v1.EndpointSubset]]): Set[Endpoint] = {
     val endpoints = mutable.Set.empty[Endpoint]
     for {
-      subset <- subsets
+      subset <- subsets.getOrElse(Seq.empty)
       addresses <- subset.addresses
       addrs <- addresses
     } {
@@ -132,10 +132,10 @@ private object EndpointsNamer {
     endpoints.toSet
   }
 
-  private[this] def getPorts(subsets: Seq[v1.EndpointSubset]): Map[String, Int] = {
+  private[this] def getPorts(subsets: Option[Seq[v1.EndpointSubset]]): Map[String, Int] = {
     val portSet = mutable.Map.empty[String, Int]
     for {
-      subset <- subsets
+      subset <- subsets.getOrElse(Seq.empty)
       ports <- subset.ports
       port <- ports
       name <- port.name
@@ -171,7 +171,7 @@ private object EndpointsNamer {
 
     def ports: Var[Map[String, Int]] = portsState
 
-    def update(subsets: Seq[v1.EndpointSubset]): Unit = {
+    def update(subsets: Option[Seq[v1.EndpointSubset]]): Unit = {
       val newEndpoints = getEndpoints(subsets)
       val newPorts = getPorts(subsets)
 
