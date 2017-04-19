@@ -201,6 +201,44 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     }
   }
 
+  test("marks exceptions as failure by default") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    val downstream = Downstream.mk("dog") { req => ??? }
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    // Just close the downstream right away to generate connection exceptions
+    await(downstream.server.close())
+
+    try {
+      val req = Request()
+      req.host = "dog"
+      val rsp = await(client(req))
+      assert(rsp.status == Status.BadGateway)
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == None)
+      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "success")) == None)
+      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "failures")) == Some(1))
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
   val allMethods = Set[Method](Connect, Delete, Get, Head, Patch, Post, Put, Options, Trace)
   val readMethods = Set[Method](Get, Head, Options, Trace)
   val idempotentMethods = readMethods ++ Set[Method](Delete, Put)

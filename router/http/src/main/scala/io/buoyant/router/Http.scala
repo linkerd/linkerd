@@ -2,6 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
+import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.param.{ProtocolLibrary, ResponseClassifier}
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.StatsFilter
@@ -74,9 +75,12 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       (AddForwardedHeader.module +: FinagleHttp.Server.stack)
         .insertBefore(http.TracingFilter.role, ProxyRewriteFilter.module)
 
+    private val serverResponseClassifier =
+      ClassifierFilter.successClassClassifier orElse HttpResponseClassifier.ServerErrorsAsFailures
+
     val defaultParams: Stack.Params =
       StackServer.defaultParams +
-        ResponseClassifier(ClassifierFilter.successClassClassifier) +
+        ResponseClassifier(serverResponseClassifier) +
         fhttp.param.Streaming(true) +
         fhttp.param.Decompression(false) +
         ProtocolLibrary("http")
