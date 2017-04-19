@@ -3,14 +3,18 @@ package io.buoyant.linkerd
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.TlsClientPrep.Trust
 import com.twitter.finagle.loadbalancer.{Balancers, DefaultBalancerFactory, LoadBalancerFactory}
+import com.twitter.finagle.service.exp.FailureAccrualPolicy
+import com.twitter.finagle.service.FailureAccrualFactory
 import com.twitter.finagle.Path
+import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
+import scala.language.reflectiveCalls
 
 class ClientTest extends FunSuite {
 
   def parse(yaml: String): Client =
-    Parser.objectMapper(yaml, Nil).readValue[Client](yaml)
+    Parser.objectMapper(yaml, Seq(Seq(new FooFailureAccrual))).readValue[Client](yaml)
 
   test("default applies to all clients") {
     val client = parse("""|loadBalancer:
@@ -88,4 +92,37 @@ class ClientTest extends FunSuite {
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.wrong/bas"))
     assert(basParams[Trust].config == Trust.NotConfigured)
   }
+
+  test("failure accrual") {
+    val client = parse("""|kind: io.l5d.static
+                          |configs:
+                          |- prefix: "/"
+                          |  failureAccrual:
+                          |    kind: io.l5d.foo
+                          |- prefix: "/#/io.l5d.fs/foo"
+                          |  # this should inherit the failure accrual policy
+                          |  # from above
+                          |""".stripMargin)
+
+    val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/foo"))
+    val policy = fooParams[FailureAccrualFactory.Param]
+      .asInstanceOf[{ def failureAccrualPolicy: () => FailureAccrualPolicy }]
+      .failureAccrualPolicy()
+    assert(policy.toString == "FooFailureAccrual")
+  }
+}
+
+class FooFailureAccrual extends FailureAccrualInitializer {
+  val configClass = classOf[FooConfig]
+  override def configId = "io.l5d.foo"
+}
+
+class FooConfig extends FailureAccrualConfig {
+  override def policy =
+    () => new FailureAccrualPolicy {
+      def recordSuccess(): Unit = ???
+      def markDeadOnFailure(): Option[Duration] = ???
+      def revived(): Unit = ???
+      override def toString = "FooFailureAccrual"
+    }
 }

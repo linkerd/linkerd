@@ -35,8 +35,8 @@ trait ClientConfig {
     .maybeWith(hostConnectionPool.map(_.param))
     .maybeWith(requestAttemptTimeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
-    .maybeWith(requeueBudget) +
-    FailureAccrualConfig.param(failureAccrual)
+    .maybeWith(requeueBudget)
+    .maybeWith(failureAccrual.map(FailureAccrualConfig.param(_)))
 }
 
 case class TlsClientConfig(

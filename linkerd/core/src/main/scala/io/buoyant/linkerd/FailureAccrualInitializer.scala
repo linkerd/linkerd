@@ -31,6 +31,8 @@ object FailureAccrualConfig {
   private val defaultPolicy =
     () => FailureAccrualPolicy.consecutiveFailures(defaultConsecutiveFailures, defaultBackoff)
 
-  def param(config: Option[FailureAccrualConfig]): FailureAccrualFactory.Param =
-    FailureAccrualFactory.Param(config.map(_.policy).getOrElse(defaultPolicy))
+  def default: FailureAccrualFactory.Param = FailureAccrualFactory.Param(defaultPolicy)
+
+  def param(config: FailureAccrualConfig): FailureAccrualFactory.Param =
+    FailureAccrualFactory.Param(config.policy)
 }
