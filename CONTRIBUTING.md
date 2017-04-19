@@ -44,6 +44,8 @@ Problem
 Solution
 
 Validation
+
+Fixes #[Github issue ID]
 ```
 
 #### Subject ####
