@@ -2,7 +2,7 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{Dst, H2 => FinagleH2, TlsClientPrep}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
+import com.twitter.finagle.buoyant.h2.{Request, Response, Reset, ResponseClassifiers}
 import com.twitter.finagle.param
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
@@ -80,7 +80,9 @@ object H2 extends Router[Request, Response]
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
 
-    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(h2.ClassifierFilter.successClassClassifier)
+    private val serverResponseClassifier =
+      h2.ClassifierFilter.successClassClassifier orElse ResponseClassifiers.NonRetryableServerFailures
+    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)
