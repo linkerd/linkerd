@@ -1,4 +1,4 @@
-## In the next release
+## 1.0.0 rc3 2017-04-19
 * Experimental ThriftMux protocol support
 * Add support for per-client configuration.
 * Simplify TLS configuration.
