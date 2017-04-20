@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Response, Request}
+import com.twitter.finagle.http.{Method, Response, Request}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle._
 import com.twitter.util.{Future, Time, Var}
@@ -506,6 +506,116 @@ class RetriesEndToEndTest extends FunSuite {
       await(client.close())
       await(downstreamA.server.close())
       await(downstreamB.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  test("l5d-retryable header is respected by default") {
+    var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = i match {
+        case 0 => Future.value {
+          val rsp = Response()
+          rsp.statusCode = 500
+          Headers.Retryable.set(rsp.headerMap, retryable = true)
+          rsp
+        }
+        case 1 => Future.value(Response())
+      }
+      i += 1
+      rsp
+    })
+
+    val config = 
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+      Time.withCurrentTimeFrozen { tc =>
+
+        def retries = stats.counters.getOrElse(
+          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          0
+        )
+
+        val req = Request()
+        req.host = "foo"
+
+        assert(await(client(req)).statusCode == 200)
+        assert(retries == 1)
+      }
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  test("l5d-retryable header takes precedence over repsonse classifier") {
+    var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = i match {
+        case 0 => Future.value {
+          val rsp = Response()
+          rsp.statusCode = 500
+          Headers.Retryable.set(rsp.headerMap, retryable = true)
+          rsp
+        }
+        case 1 => Future.value(Response())
+      }
+      i += 1
+      rsp
+    })
+
+    val config = 
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.retryableRead5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+      Time.withCurrentTimeFrozen { tc =>
+
+        def retries = stats.counters.getOrElse(
+          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          0
+        )
+
+        val req = Request()
+        req.method = Method.Post
+        req.host = "foo"
+
+        // POST should not usually be retryable, but l5d-retryable indicates
+        // the request can be retried anyway
+        assert(await(client(req)).statusCode == 200)
+        assert(retries == 1)
+      }
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
       await(server.close())
       await(router.close())
     }

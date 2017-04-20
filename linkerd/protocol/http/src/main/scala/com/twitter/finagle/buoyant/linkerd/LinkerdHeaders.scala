@@ -37,11 +37,14 @@ import scala.collection.breakOut
  *   - `l5d-reqid`: a token that may be used to correlate requests in
  *                  a callgraph across services and linkerd instances
  *
- * And in addition to the context headers, lay may emit the following
+ * And in addition to the context headers, linkerd may emit the following
  * headers on outgoing responses:
  *
  *   - `l5d-err`: indicates a linkerd-generated error. Error responses
  *                that do not have this header are application errors.
+ *   - `l5d-retryable`: if true, the request for this response is known to be
+ *                safe to retry (for example, because it was not delivered to
+ *                its destination)
  */
 object Headers {
   val Prefix = "l5d-"
@@ -468,5 +471,23 @@ object Headers {
       rsp.contentString = msg
       rsp
     }
+  }
+
+  /**
+   * The `l5d-retryable` header indicates that the request for this response is
+   * known to be safe to retry (for example, because it was not delivered to its
+   * destination)
+   */
+  object Retryable {
+    val Key = Prefix + "retryable"
+
+    def set(headers: HeaderMap, retryable: Boolean): Unit = {
+      val _ = headers.set(Key, retryable.toString)
+    }
+
+    def get(headers: HeaderMap): Boolean =
+      headers.get(Key).flatMap { value =>
+        Try(value.toBoolean).toOption
+      }.getOrElse(false)
   }
 }

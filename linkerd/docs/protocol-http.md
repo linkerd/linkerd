@@ -493,11 +493,12 @@ headers from requests sent to the outside world.
 
 The informational headers linkerd emits on outgoing responses.
 
-Header | Description
------- | -----------
-`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+Header          | Description
+--------------- | -----------
+`l5d-err`       | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+`l5d-retryable` | Indicates that the request for this response is known to be safe to retry (for example, because it was not delivered to its destination).
 
-Applications are not required to forward these headers on upstream
+Applications should not forward these headers on upstream
 responses.
 
 <aside class="notice">
