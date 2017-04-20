@@ -120,7 +120,7 @@ private[telemeter] object UsageDataTelemeter {
   def mkCounters(metrics: MetricsTree): Seq[Counter] = {
     val counters = for {
       router <- metrics.resolve(Seq("rt")).children.values
-      server <- router.resolve(Seq("srv")).children.values
+      server <- router.resolve(Seq("server")).children.values
       counter <- counterValue(server.resolve(Seq("requests")).metric)
     } yield Counter(Some("srv_requests"), Some(counter))
     counters.toSeq

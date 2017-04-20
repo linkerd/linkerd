@@ -243,7 +243,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       stats.counters.get(k)
     }
     def serverCounter(name: String) = {
-      val k = Seq("srv", name)
+      val k = Seq("server", name)
       stats.counters.get(k)
     }
 
@@ -273,7 +273,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         .configured(param.Stats(stats))
         .factory()
       Http.server
-        .configured(param.Stats(stats.scope("srv")))
+        .configured(param.Stats(stats.scope("server")))
         .serve(new InetSocketAddress(0), factory)
     }
 

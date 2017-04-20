@@ -44,7 +44,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
     val routerLabel = router.label
     server.configured(param.Label(s"$ip/$port"))
       .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
+      .configured(param.Stats(stats.scope(routerLabel, "server")))
       .configured(router.params[param.Tracer])
   }
 
