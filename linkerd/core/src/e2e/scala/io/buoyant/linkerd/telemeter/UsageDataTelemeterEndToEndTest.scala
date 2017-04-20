@@ -69,7 +69,7 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     val config = mapper.readValue[LinkerConfig](yaml)
     val metrics = MetricsTree()
 
-    val requests = metrics.resolve(Seq("rt", "foo", "srv", "bar", "requests")).mkCounter()
+    val requests = metrics.resolve(Seq("rt", "foo", "server", "bar", "requests")).mkCounter()
     requests.incr()
     requests.incr()
 

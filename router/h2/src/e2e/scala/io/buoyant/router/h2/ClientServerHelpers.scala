@@ -58,7 +58,7 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
       }
       val server = H2.server
         .configured(fparam.Label(name))
-        .configured(fparam.Stats(statsReceiver.scope("srv")))
+        .configured(fparam.Stats(statsReceiver.scope("server")))
         .serve(":*", factory)
       Downstream(name, server)
     }
