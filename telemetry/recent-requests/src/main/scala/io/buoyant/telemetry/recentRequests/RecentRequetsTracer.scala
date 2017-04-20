@@ -37,8 +37,8 @@ class RecentRequetsTracer(sampleRate: Double, capacity: Int) extends Tracer {
     case Annotation.ServerAddr(_) => true
     case Annotation.ClientAddr(_) => true
     case Annotation.BinaryAnnotation("router.label", _) => true
-    case Annotation.BinaryAnnotation("namer.path", _) => true
-    case Annotation.BinaryAnnotation("dst.id", _) => true
+    case Annotation.BinaryAnnotation("service", _) => true
+    case Annotation.BinaryAnnotation("client", _) => true
     case _ => false
   }
 
@@ -86,8 +86,8 @@ class RecentRequetsTracer(sampleRate: Double, capacity: Int) extends Tracer {
           (serverId, srv) <- serverAddr
           (destinationId, dst) <- destAddr
           router <- annotationNamed(annotations, "router.label")
-          logicalName <- annotationNamed(annotations, "namer.path")
-          concreteName <- annotationNamed(annotations, "dst.id")
+          logicalName <- annotationNamed(annotations, "service")
+          concreteName <- annotationNamed(annotations, "client")
         } yield {
           val timestamp = recs.map(_.timestamp).minBy(_.inMillis)
           RequestMetadata(timestamp, src.toString, srv.toString, router, logicalName, concreteName, dst.toString)

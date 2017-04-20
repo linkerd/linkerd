@@ -24,9 +24,9 @@ object DstTracing {
       override def apply(conn: ClientConnection) = {
         if (Trace.isActivelyTracing) {
           Trace.recordRpc(s"$label $pathShow")
-          Trace.recordBinary("namer.dtab.base", baseDtabShow)
-          Trace.recordBinary("namer.dtab.local", localDtabShow)
-          Trace.recordBinary("namer.path", pathShow)
+          Trace.recordBinary("dtab.base", baseDtabShow)
+          Trace.recordBinary("dtab.local", localDtabShow)
+          Trace.recordBinary("service", pathShow)
         }
         self(conn)
       }
@@ -49,8 +49,8 @@ object DstTracing {
       private[this] val path = dst.path.show
       override def apply(conn: ClientConnection) = {
         if (Trace.isActivelyTracing) {
-          Trace.recordBinary("dst.id", idStr)
-          Trace.recordBinary("dst.path", path)
+          Trace.recordBinary("client", idStr)
+          Trace.recordBinary("residual", path)
         }
         self(conn)
       }

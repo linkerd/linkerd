@@ -158,7 +158,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("http", "client", s"$$/inet/127.1/${downstream.port}", name)
       stats.counters.get(k)
     }
 
@@ -239,7 +239,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("http", "client", s"$$/inet/127.1/${downstream.port}", name)
       stats.counters.get(k)
     }
     def serverCounter(name: String) = {

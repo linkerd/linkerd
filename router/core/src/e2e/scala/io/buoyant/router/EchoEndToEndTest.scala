@@ -88,21 +88,21 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     assert(await(client("cat")) == "cat")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/cat")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${echoDst}")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/cat")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc/cat")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("client", s"/${echoDst}")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("residual", "/cat")))
     }
 
     assert(await(client("dog/bark")) == "krab/god")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/dog/bark")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.id", s"/${ohceDst}")))
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("dst.path", "/bark")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc/dog/bark")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("client", s"/${ohceDst}")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("residual", "/bark")))
     }
 
     assert(await(client("idk")) == "NOBROKERS")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc/idk")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc/idk")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.ClientAcquisition.name
@@ -111,30 +111,30 @@ class EchoEndToEndTest extends FunSuite with Awaits {
 
     assert(await(client("")) == "ERROR empty request")
     withAnnotations { anns =>
-      assert(anns.exists(_ == Annotation.BinaryAnnotation("namer.path", "/svc")))
+      assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation(
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.Service.name
       )))
     }
 
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "svc/cat", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", echoDst, "path", "svc/cat", "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "svc/dog/bark", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "id", ohceDst, "path", "svc/dog/bark", "success")) == 1)
+    assert(stats.counters(Seq("echo", "client", echoDst, "requests")) == 1)
+    assert(stats.counters(Seq("echo", "client", echoDst, "success")) == 1)
+    assert(stats.counters(Seq("echo", "client", echoDst, "service", "svc/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "client", echoDst, "service", "svc/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "client", ohceDst, "requests")) == 1)
+    assert(stats.counters(Seq("echo", "client", ohceDst, "success")) == 1)
+    assert(stats.counters(Seq("echo", "client", ohceDst, "service", "svc/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "client", ohceDst, "service", "svc/dog/bark", "success")) == 1)
 
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/cat", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/cat", "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/dog/bark", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/dog/bark", "success")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/idk", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc/idk", "failures")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc", "requests")) == 1)
-    assert(stats.counters(Seq("echo", "dst", "path", "svc", "failures")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/cat", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/cat", "success")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/dog/bark", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/dog/bark", "success")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/idk", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc/idk", "failures")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc", "requests")) == 1)
+    assert(stats.counters(Seq("echo", "service", "svc", "failures")) == 1)
 
     assert(stats.gauges(Seq("echo", "originator"))() == 1f)
 

@@ -104,18 +104,18 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       Upstream.pingWithClient(clientThrift, "felix") { rsp =>
         assert(rsp == "meow")
         withAnnotations(tracer) { anns =>
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
 
       Upstream.pingWithClient(clientThriftMux, "felix") { rsp =>
         assert(rsp == "meow")
         withAnnotations(tracer) { anns =>
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
     } finally {
@@ -160,18 +160,18 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       Upstream.pingWithClient(clientThrift, "dog") { rsp =>
         assert(rsp == "woof")
         withAnnotations(tracer) { anns =>
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
 
       Upstream.pingWithClient(clientThriftMux, "dog") { rsp =>
         assert(rsp == "woof")
         withAnnotations(tracer) { anns =>
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
     } finally {

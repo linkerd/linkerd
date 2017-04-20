@@ -27,7 +27,7 @@ object PerDstPathStatsFilter {
 
           def mkScopedStatsFilter(path: Path): Filter[Req, Rsp, Req, Rsp] = {
             val name = path.show.stripPrefix("/")
-            val sr = statsReceiver.scope("path", name)
+            val sr = statsReceiver.scope("service", name)
             new StatsFilter(sr, classifier, handler, unit)
           }
 
