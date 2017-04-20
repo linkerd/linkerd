@@ -69,7 +69,7 @@ class InfluxDbTelemeterTest extends FunSuite {
     val counter = stats.scope("rt", "incoming", "service", "/svc/foo").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
-    assert(rsp == "rt:service,service=/svc/foo,host=none,rt=incoming requests=1\n")
+    assert(rsp == "rt:service,host=none,rt=incoming,service=/svc/foo requests=1\n")
   }
 
   test("bound stats are labelled") {
@@ -82,10 +82,10 @@ class InfluxDbTelemeterTest extends FunSuite {
 
   test("bound stats with path scope are labelled") {
     val (stats, handler) = statsAndHandler
-    stats.scope("rt", "incoming", "client", "/#/bar", "path", "/svc/foo").counter("requests").incr()
+    stats.scope("rt", "incoming", "client", "/#/bar", "service", "/svc/foo").counter("requests").incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
     assert(rsp ==
-      "rt:client:service,client=/#/bar,service=/svc/foo,host=none,rt=incoming requests=1\n")
+      "rt:client:service,client=/#/bar,host=none,rt=incoming,service=/svc/foo requests=1\n")
   }
 
   test("server stats are labelled") {
