@@ -10,7 +10,7 @@ routers:
   service:
     responseClassifier:
       # Retry 5XXs for GETs, HEADs, OPTIONs, PUTs, and DELETEs.
-      kind: io.l5d.retryableIdempotent5XX
+      kind: io.l5d.http.retryableIdempotent5XX
     retries:
       budget:
         minRetriesPerSec: 5

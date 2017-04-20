@@ -14,6 +14,10 @@
 * Split the timeoutMs router option into a requestAttemptTimeoutMs client option
   and a totalTimeoutMs service option.
 * Fixed k8s namer to handle null endpoint subsets.
+* Rename http response classifiers to be protocol specific:
+  * The `io.l5d.nonRetryable5XX` id has been renamed to `io.l5d.http.nonRetryable5XX`.
+  * The `io.l5d.retryableRead5XX` id has been renamed to `io.l5d.http.retryableRead5XX`.
+  * The `io.l5d.retryableIdempotent5XX` id has been renamed to `io.l5d.http.retryableIdempotent5XX`.
 
 ## 0.9.1 2017-03-15
 
