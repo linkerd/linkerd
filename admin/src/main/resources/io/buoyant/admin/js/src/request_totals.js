@@ -15,7 +15,7 @@ define([
         getMetrics: function(data) {
           return sumMetric(data, "requests", false, this.prefix);
         },
-        prefix: "srv"
+        prefix: "server"
       },
       {
         description: "Pending",
@@ -23,7 +23,7 @@ define([
         getMetrics: function(data) {
           return sumMetric(data, "load", true, this.prefix);
         },
-        prefix: "srv",
+        prefix: "server",
         isGauge: true
       },
       {
@@ -31,7 +31,7 @@ define([
         getMetrics: function(data) {
           return sumMetric(data, "connections", true, this.prefix);
         },
-        prefix: "srv",
+        prefix: "server",
         metric: "connections",
         isGauge: true
       },

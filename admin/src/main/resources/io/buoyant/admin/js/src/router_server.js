@@ -43,7 +43,7 @@ define([
     }
 
     function genServerStat(routerName, serverName, stat, isGauge) {
-      var metricKeys = ["rt", routerName, "srv", serverName, stat, isGauge ? "gauge" : "counter"];
+      var metricKeys = ["rt", routerName, "server", serverName, stat, isGauge ? "gauge" : "counter"];
       return {
         metric: metricKeys,
         metricRoot: _.take(metricKeys, 5)

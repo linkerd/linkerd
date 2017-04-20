@@ -520,7 +520,7 @@ return {
           }
         }
       },
-      "srv": {
+      "server": {
         "0.0.0.0/4115": {
           "success": {
             "counter": 0
@@ -601,7 +601,7 @@ return {
           }
         }
       },
-      "srv": {
+      "server": {
         "0.0.0.0/4117": {
           "success": {
             "counter": 0
@@ -2774,7 +2774,7 @@ return {
             "counter": 0
           }
         },
-        "srv": {
+        "server": {
           "0.0.0.0/4114": {
             "sent_bytes": {
               "counter": 7255005
@@ -3767,7 +3767,7 @@ return {
             }
           }
         },
-        "srv": {
+        "server": {
           "0.0.0.0/4116": {
             "sent_bytes": {
               "counter": 10668
@@ -4075,7 +4075,7 @@ return {
             "counter": 6
           }
         },
-        "srv": {},
+        "server": {},
         "available": {
           "gauge": 1.0
         },
