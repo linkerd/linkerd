@@ -68,8 +68,8 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
         (Seq("rt", "client"), labels0 :+ ("client" -> id))
       case Seq("rt", "client", "service", path) if !labelExists(labels0, "service") =>
         (Seq("rt", "client", "service"), labels0 :+ ("service" -> path))
-      case Seq("rt", "srv", srv) if !labelExists(labels0, "srv") =>
-        (Seq("rt", "srv"), labels0 :+ ("srv" -> srv))
+      case Seq("rt", "server", srv) if !labelExists(labels0, "server") =>
+        (Seq("rt", "server"), labels0 :+ ("server" -> srv))
       case _ => (prefix0, labels0)
     }
 
