@@ -228,9 +228,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
       assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == None)
       assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "success")) == None)
-      assert(stats.counters.get(Seq("http", "dst", "path", "svc/dog", "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "success")) == None)
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "failures")) == Some(1))
     } finally {
       await(client.close())
       await(downstream.server.close())
