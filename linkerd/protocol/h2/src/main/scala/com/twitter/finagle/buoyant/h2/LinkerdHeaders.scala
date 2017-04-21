@@ -379,11 +379,11 @@ object LinkerdHeaders {
    * next hop.
    */
   object Dst {
-    val Path = Prefix + "dst-logical"
-    val Bound = Prefix + "dst-concrete"
+    val Path = Prefix + "dst-service"
+    val Bound = Prefix + "dst-client"
     val Residual = Prefix + "dst-residual"
 
-    /** Encodes `l5d-dst-path` on outgoing requests. */
+    /** Encodes `l5d-dst-service` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
       private[this] val pathShow = path.show
       def apply(req: Request, service: Service[Request, Response]) = {

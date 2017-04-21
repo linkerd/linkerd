@@ -3,6 +3,7 @@ package io.buoyant.linkerd.protocol.http
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
+import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.logging.Logger
 import io.buoyant.router.RoutingFactory
 import java.net.URLEncoder
@@ -28,7 +29,11 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
         case null => e.getClass.getName
         case msg => msg
       }
-      Headers.Err.respond(message, status)
+      val rsp = Headers.Err.respond(message, status)
+      if (RetryableWriteException.unapply(e).isDefined) {
+        Headers.Retryable.set(rsp.headerMap, retryable = true)
+      }
+      rsp
   }
 }
 

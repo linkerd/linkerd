@@ -198,7 +198,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         }
         val param.Stats(stats0) = params[param.Stats]
         val stats = stats0.scope(label)
-        val clientStats = param.Stats(stats.scope("dst", "id"))
+        val clientStats = param.Stats(stats.scope("client"))
 
         // if this router has been configured as an originator, add a
         // gauge to reflect that in the router's stats
@@ -206,7 +206,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         if (originator) { stats.provideGauge("originator")(1f) }
 
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
-          val sr = stats.scope("dst", "path", dst.path.show.stripPrefix("/"))
+          val sr = stats.scope("service", dst.path.show.stripPrefix("/"))
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)

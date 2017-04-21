@@ -66,33 +66,33 @@ class InfluxDbTelemeterTest extends FunSuite {
 
   test("path stats are labelled") {
     val (stats, handler) = statsAndHandler
-    val counter = stats.scope("rt", "incoming", "dst", "path", "/svc/foo").counter("requests")
+    val counter = stats.scope("rt", "incoming", "service", "/svc/foo").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
-    assert(rsp == "rt:dst_path,dst_path=/svc/foo,host=none,rt=incoming requests=1\n")
+    assert(rsp == "rt:service,host=none,rt=incoming,service=/svc/foo requests=1\n")
   }
 
   test("bound stats are labelled") {
     val (stats, handler) = statsAndHandler
-    stats.scope("rt", "incoming", "dst", "id", "/#/bar").counter("requests").incr()
+    stats.scope("rt", "incoming", "client", "/#/bar").counter("requests").incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
     assert(rsp ==
-      "rt:dst_id,dst_id=/#/bar,host=none,rt=incoming requests=1\n")
+      "rt:client,client=/#/bar,host=none,rt=incoming requests=1\n")
   }
 
   test("bound stats with path scope are labelled") {
     val (stats, handler) = statsAndHandler
-    stats.scope("rt", "incoming", "dst", "id", "/#/bar", "path", "/svc/foo").counter("requests").incr()
+    stats.scope("rt", "incoming", "client", "/#/bar", "service", "/svc/foo").counter("requests").incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
     assert(rsp ==
-      "rt:dst_id:dst_path,dst_id=/#/bar,dst_path=/svc/foo,host=none,rt=incoming requests=1\n")
+      "rt:client:service,client=/#/bar,host=none,rt=incoming,service=/svc/foo requests=1\n")
   }
 
   test("server stats are labelled") {
     val (stats, handler) = statsAndHandler
-    val counter = stats.scope("rt", "incoming", "srv", "127.0.0.1/4141").counter("requests")
+    val counter = stats.scope("rt", "incoming", "server", "127.0.0.1/4141").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
-    assert(rsp == "rt:srv,host=none,rt=incoming,srv=127.0.0.1/4141 requests=1\n")
+    assert(rsp == "rt:server,host=none,rt=incoming,server=127.0.0.1/4141 requests=1\n")
   }
 }

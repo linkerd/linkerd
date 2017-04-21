@@ -475,8 +475,8 @@ The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | The logical name of the request as identified by linkerd.
-`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
 `l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
@@ -493,11 +493,12 @@ headers from requests sent to the outside world.
 
 The informational headers linkerd emits on outgoing responses.
 
-Header | Description
------- | -----------
-`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+Header          | Description
+--------------- | -----------
+`l5d-err`       | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+`l5d-retryable` | Indicates that the request for this response is known to be safe to retry (for example, because it was not delivered to its destination).
 
-Applications are not required to forward these headers on upstream
+Applications should not forward these headers on upstream
 responses.
 
 <aside class="notice">
