@@ -156,7 +156,7 @@ class ResponseClassificationEndToEndTest extends FunSuite {
           |  service:
           |    kind: io.l5d.static
           |    configs:
-          |    - prefix: /svc/a    
+          |    - prefix: /svc/a
           |      responseClassifier:
           |        kind: io.l5d.retryableRead5XX
           |    - prefix: /svc/b

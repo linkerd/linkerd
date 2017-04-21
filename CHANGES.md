@@ -21,6 +21,7 @@
 * Rename the "dst.path" trace annotation to "residual".
 * Rename the "l5d-dst-logical" HTTP and H2 headers to "l5d-dst-service".
 * Rename the "l5d-dst-concrete" HTTP and H2 headers to "l5d-dst-client".
+* Encode retryability on HTTP responses in the `l5d-retryable` header.
 
 ## 0.9.1 2017-03-15
 
