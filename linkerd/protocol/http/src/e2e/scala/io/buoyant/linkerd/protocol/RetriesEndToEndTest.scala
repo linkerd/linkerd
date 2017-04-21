@@ -545,7 +545,7 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def retries = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          Seq("http", "service", "svc/foo", "retries", "total"),
           0
         )
 
@@ -600,7 +600,7 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def retries = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          Seq("http", "service", "svc/foo", "retries", "total"),
           0
         )
 
