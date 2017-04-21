@@ -112,9 +112,9 @@ class PrometheusTelemeterTest extends FunSuite {
 
   test("server stats are labelled") {
     val (stats, handler) = statsAndHandler
-    val counter = stats.scope("rt", "incoming", "srv", "127.0.0.1/4141").counter("requests")
+    val counter = stats.scope("rt", "incoming", "server", "127.0.0.1/4141").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
-    assert(rsp == "rt:srv:requests{rt=\"incoming\", srv=\"127.0.0.1/4141\"} 1\n")
+    assert(rsp == "rt:server:requests{rt=\"incoming\", server=\"127.0.0.1/4141\"} 1\n")
   }
 }

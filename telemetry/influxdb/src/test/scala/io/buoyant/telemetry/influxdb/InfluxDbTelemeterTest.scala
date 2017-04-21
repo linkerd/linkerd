@@ -90,9 +90,9 @@ class InfluxDbTelemeterTest extends FunSuite {
 
   test("server stats are labelled") {
     val (stats, handler) = statsAndHandler
-    val counter = stats.scope("rt", "incoming", "srv", "127.0.0.1/4141").counter("requests")
+    val counter = stats.scope("rt", "incoming", "server", "127.0.0.1/4141").counter("requests")
     counter.incr()
     val rsp = await(handler(Request("/admin/metrics/influxdb"))).contentString
-    assert(rsp == "rt:srv,host=none,rt=incoming,srv=127.0.0.1/4141 requests=1\n")
+    assert(rsp == "rt:server,host=none,rt=incoming,server=127.0.0.1/4141 requests=1\n")
   }
 }
