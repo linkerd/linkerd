@@ -42,6 +42,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
   def version: String
 
   def withNamespace(ns: String) = new NsVersion[O](client, group, version, ns)
+  def withNamespaceWatch(ns: String) = new NsWatchVersion[O](client, group, version, ns)
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
@@ -73,6 +74,46 @@ private[k8s] class NsVersion[O <: KubeObject](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, path, backoffs, stats)
+
+  def objectResource[T <: O: TypeReference, W <: Watch[T]: TypeReference](
+    name: String,
+    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    stats: StatsReceiver = DefaultStatsReceiver
+  )(implicit od: ObjectDescriptor[T, W]) = {
+    val listName = implicitly[ObjectDescriptor[T, W]].listName
+    new NsObjectResource[T, W](client, s"$path/$listName", name, backoffs, stats)
+  }
+}
+
+/**
+ * A Version with a watch and a namespace applied. This Class provides the ability to watch
+ * individual objects in a namespace. To watch lists of objects, use [[Version]] or [[NsVersion]].
+ * TODO: Consider moving all watches to this class?
+ *
+ * @param client See [[Version.client]]
+ * @param group See [[Version.group]]
+ * @param version See [[Version.version]]
+ * @param ns The namespace
+ * @tparam O The parent type for all [[KubeObject]]s served by this version.
+ */
+private[k8s] class NsWatchVersion[O <: KubeObject](
+  val client: Client,
+  group: String,
+  val version: String,
+  ns: String
+)
+  extends Resource {
+  val path = s"/$group/$version/watch/namespaces/$ns"
+  val nonWatchPath = s"/$group/$version/namespaces/$ns"
+
+  def objectResource[T <: O: TypeReference, W <: Watch[T]: TypeReference](
+    name: String,
+    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    stats: StatsReceiver = DefaultStatsReceiver
+  )(implicit od: ObjectDescriptor[T, W]) = {
+    val listName = implicitly[ObjectDescriptor[T, W]].listName
+    new NsObjectResource[T, W](client, s"$path/$listName", name, backoffs, stats, Some(s"$nonWatchPath/$listName"))
+  }
 }
 
 /**
@@ -155,6 +196,7 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](client, basePath, backoffs, stats) {
+  // TODO: add watched method?
   def named(name: String): NsObjectResource[O, W] =
     new NsObjectResource[O, W](client, path, name)
 
@@ -177,12 +219,14 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
   listPath: String,
   objectName: String,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
-  protected val stats: StatsReceiver = DefaultStatsReceiver
-)(implicit od: ObjectDescriptor[O, W]) extends Resource {
-  private[this] val path = s"$listPath/$objectName"
+  protected val stats: StatsReceiver = DefaultStatsReceiver,
+  protected val nonWatchListPath: Option[String] = None
+)(implicit od: ObjectDescriptor[O, W]) extends Watchable[O, W] with Resource {
+  val path = s"$listPath/$objectName"
+  val nonWatchPath = s"${nonWatchListPath.getOrElse(listPath)}/$objectName"
 
-  def get: Future[O] = {
-    val req = Api.mkreq(http.Method.Get, path, None)
+  def get(reqPath: String = path): Future[O] = {
+    val req = Api.mkreq(http.Method.Get, reqPath, None)
     Trace.letClear(client(req)).flatMap { rsp =>
       Api.parse[O](rsp)
     }
@@ -201,4 +245,12 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       Api.parse[O](rsp)
     }
   }
+
+  protected def restartWatches(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None
+  ): Future[(Seq[W], Option[String])] =
+    get(nonWatchPath).map { configMap =>
+      (Seq(od.toWatch(configMap)), None)
+    }
 }

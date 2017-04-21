@@ -72,17 +72,49 @@ package object v1 {
     def toWatch(e: Service) = ServiceModified(e)
   }
 
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+  @JsonSubTypes(Array(
+    new JsonSubTypes.Type(value = classOf[ConfigMapAdded], name = "ADDED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapModified], name = "MODIFIED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapDeleted], name = "DELETED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapError], name = "ERROR")
+  ))
+  sealed trait ConfigMapWatch extends Watch[ConfigMap]
+  case class ConfigMapAdded(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Added[ConfigMap]
+
+  case class ConfigMapModified(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Modified[ConfigMap]
+
+  case class ConfigMapDeleted(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Deleted[ConfigMap]
+
+  case class ConfigMapError(
+    @JsonProperty(value = "object") status: Status
+  ) extends ConfigMapWatch with Watch.Error[ConfigMap]
+
+  implicit object ConfigMapDescriptor extends ObjectDescriptor[ConfigMap, ConfigMapWatch] {
+    def listName = "configmaps"
+    def toWatch(e: ConfigMap) = ConfigMapModified(e)
+  }
+
   implicit private val endpointsListType = new TypeReference[EndpointsList] {}
   implicit private val serviceListType = new TypeReference[ServiceList] {}
   implicit private val endpointsType = new TypeReference[Endpoints] {}
   implicit private val serviceType = new TypeReference[Service] {}
+  implicit private val configMapType = new TypeReference[ConfigMap] {}
   implicit private val endpointsWatch = new TypeReference[EndpointsWatch] {}
   implicit private val serviceWatch = new TypeReference[ServiceWatch] {}
+  implicit private val configMapWatch = new TypeReference[ConfigMapWatch] {}
 
   case class Api(client: Client) extends Version[Object] {
     def group = v1.group
     def version = v1.version
     override def withNamespace(ns: String) = new NsApi(client, ns)
+    override def withNamespaceWatch(ns: String) = new NsWatchApi(client, ns)
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
     def services = listResource[Service, ServiceWatch, ServiceList]()
   }
@@ -91,6 +123,12 @@ package object v1 {
     extends NsVersion[Object](client, v1.group, v1.version, ns) {
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
     def services = listResource[Service, ServiceWatch, ServiceList]()
+    def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
+  }
+
+  class NsWatchApi(client: Client, ns: String)
+    extends NsWatchVersion[Object](client, v1.group, v1.version, ns) {
+    def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
   }
 
   case class EndpointsList(
@@ -160,4 +198,11 @@ package object v1 {
     port: Int,
     name: String
   )
+
+  case class ConfigMap(
+    data: Map[String, String],
+    kind: Option[String] = None,
+    metadata: Option[ObjectMeta] = None,
+    apiVersion: Option[String] = None
+  ) extends Object
 }
