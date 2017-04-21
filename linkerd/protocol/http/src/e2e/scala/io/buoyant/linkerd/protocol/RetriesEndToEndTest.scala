@@ -585,7 +585,7 @@ class RetriesEndToEndTest extends FunSuite {
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
