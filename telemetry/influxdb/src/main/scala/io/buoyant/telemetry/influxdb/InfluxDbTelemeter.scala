@@ -59,12 +59,12 @@ class InfluxDbTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithH
     val (prefix1, tags1) = prefix0 match {
       case Seq("rt", router) if !labelExists(tags0, "rt") =>
         (Seq("rt"), tags0 :+ ("rt" -> router))
-      case Seq("rt", "dst", "path", path) if !labelExists(tags0, "dst_path") =>
-        (Seq("rt", "dst_path"), tags0 :+ ("dst_path" -> path))
-      case Seq("rt", "dst", "id", id) if !labelExists(tags0, "dst_id") =>
-        (Seq("rt", "dst_id"), tags0 :+ ("dst_id" -> id))
-      case Seq("rt", "dst_id", "path", path) if !labelExists(tags0, "dst_path") =>
-        (Seq("rt", "dst_id", "dst_path"), tags0 :+ ("dst_path" -> path))
+      case Seq("rt", "service", path) if !labelExists(tags0, "service") =>
+        (Seq("rt", "service"), tags0 :+ ("service" -> path))
+      case Seq("rt", "client", id) if !labelExists(tags0, "client") =>
+        (Seq("rt", "client"), tags0 :+ ("client" -> id))
+      case Seq("rt", "client", "service", path) if !labelExists(tags0, "service") =>
+        (Seq("rt", "client", "service"), tags0 :+ ("service" -> path))
       case Seq("rt", "srv", srv) if !labelExists(tags0, "srv") =>
         (Seq("rt", "srv"), tags0 :+ ("srv" -> srv))
       case _ => (prefix0, tags0)
