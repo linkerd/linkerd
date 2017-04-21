@@ -89,9 +89,9 @@ class ThriftEndToEndTest extends FunSuite with Awaits {
         val path = "/thrift"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
 

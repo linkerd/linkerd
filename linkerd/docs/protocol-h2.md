@@ -325,8 +325,8 @@ The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | The logical name of the request as identified by linkerd.
-`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
 `l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 

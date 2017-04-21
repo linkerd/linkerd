@@ -7,13 +7,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.PathMatcher
-import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response, ResponseClassifiers}
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._

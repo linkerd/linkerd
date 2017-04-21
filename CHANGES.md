@@ -14,6 +14,13 @@
 * Split the timeoutMs router option into a requestAttemptTimeoutMs client option
   and a totalTimeoutMs service option.
 * Fixed k8s namer to handle null endpoint subsets.
+* Rename the "dst/path" metrics scope to "service".
+* Rename the "dst/id" metrics scope to "client".
+* Rename the "namer.path" trace annotation to "service".
+* Rename the "dst.id" trace annotation to "client".
+* Rename the "dst.path" trace annotation to "residual".
+* Rename the "l5d-dst-logical" HTTP and H2 headers to "l5d-dst-service".
+* Rename the "l5d-dst-concrete" HTTP and H2 headers to "l5d-dst-client".
 * Encode retryability on HTTP responses in the `l5d-retryable` header.
 
 ## 0.9.1 2017-03-15

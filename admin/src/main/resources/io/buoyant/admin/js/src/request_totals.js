@@ -40,7 +40,7 @@ define([
         getMetrics: function(data) {
           return sumMetric(data, "connections", true, this.prefix);
         },
-        prefix: "dst.id",
+        prefix: "client",
         metric: "connections",
         isGauge: true
       }

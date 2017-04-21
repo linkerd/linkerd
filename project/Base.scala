@@ -115,6 +115,7 @@ class Base extends Build {
        |exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags $JVM_OPTIONS -server -jar $0 "$@"
        |""".stripMargin.split("\n").toSeq
 
+  val nodeModulesRE = ".*/node_modules/.*".r
   val appAssemblySettings = assemblySettings ++ Seq(
     assemblyExecScript := defaultExecScript,
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(
@@ -123,7 +124,8 @@ class Base extends Build {
         case script => Some(script)
       }),
     assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
-    assemblyMergeStrategy in assembly :=  {
+    assemblyMergeStrategy in assembly := {
+      case nodeModulesRE() => MergeStrategy.discard
       case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
@@ -135,7 +137,7 @@ class Base extends Build {
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     docker <<= docker dependsOn (assembly in configuration),
     dockerEnvPrefix := "",
-    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("library/java:openjdk-8-jre")),
+    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("library/openjdk:8-jre-alpine")),
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"
