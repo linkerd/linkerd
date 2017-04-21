@@ -342,15 +342,15 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   }
 
   test("retries retryableIdempotent5XX") {
-    retryTest("io.l5d.retryableIdempotent5XX", idempotentMethods)
+    retryTest("io.l5d.http.retryableIdempotent5XX", idempotentMethods)
   }
 
   test("retries retryablRead5XX") {
-    retryTest("io.l5d.retryableRead5XX", readMethods)
+    retryTest("io.l5d.http.retryableRead5XX", readMethods)
   }
 
   test("retries nonRetryable5XX") {
-    retryTest("io.l5d.nonRetryable5XX", Set.empty)
+    retryTest("io.l5d.http.nonRetryable5XX", Set.empty)
   }
 
   val dtabReadHeaders = Seq("l5d-dtab", "l5d-ctx-dtab")

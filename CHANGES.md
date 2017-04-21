@@ -23,6 +23,10 @@
 * Rename the "l5d-dst-concrete" HTTP and H2 headers to "l5d-dst-client".
 * Rename the "srv" metrics scope to "server".
 * Encode retryability on HTTP responses in the `l5d-retryable` header.
+* Rename http response classifiers to be protocol specific:
+  * The `io.l5d.nonRetryable5XX` id has been renamed to `io.l5d.http.nonRetryable5XX`.
+  * The `io.l5d.retryableRead5XX` id has been renamed to `io.l5d.http.retryableRead5XX`.
+  * The `io.l5d.retryableIdempotent5XX` id has been renamed to `io.l5d.http.retryableIdempotent5XX`.
 
 ## 0.9.1 2017-03-15
 

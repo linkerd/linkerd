@@ -34,13 +34,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
 
   test("success") {
     val downstream = Downstream("ds", Service.mk { req => Future.value(Response()) })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -67,13 +67,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
       rsp.statusCode = 500
       Future.value(rsp)
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -107,13 +107,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
         Future.value(Response())
       }
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -149,7 +149,7 @@ class ResponseClassificationEndToEndTest extends FunSuite {
         Future.value(Response())
       }
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -158,10 +158,10 @@ class ResponseClassificationEndToEndTest extends FunSuite {
           |    configs:
           |    - prefix: /svc/a
           |      responseClassifier:
-          |        kind: io.l5d.retryableRead5XX
+          |        kind: io.l5d.http.retryableRead5XX
           |    - prefix: /svc/b
           |      responseClassifier:
-          |        kind: io.l5d.nonRetryable5XX
+          |        kind: io.l5d.http.nonRetryable5XX
           |  servers:
           |  - port: 0
           |""".stripMargin

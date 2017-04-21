@@ -126,7 +126,7 @@ class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
 
 class RetryableIdempotent5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableIdempotent5XXConfig]
-  override val configId = "io.l5d.retryableIdempotent5XX"
+  override val configId = "io.l5d.http.retryableIdempotent5XX"
 }
 
 object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializer
@@ -137,7 +137,7 @@ class RetryableRead5XXConfig extends ResponseClassifierConfig {
 
 class RetryableRead5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableRead5XXConfig]
-  override val configId = "io.l5d.retryableRead5XX"
+  override val configId = "io.l5d.http.retryableRead5XX"
 }
 
 object RetryableRead5XXInitializer extends RetryableRead5XXInitializer
@@ -148,7 +148,7 @@ class NonRetryable5XXConfig extends ResponseClassifierConfig {
 
 class NonRetryable5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[NonRetryable5XXConfig]
-  override val configId = "io.l5d.nonRetryable5XX"
+  override val configId = "io.l5d.http.nonRetryable5XX"
 }
 
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer

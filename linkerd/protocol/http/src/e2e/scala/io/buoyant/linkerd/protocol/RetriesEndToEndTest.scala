@@ -47,7 +47,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -138,7 +138,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", new FailEveryN(2))
     val downstreamB = Downstream("b", new FailEveryN(2))
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -176,9 +176,9 @@ class RetriesEndToEndTest extends FunSuite {
     try {
       Time.withCurrentTimeFrozen { tc =>
 
-
-        def budget(ds: Downstream) = 
+        def budget(ds: Downstream) =
           stats.gauges(Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
+
         def requeues(ds: Downstream) = stats.counters.getOrElse(
           Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
           0
@@ -258,7 +258,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -268,7 +268,7 @@ class RetriesEndToEndTest extends FunSuite {
           |      kind: none
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |    retries:
           |      budget:
           |        minRetriesPerSec: 0
@@ -345,7 +345,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", new FailEveryN(2))
     val downstreamB = Downstream("b", new FailEveryN(2))
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -356,7 +356,7 @@ class RetriesEndToEndTest extends FunSuite {
           |    failureAccrual:
           |      kind: none
           |  service:
-          |    kind: io.l5d.static          
+          |    kind: io.l5d.static
           |    configs:
           |    - prefix: /svc/a
           |      retries:
@@ -374,7 +374,7 @@ class RetriesEndToEndTest extends FunSuite {
           |          ttlSecs: 10
           |    - prefix: /
           |      responseClassifier:
-          |        kind: io.l5d.retryableRead5XX
+          |        kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -388,9 +388,9 @@ class RetriesEndToEndTest extends FunSuite {
     try {
       Time.withCurrentTimeFrozen { tc =>
 
-
-        def budget(ds: Downstream) = 
+        def budget(ds: Downstream) =
           stats.gauges(Seq("http", "service", s"svc/${ds.name}", "retries", "budget"))
+
         def retries(ds: Downstream) = stats.counters.getOrElse(
           Seq("http", "service", s"svc/${ds.name}", "retries", "total"),
           0
@@ -456,7 +456,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", Service.mk { req => Future.value(Response()) })
     val downstreamB = Downstream("b", Service.mk { req => Future.value(Response()) })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -484,7 +484,7 @@ class RetriesEndToEndTest extends FunSuite {
         // we subtract that off to see just the deposits
         def retryBudget(svc: String): Int =
           stats.gauges.get(Seq("http", "service", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
-        def requeueBudget(clnt: String): Int = 
+        def requeueBudget(clnt: String): Int =
           stats.gauges.get(Seq("http", "client", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
 
         // 20% budget
@@ -585,7 +585,7 @@ class RetriesEndToEndTest extends FunSuite {
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
