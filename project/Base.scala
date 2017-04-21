@@ -135,7 +135,7 @@ class Base extends Build {
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     docker <<= docker dependsOn (assembly in configuration),
     dockerEnvPrefix := "",
-    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("library/java:openjdk-8-jre")),
+    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("library/openjdk:8-jre-alpine")),
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"
