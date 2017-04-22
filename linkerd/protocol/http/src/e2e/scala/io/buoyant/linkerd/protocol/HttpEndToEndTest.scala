@@ -425,6 +425,31 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     ))
   }
 
+  test("clearContext will remove linkerd error body") {
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/1234
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val body =
+      try {
+        val c = upstream(s)
+        try await(c(req)).contentString
+        finally await(c.close())
+      } finally await(s.close())
+    assert(body == "")
+  }
+
   test("without clearContext") {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()

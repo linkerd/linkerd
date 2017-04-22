@@ -449,7 +449,14 @@ object Headers {
           req.headerMap -= k
         }
       }
-      service(req)
+      service(req).map { rsp =>
+        rsp.headerMap.get(Err.Key) match {
+          case Some(_) =>
+            rsp.clearContent()
+            rsp
+          case _ => rsp
+        }
+      }
     }
   }
 
