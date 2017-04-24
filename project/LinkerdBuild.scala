@@ -311,6 +311,7 @@ object LinkerdBuild extends Base {
       mainClass := Some("io.buoyant.namerd.Main"),
       assemblyExecScript := execScript.split("\n").toSeq,
       dockerEnvPrefix := "NAMERD_",
+      dockerJavaImage := "library/java:openjdk-8-jre",
       unmanagedBase := baseDirectory.value / "plugins",
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
       dockerTag := version.value
