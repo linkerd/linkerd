@@ -1,7 +1,6 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{param => _, _}
@@ -9,13 +8,12 @@ import com.twitter.finagle.http.Method._
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.util._
-import io.buoyant.router.{Http, RoutingFactory}
-import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
-import org.scalatest.FunSuite
 
-class HttpEndToEndTest extends FunSuite with Awaits {
+import org.scalatest.{FunSuite, MustMatchers}
+
+class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -425,7 +423,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     ))
   }
 
-  test("clearContext will remove linkerd error body") {
+  test("clearContext will remove linkerd error headers and body") {
     val yaml =
       s"""|routers:
           |- protocol: http
@@ -441,13 +439,16 @@ class HttpEndToEndTest extends FunSuite with Awaits {
     val req = Request()
     req.host = "test"
 
-    val body =
-      try {
-        val c = upstream(s)
-        try await(c(req)).contentString
-        finally await(c.close())
-      } finally await(s.close())
-    assert(body == "")
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+      resp.headerMap.keys must not contain ("l5d-err", "l5d-success-class", "l5d-retryable")
+      resp.contentString must be("")
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
+
   }
 
   test("without clearContext") {
