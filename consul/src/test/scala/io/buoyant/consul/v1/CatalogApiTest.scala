@@ -126,7 +126,7 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
       val rsp = Response()
       rsp.content = Buf.Utf8("No path to datacenter")
       rsp.headerMap.set("X-Consul-Index", "0")
-      rsp.setStatusCode(500) //weird that they return 500 for this
+      rsp.statusCode = 500 //weird that they return 500 for this
       lastUri = req.uri
       Future.value(rsp)
     }

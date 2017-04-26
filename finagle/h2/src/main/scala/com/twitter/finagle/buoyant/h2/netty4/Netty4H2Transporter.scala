@@ -6,14 +6,15 @@ import com.twitter.finagle.buoyant.TlsClientPrep.TransportSecurity
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.{BufferingConnectDelay, Netty4ClientTls}
-import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
+import com.twitter.finagle.netty4.channel.AnyToHeapInboundHandler
 import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPipeline}
 import io.netty.handler.codec.http2._
 import io.netty.handler.ssl.ApplicationProtocolNames
+import java.net.SocketAddress
 
 object Netty4H2Transporter {
 
-  def mk(params0: Stack.Params): Transporter[Http2Frame, Http2Frame] = {
+  def mk(addr: SocketAddress, params0: Stack.Params): Transporter[Http2Frame, Http2Frame] = {
     val params = params0 +
       // We rely on HTTP/2 flow control rather than socket-level
       // backpressure.
@@ -45,7 +46,7 @@ object Netty4H2Transporter {
               // Prior Knowledge: ensure messages are buffered until
               // handshake completes.
               p => {
-                p.addLast(DirectToHeapInboundHandler)
+                p.addLast(AnyToHeapInboundHandler)
                 p.addLast(framer)
                 p.addLast(new BufferingConnectDelay); ()
               }
@@ -58,12 +59,12 @@ object Netty4H2Transporter {
           // handlers, which are configured to advertise h2 support.
           p => {
             p.addLast(Netty4ClientTls.handler(params))
-            p.addLast(DirectToHeapInboundHandler)
+            p.addLast(AnyToHeapInboundHandler)
             p.addLast(FramerKey, framer); ()
           }
       }
 
-    Netty4Transporter.raw(pipelineInit, params)
+    Netty4Transporter.raw(pipelineInit, addr, params)
   }
 
   private val FramerKey = "h2 framer"

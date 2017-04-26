@@ -83,7 +83,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(null))
+      ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(None))
     }
     val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
@@ -91,7 +91,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Failed(ChannelWriteException(null)))
+    assert(state == Activity.Failed(ChannelWriteException(None)))
     assert(stats.counters == Map(
       Seq("dc", "opens") -> 1,
       Seq("dc", "errors") -> 1,

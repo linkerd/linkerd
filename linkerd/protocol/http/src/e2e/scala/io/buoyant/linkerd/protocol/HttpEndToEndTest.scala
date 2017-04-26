@@ -364,7 +364,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val dog = Downstream.mk("dog") { req =>
       headers = req.headerMap
-      req.response
+      Response()
     }
     val dtab = Dtab.read(s"""
       /svc/* => /$$/inet/127.1/${dog.port} ;
@@ -397,7 +397,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val dog = Downstream.mk("dog") { req =>
       headers = req.headerMap
-      req.response
+      Response()
     }
     val dtab = Dtab.read(s"""
       /svc/* => /$$/inet/127.1/${dog.port} ;

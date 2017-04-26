@@ -5,7 +5,7 @@ import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.ssl.SslConnectHandler
 import com.twitter.finagle.ssl.SessionVerifier
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Address, Stack}
 import io.netty.channel._
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory

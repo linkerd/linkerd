@@ -1,7 +1,8 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.ssl.Ssl
+import com.twitter.finagle.ssl.{KeyCredentials, Ssl}
+import com.twitter.finagle.ssl.server.SslServerConfiguration
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Stack, Path, Namer, ThriftMux}
@@ -12,6 +13,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
+import java.io.File
 import java.net.InetSocketAddress
 import scala.util.Random
 
@@ -85,7 +87,8 @@ case class CapacityConfig(
 }
 
 case class TlsServerConfig(certPath: String, keyPath: String) {
-  val param = Transport.TLSServerEngine(
-    Some(() => Ssl.server(certPath, keyPath, null, null, null))
-  )
+  val param = {
+    val creds = KeyCredentials.CertAndKey(new File(certPath), new File(keyPath))
+    Transport.ServerSsl(Some(SslServerConfiguration(keyCredentials = creds)))
+  }
 }

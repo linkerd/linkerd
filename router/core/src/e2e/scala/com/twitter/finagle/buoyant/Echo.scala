@@ -79,8 +79,8 @@ object Echo extends Client[String, String] with Server[String, String] {
     protected type In = String
     protected type Out = String
 
-    protected def newTransporter(): Transporter[String, String] =
-      Netty3Transporter(StringClientPipeline, params)
+    protected def newTransporter(addr: SocketAddress): Transporter[String, String] =
+      Netty3Transporter(StringClientPipeline, addr, params)
 
     protected def newDispatcher(transport: Transport[In, Out]) =
       new SerialClientDispatcher(transport)

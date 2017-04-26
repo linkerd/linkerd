@@ -2,8 +2,8 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.service.exp.FailureAccrualPolicy
-import com.twitter.finagle.service.{Backoff, FailureAccrualFactory}
+import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
+import com.twitter.finagle.service.Backoff
 import com.twitter.util.Duration
 import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 

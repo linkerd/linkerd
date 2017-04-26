@@ -3,8 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.TlsClientPrep.Trust
 import com.twitter.finagle.loadbalancer.{Balancers, DefaultBalancerFactory, LoadBalancerFactory}
-import com.twitter.finagle.service.exp.FailureAccrualPolicy
-import com.twitter.finagle.service.FailureAccrualFactory
+import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
 import com.twitter.finagle.Path
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
@@ -22,10 +21,10 @@ class ClientTest extends FunSuite {
 
     val fooParams = client.clientParams.paramsFor(Path.read("/foo"))
     val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2cPeakEwmaLoadBalancerFactory")
+    assert(fooBalancer.toString == "P2CPeakEwma")
     val barParams = client.clientParams.paramsFor(Path.read("/bar"))
     val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "P2cPeakEwmaLoadBalancerFactory")
+    assert(barBalancer.toString == "P2CPeakEwma")
   }
 
   test("per client config") {
@@ -40,11 +39,11 @@ class ClientTest extends FunSuite {
 
     val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/foo"))
     val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2cPeakEwmaLoadBalancerFactory")
+    assert(fooBalancer.toString == "P2CPeakEwma")
 
     val barParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bar"))
     val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "ApertureLoadBalancerFactory")
+    assert(barBalancer.toString == "ApertureLeastLoaded")
 
     // bas, not configured, gets default values
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bas"))
@@ -64,11 +63,11 @@ class ClientTest extends FunSuite {
 
     val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/foo"))
     val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2cPeakEwmaLoadBalancerFactory")
+    assert(fooBalancer.toString == "P2CPeakEwma")
 
     val barParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bar"))
     val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "ApertureLoadBalancerFactory")
+    assert(barBalancer.toString == "ApertureLeastLoaded")
   }
 
   test("variable capture from prefix") {
