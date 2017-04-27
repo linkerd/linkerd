@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 
 class AppIdNamerTest extends FunSuite with Awaits {
   val ttl = 10.millis
-  val err = ChannelWriteException(null)
+  val err = ChannelWriteException(None)
   val exc = Future.exception(err)
   def newTimer = new MockTimer
 

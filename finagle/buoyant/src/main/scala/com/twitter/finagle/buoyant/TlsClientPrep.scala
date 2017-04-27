@@ -2,8 +2,10 @@ package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter
-import com.twitter.finagle.ssl.{Engine, Ssl}
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.netty4.ssl.client.Netty4ClientEngineFactory
+import com.twitter.finagle.ssl.{Engine, Ssl, TrustCredentials}
+import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFactory, SslContextClientEngineFactory}
+import com.twitter.finagle.transport.Transport
 import java.io.FileInputStream
 import java.net.{InetSocketAddress, SocketAddress}
 import java.security.KeyStore
@@ -120,8 +122,7 @@ object TlsClientPrep {
       def make(params: Stack.Params, next: Stk[Req, Rsp]) = {
         val tlsParams = params[TransportSecurity].config match {
           case TransportSecurity.Insecure =>
-            params + Transport.Tls(TlsConfig.Disabled) +
-              Transport.TLSClientEngine(None)
+            params + Transport.ClientSsl(None)
 
           case TransportSecurity.Secure() =>
             params[Trust].config match {
@@ -129,30 +130,18 @@ object TlsClientPrep {
                 throw new IllegalArgumentException("no trust management policy configured for client TLS")
 
               case Trust.UnsafeNotVerified =>
-                val engine: SocketAddress => Engine = {
-                  case addr: InetSocketAddress =>
-                    Ssl.clientWithoutCertificateValidation(addr.getHostName, addr.getPort)
-                  case _ => Ssl.clientWithoutCertificateValidation()
-                }
-                params + Transport.Tls(TlsConfig.ClientNoValidation) +
-                  Transport.TLSClientEngine(Some(engine))
+                val tlsConfig = SslClientConfiguration(trustCredentials = TrustCredentials.Insecure)
+                params + Transport.ClientSsl(Some(tlsConfig)) +
+                  SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
               case Trust.Verified(cn, certs) =>
-                val engine: SocketAddress => Engine = {
-                  case addr: InetSocketAddress =>
-                    certs match {
-                      case Nil => Ssl.client(cn, addr.getPort)
-                      case certs => Ssl.client(sslContext(certs), cn, addr.getPort)
-                    }
-                  case _: SocketAddress => Ssl.client()
+                val tlsConfig = SslClientConfiguration(hostname = Some(cn))
+                val engineFactory = certs match {
+                  case Nil => Netty4ClientEngineFactory()
+                  case _ => new SslContextClientEngineFactory(sslContext(certs))
                 }
-                val tlsConfig = certs match {
-                  case Nil => TlsConfig.ClientHostname(cn)
-                  case certs => TlsConfig.ClientSslContextAndHostname(sslContext(certs), cn)
-                }
-                params + Transport.Tls(tlsConfig) +
-                  Transport.TLSClientEngine(Some(engine)) +
-                  Transporter.TLSHostname(Some(cn))
+                params + Transport.ClientSsl(Some(tlsConfig)) +
+                  SslClientEngineFactory.Param(engineFactory)
             }
         }
         Stack.Leaf(role, next.make(tlsParams))
@@ -172,8 +161,7 @@ object TlsClientPrep {
       val parameters = Nil
       def make(params0: Stack.Params, next: Stk[Req, Rsp]) = {
         val tlsParams = params0 +
-          Transport.Tls(TlsConfig.Disabled) +
-          Transport.TLSClientEngine(None)
+          Transport.ClientSsl(None)
         Stack.Leaf(role, next.make(tlsParams))
       }
     }

@@ -43,8 +43,8 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     protected type In = Http2Frame
     protected type Out = Http2Frame
 
-    protected def newTransporter(): Http2FrameTransporter =
-      Netty4H2Transporter.mk(params)
+    protected def newTransporter(addr: SocketAddress): Http2FrameTransporter =
+      Netty4H2Transporter.mk(addr, params)
 
     protected def copy1(
       stack: Stack[ServiceFactory[Request, Response]] = this.stack,

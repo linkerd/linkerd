@@ -2,7 +2,9 @@ package com.twitter.finagle.buoyant
 package h2
 
 import com.twitter.finagle.{Addr, Address, Name, Path, Service}
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.ssl.KeyCredentials
+import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.transport.Transport
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import java.io.{File, FileInputStream, InputStream}
@@ -33,7 +35,9 @@ class TlsEndToEndTest extends FunSuite {
       val srvCert = loadPem("linkerd-tls-e2e-cert")
       val srvKey = loadPem("linkerd-tls-e2e-key")
       H2.server
-        .configured(Transport.Tls(TlsConfig.ServerCertAndKey(srvCert.getPath, srvKey.getPath, None, None, None)))
+        .configured(Transport.ServerSsl(Some(SslServerConfiguration(
+          keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey)
+        ))))
         .serve(":*", service)
     }
 
