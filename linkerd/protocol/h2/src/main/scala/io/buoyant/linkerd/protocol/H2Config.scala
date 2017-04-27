@@ -7,13 +7,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.PathMatcher
-import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response}
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response, ResponseClassifiers}
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.linkerd.protocol.h2.ResponseClassifiers
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
@@ -76,23 +75,19 @@ object H2Initializer extends H2Initializer
 class H2Config extends RouterConfig {
 
   var client: Option[H2Client] = None
+  var service: Option[H2Svc] = None
   var servers: Seq[H2ServerConfig] = Nil
 
   @JsonDeserialize(using = classOf[H2IdentifierConfigDeserializer])
   var identifier: Option[Seq[H2IdentifierConfig]] = None
 
   @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures
-      .orElse(super.baseResponseClassifier)
-
-  // TODO: gRPC (trailers-aware)
-  @JsonIgnore
-  override def responseClassifier =
-    ResponseClassifiers.NonRetryableStream(super.responseClassifier)
-
-  @JsonIgnore
   override val protocol: ProtocolInitializer = H2Initializer
+
+  @JsonIgnore
+  override val defaultResponseClassifier = ResponseClassifiers.NonRetryableStream(
+    ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+  )
 
   @JsonIgnore
   override def routerParams: Stack.Params =
@@ -149,6 +144,38 @@ trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
   @JsonIgnore
   override def params(vars: Map[String, String]) = withEndpointParams(super.params(vars))
 
+}
+
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[H2DefaultSvc]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[H2DefaultSvc], name = "io.l5d.global"),
+  new JsonSubTypes.Type(value = classOf[H2StaticSvc], name = "io.l5d.static")
+))
+abstract class H2Svc extends Svc
+
+class H2DefaultSvc extends H2Svc with DefaultSvc with H2SvcConfig
+
+class H2StaticSvc(val configs: Seq[H2SvcPrefixConfig]) extends H2Svc with StaticSvc
+
+class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with H2SvcConfig
+
+trait H2SvcConfig extends SvcConfig {
+
+  @JsonIgnore
+  override def baseResponseClassifier =
+    ResponseClassifiers.NonRetryableServerFailures
+      .orElse(super.baseResponseClassifier)
+
+  // TODO: gRPC (trailers-aware)
+  @JsonIgnore
+  override def responseClassifier =
+    super.responseClassifier.map(ResponseClassifiers.NonRetryableStream(_))
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

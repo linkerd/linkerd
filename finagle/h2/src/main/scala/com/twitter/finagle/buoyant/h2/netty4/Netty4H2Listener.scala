@@ -3,9 +3,9 @@ package netty4
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
-import com.twitter.finagle.netty4.channel.DirectToHeapInboundHandler
+import com.twitter.finagle.netty4.channel.AnyToHeapInboundHandler
 import com.twitter.finagle.server.Listener
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.transport.Transport
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
@@ -19,8 +19,8 @@ object Netty4H2Listener {
   private val log = com.twitter.logging.Logger.get(getClass.getName)
 
   def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
-    params[Transport.Tls] match {
-      case Transport.Tls(TlsConfig.Disabled) => PlaintextListener.mk(params)
+    params[Transport.ClientSsl] match {
+      case Transport.ClientSsl(None) => PlaintextListener.mk(params)
       case _ => TlsListener.mk(params)
     }
 
@@ -43,7 +43,7 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
-      p.addLast(DirectToHeapInboundHandler)
+      p.addLast(AnyToHeapInboundHandler)
       p.addLast(new ServerUpgradeHandler(codec)); ()
     }
   }
@@ -51,7 +51,7 @@ object Netty4H2Listener {
   private[this] object TlsListener extends ListenerMaker {
     val PlaceholderKey = "h2 framer placeholder"
     override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
-      p.addLast(DirectToHeapInboundHandler)
+      p.addLast(AnyToHeapInboundHandler)
       p.addLast(PlaceholderKey, new ChannelDuplexHandler)
         .addLast("alpn", new Alpn(codec)); ()
     }

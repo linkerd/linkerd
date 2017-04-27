@@ -1,4 +1,4 @@
-# HTTP/2 protocol #
+# HTTP/2 protocol
 
 <!-- examples -->
 
@@ -15,7 +15,7 @@ routers:
       keyPath: .../private/linkerd.pem
       caCertPath: .../ca.pem
   identifier:
-    kind: io.l5d.headerToken
+    kind: io.l5d.header.token
     header: ":authority"
   dtab: |
     /svc => /#/io.l5d.fs ;
@@ -38,7 +38,7 @@ routers:
   servers:
   - port: 4142
   identifier:
-    kind: io.l5d.headerPath
+    kind: io.l5d.header.path
     segments: 2
   dtab: |
     /svc => /#/io.l5d.fs ;
@@ -51,8 +51,7 @@ accordingly. Note that gRPC may be configured over TLS as well.
 
 protocol: `h2`
 
-linkerd now has _experimental_ support for HTTP/2. There are a number
-of
+linkerd now has _experimental_ support for HTTP/2. There are a number of
 [open issues](https://github.com/linkerd/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
 that are being addressed. Please
 [report](https://github.com/linkerd/linkerd/issues/new) any
@@ -60,8 +59,9 @@ additional issues with this protocol!
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dstPrefix | `/svc` | A path prefix used by [H2-specific identifiers](#h2-identifiers).
+dstPrefix | `/svc` | A path prefix used by [H2-specific identifiers](#http-2-identifiers).
 experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
+identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [HTTP/2 Identifiers](#http-2-identifiers).
 
 When TLS is configured, h2 routers negotiate to communicate over
 HTTP/2 via ALPN.
@@ -94,24 +94,22 @@ maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 
 
-<a name="h2-identifiers"></a>
 ## HTTP/2 Identifiers
 
 Identifiers are responsible for creating logical *names* from an incoming
 request; these names are then matched against the dtab. (See the [linkerd
-routing overview](https://linkerd.io/doc/latest/routing/) for more details on
+routing overview](https://linkerd.io/in-depth/routing/) for more details on
 this.) All h2 identifiers have a `kind`.  If a list of identifiers is
 provided, each identifier is tried in turn until one successfully assigns a
 logical *name* to the request.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | The name of an identifier plugin, such as [`io.l5d.headerToken`](#header-token-identifier) or [`io.l5d.headerPath`](#headerpath-identifier).
+kind | _required_ | Either [`io.l5d.header.token`](#http-2-header-token-identifier), [`io.l5d.header.path`](#http-2-header-path-identifier), or [`io.l5d.ingress`](#http-2-ingress-identifier).
 
-<a name="header-token-identifier"></a>
-### Header Token identifier
+### HTTP/2 Header Token identifier
 
-kind: `io.l5d.headerToken`.
+kind: `io.l5d.header.token`.
 
 With this identifier, requests are turned into logical names using the
 value of the named header. By default, the `:authority` pseudo-header
@@ -127,7 +125,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.headerToken
+    kind: io.l5d.header.token
     header: my-header
   servers:
   - port: 5000
@@ -150,10 +148,9 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 headerValue | N/A | The value of the header.
 
-<a name="header-path-identifier"></a>
-### Header Path Identifier
+### HTTP/2 Header Path Identifier
 
-kind: `io.l5d.headerPath`
+kind: `io.l5d.header.path`
 
 With this identifier, requests are identified using a path read from a
 header. This is useful for routing gRPC requests. By default, the `:path`
@@ -170,7 +167,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.headerPath
+    kind: io.l5d.header.path
     segments: 2
   servers:
   - port: 5000
@@ -195,15 +192,18 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 urlPath | N/A | The first `segments` elements of the path from the URL
 
-<a name="h2-ingress-identifier"></a>
-### Ingress Identifier
+### HTTP/2 Ingress Identifier
 
-kind: `io.l5d.h2.ingress`
+kind: `io.l5d.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP/2 requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
+Using this identifier enables linkerd to function as a Kubernetes ingress
+controller. The ingress identifier compares HTTP/2 requests to [ingress
+resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a
+name based on those rules.
 
 <aside class="notice">
-The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the `:authority` header, instead of the `host` header.
+The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the
+`:authority` header, instead of the `host` header.
 </aside>
 
 #### Identifier Configuration:
@@ -268,14 +268,12 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
-<a name="h2-headers"></a>
-## Headers
+## HTTP/2 Headers
 
 linkerd reads and sets several headers prefixed by `l5d-`, as is done
 by the `http` protocol.
 
-<a name="context-headers"></a>
-### Context Headers
+### HTTP/2 Context Headers
 
 _Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
 instances. Applications should forward all context headers in order
@@ -292,7 +290,7 @@ Edge services should take care to ensure these headers are not set
 from untrusted sources.
 </aside>
 
-### User Headers
+### HTTP/2 User Headers
 
 > Append a dtab override to the dtab for this request
 
@@ -321,14 +319,14 @@ Edge services should take care to ensure these headers are not set
 from untrusted sources.
 </aside>
 
-### Informational Request Headers
+### HTTP/2 Informational Request Headers
 
 The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | The logical name of the request as identified by linkerd.
-`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
 `l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
@@ -341,7 +339,7 @@ information including host names.  Operators may opt to remove these
 headers from requests sent to the outside world.
 </aside>
 
-### Informational Response Headers
+### HTTP/2 Informational Response Headers
 
 The informational headers linkerd emits on outgoing responses.
 

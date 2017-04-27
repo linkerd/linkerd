@@ -56,7 +56,7 @@ class Netty4StreamTransportTest extends FunSuite {
       assert(transport.recv({
         val hs = new DefaultHttp2Headers
         hs.status(status.toString)
-        new DefaultHttp2HeadersFrame(hs, eos).setStreamId(id)
+        new DefaultHttp2HeadersFrame(hs, eos).streamId(id)
       }))
       eventually { assert(rspF.isDefined) }
       receivedMsg = true
@@ -68,7 +68,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
     def assertRemoteReset(rst: Reset): Unit = {
       val err = Netty4Message.Reset.toHttp2Error(rst)
-      val f = new DefaultHttp2ResetFrame(err).setStreamId(id)
+      val f = new DefaultHttp2ResetFrame(err).streamId(id)
       assert(transport.recv(f))
       eventually { assert(transport.isClosed) }
 
@@ -100,7 +100,7 @@ class Netty4StreamTransportTest extends FunSuite {
         hs.method("TEST")
         hs.path("/")
         hs.authority("auf")
-        new DefaultHttp2HeadersFrame(hs, eos).setStreamId(id)
+        new DefaultHttp2HeadersFrame(hs, eos).streamId(id)
       }))
       eventually { assert(reqF.isDefined) }
       receivedMsg = true
@@ -114,7 +114,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
     def assertRemoteReset(rst: Reset): Unit = {
       val err = Netty4Message.Reset.toHttp2Error(rst)
-      val f = new DefaultHttp2ResetFrame(err).setStreamId(id)
+      val f = new DefaultHttp2ResetFrame(err).streamId(id)
       assert(transport.recv(f))
       if (!receivedMsg) {
         assert(await(reqF.liftToTry) == Throw(rst))
@@ -146,11 +146,11 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    transport.recv(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).setStreamId(id))
+    transport.recv(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).streamId(id))
     transport.recv({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(id)
     })
     assert(dataf.isDefined)
     await(dataf) match {
@@ -436,7 +436,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!d0f.isDefined)
     assert(transport.recv({
       val bb = BufAsByteBuf.Owned(Buf.Utf8("data"))
-      new DefaultHttp2DataFrame(bb, false).setStreamId(id)
+      new DefaultHttp2DataFrame(bb, false).streamId(id)
     }))
     assert(d0f.isDefined)
     await(d0f) match {
@@ -483,7 +483,7 @@ class Netty4StreamTransportTest extends FunSuite {
       assert(written.head == {
         val hs = new DefaultHttp2Headers
         hs.status("202")
-        new DefaultHttp2HeadersFrame(hs, false).setStreamId(id)
+        new DefaultHttp2HeadersFrame(hs, false).streamId(id)
       })
       written = written.tail
     }
@@ -491,13 +491,13 @@ class Netty4StreamTransportTest extends FunSuite {
     val buf = Buf.Utf8("Looks like some tests were totally excellent")
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).streamId(id))
       written = written.tail
     }
 
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).setStreamId(id))
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).streamId(id))
       written = written.tail
     }
 
@@ -505,7 +505,7 @@ class Netty4StreamTransportTest extends FunSuite {
     trailers.set("trailin", "yams")
     assert(rspStreamQ.offer(Netty4Message.Trailers(trailers)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2HeadersFrame(trailers, true).setStreamId(id))
+      assert(written.head == new DefaultHttp2HeadersFrame(trailers, true).streamId(id))
       written = written.tail
     }
   }
@@ -653,7 +653,7 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.path("/")
       hs.authority("auf")
       hs.set("connection", "blah")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(id)
     }))
 
     val rst = Reset.ProtocolError
@@ -673,7 +673,7 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.path("/")
       hs.authority("auf")
       hs.set("te", "chunked, trailers")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(id)
     }))
 
     val rst = Reset.ProtocolError
@@ -693,7 +693,7 @@ class Netty4StreamTransportTest extends FunSuite {
       hs.path("/")
       hs.authority("auf")
       hs.set("te", "trailers")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(id)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(id)
     }))
 
     assert(await(reqF.liftToTry).isReturn)

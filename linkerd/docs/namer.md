@@ -15,7 +15,7 @@ These parameters are available to the namer regardless of kind. Namers may also 
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery-experimental), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), or [`io.l5d.rewrite`](#rewrite).
+kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), or [`io.l5d.rewrite`](#rewrite).
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
@@ -320,7 +320,7 @@ label-value | yes if `labelSelector` is defined | The label value used to filter
 
 
 <a name="marathon"></a>
-## Marathon service discovery (experimental)
+## Marathon service discovery
 
 kind: `io.l5d.marathon`
 
@@ -331,7 +331,6 @@ kind: `io.l5d.marathon`
 ```yaml
 namers:
 - kind:           io.l5d.marathon
-  experimental:   true
   prefix:         /io.l5d.marathon
   host:           marathon.mesos
   port:           80
@@ -354,7 +353,6 @@ linkerd provides support for service discovery via
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`.
-experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is available at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
@@ -376,7 +374,7 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 
 ### Marathon Authentication
 
-> Example environment variable
+> Example DCOS environment variable
 
 ```json
 {
@@ -387,12 +385,20 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 }
 ```
 
-The Marathon namer supports loading authentication data from a
-`DCOS_SERVICE_ACCOUNT_CREDENTIAL` environment variable at boot time.
+> Example basic HTTP authentication variable
+
+```bash
+dXNlcm5hbWU6cGFzc3dvcmQ=
+```
+
+The Marathon namer supports loading authentication data from an environment variable for DCOS private key in the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` variable and standalone Marathon basic HTTP authentication in the `MARATHON_HTTP_AUTH_CREDENTIAL` environment variable. If both are provided the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` takes precedence.
+
+Basic authentication token is base64 encoded and should not include the `Basic` prefix, only in the format `username:password`.
 
 Further reading:
 
-* [Mesosphere Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Mesosphere DCOS Authentication Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Marathon basic HTTP Authentication Docs](https://mesosphere.github.io/marathon/docs/ssl-basic-access-authentication.html#enabling-basic-access-authentication)
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>

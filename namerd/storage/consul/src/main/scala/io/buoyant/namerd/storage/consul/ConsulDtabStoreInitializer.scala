@@ -21,9 +21,6 @@ case class ConsulConfig(
   import ConsulConfig._
 
   @JsonIgnore
-  override val experimentalRequired = true
-
-  @JsonIgnore
   override def mkDtabStore: DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port

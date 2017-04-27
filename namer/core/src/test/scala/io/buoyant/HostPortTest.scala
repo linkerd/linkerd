@@ -1,12 +1,13 @@
 package io.buoyant
 
 import com.twitter.finagle._
+import io.buoyant.namer.RichActivity
 import io.buoyant.test.FunSuite
 
 class HostPortTest extends FunSuite {
 
   def lookup(path: Path) =
-    await(Namer.global.lookup(path).values.toFuture()).get
+    await(Namer.global.lookup(path).toFuture)
 
   test("io.buoyant.hostportPfx matches IP:PORT") {
     val path = Path.read("/$/io.buoyant.hostportPfx/ia/127.1:8080/etc")

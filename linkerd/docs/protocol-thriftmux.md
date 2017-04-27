@@ -1,6 +1,6 @@
 # ThriftMux Protocol (experimental)
 
-> This config routes thriftmux from port 4400 to port 5005. 
+> This config routes thriftmux from port 4400 to port 5005.
 
 ```yaml
 routers:
@@ -18,15 +18,15 @@ protocol: `thriftmux`
 
 linkerd _experimentally_ supports the thriftmux
 
-Thriftmux protocol is capable of routing traffic to pure thrift service and 
+Thriftmux protocol is capable of routing traffic to pure thrift service and
 will use [Thrift](http://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol on the client.
 
-Protocol configuration uses the same parameters as 
+Protocol configuration uses the same parameters as
 [Thrift protocol](https://linkerd.io/config/head/linkerd#thrift-protocol).
- 
+
 ## ThriftMux Router Parameters
 
-See [Thrift Server Parameters](https://linkerd.io/config/head/linkerd#thrift-router-parameters)
+See [Thrift Router Parameters](https://linkerd.io/config/head/linkerd#thrift-router-parameters)
 
 ## ThriftMux Server Parameters
 

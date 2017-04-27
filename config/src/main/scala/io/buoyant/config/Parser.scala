@@ -82,9 +82,9 @@ object Parser {
     mapper.setSerializationInclusion(Include.NON_ABSENT)
     mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
 
-    // Subtypes must not conflict
+    // Subtypes with the same config deserializer parent must not conflict
     for (kinds <- configInitializers) {
-      ensureUniqueKinds(kinds)
+      kinds.groupBy(_.configClass.getSuperclass).values.foreach(ensureUniqueKinds)
       for (k <- kinds) k.registerSubtypes(mapper)
     }
 

@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 
 class AppIdNamerTest extends FunSuite with Awaits {
   val ttl = 10.millis
-  val err = ChannelWriteException(null)
+  val err = ChannelWriteException(None)
   val exc = Future.exception(err)
   def newTimer = new MockTimer
 
@@ -61,6 +61,18 @@ class AppIdNamerTest extends FunSuite with Awaits {
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
 
     val input = Path.Utf8("service", "name", "residual")
+    val output = Path.Utf8("io.l5d.marathon", "service", "name")
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(input).states.respond(state = _)
+
+    assert(state == Activity.Ok(NameTree.Leaf(output)))
+  }
+
+  test("Namer handles looking up /app/id case-insensitive") {
+    val api = TestApi(ids = Future.value(Set(Path.read("/service/name"))))
+    val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
+
+    val input = Path.Utf8("service", "Name", "residual")
     val output = Path.Utf8("io.l5d.marathon", "service", "name")
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(input).states.respond(state = _)

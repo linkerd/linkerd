@@ -5,11 +5,11 @@ import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.ssl.SslConnectHandler
 import com.twitter.finagle.ssl.SessionVerifier
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Address, Stack}
 import io.netty.channel._
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import io.netty.handler.ssl.{ApplicationProtocolConfig, SslContext, SslContextBuilder, SslHandler}
+import io.netty.handler.ssl._
 import io.netty.util.concurrent.{Future => NettyFuture, GenericFutureListener}
 import java.io.File
 import javax.net.ssl.SSLContext
@@ -94,9 +94,11 @@ object Netty4ClientTls {
             new GenericFutureListener[NettyFuture[Channel]] {
               def operationComplete(f: NettyFuture[Channel]): Unit = {
                 val channel = f.getNow
-                channel.eventLoop.execute(new Runnable {
-                  def run(): Unit = { channel.close(); () }
-                })
+                if (channel != null && f.isSuccess) {
+                  channel.eventLoop().execute(new Runnable {
+                    def run(): Unit = { channel.close(); () }
+                  })
+                }
               }
             }
 

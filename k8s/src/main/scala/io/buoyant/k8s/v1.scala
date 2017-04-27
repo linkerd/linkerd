@@ -101,7 +101,7 @@ package object v1 {
   ) extends KubeList[Endpoints]
 
   case class Endpoints(
-    subsets: Seq[EndpointSubset],
+    subsets: Option[Seq[EndpointSubset]] = None,
     kind: Option[String] = None,
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None

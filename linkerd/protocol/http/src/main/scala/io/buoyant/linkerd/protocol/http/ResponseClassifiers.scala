@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.service.ResponseClassifier
 import com.twitter.finagle.service.RetryPolicy.{TimeoutAndWriteExceptionsOnly, ChannelClosedExceptionsOnly}
 import com.twitter.finagle.http.{Method, Request, Response, Status}
@@ -98,12 +99,23 @@ object ResponseClassifiers {
     HttpResponseClassifier.ServerErrorsAsFailures
 
   def NonRetryableChunked(classifier: ResponseClassifier): ResponseClassifier =
-    ResponseClassifier.named(s"NonRetryableChunked") {
+    ResponseClassifier.named(s"NonRetryableChunked[$classifier]") {
       case rr@ReqRep(req, _) if classifier.isDefinedAt(rr) =>
         (req, classifier(rr)) match {
           case (req: Request, ResponseClass.RetryableFailure) if req.isChunked =>
             ResponseClass.NonRetryableFailure
           case (_, rc) => rc
+        }
+    }
+
+  def HeaderRetryable(classifier: ResponseClassifier): ResponseClassifier =
+    ResponseClassifier.named(s"HeaderRetryable[$classifier]") {
+      case rr@ReqRep(req, Return(rsp: Response)) if classifier.isDefinedAt(rr) =>
+        val rc = classifier(rr)
+        if (rc == ResponseClass.NonRetryableFailure && Headers.Retryable.get(rsp.headerMap)) {
+          ResponseClass.RetryableFailure
+        } else {
+          rc
         }
     }
 }
@@ -114,7 +126,7 @@ class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
 
 class RetryableIdempotent5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableIdempotent5XXConfig]
-  override val configId = "io.l5d.retryableIdempotent5XX"
+  override val configId = "io.l5d.http.retryableIdempotent5XX"
 }
 
 object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializer
@@ -125,7 +137,7 @@ class RetryableRead5XXConfig extends ResponseClassifierConfig {
 
 class RetryableRead5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableRead5XXConfig]
-  override val configId = "io.l5d.retryableRead5XX"
+  override val configId = "io.l5d.http.retryableRead5XX"
 }
 
 object RetryableRead5XXInitializer extends RetryableRead5XXInitializer
@@ -136,7 +148,7 @@ class NonRetryable5XXConfig extends ResponseClassifierConfig {
 
 class NonRetryable5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[NonRetryable5XXConfig]
-  override val configId = "io.l5d.nonRetryable5XX"
+  override val configId = "io.l5d.http.nonRetryable5XX"
 }
 
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer

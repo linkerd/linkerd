@@ -22,13 +22,13 @@ class StatsDStatsReceiverTest extends FunSuite {
     val names = Seq(
       Seq("foo", "$", "", "bar/baz.stuff#word?who//what^when*where\\why", "#/^//\\huh?@$%^&"),
       Seq("clnt", "zipkin-tracer", "service_creation", "service_acquisition_latency_ms"),
-      Seq("rt", "http", "dst", "id", "#/io.l5d.fs/default/path/http/1.1/GET/default", "request_latency_ms")
+      Seq("rt", "http", "client", "#/io.l5d.fs/default/path/http/1.1/GET/default", "request_latency_ms")
     )
     val newNames = names.map { StatsDStatsReceiver.mkName(_) }
     val expected = Seq(
       "foo._.bar.baz_stuff_word_who.what_when_where_why._._._huh______",
       "clnt.zipkin_tracer.service_creation.service_acquisition_latency_ms",
-      "rt.http.dst.id._.io_l5d_fs.default.path.http.1_1.GET.default.request_latency_ms"
+      "rt.http.client._.io_l5d_fs.default.path.http.1_1.GET.default.request_latency_ms"
     )
 
     assert(newNames == expected)

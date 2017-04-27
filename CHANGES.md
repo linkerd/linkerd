@@ -1,8 +1,46 @@
-## In the next release
-* Experimental ThriftMux protocol support
-* Add support for per-client configuration.
-* Simplify TLS configuration.
+## In the next release...
+
 * Port numbers in k8s names will now have the service's port mapping applied.
+
+## 1.0.0 2017-04-24
+
+* Configuration:
+  * Add support for per-client configuration.
+  * Add support for per-service configuration.
+  * Simplify TLS configuration.
+  * Split the timeoutMs router option into a requestAttemptTimeoutMs client option
+    and a totalTimeoutMs service option.
+  * Rename the "dst/path" metrics scope to "service".
+  * Rename the "dst/id" metrics scope to "client".
+  * Rename the "namer.path" trace annotation to "service".
+  * Rename the "dst.id" trace annotation to "client".
+  * Rename the "dst.path" trace annotation to "residual".
+  * Rename the "l5d-dst-logical" HTTP and H2 headers to "l5d-dst-service".
+  * Rename the "l5d-dst-concrete" HTTP and H2 headers to "l5d-dst-client".
+  * Rename the "srv" metrics scope to "server".
+  * Encode retryability on HTTP responses in the `l5d-retryable` header.
+  * Rename http response classifiers to be protocol specific:
+    * The `io.l5d.nonRetryable5XX` id has been renamed to `io.l5d.http.nonRetryable5XX`.
+    * The `io.l5d.retryableRead5XX` id has been renamed to `io.l5d.http.retryableRead5XX`.
+    * The `io.l5d.retryableIdempotent5XX` id has been renamed to `io.l5d.http.retryableIdempotent5XX`.
+  * Refactor http and h2 identifiers for consistency:
+    * The `io.l5d.headerToken` id has been renamed to `io.l5d.header.token`.
+    * The `io.l5d.headerPath` id has been renamed to `io.l5d.header.path`.
+    * The `io.l5d.h2.ingress` id has been renamed to `io.l5d.ingress`.
+    * The `io.l5d.http.ingress` id has been renamed to `io.l5d.ingress`.
+* The following plugins are no longer experimental:
+  * Marathon namer
+  * Consul dtab store
+  * K8s dtab store
+  * Zk dtab store
+* Fix h2 memory leak in Netty4DispatcherBase.
+* Greatly reduced docker image size.
+* Add `io.l5d.influxdb` LINE telemeter.
+* Experimental ThriftMux protocol support.
+* Automatically upgrade all HTTP/1.0 messages to HTTP/1.1.
+* Allow dtab fallback when consul returns an empty address set.
+* Fixed k8s namer to handle null endpoint subsets.
+* Add support for Marathon HTTP basic authentication,
 
 ## 0.9.1 2017-03-15
 

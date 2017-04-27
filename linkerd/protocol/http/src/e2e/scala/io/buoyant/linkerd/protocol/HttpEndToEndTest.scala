@@ -117,9 +117,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
-          assert(anns.contains(Annotation.BinaryAnnotation("namer.path", path)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.id", bound)))
-          assert(anns.contains(Annotation.BinaryAnnotation("dst.path", "/")))
+          assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
+          assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
         }
       }
 
@@ -175,24 +175,62 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       okreq.uri = "/woof"
       val okrsp = await(client(okreq))
       assert(okrsp.status == Status.Ok)
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == None)
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "failures")) == None)
+      assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "client", label, "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "client", label, "failures")) == None)
 
       val errreq = Request()
       errreq.host = "dog"
       val errrsp = await(client(errreq))
       assert(errrsp.status == Status.InternalServerError)
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(2))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
-      assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(2))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(2))
+      assert(stats.counters.get(Seq("http", "client", label, "success")) == Some(1))
+      assert(stats.counters.get(Seq("http", "client", label, "failures")) == Some(1))
 
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  test("marks exceptions as failure by default") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    val downstream = Downstream.mk("dog") { req => ??? }
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    // Just close the downstream right away to generate connection exceptions
+    await(downstream.server.close())
+
+    try {
+      val req = Request()
+      req.host = "dog"
+      val rsp = await(client(req))
+      assert(rsp.status == Status.BadGateway)
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "success")) == None)
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "failures")) == Some(1))
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "success")) == None)
+      assert(stats.counters.get(Seq("http", "service", "svc/dog", "failures")) == Some(1))
     } finally {
       await(client.close())
       await(downstream.server.close())
@@ -227,8 +265,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       s"""|routers:
           |- protocol: http
           |  dtab: ${dtab.show}
-          |  responseClassifier:
-          |    kind: $kind
+          |  service:
+          |    responseClassifier:
+          |      kind: $kind
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -248,20 +287,20 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         stats.clear()
         val rsp = await(client(req))
         assert(rsp.status == Status.Ok)
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == Some(1))
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(2))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "failures")) == None)
+        assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("http", "client", label, "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "status", "200")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "status", "500")) == Some(1))
         val name = "svc/dog"
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == None)
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries", "per_request")) == Some(Seq(1.0)))
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "retries", "total")) == Some(1))
+        assert(stats.counters.get(Seq("http", "service", name, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "service", name, "success")) == Some(1))
+        assert(stats.counters.get(Seq("http", "service", name, "failures")) == None)
+        assert(stats.stats.get(Seq("http", "service", name, "retries", "per_request")) == Some(Seq(1.0)))
+        assert(stats.counters.get(Seq("http", "service", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
         }
@@ -276,20 +315,20 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         stats.clear()
         val rsp = await(client(req))
         assert(rsp.status == Status.InternalServerError)
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "requests")) == Some(1))
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "success")) == None)
-        assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "requests")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "success")) == None)
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "failures")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "200")) == None)
-        assert(stats.counters.get(Seq("http", "dst", "id", label, "status", "500")) == Some(1))
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "success")) == None)
+        assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "success")) == None)
+        assert(stats.counters.get(Seq("http", "client", label, "failures")) == Some(1))
+        assert(stats.counters.get(Seq("http", "client", label, "status", "200")) == None)
+        assert(stats.counters.get(Seq("http", "client", label, "status", "500")) == Some(1))
         val name = s"svc/dog"
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "requests")) == Some(1))
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "success")) == None)
-        assert(stats.counters.get(Seq("http", "dst", "path", name, "failures")) == Some(1))
-        assert(stats.stats.get(Seq("http", "dst", "path", name, "retries", "per_request")) == Some(Seq(0.0)))
-        assert(!stats.counters.contains(Seq("http", "dst", "path", name, "retries", "total")))
+        assert(stats.counters.get(Seq("http", "service", name, "requests")) == Some(1))
+        assert(stats.counters.get(Seq("http", "service", name, "success")) == None)
+        assert(stats.counters.get(Seq("http", "service", name, "failures")) == Some(1))
+        assert(stats.stats.get(Seq("http", "service", name, "retries", "per_request")) == Some(Seq(0.0)))
+        assert(!stats.counters.contains(Seq("http", "service", name, "retries", "total")))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
         }
@@ -303,15 +342,15 @@ class HttpEndToEndTest extends FunSuite with Awaits {
   }
 
   test("retries retryableIdempotent5XX") {
-    retryTest("io.l5d.retryableIdempotent5XX", idempotentMethods)
+    retryTest("io.l5d.http.retryableIdempotent5XX", idempotentMethods)
   }
 
   test("retries retryablRead5XX") {
-    retryTest("io.l5d.retryableRead5XX", readMethods)
+    retryTest("io.l5d.http.retryableRead5XX", readMethods)
   }
 
   test("retries nonRetryable5XX") {
-    retryTest("io.l5d.nonRetryable5XX", Set.empty)
+    retryTest("io.l5d.http.nonRetryable5XX", Set.empty)
   }
 
   val dtabReadHeaders = Seq("l5d-dtab", "l5d-ctx-dtab")
@@ -325,7 +364,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val dog = Downstream.mk("dog") { req =>
       headers = req.headerMap
-      req.response
+      Response()
     }
     val dtab = Dtab.read(s"""
       /svc/* => /$$/inet/127.1/${dog.port} ;
@@ -358,7 +397,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val dog = Downstream.mk("dog") { req =>
       headers = req.headerMap
-      req.response
+      Response()
     }
     val dtab = Dtab.read(s"""
       /svc/* => /$$/inet/127.1/${dog.port} ;
@@ -418,8 +457,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         k -> v
       }.toMap
     assert(headers.keySet == Set(
-      "l5d-dst-logical",
-      "l5d-dst-concrete",
+      "l5d-dst-service",
+      "l5d-dst-client",
       "l5d-reqid",
       "l5d-ctx-trace"
     ))
@@ -462,8 +501,8 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         k -> v
       }.toMap
     assert(headers.keySet == Set(
-      "l5d-dst-logical",
-      "l5d-dst-concrete",
+      "l5d-dst-service",
+      "l5d-dst-client",
       "l5d-reqid",
       "l5d-ctx-dtab",
       "l5d-ctx-trace",

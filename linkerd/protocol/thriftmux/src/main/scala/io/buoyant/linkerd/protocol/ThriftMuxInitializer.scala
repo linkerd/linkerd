@@ -44,6 +44,7 @@ case class ThriftMuxConfig(
 ) extends RouterConfig {
 
   var servers: Seq[ThriftServerConfig] = Nil
+  var service: Option[Svc] = None
   @JsonProperty("client")
   var _client: Option[ThriftClient] = None
 

@@ -3,7 +3,7 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.Activity
+import com.twitter.util.{Activity, Var}
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],
@@ -12,7 +12,7 @@ case class ConfiguredDtabNamer(
 
   def bind(localDtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
     configuredDtab.flatMap { configuredDtab =>
-      Namer.bind(lookup(configuredDtab ++ localDtab), NameTree.Leaf(path))
+      Namer.bind(lookup(configuredDtab ++ localDtab), NameTree.Leaf(path)).dedup
     }
 
   private[this] def lookup(dtab: Dtab)(path: Path): Activity[NameTree[Name]] =

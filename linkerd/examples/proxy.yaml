@@ -1,0 +1,22 @@
+namers: []
+
+# Simply proxies requests according to the hostname.  If a port is specified
+# in the hostname, that port is used.  Otherwise, port 80 is used by default.
+# If port 443 is specified, linkerd will speak https to the destination.
+#
+# This dtab can be a useful fallback if the specified service isn't found in
+# service discovery.
+routers:
+- protocol: http
+  dtab: |
+    /ph => /$/io.buoyant.rinet ;
+    /svc => /ph/80 ;
+    /svc => /$/io.buoyant.porthostPfx/ph ;
+  servers:
+  - port: 4140
+  client:
+    kind: io.l5d.static
+    configs:
+    - prefix: /$/io.buoyant.rinet/443/{hostname}
+      tls:
+        commonName: "{hostname}"

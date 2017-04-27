@@ -37,7 +37,7 @@ case class ConfiguredNamersInterpreter(namers: Seq[(Path, Namer)])
   extends NameInterpreter with Delegator {
 
   override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
-    Namer.bind(lookup(dtab), NameTree.Leaf(path))
+    Namer.bind(lookup(dtab), NameTree.Leaf(path)).dedup
 
   def lookup(path: Path): Activity[NameTree[Name]] =
     lookup(namers, path)

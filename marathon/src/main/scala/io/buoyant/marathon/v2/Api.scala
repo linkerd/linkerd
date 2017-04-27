@@ -146,7 +146,7 @@ object Api {
   private[this] def toAppIds(appsRsp: AppsRsp): Api.AppIds = {
     appsRsp.apps match {
       case Some(apps) =>
-        apps.collect { case App(Some(id), _, _) => Path.read(id) }.toSet
+        apps.collect { case App(Some(id), _, _) => Path.read(id.toLowerCase) }.toSet
       case None => Set.empty
     }
   }

@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.{Path, Service}
-import com.twitter.finagle.buoyant.FormParams
-import com.twitter.finagle.http.{MediaType, Message, Method, Request, Response, Status}
+import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
 
@@ -27,6 +26,8 @@ object Etcd {
   private[etcd] val keysPrefixPath = Path.Utf8("v2", "keys")
   private[etcd] val versionPath = Path.Utf8("version")
 
+  private[etcd] val requestBuilder = RequestBuilder()
+
   private[etcd] def mkReq(
     path: Path,
     method: Method = Method.Get,
@@ -34,11 +35,13 @@ object Etcd {
   ): Request = {
     method match {
       case Method.Post | Method.Put =>
-        val req = Request(method, path.show)
+        val req = requestBuilder.url("http://host")
+          .addFormElement(params: _*)
+          .buildFormPost()
+        req.uri = path.show
+        req.method = method
         req.contentType = MediaType.WwwForm
-        FormParams.set(req, params)
         req
-
       case _ =>
         val req = Request(path.show, params: _*)
         req.method = method

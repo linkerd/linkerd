@@ -4,7 +4,7 @@ namers:
 
 routers:
 - protocol: http
-  dtab: /svc/* => /$/inet/localhost/8888
+  dtab: /svc => /#/io.l5d.fs;
   servers:
   - port: 4140
 

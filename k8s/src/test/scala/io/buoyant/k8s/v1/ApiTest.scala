@@ -17,7 +17,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
 
   val endpoints0 = Buf.Utf8("""{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"accounts","namespace":"srv","selfLink":"/api/v1/namespaces/srv/endpoints/accounts","uid":"1b0e7393-4d10-11e5-9859-42010af01815","resourceVersion":"4430527","creationTimestamp":"2015-08-27T23:05:27Z"},"subsets":[{"addresses":[{"ip":"10.248.1.6","targetRef":{"kind":"Pod","namespace":"srv","name":"accounts-63f7n","uid":"1a91058a-4d10-11e5-9859-42010af01815","resourceVersion":"4430526"}},{"ip":"10.248.5.6","targetRef":{"kind":"Pod","namespace":"srv",""")
   val endpoints1 = Buf.Utf8(""""name":"accounts-rvgf2","uid":"1a90f98c-4d10-11e5-9859-42010af01815","resourceVersion":"4430498"}},{"ip":"10.248.8.6","targetRef":{"kind":"Pod","namespace":"srv","name":"accounts-is3is","uid":"1a90eac3-4d10-11e5-9859-42010af01815","resourceVersion":"4430524"}}],"ports":[{"name":"http","port":8086,"protocol":"TCP"}]}]}""")
-  val endpointsList = Buf.Utf8("""{"kind": "EndpointsList","apiVersion": "v1","metadata":{"selfLink":"/api/v1/namespaces/greg-test/endpoints","resourceVersion": "17575669"},"items":[{"metadata":{"name": "accounts","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/accounts","uid": "763fe50e-8d71-11e5-a206-42010af0004d","resourceVersion": "17147786","creationTimestamp": "2015-11-17T21:23:35Z"},"subsets":[{"addresses":[{"ip": "10.248.9.109","targetRef":{"kind":"Pod","namespace":"greg-test","name":"accounts-h5zht","uid": "0b598c6e-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147785"}}],"ports":[{"name":"josh","port":8080,"protocol":"TCP"}]}]},{"metadata":{"name": "auth","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/auth","uid": "772cde01-8d71-11e5-a206-42010af0004d","resourceVersion": "17147808","creationTimestamp": "2015-11-17T21:23:37Z"},"subsets":[{"addresses":[{"ip":"10.248.4.134","targetRef":{"kind": "Pod","namespace":"greg-test","name": "auth-54q3e","uid": "0d5d0a2d-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147807"}}],"ports":[{"name":"josh","port":8080,"protocol":"TCP"}]}]}]}""")
+  val endpointsList = Buf.Utf8("""{"kind": "EndpointsList","apiVersion": "v1","metadata": {"selfLink": "/api/v1/namespaces/greg-test/endpoints","resourceVersion": "17575669"},"items": [{"metadata": {"name": "accounts","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/accounts","uid": "763fe50e-8d71-11e5-a206-42010af0004d","resourceVersion": "17147786","creationTimestamp": "2015-11-17T21:23:35Z"},"subsets": [{"addresses": [{"ip": "10.248.9.109","targetRef": {"kind": "Pod","namespace": "greg-test","name": "accounts-h5zht","uid": "0b598c6e-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147785"}}],"ports": [{"name": "josh","port": 8080,"protocol": "TCP"}]}]},{"metadata": {"name": "auth","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/auth","uid": "772cde01-8d71-11e5-a206-42010af0004d","resourceVersion": "17147808","creationTimestamp": "2015-11-17T21:23:37Z"},"subsets": [{"addresses": [{"ip": "10.248.4.134","targetRef": {"kind": "Pod","namespace": "greg-test","name": "auth-54q3e","uid": "0d5d0a2d-9f9b-11e5-94e8-42010af00045","resourceVersion": "17147807"}}],"ports": [{"name": "josh","port": 8080,"protocol": "TCP"}]}]},{"metadata": {"name": "empty-subset","namespace": "greg-test","selfLink": "/api/v1/namespaces/greg-test/endpoints/empty-subset","uid": "872cde01-8d71-11e5-a206-42010af0004d","resourceVersion": "27147808","creationTimestamp": "2016-11-17T21:23:37Z"},"subsets": null}]}""")
 
   test("namespace: get endpoints") {
     @volatile var reqCount = 0
@@ -47,7 +47,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     val ns = Api(service).withNamespace("srv")
     val endpoints = await(ns.endpoints.named("accounts").get)
     assert(endpoints == Endpoints(
-      subsets = Seq(
+      subsets = Some(Seq(
         EndpointSubset(
           addresses = Some(Seq(
             EndpointAddress("10.248.1.6", None, Some(ObjectReference(
@@ -76,7 +76,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
             EndpointPort(8086, Some("http"), Some("TCP"))
           ))
         )
-      ),
+      )),
       kind = Some("Endpoints"),
       apiVersion = Some("v1"),
       metadata = Some(ObjectMeta(
@@ -155,12 +155,12 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       await(w.write(modified2 concat added0))
       await(stream.uncons) match {
         case Some((EndpointsModified(eps), getStream)) =>
-          assert(eps.subsets.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
+          assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
             Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
 
           await(getStream().uncons) match {
             case Some((EndpointsAdded(eps), getStream)) =>
-              assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+              assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
                 Seq("104.154.78.240"))
 
               val next = getStream().uncons
@@ -169,7 +169,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
               assert(next.isDefined)
               await(next) match {
                 case Some((EndpointsModified(eps), getStream)) =>
-                  assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+                  assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
                     Seq("10.248.3.3"))
 
                   val next = getStream().uncons
@@ -178,7 +178,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
                   assert(next.isDefined)
                   await(next) match {
                     case Some((EndpointsModified(eps), getStream)) =>
-                      assert(eps.subsets.flatMap(_.addresses).flatten.map(_.ip) ==
+                      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
                         Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
                       val next = getStream().uncons
                       await(closable.close())
@@ -247,15 +247,21 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147786")
-              assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+              assert(mod.subsets.get.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
               await(stream().uncons) match {
                 case Some((EndpointsModified(mod), stream)) =>
                   assert(mod.metadata.get.resourceVersion.get == "17147808")
-                  assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-                  val next = stream().uncons
-                  await(closable.close())
-                  assert(!next.isDefined)
-
+                  assert(mod.subsets.get.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+                  await(stream().uncons) match {
+                    case Some((EndpointsModified(mod), stream)) =>
+                      assert(mod.metadata.get.resourceVersion.get == "27147808")
+                      assert(mod.subsets == None)
+                      val next = stream().uncons
+                      await(closable.close())
+                      assert(!next.isDefined)
+                    case event =>
+                      fail(s"unexpected event: $event")
+                  }
                 case event =>
                   fail(s"unexpected event: $event")
               }
@@ -356,15 +362,20 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       await(stream.uncons) match {
         case Some((EndpointsModified(mod), stream)) =>
           assert(mod.metadata.get.resourceVersion.get == "17147786")
-          assert(mod.subsets.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+          assert(mod.subsets.get.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
               assert(mod.metadata.get.resourceVersion.get == "17147808")
-              assert(mod.subsets.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-              val next = stream().uncons
-              await(closable.close())
-              assert(!next.isDefined)
-
+              assert(mod.subsets.get.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+              await(stream().uncons) match {
+                case Some((EndpointsModified(mod), stream)) =>
+                  assert(mod.metadata.get.resourceVersion.get == "27147808")
+                  assert(mod.subsets == None)
+                  val next = stream().uncons
+                  await(closable.close())
+                  assert(!next.isDefined)
+                case event => fail(s"unexpected event: $event")
+              }
             case event => fail(s"unexpected event: $event")
           }
         case event => fail(s"unexpected event: $event")

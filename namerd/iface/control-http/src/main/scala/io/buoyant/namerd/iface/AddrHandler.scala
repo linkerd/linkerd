@@ -6,8 +6,7 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.admin.names.DelegateApiHandler.{Addr => JsonAddr}
-import io.buoyant.namer.Paths
-import io.buoyant.namerd.RichActivity
+import io.buoyant.namer.{Paths, RichActivity}
 
 object AddrUri extends NsPathUri {
   import HttpControlService._

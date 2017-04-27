@@ -3,7 +3,6 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.stack.nilStack
 import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
@@ -45,9 +44,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
     val routerLabel = router.label
     server.configured(param.Label(s"$ip/$port"))
       .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[TimeoutFilter.Param])
-      .configured(router.params[param.ResponseClassifier])
+      .configured(param.Stats(stats.scope(routerLabel, "server")))
       .configured(router.params[param.Tracer])
   }
 

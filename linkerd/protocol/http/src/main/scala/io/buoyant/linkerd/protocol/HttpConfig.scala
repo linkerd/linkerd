@@ -12,10 +12,10 @@ import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine,
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.service.Retries
-import com.twitter.finagle.{Path, Stack}
+import com.twitter.finagle.{Path, Stack, param => fparam}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
-import io.buoyant.router.{Http, RoutingFactory}
+import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.http.AddForwardedHeader
 import scala.collection.JavaConverters._
@@ -114,6 +114,40 @@ trait HttpClientConfig extends ClientConfig {
   }
 }
 
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[HttpDefaultSvc]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[HttpDefaultSvc], name = "io.l5d.global"),
+  new JsonSubTypes.Type(value = classOf[HttpStaticSvc], name = "io.l5d.static")
+))
+abstract class HttpSvc extends Svc
+
+class HttpDefaultSvc extends HttpSvc with DefaultSvc with HttpSvcConfig
+
+class HttpStaticSvc(val configs: Seq[HttpSvcPrefixConfig]) extends HttpSvc with StaticSvc
+
+class HttpSvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with HttpSvcConfig
+
+trait HttpSvcConfig extends SvcConfig {
+
+  @JsonIgnore
+  override def baseResponseClassifier =
+    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
+
+  @JsonIgnore
+  override def responseClassifier =
+    super.responseClassifier.map { classifier =>
+      ResponseClassifiers.NonRetryableChunked(
+        ResponseClassifiers.HeaderRetryable(classifier)
+      )
+    }
+}
+
 case class HttpServerConfig(
   engine: Option[HttpEngine],
   addForwardedHeader: Option[AddForwardedHeaderConfig]
@@ -157,17 +191,17 @@ case class HttpConfig(
 
   var client: Option[HttpClient] = None
   var servers: Seq[HttpServerConfig] = Nil
-
-  @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
-
-  @JsonIgnore
-  override def responseClassifier =
-    ResponseClassifiers.NonRetryableChunked(super.responseClassifier)
+  var service: Option[HttpSvc] = None
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer
+
+  @JsonIgnore
+  override val defaultResponseClassifier = ResponseClassifiers.NonRetryableChunked(
+    ResponseClassifiers.HeaderRetryable(
+      ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+    )
+  )
 
   @JsonIgnore
   private[this] val combinedIdentifier = identifier.map { configs =>
@@ -175,7 +209,6 @@ case class HttpConfig(
       RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
     }
   }
-
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))

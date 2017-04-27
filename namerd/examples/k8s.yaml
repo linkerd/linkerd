@@ -1,7 +1,6 @@
 # This file assumes you are running through `kubectl proxy` on localhost:8001.
 storage:
   kind: io.l5d.k8s
-  experimental: true
   host: localhost
   port: 8001 # Running through kubectl proxy
 interfaces:

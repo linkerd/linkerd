@@ -2,9 +2,10 @@ package io.buoyant.namerd.storage
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.Dtab
-import com.twitter.util.{Await, Activity}
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
-import io.buoyant.namerd.{TestNamerInterfaceInitializer, NamerdConfig, RichActivity, VersionedDtab}
+import com.twitter.util.{Activity, Await}
+import io.buoyant.namer.RichActivity
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
+import io.buoyant.namerd.{NamerdConfig, TestNamerInterfaceInitializer, VersionedDtab}
 import io.buoyant.test.Exceptions
 import org.scalatest.FunSuite
 

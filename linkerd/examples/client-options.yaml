@@ -13,12 +13,14 @@ routers:
     configs:
     # Options set on the / prefix will apply to all clients
     - prefix: /
+      requestAttemptTimeoutMs: 1000
       loadBalancer:
         kind: ewma
     # Options can be set for specific clients as well
     - prefix: /#/io.l5d.fs/cat
       hostConnectionPool:
         maxSize: 10
+      failFast: false
     - prefix: /#/io.l5d.fs/dog
       # this will override the previously set value for the load balancer for
       # this client only

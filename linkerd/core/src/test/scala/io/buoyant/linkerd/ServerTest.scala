@@ -1,7 +1,9 @@
 package io.buoyant.linkerd
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.config.Parser
@@ -85,7 +87,7 @@ fancyRouter: true
         |  certPath: /foo/cert
         |  keyPath: /foo/key
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.TLSServerEngine].e.isDefined)
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].e.isDefined)
   }
 
   test("tls configuration absent") {
@@ -93,7 +95,7 @@ fancyRouter: true
       """
         |port: 1234
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.TLSServerEngine].e.isEmpty)
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].e.isEmpty)
   }
 
   test("maxConcurrentRequests") {

@@ -2,11 +2,15 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
+import com.twitter.conversions.time._
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.ssl.Ssl
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.ssl.{ApplicationProtocols, CipherSuites, KeyCredentials, TrustCredentials}
+import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.{ListeningServer, Path, Stack}
 import io.buoyant.config.types.Port
+import java.io.File
 import java.net.{InetAddress, InetSocketAddress}
 
 /**
@@ -85,6 +89,7 @@ class ServerConfig { config =>
   var label: Option[String] = None
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
+  var timeoutMs: Option[Int] = None
 
   var clearContext: Option[Boolean] = None
 
@@ -93,41 +98,33 @@ class ServerConfig { config =>
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
-    .maybeWith(tls.map(netty3Tls(_)))
-    .maybeWith(tls.map(netty4Tls(_)))
-    .maybeWith(clearContext.map(ClearContext.Enabled(_))) +
+    .maybeWith(tls.map(tls(_)))
+    .maybeWith(clearContext.map(ClearContext.Enabled(_)))
+    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis))) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def netty3Tls(c: TlsServerConfig) = {
+  private[this] def tls(c: TlsServerConfig) = {
     assert(c.certPath != null)
     assert(c.keyPath != null)
-    Transport.TLSServerEngine(
-      Some(
-        () => Ssl.server(
-          c.certPath,
-          c.keyPath,
-          null,
-          null,
-          null
-        )
-      )
-    )
-  }
-
-  @JsonIgnore
-  private[this] def netty4Tls(c: TlsServerConfig) = {
-    assert(c.certPath != null)
-    assert(c.keyPath != null)
-    Transport.Tls(
-      TlsConfig.ServerCertAndKey(
-        c.certPath,
-        c.keyPath,
-        c.caCertPath,
-        c.ciphers.map(_.mkString(":")),
-        alpnProtocols.map(_.mkString(","))
-      )
-    )
+    val trust = c.caCertPath match {
+      case Some(caCertPath) => TrustCredentials.CertCollection(new File(caCertPath))
+      case None => TrustCredentials.Unspecified
+    }
+    val ciphers = c.ciphers match {
+      case Some(cs) => CipherSuites.Enabled(cs)
+      case None => CipherSuites.Unspecified
+    }
+    val appProtocols = alpnProtocols match {
+      case Some(ps) => ApplicationProtocols.Supported(ps)
+      case None => ApplicationProtocols.Unspecified
+    }
+    Transport.ServerSsl(Some(SslServerConfiguration(
+      keyCredentials = KeyCredentials.CertAndKey(new File(c.certPath), new File(c.keyPath)),
+      trustCredentials = trust,
+      cipherSuites = ciphers,
+      applicationProtocols = appProtocols
+    )))
   }
 
   @JsonIgnore

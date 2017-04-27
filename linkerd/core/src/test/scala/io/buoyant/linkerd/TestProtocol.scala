@@ -115,6 +115,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
 class Plain extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
+  var service: Option[Svc] = None
   var client: Option[Client] = None
 
   @JsonIgnore
@@ -124,6 +125,7 @@ class Plain extends RouterConfig {
 case class Fancy(fancy: Option[Boolean]) extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
+  var service: Option[Svc] = None
   var client: Option[Client] = None
 
   @JsonIgnore

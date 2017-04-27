@@ -4,7 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
-import io.buoyant.namer.{Metadata, MetadataFiltertingNameTreeTransformer}
+import io.buoyant.namer.{Metadata, MetadataFiltertingNameTreeTransformer, RichActivity}
 import io.buoyant.test.FunSuite
 import io.buoyant.transformer.{Netmask, SubnetLocalTransformer}
 import java.net.{InetAddress, InetSocketAddress}
@@ -31,7 +31,7 @@ class LocalnodeTransformerTest extends FunSuite {
     val transformed = transformer.wrap(interpreter)
 
     val bounds = await(
-      transformed.bind(Dtab.empty, Path.empty).values.toFuture().flatMap(Future.const)
+      transformed.bind(Dtab.empty, Path.empty).toFuture
     ).eval.get
 
     val addrs = bounds.flatMap { bound =>
@@ -62,7 +62,7 @@ class LocalnodeTransformerTest extends FunSuite {
     val transformed = transformer.wrap(interpreter)
 
     val bounds = await(
-      transformed.bind(Dtab.empty, Path.empty).values.toFuture().flatMap(Future.const)
+      transformed.bind(Dtab.empty, Path.empty).toFuture
     ).eval.get
 
     val addrs = bounds.flatMap { bound =>

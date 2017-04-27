@@ -3,7 +3,6 @@
 # master itself is discovered by leader election.
 namers:
 - kind:         io.l5d.marathon
-  experimental: true
   prefix:       /io.l5d.marathon
   # Discover the marathon master by leader election
   dst:          /$/io.buoyant.namer.zk.leader/localhost:2181/marathon/leader

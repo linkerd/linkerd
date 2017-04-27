@@ -16,6 +16,8 @@ case class HeaderIdentifier(
 
   def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.headerMap.get(header) match {
+      case None | Some("") =>
+        Future.value(new UnidentifiedRequest(s"$header header is absent"))
       case Some(value) =>
         val identified = Try {
           val path = if (headerPath) Path.read(value) else Path.Utf8(value)
@@ -23,8 +25,7 @@ case class HeaderIdentifier(
           new IdentifiedRequest(dst, req)
         }
         Future.const(identified)
-      case None =>
-        Future.value(new UnidentifiedRequest(s"$header header is absent"))
+
     }
   }
 }

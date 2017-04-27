@@ -4,8 +4,7 @@ import com.twitter.finagle.http.{MediaType, Method, Request, Response}
 import com.twitter.finagle.{Namer, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
-import io.buoyant.namer.EnumeratingNamer
-import io.buoyant.namerd.RichActivity
+import io.buoyant.namer.{EnumeratingNamer, RichActivity}
 
 object BoundNamesUri {
   import io.buoyant.namerd.iface.HttpControlService._

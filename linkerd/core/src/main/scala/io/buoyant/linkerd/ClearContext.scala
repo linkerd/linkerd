@@ -27,13 +27,11 @@ object ClearContext {
   def filter[Req, Rsp]: Filter[Req, Rsp, Req, Rsp] =
     new SimpleFilter[Req, Rsp] {
       def apply(req: Req, svc: Service[Req, Rsp]) =
-        Contexts.local.letClear() {
-          Contexts.broadcast.letClear() {
-            Dtab.unwind {
-              Dtab.local = Dtab.empty
-              Trace.letClear {
-                svc(req)
-              }
+        Contexts.letClearAll {
+          Dtab.unwind {
+            Dtab.local = Dtab.empty
+            Trace.letClear {
+              svc(req)
             }
           }
         }

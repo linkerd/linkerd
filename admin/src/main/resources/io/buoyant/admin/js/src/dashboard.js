@@ -25,8 +25,8 @@ define([
       var initialRouters = _.get(metricsJson, "rt");
       var initialData = _.reduce(initialRouters, function(mem, data, router) {
         mem[router] = {};
-        mem[router]["servers"] = _.keys(data.srv);
-        mem[router]["clients"] = _.keys(_.get(data, "dst.id"));
+        mem[router]["servers"] = _.keys(data.server);
+        mem[router]["clients"] = _.keys(_.get(data, "client"));
         return mem;
       }, {});
 

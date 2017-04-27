@@ -1,7 +1,6 @@
 storage:
   kind: io.l5d.zk
   pathPrefix: /dtabs
-  experimental: true
   zkAddrs:
   - host: localhost
     port: 2181
