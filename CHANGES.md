@@ -1,3 +1,7 @@
+## In the next release...
+
+* Fix connection leak when retrying on responses with chunked bodies.
+
 ## 1.0.0 2017-04-24
 
 * Configuration:
