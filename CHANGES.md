@@ -1,3 +1,7 @@
+## In the next release...
+
+* Upgrade to scala 2.12.
+
 ## 1.0.0 2017-04-24
 
 * Configuration:

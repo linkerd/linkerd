@@ -2,7 +2,7 @@ package io.buoyant.router.http
 
 import com.twitter.finagle.http.Fields.Via
 import com.twitter.finagle.http.Version.{Http10, Http11}
-import com.twitter.finagle.http.{Message, Request, Response}
+import com.twitter.finagle.http.{Message, Request, Response, Version}
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 /**
@@ -27,6 +27,7 @@ object ViaHeaderAppenderFilter {
       msg.version match {
         case Http10 => Linkerd10
         case Http11 => Linkerd11
+        case Version(major, minor) => s"$major.$minor linkerd"
       }
     }
   }
