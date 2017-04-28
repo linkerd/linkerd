@@ -15,7 +15,9 @@ import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
 
-class HttpEndToEndTest extends FunSuite with Awaits {
+import org.scalatest.{FunSuite, MustMatchers}
+
+class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -462,6 +464,34 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       "l5d-reqid",
       "l5d-ctx-trace"
     ))
+  }
+
+  test("clearContext will remove linkerd error headers and body") {
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/1234
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+      resp.headerMap.keys must not contain ("l5d-err", "l5d-success-class", "l5d-retryable")
+      resp.contentString must be("")
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
+
   }
 
   test("without clearContext") {
