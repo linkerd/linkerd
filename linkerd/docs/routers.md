@@ -104,7 +104,7 @@ kind | `io.l5d.global` | Either [io.l5d.global](#global-service-config) or [io.l
 - protocol: http
   service:
     kind: io.l5d.global
-    totalTimeoutMs: 500ms
+    totalTimeoutMs: 500
     retries:
       budget:
         minRetriesPerSec: 5
@@ -137,9 +137,9 @@ which will be applied to all services.
           minMs: 10
           maxMs: 10000
     - prefix: /svc/foo
-      totalTimeoutMs: 500ms
+      totalTimeoutMs: 500
     - prefix: /svc/bar
-      totalTimeoutMs: 200ms
+      totalTimeoutMs: 200
 
 ```
 
