@@ -447,12 +447,21 @@ object Headers {
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
     def apply(req: Request, service: Service[Request, Response]) = {
-      for (k <- req.headerMap.keys) {
+      clearLinkerdHeaders(req)
+      service(req).map { rsp =>
+        rsp.headerMap.get(Err.Key)
+          .foreach(_ => rsp.clearContent())
+        clearLinkerdHeaders(rsp)
+        rsp
+      }
+    }
+
+    private def clearLinkerdHeaders(msg: Message) = {
+      for (k <- msg.headerMap.keys) {
         if (k.toLowerCase.startsWith(Headers.Prefix)) {
-          req.headerMap -= k
+          msg.headerMap -= k
         }
       }
-      service(req)
     }
   }
 
