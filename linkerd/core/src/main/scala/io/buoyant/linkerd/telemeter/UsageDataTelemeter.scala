@@ -207,7 +207,7 @@ class UsageDataTelemeter(
     Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
 
-  def jitter(i: Duration): Duration = (Random.nextGaussian() * i.inSeconds).toInt.seconds
+  def jitter(i: Duration): Duration = (Random.nextDouble() * i.inSeconds).toInt.seconds
 
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
