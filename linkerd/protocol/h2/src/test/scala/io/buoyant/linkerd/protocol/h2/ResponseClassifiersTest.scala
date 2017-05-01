@@ -18,7 +18,7 @@ class ResponseClassifiersTest extends FunSuite {
     method: Method,
     status: Try[Status],
     classification: Option[ResponseClass]
-  ): Unit = {
+  ) = {
     val req = Request("http", method, "auf", "/", Stream.empty())
     val key = ReqRep(req, status.map(Response(_, Stream.empty())))
     classification match {

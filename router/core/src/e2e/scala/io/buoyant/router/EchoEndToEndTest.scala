@@ -91,6 +91,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
       assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc/cat")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("client", s"/${echoDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("residual", "/cat")))
+      ()
     }
 
     assert(await(client("dog/bark")) == "krab/god")
@@ -98,6 +99,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
       assert(anns.exists(_ == Annotation.BinaryAnnotation("service", "/svc/dog/bark")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("client", s"/${ohceDst}")))
       assert(anns.exists(_ == Annotation.BinaryAnnotation("residual", "/bark")))
+      ()
     }
 
     assert(await(client("idk")) == "NOBROKERS")
@@ -107,6 +109,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.ClientAcquisition.name
       )))
+      ()
     }
 
     assert(await(client("")) == "ERROR empty request")
@@ -116,6 +119,7 @@ class EchoEndToEndTest extends FunSuite with Awaits {
         RoutingFactory.Annotations.Failure.key,
         RoutingFactory.Annotations.Failure.Service.name
       )))
+      ()
     }
 
     assert(stats.counters(Seq("echo", "client", echoDst, "requests")) == 1)

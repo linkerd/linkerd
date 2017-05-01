@@ -120,17 +120,20 @@ class HttpEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
 
       get("ralph-machio") { rsp =>
         assert(rsp.status == Status.BadGateway)
         assert(rsp.headerMap.contains(Headers.Err.Key))
+        ()
       }
 
       get("") { rsp =>
         assert(rsp.status == Status.BadRequest)
         assert(rsp.headerMap.contains(Headers.Err.Key))
+        ()
       }
 
       // todo check stats
@@ -303,6 +306,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "service", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          ()
         }
       }
 
@@ -331,6 +335,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(!stats.counters.contains(Seq("http", "service", name, "retries", "total")))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
+          ()
         }
       }
     } finally {
