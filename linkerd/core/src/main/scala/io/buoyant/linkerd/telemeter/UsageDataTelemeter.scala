@@ -179,13 +179,13 @@ private[telemeter] object UsageDataTelemeter {
  *
  * Defines neither its own tracer nor its own stats receiver.
  */
-case class UsageDataTelemeter(
+class UsageDataTelemeter(
   metricsDst: Name,
   withTls: Boolean,
   config: Linker.LinkerConfig,
   metrics: MetricsTree,
-  orgId: Option[String]
-) extends Telemeter with Admin.WithHandlers {
+  val orgId: Option[String]
+)(implicit timer: Timer) extends Telemeter with Admin.WithHandlers {
   import UsageDataTelemeter._
 
   val tracer = NullTracer
@@ -215,9 +215,9 @@ case class UsageDataTelemeter(
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    Future.sleep(jitter(1.minute))(DefaultTimer.twitter).before(client(metrics))
+    Future.sleep(jitter(1.minute)).before(client(metrics))
 
-    val task = DefaultTimer.twitter.schedule(DefaultPeriod.plus(jitter(1.minute))) {
+    val task = timer.schedule(DefaultPeriod.plus(jitter(1.minute))) {
       val _ = client(metrics)
     }
 
@@ -243,6 +243,7 @@ case class UsageDataTelemeterConfig(
   def mk(params: Stack.Params): Telemeter =
     if (enabled.getOrElse(true)) {
       val LinkerConfig(config) = params[LinkerConfig]
+      implicit val timer = DefaultTimer.twitter
 
       new UsageDataTelemeter(
         Name.bound(Address("stats.buoyant.io", 443)),
