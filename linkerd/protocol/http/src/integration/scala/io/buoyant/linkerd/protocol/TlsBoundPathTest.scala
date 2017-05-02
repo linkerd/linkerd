@@ -72,6 +72,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
+            ()
           }
         }
       } finally {
@@ -134,6 +135,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
+            ()
           }
         }
       } finally {
@@ -208,7 +210,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
-
+            ()
           }
         }
       } finally {
@@ -278,6 +280,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               req.host = "ted"
               assert(await(client(req)).status == Status.BadGateway)
             }
+            ()
           }
         }
       } finally {

@@ -269,10 +269,10 @@ object DecodingStream {
 
     private[this] def mk(f: h2.Frame): Releaser = f match {
       case f: h2.Frame.Trailers =>
-        FrameReleaser(SegmentLatch(f.release), 0, 0, Nil)
+        FrameReleaser(SegmentLatch(f.release _), 0, 0, Nil)
 
       case f: h2.Frame.Data =>
-        FrameReleaser(SegmentLatch(f.release), 0, f.buf.length, Nil)
+        FrameReleaser(SegmentLatch(f.release _), 0, f.buf.length, Nil)
     }
   }
 

@@ -107,6 +107,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
 
@@ -116,6 +117,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
     } finally {
@@ -163,6 +165,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
 
@@ -172,6 +175,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
     } finally {

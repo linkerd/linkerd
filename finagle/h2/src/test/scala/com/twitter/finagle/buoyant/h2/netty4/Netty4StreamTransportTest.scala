@@ -78,6 +78,7 @@ class Netty4StreamTransportTest extends FunSuite {
 
       eventually { assert(transport.onReset.isDefined) }
       assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(rst)))
+      ()
     }
 
   }
@@ -121,6 +122,7 @@ class Netty4StreamTransportTest extends FunSuite {
       }
       assert(await(transport.onReset.liftToTry) == Throw(StreamError.Remote(rst)))
       assert(transport.isClosed)
+      ()
     }
   }
 
