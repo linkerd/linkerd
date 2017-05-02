@@ -9,7 +9,7 @@ import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.namer.{NamerConfig, NamerInitializer, TransformerInitializer}
 import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver, Telemeter}
-import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
+import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval, metricsExpiryTtl}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -33,7 +33,7 @@ private[namerd] case class NamerdConfig(
 
     val metrics = MetricsTree()
 
-    val telemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+    val telemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), metricsExpiryTtl(), DefaultTimer.twitter)
 
     val stats = new MetricsTreeStatsReceiver(metrics)
     JvmStats.register(stats)

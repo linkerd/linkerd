@@ -1,3 +1,7 @@
+## In the next release...
+
+* Expire and prune metrics which are idle for 24 hours.
+
 ## 1.0.0 2017-04-24
 
 * Configuration:
@@ -35,8 +39,6 @@
 * Experimental ThriftMux protocol support.
 * Automatically upgrade all HTTP/1.0 messages to HTTP/1.1.
 * Allow dtab fallback when consul returns an empty address set.
-* Fixed k8s namer to handle null endpoint subsets.
-* Add support for Marathon HTTP basic authentication,
 
 ## 0.9.1 2017-03-15
 

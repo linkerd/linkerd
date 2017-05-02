@@ -5,7 +5,12 @@ import com.twitter.finagle.stats.buoyant.BucketedHistogram
 import com.twitter.util.{Duration, Time}
 import java.util.concurrent.atomic.AtomicLong
 
-sealed trait Metric
+sealed trait Metric {
+  @volatile private[this] var _lastUpdated: Time = Time.now
+
+  def lastUpdated: Time = _lastUpdated
+  protected def update(): Unit = _lastUpdated = Time.now
+}
 
 object Metric {
 
@@ -15,6 +20,7 @@ object Metric {
     private[this] val value = new AtomicLong
     def incr(delta: Int): Unit = {
       val _ = value.getAndAdd(delta)
+      update()
     }
     def get: Long = value.get
   }
@@ -27,9 +33,11 @@ object Metric {
     private[this] var resetTime = Time.now
     def startingAt: Time = resetTime
 
-    def add(value: Float): Unit = underlying.synchronized {
-      // TODO track update time to allow detection of stale stats.
-      underlying.add(value.toLong)
+    def add(value: Float): Unit = {
+      underlying.synchronized {
+        underlying.add(value.toLong)
+      }
+      update()
     }
 
     def peek: Seq[BucketAndCount] = underlying.synchronized {
@@ -70,6 +78,9 @@ object Metric {
   }
 
   class Gauge(f: => Float) extends Metric {
+    // Gauges never expire, they must be manually deregistered
+    override val lastUpdated = Time.Top
+
     def get: Float = f
   }
 

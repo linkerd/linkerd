@@ -16,7 +16,7 @@ import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
 import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.telemetry._
-import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
+import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval, metricsExpiryTtl}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -112,7 +112,7 @@ object Linker {
       val metrics = MetricsTree()
 
       val telemeterParams = Stack.Params.empty + param.LinkerConfig(this) + metrics
-      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), metricsExpiryTtl(), DefaultTimer.twitter)
       val usageTelemeter = usage.getOrElse(UsageDataTelemeterConfig()).mk(telemeterParams)
 
       val telemeters = telemetry.toSeq.flatten.map {
