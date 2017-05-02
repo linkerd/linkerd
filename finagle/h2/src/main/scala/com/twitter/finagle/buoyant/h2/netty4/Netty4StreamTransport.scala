@@ -103,7 +103,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     /**
      * Act on a stream reset by failing a pending or streaming remote.
      */
-    override def reset(rst: Reset): Unit = remote.reset(rst)
+    override def reset(rst: Reset): Unit = {
+      log.debug("[%s] Open resetting %s", prefix, this)
+      remote.reset(rst)
+    }
   }
 
   /**
@@ -112,7 +115,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    */
   private[this] case class LocalClosed(remote: RemoteState)
     extends StreamState with ResettableState {
-    override def reset(rst: Reset): Unit = remote.reset(rst)
+    override def reset(rst: Reset): Unit = {
+      log.debug("[%s] LocalClosed resetting %s", prefix, this)
+      remote.reset(rst)
+    }
   }
 
   /**
@@ -127,7 +133,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] class RemoteClosed(q: AsyncQueue[Frame])
     extends StreamState with ResettableState {
     def close(): Unit = q.fail(Reset.NoError, discard = false)
-    override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
+    override def reset(rst: Reset): Unit = {
+      log.debug("[%s] RemoteClosed resetting %s", prefix, this)
+      q.fail(rst, discard = false)
+    }
   }
   private[this] object RemoteClosed {
     def unapply(rc: RemoteClosed): Boolean = true
@@ -143,7 +152,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] class RemotePending(p: Promise[RecvMsg]) extends RemoteState {
     def future: Future[RecvMsg] = p
     def setMessage(rm: RecvMsg): Unit = p.setValue(rm)
-    override def reset(rst: Reset): Unit = p.setException(rst)
+    override def reset(rst: Reset): Unit = {
+      log.debug("[%s] RemotePending resetting %s", prefix, this)
+      p.setException(rst)
+    }
   }
   private[this] object RemotePending {
     def unapply(rs: RemotePending): Boolean = true
@@ -154,7 +166,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def toRemoteClosed: RemoteClosed = new RemoteClosed(q)
     def offer(f: Frame): Boolean = q.offer(f)
     def close(): Unit = q.fail(Reset.NoError, discard = false)
-    override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
+    override def reset(rst: Reset): Unit = {
+      log.debug("[%s] RemoteStreaming resetting %s", prefix, this)
+      q.fail(rst, discard = true)
+    }
   }
   private[this] object RemoteStreaming {
     def apply(q: AsyncQueue[Frame]): RemoteStreaming = new RemoteStreaming(q)
@@ -665,10 +680,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   }
 
   private[this] def localResetOnCancel[T](f: Future[T]): Future[T] = {
-    log.debug("[%s] localResetOnCancel", prefix)
     val p = new Promise[T]
     p.setInterruptHandler {
       case e =>
+        log.debug("[%s] localResetOnCancel localReset", prefix)
         localReset(Reset.Cancel)
         f.raise(e)
     }
