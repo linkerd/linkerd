@@ -101,11 +101,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       get("felix") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
+        ()
       }
 
       get("clifford", "/the/big/red/dog") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "woof")
+        ()
       }
 
       // todo check stats

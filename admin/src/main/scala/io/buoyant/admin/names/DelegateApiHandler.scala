@@ -243,6 +243,8 @@ object DelegateApiHandler {
     }
   }
 
+  private implicit val timer = DefaultTimer.twitter
+
   def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
     val dtabTry = if (dtab == null) Return(Dtab.empty) else Try(Dtab.read(dtab))
     val pathTry = Try(Path.read(path))
@@ -265,8 +267,6 @@ object DelegateApiHandler {
         err(Status.BadRequest, s"Invalid path: ${e.getMessage}")
     }
   }
-
-  private implicit val timer = DefaultTimer.twitter
 
   case class DelegationRequest(
     namespace: Option[String],

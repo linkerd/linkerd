@@ -1,12 +1,13 @@
 package io.buoyant.linkerd.telemeter
 
 import com.google.protobuf.CodedInputStream
+import com.twitter.conversions.time._
 import com.twitter.finagle.Address.Inet
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Future, MockTimer, Promise, Time}
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.Linker.LinkerConfig
 import io.buoyant.linkerd._
@@ -73,23 +74,32 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     requests.incr()
     requests.incr()
 
+    implicit val timer = new MockTimer
+
     val telemeter = new UsageDataTelemeter(
       Name.bound(Inet(proxy.address, Map())),
       withTls = false,
       config,
       metrics,
       Some("orgId"))
-    telemeter.run()
 
-    val msg = await(promise)
-    assert(msg.orgId == Some("orgId"))
-    assert(msg.namers == Seq("test"))
-    assert(msg.routers.head.protocol == Some("plain"))
-    assert(msg.routers.last.protocol == Some("fancy"))
-    assert(msg.counters.head.name == Some("srv_requests"))
-    assert(msg.counters.head.value == Some(2))
-    assert(msg.startTime.isDefined)
-    val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
-    assert(Try[Date](formatter.parse(msg.startTime.get)).isSuccess)
+    Time.withCurrentTimeFrozen { tc =>
+      telemeter.run()
+
+      tc.advance(2.minutes)
+      timer.tick()
+
+      val msg = await(promise)
+
+      assert(msg.orgId == Some("orgId"))
+      assert(msg.namers == Seq("test"))
+      assert(msg.routers.head.protocol == Some("plain"))
+      assert(msg.routers.last.protocol == Some("fancy"))
+      assert(msg.counters.head.name == Some("srv_requests"))
+      assert(msg.counters.head.value == Some(2))
+      assert(msg.startTime.isDefined)
+      val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
+      assert(Try[Date](formatter.parse(msg.startTime.get)).isSuccess)
+    }
   }
 }

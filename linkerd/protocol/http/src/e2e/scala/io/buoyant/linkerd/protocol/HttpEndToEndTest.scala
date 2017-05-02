@@ -15,7 +15,9 @@ import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
 
-class HttpEndToEndTest extends FunSuite with Awaits {
+import org.scalatest.{FunSuite, MustMatchers}
+
+class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -120,17 +122,20 @@ class HttpEndToEndTest extends FunSuite with Awaits {
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
+          ()
         }
       }
 
       get("ralph-machio") { rsp =>
         assert(rsp.status == Status.BadGateway)
         assert(rsp.headerMap.contains(Headers.Err.Key))
+        ()
       }
 
       get("") { rsp =>
         assert(rsp.status == Status.BadRequest)
         assert(rsp.headerMap.contains(Headers.Err.Key))
+        ()
       }
 
       // todo check stats
@@ -303,6 +308,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(stats.counters.get(Seq("http", "service", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          ()
         }
       }
 
@@ -331,6 +337,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         assert(!stats.counters.contains(Seq("http", "service", name, "retries", "total")))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
+          ()
         }
       }
     } finally {
@@ -462,6 +469,34 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       "l5d-reqid",
       "l5d-ctx-trace"
     ))
+  }
+
+  test("clearContext will remove linkerd error headers and body") {
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/1234
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+      resp.headerMap.keys must not contain ("l5d-err", "l5d-success-class", "l5d-retryable")
+      resp.contentString must be("")
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
+
   }
 
   test("without clearContext") {

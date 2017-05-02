@@ -260,6 +260,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
+      ()
     }
 
     assert(stats.counters == Map(
@@ -317,6 +318,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
+      ()
     }
 
     assert(stats.counters == Map(
@@ -380,14 +382,14 @@ class ConsulNamerTest extends FunSuite with Awaits {
       state = s
     }
 
-    assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 1) }
+    assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 1); () }
     assert(nameTreeUpdates == 1)
 
     scaleUp.setDone()
 
     // NameTree activity should not have updated due to scale up
     assert(nameTreeUpdates == 1)
-    assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2) }
+    assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
 
     scaleToEmpty.setDone()
 
@@ -451,6 +453,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)
       assert(addrs.head.toString.contains("192.168.1.35:8080"))
+      ()
     }
 
     assert(stats.counters == Map(
@@ -504,6 +507,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assertOnAddrs(state) { (_, metadata) =>
       assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      ()
     }
 
     assert(stats.counters == Map(
@@ -565,6 +569,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
           Metadata.authority -> "master.servicename.service.dc1.consul.acme.co"
         )
       )
+      ()
     }
 
     assert(stats.counters == Map(

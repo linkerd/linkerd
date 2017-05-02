@@ -43,5 +43,9 @@ case class MethodAndHostIdentifier(
             )
           )
       }
+    case v =>
+      Future.value(
+        new UnidentifiedRequest(s"Unknown HTTP version $v")
+      )
   }
 }
