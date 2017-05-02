@@ -1,6 +1,7 @@
 ## In the next release...
 
 * Upgrade to scala 2.12.
+* Fix connection leak when retrying on responses with chunked bodies.
 * Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
 
 ## 1.0.0 2017-04-24

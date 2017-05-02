@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Method, Response, Request}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle._
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Time, Var}
 import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.test.FunSuite
@@ -619,5 +620,55 @@ class RetriesEndToEndTest extends FunSuite {
       await(server.close())
       await(router.close())
     }
+  }
+
+  test("chunked error responses should not leak connections on retries") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    val downstream = Downstream("dog", Service.mk { req =>
+      val rsp = Response()
+      rsp.statusCode = 500
+      rsp.setChunked(true)
+      rsp.close()
+      Future.value(rsp)
+    })
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${dtab.show}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableRead5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+
+      val req = Request()
+      req.host = "dog"
+      val errrsp = await(client(req))
+      assert(errrsp.statusCode == 500)
+      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(101))
+      assert(stats.gauges.get(Seq("http", "client", label, "connections")).map(_.apply.toInt) == Some(1))
+
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+
   }
 }
