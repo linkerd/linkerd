@@ -43,19 +43,19 @@ class CuratorNamer(zkConnect: String, basePath: String, idPrefix: Path) extends 
     promise
   }
 
-  private[this] lazy val serviceDiscovery: Future[ServiceDiscovery[Void]] =
+  private[this] lazy val serviceDiscovery: Future[ServiceDiscovery[Object]] =
     curator.map { client =>
-      val disco = ServiceDiscoveryBuilder.builder(classOf[Void]).basePath(basePath)
+      val disco = ServiceDiscoveryBuilder.builder(classOf[Object]).basePath(basePath)
         .client(client).build
       disco.start()
       log.info("Curator service discovery started")
       disco
     }
 
-  protected def isSSL(instance: ServiceInstance[Void]): Boolean =
+  protected def isSSL(instance: ServiceInstance[Object]): Boolean =
     instance.getSslPort != null
 
-  protected def getAddress(instance: ServiceInstance[Void]): Address = {
+  protected def getAddress(instance: ServiceInstance[Object]): Address = {
     val port = if (isSSL(instance)) {
       instance.getSslPort
     } else {
