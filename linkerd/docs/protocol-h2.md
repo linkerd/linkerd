@@ -154,7 +154,7 @@ kind: `io.l5d.header.path`
 
 With this identifier, requests are identified using a path read from a
 header. This is useful for routing gRPC requests. By default, the `:path`
-psuedo-header is used.
+pseudo-header is used.
 
 #### Namer Configuration:
 
