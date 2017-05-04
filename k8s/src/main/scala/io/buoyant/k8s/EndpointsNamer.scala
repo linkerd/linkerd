@@ -10,14 +10,15 @@ import io.buoyant.namer.{EnumeratingNamer, Metadata}
 import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.mutable
 
-class EndpointsNamer(
+class MultiNsNamer(
   idPrefix: Path,
   labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
+)(implicit timer: Timer = DefaultTimer.twitter) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
 
-  import EndpointsNamer._
+  val PrefixLen = 3
+  private[this] val variablePrefixLength = PrefixLen + labelName.size
 
   /**
    * Accepts names in the form:
@@ -49,12 +50,67 @@ class EndpointsNamer(
         Activity.value(NameTree.Neg)
     }
   }
+}
 
-  private[this] def lookupServices(
+class SingleNsNamer(
+  idPrefix: Path,
+  labelName: Option[String],
+  nsName: String,
+  mkApi: String => NsApi,
+  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+)(implicit timer: Timer = DefaultTimer.twitter) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
+
+  val PrefixLen = 2
+  private[this] val variablePrefixLength = PrefixLen + labelName.size
+
+  /**
+   * Accepts names in the form:
+   *   /<port-name>/<svc-name>/residual/path
+   *
+   * and attempts to bind an Addr by resolving named endpoint from the
+   * kubernetes master.
+   */
+  def lookup(path: Path): Activity[NameTree[Name]] = {
+    val lowercasePath = path.take(variablePrefixLength) match {
+      case Path.Utf8(segments@_*) => Path.Utf8(segments.map(_.toLowerCase): _*)
+    }
+    (lowercasePath, labelName) match {
+      case (id@Path.Utf8(_, _), None) =>
+        val residual = path.drop(variablePrefixLength)
+        log.debug("k8s lookup: %s %s", id.show, path.show)
+        lookupServices(endpointNs.get(nsName, None), Path.Utf8(nsName) ++ id, residual)
+
+      case (id@Path.Utf8(_, _, labelValue), Some(label)) =>
+        val residual = path.drop(variablePrefixLength)
+        log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
+        lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), Path.Utf8(nsName) ++ id, residual)
+
+      case (id@Path.Utf8(portName, serviceName), Some(label)) =>
+        log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
+        Activity.value(NameTree.Neg)
+
+      case _ =>
+        Activity.value(NameTree.Neg)
+    }
+  }
+}
+
+abstract class EndpointsNamer(
+  idPrefix: Path,
+  mkApi: String => NsApi,
+  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+)(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
+
+  import EndpointsNamer._
+
+  val idLen = 3
+  def lookup(path: Path): Activity[NameTree[Name]]
+
+  private[k8s] def lookupServices(
     cache: NsCache,
     id: Path,
     residual: Path
-  ): Activity[NameTree[Name]] = id.take(PrefixLen) match {
+  ): Activity[NameTree[Name]] = id.take(idLen) match {
     case id@Path.Utf8(nsName, portName, serviceName) =>
       cache.services.flatMap { services =>
         log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
@@ -85,9 +141,7 @@ class EndpointsNamer(
       }
   }
 
-  private[this] val variablePrefixLength = PrefixLen + labelName.size
-
-  private[this] val endpointNs =
+  private[k8s] val endpointNs =
     new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {
       override protected def mkResource(name: String) = mkApi(name).endpoints
       override protected def mkCache(name: String) = new NsCache(name)
@@ -114,8 +168,6 @@ class EndpointsNamer(
 }
 
 private object EndpointsNamer {
-  val PrefixLen = 3
-
   case class Endpoint(ip: InetAddress, nodeName: Option[String])
 
   case class Svc(endpoints: Set[Endpoint], ports: Map[String, Int])
