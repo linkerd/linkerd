@@ -9,7 +9,7 @@ object Deps {
   // process lifecycle
   val twitterServer =
     ("com.twitter" %% "twitter-server" % "1.29.0")
-      .exclude("com.twitter", "finagle-zipkin_2.11")
+      .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
     "com.twitter" %% s"util-$mod" % "6.43.0"
@@ -48,13 +48,13 @@ object Deps {
   )
 
   // testing. duh.
-  val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
 
   // guava
   val guava = "com.google.guava" % "guava" % "19.0"
 
   // jwt for Marathon API
-  val jwt = "com.pauldijou" %% "jwt-core" % "0.9.0"
+  val jwt = "com.pauldijou" %% "jwt-core" % "0.12.1"
 
   val protobuf = "com.google.protobuf" % "protobuf-java" % "3.1.0"
 

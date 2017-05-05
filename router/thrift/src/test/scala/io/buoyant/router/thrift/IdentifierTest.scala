@@ -23,6 +23,7 @@ class IdentifierTest extends FunSuite with Awaits {
 
     val req = ThriftServiceIface(method, thriftService, Protocols.binaryFactory(), NullStatsReceiver)(args).transform {
       case Throw(RequestCaptureException(request)) => Future.value(request)
+      case _ => fail()
     }
     await(req)
   }

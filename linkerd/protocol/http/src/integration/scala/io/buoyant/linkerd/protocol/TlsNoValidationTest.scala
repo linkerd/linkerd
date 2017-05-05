@@ -43,6 +43,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
                 await(client(req))
               }
               assert(rsp.contentString == "woof")
+              ()
 
             } finally await(client.close())
           } finally await(server.close())

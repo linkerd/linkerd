@@ -77,6 +77,7 @@ class ThriftEndToEndTest extends FunSuite {
     try {
       ping(Path.read("/cat")) { rsp =>
         assert(rsp == "meow")
+        ()
       }
     } finally {
       await(cat.server.close())
@@ -112,9 +113,11 @@ class ThriftEndToEndTest extends FunSuite {
     try {
       ping(client1, Path.read("/cat")) { rsp =>
         assert(rsp == "meow")
+        ()
       }
       ping(client2, Path.read("/cat")) { rsp =>
         assert(rsp == "meow")
+        ()
       }
     } finally {
       await(cat.server.close())
@@ -166,6 +169,7 @@ class ThriftEndToEndTest extends FunSuite {
     try {
       ping(Path.read("/cat")) { rsp =>
         assert(rsp == "meow")
+        ()
       }
     } finally {
       await(cat.server.close())

@@ -197,4 +197,38 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     assert(stats.counters.get(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")) == None)
     assert(stats.counters(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "failures")) == 1)
   }
+
+  test("client stats use service response classifier") {
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response()
+      rsp.statusCode = 500
+      Future.value(rsp)
+    })
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.allSuccessful
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.method = Method.Post
+    req.host = "foo"
+    await(client(req))
+
+    assert(stats.counters.get(Seq("http", "service", "svc/foo", "success")) == Some(1))
+    assert(stats.counters.get(Seq("http", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters.get(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
+    assert(stats.counters.get(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+  }
 }

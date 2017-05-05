@@ -88,7 +88,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         throw new TestFailedException(s"unexpected state: $v", 1)
     }
 
-    def assertHas(n: Int): Unit =
+    def assertHas(n: Int) =
       assert(addrs.size == n)
   }
 

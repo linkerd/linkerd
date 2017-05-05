@@ -17,7 +17,7 @@ class ResponseClassifiersTest extends FunSuite {
     method: Method,
     status: Try[Status],
     classification: Option[ResponseClass]
-  ): Unit = {
+  ) = {
     val key = ReqRep(Request(method, "/"), status.map(Response(_)))
     classification match {
       case None =>

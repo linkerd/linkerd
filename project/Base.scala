@@ -47,7 +47,8 @@ class Base extends Build {
     organization := "io.buoyant",
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
-    scalaVersion in GlobalScope := "2.11.7",
+    scalaVersion in GlobalScope := "2.12.1",
+    crossScalaVersions in GlobalScope := Seq("2.11.8", "2.12.1"),
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
     scalacOptions ++=
       Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
@@ -239,7 +240,7 @@ class Base extends Build {
     def withE2e(): Project = project
       .configs(EndToEndTest)
       .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings))
-      .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.1.1" % EndToEndTest)
+      .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.3.0" % EndToEndTest)
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {
