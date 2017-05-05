@@ -15,7 +15,7 @@ class MultiNsNamer(
   labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
+)(implicit timer: Timer = DefaultTimer) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
 
   val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
@@ -63,7 +63,7 @@ class SingleNsNamer(
   nsName: String,
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
+)(implicit timer: Timer = DefaultTimer) extends EndpointsNamer(idPrefix, mkApi, backoff)(timer) {
 
   val PrefixLen = 2
   private[this] val variablePrefixLength = PrefixLen + labelName.size
@@ -109,7 +109,7 @@ abstract class EndpointsNamer(
   idPrefix: Path,
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends EnumeratingNamer {
+)(implicit timer: Timer = DefaultTimer) extends EnumeratingNamer {
 
   import EndpointsNamer._
 

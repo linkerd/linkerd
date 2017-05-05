@@ -29,7 +29,7 @@ class ZkDtabStore(
   private[this] val retryStream = RetryStream()
   private[this] val stats = DefaultStatsReceiver.scope("zkclient").scope(Zk2Resolver.statsOf(hosts))
 
-  private[this] implicit val timer = DefaultTimer.twitter
+  private[this] implicit val timer = DefaultTimer
   private[this] val builder = ClientBuilder()
     .hosts(hosts)
     .sessionTimeout(sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout))

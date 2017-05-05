@@ -57,7 +57,7 @@ case class StatsDConfig(
     new StatsDTelemeter(
       new StatsDStatsReceiver(statsDClient, statsDSampleRate),
       statsDInterval,
-      DefaultTimer.twitter
+      DefaultTimer
     )
   }
 }

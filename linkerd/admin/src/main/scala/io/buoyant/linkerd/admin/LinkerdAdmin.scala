@@ -2,13 +2,13 @@ package io.buoyant.linkerd
 package admin
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.server.handler.{ResourceHandler, SummaryHandler => _}
+import com.twitter.server.handler.ResourceHandler
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
 import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter, _}
-import io.buoyant.namer.{Delegator, EnumeratingNamer, NamespacedInterpreterConfig}
+import io.buoyant.namer.EnumeratingNamer
 import io.buoyant.router.RoutingFactory
 
 object LinkerdAdmin {
