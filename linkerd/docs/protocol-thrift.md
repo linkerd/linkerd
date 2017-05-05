@@ -46,14 +46,14 @@ Key | Default Value | Description
 --- | ------------- | -----------
 port | `4114` | The TCP port number.
 thriftFramed | `true` | If `true`, a framed thrift transport is used for incoming requests; otherwise, a buffered transport is used. Typically this setting matches the router's `thriftFramed` param.
-thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's client `thriftProtocol` param.
+thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompactProtocol). Typically this setting matches the router's client `thriftProtocol` param.
 
 ## Thrift Client Parameters
 
 Key | Default Value | Description
 --- | ------------- | -----------
 thriftFramed | `true` | If `true`, a framed thrift transport is used for outgoing requests; otherwise, a buffered transport is used. Typically this setting matches the router's servers' `thriftFramed` param.
-thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompantProtocol). Typically this setting matches the router's servers' `thriftProtocol` param.
+thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompactProtocol). Typically this setting matches the router's servers' `thriftProtocol` param.
 attemptTTwitterUpgrade | `false` | Controls whether thrift protocol upgrade should be attempted.
 
 
