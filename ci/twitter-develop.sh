@@ -8,7 +8,7 @@ set -xeu
 # Based on Finagle's dependency-fetching script.
 
 # Optionally accept the scala version as an argument
-SCALA_VERSION=${1:-2.11.7}
+SCALA_VERSION=${1:-2.12.1}
 
 # Allow git shas to be cached so that rebuilds are only done as needed.
 function tracking_shas(){
@@ -65,16 +65,12 @@ function build(){
 }
 
 git clone --depth=1 --branch=develop https://github.com/twitter/util.git
-git clone --depth=1 --branch=develop https://github.com/twitter/ostrich.git
 git clone --depth=1 --branch=develop https://github.com/twitter/finagle.git
 git clone --depth=1 --branch=develop https://github.com/twitter/scrooge.git
 git clone --depth=1 --branch=develop https://github.com/twitter/twitter-server.git
 
 cd $TMP_DIR/util
 build util coverageOff publishLocal
-
-cd $TMP_DIR/ostrich
-build ostrich publishLocal
 
 cd $TMP_DIR/scrooge
 build scrooge-core scrooge-core/publishLocal
@@ -90,18 +86,16 @@ build finagle \
       finagle-core/publishLocal \
       finagle-netty4/publishLocal \
       finagle-netty4-http/publishLocal \
+      finagle-base-http/publishLocal \
       finagle-http/publishLocal \
       finagle-http2/publishLocal \
       finagle-mux/publishLocal \
-      finagle-ostrich4/publishLocal \
       finagle-stats/publishLocal \
       finagle-serversets/publishLocal \
       finagle-thrift/publishLocal \
       finagle-thriftmux/publishLocal \
-      finagle-toggle/publishLocal \
       finagle-zipkin-core/publishLocal \
-      finagle-zipkin/publishLocal \
-      finagle-benchmark/publishLocal
+      finagle-tunable/publishLocal
 
 cd $TMP_DIR/twitter-server
 build twitter-server publishLocal
