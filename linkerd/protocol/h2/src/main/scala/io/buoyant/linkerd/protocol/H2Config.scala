@@ -86,7 +86,10 @@ class H2Config extends RouterConfig {
 
   @JsonIgnore
   override val defaultResponseClassifier = ResponseClassifiers.NonRetryableStream(
-    ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+    ClassifiedRetries.orElse(
+      ResponseClassifiers.NonRetryableServerFailures,
+      ClassifiedRetries.Default
+    )
   )
 
   @JsonIgnore
@@ -168,9 +171,10 @@ class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) wit
 trait H2SvcConfig extends SvcConfig {
 
   @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures
-      .orElse(super.baseResponseClassifier)
+  override def baseResponseClassifier = ClassifiedRetries.orElse(
+    ResponseClassifiers.NonRetryableServerFailures,
+    super.baseResponseClassifier
+  )
 
   // TODO: gRPC (trailers-aware)
   @JsonIgnore

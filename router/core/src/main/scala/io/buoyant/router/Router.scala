@@ -359,6 +359,7 @@ object StackRouter {
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
+    stk.push(PathRegistry.module)
     stk.result
   }
 
