@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{ChannelClosedException, Failure}
+import com.twitter.finagle.Failure
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -154,7 +154,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
       streams.values.asScala.foreach {
-        case StreamOpen(st) => st.remoteReset(err)
+        case StreamOpen(st) => st.remoteReset(s"[$prefix] resetStreams StreamOpen", err)
         case _ =>
       }
       demuxing.raise(Failure(err).flagged(Failure.Interrupted))

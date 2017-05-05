@@ -1,9 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.io.Buf
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.Failure
-import com.twitter.util.{Future, Promise, Return, Throw, Try}
+import com.twitter.io.Buf
+import com.twitter.logging.Logger
+import com.twitter.util._
 
 /**
  * A Stream represents a stream of Data frames, optionally
@@ -39,6 +39,7 @@ trait Stream {
  * A Stream of Frames
  */
 object Stream {
+  private lazy val log = Logger.get(getClass.getName)
 
   // TODO Create a dedicated Static stream type that indicates the
   // entire message is buffered (i.e. so that retries may be
@@ -85,6 +86,8 @@ object Stream {
     val p = new Promise[T]
     p.setInterruptHandler {
       case e =>
+        log.debug("Stream.failOnInterrupt %s %s %d", this, q.toString, q.size)
+        log.debug("Stream.failOnInterrupt %s %s\n\t%s", e, e.getMessage, e.getStackTrace.mkString("\t\n"))
         q.fail(e, discard = true)
         f.raise(e)
     }
@@ -99,8 +102,16 @@ object Stream {
       if (frameQ.offer(f)) failOnInterrupt(f.onRelease, frameQ)
       else Future.exception(Reset.Closed)
 
-    override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
-    override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
+    override def reset(err: Reset): Unit = {
+      log.debug("Stream.AsyncQueueReaderWriter.reset %s %s %d", this, frameQ.toString, frameQ.size)
+      log.debug("Stream.AsyncQueueReaderWriter.reset\n\t%s", Thread.currentThread().getStackTrace.mkString("\t\n"))
+      frameQ.fail(err, discard = true)
+    }
+    override def close(): Unit = {
+      log.debug("Stream.AsyncQueueReaderWriter.close %s %s %d", this, frameQ.toString, frameQ.size)
+      log.debug("Stream.AsyncQueueReaderWriter.close\n\t%s", Thread.currentThread().getStackTrace.mkString("\t\n"))
+      frameQ.fail(Reset.NoError, discard = false)
+    }
   }
 
   def apply(q: AsyncQueue[Frame]): Stream =
