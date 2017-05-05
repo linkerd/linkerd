@@ -162,7 +162,7 @@ These parameters are available to the service regardless of protocol. Services m
 
 Key                 | Default Value                 | Description
 ------------------- | ----------------------------- | -----------
-retries             | see [retries](#retries)       | A [retry policy](#retries) for applicaiton-level retries.
+retries             | see [retries](#retries)       | A [retry policy](#retries) for application-level retries.
 totalTimeoutMs      | no timeout                    | The timeout for an entire request, including all retries, in milliseconds.
 responseClassifier  | `io.l5d.http.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
 

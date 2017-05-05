@@ -1,6 +1,7 @@
 package io.buoyant.config
 
 import io.buoyant.test.FunSuite
+import com.fasterxml.jackson.core.JsonParseException
 
 class ParserTest extends FunSuite {
 
@@ -42,4 +43,14 @@ class ParserTest extends FunSuite {
   test("allows same id for different initializers") {
     val _ = Parser.objectMapper("{}", Seq(Seq(new A1()), Seq(new A1())))
   }
+
+  test("errors on duplicated properties") {
+
+    val mapper = Parser.objectMapper("{}", Nil)
+    assertThrows[JsonParseException] {
+      val foo = mapper.readValue[Foo]("""{"a": 5, "a": 7}""")
+    }
+  }
 }
+
+case class Foo(a: Int)

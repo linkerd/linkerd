@@ -9,6 +9,7 @@ import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.util.{NonFatal, Return, Throw, Try}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
+import io.buoyant.router.ClassifiedRetries
 
 object ResponseClassifiers {
 
@@ -152,3 +153,14 @@ class NonRetryable5XXInitializer extends ResponseClassifierInitializer {
 }
 
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer
+
+class AllSuccessfulConfig extends ResponseClassifierConfig {
+  def mk: ResponseClassifier = ClassifiedRetries.Default
+}
+
+class AllSuccessfulInitializer extends ResponseClassifierInitializer {
+  val configClass = classOf[AllSuccessfulConfig]
+  override val configId = "io.l5d.http.allSuccessful"
+}
+
+object AllSuccessfulInitializer extends AllSuccessfulInitializer
