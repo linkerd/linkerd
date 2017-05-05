@@ -8,31 +8,33 @@ import com.twitter.util.{Future, Promise, Return, Throw, Try}
 object ClientDispatcher {
 
   private[this] def requestUnary[T](path: String, msg: T, codec: Codec[T]): h2.Request = {
+    val str = "[grpc] ClientDispatcher.requestUnary"
     val buf = codec.encodeGrpcMessage(msg)
     val frame = h2.Frame.Data(buf, eos = true)
     val stream = h2.Stream()
-    stream.write(frame) // don't wait
+    stream.write(str, frame) // don't wait
     h2.Request("http", h2.Method.Post, "", path, stream)
   }
 
   private[this] def requestStreaming[T](path: String, msgs: Stream[T], codec: Codec[T]): h2.Request = {
+    val str = "[grpc] ClientDispatcher.requestStreaming"
     val frames = h2.Stream()
     def loop(): Future[Unit] =
       msgs.recv().transform {
         case Return(Stream.Releasable(msg, release)) =>
           val buf = codec.encodeGrpcMessage(msg)
           val frame = h2.Frame.Data(buf, eos = false, release)
-          frames.write(frame).before(loop())
+          frames.write(s"$str Return", frame).before(loop())
 
         case Throw(s@GrpcStatus.Ok(_)) =>
-          frames.write(h2.Frame.Data(Buf.Empty, eos = true))
+          frames.write(s"$str Throw GrpcStatus.Ok", h2.Frame.Data(Buf.Empty, eos = true))
 
         case Throw(s: GrpcStatus) =>
-          frames.reset(s.toReset)
+          frames.reset(s"$str Throw GrpcStatus $s", s.toReset)
           Future.exception(s)
 
         case Throw(e) =>
-          frames.reset(h2.Reset.InternalError)
+          frames.reset(s"$str Throw $e", h2.Reset.InternalError)
           Future.exception(e)
       }
 

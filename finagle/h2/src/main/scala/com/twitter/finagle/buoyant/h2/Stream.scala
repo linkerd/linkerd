@@ -1,6 +1,5 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.concurrent.AsyncQueue
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -24,7 +23,7 @@ trait Stream {
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
 
-  def read(): Future[Frame]
+  def read(str: String): Future[Frame]
 
   /**
    * Satisfied when an end-of-stream frame has been read from this
@@ -56,10 +55,10 @@ object Stream {
      * (i.e. onto an underlying transport). The returned future is not
      * satisfied until the frame is written and released.
      */
-    def write(frame: Frame): Future[Unit]
+    def write(str: String, frame: Frame): Future[Unit]
 
-    def reset(err: Reset): Unit
-    def close(): Unit
+    def reset(str: String, err: Reset): Unit
+    def close(str: String): Unit
   }
 
   private trait AsyncQueueReader extends Stream {
@@ -75,20 +74,22 @@ object Stream {
       case Throw(e) => endP.updateIfEmpty(Throw(e)); ()
     }
 
-    override def read(): Future[Frame] = {
+    override def read(str: String): Future[Frame] = {
+      val str1 = s"$str -- AsyncQueueReader.read"
+      log.debug(str1)
       val f = frameQ.poll()
       f.respond(endOnReleaseIfEnd)
-      failOnInterrupt(f, frameQ)
+      failOnInterrupt(str1, f, frameQ)
     }
   }
 
-  private[this] def failOnInterrupt[T, Q](f: Future[T], q: AsyncQueue[Q]): Future[T] = {
+  private[this] def failOnInterrupt[T, Q](str: String, f: Future[T], q: AsyncQueue[Q]): Future[T] = {
+    val str1 = s"$str -- failOnInterrupt"
     val p = new Promise[T]
     p.setInterruptHandler {
       case e =>
-        log.debug("Stream.failOnInterrupt %s %s %d", this, q.toString, q.size)
-        log.debug("Stream.failOnInterrupt %s %s\n\t%s", e, e.getMessage, e.getStackTrace.mkString("\t\n"))
-        q.fail(e, discard = true)
+        log.debug("%s %s %s %d", str1, this, q.toString, q.size)
+        q.fail(str1, e, discard = true)
         f.raise(e)
     }
     f.proxyTo(p)
@@ -98,19 +99,26 @@ object Stream {
   private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
     override protected[this] val frameQ = new AsyncQueue[Frame]
 
-    override def write(f: Frame): Future[Unit] =
-      if (frameQ.offer(f)) failOnInterrupt(f.onRelease, frameQ)
-      else Future.exception(Reset.Closed)
-
-    override def reset(err: Reset): Unit = {
-      log.debug("Stream.AsyncQueueReaderWriter.reset %s %s %d", this, frameQ.toString, frameQ.size)
-      log.debug("Stream.AsyncQueueReaderWriter.reset\n\t%s", Thread.currentThread().getStackTrace.mkString("\t\n"))
-      frameQ.fail(err, discard = true)
+    override def write(str: String, f: Frame): Future[Unit] = {
+      val str1 = s"$str -- AsyncQueueReaderWriter.write"
+      if (frameQ.offer(str1, f)) {
+        log.debug("%s offer=true", str1)
+        failOnInterrupt(str1, f.onRelease, frameQ)
+      } else {
+        log.debug("%s offer=false", str1)
+        Future.exception(Reset.Closed)
+      }
     }
-    override def close(): Unit = {
-      log.debug("Stream.AsyncQueueReaderWriter.close %s %s %d", this, frameQ.toString, frameQ.size)
-      log.debug("Stream.AsyncQueueReaderWriter.close\n\t%s", Thread.currentThread().getStackTrace.mkString("\t\n"))
-      frameQ.fail(Reset.NoError, discard = false)
+
+    override def reset(str: String, err: Reset): Unit = {
+      val str1 = s"$str -- AsyncQueueReaderWriter.reset"
+      log.debug("%s %s %s %d", str1, this, frameQ.toString, frameQ.size)
+      frameQ.fail(str1, err, discard = true)
+    }
+    override def close(str: String): Unit = {
+      val str1 = s"$str -- AsyncQueueReaderWriter.close"
+      log.debug("%s %s %s %d", str1, this, frameQ.toString, frameQ.size)
+      frameQ.fail(str, Reset.NoError, discard = false)
     }
   }
 
@@ -120,17 +128,17 @@ object Stream {
   def apply(): Stream with Writer =
     new AsyncQueueReaderWriter
 
-  def const(f: Frame): Stream = {
+  def const(str: String, f: Frame): Stream = {
     val q = new AsyncQueue[Frame]
-    q.offer(f)
+    q.offer(str, f)
     apply(q)
   }
 
-  def const(buf: Buf): Stream =
-    const(Frame.Data.eos(buf))
+  def const(str: String, buf: Buf): Stream =
+    const(str, Frame.Data.eos(buf))
 
-  def const(s: String): Stream =
-    const(Buf.Utf8(s))
+  def const(str: String, s: String): Stream =
+    const(str, Buf.Utf8(s))
 
   def empty(q: AsyncQueue[Frame]): Stream =
     new AsyncQueueReader {
@@ -143,13 +151,23 @@ object Stream {
       private[this] val frameQ = new AsyncQueue[Frame](1)
       override def isEmpty = true
       override def onEnd = Future.Unit
-      override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
-      override def write(f: Frame): Future[Unit] = {
-        frameQ.fail(Reset.Closed, discard = true)
+      override def read(str: String): Future[Frame] = {
+        val str1 = s"$str -- Stream.empty.read"
+        failOnInterrupt(str1, frameQ.poll(), frameQ)
+      }
+      override def write(str: String, f: Frame): Future[Unit] = {
+        val str1 = s"$str -- Stream.empty.write"
+        frameQ.fail(str1, Reset.Closed, discard = true)
         Future.exception(Reset.Closed)
       }
-      override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
-      override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
+      override def reset(str: String, err: Reset): Unit = {
+        val str1 = s"$str -- Stream.empty.reset"
+        frameQ.fail(str1, err, discard = true)
+      }
+      override def close(str: String): Unit = {
+        val str1 = s"$str -- Stream.empty.close"
+        frameQ.fail(str1, Reset.NoError, discard = false)
+      }
     }
 
 }

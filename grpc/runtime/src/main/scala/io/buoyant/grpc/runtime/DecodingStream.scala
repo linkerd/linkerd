@@ -74,7 +74,7 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
    * Read from the h2 stream until the next message is fully buffered.
    */
   private[this] def read(s0: RecvState): Future[(RecvState, Try[Stream.Releasable[T]])] = {
-    frames.read().transform {
+    frames.read("DecodingStream.read").transform {
       case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
       case Return(t: h2.Frame.Trailers) => Future.exception(getStatus(t))

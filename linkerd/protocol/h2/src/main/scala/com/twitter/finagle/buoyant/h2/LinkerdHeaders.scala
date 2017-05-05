@@ -456,7 +456,7 @@ object LinkerdHeaders {
     val Key = Prefix + "err"
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
-      val rsp = Response(status, Stream.const(Buf.Utf8(msg)))
+      val rsp = Response(status, Stream.const("LinkerdHeaders.Err.respond", Buf.Utf8(msg)))
       rsp.headers.add(Key, msg)
       rsp.headers.set("content-type", "text/plain")
       rsp

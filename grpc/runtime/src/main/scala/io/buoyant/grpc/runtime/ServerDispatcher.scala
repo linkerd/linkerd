@@ -82,39 +82,43 @@ object ServerDispatcher {
     private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] =
       codec.decodeRequest(req)
 
-    private[this] def respondUnary[Rsp](codec: Codec[Rsp], rsp: Try[Rsp]): h2.Response = rsp match {
-      case Return(msg) =>
-        val buf = codec.encodeGrpcMessage(msg)
-        val frames = h2.Stream()
-        frames.write(h2.Frame.Data(buf, eos = false))
-          .before(frames.write(GrpcStatus.Ok().toTrailers))
-        h2.Response(h2.Status.Ok, frames)
+    private[this] def respondUnary[Rsp](codec: Codec[Rsp], rsp: Try[Rsp]): h2.Response = {
+      val str = "[grpc] ServerDispatcher.respondUnary"
+      rsp match {
+        case Return(msg) =>
+          val buf = codec.encodeGrpcMessage(msg)
+          val frames = h2.Stream()
+          frames.write(s"$str Return Data", h2.Frame.Data(buf, eos = false))
+            .before(frames.write(s"$str Return Trailers", GrpcStatus.Ok().toTrailers))
+          h2.Response(h2.Status.Ok, frames)
 
-      case Throw(e) =>
-        val status = e match {
-          case s: GrpcStatus => s
-          case e => GrpcStatus.Internal(e.getMessage)
-        }
-        val frames = h2.Stream()
-        frames.write(status.toTrailers)
-        h2.Response(h2.Status.Ok, frames)
+        case Throw(e) =>
+          val status = e match {
+            case s: GrpcStatus => s
+            case e => GrpcStatus.Internal(e.getMessage)
+          }
+          val frames = h2.Stream()
+          frames.write(s"$str Throw Trailers $status", status.toTrailers)
+          h2.Response(h2.Status.Ok, frames)
+      }
     }
 
     private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp]): h2.Response = {
+      val str = "[grpc] ServerDispatcher.respondStreaming"
       val frames = h2.Stream()
       def loop(): Future[Unit] =
         msgs.recv().transform {
           case Return(Stream.Releasable(s, release)) =>
             val buf = codec.encodeGrpcMessage(s)
             val data = h2.Frame.Data(buf, eos = false, release)
-            frames.write(data).before(loop())
+            frames.write(s"$str Return Data", data).before(loop())
 
           case Throw(e) =>
             val status = e match {
               case s: GrpcStatus => s
               case e => GrpcStatus.Internal(e.getMessage)
             }
-            frames.write(status.toTrailers).onSuccess(_ => frames.close())
+            frames.write(s"$str Throw Trailers", status.toTrailers).onSuccess(_ => frames.close(s"$str Throw"))
         }
 
       val loopF = loop()
@@ -139,7 +143,7 @@ object ServerDispatcher {
   }
 
   private def fail(status: GrpcStatus): Future[h2.Response] = {
-    val stream = h2.Stream.const(status.toTrailers)
+    val stream = h2.Stream.const("[grpc] ServerDispatcher.fail", status.toTrailers)
     Future.value(h2.Response(h2.Status.BadRequest, stream))
   }
 

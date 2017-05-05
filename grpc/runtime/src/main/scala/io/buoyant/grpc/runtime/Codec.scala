@@ -75,7 +75,7 @@ object Codec {
 
   def bufferWithStatus(stream: h2.Stream): Future[(Buf, GrpcStatus)] = {
     def accum(orig: Buf): Future[(Buf, GrpcStatus)] =
-      stream.read().flatMap {
+      stream.read("Codec.bufferWithStatus").flatMap {
         case t: h2.Frame.Trailers =>
           val status = GrpcStatus.fromTrailers(t)
           Future.value(orig -> status)

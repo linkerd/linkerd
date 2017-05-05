@@ -1,7 +1,6 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Failure
 import com.twitter.finagle.stats.{NullStatsReceiver => FNullStatsReceiver, StatsReceiver => FStatsReceiver}
 import com.twitter.logging.Logger
@@ -134,12 +133,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def close(str: String): Unit = {
       val str1 = s"$str -- RemoteClosed.close"
       log.debug("%s %s %s %d", str1, this, q.toString, q.size)
-      q.fail(Reset.NoError, discard = false)
+      q.fail(str1, Reset.NoError, discard = false)
     }
     override def reset(str: String, rst: Reset): Unit = {
       val str1 = s"$str -- RemoteClosed.reset"
       log.debug("%s %s %s %d", str1, this, q.toString, q.size)
-      q.fail(rst, discard = true)
+      q.fail(str1, rst, discard = true)
     }
   }
   private[this] object RemoteClosed {
@@ -183,17 +182,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def offer(str: String, f: Frame): Boolean = {
       val str1 = s"$str -- RemoteStreaming.offer"
       log.debug("%s %s %s %d", str1, this, q.toString, q.size)
-      q.offer(f)
+      q.offer(str1, f)
     }
     def close(str: String): Unit = {
       val str1 = s"$str -- RemoteStreaming.close"
       log.debug("%s %s %s %d", str1, this, q.toString, q.size)
-      q.fail(Reset.NoError, discard = false)
+      q.fail(str1, Reset.NoError, discard = false)
     }
     override def reset(str: String, rst: Reset): Unit = {
       val str1 = s"$str -- RemoteStreaming.reset"
       log.debug("%s %s %s %d", str1, this, q.toString, q.size)
-      q.fail(rst, discard = true)
+      q.fail(str1, rst, discard = true)
     }
   }
   private[this] object RemoteStreaming {
@@ -778,7 +777,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] def writeStream(str: String, stream: Stream): Future[Unit] = {
     val str1 = s"$str -- writeStream"
     def loop(): Future[Unit] =
-      stream.read().rescue(wrapLocalEx)
+      stream.read(str1).rescue(wrapLocalEx)
         .flatMap { f =>
           log.debug("%s writing frame isEnd=%s", str1, f.isEnd)
           writeFrame(f).flatMap { _ =>
@@ -854,8 +853,8 @@ object Netty4StreamTransport {
   private object NilStream extends Stream {
     override def isEmpty = true
     override def onEnd = Future.Unit
-    override def read(): Future[Frame] = {
-      log.debug("read from NilStream")
+    override def read(str: String): Future[Frame] = {
+      log.debug("%s read from NilStream", str)
       Future.exception(Reset.NoError)
     }
   }
