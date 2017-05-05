@@ -48,7 +48,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
     log.debug("[%s S:%d] initialized stream", prefix, id)
-    val _ = stream.onReset.respond {
+    val _ = stream.onReset("Netty4DispatcherBase.registerStream").respond {
       case Return(_) =>
         // Free and clear.
         if (streams.replace(id, open, StreamClosed)) {

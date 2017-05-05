@@ -166,7 +166,7 @@ class ResponseClassifiersTest extends FunSuite {
 
   test("NonRetryableStream: makes RetryableFailures NonRetryableFailures when chunked") {
     val classifier = ResponseClassifiers.NonRetryableStream { case ReqRep(_, _) => ResponseClass.RetryableFailure }
-    val req = Request("http", Method.Get, "auf", "/", Stream.const(Buf.Utf8("yo")))
+    val req = Request("http", Method.Get, "auf", "/", Stream.const("hey", Buf.Utf8("yo")))
     val rsp = Response(Status.EatMyShorts, Stream.empty())
     Response(Status.Ok, Stream.empty())
     assert(classifier(ReqRep(req, Return(rsp))) == ResponseClass.NonRetryableFailure)

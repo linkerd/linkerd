@@ -80,7 +80,7 @@ class Netty4ServerDispatcher(
 
     // When the stream is reset, ensure that the cancelation is
     // propagated downstream.
-    st.onReset.onFailure {
+    st.onReset("Netty4ServerDispatcher.serveStream").onFailure {
       case StreamError.Remote(rst: Reset) => serveF.raise(rst)
       case StreamError.Remote(e) => serveF.raise(Reset.Cancel)
       case e => serveF.raise(e)

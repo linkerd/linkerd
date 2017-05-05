@@ -271,11 +271,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    * error.  An exception is raised with a Reset if the stream is
    * closed prematurely.
    */
-  def onReset: Future[Unit] = {
+  def onReset(str: String): Future[Unit] = {
+    val str1 = s"$str -- onReset"
     resetP.onSuccess { _ =>
-      log.debug("[%s] onReset success", prefix)
+      log.debug("%s success", str1)
     }.onFailure { err =>
-      log.debug("[%s] onReset failure %s", prefix, err)
+      log.debug("%s failure %s", str1, err)
     }
   }
   private[this] val resetP = new Promise[Unit]
@@ -365,7 +366,8 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         log.debug("%s compareAndSet RemoteClosed to Closed", str1)
         if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
           log.debug("%s compareAndSet succeeded", str1)
-          state.close(str1)
+          // WHY: shouldn't this be handled by the recv method?
+          // state.close(str1)
           resetP.setDone(); ()
         } else {
           log.debug("%s compareAndSet failed %s", str1, stateRef.get())
@@ -681,10 +683,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     val str1 = s"$str -- toFrame"
     f match {
       case f: Http2DataFrame =>
-        log.debug("%s sending data", str1)
+        log.debug("%s Netty4Message.Data", str1)
         Netty4Message.Data(f, updateWindow)
       case f: Http2HeadersFrame if f.isEndStream =>
-        log.debug("%s sending trailer", str1)
+        log.debug("%s Netty4Message.Trailers", str1)
         Netty4Message.Trailers(f.headers)
       case f =>
         log.debug("%s invalid stream frame: %s", str1, f)
@@ -713,7 +715,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     val streamFF = headersF.map(_ => writeStream(str, msg.stream))
 
     val writeF = streamFF.flatten
-    onReset.onFailure { fail =>
+    onReset(str).onFailure { fail =>
       val str1 = s"$str onReset.onFailure"
       log.debug("%s %s", str1, fail)
       writeF.raise(fail)
@@ -780,7 +782,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       stream.read(str1).rescue(wrapLocalEx)
         .flatMap { f =>
           log.debug("%s writing frame isEnd=%s", str1, f.isEnd)
-          writeFrame(f).flatMap { _ =>
+          writeFrame(str1, f).flatMap { _ =>
             if (!f.isEnd) loop() else Future.Unit
           }
         }
@@ -801,16 +803,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     p
   }
 
-  private[this] val writeFrame: Frame => Future[Unit] = { frame =>
+  private[this] def writeFrame(str: String, frame: Frame): Future[Unit] = {
+    val str1 = s"$str -- writeFrame"
     stateRef.get match {
       case Closed(rst) =>
-        log.debug("[%s] writeFrame Closed %s", prefix, rst)
+        log.debug("%s Closed %s", str1, rst)
         Future.exception(StreamError.Remote(rst))
       case LocalClosed(_) =>
-        log.debug("[%s] writeFrame LocalClosed", prefix)
+        log.debug("%s LocalClosed", str1)
         Future.exception(new IllegalStateException("writing on closed stream"))
       case LocalOpen() =>
-        log.debug("[%s] writeFrame LocalOpen", prefix)
+        log.debug("%s LocalOpen", str1)
         statsReceiver.recordLocalFrame(frame)
         transport.write(streamId, frame).rescue(wrapRemoteEx)
           .before(frame.release().rescue(wrapLocalEx))
