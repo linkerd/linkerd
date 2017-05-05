@@ -2,6 +2,7 @@
 
 * Upgrade to scala 2.12.
 * Fix connection leak when retrying on responses with chunked bodies.
+* Expire idle services and clients.
 
 ## 1.0.0 2017-04-24
 

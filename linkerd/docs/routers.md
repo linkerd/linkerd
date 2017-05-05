@@ -53,6 +53,7 @@ label | the value of *protocol* | The name of the router (in stats and the admin
     trees: 100
     bounds: 100
     clients: 10
+    ttlSecs: 3600
 ```
 
 Key | Default Value | Description
@@ -61,6 +62,7 @@ paths | `1000` | Max number of paths in the path cache.
 trees | `1000` | Max number of trees in the tree cache.
 bounds | `1000` | Max number of bounds in the bounds cache.
 clients | `1000` | Max number of clients in the clients cache.
+ttlSecs | 10 minutes | The amount of time, in seconds, to cache idle services and clients before expiring them.
 
 ## Server Parameters
 

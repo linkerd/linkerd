@@ -210,7 +210,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
-          stk.make(params ++ pathParams + dst + param.Stats(sr))
+          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -244,8 +244,9 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           namer,
           stats.scope("bindcache"),
           params[DstBindingFactory.Capacity],
-          params[DstBindingFactory.BindingTimeout]
-        )
+          params[DstBindingFactory.BindingTimeout],
+          params[DstBindingFactory.Ttl]
+        )(params[param.Timer].timer)
 
         Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
       }
