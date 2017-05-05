@@ -3,6 +3,8 @@
 * Upgrade to scala 2.12.
 * Fix connection leak when retrying on responses with chunked bodies.
 * Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
+* Fail on duplicate config file properties instead of silently taking the last
+  value.
 
 ## 1.0.0 2017-04-24
 
