@@ -35,7 +35,7 @@ object ClassifiedRetries {
     private[this] val underlying = a orElse b
     def isDefinedAt(reqRep: ReqRep): Boolean = underlying.isDefinedAt(reqRep)
     def apply(reqRep: ReqRep): ResponseClass = underlying(reqRep)
-    override def toString: String = s"$a; $b"
+    override def toString: String = s"$a orElse $b"
   }
 
   /**
