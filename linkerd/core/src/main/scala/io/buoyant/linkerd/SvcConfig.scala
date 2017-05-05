@@ -41,7 +41,9 @@ trait SvcConfig {
 
   @JsonIgnore
   def responseClassifier: Option[ResponseClassifier] =
-    _responseClassifier.map(_.mk orElse baseResponseClassifier)
+    _responseClassifier.map { classifier =>
+      ClassifiedRetries.orElse(classifier.mk, baseResponseClassifier)
+    }
 }
 
 case class RetriesConfig(

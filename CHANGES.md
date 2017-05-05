@@ -5,6 +5,7 @@
 * Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
 * Fail on duplicate config file properties instead of silently taking the last
   value.
+* Port numbers in k8s names will now have the service's port mapping applied.
 * Expire idle services and clients.
 
 ## 1.0.0 2017-04-24

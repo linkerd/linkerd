@@ -80,8 +80,10 @@ object H2 extends Router[Request, Response]
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
 
-    private val serverResponseClassifier =
-      h2.ClassifierFilter.successClassClassifier orElse ResponseClassifiers.NonRetryableServerFailures
+    private val serverResponseClassifier = ClassifiedRetries.orElse(
+      h2.ClassifierFilter.successClassClassifier,
+      ResponseClassifiers.NonRetryableServerFailures
+    )
     val defaultParams = StackServer.defaultParams + param.ResponseClassifier(serverResponseClassifier)
   }
 

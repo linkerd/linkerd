@@ -95,9 +95,10 @@ class FsTest extends FunSuite with NamerTestUtil with Eventually with Integratio
         val bound = lookupBound(namer, path.drop(fs.prefix.size))
         assert(bound.size == 1)
         assert(bound.head.addr.sample() == Addr.Bound(
-            Address("127.0.0.1", 8080),
-            WeightedAddress(Address("127.0.0.1", 8081), 0.23)))
-        }
+          Address("127.0.0.1", 8080),
+          WeightedAddress(Address("127.0.0.1", 8081), 0.23)
+        ))
+      }
     } finally {
       val _ = Seq("rm", "-rf", dir.getPath).!
     }
