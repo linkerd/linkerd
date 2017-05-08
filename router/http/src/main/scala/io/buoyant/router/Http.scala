@@ -84,8 +84,10 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       (AddForwardedHeader.module +: FinagleHttp.Server.stack)
         .insertBefore(http.TracingFilter.role, ProxyRewriteFilter.module)
 
-    private val serverResponseClassifier =
-      ClassifierFilter.successClassClassifier orElse HttpResponseClassifier.ServerErrorsAsFailures
+    private val serverResponseClassifier = ClassifiedRetries.orElse(
+      ClassifierFilter.successClassClassifier,
+      HttpResponseClassifier.ServerErrorsAsFailures
+    )
 
     val defaultParams: Stack.Params =
       StackServer.defaultParams +

@@ -1,7 +1,7 @@
 package io.buoyant.k8s
 
 import com.twitter.conversions.time._
-import com.twitter.finagle._
+import com.twitter.finagle.{Service => _, _}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
@@ -35,12 +35,12 @@ class MultiNsNamer(
       case (id@Path.Utf8(nsName, _, _), None) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s", id.show, path.show)
-        lookupServices(endpointNs.get(nsName, None), id, residual)
+        lookupServices(endpointNs.get(nsName, None), serviceNs.get(nsName, None), id, residual)
 
       case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-        lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
+        lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), serviceNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
 
       case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
         log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -108,6 +108,7 @@ abstract class EndpointsNamer(
 
   private[k8s] def lookupServices(
     cache: NsCache,
+    serviceCache: ServiceCache,
     id: Path,
     residual: Path
   ): Activity[NameTree[Name]] = id.take(idLen) match {
@@ -123,9 +124,16 @@ abstract class EndpointsNamer(
             log.debug("k8s ns %s service %s found", nsName, serviceName)
             Try(portName.toInt).toOption match {
               case Some(portNumber) =>
-                val addr = service.port(portNumber)
-                log.debug("k8s ns %s service %s port :%d found + %s", nsName, serviceName, portNumber, residual.show)
-                Activity.value(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+                val state: Var[Activity.State[NameTree[Name.Bound]]] = serviceCache.getPortMapping(serviceName, portNumber).map {
+                  case Some(targetPort) =>
+                    val addr = targetPort.flatMap(service.port)
+                    log.debug("k8s ns %s service %s port :%d found + %s", nsName, serviceName, portNumber, residual.show)
+                    Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+                  case None =>
+                    log.debug("k8s ns %s service %s port :%d missing", nsName, serviceName, portNumber)
+                    Activity.Ok(NameTree.Neg)
+                }
+                Activity(state)
               case None =>
                 val state: Var[Activity.State[NameTree[Name.Bound]]] = service.port(portName).map {
                   case Some(addr) =>
@@ -146,6 +154,11 @@ abstract class EndpointsNamer(
       override protected def mkResource(name: String) = mkApi(name).endpoints
       override protected def mkCache(name: String) = new NsCache(name)
     }
+
+  private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
+    override protected def mkResource(name: String) = mkApi(name).services
+    override protected def mkCache(name: String) = new ServiceCache(name)
+  }
 
   override val getAllNames: Activity[Set[Path]] = {
     // explicit type annotations are required for scala to pick the right

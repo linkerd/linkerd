@@ -45,8 +45,8 @@ object TlsClientPrep {
   implicit object Trust extends Stack.Param[Trust] {
     sealed trait Config
     case class Verified(name: String, certs: Seq[X509Certificate]) extends Config
-    object UnsafeNotVerified extends Config
-    object NotConfigured extends Config
+    case object UnsafeNotVerified extends Config
+    case object NotConfigured extends Config
 
     val default = Trust(NotConfigured)
   }

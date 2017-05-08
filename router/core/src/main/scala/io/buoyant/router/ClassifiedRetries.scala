@@ -29,6 +29,16 @@ object ClassifiedRetries {
   }
 
   /**
+   * A replacement for ResponseClassifier's orElse that gives a nice toString.
+   */
+  def orElse(a: ResponseClassifier, b: ResponseClassifier): ResponseClassifier = new ResponseClassifier {
+    private[this] val underlying = a orElse b
+    def isDefinedAt(reqRep: ReqRep): Boolean = underlying.isDefinedAt(reqRep)
+    def apply(reqRep: ReqRep): ResponseClass = underlying(reqRep)
+    override def toString: String = s"$a orElse $b"
+  }
+
+  /**
    * A RetryPolicy that uses a ResponseClassifier.
    */
   private class ClassifiedPolicy[Req, Rsp](backoff: Stream[Duration], classifier: ResponseClassifier)
