@@ -13,7 +13,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  * <pre>
  * namers:
  * - kind: io.l5d.k8s.external
- *   exerimental: true
+ *   experimental: true
  *   host: localhost
  *   port: 8001
  * </pre>

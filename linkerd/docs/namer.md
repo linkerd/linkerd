@@ -318,6 +318,123 @@ port-name | yes | The port name.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
+### K8s Namespaced Configuration
+
+> Example usage of the namespaced namer that routes traffic to services within the current namespace
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: l5d-config
+data:
+  config.yaml: |-
+    namers:
+    - kind: io.l5d.k8s.ns
+      host: localhost
+      port: 8001
+      envVar: MY_POD_NAMESPACE
+
+    routers:
+    - protocol: http
+      dtab: |
+        /svc => /#/io.l5d.k8s.ns/admin;
+      servers:
+      - port: 4140
+        ip: 0.0.0.0
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: l5d
+  name: l5d
+spec:
+  template:
+    metadata:
+      labels:
+        app: l5d
+    spec:
+      volumes:
+      - name: l5d-config
+        configMap:
+          name: "l5d-config"
+      containers:
+      - name: l5d
+        image: buoyantio/linkerd:latest
+        # Use the downward api to populate an environment variable
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - /io.buoyant/linkerd/config/config.yaml
+        ports:
+        - name: http
+          containerPort: 4140
+        - name: admin
+          containerPort: 9990
+        volumeMounts:
+        - name: "l5d-config"
+          mountPath: "/io.buoyant/linkerd/config"
+          readOnly: true
+
+      - name: kubectl
+        image: buoyantio/kubectl:v1.6.2
+        args: ["proxy", "-p", "8001"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: l5d
+spec:
+  selector:
+    app: l5d
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 4140
+  - name: admin
+    port: 9990
+
+```
+
+
+The [Kubernetes](https://k8s.io/) Namespaced namer scopes service discovery to
+the current namespace, as provided by the
+[Kubernetes downward api](https://kubernetes.io/docs/tasks/configure-pod-container/environment-variable-expose-pod-information/#the-downward-api).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.k8s.ns` | Resolves names with `/#/<prefix>`.
+envVar | `POD_NAMESPACE` | Environment variable that contains the namespace name.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master port.
+labelSelector | none | The key of the label to filter services.
+
+<aside class="notice">
+The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
+
+### K8s Namespaced Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<port-name>/<svc-name>[/<label-value>]
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the k8s external namer.
+port-name | yes | The port name.
+svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The label value used to filter services.
+
+
 
 <a name="marathon"></a>
 ## Marathon service discovery
