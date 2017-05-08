@@ -22,7 +22,7 @@ class MultiNsNamer(
 
   /**
    * Accepts names in the form:
-   *   /<namespace>/<port-name>/<svc-name>/residual/path
+   *   /<namespace>/<port-name>/<svc-name>[/<label-value>]/residual/path
    *
    * and attempts to bind an Addr by resolving named endpoint from the
    * kubernetes master.
@@ -65,7 +65,7 @@ class SingleNsNamer(
 
   /**
    * Accepts names in the form:
-   *   /<port-name>/<svc-name>/residual/path
+   *   /<port-name>/<svc-name>[/<label-value>]/residual/path
    *
    * and attempts to bind an Addr by resolving named endpoint from the
    * kubernetes master.

@@ -362,7 +362,7 @@ spec:
           name: "l5d-config"
       containers:
       - name: l5d
-        image: buoyantio/linkerd:1.0.0-SNAPSHOT
+        image: buoyantio/linkerd:latest
         # Use the downward api to populate an environment variable
         env:
         - name: MY_POD_NAMESPACE
