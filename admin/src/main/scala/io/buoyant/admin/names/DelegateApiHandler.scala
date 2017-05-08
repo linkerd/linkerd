@@ -259,7 +259,7 @@ object DelegateApiHandler {
             rsp
           }.within(2.seconds).rescue {
             case e: TimeoutException =>
-              err(Status.ServiceUnavailable, "Request to namerd timed out.")
+              err(Status.ServiceUnavailable, "Request timed out.")
           }
       case (Throw(e), _) =>
         err(Status.BadRequest, s"Invalid dtab: ${e.getMessage}")
@@ -315,12 +315,12 @@ class DelegateApiHandler(
   }
 
   private def getResponse(ns: Option[String], dtab: String, path: String) = ns match {
-    case Some(namesapce) =>
-      interpreters(namesapce) match {
+    case Some(namespace) =>
+      interpreters(namespace) match {
         case delegator: Delegator =>
           getDelegateRsp(dtab, path, delegator)
         case _ =>
-          err(Status.NotImplemented, s"Name Interpreter for $namesapce cannot show delegations")
+          err(Status.NotImplemented, s"Name Interpreter for $namespace cannot show delegations")
       }
     case None =>
       getDelegateRsp(dtab, path, ConfiguredNamersInterpreter(namers))
