@@ -107,7 +107,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     val namer = new SingleNsNamer(Path.read("/test"), None, "srv", api.withNamespace, Stream.continually(1.millis))
     namer.lookup(Path.read("/thrift/sessions/d3adb33f"))
 
-    assert(req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319481")
+    assert(req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=5319481")
   }
 
   test("watches a namespace and receives updates") {

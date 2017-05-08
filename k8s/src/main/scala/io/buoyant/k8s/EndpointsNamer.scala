@@ -78,12 +78,13 @@ class SingleNsNamer(
       case (id@Path.Utf8(_, _), None) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s", id.show, path.show)
-        lookupServices(endpointNs.get(nsName, None), Path.Utf8(nsName) ++ id, residual)
+        lookupServices(endpointNs.get(nsName, None), serviceNs.get(nsName, None), Path.Utf8(nsName) ++ id, residual)
 
       case (id@Path.Utf8(_, _, labelValue), Some(label)) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-        lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), Path.Utf8(nsName) ++ id, residual)
+        val labelSelector = Some(s"$label=$labelValue")
+        lookupServices(endpointNs.get(nsName, labelSelector), serviceNs.get(nsName, labelSelector), Path.Utf8(nsName) ++ id, residual)
 
       case (id@Path.Utf8(portName, serviceName), Some(label)) =>
         log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -155,7 +156,7 @@ abstract class EndpointsNamer(
       override protected def mkCache(name: String) = new NsCache(name)
     }
 
-  private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
+  private[k8s] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
     override protected def mkResource(name: String) = mkApi(name).services
     override protected def mkCache(name: String) = new ServiceCache(name)
   }
