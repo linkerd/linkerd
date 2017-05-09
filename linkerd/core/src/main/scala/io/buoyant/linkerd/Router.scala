@@ -162,7 +162,7 @@ trait RouterConfig {
     .maybeWith(bindingCache.map(_.capacity))
     .maybeWith(client.map(_.clientParams))
     .maybeWith(service.map(_.pathParams))
-    .maybeWith(bindingCache.flatMap(_.ttl)) +
+    .maybeWith(bindingCache.flatMap(_.idleTtl)) +
     param.Label(label) +
     DstBindingFactory.BindingTimeout(bindingTimeout)
 
@@ -187,7 +187,7 @@ case class BindingCacheConfig(
   trees: Option[Int],
   bounds: Option[Int],
   clients: Option[Int],
-  ttlSecs: Option[Int]
+  idleTtlSecs: Option[Int]
 ) {
   private[this] val default = DstBindingFactory.Capacity.default
 
@@ -198,8 +198,8 @@ case class BindingCacheConfig(
     clients = clients.getOrElse(default.clients)
   )
 
-  def ttl: Option[DstBindingFactory.Ttl] = ttlSecs.map { t =>
-    DstBindingFactory.Ttl(t.seconds)
+  def idleTtl: Option[DstBindingFactory.IdleTtl] = idleTtlSecs.map { t =>
+    DstBindingFactory.IdleTtl(t.seconds)
   }
 }
 

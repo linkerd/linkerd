@@ -181,6 +181,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
       val role = RoutingFactory.role
       val description = RoutingFactory.description
       val parameters = Seq(
+        implicitly[Stack.Param[DstBindingFactory.IdleTtl]],
         implicitly[Stack.Param[DstBindingFactory.Capacity]],
         implicitly[Stack.Param[DstBindingFactory.Namer]],
         implicitly[Stack.Param[param.Stats]]
@@ -245,7 +246,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           stats.scope("bindcache"),
           params[DstBindingFactory.Capacity],
           params[DstBindingFactory.BindingTimeout],
-          params[DstBindingFactory.Ttl]
+          params[DstBindingFactory.IdleTtl]
         )(params[param.Timer].timer)
 
         Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))

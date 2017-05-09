@@ -113,9 +113,9 @@ object DstBindingFactory {
     val default = BindingTimeout(Duration.Top)
   }
 
-  case class Ttl(timeout: Duration)
-  implicit object Ttl extends Stack.Param[Ttl] {
-    val default = Ttl(10.minutes)
+  case class IdleTtl(timeout: Duration)
+  implicit object IdleTtl extends Stack.Param[IdleTtl] {
+    val default = IdleTtl(10.minutes)
   }
 
   /**
@@ -139,7 +139,7 @@ object DstBindingFactory {
     statsReceiver: StatsReceiver = DefaultStatsReceiver,
     capacity: Capacity = Capacity.default,
     bindingTimeout: BindingTimeout = BindingTimeout.default,
-    ttl: Ttl = Ttl.default
+    idleTtl: IdleTtl = IdleTtl.default
   )(implicit timer: Timer = DefaultTimer.twitter) extends DstBindingFactory[Req, Rsp] {
     private[this]type Cache[Key] = ServiceFactoryCache[Key, Req, Rsp]
 
@@ -175,7 +175,7 @@ object DstBindingFactory {
         pathMk(dst, dyn)
       }
 
-      new ServiceFactoryCache(mk, timer, statsReceiver.scope("path"), capacity.paths, ttl.timeout)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("path"), capacity.paths, idleTtl.timeout)
     }
 
     // The tree cache is effectively keyed on a NameTree of Bound names
@@ -184,7 +184,7 @@ object DstBindingFactory {
       def mk(tree: Dst.BoundTree): ServiceFactory[Req, Rsp] =
         NameTreeFactory(tree.path, tree.nameTree, boundCache)
 
-      new ServiceFactoryCache(mk, timer, statsReceiver.scope("tree"), capacity.trees, ttl.timeout)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("tree"), capacity.trees, idleTtl.timeout)
     }
 
     // The bound cache is effectively keyed on the underlying service id
@@ -203,13 +203,13 @@ object DstBindingFactory {
         boundMk(bound, client)
       }
 
-      new ServiceFactoryCache(mk, timer, statsReceiver.scope("bound"), capacity.bounds, ttl.timeout)
+      new ServiceFactoryCache(mk, timer, statsReceiver.scope("bound"), capacity.bounds, idleTtl.timeout)
     }
 
     // The bottom cache is effectively keyed on the bound destination id
     // (i.e. concrete service name).
     private[this] val clientCache: Cache[Name.Bound] =
-      new ServiceFactoryCache(mkClient, timer, statsReceiver.scope("client"), capacity.clients, ttl.timeout)
+      new ServiceFactoryCache(mkClient, timer, statsReceiver.scope("client"), capacity.clients, idleTtl.timeout)
 
     private[this] val caches: Seq[Cache[_]] =
       Seq(pathCache, treeCache, boundCache, clientCache)
