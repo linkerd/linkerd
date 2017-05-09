@@ -58,6 +58,11 @@ $ cat config/web
 192.0.2.210 8080 * 2.0
 ```
 
+<aside class="warning">
+Due to the implmentation of file watches in Java, this namer consumes a high
+amount of CPU and is not suitable for production use.
+</aside>
+
 linkerd ships with a simple file-based service discovery mechanism, called the
 *file-based namer*. This system is intended to act as a structured form of
 basic host lists.
