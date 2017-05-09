@@ -109,7 +109,8 @@ private[telemeter] object UsageDataTelemeter {
     Seq(
       Gauge(Some("jvm_mem"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
       Gauge(Some("jvm/gc/msec"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
-      Gauge(Some("jvm/uptime"), gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric))
+      Gauge(Some("jvm/uptime"), gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric)),
+      Gauge(Some("jvm/num_cpus"), gaugeValue(metrics.resolve(Seq("jvm", "num_cpus")).metric))
     )
 
   def counterValue(metric: Metric): Option[Long] = metric match {

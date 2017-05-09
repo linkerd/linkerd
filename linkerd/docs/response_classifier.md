@@ -53,3 +53,10 @@ Like _io.l5d.http.retryableRead5XX_/_io.l5d.h2.retryableRead5XX_, but `PUT` and
 <aside class="warning">
 Requests with chunked bodies are NEVER considered to be retryable.
 </aside>
+
+## All Successful
+
+kind:  `io.l5d.http.allSuccessful`
+kind:  `io.l5d.h2.allSuccessful`
+
+All responses are considered to be successful, regardless of status code.

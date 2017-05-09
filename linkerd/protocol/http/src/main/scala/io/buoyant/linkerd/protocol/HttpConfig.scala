@@ -136,8 +136,10 @@ class HttpSvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) w
 trait HttpSvcConfig extends SvcConfig {
 
   @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
+  override def baseResponseClassifier = ClassifiedRetries.orElse(
+    ResponseClassifiers.NonRetryableServerFailures,
+    super.baseResponseClassifier
+  )
 
   @JsonIgnore
   override def responseClassifier =
@@ -199,7 +201,10 @@ case class HttpConfig(
   @JsonIgnore
   override val defaultResponseClassifier = ResponseClassifiers.NonRetryableChunked(
     ResponseClassifiers.HeaderRetryable(
-      ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+      ClassifiedRetries.orElse(
+        ResponseClassifiers.NonRetryableServerFailures,
+        ClassifiedRetries.Default
+      )
     )
   )
 
