@@ -298,6 +298,6 @@ object Validator extends TwitterServer {
       }
     }
 
-    try f(kill) finally kill()
+    try f(() => kill()) finally kill()
   }
 }
