@@ -2,7 +2,7 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util._
+import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 /**
  * A Stream represents a stream of Data frames, optionally
