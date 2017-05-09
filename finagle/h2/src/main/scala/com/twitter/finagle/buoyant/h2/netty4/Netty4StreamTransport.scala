@@ -366,7 +366,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         log.debug("%s compareAndSet RemoteClosed to Closed", str1)
         if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
           log.debug("%s compareAndSet succeeded", str1)
-          // WHY: shouldn't this be handled by the recv method?
           // state.close(str1)
           resetP.setDone(); ()
         } else {
@@ -498,7 +497,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
               } else recv(hdrs)
             }
 
-          case Open(remote@RemoteStreaming()) => // DOES NOT SEND TRAILER FRAME
+          case Open(remote@RemoteStreaming()) =>
             val str = s"[$prefix] recv Http2HeadersFrame.isEndStream Open/RemoteStreaming"
             log.debug(str)
             if (compareAndSet(str, state, remote.toRemoteClosed(str))) {
@@ -508,13 +507,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
                 log.debug("%s remote.offer=true", str)
                 statsReceiver.recordRemoteFrame(f)
                 remote.close(str)
-                //                resetP.setDone()
+                // resetP.setDone()
                 true
               } else {
                 log.debug("%s remote.offer=false", str)
-                // WHY: WHAT DO WE DO NOW?
-                // remote.close()
-                // resetP.setDone()
                 false
               }
             } else recv(hdrs)
@@ -671,7 +667,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             else recv(data)
 
           case LocalClosed(remote@RemoteStreaming()) =>
-            val str = s"[$prefix] recv Http2DataFrame LocalClosed/RemoteStreaming"
+            val str = s"[$prefix] recv Http2DataFrame Open/RemoteStreaming"
             log.debug(str)
             if (recvFrame(str, toFrame(str, data), remote)) true
             else recv(data)
@@ -753,7 +749,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     streamFF
   }
 
-  private[this] def writeHeaders(str: String, hdrs: Headers, eos: Boolean): Future[Unit] = {
+  private[this] val writeHeaders: (String, Headers, Boolean) => Future[Unit] = { (str, hdrs, eos) =>
     stateRef.get match {
       case Closed(rst) =>
         val str1 = s"$str -- writeHeaders Closed"
@@ -776,7 +772,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   }
 
   /** Write a request stream to the underlying transport */
-  private[this] def writeStream(str: String, stream: Stream): Future[Unit] = {
+  private[this] val writeStream: (String, Stream) => Future[Unit] = { (str, stream) =>
     val str1 = s"$str -- writeStream"
     def loop(): Future[Unit] =
       stream.read(str1).rescue(wrapLocalEx)
@@ -803,7 +799,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     p
   }
 
-  private[this] def writeFrame(str: String, frame: Frame): Future[Unit] = {
+  private[this] val writeFrame: (String, Frame) => Future[Unit] = { (str, frame) =>
     val str1 = s"$str -- writeFrame"
     stateRef.get match {
       case Closed(rst) =>

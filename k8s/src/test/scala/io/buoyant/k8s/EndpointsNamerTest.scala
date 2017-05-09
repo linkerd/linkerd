@@ -65,7 +65,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new EndpointsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
 
     def name = "/srv/http/sessions"
 
@@ -90,6 +90,24 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
     def assertHas(n: Int) =
       assert(addrs.size == n)
+  }
+
+  test("single ns namer uses passed in namespace") {
+    @volatile var req: Request = null
+
+    val service = Service.mk[Request, Response] {
+      case r =>
+        req = r
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+    }
+
+    val api = v1.Api(service)
+    val namer = new SingleNsNamer(Path.read("/test"), None, "srv", api.withNamespace, Stream.continually(1.millis))
+    namer.lookup(Path.read("/thrift/sessions/d3adb33f"))
+
+    assert(req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=5319481")
   }
 
   test("watches a namespace and receives updates") {
@@ -148,7 +166,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         fail(s"unexpected request: $req")
     }
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), None, api.withNamespace)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     val _ = namer.lookup(Path.read("/srv/thrift/sessions")).states respond { s =>
@@ -194,7 +212,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
 
     val api = v1.Api(service)
-    val namer = new EndpointsNamer(Path.read("/test"), Some("versionLabel"), api.withNamespace)
+    val namer = new MultiNsNamer(Path.read("/test"), Some("versionLabel"), api.withNamespace)
     namer.lookup(Path.read("/srv/thrift/sessions/d3adb33f"))
 
     assert(req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&labelSelector=versionLabel%3Dd3adb33f&resourceVersion=5319481")

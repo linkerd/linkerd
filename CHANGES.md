@@ -6,6 +6,7 @@
 * Fail on duplicate config file properties instead of silently taking the last
   value.
 * Port numbers in k8s names will now have the service's port mapping applied.
+* Add `io.l5d.k8s.ns` namer.
 
 ## 1.0.0 2017-04-24
 

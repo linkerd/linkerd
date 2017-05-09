@@ -37,6 +37,7 @@ maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
 maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
 maxResponseKB | 5120 | The maximum size of a non-chunked HTTP response payload.
 compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
+streamingEnabled | `true` | Streaming allows linkerd to work with HTTP messages that have large (or infinite) content bodies using chunked encoding.  Disabling this is highly discouraged.
 
 <aside class="warning">
 These memory constraints are selected to allow reliable
