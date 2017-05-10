@@ -256,6 +256,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case _ => false
     }
 
+  /**
+   * Updates the stateRef to reflect that the local stream has been closed.
+   *
+   * If the ref is already local closed, then the remote stream is reset and
+   * the reset promise results in an exception. If the ref is remote closed,
+   * then the ref becomes fully closed and the reset promise is completed.
+   */
   @tailrec private[this] def closeLocal(): Unit =
     stateRef.get match {
       case Closed(_) =>
@@ -304,7 +311,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       if (remote.offer(f)) {
         statsReceiver.recordRemoteFrame(f)
         true
-      } else false
+      } else {
+        log.debug("[%s] remote offer failed", prefix)
+        false
+      }
 
     in match {
       case rst: Http2ResetFrame =>
@@ -348,15 +358,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case Open(remote@RemoteStreaming()) =>
             if (stateRef.compareAndSet(state, remote.toRemoteClosed)) {
-              val f = toFrame(hdrs)
-              if (remote.offer(f)) {
-                statsReceiver.recordRemoteFrame(f)
+              if (recvFrame(toFrame(hdrs), remote)) {
                 remote.close()
                 true
-              } else {
-                log.debug("[%s] remote offer failed", prefix)
-                false
-              }
+              } else false
             } else recv(hdrs)
 
           case state@LocalClosed(remote@RemotePending()) =>
@@ -374,16 +379,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case LocalClosed(remote@RemoteStreaming()) =>
             if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
-              val f = toFrame(hdrs)
-              if (remote.offer(f)) {
-                statsReceiver.recordRemoteFrame(f)
+              if (recvFrame(toFrame(hdrs), remote)) {
                 remote.close()
                 resetP.setDone()
                 true
-              } else {
-                log.debug("[%s] remote offer failed", prefix)
-                false
-              }
+              } else false
             } else recv(hdrs)
         }
 
@@ -442,8 +442,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case Open(remote@RemoteStreaming()) =>
             if (stateRef.compareAndSet(state, remote.toRemoteClosed)) {
-              if (recvFrame(toFrame(data), remote)) true
-              else throw new IllegalStateException("stream queue closed prematurely")
+              if (recvFrame(toFrame(data), remote)) {
+                remote.close()
+                true
+              } else throw new IllegalStateException("stream queue closed prematurely")
             } else recv(data)
 
           case LocalClosed(remote@RemoteStreaming()) =>
