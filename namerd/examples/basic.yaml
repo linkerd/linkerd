@@ -11,3 +11,6 @@ namers:
 interfaces:
 - kind: io.l5d.thriftNameInterpreter
 - kind: io.l5d.httpController
+telemetry:
+- kind: io.l5d.prometheus
+- kind: io.l5d.influxdb
