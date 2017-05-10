@@ -17,8 +17,6 @@ define([
   var RouterController = (function () {
     // Contains all the router components, e.g. summaries, graphs, etc
 
-
-
     function initializeRouterContainers(selectedRouter, initialData, $parentContainer) {
       var template = templates.router_container;
       var routersToShow = selectedRouter === "all" ? _.keys(initialData) : [selectedRouter];

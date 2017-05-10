@@ -56,8 +56,8 @@ define(['jQuery'], function($) {
     }
 
     function onAddedClients(handler) {
-      var wrapper = function(events, clients) {
-        handler(clients);
+      var wrapper = function(events, clients, metricsRsp) {
+        handler(clients, metricsRsp);
       }
       $("body").on("addedClients", wrapper);
       return wrapper;
@@ -71,7 +71,7 @@ define(['jQuery'], function($) {
 
         var addedClients = getAddedClients(resp);
         if (!_.isEmpty(addedClients)) {
-          $("body").trigger("addedClients", addedClients);
+          $("body").trigger("addedClients", [addedClients, resp]);
         }
 
         prevMetrics = resp;

@@ -55,6 +55,8 @@ require([
     adminPage.initialize().done(function() {
       new loggingConfig();
     });
+  } else if (window.location.pathname.endsWith("/services")) {
+    new dashboard(null, true);
   } else {
     adminPage.initialize();
   }
