@@ -86,6 +86,15 @@ class PrometheusTelemeterTest extends FunSuite {
                      |""".stripMargin)
   }
 
+  test("metric labels are escaped") {
+    val (stats, handler) = statsAndHandler
+    val counter = stats.scope("rt", "incoming", "service", """\x5b\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x5dun"esc""").counter("requests")
+    counter.incr()
+    val rsp = await(handler(Request("/admin/metrics/prometheus"))).contentString
+    assert(rsp == """rt:service:requests{rt="incoming", service="\\x5b\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x5dun\\esc"} 1
+""")
+  }
+
   test("path stats are labelled") {
     val (stats, handler) = statsAndHandler
     val counter = stats.scope("rt", "incoming", "service", "/svc/foo").counter("requests")
