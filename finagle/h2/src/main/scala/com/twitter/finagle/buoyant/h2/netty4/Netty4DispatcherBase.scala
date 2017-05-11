@@ -8,7 +8,7 @@ import com.twitter.util._
 import io.netty.handler.codec.http2.{Http2Frame, Http2GoAwayFrame, Http2StreamFrame}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import java.util.function.IntUnaryOperator
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
@@ -38,7 +38,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def isClosed = closed.get
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
-  protected[this] def maxClosedId = closedId.get
+  @tailrec private[this] def addClosedId(id: Int): Unit = {
+    val i = closedId.get
+    val max = if (id > i) id else i
+    if (!closedId.compareAndSet(i, max)) addClosedId(id)
+  }
 
   protected[this] def demuxing: Future[Unit]
 
@@ -53,7 +57,8 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     log.debug("[%s S:%d] initialized stream", prefix, id)
     val _ = stream.onReset.respond {
       case Return(_) =>
-        closedId.updateAndGet(new IntUnaryOperator { def applyAsInt(i: Int) = if (id > i) id else i })
+        // Free and clear.
+        addClosedId(id)
         streams.remove(id)
         log.debug("[%s S:%d] stream closed", prefix, id)
 
@@ -116,7 +121,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
           case id =>
             streams.get(id) match {
-              case null if id <= maxClosedId =>
+              case null if id <= closedId.get =>
                 // The stream has been closed and should know better than
                 // to send us messages.
                 writer.reset(id, Reset.Closed)
