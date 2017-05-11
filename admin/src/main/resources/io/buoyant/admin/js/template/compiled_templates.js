@@ -431,19 +431,23 @@ templates['router_option'] = template({"1":function(container,depth0,helpers,par
     + "</a></li>\n";
 },"useData":true});
 templates['router_server'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper;
+    var stack1;
+
+  return "<div class=\"client-metrics row\">\n  <div class=\"col-md-2\">\n"
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.success : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large success-metric","containerClass":"success-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.requests : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + "  </div>\n\n  <div class=\"col-md-2\">\n"
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.failures : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large failure-metric","containerClass":"failure-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + "  </div>\n\n"
+    + ((stack1 = container.invokePartial(partials.latencyPartial,(depth0 != null ? depth0.latencies : depth0),{"name":"latencyPartial","data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + "</div>\n";
+},"usePartial":true,"useData":true});
+templates['router_server_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var helper;
 
   return "<div class=\"server-header router-header-large\">\n  "
     + container.escapeExpression(((helper = (helper = helpers.server || (depth0 != null ? depth0.server : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"server","hash":{},"data":data}) : helper)))
-    + "\n</div>\n\n<div class=\"container-fluid clearfix col-md-6\">\n"
-    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.requests : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container col-md-2"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.success : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large success-metric","containerClass":"success-metric-container metric-container col-md-2"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.failures : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large failure-metric","containerClass":"failure-metric-container metric-container col-md-2"},"data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + "</div>\n\n"
-    + ((stack1 = container.invokePartial(partials.latencyPartial,(depth0 != null ? depth0.latencies : depth0),{"name":"latencyPartial","data":data,"helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "");
-},"usePartial":true,"useData":true});
-templates['router_server_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    return "<div class=\"router-server clearfix\">\n  <div class=\"server-metrics\"></div>\n  <div class=\"server-success-chart col-md-6\">\n    <div class=\"router-graph-header\">Server success rate</div>\n  </div>\n</div>\n";
+    + "\n</div>\n\n<div class=\"router-server clearfix\">\n  <div class=\"server-metrics metrics-container col-md-6\"></div>\n  <div class=\"server-success-chart col-md-6\">\n    <div class=\"router-graph-header\">Server success rate</div>\n  </div>\n</div>\n";
 },"useData":true});
 templates['router_summary'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;

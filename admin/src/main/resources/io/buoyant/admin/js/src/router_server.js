@@ -1,29 +1,25 @@
 "use strict";
 
 define([
+  'handlebars.runtime',
   'src/colors',
+  'src/latency_color_util',
   'src/success_rate_graph',
   'src/utils',
   'template/compiled_templates'
-], function(colors, SuccessRateGraph, Utils, templates) {
+], function(
+  Handlebars,
+  Colors,
+  LatencyUtil,
+  SuccessRateGraph,
+  Utils,
+  templates
+) {
   var RouterServer = (function() {
     var template = templates.router_server;
 
-    var metricToColorShade = {
-      "max": "light",
-      "p9990": "tint",
-      "p99": "neutral",
-      "p95": "shade",
-      "p50": "dark"
-    }
-    var latencyKeys = _.keys(metricToColorShade);
-
-    function createLatencyLegend(colorLookup) {
-      return _.mapValues(metricToColorShade, function(shade) {
-        return colorLookup[shade];
-      });
-    }
-    var latencyLegend = createLatencyLegend(colors[3].colorFamily);
+    var desiredLatencyColors = Colors[3].colorFamily; // match the success rate graph
+    var latencyLegend = LatencyUtil.createLatencyLegend(desiredLatencyColors);
 
     function getMetricDefinitions(routerName, serverName) {
       var defs = [
@@ -67,18 +63,6 @@ define([
       };
     }
 
-    function getLatencyData(data, routerName, serverName) {
-      var latencyData = _.get(data, ["rt", routerName, "server", serverName, "request_latency_ms"]);
-
-      return _.map(latencyKeys, function(key) {
-        return {
-          latencyLabel: key,
-          latencyValue: _.get(latencyData, "stat." + key),
-          latencyColor: latencyLegend[key]
-        };
-      });
-    }
-
     function renderServer($container, server, data, latencyData) {
       var metrics = _.reduce(data, function(metrics, d) {
         metrics[d.metricSuffix] = {
@@ -90,7 +74,6 @@ define([
       }, {});
 
       $container.html(template({
-        server: server,
         metrics: metrics,
         latencies: latencyData
       }));
@@ -129,14 +112,19 @@ define([
     }
 
     return function (metricsCollector, server, $serverEl, routerName) {
+      var latencyPartial = templates["latencies.partial"];
+      Handlebars.registerPartial('latencyPartial', latencyPartial);
+
       var $metricsEl = $serverEl.find(".server-metrics");
       var $chartEl = $serverEl.find(".server-success-chart");
       var chart = SuccessRateGraph($chartEl, "#4AD8AC");
 
       var metricsHandler = function(data) {
         var transformedData = processData(data, routerName, server);
-        var latencyData = getLatencyData(data, routerName, server);
-        renderServer($metricsEl, server, transformedData, latencyData);
+        var latencyData = _.get(data, ["rt", routerName, "server", server, "request_latency_ms"]);
+        var coloredLatencyData = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+
+        renderServer($metricsEl, server, transformedData, coloredLatencyData);
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 

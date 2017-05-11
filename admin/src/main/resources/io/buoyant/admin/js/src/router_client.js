@@ -4,11 +4,13 @@ define([
   'jQuery',
   'lodash',
   'handlebars.runtime',
+  'src/latency_color_util',
   'src/utils',
   'src/success_rate_graph',
   'src/bar_chart',
   'template/compiled_templates'
 ], function($, _, Handlebars,
+  LatencyUtil,
   Utils,
   SuccessRateGraph,
   BarChart,
@@ -51,21 +53,6 @@ define([
   var RouterClient = (function() {
     var template = templates.router_client;
 
-    var metricToColorShade = {
-      "max": "light",
-      "p9990": "tint",
-      "p99": "neutral",
-      "p95": "shade",
-      "p50": "dark"
-    }
-    var latencyKeys = _.keys(metricToColorShade);
-
-    function createLatencyLegend(colorLookup) {
-      return _.mapValues(metricToColorShade, function(shade) {
-        return colorLookup[shade];
-      });
-    }
-
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
         {suffix: "requests", label: "Requests"},
@@ -95,18 +82,6 @@ define([
       var $clientHtml = $("<div />").addClass("router-client").html(clientHtml);
 
       $container.html($clientHtml);
-    }
-
-    function getLatencyData(data, routerName, clientName, chartLegend) {
-      var latencyData = _.get(data, ["rt", routerName, "client", clientName, "request_latency_ms"]);
-
-      return _.map(latencyKeys, function(key) {
-        return {
-          latencyLabel: key,
-          latencyValue: _.get(latencyData, "stat." + key),
-          latencyColor: chartLegend[key]
-        };
-      });
     }
 
     function getSuccessRate(summaryData) {
@@ -154,7 +129,7 @@ define([
       var $toggleLinks = $container.find(".client-toggle");
       var $lbBarChart = $container.find(".lb-bar-chart");
 
-      var latencyLegend = createLatencyLegend(colors.colorFamily);
+      var latencyLegend = LatencyUtil.createLatencyLegend(colors.colorFamily);
       var metricDefinitions = getMetricDefinitions(routerName, client);
 
       var $expandLink = $toggleLinks.find(".client-expand");
@@ -192,7 +167,8 @@ define([
 
       function metricsHandler(data) {
         var summaryData = getSummaryData(data, metricDefinitions);
-        var latencies = getLatencyData(data, routerName, client, latencyLegend);
+        var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
+        var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
 
         successRateChart.updateMetrics(getSuccessRate(summaryData));
         lbBarChart.update(summaryData);

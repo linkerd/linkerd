@@ -7,7 +7,7 @@ define([
   'src/combined_client_graph',
   'template/compiled_templates'
 ], function($,
-  colors,
+  Colors,
   RouterClient,
   CombinedClientGraph,
   templates
@@ -32,7 +32,7 @@ define([
       var clientContainerTemplate = templates.router_client_container;
 
       var clients = _.sortBy(initialData[routerName].clients);
-      var colorList = colors;
+      var colorList = Colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
