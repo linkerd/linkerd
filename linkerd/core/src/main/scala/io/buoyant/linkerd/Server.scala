@@ -1,13 +1,15 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.github.ghik.silencer.silent
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.conversions.time._
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.ssl.{ApplicationProtocols, CipherSuites, KeyCredentials, TrustCredentials}
-import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.ssl._
+import com.twitter.finagle.ssl.server.{LegacyKeyServerEngineFactory, SslServerConfiguration, SslServerEngineFactory}
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.ssl.client.SslClientEngineFactory
 import com.twitter.finagle.{ListeningServer, Path, Stack}
 import io.buoyant.config.types.Port
 import java.io.File
@@ -104,7 +106,7 @@ class ServerConfig { config =>
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
-  private[this] def tls(c: TlsServerConfig) = {
+  private[this] def tls(c: TlsServerConfig): Stack.Params = {
     assert(c.certPath != null)
     assert(c.keyPath != null)
     val trust = c.caCertPath match {
@@ -119,12 +121,16 @@ class ServerConfig { config =>
       case Some(ps) => ApplicationProtocols.Supported(ps)
       case None => ApplicationProtocols.Unspecified
     }
-    Transport.ServerSsl(Some(SslServerConfiguration(
+    // The deprecated LegacyKeyServerEngineFactory allows us to accept PKCS#1 formatted keys.
+    // We should remove this and replace it with Netty4ServerEngineFactory once we no longer allow
+    // PKCS#1 keys.
+    @silent val sslServerEngine = SslServerEngineFactory.Param(LegacyKeyServerEngineFactory)
+    Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
       keyCredentials = KeyCredentials.CertAndKey(new File(c.certPath), new File(c.keyPath)),
       trustCredentials = trust,
       cipherSuites = ciphers,
       applicationProtocols = appProtocols
-    )))
+    ))) + sslServerEngine
   }
 
   @JsonIgnore
