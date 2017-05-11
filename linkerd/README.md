@@ -15,7 +15,7 @@ I 0201 21:17:41.992 THREAD52: serving http on localhost/127.0.0.1:4140
 ```
 
 Then, you may browse to http://localhost:9990 to see an admin
-dashboard. Running `curl http://localhost:9990/admin/shutdown` will
+dashboard. Running `curl -X POST http://localhost:9990/admin/shutdown` will
 initiate a graceful shutdown of a running router.
 
 
