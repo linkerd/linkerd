@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.finagle.{Status => SvcStatus}
 import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
@@ -10,9 +11,8 @@ import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
-import scala.collection.immutable.Queue
 
-class Netty4ClientDispatchTest extends FunSuite {
+class Netty4ClientDispatcherTest extends FunSuite {
   setLogLevel(com.twitter.logging.Level.OFF)
 
   test("dispatches multiple concurrent requests on underlying transport") {
@@ -38,6 +38,7 @@ class Netty4ClientDispatchTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val tstats = new Netty4StreamTransport.StatsReceiver(stats)
     val dispatcher = new Netty4ClientDispatcher(transport, tstats)
+    assert(dispatcher.status == SvcStatus.Open)
 
     var released = 0
     def releaser: Int => Future[Unit] = { bytes =>
@@ -114,7 +115,7 @@ class Netty4ClientDispatchTest extends FunSuite {
     val rsp1 = await(rsp1f)
     assert(rsp1.status == Status.Cowabunga)
 
-    // We receive a response for req1 first:
+    // We receive a response for req0 second:
     assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
@@ -159,5 +160,8 @@ class Netty4ClientDispatchTest extends FunSuite {
         fail(s"unexpected frame: $f")
     }
     assert(rsp1.stream.onEnd.isDefined)
+
+    await(transport.close())
+    assert(dispatcher.status == SvcStatus.Closed)
   }
 }
