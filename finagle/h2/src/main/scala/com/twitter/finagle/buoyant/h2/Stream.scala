@@ -1,8 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.io.Buf
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.Failure
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 /**

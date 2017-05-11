@@ -2,17 +2,15 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.WriteException
-import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, NonFatal, Stopwatch, Time}
+import com.twitter.util.{Future, Time}
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 
 private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
-  import Netty4H2Writer.log
 
   protected[this] def write(f: Http2Frame): Future[Unit]
   protected[this] def close(deadline: Time): Future[Unit]
