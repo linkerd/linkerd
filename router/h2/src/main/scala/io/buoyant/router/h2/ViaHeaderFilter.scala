@@ -23,7 +23,7 @@ object ViaHeaderFilter {
       svc(setRequest(req)).map(setResponse)
 
     private[this] def setMessage[T <: Message]: T => T = { msg =>
-      val updated = msg.headers.get(Key) match {
+      val updated = msg.headers.getAll(Key) match {
         case Nil => via
         case vals => vals.mkString("", ", ", s", $via")
       }
