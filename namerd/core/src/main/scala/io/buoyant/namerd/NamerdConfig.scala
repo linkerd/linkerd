@@ -1,6 +1,7 @@
 package io.buoyant.namerd
 
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, StatsReceiver}
+import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param}
 import com.twitter.logging.Logger
@@ -41,7 +42,14 @@ private[namerd] case class NamerdConfig(
         val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
           "explicitly enabled by setting the `experimental' parameter to `true'."
         throw new IllegalArgumentException(msg) with NoStackTrace
-      case t => t.mk(telemeterParams)
+      case t =>
+        val telem = t.mk(telemeterParams)
+        telem.tracer match {
+          case s: NullTracer =>
+          case _ =>
+            log.warning(s"Telemeter ${t.getClass.getCanonicalName} defines a tracer but namerd doesn't support tracing")
+        }
+        telem
     } :+ adminTelemeter
 
     // Telemeters may provide StatsReceivers.

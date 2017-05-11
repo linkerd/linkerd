@@ -38,7 +38,7 @@ Key | Required | Description
 [interfaces](#interfaces) | no | Configures namerd's published network interfaces.
 [storage](#storage) | yes | Configures namerd's storage backend.
 [namers](https://linkerd.io/config/head/linkerd#namers) | no | Configures namerd's integration with various service discovery backends. namerd uses the same namers as linkerd.
-[telemetry](https://linkerd.io/config/head/linkerd#telemetry) | no | Configures namerd's metrics instrumentation.
+[telemetry](https://linkerd.io/config/head/linkerd#telemetry) | no | Configures namerd's metrics instrumentation. Namerd does not support tracing, so tracers provided by telemeters are ignored.
 
 ### Administrative interface
 
