@@ -141,6 +141,9 @@ define([
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
+      var latencyPartial = templates["latencies.partial"];
+      Handlebars.registerPartial('latencyPartial', latencyPartial);
+
       var $contentContainer = $container.find(".client-content-container");
 
       var $headerLine = $container.find(".header-line");

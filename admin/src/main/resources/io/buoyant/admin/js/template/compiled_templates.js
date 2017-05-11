@@ -226,6 +226,23 @@ templates['error_modal'] = template({"compiler":[7,">= 4.0.0"],"main":function(c
     + container.escapeExpression(container.lambda(depth0, depth0))
     + "</pre>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
+templates['latencies.partial'] = template({"1":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+
+  return "      <div>\n        <span class=\"latency-label\">\n          <span class=\"latency-legend\" style=\"background-color:"
+    + alias4(((helper = (helper = helpers.latencyColor || (depth0 != null ? depth0.latencyColor : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyColor","hash":{},"data":data}) : helper)))
+    + ";\">&nbsp;</span>"
+    + alias4(((helper = (helper = helpers.latencyLabel || (depth0 != null ? depth0.latencyLabel : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyLabel","hash":{},"data":data}) : helper)))
+    + "\n        </span>\n        <span class=\"pull-right latency-value\">"
+    + alias4(((helper = (helper = helpers.latencyValue || (depth0 != null ? depth0.latencyValue : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyValue","hash":{},"data":data}) : helper)))
+    + " ms</span>\n      </div>\n";
+},"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1;
+
+  return "<div class=\"col-md-2 router-latencies-container\">\n  <div class=\"metric-header\">Latencies</div>\n  <div class=\"router-latencies\">\n"
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},depth0,{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + "  </div>\n</div>\n";
+},"useData":true});
 templates['logging_row'] = template({"1":function(container,depth0,helpers,partials,data) {
     var stack1, alias1=container.lambda, alias2=container.escapeExpression;
 
@@ -363,17 +380,7 @@ templates['request_totals'] = template({"1":function(container,depth0,helpers,pa
     + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.metrics : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "</div>\n";
 },"useData":true});
-templates['router_client'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
-
-  return "        <div>\n          <span class=\"latency-label\">\n            <span class=\"latency-legend\" style=\"background-color:"
-    + alias4(((helper = (helper = helpers.latencyColor || (depth0 != null ? depth0.latencyColor : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyColor","hash":{},"data":data}) : helper)))
-    + ";\">&nbsp;</span>"
-    + alias4(((helper = (helper = helpers.latencyLabel || (depth0 != null ? depth0.latencyLabel : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyLabel","hash":{},"data":data}) : helper)))
-    + "\n          </span>\n          <span class=\"pull-right latency-value\">"
-    + alias4(((helper = (helper = helpers.latencyValue || (depth0 != null ? depth0.latencyValue : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyValue","hash":{},"data":data}) : helper)))
-    + " ms</span>\n        </div>\n";
-},"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+templates['router_client'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
   return "<div class=\"client-metrics row\">\n  <div class=\"col-md-2\">\n"
@@ -382,9 +389,9 @@ templates['router_client'] = template({"1":function(container,depth0,helpers,par
     + "  </div>\n\n  <div class=\"col-md-2\">\n"
     + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.connections : stack1),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.failures : stack1),{"name":"metricPartial","hash":{"metricClass":"failure-metric metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + "  </div>\n\n  <div class=\"col-md-2 router-latencies-container\">\n    <div class=\"metric-header\">Latencies</div>\n    <div class=\"router-latencies\">\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.latencies : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + "    </div>\n  </div>\n</div>\n";
+    + "  </div>\n\n"
+    + ((stack1 = container.invokePartial(partials.latencyPartial,(depth0 != null ? depth0.latencies : depth0),{"name":"latencyPartial","data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + "</div>\n";
 },"usePartial":true,"useData":true});
 templates['router_client_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
