@@ -98,6 +98,8 @@
 
 #dtab-edit {
   margin-bottom: 10px;
+  width: 50%;
+  padding-right: 15px;
 }
 
 .save-warning {
