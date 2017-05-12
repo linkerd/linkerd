@@ -15,6 +15,7 @@
     Dtab
     <button id="edit-dtab-btn" class="btn btn-info btn-sm">Edit</button>
     <button id="save-dtab-btn" class="btn btn-success btn-sm hide disabled">Apply*</button>
+    <button id="reset-dtab-btn" class="btn btn-success btn-sm hide disabled">Reset</button>
   </h4>
   <div id="dtab"></div>
   <div id="dtab-base"></div>
@@ -24,8 +25,20 @@
   <div class="save-warning">*Applies dtab for playground testing only!</div>
 </div>
 
-</div>
-<div class="result">
-</div>
-<div class="modal fade error-modal" tabindex="-1" role="dialog">
+
+
+<div class="result"></div>
+
+<div class="modal fade error-modal" tabindex="-1" role="dialog"></div>
+
+<div class="modal fade confirm-modal modal-dialog" tabindex="-1" role="dialog">
+  <div class="modal-content">
+    <div class="modal-body">
+      Reset dtab to initial state?
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-dismiss="modal">Nooooooo</button>
+      <button type="button" class="btn btn-primary confirm" data-dismiss="modal">Do it!</button>
+    </div>
+  </div>
 </div>

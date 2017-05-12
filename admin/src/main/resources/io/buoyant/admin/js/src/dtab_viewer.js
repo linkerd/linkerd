@@ -5,6 +5,7 @@ define(['jQuery'], function($) {
     this.dtab = initialDtab;
     this.template = dentryTemplate;
     this.seenSoFar = 0;
+    this.baseDtabEdited = false;
 
     this.render();
     window.addEventListener('resize', this.render.bind(this), false);
@@ -25,8 +26,20 @@ define(['jQuery'], function($) {
         var tuple = e.split("=>");
         return { prefix: tuple[0], dst: tuple[1] };
       });
+      this.baseDtabEdited = true;
       this.render();
       this._toggleEdit();
+    }.bind(this));
+
+    $('#reset-dtab-btn').click(function(_e) {
+      $('.confirm-modal').modal();
+    });
+
+    $('.confirm-modal .confirm').click(function(_e) {
+      this.dtab = initialDtab;
+      this.baseDtabEdited = false;
+      $("#reset-dtab-btn").addClass("hide disabled");
+      this.render();
     }.bind(this));
 
     //make the input bigger when you hit enter
@@ -48,6 +61,10 @@ define(['jQuery'], function($) {
     if($('#edit-dtab-btn').hasClass("active")) {
       $('#edit-dtab-btn').removeClass("active").text("Edit");
       $("#save-dtab-btn").addClass("hide disabled");
+      $("#reset-dtab-btn").addClass("hide disabled");
+      if (this.baseDtabEdited) { // don't show unless edits have actually been made
+        $("#reset-dtab-btn").removeClass("hide disabled");
+      }
       this.$saveWarning.hide();
       this._renderDtabInput();
     } else {
