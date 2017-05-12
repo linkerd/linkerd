@@ -12,6 +12,8 @@ define(['jQuery'], function($) {
 
     this.$saveWarning = $(".save-warning");
     this.$textArea = $("#dtab-input");
+    this.$go = $(".go");
+    this.$pathInput = $('#path-input');
 
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
     this.$saveWarning.hide();
@@ -29,6 +31,7 @@ define(['jQuery'], function($) {
       this.baseDtabEdited = true;
       this.render();
       this._toggleEdit();
+      this._rerunDelegation();
     }.bind(this));
 
     $('#reset-dtab-btn').click(function(_e) {
@@ -53,6 +56,12 @@ define(['jQuery'], function($) {
 
       $("#save-dtab-btn.disabled").removeClass("disabled");
     });
+  }
+
+  DtabViewer.prototype._rerunDelegation = function() {
+    if (this.$pathInput.val() !== "") {
+      this.$go.click();
+    }
   }
 
   DtabViewer.prototype._toggleEdit = function() {
