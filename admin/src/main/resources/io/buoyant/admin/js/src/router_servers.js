@@ -16,7 +16,7 @@ define([
       Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
       _.map(servers, function(server) {
-        var $el = $(serverContainerTemplate());
+        var $el = $(serverContainerTemplate({server: server}));
         $serverEl.append($el);
         RouterServer(metricsCollector, server, $el, routerName);
       });

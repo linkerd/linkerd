@@ -2,10 +2,12 @@
 
 define([
   'jQuery',
+  'src/colors',
   'src/router_client',
   'src/combined_client_graph',
   'template/compiled_templates'
 ], function($,
+  Colors,
   RouterClient,
   CombinedClientGraph,
   templates
@@ -26,11 +28,11 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName, colors) {
+    return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
       var clientContainerTemplate = templates.router_client_container;
 
       var clients = _.sortBy(initialData[routerName].clients);
-      var colorList = colors;
+      var colorList = Colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
