@@ -14,6 +14,7 @@ define(['jQuery'], function($) {
     this.$textArea = $("#dtab-input");
     this.$go = $(".go");
     this.$pathInput = $('#path-input');
+    this.$delegationResult = $(".result");
 
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
     this.$saveWarning.hide();
@@ -43,6 +44,7 @@ define(['jQuery'], function($) {
       this.baseDtabEdited = false;
       $("#reset-dtab-btn").addClass("hide disabled");
       this.render();
+      this._rerunDelegation();
     }.bind(this));
 
     //make the input bigger when you hit enter
@@ -61,6 +63,8 @@ define(['jQuery'], function($) {
   DtabViewer.prototype._rerunDelegation = function() {
     if (this.$pathInput.val() !== "") {
       this.$go.click();
+    } else {
+      this.$delegationResult.empty();
     }
   }
 
