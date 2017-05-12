@@ -1,12 +1,26 @@
-## In the next release...
+## 1.0.1 2017-05-12
 
 * Upgrade to scala 2.12.
-* Fix connection leak when retrying on responses with chunked bodies.
-* Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
+* Upgrade to finagle 6.44.
+* HTTP/1.1:
+  * Fix connection leak when retrying on responses with chunked bodies.
+  * Remove linkerd headers and body when clearContext is set.
+  * Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
+* HTTP/2:
+  * Fix race condition causing every request on a connection to deadline.
+  * Fix memory leak related to tracking closed streams.
+* Kubernetes:
+  * Port numbers in k8s names will now have the service's port mapping applied.
+  * Add `io.l5d.k8s.ns` namer for routing within a fixed namespace.
+* Consul:
+  * Fix issue where the Consul namer would fail to reconnect after ConnectionFailedException.
+* Promethus:
+  * Properly escape metrics labels in the Prometheus telemeter.
+* Namerd:
+  * Add support for telemeters.
 * Fail on duplicate config file properties instead of silently taking the last
   value.
-* Port numbers in k8s names will now have the service's port mapping applied.
-* Add `io.l5d.k8s.ns` namer.
+* Add path stack registry for better visibility into how services are configured.
 
 ## 1.0.0 2017-04-24
 
