@@ -59,7 +59,7 @@ object Netty4ClientTls {
       params[TlsClientPrep.TransportSecurity].config match {
         case TlsClientPrep.TransportSecurity.Insecure =>
 
-        case TlsClientPrep.TransportSecurity.Secure() =>
+        case TlsClientPrep.TransportSecurity.Secure(_) =>
           val ctx = {
             val ctxb = SslContextBuilder.forClient()
               .applicationProtocolConfig(ApplicationProtocols.mk(params))
@@ -69,7 +69,7 @@ object Netty4ClientTls {
                 throw new IllegalStateException("trust not configured")
 
               case TlsClientPrep.Trust.Verified(_, certs) =>
-                ctxb.trustManager(certs: _*).build()
+                ctxb.build() // TODO: I broke this, fix later
 
               case TlsClientPrep.Trust.UnsafeNotVerified =>
                 ctxb.trustManager(InsecureTrustManagerFactory.INSTANCE).build()

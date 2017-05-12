@@ -1,16 +1,15 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.{DstBindingFactory, PathMatcher, TlsClientPrep}
 import com.twitter.finagle.buoyant.TlsClientPrep.{TransportSecurity, Trust}
+import com.twitter.finagle.buoyant.{DstBindingFactory, PathMatcher, TlsClientPrep}
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
-import com.twitter.util.Duration
-import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.RetryBudgetConfig
 import io.buoyant.router.RetryBudgetModule.param
+import java.io.File
 import scala.util.control.NoStackTrace
 
 /**
@@ -39,21 +38,26 @@ trait ClientConfig {
     .maybeWith(failureAccrual.map(FailureAccrualConfig.param(_)))
 }
 
+case class ClientAuth(certPath: String, keyPath: String) {
+  def toClientAuth = TlsClientPrep.ClientAuth(new File(certPath), new File(keyPath))
+}
+
 case class TlsClientConfig(
   disableValidation: Option[Boolean],
   commonName: Option[String],
-  trustCerts: Option[Seq[String]] = None
+  trustCerts: Option[Seq[String]] = None,
+  clientAuth: Option[ClientAuth] = None
 ) {
   def params(vars: Map[String, String]): Stack.Params = this match {
-    case TlsClientConfig(Some(true), _, _) =>
+    case TlsClientConfig(Some(true), _, _, clientAuth) =>
       Stack.Params.empty +
-        TransportSecurity(TransportSecurity.Secure()) +
+        TransportSecurity(TransportSecurity.Secure(clientAuth.map(_.toClientAuth))) +
         Trust(Trust.UnsafeNotVerified)
-    case TlsClientConfig(_, Some(cn), certs) =>
+    case TlsClientConfig(_, Some(cn), certs, clientAuth) =>
       Stack.Params.empty +
-        TransportSecurity(TransportSecurity.Secure()) +
-        Trust(Trust.Verified(PathMatcher.substitute(vars, cn), trustCerts.getOrElse(Nil).map(TlsClientPrep.loadCert(_))))
-    case TlsClientConfig(Some(false) | None, None, _) =>
+        TransportSecurity(TransportSecurity.Secure(clientAuth.map(_.toClientAuth))) +
+        Trust(Trust.Verified(PathMatcher.substitute(vars, cn), trustCerts.getOrElse(Nil)))
+    case TlsClientConfig(Some(false) | None, None, _, _) =>
       val msg = "tls is configured with validation but `commonName` is not set"
       throw new IllegalArgumentException(msg) with NoStackTrace
   }

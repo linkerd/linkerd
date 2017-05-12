@@ -52,7 +52,7 @@ object Netty4H2Transporter {
               }
           }
 
-        case TransportSecurity.Secure() =>
+        case TransportSecurity.Secure(_) =>
           // Netty4Transporter has already installed `ssl` and
           // `sslConnect` channel handlers. The Netty4ClientTls handler
           // replaces these handlers with the `tls` and `tlsConnect`

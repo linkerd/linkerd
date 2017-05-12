@@ -1,3 +1,7 @@
+## In the next release
+
+* Add support for mutual auth.
+
 ## 1.0.2 2017-05-12
 
 * Fix issue where TLS could not be used with H2.
