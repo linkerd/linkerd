@@ -33,7 +33,7 @@ class Base extends Build {
   import Base._
 
   val headVersion = "1.0.1"
-c
+
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
     val headRevision = git("rev-parse", "--short", "HEAD").!!.trim
