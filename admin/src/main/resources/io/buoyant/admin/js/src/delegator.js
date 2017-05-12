@@ -1,10 +1,11 @@
 "use strict";
 
 define([
+  'lodash',
   'jQuery',
   'src/dtab_viewer',
   'template/compiled_templates'
-], function($, DtabViewer, compiledTemplates) {
+], function(_, $, DtabViewer, compiledTemplates) {
   var Delegator = (function() {
     var templates = {
       dentry: compiledTemplates.dentry,
