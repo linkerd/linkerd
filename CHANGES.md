@@ -1,3 +1,7 @@
+## In the next release...
+
+* Fix issue where TLS could not be used with H2.
+
 ## 1.0.1 2017-05-12
 
 * Upgrade to scala 2.12.
