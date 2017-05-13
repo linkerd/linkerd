@@ -40,6 +40,8 @@ define([
         return initializeClient(client);
       });
 
+      routerClients = _.compact(routerClients);
+
       if (routerClients.length == 0) {
         $clientEl.hide();
       }
@@ -50,6 +52,10 @@ define([
         $clientEl.show();
         var colorsForClient = clientToColor[client];
         var match = ('/' + client).match(TRANSFORMER_RE);
+
+        //client names that don't conform to the regex are not displayed
+        if (!match) return null;
+
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
           prefix: match[1],
@@ -87,7 +93,10 @@ define([
 
         // add new clients to dom
         _.each(filteredClients, function(clientForRouter) {
-          routerClients.push(initializeClient(clientForRouter));
+          var routerClient = initializeClient(clientForRouter);
+          if (routerClient) {
+            routerClients.push(routerClient);
+          }
         });
       }
     }
