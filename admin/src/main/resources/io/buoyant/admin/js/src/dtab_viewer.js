@@ -12,7 +12,7 @@ define(['jQuery'], function($) {
 
     this.$saveWarning = $(".save-warning");
     this.$textArea = $("#dtab-input");
-    this.$go = $(".go");
+    this.$goBtn = $(".go");
     this.$pathInput = $('#path-input');
     this.$delegationResult = $(".result");
 
@@ -62,7 +62,7 @@ define(['jQuery'], function($) {
 
   DtabViewer.prototype._rerunDelegation = function() {
     if (this.$pathInput.val() !== "") {
-      this.$go.click();
+      this.$goBtn.click();
     } else {
       this.$delegationResult.empty();
     }
