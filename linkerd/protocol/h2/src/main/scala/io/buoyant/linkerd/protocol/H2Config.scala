@@ -10,6 +10,8 @@ import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response, ResponseClassifiers}
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
+import com.twitter.finagle.ssl.server.SslServerEngineFactory
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
@@ -189,6 +191,9 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
     Some(Seq(ApplicationProtocolNames.HTTP_2))
+
+  @JsonIgnore
+  override val sslServerEngine = Netty4ServerEngineFactory()
 
   override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
     .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
