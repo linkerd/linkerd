@@ -1,6 +1,7 @@
-## In the next release...
+## 1.0.2 2017-05-12
 
 * Fix issue where TLS could not be used with H2.
+* Fix linkerd admin dashboard edge case.
 
 ## 1.0.1 2017-05-12
 
