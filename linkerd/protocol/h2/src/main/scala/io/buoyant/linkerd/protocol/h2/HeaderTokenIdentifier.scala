@@ -34,7 +34,7 @@ class HeaderTokenIdentifier(header: String, pfx: Path, baseDtab: () => Dtab)
     new UnidentifiedRequest(s"missing header: '$header'")
 
   override def apply(req: Request): Future[RequestIdentification[Request]] =
-    req.headers.get(header).lastOption match {
+    req.headers.get(header) match {
       case None | Some("") => Future.value(unidentified)
       case Some(token) =>
         val path = pfx ++ Path.Utf8(token)
