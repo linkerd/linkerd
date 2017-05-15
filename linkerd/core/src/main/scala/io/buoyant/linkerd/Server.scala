@@ -128,7 +128,7 @@ class ServerConfig { config =>
     // The deprecated LegacyKeyServerEngineFactory allows us to accept PKCS#1 formatted keys.
     // We should remove this and replace it with Netty4ServerEngineFactory once we no longer allow
     // PKCS#1 keys.
-    @silent val sslServerEngine = SslServerEngineFactory.Param(LegacyKeyServerEngineFactory)
+    @silent val sslServerEngine = LegacyKeyServerEngineFactory
     Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
       clientAuth = clientAuth,
       keyCredentials = KeyCredentials.CertAndKey(new File(c.certPath), new File(c.keyPath)),
