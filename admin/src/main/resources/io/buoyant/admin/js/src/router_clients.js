@@ -2,10 +2,12 @@
 
 define([
   'jQuery',
+  'src/colors',
   'src/router_client',
   'src/combined_client_graph',
   'template/compiled_templates'
 ], function($,
+  Colors,
   RouterClient,
   CombinedClientGraph,
   templates
@@ -26,17 +28,19 @@ define([
       return numClients < EXPAND_CLIENT_THRESHOLD;
     }
 
-    return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName, colors) {
+    return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
       var clientContainerTemplate = templates.router_client_container;
 
       var clients = _.sortBy(initialData[routerName].clients);
-      var colorList = colors;
+      var colorList = Colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
       });
+
+      routerClients = _.compact(routerClients);
 
       if (routerClients.length == 0) {
         $clientEl.hide();
@@ -48,6 +52,10 @@ define([
         $clientEl.show();
         var colorsForClient = clientToColor[client];
         var match = ('/' + client).match(TRANSFORMER_RE);
+
+        //client names that don't conform to the regex are not displayed
+        if (!match) return null;
+
         var $container = $(clientContainerTemplate({
           clientColor: colorsForClient.color,
           prefix: match[1],
@@ -85,7 +93,10 @@ define([
 
         // add new clients to dom
         _.each(filteredClients, function(clientForRouter) {
-          routerClients.push(initializeClient(clientForRouter));
+          var routerClient = initializeClient(clientForRouter);
+          if (routerClient) {
+            routerClients.push(routerClient);
+          }
         });
       }
     }

@@ -34,14 +34,21 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
   def tracer = NullTracer
   def run(): Closable with Awaitable[Unit] = Telemeter.nopRun
 
-  private[this] val disallowedChars = "[^a-zA-Z0-9:]".r
-  private[this] def escapeKey(key: String) = disallowedChars.replaceAllIn(key, "_")
+  private[this] val metricNameDisallowedChars = "[^a-zA-Z0-9:]".r
+  private[this] def escapeKey(key: String) = metricNameDisallowedChars.replaceAllIn(key, "_")
+
+  private[this] val labelKeyDisallowedChars = "[^a-zA-Z0-9_]".r
+  private[this] def escapeLabelKey(key: String) = labelKeyDisallowedChars.replaceAllIn(key, "_")
+
+  // https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
+  private[this] val labelValDisallowedChars = """(\\|\"|\n)""".r
+  private[this] def escapeLabelVal(key: String) = labelValDisallowedChars.replaceAllIn(key, """\\\\""")
 
   private[this] def formatLabels(labels: Seq[(String, String)]): String =
     if (labels.nonEmpty) {
       labels.map {
         case (k, v) =>
-          s"""$k="$v""""
+          s"""${escapeLabelKey(k)}="${escapeLabelVal(v)}""""
       }.mkString("{", ", ", "}")
     } else {
       ""

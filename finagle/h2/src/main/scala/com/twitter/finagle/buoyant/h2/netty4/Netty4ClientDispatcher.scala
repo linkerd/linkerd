@@ -2,15 +2,11 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.{Service, Status => SvcStatus}
-import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import scala.collection.JavaConverters._
-import scala.util.control.NoStackTrace
+import java.util.concurrent.atomic.AtomicInteger
 
 object Netty4ClientDispatcher {
   private val log = Logger.get(getClass.getName)

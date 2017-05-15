@@ -324,7 +324,7 @@ object LinkerdBuild extends Base {
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
-      Telemetry.adminMetricsExport
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
     val LowMemSettings = BundleSettings ++ Seq(

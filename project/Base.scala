@@ -32,7 +32,7 @@ object Base {
 class Base extends Build {
   import Base._
 
-  val headVersion = "1.0.0"
+  val headVersion = "1.0.2"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
@@ -59,6 +59,8 @@ class Base extends Build {
       Resolver.mavenLocal,
       "typesafe" at "https://repo.typesafe.com/typesafe/releases"
     ),
+    libraryDependencies += compilerPlugin("com.github.ghik" %% "silencer-plugin" % "0.5"),
+    libraryDependencies += "com.github.ghik" %% "silencer-lib" % "0.5",
     aggregate in assembly := false,
     (developTwitterDeps in Global) := { sys.env.get("TWITTER_DEVELOP") == Some("1") },
 
