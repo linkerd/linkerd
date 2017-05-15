@@ -1,6 +1,6 @@
 package io.buoyant.telemetry
 
-import com.twitter.finagle.stats.{Counter, Stat, StatsReceiverWithCumulativeGauges}
+import com.twitter.finagle.stats._
 
 class MetricsTreeStatsReceiver(
   val tree: MetricsTree
@@ -19,4 +19,10 @@ class MetricsTreeStatsReceiver(
 
   def stat(name: String*): Stat =
     tree.resolve(name).mkStat()
+
+  def prune(name: String*): Unit =
+    tree.resolve(name).prune()
+
+  override def scope(namespace: String): StatsReceiver =
+    new MetricsTreeStatsReceiver(tree.resolve(Seq(namespace)))
 }

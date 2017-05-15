@@ -6,7 +6,7 @@ routers:
     dst: /$/inet/localhost/4100
     namespace: default
     tls:
-      commonName: namerdee
+      commonName: namerd
       caCert: namerd/examples/certs/namerd-cacert.pem
   servers:
   - port: 4140

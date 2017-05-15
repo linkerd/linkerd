@@ -121,20 +121,23 @@ class ServerConfig { config =>
       case Some(ps) => ApplicationProtocols.Supported(ps)
       case None => ApplicationProtocols.Unspecified
     }
-    // The deprecated LegacyKeyServerEngineFactory allows us to accept PKCS#1 formatted keys.
-    // We should remove this and replace it with Netty4ServerEngineFactory once we no longer allow
-    // PKCS#1 keys.
-    @silent val sslServerEngine = SslServerEngineFactory.Param(LegacyKeyServerEngineFactory)
     Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
       keyCredentials = KeyCredentials.CertAndKey(new File(c.certPath), new File(c.keyPath)),
       trustCredentials = trust,
       cipherSuites = ciphers,
       applicationProtocols = appProtocols
-    ))) + sslServerEngine
+    ))) + SslServerEngineFactory.Param(sslServerEngine)
   }
 
   @JsonIgnore
   def alpnProtocols: Option[Seq[String]] = None
+
+  // The deprecated LegacyKeyServerEngineFactory allows us to accept PKCS#1 formatted keys.
+  // We should remove this and replace it with Netty4ServerEngineFactory once we no longer allow
+  // PKCS#1 keys.
+  @JsonIgnore
+  @silent
+  val sslServerEngine: SslServerEngineFactory = LegacyKeyServerEngineFactory
 
   @JsonIgnore
   def mk(pi: ProtocolInitializer, routerLabel: String) = Server.Impl(
