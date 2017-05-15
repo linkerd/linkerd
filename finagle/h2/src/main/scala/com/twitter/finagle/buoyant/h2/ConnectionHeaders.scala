@@ -53,5 +53,5 @@ object ConnectionHeaders {
   }
 
   private def detectTE(headers: Headers): Boolean =
-    headers.contains(Te) && (headers.get(Te) != TeTrailers)
+    headers.contains(Te) && (headers.getAll(Te) != TeTrailers)
 }
