@@ -62,7 +62,7 @@ object Headers {
     override def toString = s"""Headers(${toSeq.mkString(", ")})"""
     def contains(key: String) = toSeq.exists { case (k, _) => key == k }
     def get(key: String) = toSeq.find(_._1 == key).map(_._2)
-    def getAll(key: String) = toSeq.filter(_._1 == key).map(_._2)
+    def getAll(key: String) = toSeq.collect { case (k, v) if key == k => v }
     def add(key: String, value: String) = synchronized {
       current = current :+ (key -> value)
     }
