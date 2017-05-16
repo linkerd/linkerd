@@ -102,6 +102,12 @@
   padding-right: 15px;
 }
 
+#reset-dtab-link {
+  font-size: 12px;
+  padding: 5px 10px;
+  line-height: 1.5;
+}
+
 .save-warning {
   font-size: 12px;
   color: grey;

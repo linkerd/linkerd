@@ -35,14 +35,14 @@ define(['jQuery'], function($) {
       this._rerunDelegation();
     }.bind(this));
 
-    $('#reset-dtab-btn').click(function() {
+    $('#reset-dtab-link').click(function() {
       $('.confirm-modal').modal();
     });
 
     $('.confirm-modal .confirm').click(function() {
       this.dtab = initialDtab;
       this.baseDtabEdited = false;
-      $("#reset-dtab-btn").addClass("hide disabled");
+      $("#reset-dtab-link").addClass("hide disabled");
       this.render();
       this._rerunDelegation();
     }.bind(this));
@@ -74,9 +74,9 @@ define(['jQuery'], function($) {
     if($('#edit-dtab-btn').hasClass("active")) {
       $('#edit-dtab-btn').removeClass("active").text("Edit");
       $("#save-dtab-btn").addClass("hide disabled");
-      $("#reset-dtab-btn").addClass("hide disabled");
+      $("#reset-dtab-link").addClass("hide disabled");
       if (this.baseDtabEdited) { // don't show unless edits have actually been made
-        $("#reset-dtab-btn").removeClass("hide disabled");
+        $("#reset-dtab-link").removeClass("hide disabled");
       }
       this.$saveWarning.hide();
       this._renderDtabInput();
