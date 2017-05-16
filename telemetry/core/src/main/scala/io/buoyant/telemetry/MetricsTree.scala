@@ -17,6 +17,13 @@ trait MetricsTree {
 
   def registerGauge(f: => Float): Unit
   def deregisterGauge(): Unit
+
+  /**
+   * Recurrsively remove all Metrics and children from this tree.  This is not
+   * threadsafe and explicit synchronization must be used to avoid holding
+   * references to Metrics in pruned branches.
+   */
+  def prune(): Unit
 }
 
 object MetricsTree {
@@ -95,6 +102,14 @@ object MetricsTree {
         if (!metricRef.compareAndSet(orig, Metric.None)) deregisterGauge()
       case _ =>
         throw new IllegalArgumentException("non-gauge metric already exists")
+    }
+
+    def prune(): Unit = {
+      trees.values.foreach { child =>
+        child.prune()
+      }
+      trees.clear()
+      metricRef.set(Metric.None)
     }
   }
 }

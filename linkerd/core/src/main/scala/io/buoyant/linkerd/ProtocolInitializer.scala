@@ -76,7 +76,13 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
         throw new IllegalStateException(s"router '$name' has no servers")
       }
 
-      val factory = router.factory()
+      val pathStk = router.pathStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+      val clientStk = router.clientStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+
+      val factory = router
+        .withPathStack(pathStk)
+        .withClientStack(clientStk)
+        .factory()
 
       // Don't let server closure close the router.
       val adapted = new ServiceFactoryProxy(adapter.andThen(factory)) {

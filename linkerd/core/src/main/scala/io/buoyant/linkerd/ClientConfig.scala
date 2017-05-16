@@ -68,19 +68,3 @@ case class HostConnectionPool(
     maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
   )
 }
-
-case class BindingCacheConfig(
-  paths: Option[Int],
-  trees: Option[Int],
-  bounds: Option[Int],
-  clients: Option[Int]
-) {
-  private[this] val default = DstBindingFactory.Capacity.default
-
-  def capacity = DstBindingFactory.Capacity(
-    paths = paths.getOrElse(default.paths),
-    trees = trees.getOrElse(default.trees),
-    bounds = bounds.getOrElse(default.bounds),
-    clients = clients.getOrElse(default.clients)
-  )
-}

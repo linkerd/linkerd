@@ -1,5 +1,6 @@
-## In the next release
+## In the next release...
 
+* Expire idle services and clients.
 * Add support for mutual auth.
 
 ## 1.0.2 2017-05-12

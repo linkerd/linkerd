@@ -45,7 +45,7 @@ class HeaderPathIdentifier(
     }
 
   private[this] def reqPath(req: Request): Path =
-    req.headers.get(header).lastOption match {
+    req.headers.get(header) match {
       case Some(UriPath(p)) if p.nonEmpty => Path.read(p)
       case _ => Path.empty
     }

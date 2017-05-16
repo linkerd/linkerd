@@ -23,7 +23,6 @@ object ClassifierFilter {
   val successClassClassifier: ResponseClassifier = {
     case ReqRep(req, Return(rep: Response)) if rep.headers.contains(SuccessClassHeader) =>
       val success = rep.headers.get(SuccessClassHeader)
-        .headOption
         .flatMap { value =>
           Try(value.toDouble).toOption
         }.getOrElse(0.0)
