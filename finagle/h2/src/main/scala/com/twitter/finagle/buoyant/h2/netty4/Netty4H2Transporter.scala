@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.TlsClientPrep.TransportSecurity
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
