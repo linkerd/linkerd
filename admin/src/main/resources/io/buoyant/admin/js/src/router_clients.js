@@ -15,6 +15,7 @@ define([
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
     var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
+    var activeClients = {};
 
     function assignColorsToClients(colors, clients) {
       return _.reduce(clients, function(clientMapping, client, idx) {
@@ -23,9 +24,42 @@ define([
       }, {});
     }
 
-    function shouldExpandClient(numClients) {
+    function shouldExpandClient(routerName, initialClients) {
       // if there are many clients, collapse them by default to improve page perfomance
-      return numClients < EXPAND_CLIENT_THRESHOLD;
+      if (initialClients) {
+        return initialClients < EXPAND_CLIENT_THRESHOLD;
+      } else {
+        return getNumActiveClients(routerName) < EXPAND_CLIENT_THRESHOLD;
+      }
+    }
+
+    function findClientContainerEl(client) {
+      return $($(".router-clients").find("[data-client='/" + client + "']")[0]);
+    }
+
+    function getNumActiveClients(routerName) {
+      var countByActive = _.countBy(activeClients[routerName], ["isExpired", false]);
+      return countByActive.true || 0;
+    }
+
+    function pruneInactiveClients(metricsRsp, routerName) {
+      var clientsRsp = _.get(metricsRsp, ["rt", routerName, "client"]);
+      _.each(clientsRsp, function(clientData, client) {
+        if (_.isEmpty(clientData)) {
+          if(!activeClients[routerName][client].isExpired) {
+            activeClients[routerName][client].isExpired = true;
+            activeClients[routerName][client].expireClient();
+            findClientContainerEl(client).hide();
+          }
+        } else {
+          if(activeClients[routerName][client].isExpired) {
+            activeClients[routerName][client].isExpired = false;
+            var shouldExpand = shouldExpandClient(routerName);
+            activeClients[routerName][client].unexpireClient(shouldExpand);
+            findClientContainerEl(client).show();
+          }
+        }
+      });
     }
 
     return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
@@ -36,6 +70,7 @@ define([
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
+      activeClients[routerName] = {};
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
       });
@@ -47,6 +82,7 @@ define([
       }
 
       metricsCollector.onAddedClients(addClients);
+      metricsCollector.registerListener("RouterClients_" + routerName, metricsHandler);
 
       function initializeClient(client) {
         $clientEl.show();
@@ -73,8 +109,15 @@ define([
             });
         }
 
-        var shouldExpand = shouldExpandClient(initialData[routerName].clients.length);
-        return RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
+        var shouldExpand = shouldExpandClient(routerName, initialData[routerName].clients.length);
+        var routerClient = RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
+        activeClients[routerName][client] = routerClient;
+
+        return routerClient;
+      }
+
+      function metricsHandler(data) {
+        pruneInactiveClients(data, routerName);
       }
 
       function addClients(addedClients) {

@@ -396,7 +396,9 @@ templates['router_client'] = template({"compiler":[7,">= 4.0.0"],"main":function
 templates['router_client_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
-  return "<div class=\"client-container clearfix\">\n  <div class=\"header-line\">&nbsp;</div>\n  <div class=\"router-header-large\">\n    <div class=\"client-id\">\n      <div class=\"pull-left transformer-prefix\" style=\"display: none\">"
+  return "<div class=\"client-container clearfix\" data-client=\""
+    + alias4(((helper = (helper = helpers.client || (depth0 != null ? depth0.client : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"client","hash":{},"data":data}) : helper)))
+    + "\">\n  <div class=\"header-line\">&nbsp;</div>\n  <div class=\"router-header-large\">\n    <div class=\"client-id\">\n      <div class=\"pull-left transformer-prefix\" style=\"display: none\">"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
     + "</div>\n      <div class=\"pull-left client-suffix is-first\">"
     + alias4(((helper = (helper = helpers.client || (depth0 != null ? depth0.client : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"client","hash":{},"data":data}) : helper)))

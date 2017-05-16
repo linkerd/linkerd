@@ -151,18 +151,22 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(metricsHandler);
+          metricsCollector.registerListener(getClientId(routerName, client), metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
 
           combinedClientGraph.ignoreClient(client);
-          metricsCollector.deregisterListener(metricsHandler);
+          metricsCollector.deregisterListener(getClientId(routerName, client));
         }
 
         $contentContainer.toggle(expand);
         $collapseLink.toggle(expand);
         $expandLink.toggle(!expand);
+      }
+
+      function getClientId(router, client) {
+        return "RouterClient_" + router + "_" + client;
       }
 
       function metricsHandler(data) {
@@ -177,7 +181,19 @@ define([
       }
 
       return {
-        label: client
+        label: client,
+        expireClient: function() {
+          // when metrics are pruned, kill this client
+          combinedClientGraph.expireClient(client);
+          toggleClientDisplay(false);
+        },
+        unexpireClient: function(shouldExpand) {
+          // there is a difference between whether a client is toggled/not vs
+          // expired/not (completely hidden)
+          combinedClientGraph.unexpireClient(client);
+          toggleClientDisplay(shouldExpand);
+        },
+        isExpired: false
       };
     };
   })();

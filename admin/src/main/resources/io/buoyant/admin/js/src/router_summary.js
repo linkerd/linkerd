@@ -160,7 +160,7 @@ define([
 
       renderRouterSummary({ router: routerName }, routerName, $summaryEl);
 
-      metricsCollector.registerListener(metricsHandler);
+      metricsCollector.registerListener("RouterSummary_" + routerName, metricsHandler);
 
       function metricsHandler(data) {
         var summaryData = processResponses(data, routerName, routerMetrics);
