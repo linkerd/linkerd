@@ -303,21 +303,14 @@ object StackRouter {
      * protocol-specific annotating tracing filters, to provide response
      * classification annotations (success, failure, or retryable).
      *
-     * Install the TlsClientPrep module below the endpoint stack so that it
-     * may avail itself of any and all params to set TLS params.
-     *
      * Augment the default client StatsFilter with a
      * per-logical-destination stats filter.
      */
-    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
-      val stk = new StackBuilder(stack.nilStack[Req, Rsp])
-      stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
-      (orig ++ stk.result)
-        .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
+      orig.insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
-    }
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {

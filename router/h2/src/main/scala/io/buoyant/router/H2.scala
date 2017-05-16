@@ -1,14 +1,11 @@
 package io.buoyant.router
 
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{Dst, H2 => FinagleH2, TlsClientPrep}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset, ResponseClassifiers}
-import com.twitter.finagle.param
-import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
-import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
-import com.twitter.finagle.service.StatsFilter
-import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Closable, Future}
+import com.twitter.finagle.buoyant.h2.{Request, Response, ResponseClassifiers}
+import com.twitter.finagle.buoyant.{H2 => FinagleH2}
+import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.{param, _}
+import com.twitter.finagle.server.StackServer
+import com.twitter.util.Future
 import java.net.SocketAddress
 
 object H2 extends Router[Request, Response]
@@ -37,10 +34,7 @@ object H2 extends Router[Request, Response]
       StackRouter.newBoundStack
 
     val clientStack: Stack[ServiceFactory[Request, Response]] =
-      // The H2 transporter configures its own TLS, so disable finagle's
-      // TLS handlers.
-      StackRouter.Client.mkStack(FinagleH2.Client.newStackWithoutTlsClientPrep)
-        .replace(TlsClientPrep.role.finagle, TlsClientPrep.disableFinagleTls[Request, Response])
+      StackRouter.Client.mkStack(FinagleH2.Client.newStack)
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
