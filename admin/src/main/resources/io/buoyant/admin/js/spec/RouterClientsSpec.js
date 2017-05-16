@@ -4,15 +4,21 @@ define([
   'jQuery',
   'lodash',
   'src/router_clients',
-  'src/metrics_collector',
-  'spec/fixtures/metrics',
   'template/compiled_templates'
-], function($, _, RouterClients, MetricsCollector, metricsJson, templates) {
+], function($, _, RouterClients, templates) {
   describe("RouterClients", function() {
     var collector;
     var $container = $("<div />");
     var $clientsEl;
     var $combinedClientGraphEl;
+    var StubMetricsCollector = function() {
+      return {
+        start: _.noop,
+        registerListener: _.noop,
+        deregisterListener: _.noop,
+        onAddedClients: _.noop
+      };
+    }
 
     var initialRouterData = {
       adder: {
@@ -40,7 +46,7 @@ define([
     }
 
     beforeEach(function () {
-      collector = MetricsCollector(metricsJson);
+      collector = StubMetricsCollector();
       var containers = templates.router_container({ routers: ["adder"] });
       $container.html(containers);
 
