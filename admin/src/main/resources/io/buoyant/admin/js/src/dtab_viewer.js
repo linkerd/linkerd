@@ -19,7 +19,7 @@ define(['jQuery'], function($) {
     $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
     this.$saveWarning.hide();
 
-    $('#save-dtab-btn').click(function(_e){
+    $('#save-dtab-btn').click(function(){
       var text = this.$textArea.val().replace(/\s+/g, '');
       var dentries = text.split(";");
       if (dentries[dentries.length - 1] === "") {
@@ -35,11 +35,11 @@ define(['jQuery'], function($) {
       this._rerunDelegation();
     }.bind(this));
 
-    $('#reset-dtab-btn').click(function(_e) {
+    $('#reset-dtab-btn').click(function() {
       $('.confirm-modal').modal();
     });
 
-    $('.confirm-modal .confirm').click(function(_e) {
+    $('.confirm-modal .confirm').click(function() {
       this.dtab = initialDtab;
       this.baseDtabEdited = false;
       $("#reset-dtab-btn").addClass("hide disabled");
