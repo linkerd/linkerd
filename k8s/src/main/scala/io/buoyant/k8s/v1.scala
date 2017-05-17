@@ -149,7 +149,8 @@ package object v1 {
   )
 
   case class LoadBalancerIngress(
-    ip: String
+    ip: Option[String] = None,
+    hostname: Option[String] = None
   )
 
   case class ServiceSpec(
