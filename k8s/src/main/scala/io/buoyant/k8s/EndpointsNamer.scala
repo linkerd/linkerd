@@ -32,15 +32,20 @@ class MultiNsNamer(
       case Path.Utf8(segments@_*) => Path.Utf8(segments.map(_.toLowerCase): _*)
     }
     (lowercasePath, labelName) match {
-      case (id@Path.Utf8(nsName, _, _), None) =>
+      case (id@Path.Utf8(nsName, portName, serviceName), None) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s", id.show, path.show)
-        lookupServices(endpointNs.get(nsName, None), serviceNs.get(nsName, None), id, residual)
+        val cache = endpointNs.get(nsName, None)
+        val serviceCache = serviceNs.get(nsName, None)
+        lookupServices(nsName, portName, serviceName, cache, serviceCache, id, residual)
 
-      case (id@Path.Utf8(nsName, _, _, labelValue), Some(label)) =>
+      case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
-        lookupServices(endpointNs.get(nsName, Some(s"$label=$labelValue")), serviceNs.get(nsName, Some(s"$label=$labelValue")), id, residual)
+        val labelSelector = Some(s"$label=$labelValue")
+        val cache = endpointNs.get(nsName, labelSelector)
+        val serviceCache = serviceNs.get(nsName, labelSelector)
+        lookupServices(nsName, portName, serviceName, cache, serviceCache, id, residual)
 
       case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
         log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -75,16 +80,20 @@ class SingleNsNamer(
       case Path.Utf8(segments@_*) => Path.Utf8(segments.map(_.toLowerCase): _*)
     }
     (lowercasePath, labelName) match {
-      case (id@Path.Utf8(_, _), None) =>
+      case (id@Path.Utf8(portName, serviceName), None) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s", id.show, path.show)
-        lookupServices(endpointNs.get(nsName, None), serviceNs.get(nsName, None), Path.Utf8(nsName) ++ id, residual)
+        val cache = endpointNs.get(nsName, None)
+        val serviceCache = serviceNs.get(nsName, None)
+        lookupServices(nsName, portName, serviceName, cache, serviceCache, id, residual)
 
-      case (id@Path.Utf8(_, _, labelValue), Some(label)) =>
+      case (id@Path.Utf8(portName, serviceName, labelValue), Some(label)) =>
         val residual = path.drop(variablePrefixLength)
         log.debug("k8s lookup: %s %s %s", id.show, label, path.show)
         val labelSelector = Some(s"$label=$labelValue")
-        lookupServices(endpointNs.get(nsName, labelSelector), serviceNs.get(nsName, labelSelector), Path.Utf8(nsName) ++ id, residual)
+        val cache = endpointNs.get(nsName, labelSelector)
+        val serviceCache = serviceNs.get(nsName, labelSelector)
+        lookupServices(nsName, portName, serviceName, cache, serviceCache, id, residual)
 
       case (id@Path.Utf8(portName, serviceName), Some(label)) =>
         log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
@@ -104,50 +113,49 @@ abstract class EndpointsNamer(
 
   import EndpointsNamer._
 
-  val idLen = 3
   def lookup(path: Path): Activity[NameTree[Name]]
 
   private[k8s] def lookupServices(
+    nsName: String,
+    portName: String,
+    serviceName: String,
     cache: NsCache,
     serviceCache: ServiceCache,
     id: Path,
     residual: Path
-  ): Activity[NameTree[Name]] = id.take(idLen) match {
-    case id@Path.Utf8(nsName, portName, serviceName) =>
-      cache.services.flatMap { services =>
-        log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
-        services.get(serviceName) match {
-          case None =>
-            log.debug("k8s ns %s service %s missing", nsName, serviceName)
-            Activity.value(NameTree.Neg)
+  ): Activity[NameTree[Name]] = cache.services.flatMap { services =>
+    log.debug("k8s ns %s initial state: %s", nsName, services.keys.mkString(", "))
+    services.get(serviceName) match {
+      case None =>
+        log.debug("k8s ns %s service %s missing", nsName, serviceName)
+        Activity.value(NameTree.Neg)
 
-          case Some(service) =>
-            log.debug("k8s ns %s service %s found", nsName, serviceName)
-            Try(portName.toInt).toOption match {
-              case Some(portNumber) =>
-                val state: Var[Activity.State[NameTree[Name.Bound]]] = serviceCache.getPortMapping(serviceName, portNumber).map {
-                  case Some(targetPort) =>
-                    val addr = targetPort.flatMap(service.port)
-                    log.debug("k8s ns %s service %s port :%d found + %s", nsName, serviceName, portNumber, residual.show)
-                    Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
-                  case None =>
-                    log.debug("k8s ns %s service %s port :%d missing", nsName, serviceName, portNumber)
-                    Activity.Ok(NameTree.Neg)
-                }
-                Activity(state)
+      case Some(service) =>
+        log.debug("k8s ns %s service %s found", nsName, serviceName)
+        Try(portName.toInt).toOption match {
+          case Some(portNumber) =>
+            val state: Var[Activity.State[NameTree[Name.Bound]]] = serviceCache.getPortMapping(serviceName, portNumber).map {
+              case Some(targetPort) =>
+                val addr = targetPort.flatMap(service.port)
+                log.debug("k8s ns %s service %s port :%d found + %s", nsName, serviceName, portNumber, residual.show)
+                Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
               case None =>
-                val state: Var[Activity.State[NameTree[Name.Bound]]] = service.port(portName).map {
-                  case Some(addr) =>
-                    log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
-                    Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
-                  case None =>
-                    log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
-                    Activity.Ok(NameTree.Neg)
-                }
-                Activity(state)
+                log.debug("k8s ns %s service %s port :%d missing", nsName, serviceName, portNumber)
+                Activity.Ok(NameTree.Neg)
             }
+            Activity(state)
+          case None =>
+            val state: Var[Activity.State[NameTree[Name.Bound]]] = service.port(portName).map {
+              case Some(addr) =>
+                log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
+                Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+              case None =>
+                log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
+                Activity.Ok(NameTree.Neg)
+            }
+            Activity(state)
         }
-      }
+    }
   }
 
   private[k8s] val endpointNs =

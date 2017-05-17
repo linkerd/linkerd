@@ -93,21 +93,49 @@ class EndpointsNamerTest extends FunSuite with Awaits {
   }
 
   test("single ns namer uses passed in namespace") {
-    @volatile var req: Request = null
+    @volatile var request: Request = null
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
     val service = Service.mk[Request, Response] {
-      case r =>
-        req = r
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints" =>
+        request = req
         val rsp = Response()
         rsp.content = Rsps.Init
         Future.value(rsp)
+
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319481" =>
+        request = req
+        val rsp = Response()
+        Future.value(rsp)
+
+      case req if req.uri == "/api/v1/namespaces/srv/services" =>
+        request = req
+        val rsp = Response()
+        rsp.content = Rsps.Services
+        Future.value(rsp)
+
+      case req if req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=33787896" =>
+        request = req
+        val rsp = Response()
+        Future.value(rsp)
+
+      case req =>
+        fail(s"unexpected request: $req")
     }
 
     val api = v1.Api(service)
     val namer = new SingleNsNamer(Path.read("/test"), None, "srv", api.withNamespace, Stream.continually(1.millis))
-    namer.lookup(Path.read("/thrift/sessions/d3adb33f"))
+    namer.lookup(Path.read("/http/sessions/d3adb33f")).states.respond { s =>
+      state = s
+    }
 
-    assert(req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=5319481")
+    assert(request.uri.startsWith("/api/v1/namespaces/srv/services"))
+    state match {
+      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
+        assert(bound.id == Path.Utf8("test", "http", "sessions"))
+      case v =>
+        fail(s"unexpected state: $v")
+    }
   }
 
   test("watches a namespace and receives updates") {
