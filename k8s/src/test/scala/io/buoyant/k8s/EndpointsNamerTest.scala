@@ -20,7 +20,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
     val ScaleDown = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"sessions","namespace":"srv","selfLink":"/api/v1/namespaces/srv/endpoints/sessions","uid":"6a698096-525e-11e5-9859-42010af01815","resourceVersion":"5319605","creationTimestamp":"2015-09-03T17:08:37Z"},"subsets":[{"addresses":[{"ip":"10.248.4.9","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-293kc","uid":"69f5a7d2-525e-11e5-9859-42010af01815","resourceVersion":"4962471"}},{"ip":"10.248.7.11","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-mr9gb","uid":"69f5b78e-525e-11e5-9859-42010af01815","resourceVersion":"4962524"}},{"ip":"10.248.8.9","targetRef":{"kind":"Pod","namespace":"srv","name":"sessions-nicom","uid":"69f5b623-525e-11e5-9859-42010af01815","resourceVersion":"4962517"}}],"ports":[{"name":"http","port":8083,"protocol":"TCP"}]}]}}""")
 
-    val Services = Buf.Utf8("""{"kind":"ServiceList","apiVersion":"v1","metadata":{"selfLink":"/api/v1/namespaces/srv/services","resourceVersion":"33787896"},"items":[{"metadata":{"name":"sessions","namespace":"srv","selfLink":"/api/v1/namespaces/srv/services/sessions","uid":"8122d7d0-1042-11e7-b340-42010af00004","resourceVersion":"33186979","creationTimestamp":"2017-03-24T03:32:27Z","labels":{"name":"sessions"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":80,"targetPort":54321},{"name":"admin","protocol":"TCP","port":9990}],"selector":{"name":"sessions"},"clusterIP":"10.199.240.9","type":"LoadBalancer","sessionAffinity":"None"},"status":{"loadBalancer":{"ingress":[{"ip":"35.184.61.229"}]}}}]}""")
+    val Services = Buf.Utf8("""{"kind":"ServiceList","apiVersion":"v1","metadata":{"selfLink":"/api/v1/namespaces/srv/services","resourceVersion":"33787896"},"items":[{"metadata":{"name":"sessions","namespace":"srv","selfLink":"/api/v1/namespaces/srv/services/sessions","uid":"8122d7d0-1042-11e7-b340-42010af00004","resourceVersion":"33186979","creationTimestamp":"2017-03-24T03:32:27Z","labels":{"name":"sessions"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":80,"targetPort":54321},{"name":"admin","protocol":"TCP","port":9990}],"selector":{"name":"sessions"},"clusterIP":"10.199.240.9","type":"LoadBalancer","sessionAffinity":"None"},"status":{"loadBalancer":{"ingress":[{"ip":"35.184.61.229"}]}}},{"metadata":{"name":"projects","namespace":"srv","selfLink":"/api/v1/namespaces/srv/services/projects","uid":"8122d7d0-1042-11e7-b340-42010af00005","resourceVersion":"33186980","creationTimestamp":"2017-03-24T03:32:27Z","labels":{"name":"projects"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":80,"targetPort":54321},{"name":"admin","protocol":"TCP","port":9990}],"selector":{"name":"projects"},"clusterIP":"10.199.240.9","type":"LoadBalancer","sessionAffinity":"None"},"status":{"loadBalancer":{}}},{"metadata":{"name":"events","namespace":"srv","selfLink":"/api/v1/namespaces/srv/services/events","uid":"8122d7d0-1042-11e7-b340-42010af00006","resourceVersion":"33186981","creationTimestamp":"2017-03-24T03:32:27Z","labels":{"name":"events"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":80,"targetPort":54321},{"name":"admin","protocol":"TCP","port":9990}],"selector":{"name":"events"},"clusterIP":"10.199.240.9","type":"LoadBalancer","sessionAffinity":"None"},"status":{"loadBalancer":{"ingress":[{"hostname":"linkerd.io"}]}}}]}""")
   }
 
   trait Fixtures {
@@ -256,6 +256,30 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       doInit.setDone()
 
       assert(addrs == Set(Address("10.248.4.9", 9990), Address("10.248.8.9", 9990), Address("10.248.7.11", 9990)))
+    }
+  }
+
+  test("namer accepts port numbers when ingress is not defined") {
+    val _ = new Fixtures {
+
+      override def name = "/srv/80/projects"
+
+      assert(state == Activity.Pending)
+      doInit.setDone()
+
+      assert(addrs == Set(Address("10.248.0.11", 54321), Address("10.248.7.12", 54321), Address("10.248.8.10", 54321)))
+    }
+  }
+
+  test("namer accepts port numbers when ingress contains hostname") {
+    val _ = new Fixtures {
+
+      override def name = "/srv/80/events"
+
+      assert(state == Activity.Pending)
+      doInit.setDone()
+
+      assert(addrs == Set(Address("10.248.0.9", 54321), Address("10.248.5.8", 54321), Address("10.248.6.8", 54321)))
     }
   }
 
