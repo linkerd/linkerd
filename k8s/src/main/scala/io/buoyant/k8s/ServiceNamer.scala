@@ -200,11 +200,14 @@ object ServiceCache {
       name <- meta.name.toSeq
       status <- service.status.toSeq
       lb <- status.loadBalancer.toSeq
-      ingress <- lb.ingress.toSeq.flatten
       spec <- service.spec.toSeq
       port <- spec.ports
     } {
-      ports += port.name -> Address(new InetSocketAddress(ingress.ip, port.port))
+      for {
+        ingress <- lb.ingress.toSeq.flatten
+        hostname <- ingress.hostname.orElse(ingress.ip)
+      } ports += port.name -> Address(new InetSocketAddress(hostname, port.port))
+
       portMap += (port.targetPort match {
         case Some(targetPort) => port.port -> targetPort
         case None => port.port -> port.port
