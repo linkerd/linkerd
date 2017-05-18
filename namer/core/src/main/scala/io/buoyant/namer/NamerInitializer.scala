@@ -52,11 +52,21 @@ abstract class NamerConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def mk(params: Stack.Params): Namer = {
-    val underlying = newNamer(params)
 
-    transformers.toSeq.flatten.map(_.mk()).foldLeft(underlying) { (namer, transformer) =>
-      transformer.wrap(namer)
-    }
+    val namerStats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
+
+    val underlying = newNamer(params + param.Stats(namerStats))
+
+    val transformerStats = namerStats.scope("transformer")
+
+    transformers.toSeq.flatten
+      .map { config =>
+        val stats = param.Stats(transformerStats.scope(config.prefix.show.stripPrefix("/")))
+        config.mk(Stack.Params.empty + stats)
+      }
+      .foldLeft(underlying) { (namer, transformer) =>
+        transformer.wrap(namer)
+      }
   }
 }
 

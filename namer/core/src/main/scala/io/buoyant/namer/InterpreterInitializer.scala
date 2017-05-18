@@ -1,9 +1,9 @@
 package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
-import com.twitter.finagle.Stack
+import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.naming.NameInterpreter
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 import scala.util.control.NoStackTrace
 
 abstract class InterpreterConfig extends PolymorphicConfig {
@@ -35,8 +35,13 @@ abstract class InterpreterConfig extends PolymorphicConfig {
         "explicitly enabled by setting the `experimental' parameter to `true'."
       throw new IllegalArgumentException(msg) with NoStackTrace
     }
+
+    val transformerStats = params[param.Stats].statsReceiver.scope("transformer")
+
     transformers.toSeq.flatten.foldLeft(newInterpreter(params)) { (ni, transformerConfig) =>
-      (ni, transformerConfig.mk) match {
+      val stats = transformerStats.scope(transformerConfig.prefix.show.stripPrefix("/"))
+      val transformer = transformerConfig.mk(Stack.Params.empty + param.Stats(stats))
+      (ni, transformer) match {
         case (delegator: Delegator, transformer: DelegatingNameTreeTransformer) =>
           transformer.delegatingWrap(delegator)
         case (_, transformer) => transformer.wrap(ni)

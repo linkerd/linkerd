@@ -4,7 +4,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
@@ -125,7 +125,7 @@ object Linker {
 
       // Telemeters may provide StatsReceivers.
       val stats = mkStats(metrics, telemeters)
-      LoadedStatsReceiver.self = stats
+      LoadedStatsReceiver.self = NullStatsReceiver
       JvmStats.register(stats)
 
       val tracer = mkTracer(telemeters)
@@ -180,8 +180,9 @@ object Linker {
       }
 
       val impls = routers.map { router =>
-        val interpreter = router.interpreter.interpreter(params + Label(router.label))
-        router.router(params + DstBindingFactory.Namer(interpreter))
+        val stats = params[fparam.Stats].statsReceiver.scope(router.label)
+        val interpreter = router.interpreter.interpreter(params + Label(router.label) + fparam.Stats(stats))
+        router.router(params + fparam.Stats(stats) + DstBindingFactory.Namer(interpreter))
       }
 
       // Server sockets must not conflict

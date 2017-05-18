@@ -1,6 +1,7 @@
 ## In the latest release...
 
 * Expire idle services and clients.
+* Improve scoping of metrics for namers and transformers.
 
 ## 1.0.2 2017-05-12
 

@@ -65,7 +65,7 @@ case class ConsulConfig(
       // (retries are handled in BaseApi.infiniteRetryFilter)
       .withStack(Http.client.stack.remove(Retries.Role))
       .withParams(Http.client.params ++ params)
-      .withLabel(prefix.show.stripPrefix("/"))
+      .withLabel("clnt")
       .interceptInterrupts
       .failFast(failFast)
       .setAuthToken(token)
