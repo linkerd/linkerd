@@ -13,7 +13,7 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
     namers: Map[Path, Namer],
     store: DtabStore,
     stats: StatsReceiver
-  ): Servable = HttpControlServable(addr, store, delegate, namers, stats)
+  ): Servable = HttpControlServable(addr, store, delegate, namers, stats.scope(HttpControlServiceConfig.kind))
 
   @JsonIgnore
   def defaultAddr = HttpControlServiceConfig.defaultAddr
@@ -33,7 +33,6 @@ case class HttpControlServable(
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
   def serve(): ListeningServer = Http.server
-    .withLabel(HttpControlServiceConfig.kind)
     .withStreaming(true)
     .withStatsReceiver(stats)
     .serve(addr, new HttpControlService(store, delegate, namers))

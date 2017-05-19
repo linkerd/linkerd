@@ -34,6 +34,8 @@ case class ThriftInterpreterInterfaceConfig(
     store: DtabStore,
     stats: StatsReceiver
   ): Servable = {
+    val stats1 = stats.scope(ThriftInterpreterInterfaceConfig.kind)
+
     val retryIn: () => Duration = {
       val retry = retryBaseSecs.map(_.seconds).getOrElse(10.minutes)
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
@@ -45,12 +47,12 @@ case class ThriftInterpreterInterfaceConfig(
       new LocalStamper,
       retryIn,
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
-      stats
+      stats1
     )
     val params = (tls match {
       case Some(tlsConfig) => tlsConfig.params
       case None => Stack.Params.empty
-    }) + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
+    }) + param.Stats(stats1)
     ThriftServable(addr, iface, params)
   }
 }

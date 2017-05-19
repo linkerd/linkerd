@@ -22,15 +22,17 @@ class MeshIfaceConfig extends InterfaceConfig {
     stats: StatsReceiver
   ): Servable = new Servable {
     def kind = MeshIfaceInitializer.kind
+    private[this] val stats1 = stats.scope(kind)
+
     def serve() = {
       val dispatcher = {
         val codec = mesh.CodecService()
-        val interpreter = mesh.InterpreterService(store, namers, stats)
-        val delegator = mesh.DelegatorService(store, namers, stats)
-        val resolver = mesh.ResolverService(namers, stats)
+        val interpreter = mesh.InterpreterService(store, namers, stats1)
+        val delegator = mesh.DelegatorService(store, namers, stats1)
+        val resolver = mesh.ResolverService(namers, stats1)
         ServerDispatcher(codec, interpreter, delegator, resolver)
       }
-      H2.serve(addr, dispatcher)
+      H2.server.withStatsReceiver(stats1).serve(addr, dispatcher)
     }
   }
 }
