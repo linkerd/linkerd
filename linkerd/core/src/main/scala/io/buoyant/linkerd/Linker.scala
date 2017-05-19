@@ -208,6 +208,11 @@ object Linker {
     admin: Admin
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
-      copy(routers = routers.map(_.configured(t)))
+      copy(routers = routers.map { rt =>
+        t match {
+          case fparam.Stats(sr) => rt.configured(fparam.Stats(sr.scope("rt", rt.label)))
+          case _ => rt.configured(t)
+        }
+      })
   }
 }
