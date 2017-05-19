@@ -1,6 +1,7 @@
 ## In the latest release...
 
 * Expire idle services and clients.
+* Cache dtab observations in the io.l5d.consul store.
 
 ## 1.0.2 2017-05-12
 
