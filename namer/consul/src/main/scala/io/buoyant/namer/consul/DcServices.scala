@@ -1,7 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Addr, Failure}
+import com.twitter.finagle.{Addr, ConnectionFailedException, Failure}
 import com.twitter.util._
 import io.buoyant.consul.v1
 
@@ -56,6 +56,9 @@ private[consul] object DcServices {
       def loop(index0: Option[String], cache: Map[SvcKey, Var[Addr]]): Future[Unit] = {
         if (stopped) Future.Unit
         else getServices(index0).transform {
+          case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            // Drop the index, in case it's been reset by a consul restart
+            loop(None, cache)
           case Throw(e) =>
             // If an exception escaped getService's retries, we treat it as
             // effectively fatal to DC observation. In the future, we
