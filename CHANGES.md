@@ -1,7 +1,7 @@
 ## In the next release...
 
 * Expire idle services and clients.
-* Add support for mutual auth.
+* Add support for client auth TLS.
 
 ## 1.0.2 2017-05-12
 
