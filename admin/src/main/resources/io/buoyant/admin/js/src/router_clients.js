@@ -45,6 +45,11 @@ define([
     function pruneInactiveClients(metricsRsp, routerName) {
       var clientsRsp = _.get(metricsRsp, ["rt", routerName, "client"]);
       _.each(clientsRsp, function(clientData, client) {
+        if (_.isUndefined(_.get(activeClients, [routerName, client]))) {
+          // the client has not successfully made it through initializeClient
+          // e.g. clients with names we don't expect
+          return;
+        }
         if (_.isEmpty(clientData)) {
           if(!activeClients[routerName][client].isExpired) {
             activeClients[routerName][client].isExpired = true;

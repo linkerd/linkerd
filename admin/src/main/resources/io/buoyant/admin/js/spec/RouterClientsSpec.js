@@ -134,6 +134,26 @@ define([
       });
     });
 
+    it("ignores client names from the metrics response that aren't initialized", function() {
+      var realCollector = MetricsCollector(metricsJson);
+      RouterClients(realCollector, initialRouterData, $clientsEl, $combinedClientGraphEl, "multiplier");
+      var clientContainers = $clientsEl.find(".client-container");
+
+      var badClient = _.merge({}, {
+        rt: {
+          multiplier: {
+            client: {
+              "client that breaks rules": { fake_data: 1 },
+              "other client that breaks rules": {},
+              "$/inet/127.1/9030": {},
+              "$/inet/127.1/9029": { fake_data: 1 },
+            }
+          }
+        }
+      }, metricsJson);
+      realCollector.__update__(badClient);
+    });
+
     it("collapses clients when there are 6 or more of them", function() {
       RouterClients(collector, initialRouterData, $clientsEl, $combinedClientGraphEl, "divider");
       var contentContainers = $clientsEl.find(".client-content-container");
