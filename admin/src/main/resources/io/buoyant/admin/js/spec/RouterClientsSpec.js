@@ -152,6 +152,8 @@ define([
         }
       }, metricsJson);
       realCollector.__update__(badClient);
+
+      expect(clientContainers.length).toBe(3);
     });
 
     it("collapses clients when there are 6 or more of them", function() {
