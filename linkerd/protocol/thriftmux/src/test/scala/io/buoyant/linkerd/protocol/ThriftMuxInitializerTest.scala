@@ -3,7 +3,6 @@ package io.buoyant.linkerd.protocol
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.twitter.finagle.Path
 import com.twitter.finagle.Thrift.param
-import com.twitter.finagle.Thrift.param.AttemptTTwitterUpgrade
 import io.buoyant.linkerd.Linker
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.router.Thrift.param.MethodInDst
@@ -18,25 +17,26 @@ class ThriftMuxInitializerTest extends FunSuite with Exceptions {
        |routers:
        |- protocol: thriftmux
        |  experimental: true
+       |  thriftProtocol: compact
        |  thriftMethodInDst: true
        |  client:
        |    thriftFramed: false
-       |    thriftProtocol: binary
        |    attemptTTwitterUpgrade: false
        |  servers:
        |  - thriftFramed: true
-       |    thriftProtocol: compact
      """.stripMargin
 
     val linker = Linker.Initializers(Seq(ThriftMuxInitializer)).load(config)
     val router = linker.routers.head
-    val params = router.params[PerClientParams].paramsFor(Path.read("/foo"))
-    assert(router.params[MethodInDst].enabled)
-    assert(!params[param.Framed].enabled)
-    assert(!params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
-    assert(router.servers.head.params[param.Framed].enabled)
-    assert(router.servers.head.params[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
-    assert(!params[AttemptTTwitterUpgrade].upgrade)
+    val routerParams = router.params
+    val serverParams = router.servers.head.params
+    val clientParams = router.params[PerClientParams].paramsFor(Path.read("/foo"))
+    assert(routerParams[MethodInDst].enabled)
+    assert(routerParams[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
+    assert(serverParams[param.Framed].enabled)
+    assert(serverParams[param.ProtocolFactory].protocolFactory.isInstanceOf[TCompactProtocol.Factory])
+    assert(!clientParams[param.Framed].enabled)
+    assert(!clientParams[param.AttemptTTwitterUpgrade].upgrade)
   }
 
   test("unsupported thrift protocol") {
@@ -44,8 +44,7 @@ class ThriftMuxInitializerTest extends FunSuite with Exceptions {
        |routers:
        |- protocol: thriftmux
        |  experimental: true
-       |  servers:
-       |    thriftProtocol: magic
+       |  thriftProtocol: magic
      """.stripMargin
 
     assertThrows[JsonMappingException] {
@@ -58,15 +57,14 @@ class ThriftMuxInitializerTest extends FunSuite with Exceptions {
        |routers:
        |- protocol: thriftmux
        |  experimental: true
+       |  thriftProtocol: compact
        |  servers:
        |  - thriftFramed: true
-       |    thriftProtocol: compact
      """.stripMargin
 
     val linker = Linker.Initializers(Seq(ThriftMuxInitializer)).load(config)
     val router = linker.routers.head
     val params = router.params[PerClientParams].paramsFor(Path.read("/foo"))
-    assert(!params[AttemptTTwitterUpgrade].upgrade)
+    assert(!params[param.AttemptTTwitterUpgrade].upgrade)
   }
 }
-
