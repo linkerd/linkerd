@@ -1,16 +1,12 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
-import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.ssl.client.Netty4ClientEngineFactory
-import com.twitter.finagle.ssl.{Engine, Ssl, TrustCredentials}
-import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFactory, SslContextClientEngineFactory}
+import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFactory}
+import com.twitter.finagle.ssl.{KeyCredentials, TrustCredentials}
 import com.twitter.finagle.transport.Transport
-import java.io.FileInputStream
-import java.net.{InetSocketAddress, SocketAddress}
-import java.security.KeyStore
-import java.security.cert.{CertificateFactory, X509Certificate}
-import javax.net.ssl.{SSLContext, TrustManagerFactory}
+import com.twitter.io.{StreamIO, TempDirectory, TempFile}
+import java.io.{File, FileInputStream, FileOutputStream}
 
 object TlsClientPrep {
 
@@ -22,6 +18,8 @@ object TlsClientPrep {
 
   type Params = Stack.Params
 
+  case class ClientAuth(cert: File, key: File)
+
   /**
    * Configures TLS protocol parameters, including whether TLS should
    * be used at all.
@@ -31,7 +29,7 @@ object TlsClientPrep {
     sealed trait Config
 
     /** TODO support Protocols, Ciphers, & timeouts */
-    case class Secure() extends Config
+    case class Secure(clientAuth: Option[ClientAuth] = None) extends Config
 
     object Insecure extends Config
 
@@ -44,7 +42,7 @@ object TlsClientPrep {
   case class Trust(config: Trust.Config)
   implicit object Trust extends Stack.Param[Trust] {
     sealed trait Config
-    case class Verified(name: String, certs: Seq[X509Certificate]) extends Config
+    case class Verified(name: String, certPaths: Seq[String]) extends Config
     case object UnsafeNotVerified extends Config
     case object NotConfigured extends Config
 
@@ -86,7 +84,7 @@ object TlsClientPrep {
   def static[Req, Rsp](cn: String, trustCerts: Seq[String]): Stkable[Req, Rsp] =
     new TlsTrustModule[Req, Rsp] {
       override val transportSecurity = TransportSecurity.Secure()
-      override val trust = Trust.Verified(cn, trustCerts.map(loadCert(_)))
+      override val trust = Trust.Verified(cn, trustCerts)
     }
 
   def static[Req, Rsp](cn: String, trustCert: Option[String]): Stkable[Req, Rsp] =
@@ -124,24 +122,35 @@ object TlsClientPrep {
           case TransportSecurity.Insecure =>
             params + Transport.ClientSsl(None)
 
-          case TransportSecurity.Secure() =>
+          case TransportSecurity.Secure(clientAuth) =>
             params[Trust].config match {
               case Trust.NotConfigured =>
                 throw new IllegalArgumentException("no trust management policy configured for client TLS")
 
               case Trust.UnsafeNotVerified =>
-                val tlsConfig = SslClientConfiguration(trustCredentials = TrustCredentials.Insecure)
+                val tlsConfig = SslClientConfiguration(
+                  trustCredentials = TrustCredentials.Insecure,
+                  keyCredentials = keyCredentials(clientAuth)
+                )
                 params + Transport.ClientSsl(Some(tlsConfig)) +
                   SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
-              case Trust.Verified(cn, certs) =>
-                val tlsConfig = SslClientConfiguration(hostname = Some(cn))
-                val engineFactory = certs match {
-                  case Nil => Netty4ClientEngineFactory()
-                  case _ => new SslContextClientEngineFactory(sslContext(certs))
-                }
+              case Trust.Verified(cn, trustCerts) =>
+                val trustStreams = trustCerts.map(new FileInputStream(_))
+                val certCollection = File.createTempFile("certCollection", null)
+                val f = new FileOutputStream(certCollection)
+                for (cert <- trustStreams) StreamIO.copy(cert, f)
+                f.flush()
+                f.close()
+                certCollection.deleteOnExit()
+
+                val tlsConfig = SslClientConfiguration(
+                  hostname = Some(cn),
+                  trustCredentials = TrustCredentials.CertCollection(certCollection),
+                  keyCredentials = keyCredentials(clientAuth)
+                )
                 params + Transport.ClientSsl(Some(tlsConfig)) +
-                  SslClientEngineFactory.Param(engineFactory)
+                  SslClientEngineFactory.Param(Netty4ClientEngineFactory())
             }
         }
         Stack.Leaf(role, next.make(tlsParams))
@@ -166,29 +175,9 @@ object TlsClientPrep {
       }
     }
 
-  private[this] lazy val X509 = CertificateFactory.getInstance("X.509")
-  def loadCert(path: String): X509Certificate =
-    X509.generateCertificate(new FileInputStream(path)) match {
-      case c: X509Certificate => c
-      case c => throw new IllegalArgumentException(s"invalid cert type: $c")
+  private[this] def keyCredentials(clientAuth: Option[ClientAuth]): KeyCredentials =
+    clientAuth match {
+      case Some(ClientAuth(cert, key)) => KeyCredentials.CertAndKey(cert, key)
+      case None => KeyCredentials.Unspecified
     }
-
-  private[this] def sslContext(certs: Seq[X509Certificate]): SSLContext = {
-    // Establish an SSL context that uses the provided caCert
-    // Cribbed from http://stackoverflow.com/questions/18513792
-    val ks = KeyStore.getInstance(KeyStore.getDefaultType)
-    ks.load(null)
-    certs.map { cert =>
-      ks.setCertificateEntry(cert.getSubjectX500Principal.getName, cert)
-    }
-
-    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-    tmf.init(ks)
-
-    val ctx = SSLContext.getInstance("TLS")
-    ctx.init(null, tmf.getTrustManagers, null)
-
-    ctx
-  }
-
 }
