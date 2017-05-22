@@ -1,6 +1,7 @@
 ## In the latest release...
 
 * Expire idle services and clients.
+* Convert `thriftProtocol` from a client/server param to a router param.
 
 ## 1.0.2 2017-05-12
 
