@@ -13,20 +13,25 @@ import com.twitter.util._
 object Api {
   val BufSize = 8 * 1024
 
+  private[k8s] class Response(rsp: http.Response) extends Throwable({
+    val content = if (rsp.contentString.isEmpty) "(no content)" else rsp.contentString
+    s"""$rsp: $content"""
+  })
+
   val Closed = Failure("k8s observation released", Failure.Interrupted)
-  case class UnexpectedResponse(rsp: http.Response) extends Throwable
+  case class UnexpectedResponse(rsp: http.Response) extends Response(rsp)
 
   /**
    * Represents an HTTP 409 Conflict response, returned by the k8s API when attempting to update a
    * resource with an out-of-date resource version or when attempting to create a resource at an
    * existing name.
    */
-  case class Conflict(rsp: http.Response) extends Throwable
+  case class Conflict(rsp: http.Response) extends Response(rsp)
 
   /**
    * Represents an HTTP 404 Not Found response.
    */
-  case class NotFound(rsp: http.Response) extends Throwable
+  case class NotFound(rsp: http.Response) extends Response(rsp)
 
   private[k8s] def mkreq(
     method: http.Method,

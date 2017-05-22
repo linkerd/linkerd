@@ -1,6 +1,7 @@
 ## In the next release...
 
 * Expire idle services and clients.
+* Convert `thriftProtocol` from a client/server param to a router param.
 * Add support for client auth TLS.
 
 ## 1.0.2 2017-05-12
