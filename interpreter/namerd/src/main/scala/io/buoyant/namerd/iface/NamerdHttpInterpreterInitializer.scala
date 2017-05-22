@@ -79,13 +79,14 @@ case class NamerdHttpInterpreterConfig(
         }
     }
 
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+
     val client = Http.client
-      .withParams(Http.client.params ++ params)
+      .withParams(Http.client.params ++ tlsParams ++ params)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
       .withStreaming(true)
       .transformed(retryTransformer)
-      .transformed(TlsTransformer(tls))
 
     new StreamingNamerClient(client.newService(name, label), namespace.getOrElse("default"))
   }

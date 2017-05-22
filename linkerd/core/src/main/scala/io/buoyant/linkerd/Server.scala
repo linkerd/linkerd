@@ -5,7 +5,7 @@ import com.github.ghik.silencer.silent
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.conversions.time._
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.ssl._
+import com.twitter.finagle.ssl.{ClientAuth => FClientAuth, _}
 import com.twitter.finagle.ssl.server.{LegacyKeyServerEngineFactory, SslServerConfiguration, SslServerEngineFactory}
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.service.TimeoutFilter
@@ -121,7 +121,15 @@ class ServerConfig { config =>
       case Some(ps) => ApplicationProtocols.Supported(ps)
       case None => ApplicationProtocols.Unspecified
     }
+    val clientAuth = c.requireClientAuth match {
+      case Some(true) => FClientAuth.Needed
+      case _ => FClientAuth.Off
+    }
+    // The deprecated LegacyKeyServerEngineFactory allows us to accept PKCS#1 formatted keys.
+    // We should remove this and replace it with Netty4ServerEngineFactory once we no longer allow
+    // PKCS#1 keys.
     Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
+      clientAuth = clientAuth,
       keyCredentials = KeyCredentials.CertAndKey(new File(c.certPath), new File(c.keyPath)),
       trustCredentials = trust,
       cipherSuites = ciphers,
@@ -155,5 +163,6 @@ case class TlsServerConfig(
   certPath: String,
   keyPath: String,
   caCertPath: Option[String],
-  ciphers: Option[Seq[String]]
+  ciphers: Option[Seq[String]],
+  requireClientAuth: Option[Boolean]
 )

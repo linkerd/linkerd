@@ -1,17 +1,15 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
 import com.twitter.finagle.buoyant.h2.netty4._
-import com.twitter.finagle.param
+import com.twitter.finagle.buoyant.h2.{H2ApplicationProtocol, Request, Response}
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
+import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
-import com.twitter.finagle.service.StatsFilter
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Closable, Future}
-import java.net.SocketAddress
+import com.twitter.util.Closable
 import io.netty.handler.codec.http2.Http2Frame
+import java.net.SocketAddress
 
 object H2 extends Client[Request, Response] with Server[Request, Response] {
 
@@ -20,15 +18,11 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
 
   object Client {
 
-    val newStackWithoutTlsClientPrep: Stack[ServiceFactory[Request, Response]] =
-      StackClient.newStack[Request, Response]
-
     val newStack: Stack[ServiceFactory[Request, Response]] = {
-      // Netty4H2Transporter does its own TLS configuration, so
-      // prevent finagle from instrumenting SSL handlers.
+      // Advertise H2 support
       val stk = new StackBuilder(nilStack[Request, Response])
-      stk.push(TlsClientPrep.disableFinagleTls)
-      newStackWithoutTlsClientPrep ++ stk.result
+      stk.push(H2ApplicationProtocol.module)
+      StackClient.newStack[Request, Response] ++ stk.result
     }
 
     val defaultParams = StackClient.defaultParams +
