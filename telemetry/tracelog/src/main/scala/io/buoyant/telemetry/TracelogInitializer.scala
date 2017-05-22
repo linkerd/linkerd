@@ -1,9 +1,10 @@
 package io.buoyant.telemetry
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.Sampler
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.tracing.{Trace, Record, TraceId, Tracer}
+import com.twitter.finagle.tracing.{Record, Trace, TraceId, Tracer}
 import com.twitter.logging.{Level, Logger}
 
 class TracelogInitializer extends TelemeterInitializer {
@@ -13,7 +14,7 @@ class TracelogInitializer extends TelemeterInitializer {
 }
 
 case class TracelogConfig(
-  sampleRate: Option[Double],
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double],
   level: Option[Level]
 ) extends TelemeterConfig {
 
