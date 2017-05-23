@@ -3,7 +3,7 @@ package io.buoyant.interpreter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
+import com.twitter.finagle.buoyant.{TlsClientConfig, H2}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.ssl.ApplicationProtocols
@@ -64,9 +64,10 @@ case class MeshInterpreterConfig(
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val client = H2.client
-      .withParams(H2.client.params ++ params)
+      .withParams(H2.client.params ++ tlsParams ++ params)
       .newService(name, label)
 
     root.getOrElse(DefaultRoot) match {

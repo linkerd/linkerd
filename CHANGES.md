@@ -3,6 +3,7 @@
 * Expire idle services and clients.
 * Convert `thriftProtocol` from a client/server param to a router param.
 * Add support for client auth TLS.
+* Add TLS support for `io.l5d.httpController` and `io.l5d.mesh`.
 
 ## 1.0.2 2017-05-12
 

@@ -40,6 +40,9 @@ routers:
       commonName: linkerd.io
       trustCerts:
       - /certificates/cacert.pem
+      clientAuth:
+        certPath: /certificates/cert.pem
+        keyPath: /certificates/key.pem
 ```
 
 In order to send outgoing tls traffic, the tls parameter must be defined as a
@@ -75,4 +78,7 @@ routers:
         commonName: "{service}.linkerd.io"
         trustCerts:
         - /certificates/cacert.pem
+        clientAuth:
+          certPath: /certificates/cert.pem
+          keyPath: /certificates/key.pem
 ```

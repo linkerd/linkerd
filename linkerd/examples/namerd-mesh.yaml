@@ -1,4 +1,4 @@
-# Use the experimental namerd HTTP API for name resolution.
+# Use the experimental namerd gRPC API for name resolution.
 routers:
 - protocol: http
   interpreter:
