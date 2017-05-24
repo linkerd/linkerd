@@ -5,7 +5,7 @@ import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.logging.Logger
-import io.buoyant.router.RoutingFactory
+import io.buoyant.router.{ClientAuthorizationException, RoutingFactory}
 import java.net.URLEncoder
 import scala.util.control.NonFatal
 
@@ -21,6 +21,9 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
         case e@RoutingFactory.UnknownDst(_, _) =>
           log.debug(e, "unknown dst")
           Status.BadRequest
+        case e: ClientAuthorizationException =>
+          log.debug(e, "client not authorized")
+          Status.Forbidden
         case _ =>
           log.error(e, "service failure")
           Status.BadGateway

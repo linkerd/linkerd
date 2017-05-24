@@ -6,7 +6,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.{ClientAuth, DstBindingFactory, PathMatcher, TlsClientConfig => FTlsClientConfig}
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
-import io.buoyant.router.RetryBudgetConfig
+import io.buoyant.router.{ClientAuthorizationFilter, RetryBudgetConfig}
 import io.buoyant.router.RetryBudgetModule.param
 
 /**
@@ -23,6 +23,7 @@ trait ClientConfig {
   var failureAccrual: Option[FailureAccrualConfig] = None
   var requestAttemptTimeoutMs: Option[Int] = None
   var requeueBudget: Option[RetryBudgetConfig] = None
+  var clientAuthorization: Option[ClientAuthorization] = None
 
   @JsonIgnore
   def params(vars: Map[String, String]): Stack.Params = Stack.Params.empty
@@ -33,6 +34,7 @@ trait ClientConfig {
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(requeueBudget)
     .maybeWith(failureAccrual.map(FailureAccrualConfig.param))
+    .maybeWith(clientAuthorization.map(_.param))
 }
 
 case class TlsClientConfig(
@@ -66,5 +68,21 @@ case class HostConnectionPool(
     bufferSize = 0,
     idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime),
     maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
+  )
+}
+
+case class ClientAuthorization(
+  allowUnauthenticated: Option[Boolean],
+  allowAllAuthenticated: Option[Boolean],
+  allow: Option[Seq[String]],
+  deny: Option[Seq[String]]
+) {
+
+  @JsonIgnore
+  def param = ClientAuthorizationFilter.Param(
+    allowUnauthenticated.getOrElse(false),
+    allowAllAuthenticated.getOrElse(false),
+    allow.getOrElse(Nil),
+    deny.getOrElse(Nil)
   )
 }

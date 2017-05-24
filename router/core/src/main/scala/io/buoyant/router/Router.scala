@@ -313,6 +313,7 @@ object StackRouter {
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
+        .prepend(ClientAuthorizationFilter.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
