@@ -3,7 +3,8 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Namer, Path, Http, ListeningServer}
+import com.twitter.finagle.{Http, ListeningServer, Namer, Path, Stack}
+import com.twitter.finagle.param
 import io.buoyant.namerd._
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -13,7 +14,12 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
     namers: Map[Path, Namer],
     store: DtabStore,
     stats: StatsReceiver
-  ): Servable = HttpControlServable(addr, store, delegate, namers, stats)
+  ): Servable = {
+    val iface = new HttpControlService(store, delegate, namers)
+    val params = tlsParams + param.Stats(stats) + param.Label(HttpControlServiceConfig.kind)
+
+    HttpControlServable(addr, iface, params)
+  }
 
   @JsonIgnore
   def defaultAddr = HttpControlServiceConfig.defaultAddr
@@ -26,17 +32,15 @@ object HttpControlServiceConfig {
 
 case class HttpControlServable(
   addr: InetSocketAddress,
-  store: DtabStore,
-  delegate: Ns => NameInterpreter,
-  namers: Map[Path, Namer],
-  stats: StatsReceiver
+  iface: HttpControlService,
+  params: Stack.Params
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
-  def serve(): ListeningServer = Http.server
-    .withLabel(HttpControlServiceConfig.kind)
+  val http = Http.server
+  def serve(): ListeningServer = http
+    .withParams(http.params ++ params)
     .withStreaming(true)
-    .withStatsReceiver(stats)
-    .serve(addr, new HttpControlService(store, delegate, namers))
+    .serve(addr, iface)
 }
 
 class HttpControlServiceInitializer extends InterfaceInitializer {

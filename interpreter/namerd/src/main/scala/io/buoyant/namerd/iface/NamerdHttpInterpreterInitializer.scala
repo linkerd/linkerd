@@ -3,6 +3,7 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
@@ -27,7 +28,7 @@ case class NamerdHttpInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
   retry: Option[Retry],
-  tls: Option[ClientTlsConfig]
+  tls: Option[TlsClientConfig]
 ) extends NamespacedInterpreterConfig {
 
   @JsonIgnore

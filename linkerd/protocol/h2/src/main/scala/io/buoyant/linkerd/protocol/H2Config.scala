@@ -11,10 +11,6 @@ import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Response, Respon
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
-import com.twitter.finagle.ssl.ApplicationProtocols
-import com.twitter.finagle.ssl.client.SslClientConfiguration
-import com.twitter.finagle.ssl.server.SslServerEngineFactory
-import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
