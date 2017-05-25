@@ -1,7 +1,6 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.router.h2
 
-import com.twitter.io.Buf
-import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.Service
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.util.Future
 import io.buoyant.test.Awaits

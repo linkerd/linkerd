@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.buoyant.h2.netty4._
-import com.twitter.finagle.buoyant.h2.{H2ApplicationProtocol, Request, Response}
+import com.twitter.finagle.buoyant.h2.{H2ApplicationProtocol, Request, Response, TracingFilter}
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
@@ -22,6 +22,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       // Advertise H2 support
       val stk = new StackBuilder(nilStack[Request, Response])
       stk.push(H2ApplicationProtocol.module)
+      stk.push(TracingFilter.module)
       StackClient.newStack[Request, Response] ++ stk.result
     }
 
