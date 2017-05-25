@@ -211,7 +211,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
-          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show))
+          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
+            RouterLabel.Param(label))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
