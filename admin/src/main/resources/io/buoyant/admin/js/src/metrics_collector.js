@@ -15,7 +15,7 @@ define(['jQuery'], function($) {
       handler: function called with incoming tree data
     */
     function registerListener(listenerId, handler) {
-      listeners[listenerId] = handler;
+      listeners[listenerId] = !handler ? _.noop : handler;
     }
 
     function deregisterListener(listenerId) {
@@ -77,9 +77,7 @@ define(['jQuery'], function($) {
         prevMetrics = resp;
 
         _.each(listeners, function(handler) {
-          if(handler) {
-            handler(resp);
-          }
+          handler(resp);
         });
       }
 
