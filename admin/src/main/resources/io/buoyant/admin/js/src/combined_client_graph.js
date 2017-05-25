@@ -5,7 +5,6 @@ define([
 ], function(Utils) {
   var CombinedClientGraph = (function() {
     var ignoredClients = {};
-    var expiredClients = {};
 
     function clientToMetric(client) {
       return { name: client }; //TODO: move to clientName only after v2 migration
@@ -20,29 +19,17 @@ define([
       };
     }
 
-    function getExpiredClients(routerName) {
-      return _.reduce(expiredClients[routerName], function(mem, v, k) {
-        if(v) { mem.push(k); }
-        return mem;
-      }, []);
-    }
-
     function getClientsToDisplay(clients, routerName) {
       var nonIgnoredClients = _(clients).map(function(clientData, client) {
-        return !ignoredClients[routerName][client] ? client : null;
+        // expired clients have empty data
+        return !ignoredClients[routerName][client] && !_.isEmpty(clientData) ? client : null;
       }).compact().value();
 
-      // if all clients are collapsed, let the combined graph show all non-expired clients
-      if (_.isEmpty(nonIgnoredClients)) {
-        return _.difference(_.keys(clients), getExpiredClients(routerName));
-      } else {
-        return nonIgnoredClients;
-      }
+      return _.isEmpty(nonIgnoredClients) ? _.keys(clients) : nonIgnoredClients;
     }
 
     return function(metricsCollector, initialData, routerName, $root, colors) {
       ignoredClients[routerName] = {}; // clients that are minimized in the UI
-      expiredClients[routerName] = {}; // clients that are hidden from the UI
 
       var chart = new Utils.UpdateableChart(
         {
@@ -101,14 +88,6 @@ define([
 
         unIgnoreClient: function(client) {
           ignoredClients[routerName][client] = false;
-        },
-
-        expireClient: function(client) {
-          expiredClients[routerName][client] = true;
-        },
-
-        unexpireClient: function(client) {
-          expiredClients[routerName][client] = false;
         },
 
         updateColors: function(newColors) {

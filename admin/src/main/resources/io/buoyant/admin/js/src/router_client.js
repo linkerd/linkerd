@@ -184,13 +184,9 @@ define([
         label: client,
         expireClient: function() {
           // when metrics are pruned, kill this client
-          combinedClientGraph.expireClient(client);
           toggleClientDisplay(false);
         },
         unexpireClient: function(shouldExpand) {
-          // there is a difference between whether a client is toggled/not vs
-          // expired/not (completely hidden)
-          combinedClientGraph.unexpireClient(client);
           toggleClientDisplay(shouldExpand);
         },
         isExpired: false
