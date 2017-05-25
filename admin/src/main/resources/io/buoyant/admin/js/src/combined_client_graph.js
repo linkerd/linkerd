@@ -20,12 +20,20 @@ define([
     }
 
     function getClientsToDisplay(clients, routerName) {
-      var nonIgnoredClients = _(clients).map(function(clientData, client) {
-        // expired clients have empty data
-        return !ignoredClients[routerName][client] && !_.isEmpty(clientData) ? client : null;
-      }).compact().value();
+      var nonIgnoredClients = [];
+      var nonExpiredClients = [];
 
-      return _.isEmpty(nonIgnoredClients) ? _.keys(clients) : nonIgnoredClients;
+      _(clients).each(function(clientData, client) {
+        // expired clients have empty data
+        if (!_.isEmpty(clientData)) {
+          nonExpiredClients.push(client);
+          if (!ignoredClients[routerName][client]) {
+            nonIgnoredClients.push(client);
+          }
+        }
+      });
+
+      return _.isEmpty(nonIgnoredClients) ? nonExpiredClients : nonIgnoredClients;
     }
 
     return function(metricsCollector, initialData, routerName, $root, colors) {
