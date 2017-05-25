@@ -6,6 +6,8 @@ import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 import io.buoyant.namer.RichActivity
 
+import scala.util.matching.Regex
+
 case class IngressSpec(
   name: Option[String],
   namespace: Option[String],
@@ -16,13 +18,13 @@ case class IngressSpec(
     val matchingPath = rules.find(_.matches(hostHeader, requestPath))
     (matchingPath, fallbackBackend) match {
       case (Some(path), _) =>
-        log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
+        log.info("k8s found rule matching '%s' '%s': '%s'", hostHeader.getOrElse(""), requestPath, path)
         Some(path)
       case (None, Some(default)) =>
-        log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
+        log.info("k8s using default service '%s' for request '%s' '%s'", default, hostHeader.getOrElse(""), requestPath)
         Some(default)
       case _ =>
-        log.info("k8s no suitable rule found in %s for request %s %s", name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
+        log.info("k8s no suitable rule found in '%s' for request '%s' '%s'", name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
         None
     }
   }
@@ -31,34 +33,67 @@ case class IngressSpec(
 case class IngressPath(
   host: Option[String] = None,
   path: Option[String] = None,
+  useCapturingGroups: Option[Boolean],
   namespace: String,
   svc: String,
   port: String
 ) {
-  val compiledPath = path.map(_.r)
-  def uriMatches(uri: String, p: String): Boolean = p.isEmpty || (compiledPath exists { cp =>
+  val compiledPath: Option[Regex] = path.map(_.r)
+
+  def uriMatches(uri: String, p: String): Boolean = p.isEmpty || (compiledPath exists { (cp: Regex) =>
     uri match {
-      case cp() => true
+      case cp(_*) => true
       case _ => false
     }
   })
 
-  def matches(hostHeader: Option[String], requestPath: String) = {
+  def matches(hostHeader: Option[String], requestPath: String): Boolean = {
     (host, path) match {
-      case (Some(host), Some(p)) =>
-        uriMatches(requestPath, p) && hostHeader.contains(host)
-      case (Some(host), None) => hostHeader.contains(host)
+      case (Some(h), Some(p)) =>
+        uriMatches(requestPath, p) && hostHeader.contains(h)
+      case (Some(h), None) => hostHeader.contains(h)
       case (None, Some(p)) => uriMatches(requestPath, p)
       case (None, None) => true
     }
   }
 
+  def rewrite(requestUri: String, useCapturingGroupsGlobal: Boolean): String = {
+    (useCapturingGroupsGlobal, useCapturingGroups) match {
+      case (_, Some(true)) => captureGroupsToUri(requestUri)
+      case (true, None) => captureGroupsToUri(requestUri)
+      case (_, _) => requestUri
+    }
+  }
+
+  def hasNoCapturingGroups: Boolean = !hasCapturingGroups
+
+  def hasCapturingGroups: Boolean = compiledPath match {
+    case Some(r) if r.pattern.matcher("").groupCount() > 0 => true
+    case _ => false
+  }
+
+  private def captureGroupsToUri(requestUri: String): String = {
+    def captureGroups(pathRegex: Regex, uri: String) = {
+      if (hasNoCapturingGroups)
+        log.warning("Attempting to match capturing groups, but the pattern has none: '%s'", compiledPath.getOrElse(""))
+      for { m <- pathRegex findAllMatchIn uri; sub <- m.subgroups } yield sub
+    }
+
+    compiledPath match {
+      case Some(p) => captureGroups(p, requestUri)
+        .map(_.stripPrefix("/"))
+        .map(_.stripSuffix("/"))
+        .mkString("/", "/", "")
+      case None => requestUri
+    }
+  }
 }
 
 object IngressCache {
   type IngressState = Activity.State[Seq[IngressSpec]]
   val annotationKey = "kubernetes.io/ingress.class"
   val annotationValue = "linkerd"
+  val useCapturingGroupsKey = "linkerd.io/use-capturing-groups"
 
   private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ingresses: Seq[IngressSpec]): Option[IngressPath] =
     ingresses
@@ -127,6 +162,8 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
       case _ =>
     }
 
+    val useCapturingGroups = annotations.get(useCapturingGroupsKey).map(_.toBoolean)
+
     val namespace = ingress.metadata.flatMap(meta => meta.namespace)
     ingress.spec.map { spec =>
       val paths = for (
@@ -136,10 +173,10 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
         http <- rule.http.toSeq;
         path <- http.paths
       ) yield {
-        IngressPath(rule.host, path.path, namespace.getOrElse("default"), path.backend.serviceName, path.backend.servicePort)
+        IngressPath(rule.host, path.path, useCapturingGroups, namespace.getOrElse("default"), path.backend.serviceName, path.backend.servicePort)
       }
 
-      val fallback = spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort))
+      val fallback = spec.backend.map(b => IngressPath(None, None, useCapturingGroups, namespace.getOrElse("default"), b.serviceName, b.servicePort))
       IngressSpec(ingress.metadata.flatMap(_.name), namespace, fallback, paths)
     }
   }

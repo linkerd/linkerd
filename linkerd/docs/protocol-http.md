@@ -343,6 +343,56 @@ Key  | Default Value | Description
 namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
+useCapturingGroups | `false` | Enable path regular expression capturing groups feature.
+
+#### Capturing groups
+
+> This example watches all ingress resources in all namespaces and uses capturing group feature (using configuration):
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.ingress
+    useCapturingGroups: true
+  servers:
+  - port: 4140
+  dtab: /svc => /#/io.l5d.k8s
+
+namers:
+- kind: io.l5d.k8s
+```
+
+> An example ingress resource watched by the linkerd ingress controller (using annotation):
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-first-ingress
+  namespace: default
+annotations:
+  kubernetes.io/ingress.class: "linkerd"
+  linkerd.io/use-capturing-groups: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /testpath(/?.*)
+        backend:
+          serviceName: test
+          servicePort: 80
+```
+
+> So an HTTP request like `http://localhost:4140/testpath/1/abcd` would have path rewritten to `/1/abcd`
+
+Ingress path | Request path | Request path to kubernetes service
+------------ | ------------ | ----------------------------------
+`/testpath/(.+)` | `/testpath/a/b/1234` | `/a/b/1234`
+`/testpath/(.+)/b/([0-9]+)` | `/testpath/a/b/1234` | `/a/1234`
+`/testpath/(.+)/(b)/(.+)` | `/testpath/a/b/1234` | `/a/b/1234`
+`/.+/(.+)/(b)/(.+)` | `/testpath/a/b/1234` | `/a/b/1234`
+`/testpath/(.+)` | `/wrong/path` | `/`
 
 #### Identifier Path Parameters
 
