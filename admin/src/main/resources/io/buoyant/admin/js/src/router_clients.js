@@ -33,10 +33,6 @@ define([
       }
     }
 
-    function findClientContainerEl(client) {
-      return $($(".router-clients").find("[data-client='/" + client + "']")[0]);
-    }
-
     function getNumActiveClients(routerName) {
       var countByActive = _.countBy(activeClients[routerName], ["isExpired", false]);
       return countByActive.true || 0;
@@ -87,12 +83,10 @@ define([
               });
             });
         }
-        $container.on("expire-client", function(_e, clientInfo) {
-          console.log("expire trigger", clientInfo);
+        $container.on("expire-client", function() {
           $container.hide();
         });
-        $container.on("revive-client", function(_e, clientInfo) {
-          console.log("revive trigger", clientInfo);
+        $container.on("revive-client", function() {
           $container.show();
         });
 

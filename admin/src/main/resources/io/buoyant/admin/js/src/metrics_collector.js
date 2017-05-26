@@ -15,7 +15,7 @@ define(['jQuery'], function($) {
       handler: function called with incoming tree data
     */
     function registerListener(listenerId, handler) {
-      listeners[listenerId] = !handler ? _.noop : handler;
+      listeners[listenerId] = handler;
     }
 
     function deregisterListener(listenerId) {
@@ -77,7 +77,7 @@ define(['jQuery'], function($) {
         prevMetrics = resp;
 
         _.each(listeners, function(handler) {
-          handler(resp); // TODO: fix case where we expire clients and in the intervening time don't delete from the map
+          handler(resp);
         });
       }
 

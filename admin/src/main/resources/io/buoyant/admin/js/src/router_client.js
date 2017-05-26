@@ -175,14 +175,12 @@ define([
         if (_.isEmpty(clientMetrics)) {
           if (!isExpired) {
             isExpired = true;
-            console.log(client, "EXPIRED");
-            $container.trigger("expire-client", { client: client, router: routerName});
+            $container.trigger("expire-client");
           }
         } else {
           if (isExpired) {
             isExpired = false;
-            console.log(client, "REVIVED");
-            $container.trigger("revive-client", { client: client, router: routerName});
+            $container.trigger("revive-client");
           }
 
           var summaryData = getSummaryData(data, metricDefinitions);

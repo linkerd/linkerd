@@ -111,12 +111,10 @@ define([
 
       RouterClients(collector, routerData, $clientsEl, $combinedClientGraphEl, "few_clients");
       var clientContainers = $clientsEl.find(".client-container");
-      var contentContainers = $clientsEl.find(".client-content-container");
 
       expect(clientContainers.length).toBe(4);
-      expect(contentContainers.length).toBe(4);
 
-      _.each(contentContainers, function(clientContainer) {
+      _.each(clientContainers, function(clientContainer) {
         expect($(clientContainer).css("display")).toBe('');
       });
     });
@@ -124,12 +122,10 @@ define([
     it("ignores clients with names we don't expect", function() {
       RouterClients(collector, initialRouterData, $clientsEl, $combinedClientGraphEl, "multiplier");
       var clientContainers = $clientsEl.find(".client-container");
-      var contentContainers = $clientsEl.find(".client-content-container");
 
       expect(clientContainers.length).toBe(3);
-      expect(contentContainers.length).toBe(3);
 
-      _.each(contentContainers, function(clientContainer) {
+      _.each(clientContainers, function(clientContainer) {
         expect($(clientContainer).css("display")).toBe('');
       });
     });
@@ -192,18 +188,17 @@ define([
       RouterClients(realCollector, routerData, $clientsEl, $combinedClientGraphEl, "to_be_expired");
 
       var clientContainers = $clientsEl.find(".client-container");
-      var contentContainers = $clientsEl.find(".client-content-container");
 
-      _.each(contentContainers, function(clientContainer) {
+      _.each(clientContainers, function(clientContainer) {
         expect($(clientContainer).css("display")).toBe('');
       });
+      expect(clientContainers.length).toBe(3);
 
       realCollector.__update__(expiredMetricsJson);
 
       expect(clientContainers.length).toBe(3);
-      expect(contentContainers.length).toBe(3);
 
-      _.each(contentContainers, function(clientContainer) {
+      _.each(clientContainers, function(clientContainer) {
         expect($(clientContainer).css("display")).toBe('none');
       });
     });
