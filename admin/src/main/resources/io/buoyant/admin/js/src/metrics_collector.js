@@ -77,7 +77,7 @@ define(['jQuery'], function($) {
         prevMetrics = resp;
 
         _.each(listeners, function(handler) {
-          handler(resp);
+          handler(resp); // TODO: fix case where we expire clients and in the intervening time don't delete from the map
         });
       }
 

@@ -42,31 +42,6 @@ define([
       return countByActive.true || 0;
     }
 
-    function pruneInactiveClients(metricsRsp, routerName) {
-      var clientsRsp = _.get(metricsRsp, ["rt", routerName, "client"]);
-      _.each(clientsRsp, function(clientData, client) {
-        if (_.isUndefined(_.get(activeClients, [routerName, client]))) {
-          // the client has not successfully made it through initializeClient
-          // e.g. clients with names we don't expect
-          return;
-        }
-        if (_.isEmpty(clientData)) {
-          if(!activeClients[routerName][client].isExpired) {
-            activeClients[routerName][client].isExpired = true;
-            activeClients[routerName][client].expireClient();
-            findClientContainerEl(client).hide();
-          }
-        } else {
-          if(activeClients[routerName][client].isExpired) {
-            activeClients[routerName][client].isExpired = false;
-            var shouldExpand = shouldExpandClient(routerName);
-            activeClients[routerName][client].unexpireClient(shouldExpand);
-            findClientContainerEl(client).show();
-          }
-        }
-      });
-    }
-
     return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
       var clientContainerTemplate = templates.router_client_container;
 
@@ -87,7 +62,6 @@ define([
       }
 
       metricsCollector.onAddedClients(addClients);
-      metricsCollector.registerListener("RouterClients_" + routerName, metricsHandler);
 
       function initializeClient(client) {
         $clientEl.show();
@@ -113,16 +87,20 @@ define([
               });
             });
         }
+        $container.on("expire-client", function(_e, clientInfo) {
+          console.log("expire trigger", clientInfo);
+          $container.hide();
+        });
+        $container.on("revive-client", function(_e, clientInfo) {
+          console.log("revive trigger", clientInfo);
+          $container.show();
+        });
 
         var shouldExpand = shouldExpandClient(routerName, initialData[routerName].clients.length);
         var routerClient = RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
         activeClients[routerName][client] = routerClient;
 
         return routerClient;
-      }
-
-      function metricsHandler(data) {
-        pruneInactiveClients(data, routerName);
       }
 
       function addClients(addedClients) {

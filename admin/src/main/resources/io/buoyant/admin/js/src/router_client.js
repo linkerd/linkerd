@@ -113,6 +113,7 @@ define([
     }
 
     return function (metricsCollector, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+      var isExpired = false;
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -170,26 +171,34 @@ define([
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data, metricDefinitions);
-        var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
-        var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+        var clientMetrics = _.get(data, ["rt", routerName, "client", client]);
+        if (_.isEmpty(clientMetrics)) {
+          if (!isExpired) {
+            isExpired = true;
+            console.log(client, "EXPIRED");
+            $container.trigger("expire-client", { client: client, router: routerName});
+          }
+        } else {
+          if (isExpired) {
+            isExpired = false;
+            console.log(client, "REVIVED");
+            $container.trigger("revive-client", { client: client, router: routerName});
+          }
 
-        successRateChart.updateMetrics(getSuccessRate(summaryData));
-        lbBarChart.update(summaryData);
+          var summaryData = getSummaryData(data, metricDefinitions);
+          var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
+          var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
 
-        renderMetrics($metricsEl, client, summaryData, latencies);
+          successRateChart.updateMetrics(getSuccessRate(summaryData));
+          lbBarChart.update(summaryData);
+
+          renderMetrics($metricsEl, client, summaryData, latencies);
+        }
       }
 
       return {
         label: client,
-        expireClient: function() {
-          // when metrics are pruned, kill this client
-          toggleClientDisplay(false);
-        },
-        unexpireClient: function(shouldExpand) {
-          toggleClientDisplay(shouldExpand);
-        },
-        isExpired: false
+        isExpired: isExpired
       };
     };
   })();
