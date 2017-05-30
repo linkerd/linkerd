@@ -105,6 +105,9 @@ define([
           obj.isException = true;
           break;
       }
+      if (obj.addr && obj.addr.type == "neg") {
+        obj.isNeg = true;
+      }
       obj.weight = weight;
       obj.isPrimary = primary;
       obj.isSuccess = ttype == success;
