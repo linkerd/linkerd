@@ -15,6 +15,7 @@ define([
   var RouterClients = (function() {
     var EXPAND_CLIENT_THRESHOLD = 6;
     var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
+    var activeClients = {};
 
     function assignColorsToClients(colors, clients) {
       return _.reduce(clients, function(clientMapping, client, idx) {
@@ -23,9 +24,18 @@ define([
       }, {});
     }
 
-    function shouldExpandClient(numClients) {
+    function shouldExpandClient(routerName, initialClients) {
       // if there are many clients, collapse them by default to improve page perfomance
-      return numClients < EXPAND_CLIENT_THRESHOLD;
+      if (initialClients) {
+        return initialClients < EXPAND_CLIENT_THRESHOLD;
+      } else {
+        return getNumActiveClients(routerName) < EXPAND_CLIENT_THRESHOLD;
+      }
+    }
+
+    function getNumActiveClients(routerName) {
+      var countByActive = _.countBy(activeClients[routerName], ["isExpired", false]);
+      return countByActive.true || 0;
     }
 
     return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
@@ -36,6 +46,7 @@ define([
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
+      activeClients[routerName] = {};
       var routerClients = _.map(clients, function(client) {
         return initializeClient(client);
       });
@@ -72,9 +83,18 @@ define([
               });
             });
         }
+        $container.on("expire-client", function() {
+          $container.hide();
+        });
+        $container.on("revive-client", function() {
+          $container.show();
+        });
 
-        var shouldExpand = shouldExpandClient(initialData[routerName].clients.length);
-        return RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
+        var shouldExpand = shouldExpandClient(routerName, initialData[routerName].clients.length);
+        var routerClient = RouterClient(metricsCollector, client, $container, routerName, colorsForClient, shouldExpand, combinedClientGraph);
+        activeClients[routerName][client] = routerClient;
+
+        return routerClient;
       }
 
       function addClients(addedClients) {

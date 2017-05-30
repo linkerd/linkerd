@@ -7,19 +7,19 @@ define(['jQuery'], function($) {
 
   var MetricsCollector = (function() {
     var updateUri = "admin/metrics.json?tree=1";
-    var listeners = [];
+    var listeners = {};
     var clients = {};
 
     /**
       Register a listener to receive metric updates.
       handler: function called with incoming tree data
     */
-    function registerListener(handler) {
-      listeners.push({handler: handler});
+    function registerListener(listenerId, handler) {
+      listeners[listenerId] = handler;
     }
 
-    function deregisterListener(handler) {
-      _.remove(listeners, function(l) { return l.handler === handler; });
+    function deregisterListener(listenerId) {
+      delete(listeners[listenerId]);
     }
 
     function calculateDeltas(resp, prevResp) {
@@ -76,8 +76,8 @@ define(['jQuery'], function($) {
 
         prevMetrics = resp;
 
-        _.each(listeners, function(listener) {
-          listener.handler(resp);
+        _.each(listeners, function(handler) {
+          handler(resp);
         });
       }
 

@@ -20,16 +20,24 @@ define([
     }
 
     function getClientsToDisplay(clients, routerName) {
-      var nonIgnoredClients = _(clients).map(function(clientData, client) {
-        return !ignoredClients[routerName][client] ? client : null;
-      }).compact().value();
+      var nonIgnoredClients = [];
+      var nonExpiredClients = [];
 
-      // if all clients are collapsed, let the combined graph show all clients
-      return _.isEmpty(nonIgnoredClients) ? _.keys(clients) : nonIgnoredClients;
+      _(clients).each(function(clientData, client) {
+        // expired clients have empty data
+        if (!_.isEmpty(clientData)) {
+          nonExpiredClients.push(client);
+          if (!ignoredClients[routerName][client]) {
+            nonIgnoredClients.push(client);
+          }
+        }
+      });
+
+      return _.isEmpty(nonIgnoredClients) ? nonExpiredClients : nonIgnoredClients;
     }
 
     return function(metricsCollector, initialData, routerName, $root, colors) {
-      ignoredClients[routerName] = {};
+      ignoredClients[routerName] = {}; // clients that are minimized in the UI
 
       var chart = new Utils.UpdateableChart(
         {
@@ -73,7 +81,8 @@ define([
         chart.updateMetrics(dataToDisplay);
       };
 
-      metricsCollector.registerListener(metricsListener);
+      metricsCollector.registerListener("CombinedClientGraph_" + routerName, metricsListener);
+
       return {
         addClients: function(clients) {
           chart.addMetrics(_.map(clients, function(client) {
