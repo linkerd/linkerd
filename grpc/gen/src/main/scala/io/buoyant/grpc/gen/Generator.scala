@@ -134,8 +134,8 @@ object Generator {
 
   private[this] def genEnum(enum: ProtoFile.EnumType, indent: String): String = {
     val decoders = enum.values.map { v => s"case ${v.number} => ${v.name}" }
-    val encoders = enum.values.map { v => s"case ${v.name} => pbos.writeEnumNoTag(${v.number})" }
-    val sizers = enum.values.map { v => s"case ${v.name} => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
+    val encoders = enum.values.map { v => s"case `${v.name}` => pbos.writeEnumNoTag(${v.number})" }
+    val sizers = enum.values.map { v => s"case `${v.name}` => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
 
     s"""|${indent}object ${enum.name} extends scala.Enumeration {
         |${indent}  val ${enum.values.map(_.name).mkString(", ")} = Value
