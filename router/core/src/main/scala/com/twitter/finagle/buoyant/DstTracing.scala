@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
+import io.buoyant.router.RouterLabel
 
 object DstTracing {
 
@@ -9,10 +10,10 @@ object DstTracing {
     val role = Stack.Role("DstTracing.Path")
 
     def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-      new Stack.Module2[Dst.Path, param.Label, ServiceFactory[Req, Rsp]] {
+      new Stack.Module2[Dst.Path, RouterLabel.Param, ServiceFactory[Req, Rsp]] {
         val role = Path.role
         val description = "Traces unbound destination"
-        def make(dst: Dst.Path, label: param.Label, next: ServiceFactory[Req, Rsp]) =
+        def make(dst: Dst.Path, label: RouterLabel.Param, next: ServiceFactory[Req, Rsp]) =
           new Proxy(dst, label.label, next)
       }
 

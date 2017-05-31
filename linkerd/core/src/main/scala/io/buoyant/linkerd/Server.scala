@@ -37,12 +37,6 @@ trait Server {
 }
 
 object Server {
-
-  case class RouterLabel(label: String)
-  implicit object RouterLabel extends Stack.Param[RouterLabel] {
-    val default = RouterLabel("")
-  }
-
   /**
    * A [[Server]] that is fully configured but not yet listening.
    */
@@ -77,7 +71,6 @@ object Server {
 
     override def withParams(ps: Stack.Params): Server = copy(params = ps)
   }
-
 }
 
 class ServerConfig { config =>
