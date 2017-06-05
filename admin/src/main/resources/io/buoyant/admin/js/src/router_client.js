@@ -140,6 +140,8 @@ define([
       var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
+      metricsCollector.registerListener(getClientId(routerName, client), metricsHandler);
+
       // collapse client section by default (deal with large # of clients)
       toggleClientDisplay(shouldExpandInitially);
 
@@ -158,7 +160,6 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(getClientId(routerName, client), metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
