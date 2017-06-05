@@ -111,19 +111,21 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 
   return "  <li class='list-group-item\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.isPrimary : depth0),{"name":"if","hash":{},"fn":container.program(30, data, 0),"inverse":container.program(35, data, 0),"data":data})) != null ? stack1 : "")
-    + "'\n"
+    + "'\n\n"
     + ((stack1 = helpers["with"].call(alias1,(depth0 != null ? depth0.dentry : depth0),{"name":"with","hash":{},"fn":container.program(37, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + ">\n    <div class='node-info'>\n"
+    + ">\n\n    <div class='node-info'>\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.isNeg : depth0),{"name":"if","hash":{},"fn":container.program(39, data, 0),"inverse":container.program(41, data, 0),"data":data})) != null ? stack1 : "")
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.weight : depth0),{"name":"if","hash":{},"fn":container.program(52, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + "    </div>\n"
+    + "    </div>\n\n"
     + ((stack1 = helpers["with"].call(alias1,(depth0 != null ? depth0.addr : depth0),{"name":"with","hash":{},"fn":container.program(54, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + "    "
+    + "\n    <span>\n      "
+    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.id : depth0),{"name":"if","hash":{},"fn":container.program(57, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + "\n      <span class='path'>(residual: "
     + container.escapeExpression(((helper = (helper = helpers.path || (depth0 != null ? depth0.path : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"path","hash":{},"data":data}) : helper)))
-    + "\n"
-    + ((stack1 = helpers["with"].call(alias1,(depth0 != null ? depth0.dentry : depth0),{"name":"with","hash":{},"fn":container.program(57, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + ")</span>\n    </span>\n\n"
+    + ((stack1 = helpers["with"].call(alias1,(depth0 != null ? depth0.dentry : depth0),{"name":"with","hash":{},"fn":container.program(59, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "  </li>\n"
-    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.transformed : depth0),{"name":"if","hash":{},"fn":container.program(59, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.transformed : depth0),{"name":"if","hash":{},"fn":container.program(61, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
 },"30":function(container,depth0,helpers,partials,data) {
     var stack1;
 
@@ -187,6 +189,12 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     + alias4(((helper = (helper = helpers.port || (depth0 != null ? depth0.port : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"port","hash":{},"data":data}) : helper)))
     + "\n";
 },"57":function(container,depth0,helpers,partials,data) {
+    var helper;
+
+  return "["
+    + container.escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"id","hash":{},"data":data}) : helper)))
+    + "]";
+},"59":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "      <span class='node-dentry'>"
@@ -194,7 +202,7 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     + " => "
     + alias4(((helper = (helper = helpers.dst || (depth0 != null ? depth0.dst : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"dst","hash":{},"data":data}) : helper)))
     + "</span>\n";
-},"59":function(container,depth0,helpers,partials,data) {
+},"61":function(container,depth0,helpers,partials,data) {
     var stack1, helper;
 
   return "  <ul class='list-group'>"
