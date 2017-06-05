@@ -85,7 +85,7 @@ define([
       routerClients = _.compact(routerClients);
 
       if (routerClients.length == 0) {
-        $clientEl.hide();
+        $clientEl.addClass("hidden");
       } else {
         clientExpandState[routerName] = routerClients.length > EXPAND_CLIENT_THRESHOLD ? expandStates.collapsed : expandStates.expanded;
       }
@@ -103,7 +103,7 @@ define([
       metricsCollector.onAddedClients(addClients);
 
       function initializeClient(client) {
-        $clientEl.show();
+        $clientEl.removeClass("hidden");
         var colorsForClient = clientToColor[client];
         var match = ('/' + client).match(TRANSFORMER_RE);
 
@@ -137,11 +137,16 @@ define([
         activeClients[routerName][client] = routerClient;
 
         $container.on("expire-client", function() {
-          $container.hide();
+          $container.addClass("hidden");
+
+          if (getNumActiveClients(routerName) === 0) {
+            $clientEl.addClass("hidden");
+          }
         });
         $container.on("revive-client", function() {
           routerClient.toggleClientDisplay(clientExpandState[routerName] !== expandStates.collapsed);
-          $container.show();
+          $clientEl.removeClass("hidden");
+          $container.removeClass("hidden");
         });
         $container.on("expand-custom", function() {
           clientExpandState[routerName] = expandStates.custom;

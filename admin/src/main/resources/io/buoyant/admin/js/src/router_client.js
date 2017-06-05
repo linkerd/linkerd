@@ -177,6 +177,7 @@ define([
 
       function metricsHandler(data) {
         var clientMetrics = _.get(data, ["rt", routerName, "client", client]);
+
         if (_.isEmpty(clientMetrics)) {
           if (!isExpired) {
             isExpired = true;
