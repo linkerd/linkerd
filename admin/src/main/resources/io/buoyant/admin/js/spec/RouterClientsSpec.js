@@ -115,7 +115,7 @@ define([
       expect(clientContainers.length).toBe(4);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
     });
 
@@ -126,7 +126,7 @@ define([
       expect(clientContainers.length).toBe(3);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
     });
 
@@ -158,7 +158,7 @@ define([
 
       expect(contentContainers.length).toBe(6);
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe("none");
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
     });
 
@@ -190,7 +190,7 @@ define([
       var clientContainers = $clientsEl.find(".client-container");
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
       expect(clientContainers.length).toBe(3);
 
@@ -199,7 +199,7 @@ define([
       expect(clientContainers.length).toBe(3);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
     });
 
@@ -232,7 +232,7 @@ define([
       expect(clientContainers.length).toBe(7);
       expect(contentContainers.length).toBe(7);
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
 
       realCollector.__update__(addMoreClientsJson);
@@ -243,7 +243,7 @@ define([
       expect(contentContainers.length).toBe(9);
 
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
     });
 
@@ -276,7 +276,7 @@ define([
       expect(clientContainers.length).toBe(7);
       expect(contentContainers.length).toBe(7);
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
 
       var $expandLink = $clientsEl.find(".client-expand")[0];
@@ -292,7 +292,7 @@ define([
       var numCollapsed = 0;
       var numExpanded = 0;
       _.each(contentContainers, function(clientContainer) {
-        if($(clientContainer).css("display") === 'none') {
+        if($(clientContainer).hasClass("hidden")) {
           numCollapsed++;
         } else {
           numExpanded++;

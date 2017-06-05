@@ -166,9 +166,15 @@ define([
           combinedClientGraph.ignoreClient(client);
         }
 
-        $contentContainer.toggle(expand);
-        $collapseLink.toggle(expand);
-        $expandLink.toggle(!expand);
+        if (expand) {
+          $contentContainer.removeClass("hidden");
+          $collapseLink.removeClass("hidden");
+          $expandLink.addClass("hidden");
+        } else {
+          $contentContainer.addClass("hidden");
+          $collapseLink.addClass("hidden");
+          $expandLink.removeClass("hidden");
+        }
       }
 
       function getClientId(router, client) {
