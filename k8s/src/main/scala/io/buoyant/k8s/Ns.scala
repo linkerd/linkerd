@@ -60,7 +60,8 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
       case Some(ns) => ns
       case None =>
         val ns = mkCache(name)
-        val closable = retryToActivity { watch(name, labelSelector, ns) }
+        val resource = mkResource(name)
+        val closable = retryToActivity { watch(resource, labelSelector, ns) }
         _watches += (name -> closable)
         caches() = caches.sample + (name -> ns)
         ns
@@ -69,10 +70,14 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
 
   val namespaces: Var[Set[String]] = caches.map(_.keySet)
 
-  private[this] def watch(namespace: String, labelSelector: Option[String], cache: Cache): Future[Closable] = {
-    val resource = mkResource(namespace)
+  private[this] def watch(
+    resource: NsListResource[O, W, L],
+    labelSelector: Option[String],
+    cache: Cache
+  ): Future[Closable] = {
+
     Trace.letClear {
-      log.info("k8s initializing %s", namespace)
+      log.info("k8s initializing %s", resource.ns)
       resource.get().map { list =>
         cache.initialize(list)
         val (updates, closable) = resource.watch(
