@@ -98,7 +98,7 @@ define([
     });
 
     it("initializes and renders the clients", function() {
-      var routerData = _.merge({
+      var routerData = _.merge({}, {
         few_clients: {
           clients: [
             "$/inet/127.1/1111",
@@ -115,7 +115,7 @@ define([
       expect(clientContainers.length).toBe(4);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
     });
 
@@ -126,7 +126,7 @@ define([
       expect(clientContainers.length).toBe(3);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
     });
 
@@ -158,12 +158,12 @@ define([
 
       expect(contentContainers.length).toBe(6);
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe("none");
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
     });
 
     it("doesn't display a client section if there are zero clients", function() {
-      var routerData = _.merge({
+      var routerData = _.merge({}, {
         nothing_here: { clients: [] }
       }, initialRouterData);
 
@@ -175,7 +175,7 @@ define([
 
     it("stops rendering clients when they are expired", function() {
       var realCollector = MetricsCollector(metricsJson);
-      var routerData = _.merge({
+      var routerData = _.merge({}, {
         to_be_expired: {
           clients: [
             "$/inet/127.1/9030",
@@ -190,7 +190,7 @@ define([
       var clientContainers = $clientsEl.find(".client-container");
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('');
+        expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
       expect(clientContainers.length).toBe(3);
 
@@ -199,13 +199,13 @@ define([
       expect(clientContainers.length).toBe(3);
 
       _.each(clientContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
     });
 
     it("adds and collapses new clients if are many clients already", function() {
       var realCollector = MetricsCollector(metricsJson);
-      var addMoreClientsJson = _.merge({}, metricsJson, {
+      var addMoreClientsJson = _.merge({}, {
         rt: {
           lots_of_clients: {
             client: {
@@ -222,7 +222,7 @@ define([
             }
           }
         }
-      });
+      }, metricsJson);
 
       RouterClients(realCollector, initialRouterData, $clientsEl, $combinedClientGraphEl, "lots_of_clients");
 
@@ -232,7 +232,7 @@ define([
       expect(clientContainers.length).toBe(7);
       expect(contentContainers.length).toBe(7);
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
 
       realCollector.__update__(addMoreClientsJson);
@@ -243,8 +243,64 @@ define([
       expect(contentContainers.length).toBe(9);
 
       _.each(contentContainers, function(clientContainer) {
-        expect($(clientContainer).css("display")).toBe('none');
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
       });
+    });
+
+    it("adds and expands new clients if the user has manually toggled any client (custom)", function() {
+      var realCollector = MetricsCollector(metricsJson);
+      var addMoreClientsJson = _.merge({}, {
+        rt: {
+          lots_of_clients: {
+            client: {
+              "$/inet/127.1/8765": {
+                "connect_latency_ms": {
+                  "stat.count": 0
+                }
+              },
+              "$/inet/127.1/9876": {
+                "connect_latency_ms": {
+                  "stat.count": 0
+                }
+              }
+            }
+          }
+        }
+      }, metricsJson);
+
+      RouterClients(realCollector, initialRouterData, $clientsEl, $combinedClientGraphEl, "lots_of_clients");
+
+      var clientContainers = $clientsEl.find(".client-container");
+      var contentContainers = $clientsEl.find(".client-content-container");
+
+      expect(clientContainers.length).toBe(7);
+      expect(contentContainers.length).toBe(7);
+      _.each(contentContainers, function(clientContainer) {
+        expect($(clientContainer).hasClass("hidden")).toBe(true);
+      });
+
+      var $expandLink = $clientsEl.find(".client-expand")[0];
+      $expandLink.click();
+
+      realCollector.__update__(addMoreClientsJson);
+
+      clientContainers = $clientsEl.find(".client-container");
+      contentContainers = $clientsEl.find(".client-content-container");
+      expect(clientContainers.length).toBe(9);
+      expect(contentContainers.length).toBe(9);
+
+      var numCollapsed = 0;
+      var numExpanded = 0;
+      _.each(contentContainers, function(clientContainer) {
+        if($(clientContainer).hasClass("hidden")) {
+          numCollapsed++;
+        } else {
+          numExpanded++;
+        }
+      });
+
+      expect(numExpanded).toBe(3); // the one we expanded plus the two added clients
+      expect(numCollapsed).toBe(6); // the rest
     });
   });
 });
