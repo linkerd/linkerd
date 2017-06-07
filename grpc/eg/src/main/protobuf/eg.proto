@@ -23,7 +23,7 @@ message Message {
 
   Enumeration enumeration = 1;
   oneof result {
-    base.Unit ok = 2;
+    base.Unit ok_response = 2;
     base.Exception exception = 3;
   }
 

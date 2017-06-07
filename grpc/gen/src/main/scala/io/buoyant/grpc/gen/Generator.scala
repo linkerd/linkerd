@@ -403,7 +403,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldWriters = o.fields.map { f =>
-          val ftyp = s"${typ}.`${upperHead(f.name)}`"
+          val ftyp = s"${typ}.`${snakeToUpperCamel(f.name)}`"
           val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${writer}""".stripMargin
@@ -448,7 +448,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldSizes = o.fields.map { f =>
-          val ftyp = s"${typ}.${upperHead(f.name)}"
+          val ftyp = s"${typ}.${snakeToUpperCamel(f.name)}"
           val sizeOf = genComputeSizeTagged(f, "value", translateType)
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${indent}      val sz = ${sizeOf}
