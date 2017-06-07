@@ -15,7 +15,7 @@ enum Enumeration {
 
 message Message {
   enum Enumeration {
-    ZERO = 0;
+    zero = 0;
     ONE = 1;
     TWO = 2;
     THREEFOUR = 34;
