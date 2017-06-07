@@ -17,11 +17,10 @@ import scala.util.control.NoStackTrace
 private[namerd] case class NamerdConfig(
   admin: Option[AdminConfig],
   storage: DtabStoreConfig,
-  namers: Seq[NamerConfig],
+  namers: Option[Seq[NamerConfig]],
   interfaces: Seq[InterfaceConfig],
   telemetry: Option[Seq[TelemeterConfig]]
 ) {
-  require(namers != null, "'namers' field is required")
   require(interfaces != null, "'interfaces' field is required")
   require(interfaces.nonEmpty, "One or more interfaces must be specified")
   import NamerdConfig._
@@ -72,7 +71,7 @@ private[namerd] case class NamerdConfig(
   }
 
   private[this] def mkNamers(params: Stack.Params): Map[Path, Namer] =
-    namers.foldLeft(Map.empty[Path, Namer]) {
+    namers.getOrElse(Nil).foldLeft(Map.empty[Path, Namer]) {
       case (namers, config) =>
         if (config.prefix.isEmpty)
           throw NamerdConfig.EmptyNamerPrefix
