@@ -17,7 +17,7 @@ interpreter.  Transformations are applied sequentially in the order they appear.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.localhost`](#localhost), [`io.l5d.port`](#port), [`io.l5d.k8s.daemonset`](#daemonset-kubernetes), [`io.l5d.k8s.localnode`](#localnode-kubernetes), [`io.l5d.replace`](#replace), or [`io.l5d.const`](#const).
+kind | _required_ | Either [`io.l5d.localhost`](#localhost), [`io.l5d.specificHost`](#specific-host), [`io.l5d.port`](#port), [`io.l5d.k8s.daemonset`](#daemonset-kubernetes), [`io.l5d.k8s.localnode`](#localnode-kubernetes), [`io.l5d.replace`](#replace), or [`io.l5d.const`](#const).
 
 ## Localhost
 
@@ -27,6 +27,20 @@ The localhost transformer filters the list of addresses down to only addresses
 that have the same IP address as localhost.  The IP of localhost is determined
 by doing a one-time dns lookup of the local hostname.  This transformer can be
 used by an incoming router to only route traffic to local destinations.
+
+## Specific Host
+
+kind: `io.l5d.specificHost`
+
+The specific host transformer filters the list of addresses down to only
+addresses that have the same IP address as the specified host. This transformer
+can be used by an incoming router to only route traffic to specific
+destinations. This is useful when linkerd is running inside a Docker container
+and the traffic is to be sent to another Docker container in the same host.
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+host | _required_    | The host to use.
 
 ## Port
 
