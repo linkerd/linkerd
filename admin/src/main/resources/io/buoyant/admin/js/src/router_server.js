@@ -18,7 +18,7 @@ define([
   var RouterServer = (function() {
     var template = templates.router_server;
 
-    var desiredLatencyColors = Colors[3].colorFamily; // match the success rate graph
+    var desiredLatencyColors = Colors.colorOrder[3].colorFamily; // match the success rate graph
     var latencyLegend = LatencyUtil.createLatencyLegend(desiredLatencyColors);
 
     function getMetricDefinitions(routerName, serverName) {

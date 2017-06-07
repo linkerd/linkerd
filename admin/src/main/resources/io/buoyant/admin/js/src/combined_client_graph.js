@@ -3,6 +3,12 @@
 define([
   'src/utils'
 ], function(Utils) {
+  /*
+    A graph of client requests.
+    Can register itself with the metrics collector for updates, or can be
+    updated manually by calling "updateMetrics". Passing in true for
+    providesOwnMetrics will prevent registration with the metrics collector.
+  */
   var CombinedClientGraph = (function() {
     var ignoredClients = {};
 
@@ -36,7 +42,7 @@ define([
       return _.isEmpty(nonIgnoredClients) ? nonExpiredClients : nonIgnoredClients;
     }
 
-    return function(metricsCollector, initialData, routerName, $root, colors) {
+    return function(metricsCollector, initialData, routerName, $root, colors, providesOwnMetrics) {
       ignoredClients[routerName] = {}; // clients that are minimized in the UI
 
       var chart = new Utils.UpdateableChart(
@@ -65,9 +71,14 @@ define([
       var desiredMetrics = _.map(initialData[routerName].clients, function(client) {
         return { name: client + "/requests" };
       });
+
       chart.setMetrics(desiredMetrics);
 
-      var metricsListener = function(data) {
+      if (!providesOwnMetrics) {
+        metricsCollector.registerListener("CombinedClientGraph_" + routerName, metricsListener);
+      }
+
+      function metricsListener(data) {
         var clientData = _.get(data, ["rt", routerName, "client"]);
         var clientsToDisplay = getClientsToDisplay(clientData, routerName);
 
@@ -79,9 +90,7 @@ define([
         });
 
         chart.updateMetrics(dataToDisplay);
-      };
-
-      metricsCollector.registerListener("CombinedClientGraph_" + routerName, metricsListener);
+      }
 
       return {
         addClients: function(clients) {
@@ -100,6 +109,10 @@ define([
 
         updateColors: function(newColors) {
           chart.updateTsOpts(timeseriesParamsFn(newColors));
+        },
+
+        updateMetrics: function(data) {
+          chart.updateMetrics(data);
         }
       };
     };

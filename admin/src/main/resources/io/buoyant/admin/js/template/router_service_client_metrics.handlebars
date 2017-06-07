@@ -1,0 +1,15 @@
+  <div class="service-subsection-header">Requests per client</div>
+  {{#each clients}}
+  <div class="client-metrics row"
+    style="border-left: 3px solid {{ lookup (lookup ../colorMap client) "color"}};">
+    <div class="col-md-2">{{client}}</div>
+    <div class="col-md-1">
+      {{#if requests}}
+        {{requests}}
+      {{else}}
+        0
+      {{/if}}
+    </div>
+  </div>
+  {{/each}}
+  </div>

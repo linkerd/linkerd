@@ -1,15 +1,15 @@
-<div class="service-client-metrics row">
-  <div class="service-subsection-header">Requests per client</div>
-  {{#each clients}}
-  <div class="client-metrics row">
-    <div class="col-md-1 trail-in">
-      {{#if requests}}
-        {{requests}}
-      {{else}}
-        0
-      {{/if}}
+<div class="service-client-metrics">
+  <div class="service-metrics row">
+    <div class="col-md-2">
+      {{> metricPartial service.success containerClass="metric-container success-metric-container" metricClass="success-metric metric-large"}}
+      {{> metricPartial service.requests containerClass="neutral-metric-container metric-container" metricClass="metric-large"}}
     </div>
-    <div class="col-md-2">{{client}}</div>
+
+    <div class="col-md-2">
+      {{> metricPartial service.failures containerClass="metric-container failure-metric-container" metricClass="failure-metric metric-large"}}
+      {{> metricPartial service.pending containerClass="neutral-metric-container metric-container" metricClass="metric-large"}}
+    </div>
+
+    {{> latencyPartial latencies}}
   </div>
-  {{/each}}
 </div>

@@ -43,13 +43,6 @@ define([
     var expandStates = { expanded: "EXPANDED", collapsed: "COLLAPSED", custom: "CUSTOM" };
     var clientExpandState = {};
 
-    function assignColorsToClients(colors, clients) {
-      return _.reduce(clients, function(clientMapping, client, idx) {
-        clientMapping[client] = colors[idx % colors.length];
-        return clientMapping;
-      }, {});
-    }
-
     function shouldExpandClient(routerName, initialClients) {
       // if there are many clients, collapse them by default to improve page perfomance
       if (clientExpandState[routerName] === expandStates.custom) {
@@ -78,8 +71,7 @@ define([
       Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
       var clients = _.sortBy(initialData[routerName].clients);
-      var colorList = Colors;
-      var clientToColor = assignColorsToClients(colorList, clients);
+      var clientToColor = Colors.assignColors(clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
 
       activeClients[routerName] = {};
@@ -168,7 +160,7 @@ define([
         clients = _(clients).concat(filteredClients).uniq().value();
 
         // reassign colors
-        clientToColor = assignColorsToClients(colorList, clients);
+        clientToColor = Colors.assignColors(clients);
 
         // pass new colors to combined request graph, add new clients to graph
         combinedClientGraph.updateColors(clientToColor);

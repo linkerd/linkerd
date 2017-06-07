@@ -24,10 +24,11 @@ define([
     }
 
     function chartWidthFn() {
-      var serverWidth = $(".router-server").width();
+      var serverWidth = $(".router-row-container").width();
       if (serverWidth < defaultWidth) {
         return serverWidth;
       }
+
       return serverWidth - colMd6Width;
     }
 

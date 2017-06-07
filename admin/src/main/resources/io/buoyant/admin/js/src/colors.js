@@ -68,5 +68,15 @@ define(['lodash'], function(_) {
     }
   });
 
-  return colorOrder;
+  function assignColors(items) {
+    return _.reduce(items, function(colorMapping, item, idx) {
+      colorMapping[item] = colorOrder[idx % colorOrder.length];
+      return colorMapping;
+    }, {});
+  }
+
+  return {
+    colorOrder: colorOrder,
+    assignColors: assignColors
+  };
 });

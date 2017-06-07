@@ -414,21 +414,14 @@ a.router-list-item:last-of-type:after {
 .service-subsection-header {
   color: #878787;
   font-size: 14px;
-}
-
-.service-client-metrics {
-  margin: 10px 0 0 30px;
-}
-
-.service-client-metrics .metric-large {
   margin-bottom: 10px;
 }
-.service-client-metrics .client-metrics div {
-  padding: 12px 0 2px 0;
+
+.svc-client-metrics .client-metrics {
+  padding: 5px 15px;
+  font-size: 18px;
 }
 
-.service-client-metrics .trail-in {
-  text-align: center;
-  margin-left: 10px;
-  border-left: 1px solid white;
+.svc-client-metrics .metric-large {
+  margin-bottom: 10px;
 }

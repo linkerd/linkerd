@@ -13,7 +13,7 @@ define([
   var svcsByRouter = {};
 
   function extractSvcClientStats(data, router) {
-    return _.chain(_.get(data, ["rt", router, "client"]))
+    var clientMetricsByService =  _.chain(_.get(data, ["rt", router, "client"]))
       .map(function(clientData, client) {
         return _.map(clientData.service, function(svcData, svc) {
           return { service: svc, client: client, requests: svcData.requests.delta };
@@ -22,6 +22,16 @@ define([
       .flatten()
       .groupBy("service")
       .value();
+
+   var serviceStats = _.reduce(_.get(data, ["rt", router, "service"]), function(mem, svcData, svc) {
+    mem[svc] = {
+      serviceStats: svcData,
+      clientStats: clientMetricsByService[svc]
+    };
+    return mem;
+   }, {});
+
+   return serviceStats;
   }
 
   function initializeRouterServices(metricsCollector, initialData, $container) {
@@ -38,13 +48,13 @@ define([
       }
 
       _.each(routerData.services, function(svc) {
-        initializeService($routerContainer, metricsCollector, router, svc);
+        initializeService($routerContainer, metricsCollector, router, svc, initialData);
       });
     });
   }
 
-  function initializeService($routerContainer, metricsCollector, router, svc) {
-    svcsByRouter[router][svc] = RouterService(metricsCollector, $routerContainer, svc);
+  function initializeService($routerContainer, metricsCollector, router, svc, initialData) {
+    svcsByRouter[router][svc] = RouterService(metricsCollector, $routerContainer, router, svc, initialData);
   }
 
   return function(metricsCollector, initialData, $container) {
@@ -66,15 +76,23 @@ define([
     }
 
     function addServices(addedClients, metricsJson) {
+      // see if there are any new services, and add them
+      var initialServiceData = {};
+
       _.each(addedClients, function(clients, router) {
+        initialServiceData[router] = {};
+
         var $routerContainer = $($container.find("[data-router='" + router + "']")[0]);
+        initialServiceData[router]["clients"] = _.keys(clients);
 
         _.each(clients, function(_d, client) {
           var services = _.keys(_.get(metricsJson, ["rt", router, "client", client, "service"]));
 
           _.each(services, function(svc) {
             if(!svcsByRouter[router][svc]) {
-              initializeService($routerContainer, metricsCollector, router, svc);
+              initializeService($routerContainer, metricsCollector, router, svc, initialServiceData);
+            } else {
+              svcsByRouter[router][svc].onAddedClients(clients);
             }
           });
         });
