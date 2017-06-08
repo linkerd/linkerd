@@ -472,11 +472,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case Open(remote@RemoteStreaming()) =>
             if (recvFrame(toFrame(data), remote)) true
-            else recv(data)
+            else {
+              if (resetFromLocal(remote, Reset.Closed)) false
+              else recv(data)
+            }
 
           case LocalClosed(remote@RemoteStreaming()) =>
             if (recvFrame(toFrame(data), remote)) true
-            else recv(data)
+            else {
+              if (resetFromLocal(remote, Reset.Closed)) false
+              else recv(data)
+            }
         }
     }
   }
