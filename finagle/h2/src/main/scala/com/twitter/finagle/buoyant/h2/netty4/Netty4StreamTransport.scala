@@ -673,7 +673,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             else recv(data)
 
           case LocalClosed(remote@RemoteStreaming()) =>
-            val str = s"[$prefix] recv Http2DataFrame Open/RemoteStreaming"
+            val str = s"[$prefix] recv Http2DataFrame LocalClosed/RemoteStreaming"
             log.debug(str)
             if (recvFrame(str, toFrame(str, data), remote)) true
             else recv(data)
