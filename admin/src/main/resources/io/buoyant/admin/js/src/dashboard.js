@@ -2,20 +2,20 @@
 
 define([
   'jQuery', 'bootstrap',
-  'src/router_services',
   'src/metrics_collector',
   'src/process_info',
   'src/request_totals',
-  'src/router_controller'
+  'src/router_service_dashboard',
+  'src/router_client_dashboard'
 ], function(
   $, bootstrap,
-  RouterServices,
   MetricsCollector,
   ProcInfo,
   RequestTotals,
-  RouterController
+  RouterServiceDashboard,
+  RouterClientDashboard
 ) {
-  return function(routerConfig, isServiceMap) {
+  return function(routerConfig, dashboardType) {
     /**
      * Number of millis to wait between data updates.
      */
@@ -40,10 +40,10 @@ define([
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
       RequestTotals(metricsCollector, selectedRouter, $(".request-totals"));
 
-      if (isServiceMap) {
-        RouterServices(metricsCollector, initialData, $(".service-dashboard-container"));
+      if (dashboardType === "service") {
+        RouterServiceDashboard(metricsCollector, initialData, $(".service-dashboard-container"));
       } else {
-        RouterController(metricsCollector, selectedRouter, initialData, $(".client-dashboard-container"), routerConfig);
+        RouterClientDashboard(metricsCollector, selectedRouter, initialData, $(".client-dashboard-container"), routerConfig);
       }
 
       $(function() {

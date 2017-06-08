@@ -33,7 +33,7 @@ require([
 ], function (
   $, _, bootstrap,
   adminPage,
-  dashboard,
+  dashboardInitializer,
   linkerdDtabPlayground,
   namerd,
   loggingConfig
@@ -41,7 +41,7 @@ require([
   // poor man's routing
   if (window.location.pathname.endsWith("/")) {
     adminPage.initialize().done(function(routerConfig) {
-      new dashboard(routerConfig);
+      new dashboardInitializer(routerConfig);
     });
   } else if (window.location.pathname.endsWith("/delegator")) {
     adminPage.initialize(true).done(function() {
@@ -56,7 +56,7 @@ require([
       new loggingConfig();
     });
   } else if (window.location.pathname.endsWith("/services")) {
-    new dashboard(null, true);
+    new dashboardInitializer(null, "service");
   } else {
     adminPage.initialize();
   }
