@@ -107,7 +107,7 @@ case class NamerdInterpreterConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val client = ThriftMux.client
-      .withParams(ThriftMux.client.params ++ tlsParams ++ params)
+      .withParams(ThriftMux.client.params ++ tlsParams ++ params + Thrift.ThriftImpl.Netty4)
       .transformed(retryTransformer)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
