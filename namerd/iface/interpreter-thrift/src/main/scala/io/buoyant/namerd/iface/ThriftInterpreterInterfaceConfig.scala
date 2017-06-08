@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Namer, Path, Stack, ThriftMux}
+import com.twitter.finagle.{Namer, Path, Stack, Thrift, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
@@ -41,7 +41,11 @@ case class ThriftInterpreterInterfaceConfig(
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
       stats
     )
-    val params = tlsParams + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
+    val params =
+      tlsParams +
+        param.Stats(stats) +
+        param.Label(ThriftInterpreterInterfaceConfig.kind) +
+        Thrift.ThriftImpl.Netty4
     ThriftServable(addr, iface, params)
   }
 }
