@@ -22,6 +22,8 @@ Key | Default Value | Description
 --- | ------------- | -----------
 certPath | _required_ | File path to the TLS certificate file.
 keyPath | _required_ | File path to the TLS key file.
+requireClientAuth | false | If true, only accept requests with valid client certificates.
+caCertPath | none | File path to the CA cert to validate the client certificates.
 
 See [Transparent TLS with linkerd](https://blog.buoyant.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
 and key files.
@@ -38,6 +40,9 @@ routers:
       commonName: linkerd.io
       trustCerts:
       - /certificates/cacert.pem
+      clientAuth:
+        certPath: /certificates/cert.pem
+        keyPath: /certificates/key.pem
 ```
 
 In order to send outgoing tls traffic, the tls parameter must be defined as a
@@ -51,6 +56,14 @@ Key               | Default Value                              | Description
 disableValidation | false                                      | Enable this to skip hostname validation (unsafe).
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
 trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
+clientAuth        | none                                       | A client auth object used to sign requests.
+
+If present, a client auth object must contain two properties:
+
+Key      | Default Value | Description
+---------|---------------|-------------
+certPath | _required_    | File path to the TLS certificate file.
+keyPath  | _required_    | File path to the TLS key file.  Must be in PKCS#8 format.
 
 Any variables captured from the client prefix may be used in the common name.
 
@@ -65,4 +78,7 @@ routers:
         commonName: "{service}.linkerd.io"
         trustCerts:
         - /certificates/cacert.pem
+        clientAuth:
+          certPath: /certificates/cert.pem
+          keyPath: /certificates/key.pem
 ```

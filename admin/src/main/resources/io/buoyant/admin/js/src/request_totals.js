@@ -77,7 +77,7 @@ define([
 
       if (!selectedRouter || selectedRouter === "all") { //welcome to my world of hacks
         render($root, metricDefinitions);
-        metricsCollector.registerListener(onMetricsUpdate);
+        metricsCollector.registerListener("RequestTotals", onMetricsUpdate);
       } else {
         $root.hide();
       }

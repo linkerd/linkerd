@@ -1,8 +1,8 @@
 package com.twitter.finagle.buoyant.linkerd
 
-import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.buoyant.Sampler
-import com.twitter.finagle.http.{param => _, _}
+import com.twitter.finagle.{ServiceFactory, Stack, Stackable, param}
+import com.twitter.finagle.buoyant.{Sampler, TraceInitializer}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.tracing._
 
 /**
@@ -13,53 +13,26 @@ object HttpTraceInitializer {
   val role = TraceInitializerFilter.role
 
   class ServerFilter(tracer: Tracer, defaultSampler: Option[Sampler] = None)
-    extends SimpleFilter[Request, Response] {
+    extends TraceInitializer.ServerFilter[Request, Response](tracer, defaultSampler) {
 
-    /**
-     * Establish context for this request, as follows:
-     * 1. Set the trace id from the context header, if one was provided.
-     * 2. Get a new span id for the current request.
-     * 3. Use the sample header to determine if the request should be sampled.
-     */
-    def apply(req: Request, service: Service[Request, Response]) = {
-      val headers = req.headerMap
-      val ctx = Headers.Ctx.Trace.get(headers)
-      Headers.Ctx.Trace.clear(headers)
-      val sampler = Headers.Sample.get(headers).map(Sampler(_))
-      Headers.Sample.clear(headers)
-
-      Trace.letIdOption(ctx) {
-        Trace.letTracerAndNextId(tracer) {
-          sample(sampler.orElse(defaultSampler)) {
-            service(req)
-          }
-        }
-      }
+    override def traceId(req: Request): Option[TraceId] = {
+      val traceId = Headers.Ctx.Trace.get(req.headerMap)
+      Headers.Ctx.Trace.clear(req.headerMap)
+      traceId
     }
 
-    /**
-     * Only set _sampled on the trace ID if the sample header provided a
-     * sample rate, the sampler determines that the request should be
-     * sampled based on the sample rate, and the _sampled field is unset on
-     * the current trace ID.
-     */
-    def sample[T](sampler: Option[Sampler])(f: => T) =
-      sampler match {
-        case None => f
-        case Some(sampler) =>
-          val id = Trace.id
-          val sampled = id.copy(_sampled = Some(sampler(id.traceId.toLong)))
-          Trace.letId(sampled)(f)
-      }
+    override def sampler(req: Request): Option[Sampler] = {
+      val sampler = Headers.Sample.get(req.headerMap).map(Sampler(_))
+      Headers.Sample.clear(req.headerMap)
+      sampler
+    }
   }
 
-  class ClientFilter(tracer: Tracer) extends SimpleFilter[Request, Response] {
-    def apply(req: Request, service: Service[Request, Response]) =
-      Trace.letTracerAndNextId(tracer) {
-        Headers.Ctx.Trace.set(req.headerMap, Trace.id)
-        Headers.RequestId.set(req.headerMap, Trace.id)
-        service(req)
-      }
+  class ClientFilter(tracer: Tracer) extends TraceInitializer.ClientFilter[Request, Response](tracer) {
+    override def setContext(req: Request): Unit = {
+      Headers.Ctx.Trace.set(req.headerMap, Trace.id)
+      Headers.RequestId.set(req.headerMap, Trace.id)
+    }
   }
 
   /**

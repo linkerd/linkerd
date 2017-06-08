@@ -128,7 +128,7 @@ define([
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 
-      metricsCollector.registerListener(metricsHandler);
+      metricsCollector.registerListener("RouterServer_" + routerName + server, metricsHandler);
 
       return {};
     };

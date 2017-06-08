@@ -113,6 +113,7 @@ define([
     }
 
     return function (metricsCollector, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+      var isExpired = false;
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
 
@@ -139,11 +140,19 @@ define([
       var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
+      metricsCollector.registerListener(getClientId(routerName, client), metricsHandler);
+
       // collapse client section by default (deal with large # of clients)
       toggleClientDisplay(shouldExpandInitially);
 
-      $expandLink.click(function() { toggleClientDisplay(true); });
-      $collapseLink.click(function() { toggleClientDisplay(false); });
+      $expandLink.click(function() {
+        $container.trigger("expand-custom");
+        toggleClientDisplay(true);
+      });
+      $collapseLink.click(function() {
+        $container.trigger("expand-custom");
+        toggleClientDisplay(false);
+      });
 
       function toggleClientDisplay(expand) {
         if (expand) {
@@ -151,33 +160,57 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
 
           combinedClientGraph.ignoreClient(client);
-          metricsCollector.deregisterListener(metricsHandler);
         }
 
-        $contentContainer.toggle(expand);
-        $collapseLink.toggle(expand);
-        $expandLink.toggle(!expand);
+        if (expand) {
+          $contentContainer.removeClass("hidden");
+          $collapseLink.removeClass("hidden");
+          $expandLink.addClass("hidden");
+        } else {
+          $contentContainer.addClass("hidden");
+          $collapseLink.addClass("hidden");
+          $expandLink.removeClass("hidden");
+        }
+      }
+
+      function getClientId(router, client) {
+        return "RouterClient_" + router + "_" + client;
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data, metricDefinitions);
-        var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
-        var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+        var clientMetrics = _.get(data, ["rt", routerName, "client", client]);
 
-        successRateChart.updateMetrics(getSuccessRate(summaryData));
-        lbBarChart.update(summaryData);
+        if (_.isEmpty(clientMetrics)) {
+          if (!isExpired) {
+            isExpired = true;
+            $container.trigger("expire-client");
+          }
+        } else {
+          if (isExpired) {
+            isExpired = false;
+            $container.trigger("revive-client");
+          }
 
-        renderMetrics($metricsEl, client, summaryData, latencies);
+          var summaryData = getSummaryData(data, metricDefinitions);
+          var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
+          var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+
+          successRateChart.updateMetrics(getSuccessRate(summaryData));
+          lbBarChart.update(summaryData);
+
+          renderMetrics($metricsEl, client, summaryData, latencies);
+        }
       }
 
       return {
-        label: client
+        label: client,
+        isExpired: isExpired,
+        toggleClientDisplay: toggleClientDisplay
       };
     };
   })();

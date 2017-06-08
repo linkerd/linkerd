@@ -275,6 +275,7 @@ object LinkerdBuild extends Base {
 
       val mesh = projectDir("namerd/iface/mesh")
         .dependsOn(core, Mesh.core)
+        .withTests()
 
       val all = aggregateDir(
         "namerd/iface",

@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.router.h2
 
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.buoyant.h2.{Request, Response}
