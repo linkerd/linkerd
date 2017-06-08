@@ -1,12 +1,25 @@
 "use strict";
 
 define([
+  'handlebars.runtime',
+  'src/colors',
+  'src/latency_color_util',
   'src/success_rate_graph',
   'src/utils',
   'template/compiled_templates'
-], function(SuccessRateGraph, Utils, templates) {
+], function(
+  Handlebars,
+  Colors,
+  LatencyUtil,
+  SuccessRateGraph,
+  Utils,
+  templates
+) {
   var RouterServer = (function() {
     var template = templates.router_server;
+
+    var desiredLatencyColors = Colors[3].colorFamily; // match the success rate graph
+    var latencyLegend = LatencyUtil.createLatencyLegend(desiredLatencyColors);
 
     function getMetricDefinitions(routerName, serverName) {
       var defs = [
@@ -50,7 +63,7 @@ define([
       };
     }
 
-    function renderServer($container, server, data) {
+    function renderServer($container, server, data, latencyData) {
       var metrics = _.reduce(data, function(metrics, d) {
         metrics[d.metricSuffix] = {
           description: d.description,
@@ -61,8 +74,8 @@ define([
       }, {});
 
       $container.html(template({
-        server: server,
-        metrics: metrics
+        metrics: metrics,
+        latencies: latencyData
       }));
     }
 
@@ -99,17 +112,23 @@ define([
     }
 
     return function (metricsCollector, server, $serverEl, routerName) {
+      var latencyPartial = templates["latencies.partial"];
+      Handlebars.registerPartial('latencyPartial', latencyPartial);
+
       var $metricsEl = $serverEl.find(".server-metrics");
       var $chartEl = $serverEl.find(".server-success-chart");
       var chart = SuccessRateGraph($chartEl, "#4AD8AC");
 
       var metricsHandler = function(data) {
         var transformedData = processData(data, routerName, server);
-        renderServer($metricsEl, server, transformedData);
+        var latencyData = _.get(data, ["rt", routerName, "server", server, "request_latency_ms"]);
+        var coloredLatencyData = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+
+        renderServer($metricsEl, server, transformedData, coloredLatencyData);
         chart.updateMetrics(getSuccessRate(transformedData));
       }
 
-      metricsCollector.registerListener(metricsHandler);
+      metricsCollector.registerListener("RouterServer_" + routerName + server, metricsHandler);
 
       return {};
     };

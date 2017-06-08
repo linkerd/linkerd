@@ -3,13 +3,16 @@ package io.buoyant.interpreter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{H2, TlsClientPrep}
+import com.twitter.finagle.buoyant.{TlsClientConfig, H2}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.ssl.ApplicationProtocols
+import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
 import io.buoyant.interpreter.mesh.Client
+import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.util.control.NoStackTrace
 
 /**
@@ -40,7 +43,7 @@ case class Retry(
 case class MeshInterpreterConfig(
   dst: Option[Path],
   root: Option[Path],
-  tls: Option[MeshClientTlsConfig],
+  tls: Option[TlsClientConfig],
   retry: Option[Retry]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
@@ -61,10 +64,10 @@ case class MeshInterpreterConfig(
 
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val client = H2.client
-      .withParams(H2.client.params ++ params)
-      .transformed(tlsTransformer)
+      .withParams(H2.client.params ++ tlsParams ++ params)
       .newService(name, label)
 
     root.getOrElse(DefaultRoot) match {
@@ -76,34 +79,4 @@ case class MeshInterpreterConfig(
         throw new IllegalArgumentException(msg) with NoStackTrace
     }
   }
-
-  @JsonIgnore
-  private[this] val tlsTransformer: Stack.Transformer = tls match {
-    case None =>
-      new Stack.Transformer {
-        def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]): Stack[ServiceFactory[Req, Rep]] = s
-      }
-
-    case Some(MeshClientTlsConfig(Some(true), _, _)) =>
-      new Stack.Transformer {
-        override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
-          TlsClientPrep.insecure[Req, Rep] +: s
-      }
-
-    case Some(MeshClientTlsConfig(_, Some(cn), certs)) =>
-      new Stack.Transformer {
-        override def apply[Req, Rep](s: Stack[ServiceFactory[Req, Rep]]) =
-          TlsClientPrep.static[Req, Rep](cn, certs) +: s
-      }
-
-    case Some(MeshClientTlsConfig(Some(false) | None, None, _)) =>
-      val msg = "io.l5d.mesh: tls is configured with validation but `commonName` is not set"
-      throw new IllegalArgumentException(msg) with NoStackTrace
-  }
 }
-
-case class MeshClientTlsConfig(
-  disableValidation: Option[Boolean],
-  commonName: Option[String],
-  trustCerts: Seq[String] = Nil
-)

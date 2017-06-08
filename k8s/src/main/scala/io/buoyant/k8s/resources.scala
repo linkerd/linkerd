@@ -72,7 +72,7 @@ private[k8s] class NsVersion[O <: KubeObject](
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, path, backoffs, stats)
+  )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, ns, path, backoffs, stats)
 }
 
 /**
@@ -151,6 +151,7 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
  */
 private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
   client: Client,
+  val ns: String,
   basePath: String,
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver

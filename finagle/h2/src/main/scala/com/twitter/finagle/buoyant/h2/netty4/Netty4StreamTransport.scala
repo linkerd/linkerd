@@ -330,7 +330,14 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     }
   }
 
-  @tailrec private[this] def closeLocal(str: String): Unit = {
+  /**
+   * Updates the stateRef to reflect that the local stream has been closed.
+   *
+   * If the ref is already local closed, then the remote stream is reset and
+   * the reset promise results in an exception. If the ref is remote closed,
+   * then the ref becomes fully closed and the reset promise is completed.
+   */
+  @tailrec private[this] def closeLocal(str: String): Unit =
     stateRef.get match {
       case Closed(_) =>
         val str1 = s"$str -- closeLocal Closed"
@@ -373,7 +380,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           closeLocal(str1)
         }
     }
-  }
 
   /**
    * Offer a Netty Http2StreamFrame from the remote.

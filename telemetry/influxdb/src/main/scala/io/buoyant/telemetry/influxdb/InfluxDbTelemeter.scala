@@ -31,6 +31,10 @@ class InfluxDbTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithH
     Admin.Handler("/admin/metrics/influxdb", handler)
   )
 
+  // special name given to metrics at the top of the tree without scope.
+  // we group all these together as fields under a "root" metric.
+  val rootPrefix = Seq("root")
+
   val stats = NullStatsReceiver
   def tracer = NullTracer
   def run(): Closable with Awaitable[Unit] = Telemeter.nopRun
@@ -105,7 +109,15 @@ class InfluxDbTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithH
 
     // write sibling metrics as fields in a single measurement
     if (fields.nonEmpty) {
-      sb.append(escapeKey(prefix1.mkString(":")))
+      val prefix = if (prefix1 != Nil) {
+        prefix1
+      } else {
+        // special case for top-level metrics without scope,
+        // for example: `larger_than_threadlocal_out_buffer`
+        rootPrefix
+      }
+
+      sb.append(escapeKey(prefix.mkString(":")))
       if (tags1.nonEmpty) {
         sb.append(",")
         sb.append(formatLabels(tags1))

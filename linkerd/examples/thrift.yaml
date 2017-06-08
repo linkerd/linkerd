@@ -8,14 +8,13 @@ namers:
 # A simple thrift router that looks up each thrift method in io.l5d.fs.
 routers:
 - protocol: thrift
+  thriftProtocol: binary
   thriftMethodInDst: true
   dtab: |
     /svc => /#/io.l5d.fs/thrift;
   servers:
   - port: 4114
-    thriftProtocol: binary
     thriftFramed: true
   client:
-    thriftProtocol: binary
     thriftFramed: true
     attemptTTwitterUpgrade: true

@@ -1,10 +1,11 @@
 "use strict";
 
 define([
+  'lodash',
   'jQuery',
   'src/dtab_viewer',
   'template/compiled_templates'
-], function($, DtabViewer, compiledTemplates) {
+], function(_, $, DtabViewer, compiledTemplates) {
   var Delegator = (function() {
     var templates = {
       dentry: compiledTemplates.dentry,
@@ -116,6 +117,10 @@ define([
       $("#dtab").html(dtab.map(function(e) {
         return templates.dentry(e);
       }.bind(this)).join(""));
+
+      if (!_.isEmpty(dtab)) {
+        $(".namerd-dtab-warning").removeClass("hide");
+      }
 
       var dtabViewer = new DtabViewer(dtabBase, templates.dentry);
       $('#path-input').val(decodeURIComponent(window.location.hash).slice(1)).focus();

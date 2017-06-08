@@ -28,6 +28,7 @@ object Main extends App {
 
         closeOnExit(Closable.sequence(
           Closable.all(servers: _*),
+          Closable.all(telemeters: _*),
           admin
         ))
         Await.all(servers: _*)

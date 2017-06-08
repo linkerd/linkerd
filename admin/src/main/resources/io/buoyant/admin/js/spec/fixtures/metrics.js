@@ -2927,999 +2927,6 @@ return {
           }
         }
       },
-      "multiplier": {
-        "service": {
-          "svc": {
-            "success": {
-              "counter": 381
-            },
-            "request_latency_ms": {
-              "stat.count": 33,
-              "stat.max": 2,
-              "stat.min": 0,
-              "stat.p50": 0,
-              "stat.p90": 0,
-              "stat.p95": 1,
-              "stat.p99": 2,
-              "stat.p9990": 2,
-              "stat.p9999": 2,
-              "stat.sum": 4,
-              "stat.avg": 0.12121212121212122
-            },
-            "retries": {
-              "per_request": {
-                "stat.count": 33,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              },
-              "total": {
-                "counter": 0
-              },
-              "budget_exhausted": {
-                "counter": 0
-              }
-            },
-            "requests": {
-              "counter": 381
-            },
-            "pending": {
-              "gauge": 0.0
-            }
-          }
-        },
-        "client": {
-          "$/inet/127.1/9030": {
-            "connect_latency_ms": {
-              "stat.count": 0
-            },
-            "failed_connect_latency_ms": {
-              "stat.count": 0
-            },
-            "sent_bytes": {
-              "counter": 4760
-            },
-            "service_creation": {
-              "service_acquisition_latency_ms": {
-                "stat.count": 13,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              }
-            },
-            "connection_received_bytes": {
-              "stat.count": 0
-            },
-            "connection_duration": {
-              "stat.count": 0
-            },
-            "failure_accrual": {
-              "removals": {
-                "counter": 0
-              },
-              "probes": {
-                "counter": 0
-              },
-              "removed_for_ms": {
-                "counter": 0
-              },
-              "revivals": {
-                "counter": 0
-              }
-            },
-            "connects": {
-              "counter": 1
-            },
-            "pool_num_waited": {
-              "counter": 0
-            },
-            "success": {
-              "counter": 136
-            },
-            "service": {
-              "svc": {
-                "request_latency_ms": {
-                  "stat.count": 13,
-                  "stat.max": 0,
-                  "stat.min": 0,
-                  "stat.p50": 0,
-                  "stat.p90": 0,
-                  "stat.p95": 0,
-                  "stat.p99": 0,
-                  "stat.p9990": 0,
-                  "stat.p9999": 0,
-                  "stat.sum": 0,
-                  "stat.avg": 0.0
-                },
-                "success": {
-                  "counter": 136
-                },
-                "pending": {
-                  "gauge": 0.0
-                },
-                "requests": {
-                  "counter": 136
-                }
-              }
-            },
-            "request_latency_ms": {
-              "stat.count": 13,
-              "stat.max": 0,
-              "stat.min": 0,
-              "stat.p50": 0,
-              "stat.p90": 0,
-              "stat.p95": 0,
-              "stat.p99": 0,
-              "stat.p9990": 0,
-              "stat.p9999": 0,
-              "stat.sum": 0,
-              "stat.avg": 0.0
-            },
-            "pool_waiters": {
-              "gauge": 0.0
-            },
-            "retries": {
-              "requeues_per_request": {
-                "stat.count": 13,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              },
-              "request_limit": {
-                "counter": 0
-              },
-              "budget_exhausted": {
-                "counter": 0
-              },
-              "cannot_retry": {
-                "counter": 0
-              },
-              "not_open": {
-                "counter": 0
-              },
-              "budget": {
-                "gauge": 102.0
-              },
-              "requeues": {
-                "counter": 0
-              }
-            },
-            "received_bytes": {
-              "counter": 3808
-            },
-            "connection_sent_bytes": {
-              "stat.count": 0
-            },
-            "connection_requests": {
-              "stat.count": 0
-            },
-            "pool_num_too_many_waiters": {
-              "counter": 0
-            },
-            "socket_unwritable_ms": {
-              "counter": 0
-            },
-            "closes": {
-              "counter": 0
-            },
-            "pool_cached": {
-              "gauge": 1.0
-            },
-            "pool_size": {
-              "gauge": 0.0
-            },
-            "available": {
-              "gauge": 1.0
-            },
-            "request_payload_bytes": {
-              "stat.count": 13,
-              "stat.max": 35,
-              "stat.min": 35,
-              "stat.p50": 35,
-              "stat.p90": 35,
-              "stat.p95": 35,
-              "stat.p99": 35,
-              "stat.p9990": 35,
-              "stat.p9999": 35,
-              "stat.sum": 455,
-              "stat.avg": 35.0
-            },
-            "socket_writable_ms": {
-              "counter": 0
-            },
-            "cancelled_connects": {
-              "counter": 0
-            },
-            "response_payload_bytes": {
-              "stat.count": 13,
-              "stat.max": 28,
-              "stat.min": 28,
-              "stat.p50": 28,
-              "stat.p90": 28,
-              "stat.p95": 28,
-              "stat.p99": 28,
-              "stat.p9990": 28,
-              "stat.p9999": 28,
-              "stat.sum": 364,
-              "stat.avg": 28.0
-            },
-            "dtab": {
-              "size": {
-                "stat.count": 0
-              }
-            },
-            "requests": {
-              "counter": 136
-            },
-            "loadbalancer": {
-              "size": {
-                "gauge": 1.0
-              },
-              "rebuilds": {
-                "counter": 1
-              },
-              "closed": {
-                "gauge": 0.0
-              },
-              "load": {
-                "gauge": 0.0
-              },
-              "meanweight": {
-                "gauge": 1.0
-              },
-              "adds": {
-                "counter": 1
-              },
-              "p2c": {
-                "gauge": 1.0
-              },
-              "updates": {
-                "counter": 1
-              },
-              "available": {
-                "gauge": 1.0
-              },
-              "max_effort_exhausted": {
-                "counter": 0
-              },
-              "busy": {
-                "gauge": 0.0
-              },
-              "removes": {
-                "counter": 0
-              }
-            },
-            "pending": {
-              "gauge": 0.0
-            },
-            "dispatcher": {
-              "serial": {
-                "queue_size": {
-                  "gauge": 0.0
-                }
-              }
-            },
-            "connections": {
-              "gauge": 1.0
-            }
-          },
-          "$/inet/127.1/9029": {
-            "connect_latency_ms": {
-              "stat.count": 0
-            },
-            "failed_connect_latency_ms": {
-              "stat.count": 0
-            },
-            "sent_bytes": {
-              "counter": 4165
-            },
-            "service_creation": {
-              "service_acquisition_latency_ms": {
-                "stat.count": 7,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              }
-            },
-            "connection_received_bytes": {
-              "stat.count": 0
-            },
-            "connection_duration": {
-              "stat.count": 0
-            },
-            "failure_accrual": {
-              "removals": {
-                "counter": 0
-              },
-              "probes": {
-                "counter": 0
-              },
-              "removed_for_ms": {
-                "counter": 0
-              },
-              "revivals": {
-                "counter": 0
-              }
-            },
-            "connects": {
-              "counter": 1
-            },
-            "pool_num_waited": {
-              "counter": 0
-            },
-            "success": {
-              "counter": 119
-            },
-            "service": {
-              "svc": {
-                "request_latency_ms": {
-                  "stat.count": 7,
-                  "stat.max": 1,
-                  "stat.min": 0,
-                  "stat.p50": 0,
-                  "stat.p90": 0,
-                  "stat.p95": 1,
-                  "stat.p99": 1,
-                  "stat.p9990": 1,
-                  "stat.p9999": 1,
-                  "stat.sum": 1,
-                  "stat.avg": 0.14285714285714285
-                },
-                "success": {
-                  "counter": 119
-                },
-                "pending": {
-                  "gauge": 0.0
-                },
-                "requests": {
-                  "counter": 119
-                }
-              }
-            },
-            "request_latency_ms": {
-              "stat.count": 7,
-              "stat.max": 1,
-              "stat.min": 0,
-              "stat.p50": 0,
-              "stat.p90": 0,
-              "stat.p95": 1,
-              "stat.p99": 1,
-              "stat.p9990": 1,
-              "stat.p9999": 1,
-              "stat.sum": 1,
-              "stat.avg": 0.14285714285714285
-            },
-            "pool_waiters": {
-              "gauge": 0.0
-            },
-            "retries": {
-              "requeues_per_request": {
-                "stat.count": 7,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              },
-              "request_limit": {
-                "counter": 0
-              },
-              "budget_exhausted": {
-                "counter": 0
-              },
-              "cannot_retry": {
-                "counter": 0
-              },
-              "not_open": {
-                "counter": 0
-              },
-              "budget": {
-                "gauge": 102.0
-              },
-              "requeues": {
-                "counter": 0
-              }
-            },
-            "received_bytes": {
-              "counter": 3332
-            },
-            "connection_sent_bytes": {
-              "stat.count": 0
-            },
-            "connection_requests": {
-              "stat.count": 0
-            },
-            "pool_num_too_many_waiters": {
-              "counter": 0
-            },
-            "socket_unwritable_ms": {
-              "counter": 0
-            },
-            "closes": {
-              "counter": 0
-            },
-            "pool_cached": {
-              "gauge": 1.0
-            },
-            "pool_size": {
-              "gauge": 0.0
-            },
-            "available": {
-              "gauge": 1.0
-            },
-            "request_payload_bytes": {
-              "stat.count": 7,
-              "stat.max": 35,
-              "stat.min": 35,
-              "stat.p50": 35,
-              "stat.p90": 35,
-              "stat.p95": 35,
-              "stat.p99": 35,
-              "stat.p9990": 35,
-              "stat.p9999": 35,
-              "stat.sum": 245,
-              "stat.avg": 35.0
-            },
-            "socket_writable_ms": {
-              "counter": 0
-            },
-            "cancelled_connects": {
-              "counter": 0
-            },
-            "response_payload_bytes": {
-              "stat.count": 7,
-              "stat.max": 28,
-              "stat.min": 28,
-              "stat.p50": 28,
-              "stat.p90": 28,
-              "stat.p95": 28,
-              "stat.p99": 28,
-              "stat.p9990": 28,
-              "stat.p9999": 28,
-              "stat.sum": 196,
-              "stat.avg": 28.0
-            },
-            "dtab": {
-              "size": {
-                "stat.count": 0
-              }
-            },
-            "requests": {
-              "counter": 119
-            },
-            "loadbalancer": {
-              "size": {
-                "gauge": 1.0
-              },
-              "rebuilds": {
-                "counter": 1
-              },
-              "closed": {
-                "gauge": 0.0
-              },
-              "load": {
-                "gauge": 0.0
-              },
-              "meanweight": {
-                "gauge": 1.0
-              },
-              "adds": {
-                "counter": 1
-              },
-              "p2c": {
-                "gauge": 1.0
-              },
-              "updates": {
-                "counter": 1
-              },
-              "available": {
-                "gauge": 1.0
-              },
-              "max_effort_exhausted": {
-                "counter": 0
-              },
-              "busy": {
-                "gauge": 0.0
-              },
-              "removes": {
-                "counter": 0
-              }
-            },
-            "pending": {
-              "gauge": 0.0
-            },
-            "dispatcher": {
-              "serial": {
-                "queue_size": {
-                  "gauge": 0.0
-                }
-              }
-            },
-            "connections": {
-              "gauge": 1.0
-            }
-          },
-          "$/inet/127.1/9092": {
-            "connect_latency_ms": {
-              "stat.count": 0
-            },
-            "failed_connect_latency_ms": {
-              "stat.count": 0
-            },
-            "sent_bytes": {
-              "counter": 4410
-            },
-            "service_creation": {
-              "service_acquisition_latency_ms": {
-                "stat.count": 13,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              }
-            },
-            "connection_received_bytes": {
-              "stat.count": 0
-            },
-            "connection_duration": {
-              "stat.count": 0
-            },
-            "failure_accrual": {
-              "removals": {
-                "counter": 0
-              },
-              "probes": {
-                "counter": 0
-              },
-              "removed_for_ms": {
-                "counter": 0
-              },
-              "revivals": {
-                "counter": 0
-              }
-            },
-            "connects": {
-              "counter": 1
-            },
-            "pool_num_waited": {
-              "counter": 0
-            },
-            "success": {
-              "counter": 126
-            },
-            "service": {
-              "svc": {
-                "request_latency_ms": {
-                  "stat.count": 13,
-                  "stat.max": 1,
-                  "stat.min": 0,
-                  "stat.p50": 0,
-                  "stat.p90": 0,
-                  "stat.p95": 0,
-                  "stat.p99": 1,
-                  "stat.p9990": 1,
-                  "stat.p9999": 1,
-                  "stat.sum": 1,
-                  "stat.avg": 0.07692307692307693
-                },
-                "success": {
-                  "counter": 126
-                },
-                "pending": {
-                  "gauge": 0.0
-                },
-                "requests": {
-                  "counter": 126
-                }
-              }
-            },
-            "request_latency_ms": {
-              "stat.count": 13,
-              "stat.max": 1,
-              "stat.min": 0,
-              "stat.p50": 0,
-              "stat.p90": 0,
-              "stat.p95": 0,
-              "stat.p99": 1,
-              "stat.p9990": 1,
-              "stat.p9999": 1,
-              "stat.sum": 1,
-              "stat.avg": 0.07692307692307693
-            },
-            "pool_waiters": {
-              "gauge": 0.0
-            },
-            "retries": {
-              "requeues_per_request": {
-                "stat.count": 13,
-                "stat.max": 0,
-                "stat.min": 0,
-                "stat.p50": 0,
-                "stat.p90": 0,
-                "stat.p95": 0,
-                "stat.p99": 0,
-                "stat.p9990": 0,
-                "stat.p9999": 0,
-                "stat.sum": 0,
-                "stat.avg": 0.0
-              },
-              "request_limit": {
-                "counter": 0
-              },
-              "budget_exhausted": {
-                "counter": 0
-              },
-              "cannot_retry": {
-                "counter": 0
-              },
-              "not_open": {
-                "counter": 0
-              },
-              "budget": {
-                "gauge": 102.0
-              },
-              "requeues": {
-                "counter": 0
-              }
-            },
-            "received_bytes": {
-              "counter": 3528
-            },
-            "connection_sent_bytes": {
-              "stat.count": 0
-            },
-            "connection_requests": {
-              "stat.count": 0
-            },
-            "pool_num_too_many_waiters": {
-              "counter": 0
-            },
-            "socket_unwritable_ms": {
-              "counter": 0
-            },
-            "closes": {
-              "counter": 0
-            },
-            "pool_cached": {
-              "gauge": 1.0
-            },
-            "pool_size": {
-              "gauge": 0.0
-            },
-            "available": {
-              "gauge": 1.0
-            },
-            "request_payload_bytes": {
-              "stat.count": 13,
-              "stat.max": 35,
-              "stat.min": 35,
-              "stat.p50": 35,
-              "stat.p90": 35,
-              "stat.p95": 35,
-              "stat.p99": 35,
-              "stat.p9990": 35,
-              "stat.p9999": 35,
-              "stat.sum": 455,
-              "stat.avg": 35.0
-            },
-            "socket_writable_ms": {
-              "counter": 0
-            },
-            "cancelled_connects": {
-              "counter": 0
-            },
-            "response_payload_bytes": {
-              "stat.count": 13,
-              "stat.max": 28,
-              "stat.min": 28,
-              "stat.p50": 28,
-              "stat.p90": 28,
-              "stat.p95": 28,
-              "stat.p99": 28,
-              "stat.p9990": 28,
-              "stat.p9999": 28,
-              "stat.sum": 364,
-              "stat.avg": 28.0
-            },
-            "dtab": {
-              "size": {
-                "stat.count": 0
-              }
-            },
-            "requests": {
-              "counter": 126
-            },
-            "loadbalancer": {
-              "size": {
-                "gauge": 1.0
-              },
-              "rebuilds": {
-                "counter": 1
-              },
-              "closed": {
-                "gauge": 0.0
-              },
-              "load": {
-                "gauge": 0.0
-              },
-              "meanweight": {
-                "gauge": 1.0
-              },
-              "adds": {
-                "counter": 1
-              },
-              "p2c": {
-                "gauge": 1.0
-              },
-              "updates": {
-                "counter": 1
-              },
-              "available": {
-                "gauge": 1.0
-              },
-              "max_effort_exhausted": {
-                "counter": 0
-              },
-              "busy": {
-                "gauge": 0.0
-              },
-              "removes": {
-                "counter": 0
-              }
-            },
-            "pending": {
-              "gauge": 0.0
-            },
-            "dispatcher": {
-              "serial": {
-                "queue_size": {
-                  "gauge": 0.0
-                }
-              }
-            },
-            "connections": {
-              "gauge": 1.0
-            }
-          }
-        },
-        "bindcache": {
-          "path": {
-            "evicts": {
-              "counter": 0
-            },
-            "misses": {
-              "counter": 1
-            },
-            "oneshots": {
-              "counter": 0
-            }
-          },
-          "bound": {
-            "evicts": {
-              "counter": 0
-            },
-            "misses": {
-              "counter": 3
-            },
-            "oneshots": {
-              "counter": 0
-            }
-          },
-          "tree": {
-            "evicts": {
-              "counter": 0
-            },
-            "misses": {
-              "counter": 1
-            },
-            "oneshots": {
-              "counter": 0
-            }
-          },
-          "client": {
-            "evicts": {
-              "counter": 0
-            },
-            "misses": {
-              "counter": 3
-            },
-            "oneshots": {
-              "counter": 0
-            }
-          }
-        },
-        "server": {
-          "0.0.0.0/4116": {
-            "sent_bytes": {
-              "counter": 10668
-            },
-            "connection_received_bytes": {
-              "stat.count": 33,
-              "stat.max": 35,
-              "stat.min": 35,
-              "stat.p50": 35,
-              "stat.p90": 35,
-              "stat.p95": 35,
-              "stat.p99": 35,
-              "stat.p9990": 35,
-              "stat.p9999": 35,
-              "stat.sum": 1155,
-              "stat.avg": 35.0
-            },
-            "connection_duration": {
-              "stat.count": 33,
-              "stat.max": 3,
-              "stat.min": 0,
-              "stat.p50": 1,
-              "stat.p90": 3,
-              "stat.p95": 3,
-              "stat.p99": 3,
-              "stat.p9990": 3,
-              "stat.p9999": 3,
-              "stat.sum": 29,
-              "stat.avg": 0.8787878787878788
-            },
-            "connects": {
-              "counter": 381
-            },
-            "success": {
-              "counter": 381
-            },
-            "request_latency_ms": {
-              "stat.count": 33,
-              "stat.max": 2,
-              "stat.min": 0,
-              "stat.p50": 0,
-              "stat.p90": 0,
-              "stat.p95": 1,
-              "stat.p99": 2,
-              "stat.p9990": 2,
-              "stat.p9999": 2,
-              "stat.sum": 4,
-              "stat.avg": 0.12121212121212122
-            },
-            "received_bytes": {
-              "counter": 13335
-            },
-            "read_timeout": {
-              "counter": 0
-            },
-            "write_timeout": {
-              "counter": 0
-            },
-            "connection_sent_bytes": {
-              "stat.count": 33,
-              "stat.max": 28,
-              "stat.min": 28,
-              "stat.p50": 28,
-              "stat.p90": 28,
-              "stat.p95": 28,
-              "stat.p99": 28,
-              "stat.p9990": 28,
-              "stat.p9999": 28,
-              "stat.sum": 924,
-              "stat.avg": 28.0
-            },
-            "connection_requests": {
-              "stat.count": 33,
-              "stat.max": 1,
-              "stat.min": 1,
-              "stat.p50": 1,
-              "stat.p90": 1,
-              "stat.p95": 1,
-              "stat.p99": 1,
-              "stat.p9990": 1,
-              "stat.p9999": 1,
-              "stat.sum": 33,
-              "stat.avg": 1.0
-            },
-            "transit_latency_ms": {
-              "stat.count": 0
-            },
-            "socket_unwritable_ms": {
-              "counter": 0
-            },
-            "closes": {
-              "counter": 0
-            },
-            "request_payload_bytes": {
-              "stat.count": 33,
-              "stat.max": 35,
-              "stat.min": 35,
-              "stat.p50": 35,
-              "stat.p90": 35,
-              "stat.p95": 35,
-              "stat.p99": 35,
-              "stat.p9990": 35,
-              "stat.p9999": 35,
-              "stat.sum": 1155,
-              "stat.avg": 35.0
-            },
-            "socket_writable_ms": {
-              "counter": 0
-            },
-            "response_payload_bytes": {
-              "stat.count": 33,
-              "stat.max": 28,
-              "stat.min": 28,
-              "stat.p50": 28,
-              "stat.p90": 28,
-              "stat.p95": 28,
-              "stat.p99": 28,
-              "stat.p9990": 28,
-              "stat.p9999": 28,
-              "stat.sum": 924,
-              "stat.avg": 28.0
-            },
-            "dtab": {
-              "size": {
-                "stat.count": 0
-              }
-            },
-            "requests": {
-              "counter": 381
-            },
-            "pending": {
-              "gauge": 0.0
-            },
-            "handletime_us": {
-              "stat.count": 33,
-              "stat.max": 27,
-              "stat.min": 7,
-              "stat.p50": 11,
-              "stat.p90": 20,
-              "stat.p95": 20,
-              "stat.p99": 27,
-              "stat.p9990": 27,
-              "stat.p9999": 27,
-              "stat.sum": 407,
-              "stat.avg": 12.333333333333334
-            },
-            "connections": {
-              "gauge": 0.0
-            }
-          }
-        }
-      },
       "interpreter/io.buoyant.namerd.iface.NamerdInterpreterConfig": {
         "connect_latency_ms": {
           "stat.count": 0
@@ -4160,6 +3167,1786 @@ return {
         },
         "connections": {
           "gauge": 1.0
+        }
+      }
+    },
+    "multiplier": {
+      "service": {
+        "svc": {
+          "success": {
+            "counter": 381
+          },
+          "request_latency_ms": {
+            "stat.count": 33,
+            "stat.max": 2,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 1,
+            "stat.p99": 2,
+            "stat.p9990": 2,
+            "stat.p9999": 2,
+            "stat.sum": 4,
+            "stat.avg": 0.12121212121212122
+          },
+          "retries": {
+            "per_request": {
+              "stat.count": 33,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "total": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            }
+          },
+          "requests": {
+            "counter": 381
+          },
+          "pending": {
+            "gauge": 0.0
+          }
+        }
+      },
+      "client": {
+        "$/inet/127.1/9030": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4760
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 136
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 13,
+                "stat.max": 0,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 0,
+                "stat.p99": 0,
+                "stat.p9990": 0,
+                "stat.p9999": 0,
+                "stat.sum": 0,
+                "stat.avg": 0.0
+              },
+              "success": {
+                "counter": 136
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 136
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 13,
+            "stat.max": 0,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 0,
+            "stat.p99": 0,
+            "stat.p9990": 0,
+            "stat.p9999": 0,
+            "stat.sum": 0,
+            "stat.avg": 0.0
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3808
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 455,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 364,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 136
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        },
+        "$/inet/127.1/9029": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4165
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 7,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 119
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 7,
+                "stat.max": 1,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 1,
+                "stat.p99": 1,
+                "stat.p9990": 1,
+                "stat.p9999": 1,
+                "stat.sum": 1,
+                "stat.avg": 0.14285714285714285
+              },
+              "success": {
+                "counter": 119
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 119
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 7,
+            "stat.max": 1,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 1,
+            "stat.p99": 1,
+            "stat.p9990": 1,
+            "stat.p9999": 1,
+            "stat.sum": 1,
+            "stat.avg": 0.14285714285714285
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 7,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3332
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 7,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 245,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 7,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 196,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 119
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        },
+        "$/inet/127.1/9092": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4410
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 126
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 13,
+                "stat.max": 1,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 0,
+                "stat.p99": 1,
+                "stat.p9990": 1,
+                "stat.p9999": 1,
+                "stat.sum": 1,
+                "stat.avg": 0.07692307692307693
+              },
+              "success": {
+                "counter": 126
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 126
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 13,
+            "stat.max": 1,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 0,
+            "stat.p99": 1,
+            "stat.p9990": 1,
+            "stat.p9999": 1,
+            "stat.sum": 1,
+            "stat.avg": 0.07692307692307693
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3528
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 455,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 364,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 126
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        }
+      },
+      "bindcache": {
+        "path": {
+          "evicts": {
+            "counter": 0
+          },
+          "misses": {
+            "counter": 1
+          },
+          "oneshots": {
+            "counter": 0
+          }
+        },
+        "bound": {
+          "evicts": {
+            "counter": 0
+          },
+          "misses": {
+            "counter": 3
+          },
+          "oneshots": {
+            "counter": 0
+          }
+        },
+        "tree": {
+          "evicts": {
+            "counter": 0
+          },
+          "misses": {
+            "counter": 1
+          },
+          "oneshots": {
+            "counter": 0
+          }
+        },
+        "client": {
+          "evicts": {
+            "counter": 0
+          },
+          "misses": {
+            "counter": 3
+          },
+          "oneshots": {
+            "counter": 0
+          }
+        }
+      },
+      "server": {
+        "0.0.0.0/4116": {
+          "sent_bytes": {
+            "counter": 10668
+          },
+          "connection_received_bytes": {
+            "stat.count": 33,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 1155,
+            "stat.avg": 35.0
+          },
+          "connection_duration": {
+            "stat.count": 33,
+            "stat.max": 3,
+            "stat.min": 0,
+            "stat.p50": 1,
+            "stat.p90": 3,
+            "stat.p95": 3,
+            "stat.p99": 3,
+            "stat.p9990": 3,
+            "stat.p9999": 3,
+            "stat.sum": 29,
+            "stat.avg": 0.8787878787878788
+          },
+          "connects": {
+            "counter": 381
+          },
+          "success": {
+            "counter": 381
+          },
+          "request_latency_ms": {
+            "stat.count": 33,
+            "stat.max": 2,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 1,
+            "stat.p99": 2,
+            "stat.p9990": 2,
+            "stat.p9999": 2,
+            "stat.sum": 4,
+            "stat.avg": 0.12121212121212122
+          },
+          "received_bytes": {
+            "counter": 13335
+          },
+          "read_timeout": {
+            "counter": 0
+          },
+          "write_timeout": {
+            "counter": 0
+          },
+          "connection_sent_bytes": {
+            "stat.count": 33,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 924,
+            "stat.avg": 28.0
+          },
+          "connection_requests": {
+            "stat.count": 33,
+            "stat.max": 1,
+            "stat.min": 1,
+            "stat.p50": 1,
+            "stat.p90": 1,
+            "stat.p95": 1,
+            "stat.p99": 1,
+            "stat.p9990": 1,
+            "stat.p9999": 1,
+            "stat.sum": 33,
+            "stat.avg": 1.0
+          },
+          "transit_latency_ms": {
+            "stat.count": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "request_payload_bytes": {
+            "stat.count": 33,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 1155,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 33,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 924,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 381
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "handletime_us": {
+            "stat.count": 33,
+            "stat.max": 27,
+            "stat.min": 7,
+            "stat.p50": 11,
+            "stat.p90": 20,
+            "stat.p95": 20,
+            "stat.p99": 27,
+            "stat.p9990": 27,
+            "stat.p9999": 27,
+            "stat.sum": 407,
+            "stat.avg": 12.333333333333334
+          },
+          "connections": {
+            "gauge": 0.0
+          }
+        }
+      }
+    },
+    "to_be_expired": {
+      "client": {
+        "$/inet/127.1/9030": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4760
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 136
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 13,
+                "stat.max": 0,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 0,
+                "stat.p99": 0,
+                "stat.p9990": 0,
+                "stat.p9999": 0,
+                "stat.sum": 0,
+                "stat.avg": 0.0
+              },
+              "success": {
+                "counter": 136
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 136
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 13,
+            "stat.max": 0,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 0,
+            "stat.p99": 0,
+            "stat.p9990": 0,
+            "stat.p9999": 0,
+            "stat.sum": 0,
+            "stat.avg": 0.0
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3808
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 455,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 364,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 136
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        },
+        "$/inet/127.1/9029": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4165
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 7,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 119
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 7,
+                "stat.max": 1,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 1,
+                "stat.p99": 1,
+                "stat.p9990": 1,
+                "stat.p9999": 1,
+                "stat.sum": 1,
+                "stat.avg": 0.14285714285714285
+              },
+              "success": {
+                "counter": 119
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 119
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 7,
+            "stat.max": 1,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 1,
+            "stat.p99": 1,
+            "stat.p9990": 1,
+            "stat.p9999": 1,
+            "stat.sum": 1,
+            "stat.avg": 0.14285714285714285
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 7,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3332
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 7,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 245,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 7,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 196,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 119
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        },
+        "$/inet/127.1/9092": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "failed_connect_latency_ms": {
+            "stat.count": 0
+          },
+          "sent_bytes": {
+            "counter": 4410
+          },
+          "service_creation": {
+            "service_acquisition_latency_ms": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            }
+          },
+          "connection_received_bytes": {
+            "stat.count": 0
+          },
+          "connection_duration": {
+            "stat.count": 0
+          },
+          "failure_accrual": {
+            "removals": {
+              "counter": 0
+            },
+            "probes": {
+              "counter": 0
+            },
+            "removed_for_ms": {
+              "counter": 0
+            },
+            "revivals": {
+              "counter": 0
+            }
+          },
+          "connects": {
+            "counter": 1
+          },
+          "pool_num_waited": {
+            "counter": 0
+          },
+          "success": {
+            "counter": 126
+          },
+          "service": {
+            "svc": {
+              "request_latency_ms": {
+                "stat.count": 13,
+                "stat.max": 1,
+                "stat.min": 0,
+                "stat.p50": 0,
+                "stat.p90": 0,
+                "stat.p95": 0,
+                "stat.p99": 1,
+                "stat.p9990": 1,
+                "stat.p9999": 1,
+                "stat.sum": 1,
+                "stat.avg": 0.07692307692307693
+              },
+              "success": {
+                "counter": 126
+              },
+              "pending": {
+                "gauge": 0.0
+              },
+              "requests": {
+                "counter": 126
+              }
+            }
+          },
+          "request_latency_ms": {
+            "stat.count": 13,
+            "stat.max": 1,
+            "stat.min": 0,
+            "stat.p50": 0,
+            "stat.p90": 0,
+            "stat.p95": 0,
+            "stat.p99": 1,
+            "stat.p9990": 1,
+            "stat.p9999": 1,
+            "stat.sum": 1,
+            "stat.avg": 0.07692307692307693
+          },
+          "pool_waiters": {
+            "gauge": 0.0
+          },
+          "retries": {
+            "requeues_per_request": {
+              "stat.count": 13,
+              "stat.max": 0,
+              "stat.min": 0,
+              "stat.p50": 0,
+              "stat.p90": 0,
+              "stat.p95": 0,
+              "stat.p99": 0,
+              "stat.p9990": 0,
+              "stat.p9999": 0,
+              "stat.sum": 0,
+              "stat.avg": 0.0
+            },
+            "request_limit": {
+              "counter": 0
+            },
+            "budget_exhausted": {
+              "counter": 0
+            },
+            "cannot_retry": {
+              "counter": 0
+            },
+            "not_open": {
+              "counter": 0
+            },
+            "budget": {
+              "gauge": 102.0
+            },
+            "requeues": {
+              "counter": 0
+            }
+          },
+          "received_bytes": {
+            "counter": 3528
+          },
+          "connection_sent_bytes": {
+            "stat.count": 0
+          },
+          "connection_requests": {
+            "stat.count": 0
+          },
+          "pool_num_too_many_waiters": {
+            "counter": 0
+          },
+          "socket_unwritable_ms": {
+            "counter": 0
+          },
+          "closes": {
+            "counter": 0
+          },
+          "pool_cached": {
+            "gauge": 1.0
+          },
+          "pool_size": {
+            "gauge": 0.0
+          },
+          "available": {
+            "gauge": 1.0
+          },
+          "request_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 35,
+            "stat.min": 35,
+            "stat.p50": 35,
+            "stat.p90": 35,
+            "stat.p95": 35,
+            "stat.p99": 35,
+            "stat.p9990": 35,
+            "stat.p9999": 35,
+            "stat.sum": 455,
+            "stat.avg": 35.0
+          },
+          "socket_writable_ms": {
+            "counter": 0
+          },
+          "cancelled_connects": {
+            "counter": 0
+          },
+          "response_payload_bytes": {
+            "stat.count": 13,
+            "stat.max": 28,
+            "stat.min": 28,
+            "stat.p50": 28,
+            "stat.p90": 28,
+            "stat.p95": 28,
+            "stat.p99": 28,
+            "stat.p9990": 28,
+            "stat.p9999": 28,
+            "stat.sum": 364,
+            "stat.avg": 28.0
+          },
+          "dtab": {
+            "size": {
+              "stat.count": 0
+            }
+          },
+          "requests": {
+            "counter": 126
+          },
+          "loadbalancer": {
+            "size": {
+              "gauge": 1.0
+            },
+            "rebuilds": {
+              "counter": 1
+            },
+            "closed": {
+              "gauge": 0.0
+            },
+            "load": {
+              "gauge": 0.0
+            },
+            "meanweight": {
+              "gauge": 1.0
+            },
+            "adds": {
+              "counter": 1
+            },
+            "p2c": {
+              "gauge": 1.0
+            },
+            "updates": {
+              "counter": 1
+            },
+            "available": {
+              "gauge": 1.0
+            },
+            "max_effort_exhausted": {
+              "counter": 0
+            },
+            "busy": {
+              "gauge": 0.0
+            },
+            "removes": {
+              "counter": 0
+            }
+          },
+          "pending": {
+            "gauge": 0.0
+          },
+          "dispatcher": {
+            "serial": {
+              "queue_size": {
+                "gauge": 0.0
+              }
+            }
+          },
+          "connections": {
+            "gauge": 1.0
+          }
+        }
+      }
+    },
+    "lots_of_clients": {
+      "client": {
+        "$/inet/127.1/1111": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/2222": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/3333": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/4444": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/5555": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/6666": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
+        },
+        "$/inet/127.1/7777": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          }
         }
       }
     },

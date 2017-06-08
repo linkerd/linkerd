@@ -43,7 +43,7 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
     val param.Stats(stats) = router.params[param.Stats]
     val routerLabel = router.label
     server.configured(param.Label(s"$ip/$port"))
-      .configured(Server.RouterLabel(routerLabel))
+      .configured(RouterLabel.Param(routerLabel))
       .configured(param.Stats(stats.scope(routerLabel, "server")))
       .configured(router.params[param.Tracer])
   }
@@ -76,7 +76,13 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
         throw new IllegalStateException(s"router '$name' has no servers")
       }
 
-      val factory = router.factory()
+      val pathStk = router.pathStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+      val clientStk = router.clientStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+
+      val factory = router
+        .withPathStack(pathStk)
+        .withClientStack(clientStk)
+        .factory()
 
       // Don't let server closure close the router.
       val adapted = new ServiceFactoryProxy(adapter.andThen(factory)) {
@@ -157,7 +163,7 @@ object ProtocolInitializer {
     announce: Seq[Path]
   ) extends Server.Initializer {
     def params = server.params
-    def router: String = server.params[Server.RouterLabel].label
+    def router: String = server.params[RouterLabel.Param].label
     def ip = addr.getAddress
     def port = addr.getPort
     def serve() = server.serve(addr, factory)

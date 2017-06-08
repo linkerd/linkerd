@@ -13,19 +13,33 @@
 <div class="dtab">
   <h4 class="header">
     Dtab
-    <button id="edit-dtab-btn" class="btn btn-info btn-sm">Edit</button>
-    <button id="save-dtab-btn" class="btn btn-success btn-sm hide disabled">Apply*</button>
   </h4>
   <div id="dtab"></div>
+  <div class="namerd-dtab-warning hide">Note: the above Dentries are from namerd and can't be edited.</div>
   <div id="dtab-base"></div>
+
   <div id="dtab-edit" class="hide">
     <textarea type="text" class="form-control" id="dtab-input" placeholder=""></textarea>
   </div>
+
+  <button id="edit-dtab-btn" class="btn btn-info btn-sm">Edit</button>
+  <button id="save-dtab-btn" class="btn btn-success btn-sm hide disabled">Apply*</button>
+  <a target="_blank" id="reset-dtab-link" class="hide">Reset</a>
   <div class="save-warning">*Applies dtab for playground testing only!</div>
 </div>
 
-</div>
-<div class="result">
-</div>
-<div class="modal fade error-modal" tabindex="-1" role="dialog">
+<div class="result"></div>
+
+<div class="modal fade error-modal" tabindex="-1" role="dialog"></div>
+
+<div class="modal fade confirm-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-body">Reset Dtab to initial state?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning confirm" data-dismiss="modal">Reset</button>
+      </div>
+    </div>
+  </div>
 </div>

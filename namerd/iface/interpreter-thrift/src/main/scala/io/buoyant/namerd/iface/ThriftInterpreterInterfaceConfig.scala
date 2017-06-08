@@ -1,11 +1,8 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.ssl.{KeyCredentials, Ssl}
-import com.twitter.finagle.ssl.server.SslServerConfiguration
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{Stack, Path, Namer, ThriftMux}
+import com.twitter.finagle.{Namer, Path, Stack, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
@@ -13,15 +10,13 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
-import java.io.File
 import java.net.InetSocketAddress
 import scala.util.Random
 
 case class ThriftInterpreterInterfaceConfig(
   retryBaseSecs: Option[Int] = None,
   retryJitterSecs: Option[Int] = None,
-  cache: Option[CapacityConfig] = None,
-  tls: Option[TlsServerConfig] = None
+  cache: Option[CapacityConfig] = None
 ) extends InterpreterInterfaceConfig {
   @JsonIgnore
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
@@ -46,10 +41,7 @@ case class ThriftInterpreterInterfaceConfig(
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
       stats
     )
-    val params = (tls match {
-      case Some(tlsConfig) => Stack.Params.empty + tlsConfig.param
-      case None => Stack.Params.empty
-    }) + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
+    val params = tlsParams + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
     ThriftServable(addr, iface, params)
   }
 }
@@ -84,11 +76,4 @@ case class CapacityConfig(
     addrCacheActive = addrCacheActive.getOrElse(default.addrCacheActive),
     addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive)
   )
-}
-
-case class TlsServerConfig(certPath: String, keyPath: String) {
-  val param = {
-    val creds = KeyCredentials.CertAndKey(new File(certPath), new File(keyPath))
-    Transport.ServerSsl(Some(SslServerConfiguration(keyCredentials = creds)))
-  }
 }

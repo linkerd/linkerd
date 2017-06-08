@@ -6,8 +6,6 @@ import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
 import com.twitter.finagle.tracing._
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw, Time, Try}
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
 import scala.collection.breakOut
 
@@ -133,7 +131,7 @@ object LinkerdHeaders {
        * combination.
        */
       def get(headers: Headers): Option[FDeadline] =
-        headers.get(Key).foldLeft[Option[FDeadline]](None) { (d0, v) =>
+        headers.getAll(Key).foldLeft[Option[FDeadline]](None) { (d0, v) =>
           (d0, Try(read(v)).toOption) match {
             case (Some(d0), Some(d1)) => Some(FDeadline.combined(d0, d1))
             case (d0, d1) => d0.orElse(d1)
@@ -219,7 +217,7 @@ object LinkerdHeaders {
 
       def get(headers: Headers, key: String): Try[FDtab] =
         if (!headers.contains(key)) EmptyReturn
-        else Try { FDtab(headers.get(key).flatMap(FDtab.read(_))(breakOut)) }
+        else Try { FDtab(headers.getAll(key).flatMap(FDtab.read(_))(breakOut)) }
 
       def get(headers: Headers): Try[FDtab] =
         for {
@@ -296,7 +294,7 @@ object LinkerdHeaders {
 
       def get(headers: Headers): Option[TraceId] =
         for {
-          header <- headers.get(Key).headOption
+          header <- headers.get(Key)
           traceId <- read(header).toOption
         } yield traceId
 
@@ -351,7 +349,7 @@ object LinkerdHeaders {
     val Key = Prefix + "sample"
 
     def get(headers: Headers): Option[Float] =
-      headers.get(Key).headOption.flatMap { s =>
+      headers.get(Key).flatMap { s =>
         Try(s.toFloat).toOption.map {
           case v if v < 0 => 0.0f
           case v if v > 1 => 1.0f
