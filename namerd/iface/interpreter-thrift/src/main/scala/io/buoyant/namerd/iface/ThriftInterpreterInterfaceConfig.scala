@@ -10,7 +10,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import scala.util.Random
 
 case class ThriftInterpreterInterfaceConfig(
@@ -53,7 +53,7 @@ case class ThriftInterpreterInterfaceConfig(
 
 object ThriftInterpreterInterfaceConfig {
   val kind = "io.l5d.thriftNameInterpreter"
-  val defaultAddr = new InetSocketAddress(4100)
+  val defaultAddr = new InetSocketAddress(InetAddress.getLoopbackAddress, 4100)
 }
 
 class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {

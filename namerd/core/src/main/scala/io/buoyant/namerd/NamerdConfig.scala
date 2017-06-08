@@ -11,7 +11,7 @@ import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.namer.{NamerConfig, NamerInitializer, TransformerInitializer}
 import io.buoyant.telemetry._
 import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import scala.util.control.NoStackTrace
 
 private[namerd] case class NamerdConfig(
@@ -94,7 +94,7 @@ private[namerd] case class NamerdConfig(
 private[namerd] object NamerdConfig {
   private val log = Logger()
 
-  private def DefaultAdminAddress = new InetSocketAddress(9991)
+  private def DefaultAdminAddress = new InetSocketAddress(InetAddress.getLoopbackAddress, 9991)
   private def DefaultAdminConfig = AdminConfig()
 
   case class ConflictingNamers(prefix0: Path, prefix1: Path) extends ConfigError {
