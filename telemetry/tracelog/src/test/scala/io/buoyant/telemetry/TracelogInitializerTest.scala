@@ -21,6 +21,18 @@ class TracelogInitializerTest extends FunSuite {
     assert(!telemeter.tracer.isNull)
   }
 
+  test("io.l5d.tracelog telemeter accepts int for sampleRate") {
+    val yaml =
+      """|kind: io.l5d.tracelog
+         |sampleRate: 1
+         |""".stripMargin
+
+    val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
+      .readValue[TelemeterConfig](yaml)
+
+    assert(config.asInstanceOf[TracelogConfig].sampleRate == Some(1.0))
+  }
+
   test("io.l5d.tracelog telemeter loads, with log level") {
     val yaml =
       """|kind: io.l5d.tracelog

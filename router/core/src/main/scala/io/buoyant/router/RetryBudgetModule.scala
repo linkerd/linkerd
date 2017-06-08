@@ -1,5 +1,6 @@
 package io.buoyant.router
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.time._
 import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.finagle.service.{Backoff, Retries, RetryBudget}
@@ -34,5 +35,5 @@ object RetryBudgetModule {
 case class RetryBudgetConfig(
   ttlSecs: Option[Int] = None,
   minRetriesPerSec: Option[Int] = None,
-  percentCanRetry: Option[Double] = None
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) percentCanRetry: Option[Double] = None
 )
