@@ -1,6 +1,7 @@
 package io.buoyant.namerd
 package storage.consul
 
+import com.google.common.cache.{CacheBuilder, CacheLoader}
 import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -15,7 +16,7 @@ class ConsulDtabStore(
   writeConsistency: Option[ConsistencyMode] = None
 ) extends DtabStore {
 
-  override def list(): Activity[Set[Ns]] = {
+  override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
 
     val run = Var.async[Activity.State[Set[Ns]]](Activity.Pending) { updates =>
@@ -106,7 +107,18 @@ class ConsulDtabStore(
       consistency = writeConsistency
     ).unit
 
-  def observe(ns: Ns): Activity[Option[VersionedDtab]] = {
+  // We don't hold cached observations open so caching these is very cheap.  Therefore we don't
+  // limit the size of this cache.
+  private[this] val dtabCache = CacheBuilder.newBuilder()
+    .build[Ns, Activity[Option[VersionedDtab]]](
+      new CacheLoader[Ns, Activity[Option[VersionedDtab]]] {
+        override def load(key: Ns): Activity[Option[VersionedDtab]] = _observe(key)
+      }
+    )
+
+  def observe(ns: Ns): Activity[Option[VersionedDtab]] = dtabCache.get(ns)
+
+  private[this] def _observe(ns: Ns): Activity[Option[VersionedDtab]] = {
     val key = s"${root.show}/$ns"
     val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
       @volatile var running = true

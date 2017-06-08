@@ -5,6 +5,7 @@
 * Add support for client auth TLS.
 * Add TLS support for `io.l5d.httpController` and `io.l5d.mesh`.
 * Add support for HTTP/2 tracing.
+* Cache dtab observations in the io.l5d.consul store.
 
 ## 1.0.2 2017-05-12
 
