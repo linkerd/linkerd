@@ -5,7 +5,6 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 import io.buoyant.namer.RichActivity
-
 import scala.util.matching.Regex
 
 case class IngressSpec(
