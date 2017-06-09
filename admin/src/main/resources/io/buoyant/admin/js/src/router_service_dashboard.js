@@ -44,8 +44,6 @@ define([
   }
 
   function initializeService($routerContainer, metricsCollector, router, svc) {
-    $routerContainer.find(".svc-subsection").removeClass("hidden");
-
     svcsByRouter[router][svc] = RouterService(metricsCollector, $routerContainer, svc);
   }
 
@@ -80,6 +78,10 @@ define([
             }
           });
         });
+
+        if (!_.isEmpty(svcsByRouter[router])) {
+          $routerContainer.find(".svc-subsection").removeClass("hidden");
+        }
       });
     }
   };
