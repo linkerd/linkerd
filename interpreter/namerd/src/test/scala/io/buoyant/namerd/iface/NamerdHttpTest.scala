@@ -22,6 +22,14 @@ class NamerdHttpTest extends FunSuite {
                    |experimental: true
                    |dst: /$$/inet/127.1/4100
                    |namespace: name
+                   |tls:
+                   |  disableValidation: false
+                   |  commonName: "{service}"
+                   |  trustCerts:
+                   |  - /foo/caCert.pem
+                   |  clientAuth:
+                   |    certPath: /namerd-cert.pem
+                   |    keyPath: /namerd-key.pem
                    |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(NamerdHttpInterpreterInitializer)))
@@ -30,12 +38,27 @@ class NamerdHttpTest extends FunSuite {
     assert(namerd.dst == Some(Path.read("/$/inet/127.1/4100")))
     assert(namerd.namespace == Some("name"))
     assert(!namerd.disabled)
+
+    val tls = namerd.tls.get
+    assert(tls.disableValidation == Some(false))
+    assert(tls.commonName == Some("{service}"))
+    assert(tls.trustCerts == Some(List("/foo/caCert.pem")))
+    assert(tls.clientAuth.get.certPath == "/namerd-cert.pem")
+    assert(tls.clientAuth.get.keyPath == "/namerd-key.pem")
   }
 
   test("without experimental") {
     val yaml = s"""|kind: io.l5d.namerd.http
                    |dst: /$$/inet/127.1/4100
                    |namespace: name
+                   |tls:
+                   |  disableValidation: false
+                   |  commonName: "{service}"
+                   |  trustCerts:
+                   |  - /foo/caCert.pem
+                   |  clientAuth:
+                   |    certPath: /namerd-cert.pem
+                   |    keyPath: /namerd-key.pem
                    |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(NamerdHttpInterpreterInitializer)))

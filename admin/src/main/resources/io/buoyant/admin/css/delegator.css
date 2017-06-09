@@ -45,6 +45,10 @@
   margin-left: 10px;
 }
 
+.list-group-item .path {
+  opacity: 0.5;
+}
+
 .dtab {
   margin: 5px 15px;
 }

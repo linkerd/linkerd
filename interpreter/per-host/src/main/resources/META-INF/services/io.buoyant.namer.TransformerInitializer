@@ -1,2 +1,3 @@
 io.buoyant.transformer.perHost.LocalhostTransformerInitializer
 io.buoyant.transformer.perHost.PortTransformerInitializer
+io.buoyant.transformer.perHost.SpecificHostTransformerInitializer

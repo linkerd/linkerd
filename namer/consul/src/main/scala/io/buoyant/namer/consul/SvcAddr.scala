@@ -57,6 +57,9 @@ private[consul] object SvcAddr {
       def loop(index0: Option[String]): Future[Unit] = {
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
+          case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            // Drop the index, in case it's been reset by a consul restart
+            loop(None)
           case Throw(e) =>
             // If an exception escaped getAddresses's retries, we
             // treat it as effectively fatal to the service

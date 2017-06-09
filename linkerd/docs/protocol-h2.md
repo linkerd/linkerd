@@ -20,12 +20,11 @@ routers:
   dtab: |
     /svc => /#/io.l5d.fs ;
   client:
+    prefix: "/#/io.l5d.fs/{service}"
     tls:
       kind: io.l5d.boundPath
       caCertPath: .../ca.pem
-      names:
-      - prefix: "/#/io.l5d.fs/{service}"
-        commonNamePattern: "{service}"
+      commonName: "{service}"
 ```
 
 > Below: plaintext gRPC

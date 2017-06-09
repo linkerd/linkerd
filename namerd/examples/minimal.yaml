@@ -1,0 +1,5 @@
+# example config demonstrating the minimal set of namerd config keys required
+storage:
+  kind: io.l5d.inMemory
+interfaces:
+- kind: io.l5d.httpController

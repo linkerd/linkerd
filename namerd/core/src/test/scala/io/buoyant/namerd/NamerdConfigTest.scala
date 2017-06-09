@@ -34,23 +34,29 @@ class NamerdConfigTest extends FunSuite {
     """.stripMargin
 
     val config = NamerdConfig.loadNamerd(yaml, initializers)
-    assert(config.namers.head.prefix == Path.read("/#/io.l5d.fs"))
+    assert(config.namers.get.head.prefix == Path.read("/#/io.l5d.fs"))
     assert(config.interfaces.head.addr.getAddress.isLoopbackAddress)
     assert(config.interfaces.head.addr.getPort == 1)
     // just check that this don't blow up
     val _ = config.mk()
   }
 
-  test("missing namers validation") {
-    val missingNamers =
-      """
-        |storage:
-        |  kind: io.buoyant.namerd.TestDtabStore
-      """.stripMargin
-    val namerEx = intercept[JsonMappingException] {
-      NamerdConfig.loadNamerd(missingNamers, initializers)
-    }
-    assert(namerEx.getMessage.contains("'namers' field is required"))
+  test("parse minimal namerd config") {
+    val yaml = """
+      |storage:
+      |  kind: io.buoyant.namerd.TestDtabStore
+      |interfaces:
+      |- kind: test
+      |  ip: 127.0.0.1
+      |  port: 1
+    """.stripMargin
+
+    val config = NamerdConfig.loadNamerd(yaml, initializers)
+    assert(config.namers == None)
+    assert(config.interfaces.head.addr.getAddress.isLoopbackAddress)
+    assert(config.interfaces.head.addr.getPort == 1)
+    // just check that this don't blow up
+    val _ = config.mk()
   }
 
   test("missing interfaces validation") {

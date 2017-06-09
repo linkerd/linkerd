@@ -134,8 +134,8 @@ object Generator {
 
   private[this] def genEnum(enum: ProtoFile.EnumType, indent: String): String = {
     val decoders = enum.values.map { v => s"case ${v.number} => ${v.name}" }
-    val encoders = enum.values.map { v => s"case ${v.name} => pbos.writeEnumNoTag(${v.number})" }
-    val sizers = enum.values.map { v => s"case ${v.name} => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
+    val encoders = enum.values.map { v => s"case `${v.name}` => pbos.writeEnumNoTag(${v.number})" }
+    val sizers = enum.values.map { v => s"case `${v.name}` => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
 
     s"""|${indent}object ${enum.name} extends scala.Enumeration {
         |${indent}  val ${enum.values.map(_.name).mkString(", ")} = Value
@@ -403,7 +403,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldWriters = o.fields.map { f =>
-          val ftyp = s"${typ}.`${upperHead(f.name)}`"
+          val ftyp = s"${typ}.`${snakeToUpperCamel(f.name)}`"
           val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${writer}""".stripMargin
@@ -448,7 +448,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldSizes = o.fields.map { f =>
-          val ftyp = s"${typ}.${upperHead(f.name)}"
+          val ftyp = s"${typ}.${snakeToUpperCamel(f.name)}"
           val sizeOf = genComputeSizeTagged(f, "value", translateType)
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${indent}      val sz = ${sizeOf}

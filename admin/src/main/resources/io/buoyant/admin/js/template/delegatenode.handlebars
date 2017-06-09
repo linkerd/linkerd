@@ -47,9 +47,11 @@
     {{else}}
       list-group-item-plain
     {{/if}}'
+
     {{#with dentry}}
       data-dentry-prefix='{{prefix}}' data-dentry-dst='{{dst}}'
     {{/with}}>
+
     <div class='node-info'>
       {{#if isNeg}}
         No Further Branch Matches
@@ -68,12 +70,18 @@
         (weight: {{weight}})
       {{/if}}
     </div>
+
     {{#with addr}}
       {{#each addrs}}
         {{ip}}:{{port}}
       {{/each}}
     {{/with}}
-    {{path}}
+
+    <span>
+      {{#if id}}[{{id}}]{{/if}}
+      <span class='path'>(residual: {{path}})</span>
+    </span>
+
     {{#with dentry}}
       <span class='node-dentry'>{{prefix}} => {{dst}}</span>
     {{/with}}

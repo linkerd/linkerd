@@ -3,17 +3,27 @@ package iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Namer, Service, Stack}
-import com.twitter.finagle.buoyant.{H2, h2}
+import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import io.buoyant.grpc.runtime.ServerDispatcher
+import io.netty.handler.ssl.ApplicationProtocolNames
 import java.net.InetSocketAddress
 
 class MeshIfaceConfig extends InterfaceConfig {
   @JsonIgnore
   override protected def defaultAddr = MeshIfaceInitializer.defaultAddr
+
+  @JsonIgnore
+  override def tlsParams = tls.map(
+    _.params(
+      Some(Seq(ApplicationProtocolNames.HTTP_2)),
+      Netty4ServerEngineFactory()
+    )
+  ).getOrElse(Stack.Params.empty)
 
   @JsonIgnore
   override def mk(
@@ -32,7 +42,9 @@ class MeshIfaceConfig extends InterfaceConfig {
         val resolver = mesh.ResolverService(namers, stats1)
         ServerDispatcher(codec, interpreter, delegator, resolver)
       }
-      H2.server.withStatsReceiver(stats1).serve(addr, dispatcher)
+
+      val h2 = H2.server
+      h2.withParams(h2.params ++ tlsParams).withStatsReceiver(stats1).serve(addr, dispatcher)
     }
   }
 }

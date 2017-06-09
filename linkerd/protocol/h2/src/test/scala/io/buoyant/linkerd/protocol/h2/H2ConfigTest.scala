@@ -5,6 +5,8 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.{Path, Stack}
 import com.twitter.finagle.buoyant.h2.param.FlowControl._
 import com.twitter.finagle.buoyant.h2.param.Settings._
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
+import com.twitter.finagle.ssl.server.SslServerEngineFactory
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.test.FunSuite
@@ -33,6 +35,14 @@ class H2ConfigTest extends FunSuite {
           |    maxConcurrentStreamsPerConnection: 800
           |    maxFrameBytes: 16384
           |    maxHeaderListBytes: 2049
+          |    tls:
+          |      certPath: cert.pem
+          |      keyPath: key.pem
+          |      caCertPath: cacert.pem
+          |      ciphers:
+          |      - "foo"
+          |      - "bar"
+          |      requireClientAuth: true
           |""".stripMargin
     val config = parse(yaml)
 
@@ -44,7 +54,7 @@ class H2ConfigTest extends FunSuite {
     assert(cparams[MaxFrameSize] == MaxFrameSize(Some(8.kilobytes)))
     assert(cparams[MaxHeaderListSize] == MaxHeaderListSize(Some(1025.bytes)))
 
-    val sparams = config.servers.head.withEndpointParams(Stack.Params.empty)
+    val sparams = config.servers.head.serverParams
     assert(sparams[AutoRefillConnectionWindow] == AutoRefillConnectionWindow(true))
     assert(sparams[WindowUpdateRatio] == WindowUpdateRatio(0.5f))
     assert(sparams[HeaderTableSize] == HeaderTableSize(Some(2.kilobytes)))
@@ -52,6 +62,14 @@ class H2ConfigTest extends FunSuite {
     assert(sparams[MaxConcurrentStreams] == MaxConcurrentStreams(Some(800)))
     assert(sparams[MaxFrameSize] == MaxFrameSize(Some(16.kilobytes)))
     assert(sparams[MaxHeaderListSize] == MaxHeaderListSize(Some(2049.bytes)))
+    assert(sparams[SslServerEngineFactory.Param].factory.isInstanceOf[Netty4ServerEngineFactory])
+
+    val tls = config.servers.head.tls.get
+    assert(tls.certPath == "cert.pem")
+    assert(tls.keyPath == "key.pem")
+    assert(tls.caCertPath == Some("cacert.pem"))
+    assert(tls.ciphers == Some(List("foo", "bar")))
+    assert(tls.requireClientAuth == Some(true))
   }
 
 }

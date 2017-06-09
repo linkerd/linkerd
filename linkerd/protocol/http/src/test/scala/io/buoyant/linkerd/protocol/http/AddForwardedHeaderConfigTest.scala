@@ -1,15 +1,9 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Addr, Dtab, Path, Service, ServiceFactory, Stack}
-import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.context.{Contexts, Deadline}
-import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Future, Time, Var}
+import com.twitter.finagle.Stack
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.Server.RouterLabel
+import io.buoyant.router.RouterLabel
 import io.buoyant.router.http.AddForwardedHeader
 import io.buoyant.test.FunSuite
 
@@ -19,7 +13,7 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val yaml = "{}"
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
-    val params = (Stack.Params.empty + RouterLabel("rtr")) ++: config
+    val params = (Stack.Params.empty + RouterLabel.Param("rtr")) ++: config
     assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
     assert(params[AddForwardedHeader.Labeler.By] == AddForwardedHeader.Labeler.By.default)
     assert(params[AddForwardedHeader.Labeler.For] == AddForwardedHeader.Labeler.For.default)
@@ -111,7 +105,7 @@ class AddForwardedHeaderConfigTest extends FunSuite {
           |""".stripMargin
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
-    val params = (Stack.Params.empty + RouterLabel("bigfoot")) ++: config
+    val params = (Stack.Params.empty + RouterLabel.Param("bigfoot")) ++: config
     assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
     assert(params[AddForwardedHeader.Labeler.By].labeler ==
       AddForwardedHeader.Labeler.ObfuscatedStatic("bigfoot"))
@@ -126,7 +120,7 @@ class AddForwardedHeaderConfigTest extends FunSuite {
           |""".stripMargin
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
-    val params = (Stack.Params.empty + RouterLabel("bigfoot")) ++: config
+    val params = (Stack.Params.empty + RouterLabel.Param("bigfoot")) ++: config
     assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
     assert(params[AddForwardedHeader.Labeler.By].labeler ==
       AddForwardedHeader.Labeler.ClearIpPort)

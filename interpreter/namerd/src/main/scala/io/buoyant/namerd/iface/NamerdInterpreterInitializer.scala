@@ -2,9 +2,8 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.Stack.Transformer
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.TlsClientPrep
+import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.{HighResTimer, Label}
 import com.twitter.finagle.service._
@@ -38,7 +37,16 @@ case class Retry(
   }
 }
 
-case class ClientTlsConfig(commonName: String, caCert: Option[String])
+case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
+  def params: Stack.Params = {
+    TlsClientConfig(
+      disableValidation = Some(false),
+      commonName = Some(commonName),
+      trustCerts = caCert.map(Seq(_)),
+      clientAuth = None
+    ).params
+  }
+}
 
 case class NamerdInterpreterConfig(
   dst: Option[Path],
@@ -96,10 +104,11 @@ case class NamerdInterpreterConfig(
     val param.Stats(stats0) = params[param.Stats]
     val stats = stats0.scope(label)
 
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+
     val client = ThriftMux.client
-      .withParams(ThriftMux.client.params ++ params)
+      .withParams(ThriftMux.client.params ++ tlsParams ++ params + Thrift.ThriftImpl.Netty4)
       .transformed(retryTransformer)
-      .transformed(TlsTransformer(tls))
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
