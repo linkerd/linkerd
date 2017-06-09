@@ -6,11 +6,11 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util.{Activity, Duration, Timer, Var}
 
 /**
-  * The Istio namer reads service discovery information from the Istio-Manager's Service Discvoery
-  * Service API.
-  * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
-  * Each lookup is backed by a polling loop.
-  */
+ * The Istio namer reads service discovery information from the Istio-Manager's Service Discvoery
+ * Service API.
+ * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
+ * Each lookup is backed by a polling loop.
+ */
 class IstioNamer(
   sdsClient: SdsClient,
   idPrefix: Path,

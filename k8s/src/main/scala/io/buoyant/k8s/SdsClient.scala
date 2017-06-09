@@ -9,9 +9,9 @@ import io.buoyant.config.Parser
 import io.buoyant.k8s.SdsClient.SdsResponse
 
 /**
-  * A client for talking to the Service Discovery Service.
-  * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
-  */
+ * A client for talking to the Service Discovery Service.
+ * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
+ */
 class SdsClient(client: Service[Request, Response], clusterSuffix: String = "svc.cluster.local") {
 
   private[this] val log = Logger()

@@ -1,5 +1,6 @@
 namers:
 - kind: io.l5d.k8s.istio
+  experimental: true
   host: localhost
   port: 8080
 
