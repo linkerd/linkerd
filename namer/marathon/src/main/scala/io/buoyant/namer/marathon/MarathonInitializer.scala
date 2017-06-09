@@ -117,7 +117,7 @@ case class MarathonConfig(
 
     val client = Http.client
       .withParams(params)
-      .withLabel("clnt")
+      .withLabel("client")
       .withTracer(NullTracer)
       .filtered(SetHost(host0))
       .newService(dst0)

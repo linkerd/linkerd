@@ -14,20 +14,16 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
     namers: Map[Path, Namer],
     store: DtabStore,
     stats: StatsReceiver
-<<<<<<< HEAD
-  ): Servable = HttpControlServable(addr, store, delegate, namers, stats.scope(HttpControlServiceConfig.kind))
-=======
   ): Servable = {
     val iface = new HttpControlService(store, delegate, namers)
     val params =
       tlsParams +
-        param.Stats(stats) +
+        param.Stats(stats.scope(HttpControlServiceConfig.kind)) +
         param.Label(HttpControlServiceConfig.kind) +
         Http.Netty4Impl
 
     HttpControlServable(addr, iface, params)
   }
->>>>>>> master
 
   @JsonIgnore
   def defaultAddr = HttpControlServiceConfig.defaultAddr
@@ -44,13 +40,9 @@ case class HttpControlServable(
   params: Stack.Params
 ) extends Servable {
   def kind = HttpControlServiceConfig.kind
-<<<<<<< HEAD
-  def serve(): ListeningServer = Http.server
-=======
   val http = Http.server
   def serve(): ListeningServer = http
     .withParams(http.params ++ params)
->>>>>>> master
     .withStreaming(true)
     .serve(addr, iface)
 }

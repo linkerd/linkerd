@@ -42,7 +42,7 @@ case class DaemonSetTransformerConfig(
 
   @JsonIgnore
   override def mk(params: Params): NameTreeTransformer = {
-    val client = mkClient(params).configured(param.Label("clnt"))
+    val client = mkClient(params).configured(param.Label("client"))
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
     val namer = new MultiNsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))

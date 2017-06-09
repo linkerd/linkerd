@@ -2,7 +2,7 @@ package io.buoyant.transformer
 package perHost
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Stack}
 import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.InetAddress
 
@@ -18,7 +18,7 @@ class SpecificHostTransformerConfig(host: String) extends TransformerConfig {
   val defaultPrefix = Path.read("/io.l5d.specificHost")
 
   @JsonIgnore
-  override def mk(): NameTreeTransformer = {
+  override def mk(params: Stack.Params): NameTreeTransformer = {
     new SubnetLocalTransformer(prefix, Seq(InetAddress.getByName(host)), Netmask("255.255.255.255"))
   }
 
