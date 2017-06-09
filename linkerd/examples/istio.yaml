@@ -1,0 +1,14 @@
+namers:
+- kind: io.l5d.k8s.istio
+  host: localhost
+  port: 8080
+
+routers:
+- protocol: http
+  dtab:
+    /svc/v1 => /#/io.l5d.k8s.istio/default/http/reviews/version:v1;
+    /svc/v2 => /#/io.l5d.k8s.istio/default/http/reviews/version:v2;
+    /svc/v3 => /#/io.l5d.k8s.istio/default/http/reviews/version:v3;
+    /svc/all => /#/io.l5d.k8s.istio/default/http/reviews/::;
+  servers:
+  - port: 4140
