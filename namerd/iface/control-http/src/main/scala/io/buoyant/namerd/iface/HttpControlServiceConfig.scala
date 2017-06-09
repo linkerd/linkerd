@@ -18,7 +18,7 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
     val iface = new HttpControlService(store, delegate, namers)
     val params =
       tlsParams +
-        param.Stats(stats) +
+        param.Stats(stats.scope(HttpControlServiceConfig.kind)) +
         param.Label(HttpControlServiceConfig.kind) +
         Http.Netty4Impl
 

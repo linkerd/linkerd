@@ -197,8 +197,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
             label
           case param.Label(label) => label
         }
-        val param.Stats(stats0) = params[param.Stats]
-        val stats = stats0.scope(label)
+        val param.Stats(stats) = params[param.Stats]
         val clientStats = param.Stats(stats.scope("client"))
 
         // if this router has been configured as an originator, add a
