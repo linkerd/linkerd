@@ -5,7 +5,8 @@ define([
   'template/compiled_templates',
   'src/router_service',
   'bootstrap'
-], function($,
+], function(
+  $,
   templates,
   RouterService
 ) {

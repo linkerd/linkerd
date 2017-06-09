@@ -9,7 +9,10 @@ define([
   'src/success_rate_graph',
   'src/bar_chart',
   'template/compiled_templates'
-], function($, _, Handlebars,
+], function(
+  $,
+  _,
+  Handlebars,
   LatencyUtil,
   Utils,
   SuccessRateGraph,

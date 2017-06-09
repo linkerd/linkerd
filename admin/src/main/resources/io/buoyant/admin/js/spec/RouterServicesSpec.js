@@ -42,10 +42,10 @@ define([
       realCollector.__update__(metricsJson);
 
       var $multiplierRouter = $($container.find(".router-multiplier")[0]);
-      var multiplierSvcs = $multiplierRouter.find(".svc-container");
-      var $svcClients = $(multiplierSvcs[0]).find(".client-metrics");
+      var $multiplierSvcs = $multiplierRouter.find(".svc-container");
+      var $svcClients = $($multiplierSvcs[0]).find(".client-metrics");
 
-      expect(multiplierSvcs.length).toBe(1);
+      expect($multiplierSvcs.length).toBe(1);
       expect($svcClients.length).toBe(3);
     });
 
@@ -59,14 +59,14 @@ define([
       realCollector.__update__(metricsJson);
 
       var $multiplierRouter = $($container.find(".router-multiplier")[0]);
-      var multiplierSvcs = $multiplierRouter.find(".svc-container");
-      var $svcClients = $(multiplierSvcs[0]).find(".client-metrics");
+      var $multiplierSvcs = $multiplierRouter.find(".svc-container");
+      var $svcClients = $($multiplierSvcs[0]).find(".client-metrics");
 
-      expect(multiplierSvcs.length).toBe(1);
+      expect($multiplierSvcs.length).toBe(1);
       expect($svcClients.length).toBe(3);
 
       realCollector.__update__(expiredMetricsJson);
-      $svcClients = $(multiplierSvcs[0]).find(".client-metrics");
+      $svcClients = $($multiplierSvcs[0]).find(".client-metrics");
 
       expect($svcClients.length).toBe(0);
     });
@@ -81,11 +81,11 @@ define([
       realCollector.__update__(metricsJson);
 
       var $testRouter = $($container.find(".router-service_test")[0]);
-      var multipleSvcs = $testRouter.find(".svc-container");
-      var $svcClients1 = $(multipleSvcs[0]).find(".client-metrics");
-      var $svcClients2 = $(multipleSvcs[1]).find(".client-metrics");
+      var $multipleSvcs = $testRouter.find(".svc-container");
+      var $svcClients1 = $($multipleSvcs[0]).find(".client-metrics");
+      var $svcClients2 = $($multipleSvcs[1]).find(".client-metrics");
 
-      expect(multipleSvcs.length).toBe(2);
+      expect($multipleSvcs.length).toBe(2);
       expect($svcClients1.length).toBe(5);
       expect($svcClients2.length).toBe(3);
     });

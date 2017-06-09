@@ -4,9 +4,7 @@ define([
   'jQuery',
   'template/compiled_templates',
   'bootstrap'
-], function($,
-  templates
-) {
+], function($, templates) {
 
   function render(svcClientMetrics, $container) {
     var clientsHtml = templates.router_service_metrics({

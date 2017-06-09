@@ -5,7 +5,8 @@ define([
   'src/utils',
   'src/bar_chart',
   'template/compiled_templates'
-], function($,
+], function(
+  $,
   Utils,
   BarChart,
   templates
