@@ -5,15 +5,17 @@ define([
   'src/metrics_collector',
   'src/process_info',
   'src/request_totals',
-  'src/router_controller'
+  'src/router_service_dashboard',
+  'src/router_client_dashboard'
 ], function(
   $, bootstrap,
   MetricsCollector,
   ProcInfo,
   RequestTotals,
-  RouterController
+  RouterServiceDashboard,
+  RouterClientDashboard
 ) {
-  return function(routerConfig) {
+  return function(routerConfig, dashboardType) {
     /**
      * Number of millis to wait between data updates.
      */
@@ -27,6 +29,7 @@ define([
         mem[router] = {};
         mem[router]["servers"] = _.keys(data.server);
         mem[router]["clients"] = _.keys(_.get(data, "client"));
+        mem[router]["services"] = _.keys(_.get(data, "service"));
         return mem;
       }, {});
 
@@ -36,7 +39,12 @@ define([
 
       ProcInfo(metricsCollector, $(".proc-info"), buildVersion);
       RequestTotals(metricsCollector, selectedRouter, $(".request-totals"));
-      RouterController(metricsCollector, selectedRouter, initialData, $(".dashboard-container"), routerConfig);
+
+      if (dashboardType === "service") {
+        RouterServiceDashboard(metricsCollector, initialData, $(".service-dashboard-container"));
+      } else {
+        RouterClientDashboard(metricsCollector, selectedRouter, initialData, $(".client-dashboard-container"), routerConfig);
+      }
 
       $(function() {
         metricsCollector.start(UPDATE_INTERVAL, initialData);

@@ -6,7 +6,8 @@ define([
   'src/router_client',
   'src/combined_client_graph',
   'template/compiled_templates'
-], function($,
+], function(
+  $,
   Colors,
   RouterClient,
   CombinedClientGraph,
