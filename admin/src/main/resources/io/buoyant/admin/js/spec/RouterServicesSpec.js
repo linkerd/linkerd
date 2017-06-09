@@ -3,7 +3,7 @@
 define([
   'jQuery',
   'lodash',
-  'src/router_services',
+  'src/router_service_dashboard',
   'src/metrics_collector',
   'spec/fixtures/metrics'
 ], function($, _, RouterServices, MetricsCollector, metricsJson) {
