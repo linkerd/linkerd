@@ -1,0 +1,83 @@
+// Copyright 2016 Istio Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package istio.mixer.v1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/duration.proto";
+import "google/rpc/status.proto";
+import "mixer/v1/attributes.proto";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.equal_all) = false;
+option (gogoproto.gostring_all) = false;
+
+// Used to verify preconditions before performing an action.
+message CheckRequest {
+  // The attributes to use for this request.
+  //
+  // Mixer's configuration determines how these attributes are used to
+  // determine the result returned in the response.
+  Attributes attributes = 1 [(gogoproto.nullable) = false];
+
+  // The number of words in the global dictionary.
+  // To detect global dictionary out of sync between client and server.
+  uint32 global_word_count = 2;
+}
+
+message CheckResponse {
+  // The thumbs-up/thumbs-down decision for the precondition check.
+  //
+  // A status code of OK indicates all preconditions were satisfied. Any other code indicates not
+  // all preconditions were satisfied.
+  google.rpc.Status status = 1 [(gogoproto.nullable) = false];
+
+  // The attributes returned by Mixer.
+  //
+  // The exact set of attributes returned is determined by the set of
+  // adapters Mixer is configured with. These attributes are used to
+  // ferry new attributes that Mixer derived based on the input set of
+  // attributes and its configuration.
+  Attributes attributes = 2 [(gogoproto.nullable) = false];
+
+  // Provides information to control how this response can and should be cached
+  // by the caller.
+  //
+  // Caching of results is based on the set of supplied attributes.
+  // Given the exact same set of attributes, the result of a previous
+  // `Check` call can be reused within the parameters allowed by this
+  // cachability information.
+  //
+  // A more sophisticated caching approach is to only consider the set of
+  // attributes which can impact the `Check` result. Only changes in those attributes
+  // can lead to changes in the result of `Check`. Determining this precise subset
+  // of attributes is handled by the Istio configuration system, and made available
+  // out-of-band to clients.
+  //
+  // Caching should only take place when the `Check` method itself returns success,
+  // indicating a successful end-to-end RPC. Both positive responses (when `CheckResponse.status.Code` is OK)
+  // and negative responses (when `CheckResponse.status.Code is not OK) can be cached.
+  CachabilityInfo cachability = 3 [(gogoproto.nullable) = false];
+}
+
+// Provides information describing how to cache `Check` responses.
+message CachabilityInfo {
+  // The amount of time for which a `Check` response can be considered valid.
+  google.protobuf.Duration duration = 3 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+
+  // The number of uses for which a `Check` response can be considered valid.
+  int32 use_count = 4;
+}
