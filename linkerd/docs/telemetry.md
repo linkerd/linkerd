@@ -68,7 +68,6 @@ sampleRate | `0.01` | Sample rate to export counter and timing/histogram events.
 telemetry:
 - kind: io.l5d.tracelog
   sampleRate: 0.2
-  level: TRACE
 ```
 
 kind: `io.l5d.tracelog`
@@ -79,7 +78,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | Host to send trace data to.
 sampleRate | `1.0` | What percentage of traces to log.
-level | `INFO` | Log-level, one of: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [com.twitter.logging.Level](http://twitter.github.io/util/docs/#com.twitter.logging.Level).
+level | `INFO` | Log-level used to log traces. It should be equal (or greater) than the linkerd log level. It can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [com.twitter.logging.Level](http://twitter.github.io/util/docs/#com.twitter.logging.Level).
 
 ## Recent Requests
 
