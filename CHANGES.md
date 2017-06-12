@@ -1,12 +1,25 @@
-## In the next release...
+## 1.1.0 2017-06-12
 
+* TLS
+  * Add support for client auth TLS.
+  * Add TLS support for `io.l5d.httpController` and `io.l5d.mesh`.
+* HTTP/2
+  * Reset h2 remote streams that continue to send frames after the local stream
+    has been interrupted.  This fixes a bug that occationally caused the
+    io.l5d.mesh interpreter to hang.
+  * Add support for HTTP/2 tracing.
+* Kubernetes
+  * Fix exception when a loadBalancer object has a hostname instead of an ip.
+  * Fix connection leak when the daemonset transformer cannot connect to the k8s
+    API.
+* Metrics
+  * Improve scoping of metrics for namers and transformers.
+  * Fix rendering of top-level influx metrics.
+* Consul
+  * Cache dtab observations in the io.l5d.consul store.
+  * Fix bug causing consul queries to hang.
 * Expire idle services and clients.
 * Convert `thriftProtocol` from a client/server param to a router param.
-* Add support for client auth TLS.
-* Add TLS support for `io.l5d.httpController` and `io.l5d.mesh`.
-* Add support for HTTP/2 tracing.
-* Cache dtab observations in the io.l5d.consul store.
-* Improve scoping of metrics for namers and transformers.
 
 ## 1.0.2 2017-05-12
 
