@@ -14,7 +14,6 @@ protocversion=3.0.0
 protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
 
 if [ ! -f "$protocbin" ]; then
-  echo "downloading $protocbin"
   tmp=$(mktemp -d -t protoc.XXX)
   pushd "$tmp" > /dev/null
   curl -L --silent --fail -o "$protocbin.zip" "$protocurl"
