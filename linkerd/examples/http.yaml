@@ -13,7 +13,8 @@ routers:
   maxRequestKB: 102400 # 100MB
   maxResponseKB: 102400 # 100MB
   compressionLevel: 9
-  identifier: {kind: io.l5d.header}
+  identifier:
+    kind: io.l5d.istio
   dtab: |
     /svc => /#/io.l5d.fs;
   servers:
