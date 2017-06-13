@@ -359,6 +359,45 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
+
+<a href="istio-identifier></a>
+### Istio Identifier
+
+kind: `io.l5d.istio`
+
+This identifier compares HTTP requests to
+[istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
+on those rules.
+
+ #### Identifier Configuration:
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.istio
+    pollIntervalMs: 10000
+```
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
+port | 8081 | The port of the Istio-Manager's apiserver.
+pollIntervalMs | 5000 | How frequently to poll the Istio-Manager for route-rule updates.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format
+
+```
+  / dstPrefix / route-rule 
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+rout-rule | N/A | The name of the route-rule that matches the incoming request.
+
 <a name="static-identifier"></a>
 ### Static Identifier
 

@@ -3,12 +3,12 @@ package io.buoyant.k8s
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import io.buoyant.k8s.PilotClient.RouteRuleConfig
+import io.buoyant.k8s.IstioPilotClient.RouteRuleConfig
 import io.buoyant.test.{Awaits, Exceptions}
 import istio.proxy.v1.config.{DestinationWeight, RouteRule}
 import org.scalatest.FunSuite
 
-class PilotClientTest extends FunSuite with Awaits with Exceptions {
+class IstioPilotClientTest extends FunSuite with Awaits with Exceptions {
 
   val routeRulesList = s"""[
   {
@@ -81,7 +81,7 @@ class PilotClientTest extends FunSuite with Awaits with Exceptions {
   }
 
   test("getRouteRules() deserializes payload") {
-    val pilotClient = new PilotClient(service)
+    val pilotClient = new IstioPilotClient(service)
     val rsp = await(pilotClient.getRouteRules())
     assert(rsp.length == 4)
     assert(rsp.head == RouteRuleConfig(

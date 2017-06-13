@@ -8,7 +8,7 @@ import com.twitter.finagle.http.Request
 import com.twitter.finagle.param.Label
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.{ClientConfig, PilotClient, RouteManager}
+import io.buoyant.k8s.{ClientConfig, IstioPilotClient, RouteManager}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
@@ -22,8 +22,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     routeManager.getRules().map { rules =>
       val filteredRules = rules.filter {
-        case (_, r) =>
-          r.`destination`.map(d => d == req.host).getOrElse(false)
+        case (_, r) => r.`destination` == req.host
       }
       if (filteredRules.isEmpty) {
         unidentified
@@ -38,13 +37,14 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
 }
 
 case class IstioIdentifierConfig(
-  //  host: Option[String] = Some("istio-manager.default.svc.cluster.local"),
-  host: Option[String] = Some("localhost"),
-  port: Option[Port] = Some(Port(8081)),
+  host: Option[String],
+  port: Option[Port],
   pollIntervalMs: Option[Long]
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
   val DefaultPort = 8081
+  @JsonIgnore
+  val DefaultHost = "istio-manager.default.svc.cluster.local"
 
   @JsonIgnore
   def portNum = port.map(_.port)
@@ -54,15 +54,15 @@ case class IstioIdentifierConfig(
   @JsonIgnore
   private[this] val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
 
-  override protected def getHost = host.getOrElse("localhost")
-  override protected def getPort = portNum.getOrElse(8081)
+  override protected def getHost = host.getOrElse(DefaultHost)
+  override protected def getPort = portNum.getOrElse(DefaultPort)
 
   override def newIdentifier(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
     val client = mkClient(Params.empty).configured(Label("istio-route-manager"))
-    val api = new PilotClient(client.newService(dst))
+    val api = new IstioPilotClient(client.newService(dst))
     val routeManager = new RouteManager(api, pollInterval)
     new IstioIdentifier(prefix, baseDtab, routeManager)
   }

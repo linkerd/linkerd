@@ -33,8 +33,6 @@ object LinkerdBuild extends Base {
     .withTests().withIntegration()
 
   lazy val istio = projectDir("istio")
-    .dependsOn(configCore)
-    .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withGrpc
     .withTests()
@@ -43,11 +41,6 @@ object LinkerdBuild extends Base {
     .dependsOn(Namer.core, istio)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
-    .withTests()
-
-  lazy val istio = projectDir("istio")
-    .withLibs(Deps.jackson)
-    .withGrpc
     .withTests()
 
   val marathon = projectDir("marathon")

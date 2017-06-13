@@ -8,12 +8,11 @@ import com.twitter.util._
 import io.buoyant.config.Parser
 import istio.proxy.v1.config.RouteRule
 
-class PilotClient(client: Service[Request, Response]) {
-  import PilotClient._
+class IstioPilotClient(client: Service[Request, Response]) {
+  import IstioPilotClient._
 
   private[this] val log = Logger()
   private[this] val mapper = Parser.jsonObjectMapper(Nil)
-  private[this] val version = "v1alpha1"
 
   // from https://github.com/istio/pilot/blob/master/apiserver/apiserver.go
   def getRouteRules(): Future[Seq[RouteRuleConfig]] = {
@@ -45,7 +44,7 @@ class PilotClient(client: Service[Request, Response]) {
   }
 }
 
-object PilotClient {
+object IstioPilotClient {
   trait IstioConfig[T] {
     def `type`: Option[String]
     def name: Option[String]
