@@ -45,6 +45,11 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson)
     .withTests()
 
+  lazy val istio = projectDir("istio")
+    .withLibs(Deps.jackson)
+    .withGrpc
+    .withTests()
+
   val marathon = projectDir("marathon")
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
@@ -722,6 +727,7 @@ object LinkerdBuild extends Base {
       consul,
       etcd,
       k8s,
+      istio,
       marathon,
       testUtil,
       Finagle.all,

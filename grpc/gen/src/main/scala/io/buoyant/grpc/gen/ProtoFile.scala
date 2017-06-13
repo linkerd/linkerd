@@ -1,6 +1,7 @@
 package io.buoyant.grpc.gen
 
 import com.google.protobuf.DescriptorProtos._
+import io.buoyant.grpc.gen.ProtoFile.{Field, TypeRef}
 import scala.collection.JavaConverters._
 
 case class ProtoFile(
@@ -63,24 +64,29 @@ object ProtoFile {
     fields: Seq[Field],
     oneofs: Map[String, Oneof],
     enums: Seq[EnumType],
-    messages: Seq[MessageType]
+    messages: Seq[MessageType],
+    isMap: Boolean
   )
 
   object MessageType {
     def mk(mt: DescriptorProto): MessageType = {
+      val isMap = mt.getOptions.getMapEntry
+      val messages = mt.getNestedTypeList.asScala.map(MessageType.mk(_))
+      val mapMessages = messages.filter(_.isMap)
+
       val oneofFields = mt.getFieldList.asScala
         .filter(_.hasOneofIndex)
         .groupBy { f => mt.getOneofDecl(f.getOneofIndex) }
       val oneofs = oneofFields.map {
         case (o, fs) =>
           val name = o.getName
-          val fields = fs.map(Field.mk(_))
+          val fields = fs.map(Field.mk(_, mapMessages))
           name -> Oneof(name, fields)
       }
-      val fields = mt.getFieldList.asScala.filterNot(_.hasOneofIndex).map(Field.mk(_))
+
+      val fields = mt.getFieldList.asScala.filterNot(_.hasOneofIndex).map(Field.mk(_, mapMessages))
       val enums = mt.getEnumTypeList.asScala.map(EnumType.mk(_))
-      val messages = mt.getNestedTypeList.asScala.map(MessageType.mk(_))
-      MessageType(mt.getName, fields, oneofs, enums, messages)
+      MessageType(mt.getName, fields, oneofs, enums, messages, isMap)
     }
   }
 
@@ -93,19 +99,21 @@ object ProtoFile {
     number: Int,
     name: String,
     typeRef: TypeRef,
-    isRepeated: Boolean
+    isRepeated: Boolean,
+    isMap: Boolean
   )
 
   object Field {
-
-    def mk(f: FieldDescriptorProto): Field = {
-      val typeRef = f.getType match {
-        case FieldDescriptorProto.Type.TYPE_ENUM => TypeRef.Enum(f.getTypeName)
-        case FieldDescriptorProto.Type.TYPE_MESSAGE => TypeRef.Message(f.getTypeName)
-        case kind => TypeRef.Simple(kind)
-      }
+    def mk(f: FieldDescriptorProto, mapMessages: Seq[ProtoFile.MessageType]): Field = {
       val isRepeated = f.getLabel == FieldDescriptorProto.Label.LABEL_REPEATED
-      Field(f.getNumber, f.getName, typeRef, isRepeated)
+      val (typeRef, isMap) = f.getType match {
+        case FieldDescriptorProto.Type.TYPE_ENUM => (TypeRef.Enum(f.getTypeName), false)
+        case FieldDescriptorProto.Type.TYPE_MESSAGE =>
+          val isSeqOfMapEntries = isRepeated && mapMessages.exists(d => f.getTypeName.endsWith(d.name))
+          (TypeRef.Message(f.getTypeName), isSeqOfMapEntries)
+        case kind => (TypeRef.Simple(kind), false)
+      }
+      Field(f.getNumber, f.getName, typeRef, isRepeated, isMap)
     }
   }
 

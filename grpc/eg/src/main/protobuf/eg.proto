@@ -33,6 +33,8 @@ message Message {
   Path path = 4;
 
   io.buoyant.eg.Enumeration outer = 5;
+
+  map<string, string> foo = 6;
 }
 
 message Req {
