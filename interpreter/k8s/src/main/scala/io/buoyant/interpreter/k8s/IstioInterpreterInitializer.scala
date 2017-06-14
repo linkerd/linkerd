@@ -45,6 +45,7 @@ case class IstioInterpreterConfig(
     val client = mkClient(params).configured(label).newService(dst)
     val sdsClient = new SdsClient(client)
     val istioNamer = new IstioNamer(sdsClient, Paths.ConfiguredNamerPrefix ++ prefix, pollInterval)
+    // TODO: Use the route manager
     val routeManager = /* RouteManager(client) */ ()
     IstioInterpreter(routeManager, istioNamer)
   }

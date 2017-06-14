@@ -7,6 +7,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.config.Parser
 
+// TODO: All Istio-Pilot clients are very similar.  DRY them up and re-use the underlying client
 class RdsClient(client: Service[Request, Response]) {
   import RdsClient._
 

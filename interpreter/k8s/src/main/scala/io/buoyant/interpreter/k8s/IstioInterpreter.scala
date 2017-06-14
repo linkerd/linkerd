@@ -31,10 +31,12 @@ object IstioInterpreter {
   def apply(routeManager: Unit, istioNamer: Namer): NameInterpreter = {
 
     // val routes = routerManager.routes
+    // TODO: Get routes from the route manager
     val routes: Activity[IndexedSeq[Unit]] = Activity.value(IndexedSeq(()))
 
     val routesDtab = routes.map { routeTable =>
       val dentries = routeTable.map { _ =>
+        // TODO: map route into dentry
         val route = "reviews-default"
         val ns = "default"
         val service = "reviews"
