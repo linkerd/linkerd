@@ -22,13 +22,25 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     routeManager.getRules().map { rules =>
       val filteredRules = rules.filter {
+        //TODO: add more route conditions
         case (_, r) => r.`destination` == req.host
       }
+
       if (filteredRules.isEmpty) {
-        unidentified
+        //forward requests which have no matching rules
+        req.host.map { host =>
+          val path = host.split(":") match {
+            case Array(h: String, p: String) => pfx ++ Path.Utf8("dest", h, p)
+            case Array(h: String) => pfx ++ Path.Utf8("dest", h, "80")
+            case _ => throw new IllegalArgumentException("unable to parse host for request")
+          }
+          val dst = Dst.Path(path, baseDtab(), Dtab.local)
+          new IdentifiedRequest(dst, req)
+        }.getOrElse(unidentified)
       } else {
+        //choose matching rule with the highest precedence
         val topRule = rules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
-        val path = pfx ++ Path.Utf8(topRule._1)
+        val path = pfx ++ Path.Utf8("route", topRule._1)
         val dst = Dst.Path(path, baseDtab(), Dtab.local)
         new IdentifiedRequest(dst, req)
       }
@@ -38,8 +50,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
 
 case class IstioIdentifierConfig(
   host: Option[String],
-  port: Option[Port],
-  pollIntervalMs: Option[Long]
+  port: Option[Port]
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
   val DefaultPort = 8081
@@ -49,11 +60,6 @@ case class IstioIdentifierConfig(
   @JsonIgnore
   def portNum = port.map(_.port)
 
-  @JsonIgnore
-  private[this] val DefaultPollInterval = 5.seconds
-  @JsonIgnore
-  private[this] val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
-
   override protected def getHost = host.getOrElse(DefaultHost)
   override protected def getPort = portNum.getOrElse(DefaultPort)
 
@@ -61,9 +67,7 @@ case class IstioIdentifierConfig(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
-    val client = mkClient(Params.empty).configured(Label("istio-route-manager"))
-    val api = new IstioPilotClient(client.newService(dst))
-    val routeManager = new RouteManager(api, pollInterval)
+    val routeManager = RouteManager.getManagerFor(getHost, getPort)
     new IstioIdentifier(prefix, baseDtab, routeManager)
   }
 }
