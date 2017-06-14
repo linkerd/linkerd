@@ -23,7 +23,9 @@ object Deps {
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.1.Final"
 
-  def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
+  def zkCandidate =
+    ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
+      .exclude("com.twitter.common", "util")
 
   // Jackson (parsing)
   val jacksonVersion = "2.8.4"

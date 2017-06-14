@@ -63,7 +63,7 @@ class Base extends Build {
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.12.1",
-    crossScalaVersions in GlobalScope := Seq("2.11.8", "2.12.1"),
+    crossScalaVersions in GlobalScope := Seq("2.11.11", "2.12.1"),
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
     scalacOptions ++=
       Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
