@@ -32,15 +32,15 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core)
-    .withTwitterLib(Deps.finagle("http"))
-    .withLibs(Deps.jackson)
-    .withTests()
-
   lazy val istio = projectDir("istio")
     .withLibs(Deps.jackson)
     .withGrpc
+    .withTests()
+
+  lazy val k8s = projectDir("k8s")
+    .dependsOn(Namer.core, istio)
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
     .withTests()
 
   val marathon = projectDir("marathon")
@@ -483,6 +483,7 @@ object LinkerdBuild extends Base {
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           k8s,
+          istio,
           failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",

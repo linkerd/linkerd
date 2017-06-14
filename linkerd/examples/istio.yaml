@@ -1,0 +1,11 @@
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.istio
+    host: localhost
+  dtab:
+    /svc/localhost => /#/io.l5d.fs/default;
+    /svc/pet/8888 => /#/io.l5d.fs/cat;
+    /svc/pet/8800 => /#/io.l5d.fs/dog;
+  servers:
+  - port: 4140
