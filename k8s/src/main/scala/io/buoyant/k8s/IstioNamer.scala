@@ -64,7 +64,7 @@ class IstioNamer(
           case Addr.Bound(addrs, _) if addrs.isEmpty =>
             Activity.Ok(NameTree.Neg)
           case Addr.Bound(addrs, _) =>
-            Activity.Ok(NameTree.Leaf(Name.Bound(vaddr, id, residual)))
+            Activity.Ok(NameTree.Leaf(Name.Bound(vaddr, idPrefix ++ id, residual)))
           case Addr.Pending =>
             Activity.Pending
           case Addr.Failed(_) =>

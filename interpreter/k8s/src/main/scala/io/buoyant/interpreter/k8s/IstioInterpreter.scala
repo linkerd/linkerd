@@ -35,7 +35,7 @@ object IstioInterpreter {
 
     val routesDtab = routes.map { routeTable =>
       val dentries = routeTable.map { _ =>
-        val route = "my-cool-route"
+        val route = "reviews-default"
         val ns = "default"
         val service = "reviews"
         val labels = "version:v1"

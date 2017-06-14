@@ -6,7 +6,7 @@ import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.finagle.naming.NameInterpreter
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{ClientConfig, IstioNamer, SdsClient}
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
 
 class IstioInterpreterInitializer extends InterpreterInitializer {
   val configClass = classOf[IstioInterpreterConfig]
@@ -44,7 +44,7 @@ case class IstioInterpreterConfig(
     val label = param.Label("namer/io.l5d.k8s.istio")
     val client = mkClient(params).configured(label).newService(dst)
     val sdsClient = new SdsClient(client)
-    val istioNamer = new IstioNamer(sdsClient, prefix, pollInterval)
+    val istioNamer = new IstioNamer(sdsClient, Paths.ConfiguredNamerPrefix ++ prefix, pollInterval)
     val routeManager = /* RouteManager(client) */ ()
     IstioInterpreter(routeManager, istioNamer)
   }
