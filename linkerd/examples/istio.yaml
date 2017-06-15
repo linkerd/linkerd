@@ -4,7 +4,6 @@ routers:
     kind: io.l5d.istio
     apiserverHost: localhost
     discoveryHost: localhost
-    discoveryPort: 8082
   interpreter:
     kind: io.l5d.k8s.istio
     experimental: true
