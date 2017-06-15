@@ -18,7 +18,7 @@ case class K8sConfig(
   override def mkDtabStore: DtabStore = {
     val client = mkClient()
 
-    new K8sDtabStore(client, dst, namespace.getOrElse(ClientConfig.DefaultNamespace))
+    new K8sDtabStore(client, dst, namespace.getOrElse(DefaultNamespace))
   }
 }
 

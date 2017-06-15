@@ -38,9 +38,8 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
           new IdentifiedRequest(dst, req)
         }.getOrElse(unidentified)
       } else {
-        //choose matching rule with the highest precedence
-        val topRule = rules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
-        val path = pfx ++ Path.Utf8("route", topRule._1)
+        val topRule = filteredRules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
+        val path = pfx ++ Path.Utf8("route", topRule._1, "http") // HTTP port hardcoded for now
         val dst = Dst.Path(path, baseDtab(), Dtab.local)
         new IdentifiedRequest(dst, req)
       }
@@ -53,9 +52,9 @@ case class IstioIdentifierConfig(
   port: Option[Port]
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
-  val DefaultPort = 8081
+  override val DefaultPort = 8081
   @JsonIgnore
-  val DefaultHost = "istio-manager.default.svc.cluster.local"
+  override val DefaultHost = "istio-manager.default.svc.cluster.local"
 
   @JsonIgnore
   def portNum = port.map(_.port)

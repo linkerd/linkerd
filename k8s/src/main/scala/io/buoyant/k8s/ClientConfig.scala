@@ -8,7 +8,10 @@ import com.twitter.finagle.{Http, Stack}
  * produce a k8s API client.
  */
 trait ClientConfig {
-  import ClientConfig._
+
+  protected val DefaultHost = "localhost"
+  protected val DefaultNamespace = "default"
+  protected val DefaultPort = 8001
 
   def host: Option[String]
   def portNum: Option[Int]
@@ -28,10 +31,4 @@ trait ClientConfig {
       .withStreaming(true)
       .filtered(setHost)
   }
-}
-
-object ClientConfig {
-  val DefaultHost = "localhost"
-  val DefaultNamespace = "default"
-  val DefaultPort = 8001
 }
