@@ -1,10 +1,10 @@
 package io.buoyant.interpreter.k8s
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonInclude}
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Http, Path, Stack, param}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.NullTracer
+import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s._
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
@@ -78,8 +78,10 @@ case class IstioInterpreterConfig(
     val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
     val sdsClient = new SdsClient(discoveryClient(params))
     val istioNamer = new IstioNamer(sdsClient, Paths.ConfiguredNamerPrefix ++ prefix, pollInterval)
-    val istioClient = new IstioPilotClient(apiserverClient(params))
-    val routeManager = new RouteManager(istioClient, pollInterval)
+    val routeManager = RouteManager.getManagerFor(
+      apiserverHost.getOrElse(DefaultApiserverHost),
+      apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
+    )
     IstioInterpreter(routeManager, istioNamer)
   }
 }
