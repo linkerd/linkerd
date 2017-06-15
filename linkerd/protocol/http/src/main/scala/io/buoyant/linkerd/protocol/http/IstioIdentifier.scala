@@ -20,7 +20,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
     new UnidentifiedRequest(s"no matching istio rules found")
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    routeManager.getRules().map { rules =>
+    routeManager.getRules.map { rules =>
       val filteredRules = rules.filter {
         //TODO: add more route conditions
         case (_, r) => r.`destination` == req.host
