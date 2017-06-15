@@ -10,19 +10,19 @@ import io.buoyant.namer.RichActivity
 import istio.proxy.v1.config.RouteRule
 
 class RouteManager(api: IstioPilotClient, pollInterval: Duration) {
-  private[this] val states: Activity[Map[String, RouteRule]] = api.watchRouteRules(pollInterval).map(mkRouteMap)
 
   private[this] def mkRouteMap(routeList: Seq[RouteRuleConfig]): Map[String, RouteRule] =
     routeList.collect {
       case RouteRuleConfig(typ, Some(name), Some(spec)) => name -> spec
     }.toMap
 
-  private[this] lazy val routeRules: Activity[Map[String, RouteRule]] = {
-    val _ = states.states.respond(_ => ()) // register a listener forever to keep the Activity open
-    states
+  lazy val routeRules: Activity[Map[String, RouteRule]] = {
+    val act = api.watchRouteRules(pollInterval).map(mkRouteMap)
+    val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
+    act
   }
 
-  def getRules(): Future[Map[String, RouteRule]] = routeRules.toFuture
+  def getRules: Future[Map[String, RouteRule]] = routeRules.toFuture
 }
 
 object RouteManager {
