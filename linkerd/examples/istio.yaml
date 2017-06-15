@@ -2,7 +2,8 @@ routers:
 - protocol: http
   identifier:
     kind: io.l5d.istio
-    host: localhost
+    apiserverHost: localhost
+    discoveryHost: localhost
   interpreter:
     kind: io.l5d.k8s.istio
     experimental: true
