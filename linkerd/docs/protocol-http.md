@@ -384,20 +384,28 @@ Key  | Default Value | Description
 ---- | ------------- | -----------
 host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
 port | 8081 | The port of the Istio-Manager's apiserver.
-pollIntervalMs | 5000 | How frequently to poll the Istio-Manager for route-rule updates.
 
 #### Identifier Path Parameters
 
-> Dtab Path Format
+> Dtab Path Format if the request matches a route-rule
 
 ```
-  / dstPrefix / route-rule 
+  / dstPrefix / "route" / route-rule 
+```
+
+
+> Dtab Path Format if the request DOES NOT match a route-rule
+
+```
+  / dstPrefix / "dest" / host / port 
 ```
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
-rout-rule | N/A | The name of the route-rule that matches the incoming request.
+route-rule | N/A | The name of the route-rule that matches the incoming request.
+host | N/A | The host to forward the request to.
+port | N/A | The port to forward the request to.
 
 <a name="static-identifier"></a>
 ### Static Identifier
