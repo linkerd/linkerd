@@ -1,5 +1,6 @@
 package io.buoyant.k8s
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.util.DefaultTimer
@@ -14,6 +15,7 @@ class RdsClient(client: Service[Request, Response]) {
   private[this] val log = Logger()
 
   private[this] val mapper = Parser.jsonObjectMapper(Nil)
+  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
   def get(): Future[Seq[RouteConfig]] = {
     val req = Request(s"/v1/routes")
