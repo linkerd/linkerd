@@ -25,7 +25,7 @@ class RouteManager(api: IstioPilotClient, pollInterval: Duration) {
       case _ => None
     }.toMap[String, RouteRule]
 
-  private[this] lazy val routeRules: Activity[Map[String, RouteRule]] = {
+  lazy val routeRules: Activity[Map[String, RouteRule]] = {
     val act = Activity(states)
     val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
     act

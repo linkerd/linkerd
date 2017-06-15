@@ -3,8 +3,9 @@ package io.buoyant.interpreter.k8s
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.Activity
+import io.buoyant.k8s.RouteManager
 import io.buoyant.namer.{ConfiguredDtabNamer, RewritingNamer}
+import istio.proxy.v1.config.RouteRule
 
 object IstioInterpreter {
   private val noLabelsPfx = "/#/no-labels"
@@ -28,25 +29,42 @@ object IstioInterpreter {
    /#/io.l5d.k8s.istio/default/reviews/version:v1/http
   */
 
-  def apply(routeManager: Unit, istioNamer: Namer): NameInterpreter = {
+  private[this] def mkDentry(name: String, route: RouteRule): Option[Dentry] =
+    route.destination.flatMap { dest =>
+      dest.split('.') match {
+        case Array(svc, ns, _*) =>
+          val branches = route.route.map { weightedDest =>
+            val labels = weightedDest.tags.toSeq
+              .sortBy(_._1)
+              .map { case (k, v) => s"$k:$v" }
+              .mkString("::")
+            val labelSegment = if (labels.isEmpty) "::" else labels
+            NameTree.Weighted(
+              weightedDest.weight.getOrElse(0).toDouble,
+              NameTree.Leaf(Path.read(s"/#/io.l5d.k8s.istio/$ns/$svc/$labelSegment"))
+            )
+          }
+          val prefix = Dentry.Prefix.read(s"/svc/route/$name")
+          Some(Dentry(prefix, NameTree.Union(branches: _*)))
+        case _ =>
+          None
+      }
+    }
 
-    // val routes = routerManager.routes
-    // TODO: Get routes from the route manager
-    val routes: Activity[IndexedSeq[Unit]] = Activity.value(IndexedSeq(()))
+  def apply(routeManager: RouteManager, istioNamer: Namer): NameInterpreter = {
+
+    val routes = routeManager.routeRules
 
     val routesDtab = routes.map { routeTable =>
-      val dentries = routeTable.map { _ =>
-        // TODO: map route into dentry
-        val route = "reviews-default"
-        val ns = "default"
-        val service = "reviews"
-        val labels = "version:v1"
-        Dentry.read(s"/svc/route/$route => $istioPfx/$ns/$service/$labels")
+      val dentries = routeTable.toIndexedSeq.flatMap {
+        case (name, route) =>
+          mkDentry(name, route)
       }
       Dtab(dentries)
     }
 
-    val noLabelsRewriteNamer = new RewritingNamer(PathMatcher("/{ns}/{svc}/{port}"), s"$istioPfx/{ns}/{svc}/::/{port}")
+    val noLabelsRewriteNamer =
+      new RewritingNamer(PathMatcher("/{ns}/{svc}/{port}"), s"$istioPfx/{ns}/{svc}/::/{port}")
 
     val dtab = routesDtab.map(defaultRouteDtab ++ _)
 
