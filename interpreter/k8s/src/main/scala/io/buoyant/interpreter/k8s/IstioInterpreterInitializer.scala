@@ -2,10 +2,11 @@ package io.buoyant.interpreter.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.tracing.NullTracer
+import com.twitter.finagle.{Http, Path, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.{ClientConfig, IstioNamer, SdsClient}
+import io.buoyant.k8s._
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
 
 class IstioInterpreterInitializer extends InterpreterInitializer {
@@ -16,37 +17,71 @@ class IstioInterpreterInitializer extends InterpreterInitializer {
 object IstioInterpreterInitializer extends IstioInterpreterInitializer
 
 case class IstioInterpreterConfig(
-  host: Option[String],
-  port: Option[Port],
+  discoveryHost: Option[String],
+  discoveryPort: Option[Port],
+  apiserverHost: Option[String],
+  apiserverPort: Option[Port],
   pollIntervalMs: Option[Long]
-) extends InterpreterConfig with ClientConfig {
+) extends InterpreterConfig {
 
   @JsonIgnore
   override val experimentalRequired = true
 
   @JsonIgnore
-  override val DefaultHost = "istio-manager.default.svc.cluster.local"
+  val DefaultDiscoveryHost = "istio-manager.default.svc.cluster.local"
   @JsonIgnore
-  override val DefaultPort = 8080
+  val DefaultDiscoveryPort = 8080
+
+  @JsonIgnore
+  val DefaultApiserverHost = "istio-manager.default.svc.cluster.local"
+  @JsonIgnore
+  val DefaultApiserverPort = 8081
 
   @JsonIgnore
   val prefix: Path = Path.read("/io.l5d.k8s.istio")
-
-  @JsonIgnore
-  def portNum = port.map(_.port)
 
   @JsonIgnore
   private[this] val DefaultPollInterval = 5.seconds
   @JsonIgnore
   private[this] val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
 
+  @JsonIgnore
+  private[this] def discoveryClient(
+    params: Stack.Params = Stack.Params.empty
+  ) = {
+    val host = discoveryHost.getOrElse(DefaultDiscoveryHost)
+    val port = discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
+    val setHost = new SetHostFilter(host, port)
+    Http.client.withParams(Http.client.params ++ params)
+      .withTracer(NullTracer)
+      .withStreaming(true)
+      .filtered(setHost)
+      .newService(s"/$$/inet/$host/$port", "namer/io.l5d.k8s.istio")
+  }
+
+  @JsonIgnore
+  private[this] def apiserverClient(
+    params: Stack.Params = Stack.Params.empty
+  ) = {
+    val host = discoveryHost.getOrElse(DefaultApiserverHost)
+    val port = discoveryPort.map(_.port).getOrElse(DefaultApiserverPort)
+    val setHost = new SetHostFilter(host, port)
+    Http.client.withParams(Http.client.params ++ params)
+      .withTracer(NullTracer)
+      .withStreaming(true)
+      .filtered(setHost)
+      .newService(s"/$$/inet/$host/$port", "interpreter/io.l5d.k8s.istio")
+  }
+
   override protected def newInterpreter(params: Stack.Params): NameInterpreter = {
-    val label = param.Label("namer/io.l5d.k8s.istio")
-    val client = mkClient(params).configured(label).newService(dst)
-    val sdsClient = new SdsClient(client)
+    // TODO: Use some kind of client cache
+    val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
+    val sdsClient = new SdsClient(discoveryClient(params))
     val istioNamer = new IstioNamer(sdsClient, Paths.ConfiguredNamerPrefix ++ prefix, pollInterval)
-    // TODO: Use the route manager
-    val routeManager = /* RouteManager(client) */ ()
+    val routeManager = RouteManager.getManagerFor(
+      apiserverHost.getOrElse(DefaultApiserverHost),
+      apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
+    )
     IstioInterpreter(routeManager, istioNamer)
   }
 }

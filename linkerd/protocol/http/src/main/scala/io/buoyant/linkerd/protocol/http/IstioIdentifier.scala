@@ -31,8 +31,8 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
       case Some(host) =>
-        Future.join(clusterCache.get(host), routeManager.getRules()).map {
-          case (Some(Cluster(dest, port)), rules) =>
+        Future.join(clusterCache.get(host), routeManager.getRules).map {
+          case (Some(Cluster(dest, port)), rules: Map[String, RouteRule]) =>
             val filteredRules: Seq[(String, RouteRule)] = rules.filter {
               //TODO: add more route conditions
               case (_, r) => r.`destination` == Some(dest)

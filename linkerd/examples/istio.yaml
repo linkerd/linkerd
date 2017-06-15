@@ -8,6 +8,7 @@ routers:
   interpreter:
     kind: io.l5d.k8s.istio
     experimental: true
-    host: localhost
+    discoveryHost: localhost
+    apiserverHost: localhost
   servers:
   - port: 4140
