@@ -26,24 +26,18 @@ class RouteManager(api: IstioPilotClient, pollInterval: Duration) {
 }
 
 object RouteManager {
-  private[this] val managers = Var(Map.empty[(String, Int), RouteManager])
+  private case class HostPort(host: String, port: Int)
 
-  def getManagerFor(host: String, port: Int): RouteManager = {
-    synchronized {
-      val sample = managers.sample()
-      sample.collectFirst { case ((h, p), manager) if h == h && p == p => manager }.getOrElse {
-        val setHost = new SetHostFilter(host, port)
-        val client = Http.client
-          .withTracer(NullTracer)
-          .withStreaming(true)
-          .filtered(setHost)
-          .configured(Label("istio-route-manager"))
-        val api = new IstioPilotClient(client.newService(s"/$$/inet/$host/$port"))
-        val routeManager = new RouteManager(api, 5.seconds) //TODO: make port configurable
-        val entry = (host, port) -> routeManager
-        managers.update(sample + entry)
-        routeManager
-      }
-    }
+  private val managers = Memoize { hp: HostPort =>
+    val setHost = new SetHostFilter(hp.host, hp.port)
+    val client = Http.client
+      .withTracer(NullTracer)
+      .withStreaming(true)
+      .filtered(setHost)
+      .configured(Label("istio-route-manager"))
+    val api = new IstioPilotClient(client.newService(s"/$$/inet/${hp.host}/${hp.port}"))
+    new RouteManager(api, 5.seconds) //TODO: make port configurable
   }
+
+  def getManagerFor(host: String, port: Int): RouteManager = managers(HostPort(host, port))
 }
