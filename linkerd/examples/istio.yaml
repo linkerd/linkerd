@@ -3,9 +3,9 @@ routers:
   identifier:
     kind: io.l5d.istio
     host: localhost
-  dtab:
-    /svc/localhost => /#/io.l5d.fs/default;
-    /svc/pet/8888 => /#/io.l5d.fs/cat;
-    /svc/pet/8800 => /#/io.l5d.fs/dog;
+  interpreter:
+    kind: io.l5d.k8s.istio
+    experimental: true
+    host: localhost
   servers:
   - port: 4140
