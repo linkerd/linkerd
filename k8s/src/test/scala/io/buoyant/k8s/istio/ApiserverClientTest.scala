@@ -1,10 +1,9 @@
-package io.buoyant.k8s
+package io.buoyant.k8s.istio
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import io.buoyant.k8s.istio.ApiserverClient
 import io.buoyant.k8s.istio.ApiserverClient.RouteRuleConfig
 import io.buoyant.test.{Awaits, Exceptions}
 import istio.proxy.v1.config.{DestinationWeight, RouteRule}

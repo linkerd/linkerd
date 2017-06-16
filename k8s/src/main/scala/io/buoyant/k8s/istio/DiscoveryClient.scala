@@ -14,7 +14,7 @@ import io.buoyant.k8s.SetHostFilter
  * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
  * https://lyft.github.io/envoy/docs/configuration/http_conn_man/rds.html#rest-api
  */
-class DiscoveryClient private (
+class DiscoveryClient(
   client: Service[Request, Response],
   pollingInterval: Duration,
   clusterSuffix: String = "svc.cluster.local"

@@ -10,7 +10,7 @@ import io.buoyant.k8s.istio.ApiserverClient.RouteRuleConfig
 import io.buoyant.namer.RichActivity
 import istio.proxy.v1.config.RouteRule
 
-class RouteManager private (api: ApiserverClient) extends Closable {
+class RouteManager(api: ApiserverClient) extends Closable {
 
   private[this] def mkRouteMap(routeList: Seq[RouteRuleConfig]): Map[String, RouteRule] =
     routeList.collect {
