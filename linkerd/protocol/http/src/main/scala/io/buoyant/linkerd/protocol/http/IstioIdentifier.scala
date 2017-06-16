@@ -7,13 +7,13 @@ import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.ClusterCache.Cluster
-import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteManager}
+import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
 import istio.proxy.v1.config.RouteRule
 
-class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManager, clusterCache: ClusterCache) extends Identifier[Request] {
+class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no matching istio rules found")
 
@@ -78,7 +78,7 @@ case class IstioIdentifierConfig(
   ): Identifier[Request] = {
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val routeManager = RouteManager.getManagerFor(host, port)
+    val routeManager = RouteCache.getManagerFor(host, port)
     val discoveryClient = DiscoveryClient(
       discoveryHost.getOrElse(DefaultDiscoveryHost),
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)

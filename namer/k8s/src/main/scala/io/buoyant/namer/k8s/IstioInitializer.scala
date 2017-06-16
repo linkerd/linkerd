@@ -15,7 +15,6 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   experimental: true
  *   host: istio-manager.default.svc.cluster.local
  *   port: 8080
- *   pollIntervalMs: 5000
  * </pre>
  */
 class IstioInitializer extends NamerInitializer {
@@ -27,8 +26,7 @@ object IstioInitializer extends IstioInitializer
 
 case class IstioConfig(
   host: Option[String],
-  port: Option[Port],
-  pollIntervalMs: Option[Long]
+  port: Option[Port]
 ) extends NamerConfig {
 
   @JsonIgnore

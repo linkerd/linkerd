@@ -21,7 +21,6 @@ class ClusterCache(client: DiscoveryClient) extends Closable {
   }
 
   def get(domain: String): Future[Option[Cluster]] = {
-    //clusters.values.toFuture.flatMap(Future.const).map(_.get(domain))
     clusters.values.toFuture.flatMap(Future.const).map { dict =>
       dict.get(domain)
     }
