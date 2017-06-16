@@ -14,13 +14,11 @@ import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestI
 import istio.proxy.v1.config.RouteRule
 
 class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManager, clusterCache: ClusterCache) extends Identifier[Request] {
-  private[this] val unidentified: RequestIdentification[Request] =
-    new UnidentifiedRequest(s"no matching istio rules found")
 
-  def forwardedRequestPath(host: String): Path = {
+  def externalRequestPath(host: String): Path = {
     host.split(":") match {
-      case Array(h: String, p: String) => pfx ++ Path.Utf8("dest", h, p)
-      case Array(h: String) => pfx ++ Path.Utf8("dest", h, "80")
+      case Array(h: String, p: String) => pfx ++ Path.Utf8("ext", h, p)
+      case Array(h: String) => pfx ++ Path.Utf8("ext", h, "80")
       case _ => throw new IllegalArgumentException("unable to parse host for request")
     }
   }
@@ -36,16 +34,16 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
             }.toSeq
 
             if (filteredRules.isEmpty) {
-              //forward requests which have no matching rules
-              forwardedRequestPath(host)
+              //forward requests which have no matching rules to an empty label selector
+              pfx ++ Path.Utf8("dest", dest, "::", port)
             } else {
               //choose matching rule with the highest precedence
               val topRule = filteredRules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
               pfx ++ Path.Utf8("route", topRule._1, port)
             }
           case b =>
-            // forward requests which have no matching vhosts
-            forwardedRequestPath(host)
+            // forward requests which have no matching vhosts to external
+            externalRequestPath(host)
         }.map { path =>
           val dst = Dst.Path(path, baseDtab(), Dtab.local)
           new IdentifiedRequest(dst, req)
