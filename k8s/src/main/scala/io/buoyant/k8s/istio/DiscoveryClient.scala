@@ -35,8 +35,8 @@ class DiscoveryClient private (
     watch[SdsResponse](s"/v1/registration/$service.$ns.$clusterSuffix|${selectors.mkString("|")}", pollingInterval)
   }
 
-  def getRoutes: Future[Seq[RouteConfig]] = get("/v1/routes")
-  val watchRoutes: Activity[Seq[RouteConfig]] = watch("/v1/routes", pollingInterval)
+  def getRoutes: Future[Seq[RouteConfig]] = get[Seq[RouteConfig]]("/v1/routes")
+  val watchRoutes: Activity[Seq[RouteConfig]] = watch[Seq[RouteConfig]]("/v1/routes", pollingInterval)
 }
 
 object DiscoveryClient {
@@ -46,7 +46,7 @@ object DiscoveryClient {
     val setHost = new SetHostFilter(hp.host, hp.port)
     val client = Http.client
       .withTracer(NullTracer)
-      .withStreaming(true)
+      .withStreaming(false)
       .filtered(setHost)
       .newService(s"/$$/inet/${hp.host}/${hp.port}", "istio-discovery")
     new DiscoveryClient(client, 5.seconds)

@@ -1,15 +1,16 @@
 package io.buoyant.k8s
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import io.buoyant.k8s.istio.IstioPilotClient
-import io.buoyant.k8s.istio.IstioPilotClient.RouteRuleConfig
+import io.buoyant.k8s.istio.ApiserverClient
+import io.buoyant.k8s.istio.ApiserverClient.RouteRuleConfig
 import io.buoyant.test.{Awaits, Exceptions}
 import istio.proxy.v1.config.{DestinationWeight, RouteRule}
 import org.scalatest.FunSuite
 
-class IstioPilotClientTest extends FunSuite with Awaits with Exceptions {
+class ApiserverClientTest extends FunSuite with Awaits with Exceptions {
 
   val routeRulesList = s"""[
   {
@@ -82,8 +83,8 @@ class IstioPilotClientTest extends FunSuite with Awaits with Exceptions {
   }
 
   test("getRouteRules() deserializes payload") {
-    val pilotClient = new IstioPilotClient(service)
-    val rsp = await(pilotClient.getRouteRules())
+    val pilotClient = new ApiserverClient(service, 5.seconds)
+    val rsp = await(pilotClient.getRouteRules)
     assert(rsp.length == 4)
     assert(rsp.head == RouteRuleConfig(
       `type` = Some("route-rule"),

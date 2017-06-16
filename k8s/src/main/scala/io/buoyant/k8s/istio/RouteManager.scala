@@ -34,10 +34,10 @@ object RouteManager {
     val setHost = new SetHostFilter(hp.host, hp.port)
     val client = Http.client
       .withTracer(NullTracer)
-      .withStreaming(true)
+      .withStreaming(false)
       .filtered(setHost)
       .configured(Label("istio-route-manager"))
-    val api = new ApiserverClient(client.newService(s"/$$/inet/${hp.host}/${hp.port}"), 5.minutes)
+    val api = new ApiserverClient(client.newService(s"/$$/inet/${hp.host}/${hp.port}"), 5.seconds)
     new RouteManager(api)
   }
 
