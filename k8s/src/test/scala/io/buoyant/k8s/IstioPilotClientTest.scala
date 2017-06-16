@@ -3,7 +3,8 @@ package io.buoyant.k8s
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import io.buoyant.k8s.IstioPilotClient.RouteRuleConfig
+import io.buoyant.k8s.istio.IstioPilotClient
+import io.buoyant.k8s.istio.IstioPilotClient.RouteRuleConfig
 import io.buoyant.test.{Awaits, Exceptions}
 import istio.proxy.v1.config.{DestinationWeight, RouteRule}
 import org.scalatest.FunSuite

@@ -1,9 +1,9 @@
-package io.buoyant.k8s
+package io.buoyant.k8s.istio
 
-import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.util.{Activity, Duration, Timer, Var}
+import com.twitter.util.{Activity, Timer, Var}
+import io.buoyant.k8s.log
 
 /**
  * The Istio namer reads service discovery information from the Istio-Manager's Service Discvoery
@@ -12,9 +12,8 @@ import com.twitter.util.{Activity, Duration, Timer, Var}
  * Each lookup is backed by a polling loop.
  */
 class IstioNamer(
-  sdsClient: SdsClient,
-  idPrefix: Path,
-  pollInterval: Duration = 5.seconds
+  discoveryClient: DiscoveryClient,
+  idPrefix: Path
 )(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
   private[this] val PrefixLen = 4
@@ -48,7 +47,7 @@ class IstioNamer(
 
         log.debug("SDS lookup: %s %s", id.show, residual.show)
 
-        val vaddr = sdsClient.watch(nsName, portName, serviceName, selectors, pollInterval).run.map {
+        val vaddr = discoveryClient.watchService(nsName, portName, serviceName, selectors).run.map {
           case Activity.Ok(rsp) =>
             Addr.Bound(rsp.hosts.map { host =>
               Address(host.ip_address, host.port)
