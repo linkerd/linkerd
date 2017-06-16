@@ -90,6 +90,12 @@ trait Request extends Message {
   def authority: String
   def path: String
   override def dup(): Request
+  def transform(
+    scheme: String = scheme,
+    method: Method = method,
+    authority: String = authority,
+    path: String = path
+  ): Request
 }
 
 object Request {
@@ -122,6 +128,15 @@ object Request {
     }
     override def authority = headers.get(Headers.Authority).getOrElse("")
     override def path = headers.get(Headers.Path).getOrElse("/")
+    override def transform(scheme: String, method: Method, authority: String, path: String) = copy(
+      Headers(
+        Headers.Scheme -> scheme,
+        Headers.Method -> method.toString,
+        Headers.Authority -> authority,
+        Headers.Path -> path
+      ),
+      stream
+    )
   }
 }
 

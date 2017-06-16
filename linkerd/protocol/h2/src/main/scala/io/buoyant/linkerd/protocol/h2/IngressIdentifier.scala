@@ -16,6 +16,7 @@ class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
   namespace: Option[String],
+  useCapturingGroups: Boolean,
   apiClient: Service[http.Request, http.Response]
 ) extends Identifier[Request] {
 
@@ -32,7 +33,8 @@ class IngressIdentifier(
       case Some(a) =>
         val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
         val dst = Dst.Path(path, baseDtab(), Dtab.local)
-        Future.value(new IdentifiedRequest(dst, req))
+        val rewritten = req.transform(path = a.rewrite(req.path, useCapturingGroups))
+        Future.value(new IdentifiedRequest(dst, rewritten))
     }
   }
 }
@@ -40,7 +42,8 @@ class IngressIdentifier(
 case class IngressIdentifierConfig(
   host: Option[String],
   port: Option[Port],
-  namespace: Option[String]
+  namespace: Option[String],
+  useCapturingGroups: Option[Boolean]
 ) extends H2IdentifierConfig with ClientConfig {
   override def portNum: Option[Int] = port.map(_.port)
 
@@ -49,7 +52,7 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
+    new IngressIdentifier(pfx, baseDtab, namespace, useCapturingGroups.getOrElse(false), client.newService(dst))
   }
 }
 
