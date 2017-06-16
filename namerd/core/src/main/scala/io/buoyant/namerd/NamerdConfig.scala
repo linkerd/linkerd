@@ -35,7 +35,7 @@ private[namerd] case class NamerdConfig(
     val metrics = MetricsTree()
 
     val telemeterParams = Stack.Params.empty + metrics
-    val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+    val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer)
     val telemeters = telemetry.toSeq.flatten.map {
       case t if t.disabled =>
         val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +

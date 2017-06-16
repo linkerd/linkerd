@@ -5,8 +5,8 @@ import com.twitter.finagle.Dtab
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.DtabStore.{DtabNamespaceDoesNotExistException, DtabVersionMismatchException, DtabNamespaceAlreadyExistsException}
-import io.buoyant.namerd.{Ns, VersionedDtab, DtabStore}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
+import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
 import java.nio.ByteBuffer
 
 /**
@@ -45,7 +45,7 @@ class InMemoryDtabStore(namespaces: Map[String, Dtab]) extends DtabStore {
           }.keySet
           update.update(keySet)
         }
-        Future.sleep(1.second)(DefaultTimer.twitter).before(loop())
+        Future.sleep(1.second)(DefaultTimer).before(loop())
       }
     }
 

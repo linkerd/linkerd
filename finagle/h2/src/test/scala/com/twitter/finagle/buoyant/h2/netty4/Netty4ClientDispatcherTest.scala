@@ -128,11 +128,11 @@ class Netty4ClientDispatcherTest extends FunSuite {
 
     assert(recvq.offer({
       val buf = Buf.Utf8("sup")
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).streamId(3)
+      new DefaultHttp2DataFrame(BufAsByteBuf(buf), true).streamId(3)
     }))
     assert(recvq.offer({
       val buf = Buf.Utf8("yo")
-      new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), true).streamId(5)
+      new DefaultHttp2DataFrame(BufAsByteBuf(buf), true).streamId(5)
     }))
 
     val d0f = rsp0.stream.read()

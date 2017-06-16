@@ -5,7 +5,6 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
-import com.twitter.finagle.netty4.channel.AnyToHeapInboundHandler
 import com.twitter.finagle.transport.Transport
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2._
@@ -38,7 +37,7 @@ object Netty4H2Transporter {
         // secure
         p =>
           {
-            p.addLast(AnyToHeapInboundHandler)
+            p.addLast(UnpoolHandler)
             p.addLast(FramerKey, framer); ()
           }
       } else {
@@ -52,7 +51,7 @@ object Netty4H2Transporter {
             // Prior Knowledge: ensure messages are buffered until
             // handshake completes.
             p => {
-              p.addLast(AnyToHeapInboundHandler)
+              p.addLast(UnpoolHandler)
               p.addLast(framer)
               p.addLast(new BufferingConnectDelay); ()
             }

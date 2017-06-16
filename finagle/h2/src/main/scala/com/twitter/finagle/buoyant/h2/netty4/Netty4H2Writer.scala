@@ -32,7 +32,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   }
 
   override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
-    val bb = BufAsByteBuf.Owned(buf)
+    val bb = BufAsByteBuf(buf)
     val frame = new DefaultHttp2DataFrame(bb, eos)
     if (id >= 0) frame.streamId(id)
     write(frame.retain()).ensure {

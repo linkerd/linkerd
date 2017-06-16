@@ -9,7 +9,7 @@ import io.buoyant.k8s.Ns.ObjectCache
 
 abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, Cache <: ObjectCache[O, W, L]](
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds),
-  timer: Timer = DefaultTimer.twitter
+  timer: Timer = DefaultTimer
 ) {
   // note that caches must be updated with synchronized
   private[this] val caches = Var[Map[String, Cache]](Map.empty[String, Cache])

@@ -3,6 +3,7 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
