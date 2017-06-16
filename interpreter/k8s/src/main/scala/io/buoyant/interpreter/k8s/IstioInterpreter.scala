@@ -3,7 +3,7 @@ package io.buoyant.interpreter.k8s
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.naming.NameInterpreter
-import io.buoyant.k8s.RouteManager
+import io.buoyant.k8s.istio.RouteCache
 import io.buoyant.namer.{ConfiguredDtabNamer, RewritingNamer}
 import istio.proxy.v1.config.RouteRule
 
@@ -51,7 +51,7 @@ object IstioInterpreter {
       }
     }
 
-  def apply(routeManager: RouteManager, istioNamer: Namer): NameInterpreter = {
+  def apply(routeManager: RouteCache, istioNamer: Namer): NameInterpreter = {
 
     val routes = routeManager.routeRules
 

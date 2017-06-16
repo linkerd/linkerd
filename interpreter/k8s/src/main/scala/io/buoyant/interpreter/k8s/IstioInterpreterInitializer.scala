@@ -1,12 +1,10 @@
 package io.buoyant.interpreter.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.{Http, Path, Stack}
+import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.k8s._
+import io.buoyant.k8s.istio.{DiscoveryClient, IstioNamer, RouteCache}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
 
 class IstioInterpreterInitializer extends InterpreterInitializer {
@@ -40,45 +38,13 @@ case class IstioInterpreterConfig(
   @JsonIgnore
   val prefix: Path = Path.read("/io.l5d.k8s.istio")
 
-  @JsonIgnore
-  private[this] val DefaultPollInterval = 5.seconds
-  @JsonIgnore
-  private[this] val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
-
-  @JsonIgnore
-  private[this] def discoveryClient(
-    params: Stack.Params = Stack.Params.empty
-  ) = {
-    val host = discoveryHost.getOrElse(DefaultDiscoveryHost)
-    val port = discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
-    val setHost = new SetHostFilter(host, port)
-    Http.client.withParams(Http.client.params ++ params)
-      .withTracer(NullTracer)
-      .withStreaming(true)
-      .filtered(setHost)
-      .newService(s"/$$/inet/$host/$port", "namer/io.l5d.k8s.istio")
-  }
-
-  @JsonIgnore
-  private[this] def apiserverClient(
-    params: Stack.Params = Stack.Params.empty
-  ) = {
-    val host = discoveryHost.getOrElse(DefaultApiserverHost)
-    val port = discoveryPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val setHost = new SetHostFilter(host, port)
-    Http.client.withParams(Http.client.params ++ params)
-      .withTracer(NullTracer)
-      .withStreaming(true)
-      .filtered(setHost)
-      .newService(s"/$$/inet/$host/$port", "interpreter/io.l5d.k8s.istio")
-  }
-
   override protected def newInterpreter(params: Stack.Params): NameInterpreter = {
-    // TODO: Use some kind of client cache
-    val pollInterval = pollIntervalMs.map(_.millis).getOrElse(DefaultPollInterval)
-    val sdsClient = new SdsClient(discoveryClient(params))
-    val istioNamer = new IstioNamer(sdsClient, Paths.ConfiguredNamerPrefix ++ prefix, pollInterval)
-    val routeManager = RouteManager.getManagerFor(
+    val discoveryClient = DiscoveryClient(
+      discoveryHost.getOrElse(DefaultDiscoveryHost),
+      discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
+    )
+    val istioNamer = new IstioNamer(discoveryClient, Paths.ConfiguredNamerPrefix ++ prefix)
+    val routeManager = RouteCache.getManagerFor(
       apiserverHost.getOrElse(DefaultApiserverHost),
       apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
     )
