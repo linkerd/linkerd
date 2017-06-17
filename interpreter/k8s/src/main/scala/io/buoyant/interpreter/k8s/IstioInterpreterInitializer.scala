@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{DiscoveryClient, IstioNamer, RouteManager}
+import io.buoyant.k8s.istio.{DiscoveryClient, IstioNamer, RouteCache}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
 
 class IstioInterpreterInitializer extends InterpreterInitializer {
@@ -44,7 +44,7 @@ case class IstioInterpreterConfig(
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
     )
     val istioNamer = new IstioNamer(discoveryClient, Paths.ConfiguredNamerPrefix ++ prefix)
-    val routeManager = RouteManager.getManagerFor(
+    val routeManager = RouteCache.getManagerFor(
       apiserverHost.getOrElse(DefaultApiserverHost),
       apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
     )

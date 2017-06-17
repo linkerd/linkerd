@@ -10,7 +10,7 @@ import io.buoyant.k8s.istio.ApiserverClient.RouteRuleConfig
 import io.buoyant.namer.RichActivity
 import istio.proxy.v1.config.RouteRule
 
-class RouteManager(api: ApiserverClient) extends Closable {
+class RouteCache(api: ApiserverClient) extends Closable {
 
   private[this] def mkRouteMap(routeList: Seq[RouteRuleConfig]): Map[String, RouteRule] =
     routeList.collect {
@@ -27,7 +27,7 @@ class RouteManager(api: ApiserverClient) extends Closable {
   override def close(deadline: Time): Future[Unit] = closable.close(deadline)
 }
 
-object RouteManager {
+object RouteCache {
   private case class HostPort(host: String, port: Int)
 
   private val managers = Memoize { hp: HostPort =>
@@ -38,8 +38,8 @@ object RouteManager {
       .filtered(setHost)
       .configured(Label("istio-route-manager"))
     val api = new ApiserverClient(client.newService(s"/$$/inet/${hp.host}/${hp.port}"), 5.seconds)
-    new RouteManager(api)
+    new RouteCache(api)
   }
 
-  def getManagerFor(host: String, port: Int): RouteManager = managers(HostPort(host, port))
+  def getManagerFor(host: String, port: Int): RouteCache = managers(HostPort(host, port))
 }

@@ -7,13 +7,14 @@ import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.ClusterCache.Cluster
-import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteManager}
+import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification}
 import istio.proxy.v1.config.RouteRule
 
-class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManager, clusterCache: ClusterCache) extends Identifier[Request] {
+class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
+
 
   def externalRequestPath(host: String): Path = {
     host.split(":") match {
@@ -26,7 +27,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteManage
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
       case Some(host) =>
-        Future.join(clusterCache.get(host), routeManager.getRules).map {
+        Future.join(clusterCache.get(host), routeCache.getRules).map {
           case (Some(Cluster(dest, port)), rules: Map[String, RouteRule]) =>
             val filteredRules: Seq[(String, RouteRule)] = rules.filter {
               //TODO: add more route conditions
@@ -76,13 +77,13 @@ case class IstioIdentifierConfig(
   ): Identifier[Request] = {
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val routeManager = RouteManager.getManagerFor(host, port)
+    val routeCache = RouteCache.getManagerFor(host, port)
     val discoveryClient = DiscoveryClient(
       discoveryHost.getOrElse(DefaultDiscoveryHost),
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
     )
     val clusterCache = new ClusterCache(discoveryClient)
-    new IstioIdentifier(prefix, baseDtab, routeManager, clusterCache)
+    new IstioIdentifier(prefix, baseDtab, routeCache, clusterCache)
   }
 }
 

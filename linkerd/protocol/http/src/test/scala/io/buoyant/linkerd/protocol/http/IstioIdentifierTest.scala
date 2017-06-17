@@ -5,7 +5,7 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Request => FRequest, Response => FResponse}
 import com.twitter.finagle.{Dtab, Path, Service}
 import com.twitter.util.Future
-import io.buoyant.k8s.istio.{ApiserverClient, ClusterCache, DiscoveryClient, RouteManager}
+import io.buoyant.k8s.istio.{ApiserverClient, ClusterCache, DiscoveryClient, RouteCache}
 import io.buoyant.router.RoutingFactory._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -138,10 +138,10 @@ class IstioIdentifierTest extends FunSuite with Awaits {
   }
 
   val client = new ApiserverClient(pilotService, 5.seconds)
-  val routeManager = new RouteManager(client)
+  val routeCache = new RouteCache(client)
   val discoveryClient = new DiscoveryClient(clusterService, 5.seconds)
   val clusterCache = new ClusterCache(discoveryClient)
-  val identifier = new IstioIdentifier(Path.Utf8("svc"), () => Dtab.base, routeManager, clusterCache)
+  val identifier = new IstioIdentifier(Path.Utf8("svc"), () => Dtab.base, routeCache, clusterCache)
 
   test("forwards requests if host doesn't match any vhosts") {
     val req = FRequest()
