@@ -148,7 +148,7 @@ class IstioIdentifierTest extends FunSuite with Awaits {
     req.host = "hello.world.com"
     await(identifier(req)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
-        assert(name == Path.read("/svc/dest/hello.world.com/80"))
+        assert(name == Path.read("/svc/ext/hello.world.com/80"))
       case id => fail(s"unexpected response ${id}")
     }
   }
@@ -158,7 +158,7 @@ class IstioIdentifierTest extends FunSuite with Awaits {
     req.host = "linkerd-fan.default:8080"
     await(identifier(req)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
-        assert(name == Path.read("/svc/dest/linkerd-fan.default/8080"))
+        assert(name == Path.read("/svc/dest/linkerd-fan.default.svc.cluster.local/::/fan-power"))
       case id => fail(s"unexpected response ${id}")
     }
   }

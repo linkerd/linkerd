@@ -15,7 +15,6 @@ import istio.proxy.v1.config.RouteRule
 
 class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
 
-
   def externalRequestPath(host: String): Path = {
     host.split(":") match {
       case Array(h: String, p: String) => pfx ++ Path.Utf8("ext", h, p)
