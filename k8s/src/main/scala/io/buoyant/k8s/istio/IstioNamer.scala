@@ -16,29 +16,29 @@ class IstioNamer(
   idPrefix: Path
 )(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
 
-  private[this] val PrefixLen = 4
+  private[this] val PrefixLen = 3
   private[this] val LabelPattern = """(.*):(.*)""".r
 
   /**
    * Accepts names in the form:
-   *   /<namespace>/<svc-name>/<labels>/<port-name>/residual/path
+   *   /<cluster>/<labels>/<port-name>/residual/path
    *
    * and initiates a polling loop against the SDS API.  The labels segment must be a :: delimited
    * list of label:value pairs.  To avoid duplication, the labels must be in alphabetical order
    * by label name.  e.g.
    *
-   * /default/foo/az:us-west::env:prod::version:v1/http
+   * /foo.default.svc.cluster.local/az:us-west::env:prod::version:v1/http
    *
    * Use :: alone to specify an empty list of labels
    *
-   * /default/foo/::/http
+   * /foo.default.svc.cluster.local/foo/::/http
    */
   def lookup(path: Path): Activity[NameTree[Name]] = {
     val id = path.take(PrefixLen) match {
       case Path.Utf8(segments@_*) => Path.Utf8(segments.map(_.toLowerCase): _*)
     }
     id match {
-      case Path.Utf8(nsName, serviceName, labels, portName) =>
+      case Path.Utf8(cluster, labels, portName) =>
         val residual = path.drop(PrefixLen)
 
         val selectors = labels.split("::").collect {
@@ -47,7 +47,7 @@ class IstioNamer(
 
         log.debug("SDS lookup: %s %s", id.show, residual.show)
 
-        val vaddr = discoveryClient.watchService(nsName, portName, serviceName, selectors).run.map {
+        val vaddr = discoveryClient.watchService(cluster, portName, selectors).run.map {
           case Activity.Ok(rsp) =>
             Addr.Bound(rsp.hosts.map { host =>
               Address(host.ip_address, host.port)
