@@ -16,23 +16,21 @@ import io.buoyant.k8s.SetHostFilter
  */
 class DiscoveryClient(
   client: Service[Request, Response],
-  pollingInterval: Duration,
-  clusterSuffix: String = "svc.cluster.local"
+  pollingInterval: Duration
 ) extends PollingApiClient(client) {
   import DiscoveryClient._
 
-  def getService(ns: String, port: String, service: String, labels: Map[String, String]): Future[SdsResponse] = {
+  def getService(cluster: String, port: String, labels: Map[String, String]): Future[SdsResponse] = {
     val selectors = Seq(port) ++ labels.map { case (k, v) => s"$k=$v" }
-    get[SdsResponse](s"/v1/registration/$service.$ns.$clusterSuffix|${selectors.mkString("|")}")
+    get[SdsResponse](s"/v1/registration/$cluster|${selectors.mkString("|")}")
   }
   def watchService(
-    ns: String,
+    cluster: String,
     port: String,
-    service: String,
     labels: Map[String, String]
   )(implicit timer: Timer = DefaultTimer.twitter): Activity[SdsResponse] = {
     val selectors = Seq(port) ++ labels.map { case (k, v) => s"$k=$v" }
-    watch[SdsResponse](s"/v1/registration/$service.$ns.$clusterSuffix|${selectors.mkString("|")}", pollingInterval)
+    watch[SdsResponse](s"/v1/registration/$cluster|${selectors.mkString("|")}", pollingInterval)
   }
 
   def getRoutes: Future[Seq[RouteConfig]] = get[Seq[RouteConfig]]("/v1/routes")
