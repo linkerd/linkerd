@@ -83,7 +83,7 @@ case class NamerdHttpInterpreterConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val client = Http.client
-      .withParams(Http.client.params ++ tlsParams ++ params)
+      .withParams(Http.client.params ++ tlsParams ++ params + Http.Netty4Impl)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
       .withStreaming(true)

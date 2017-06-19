@@ -2,7 +2,7 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Name.Bound
-import com.twitter.finagle.{NameTree, Path}
+import com.twitter.finagle.{NameTree, Path, Stack}
 import com.twitter.util.Activity
 
 class TestTransformer extends NameTreeTransformer {
@@ -21,5 +21,5 @@ class TestTransformerConfig extends TransformerConfig {
   val defaultPrefix = Path.read("/io.l5d.empty")
 
   @JsonIgnore
-  override def mk() = new TestTransformer
+  override def mk(params: Stack.Params): NameTreeTransformer = new TestTransformer
 }

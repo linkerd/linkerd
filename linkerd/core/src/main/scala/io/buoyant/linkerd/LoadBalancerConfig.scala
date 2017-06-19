@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.loadbalancer.LoadBalancerFactory.EnableProbation
@@ -41,8 +42,8 @@ case class P2CEwma(decayTimeMs: Option[Int], maxEffort: Option[Int]) extends Loa
 case class Aperture(
   smoothWindowMs: Option[Int],
   maxEffort: Option[Int],
-  lowLoad: Option[Double],
-  highLoad: Option[Double],
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) lowLoad: Option[Double],
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) highLoad: Option[Double],
   minAperture: Option[Int]
 ) extends LoadBalancerConfig {
   @JsonIgnore

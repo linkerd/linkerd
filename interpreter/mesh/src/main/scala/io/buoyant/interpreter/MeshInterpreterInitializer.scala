@@ -3,16 +3,13 @@ package io.buoyant.interpreter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{TlsClientConfig, H2}
+import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
-import com.twitter.finagle.ssl.ApplicationProtocols
-import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.interpreter.mesh.Client
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
-import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.util.control.NoStackTrace
 
 /**
@@ -72,7 +69,7 @@ case class MeshInterpreterConfig(
 
     root.getOrElse(DefaultRoot) match {
       case r@Path.Utf8(_) =>
-        Client(r, client, backoffs, DefaultTimer.twitter)
+        Client(r, client, backoffs, DefaultTimer)
 
       case r =>
         val msg = s"io.l5d.mesh: `root` may only contain a single path element (for now): ${r.show}"

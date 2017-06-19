@@ -3,6 +3,7 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
@@ -197,8 +198,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
             label
           case param.Label(label) => label
         }
-        val param.Stats(stats0) = params[param.Stats]
-        val stats = stats0.scope(label)
+        val param.Stats(stats) = params[param.Stats]
         val clientStats = param.Stats(stats.scope("client"))
 
         // if this router has been configured as an originator, add a

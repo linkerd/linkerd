@@ -1,6 +1,6 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, StatsReceiver}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, NullStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param}
@@ -35,7 +35,7 @@ private[namerd] case class NamerdConfig(
     val metrics = MetricsTree()
 
     val telemeterParams = Stack.Params.empty + metrics
-    val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+    val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer)
     val telemeters = telemetry.toSeq.flatten.map {
       case t if t.disabled =>
         val msg = s"The ${t.getClass.getCanonicalName} telemeter is experimental and must be " +
@@ -54,11 +54,11 @@ private[namerd] case class NamerdConfig(
     // Telemeters may provide StatsReceivers.
     val stats = mkStats(metrics, telemeters)
     JvmStats.register(stats)
-    LoadedStatsReceiver.self = stats
+    LoadedStatsReceiver.self = NullStatsReceiver
 
     val dtabStore = storage.mkDtabStore
-    val namersByPfx = mkNamers(Stack.Params.empty + param.Stats(stats))
-    val ifaces = mkInterfaces(dtabStore, namersByPfx, stats)
+    val namersByPfx = mkNamers(Stack.Params.empty + param.Stats(stats.scope("namer")))
+    val ifaces = mkInterfaces(dtabStore, namersByPfx, stats.scope("interface"))
     val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
 
     new Namerd(ifaces, dtabStore, namersByPfx, adminImpl, telemeters)

@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Namer, Path, Stack, ThriftMux}
+import com.twitter.finagle.{Namer, Path, Stack, Thrift, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
@@ -28,6 +28,8 @@ case class ThriftInterpreterInterfaceConfig(
     store: DtabStore,
     stats: StatsReceiver
   ): Servable = {
+    val stats1 = stats.scope(ThriftInterpreterInterfaceConfig.kind)
+
     val retryIn: () => Duration = {
       val retry = retryBaseSecs.map(_.seconds).getOrElse(10.minutes)
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
@@ -39,9 +41,12 @@ case class ThriftInterpreterInterfaceConfig(
       new LocalStamper,
       retryIn,
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
-      stats
+      stats1
     )
-    val params = tlsParams + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
+    val params =
+      tlsParams +
+        param.Stats(stats1) +
+        Thrift.ThriftImpl.Netty4
     ThriftServable(addr, iface, params)
   }
 }

@@ -22,7 +22,7 @@ class ServiceNamer(
   labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
+)(implicit timer: Timer = DefaultTimer) extends Namer {
 
   private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size

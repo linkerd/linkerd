@@ -32,14 +32,29 @@ object Base {
 class Base extends Build {
   import Base._
 
-  val headVersion = "1.0.2"
+  val headVersion = "1.1.0"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
-    val headRevision = git("rev-parse", "--short", "HEAD").!!.trim
-    val version = git("name-rev", "--tags", "--name-only", headRevision).!!.trim match {
-      case tag if tag == headVersion || tag == s"${headVersion}^0" => headVersion
-      case _ => s"$headVersion-SNAPSHOT"
+    val devnull = new ProcessLogger {
+      def info (s: => String) {}
+      def error (s: => String) { }
+      def buffer[T] (f: => T): T = f
+    }
+    val noGit = git("status").!<(devnull) != 0
+    val version = {
+      if (noGit) headVersion
+      else {
+        val headRevision = git("rev-parse", "--short", "HEAD").!!.trim
+        git("name-rev", "--tags", "--name-only", headRevision).!!.trim match {
+          case tag if tag == headVersion || tag == s"${headVersion}^0" => headVersion
+          case _ => s"$headVersion-SNAPSHOT"
+        }
+      }
+    }
+    val revision = {
+      if (noGit) ""
+      else git("rev-parse", "HEAD").!!.trim
     }
   }
 
@@ -48,7 +63,7 @@ class Base extends Build {
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
     scalaVersion in GlobalScope := "2.12.1",
-    crossScalaVersions in GlobalScope := Seq("2.11.8", "2.12.1"),
+    crossScalaVersions in GlobalScope := Seq("2.11.11", "2.12.1"),
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
     scalacOptions ++=
       Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
@@ -264,7 +279,7 @@ class Base extends Build {
     def withBuildProperties(path: String): Project = project
       .settings((resourceGenerators in Compile) <+=
         (resourceManaged in Compile, name, version).map { (dir, name, ver) =>
-          val rev = Process("git" :: "rev-parse" :: "HEAD" :: Nil).!!.trim
+          val rev = Git.revision
           val build = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date)
           val contents = s"name=$name\nversion=$ver\nbuild_revision=$rev\nbuild_name=$build"
           val file = dir / path / "build.properties"

@@ -80,13 +80,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
+        def budget = stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
         def requeues = stats.counters.getOrElse(
-          Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
           0
         )
         def requestLimit = stats.counters.getOrElse(
-          Seq("http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
           0
         )
 
@@ -178,14 +178,14 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def budget(ds: Downstream) =
-          stats.gauges(Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
+          stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
 
         def requeues(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
           0
         )
         def requestLimit(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "client", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
           0
         )
 
@@ -290,13 +290,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "service", "svc/foo", "retries", "budget"))
+        def budget = stats.gauges(Seq("rt", "http", "service", "svc/foo", "retries", "budget"))
         def retries = stats.counters.getOrElse(
-          Seq("http", "service", "svc/foo", "retries", "total"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
           0
         )
         def budgetExhausted = stats.counters.getOrElse(
-          Seq("http", "service", "svc/foo", "retries", "budget_exhausted"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "budget_exhausted"),
           0
         )
 
@@ -390,14 +390,14 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def budget(ds: Downstream) =
-          stats.gauges(Seq("http", "service", s"svc/${ds.name}", "retries", "budget"))
+          stats.gauges(Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "budget"))
 
         def retries(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "service", s"svc/${ds.name}", "retries", "total"),
+          Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "total"),
           0
         )
         def budgetExhausted(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "service", s"svc/${ds.name}", "retries", "budget_exhausted"),
+          Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "budget_exhausted"),
           0
         )
 
@@ -484,9 +484,9 @@ class RetriesEndToEndTest extends FunSuite {
         // Each budget starts with a balance of 100 from minRetriesPerSec
         // we subtract that off to see just the deposits
         def retryBudget(svc: String): Int =
-          stats.gauges.get(Seq("http", "service", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+          stats.gauges.get(Seq("rt", "http", "service", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
         def requeueBudget(clnt: String): Int =
-          stats.gauges.get(Seq("http", "client", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+          stats.gauges.get(Seq("rt", "http", "client", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
 
         // 20% budget
         assert(retryBudget("svc/a") == 2)
@@ -546,7 +546,7 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def retries = stats.counters.getOrElse(
-          Seq("http", "service", "svc/foo", "retries", "total"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
           0
         )
 
@@ -601,7 +601,7 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
         def retries = stats.counters.getOrElse(
-          Seq("http", "service", "svc/foo", "retries", "total"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
           0
         )
 
@@ -659,9 +659,9 @@ class RetriesEndToEndTest extends FunSuite {
       req.host = "dog"
       val errrsp = await(client(req))
       assert(errrsp.statusCode == 500)
-      assert(stats.counters.get(Seq("http", "server", "127.0.0.1/0", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("http", "client", label, "requests")) == Some(101))
-      assert(stats.gauges.get(Seq("http", "client", label, "connections")).map(_.apply.toInt) == Some(1))
+      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(101))
+      assert(stats.gauges.get(Seq("rt", "http", "client", label, "connections")).map(_.apply.toInt) == Some(1))
 
     } finally {
       await(client.close())

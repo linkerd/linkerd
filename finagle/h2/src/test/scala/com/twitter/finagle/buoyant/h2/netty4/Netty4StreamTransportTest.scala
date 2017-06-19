@@ -8,7 +8,6 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
-import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
@@ -148,7 +147,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!dataf.isDefined)
 
     val buf = Buf.Utf8("space ghost coast to coast")
-    transport.recv(new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf)).streamId(id))
+    transport.recv(new DefaultHttp2DataFrame(BufAsByteBuf(buf)).streamId(id))
     transport.recv({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
@@ -437,7 +436,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val d0f = req.stream.read()
     assert(!d0f.isDefined)
     assert(transport.recv({
-      val bb = BufAsByteBuf.Owned(Buf.Utf8("data"))
+      val bb = BufAsByteBuf(Buf.Utf8("data"))
       new DefaultHttp2DataFrame(bb, false).streamId(id)
     }))
     assert(d0f.isDefined)
@@ -493,13 +492,13 @@ class Netty4StreamTransportTest extends FunSuite {
     val buf = Buf.Utf8("Looks like some tests were totally excellent")
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).streamId(id))
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf(buf), false).streamId(id))
       written = written.tail
     }
 
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf.Owned(buf), false).streamId(id))
+      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf(buf), false).streamId(id))
       written = written.tail
     }
 

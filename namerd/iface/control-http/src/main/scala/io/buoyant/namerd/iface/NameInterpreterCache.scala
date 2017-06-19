@@ -20,10 +20,8 @@ private[iface] class NameInterpreterCache(delegate: Ns => NameInterpreter, namer
   def getAddr(ns: Ns, path: Path): Activity[Addr] =
     addrCache.get(NsPath(ns, path)).activity
 
-  // cached activities are not held open so there is very little cost to caching
-  // them forever
-  private[this] val bindingCacheSize = 100000
-  private[this] val addrCacheSize = 100000
+  private[this] val bindingCacheSize = 1000
+  private[this] val addrCacheSize = 1000
 
   private[this] val bindingCache = CacheBuilder.newBuilder()
     .maximumSize(bindingCacheSize)

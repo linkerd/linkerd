@@ -15,7 +15,7 @@ class DelegateHandler(
   interpreter: String => NameInterpreter
 ) extends Service[Request, Response] {
 
-  private[this] implicit val time = DefaultTimer.twitter
+  private[this] implicit val time = DefaultTimer
 
   def apply(req: Request): Future[Response] = {
 

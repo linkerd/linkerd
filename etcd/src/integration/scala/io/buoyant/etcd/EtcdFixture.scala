@@ -1,6 +1,5 @@
 package io.buoyant.etcd
 
-import com.twitter.conversions.time._
 import com.twitter.finagle.Http
 import com.twitter.finagle.util.DefaultTimer
 import io.buoyant.test.Awaits
@@ -57,7 +56,7 @@ class EtcdFixture extends FunSuite with Awaits with BeforeAndAfterAll {
 
   def serverName = s"/$$/inet/127.1/$etcdPort"
 
-  private[this] implicit val timer = DefaultTimer.twitter
+  private[this] implicit val timer = DefaultTimer
 
   type FixtureParam = Etcd
 

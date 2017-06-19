@@ -1,6 +1,7 @@
 package io.buoyant.telemetry
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.timgroup.statsd.NonBlockingStatsDClient
 import com.twitter.finagle.Stack
 import com.twitter.finagle.util.DefaultTimer
@@ -28,7 +29,7 @@ case class StatsDConfig(
   hostname: Option[String],
   port: Option[Int],
   gaugeIntervalMs: Option[Int],
-  sampleRate: Option[Double]
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double]
 ) extends TelemeterConfig {
   import StatsDConfig._
 
@@ -56,7 +57,7 @@ case class StatsDConfig(
     new StatsDTelemeter(
       new StatsDStatsReceiver(statsDClient, statsDSampleRate),
       statsDInterval,
-      DefaultTimer.twitter
+      DefaultTimer
     )
   }
 }

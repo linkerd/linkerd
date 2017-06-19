@@ -457,6 +457,49 @@ templates['router_server_container'] = template({"compiler":[7,">= 4.0.0"],"main
     + container.escapeExpression(((helper = (helper = helpers.server || (depth0 != null ? depth0.server : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"server","hash":{},"data":data}) : helper)))
     + "\n</div>\n\n<div class=\"router-server clearfix\">\n  <div class=\"server-metrics metrics-container col-md-6\"></div>\n  <div class=\"server-success-chart col-md-6\">\n    <div class=\"router-graph-header\">Server success rate</div>\n  </div>\n</div>\n";
 },"useData":true});
+templates['router_service_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+
+  return "<div class=\"svc-container svc-"
+    + alias4(((helper = (helper = helpers.service || (depth0 != null ? depth0.service : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"service","hash":{},"data":data}) : helper)))
+    + "\">\n  <div class=\"metric-large\">"
+    + alias4(((helper = (helper = helpers.service || (depth0 != null ? depth0.service : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"service","hash":{},"data":data}) : helper)))
+    + "</div>\n  <div class=\"svc-metrics\"></div>\n</div>\n";
+},"useData":true});
+templates['router_service_metrics'] = template({"1":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+
+  return "  <div class=\"client-metrics row\">\n    <div class=\"col-md-1 trail-in\">\n"
+    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.requests : depth0),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.program(4, data, 0),"data":data})) != null ? stack1 : "")
+    + "    </div>\n    <div class=\"col-md-2\">"
+    + container.escapeExpression(((helper = (helper = helpers.client || (depth0 != null ? depth0.client : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"client","hash":{},"data":data}) : helper)))
+    + "</div>\n  </div>\n";
+},"2":function(container,depth0,helpers,partials,data) {
+    var helper;
+
+  return "        "
+    + container.escapeExpression(((helper = (helper = helpers.requests || (depth0 != null ? depth0.requests : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"requests","hash":{},"data":data}) : helper)))
+    + "\n";
+},"4":function(container,depth0,helpers,partials,data) {
+    return "        0\n";
+},"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1;
+
+  return "<div class=\"service-client-metrics row\">\n  <div class=\"service-subsection-header\">Requests per client</div>\n"
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.clients : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + "</div>\n";
+},"useData":true});
+templates['router_services_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+
+  return "<div class=\"router router-"
+    + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
+    + " row\" data-router=\""
+    + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
+    + "\">\n  <div class=\"router-subsection-title\">Router</div>\n  <div class=\"metric-large\">"
+    + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
+    + "</div>\n\n  <div class=\"router-subsection-title svc-subsection\">Services</div>\n</div>\n";
+},"useData":true});
 templates['router_summary'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;
 

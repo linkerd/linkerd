@@ -4950,6 +4950,78 @@ return {
         }
       }
     },
+    "service_test": {
+      "service": {
+        "service_1": {
+          "requests": {
+            "counter": 33
+          }
+        },
+        "service_2": {
+          "requests": {
+            "counter": 23
+          }
+        }
+      },
+      "client": {
+        "$/inet/127.1/1111": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_1": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/2222": {
+          "connect_latency_ms": {
+          },
+          "service": {
+            "service_1": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/3333": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_1": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/4444": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_1": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/5555": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_1": { "requests": { "counter": 3 }},
+            "service_2": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/6666": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_2": { "requests": { "counter": 3 }}
+          }
+        },
+        "$/inet/127.1/7777": {
+          "connect_latency_ms": {
+            "stat.count": 0
+          },
+          "service": {
+            "service_2": { "requests": { "counter": 3 }}
+          }
+        }
+      }
+    },
     "inet": {
       "dns": {
         "queue_size": {

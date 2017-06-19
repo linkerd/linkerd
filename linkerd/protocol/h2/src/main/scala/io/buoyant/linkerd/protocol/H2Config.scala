@@ -120,6 +120,7 @@ trait H2EndpointConfig {
   var headerTableBytes: Option[Int] = None
   var maxFrameBytes: Option[Int] = None
   var maxHeaderListBytes: Option[Int] = None
+  @JsonDeserialize(contentAs = classOf[java.lang.Double])
   var windowUpdateRatio: Option[Double] = None
 
   def withEndpointParams(params: Stack.Params): Stack.Params = params
