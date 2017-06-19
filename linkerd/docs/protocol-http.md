@@ -458,7 +458,31 @@ list of loggers is provided, they each log in the order they are defined.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | No loggers currently supported.
+kind | _required_ | Only [`io.l5d.istio`](#istio-logger) is currently supported.
+
+<a name="istio-logger"></a>
+### Istio Logger
+
+kind: `io.l5d.istio`.
+
+With this logger, all HTTP requests are sent to an Istio Mixer for telemetry
+recording and aggregation.
+
+#### Logger Configuration:
+
+> Configuration example
+
+```yaml
+loggers:
+- kind: io.l5d.istio
+  mixerHost: istio-mixer
+  mixerPort: 9091
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
+mixerPort | `9091` | Port of the Mixer server.
 
 <a name="http-engines"></a>
 ## HTTP Engines

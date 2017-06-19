@@ -27,52 +27,52 @@ package istio.proxy.v1.config;
 // with the rate limiting policy enforcement provided by the Mixer
 // component. L4 fault injection is not supported at the moment. --)
 message L4FaultInjection {
-    // Unlike Http services, we have very little context for raw Tcp|Udp
-    // connections. We could throttle bandwidth of the connections (slow down
-    // the connection) and/or abruptly reset (terminate) the Tcp connection
-    // after it has been established.
-    // We first throttle (if set) and then terminate the connection.
-    Throttle throttle = 1;
-    Terminate terminate = 2;
+  // Unlike Http services, we have very little context for raw Tcp|Udp
+  // connections. We could throttle bandwidth of the connections (slow down
+  // the connection) and/or abruptly reset (terminate) the Tcp connection
+  // after it has been established.
+  // We first throttle (if set) and then terminate the connection.
+  Throttle throttle = 1;
+  Terminate terminate = 2;
 
-    // Bandwidth throttling for Tcp and Udp connections
-    message Throttle {
-        // percentage of connections to throttle.
-        float percent = 1;
-        // bandwidth limit in "bits" per second between downstream and Envoy
-        int64 downstream_limit_bps = 2;
-        // bandwidth limits in "bits" per second between Envoy and upstream
-        int64 upstream_limit_bps = 3;
+  // Bandwidth throttling for Tcp and Udp connections
+  message Throttle {
+    // percentage of connections to throttle.
+    float percent = 1;
+    // bandwidth limit in "bits" per second between downstream and Envoy
+    int64 downstream_limit_bps = 2;
+    // bandwidth limits in "bits" per second between Envoy and upstream
+    int64 upstream_limit_bps = 3;
 
-        oneof throttle_after {
-            // Wait a while after the connection is established, before
-            // starting bandwidth throttling. This would allow us to inject fault
-            // after the application protocol (e.g., MySQL) has had time to
-            // establish sessions/whatever handshake necessary.
-            google.protobuf.Duration throttle_after_period = 4;
+    oneof throttle_after {
+      // Wait a while after the connection is established, before
+      // starting bandwidth throttling. This would allow us to inject fault
+      // after the application protocol (e.g., MySQL) has had time to
+      // establish sessions/whatever handshake necessary.
+      google.protobuf.Duration throttle_after_period = 4;
 
-            // Alternatively, we could wait for a certain number of bytes to be
-            // transferred to upstream before throttling the bandwidth.
-            double throttle_after_bytes = 5;
-        }
-
-        // Stop throttling after the given duration. If not set, the connection
-        // will be throttled for its lifetime.
-        google.protobuf.Duration throttle_for_period = 6;
+      // Alternatively, we could wait for a certain number of bytes to be
+      // transferred to upstream before throttling the bandwidth.
+      double throttle_after_bytes = 5;
     }
 
-    // Abruptly reset (terminate) the Tcp connection after it has been
-    // established, emulating remote server crash or link failure.
-    message Terminate {
-        // percentage of established Tcp connections to be terminated/reset
-        float percent = 1;
+    // Stop throttling after the given duration. If not set, the connection
+    // will be throttled for its lifetime.
+    google.protobuf.Duration throttle_for_period = 6;
+  }
 
-        // Wait a while after the connection is established, before
-        // terminating the connection. Set to 0 to terminate immediately on
-        // connection establishment.
+  // Abruptly reset (terminate) the Tcp connection after it has been
+  // established, emulating remote server crash or link failure.
+  message Terminate {
+    // percentage of established Tcp connections to be terminated/reset
+    float percent = 1;
 
-        // TODO: see if it makes sense to create a generic Duration type to
-        // express time interval related configs.
-        google.protobuf.Duration terminate_after_period = 2;
-    }
+    // Wait a while after the connection is established, before
+    // terminating the connection. Set to 0 to terminate immediately on
+    // connection establishment.
+
+    // TODO: see if it makes sense to create a generic Duration type to
+    // express time interval related configs.
+    google.protobuf.Duration terminate_after_period = 2;
+  }
 }

@@ -54,30 +54,6 @@ Exposes admin endpoints:
 
 This telemeter has no additional parameters.
 
-## Istio (experimental)
-
-> Example Istio config
-
-```yaml
-telemetry:
-- kind: io.l5d.istio
-  experimental: true
-  hostname: istio-mixer.default.svc.cluster.local
-  port: 9091
-```
-
-kind: `io.l5d.istio`
-
-[Istio Mixer](https://github.com/istio/mixer) metrics exporting. This telemeter
-connects to a given Istio Mixer server via gRPC. ReportRequest objects are sent
-at request time.
-
-Key | Default Value | Description
---- | ------------- | -----------
-experimental | _required_ | Because this telemeter is still considered experimental, you must set this to `true` to use it.
-hostname | `istio-mixer.default.svc.cluster.local` | Hostname of the Istio Mixer server.
-port | `9091` | Port of the Mixer server.
-
 ## StatsD (experimental)
 
 > Example StatD config
