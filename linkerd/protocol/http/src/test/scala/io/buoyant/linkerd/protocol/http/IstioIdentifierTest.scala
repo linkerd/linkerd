@@ -45,6 +45,22 @@ class IstioIdentifierTest extends FunSuite with Awaits {
      }
     ]
    }
+  },
+  {
+   "type": "route-rule",
+   "name": "bird-watcher-headers",
+   "spec": {
+    "destination": "bird-watcher.default.svc.cluster.local",
+    "precedence": 2,
+    "match": {
+      "httpHeaders": {
+        "cookie": {
+          "exact": "user=bluejay"
+        }
+      }
+    },
+    "route": []
+   }
   }
  ]"""
 
@@ -179,6 +195,29 @@ class IstioIdentifierTest extends FunSuite with Awaits {
     await(identifier(req)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(name == Path.read("/svc/route/straight-flush/call"))
+      case id => fail(s"unexpected response ${id}")
+    }
+  }
+
+  test("uses route-rule if request passes all match conditions") {
+    println("start test")
+    val reqWithMatchingHeader = FRequest()
+    reqWithMatchingHeader.host = "bird-watcher.default.svc.cluster"
+    reqWithMatchingHeader.headerMap.add("cookie", "user=bluejay")
+
+    await(identifier(reqWithMatchingHeader)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(name == Path.read("/svc/route/bird-watcher-headers/binoculars"))
+      case id => fail(s"unexpected response ${id}")
+    }
+
+    val reqWithNoMatchingHeader = FRequest()
+    reqWithNoMatchingHeader.host = "bird-watcher.default.svc.cluster"
+    reqWithNoMatchingHeader.headerMap.add("cookie", "user=mockingbird")
+
+    await(identifier(reqWithNoMatchingHeader)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(name == Path.read("/svc/route/bird-watcher-default/binoculars"))
       case id => fail(s"unexpected response ${id}")
     }
   }
