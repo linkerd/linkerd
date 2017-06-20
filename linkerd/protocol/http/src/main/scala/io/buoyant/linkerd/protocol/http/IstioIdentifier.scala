@@ -11,7 +11,8 @@ import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
-import istio.proxy.v1.config.RouteRule
+import istio.proxy.v1.config.StringMatch.OneofMatchType
+import istio.proxy.v1.config.{MatchCondition, RouteRule, StringMatch}
 
 class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
   private[this] val unidentified: RequestIdentification[Request] =
@@ -25,14 +26,36 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache,
     }
   }
 
+  def compareStringMatch(headerValue: String, stringMatch: StringMatch): Boolean = {
+    stringMatch.`matchType` match {
+      case Some(OneofMatchType.Exact(value)) => headerValue == value
+      case Some(OneofMatchType.Prefix(pfx)) => headerValue.startsWith(pfx)
+      case Some(OneofMatchType.Regex(r)) => headerValue.matches(r)
+      case None => throw new IllegalArgumentException("stringMatch missing matchType")
+    }
+  }
+
+  def compareMatchConditions(req: Request, matchCondition: MatchCondition): Boolean = {
+    val matchesHeaders = matchCondition.`httpHeaders`.map {
+      case (headerName, stringMatch) =>
+        println(headerName, stringMatch)
+        // return false if the headerName does not appear in the request's headerMap
+        req.headerMap.get(headerName).map(compareStringMatch(_, stringMatch)).getOrElse(false)
+    }.fold(true)(_ && _)
+    //TODO: add other match conditions
+    matchesHeaders
+  }
+
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
       case Some(host) =>
         Future.join(clusterCache.get(host), routeManager.getRules).map {
           case (Some(Cluster(dest, port)), rules: Map[String, RouteRule]) =>
             val filteredRules: Seq[(String, RouteRule)] = rules.filter {
-              //TODO: add more route conditions
-              case (_, r) => r.`destination` == Some(dest)
+              case (_, r) if r.`destination` == Some(dest) =>
+                // return true if no match conditions were defined on the route-rule
+                r.`match`.map(compareMatchConditions(req, _)).getOrElse(true)
+              case _ => false
             }.toSeq
 
             if (filteredRules.isEmpty) {
