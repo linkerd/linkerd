@@ -1,6 +1,6 @@
 package io.buoyant.k8s.istio
 
-import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.util.DefaultTimer
@@ -16,6 +16,9 @@ abstract class PollingApiClient(client: Service[Request, Response]) {
   protected val log = Logger()
   protected val mapper = Parser.jsonObjectMapper(Nil)
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  registerModules(mapper)
+
+  def registerModules(mapper: ObjectMapper): Unit = {}
 
   protected def get[T: Manifest](url: String): Future[T] = {
     val req = Request(url)
