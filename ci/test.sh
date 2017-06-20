@@ -24,8 +24,6 @@ case "${CIRCLE_NODE_TOTAL:-1}" in
   unitTests
   e2eTests
   assembleBinaries
-  # FLAKEY #1226
-  # ci/linkerd-acceptance.sh
   ;;
 
 *)
@@ -40,8 +38,6 @@ case "${CIRCLE_NODE_TOTAL:-1}" in
     echo "Running e2e tests in worker ${worker}"
     e2eTests
     assembleBinaries
-    # FLAKEY #1226
-    #ci/linkerd-acceptance.sh
     ;;
 
   *)
