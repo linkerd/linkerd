@@ -8,7 +8,7 @@ define([
   'template/compiled_templates'
 ], function($, _, Handlebars, RouterServer, templates) {
     var serverContainerTemplate = templates.router_server_container;
-    var rateMetricPartial = templates["server_rate_metric.partial"];
+    var rateMetricPartial = templates["rate_metric.partial"];
 
     var RouterServers = (function() {
     return function (metricsCollector, initialData, $serverEl, routerName) {
