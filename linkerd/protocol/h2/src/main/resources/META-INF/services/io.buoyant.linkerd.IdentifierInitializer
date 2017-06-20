@@ -1,3 +1,4 @@
 io.buoyant.linkerd.protocol.h2.HeaderTokenIdentifierInitializer
 io.buoyant.linkerd.protocol.h2.HeaderPathIdentifierInitializer
 io.buoyant.linkerd.protocol.h2.IngressIdentifierInitializer
+io.buoyant.linkerd.protocol.h2.IstioIdentifierInitializer
