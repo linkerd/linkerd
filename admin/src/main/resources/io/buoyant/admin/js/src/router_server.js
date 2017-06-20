@@ -28,8 +28,8 @@ define([
           metricSuffix: "requests"
         },
         {
-          description: "Pending",
-          metricSuffix: "load",
+          description: "Connections",
+          metricSuffix: "connections",
           isGauge: true
         },
         {

@@ -6,6 +6,7 @@
 
   <div class="col-md-2">
     {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-large failure-metric"}}
+    {{> rateMetricPartial metrics.connections containerClass="metric-container col-md-2" metricClass="metric-large"}}
   </div>
 
   {{> latencyPartial latencies}}
