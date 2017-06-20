@@ -123,6 +123,7 @@ define([
         var transformedData = processData(data, routerName, server);
         var latencyData = _.get(data, ["rt", routerName, "server", server, "request_latency_ms"]);
         var coloredLatencyData = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+
         renderServer($metricsEl, server, transformedData, coloredLatencyData);
         chart.updateMetrics(getSuccessRate(transformedData));
       }
