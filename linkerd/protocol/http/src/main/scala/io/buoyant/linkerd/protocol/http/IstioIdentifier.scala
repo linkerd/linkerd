@@ -10,18 +10,16 @@ import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio.{ClusterCache, DiscoveryClient, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification}
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 import istio.proxy.v1.config.{MatchCondition, RouteRule, StringMatch}
 
-class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
-  private[this] val unidentified: RequestIdentification[Request] =
-    new UnidentifiedRequest(s"no matching istio rules found")
+class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache) extends Identifier[Request] {
 
-  def forwardedRequestPath(host: String): Path = {
+  def externalRequestPath(host: String): Path = {
     host.split(":") match {
-      case Array(h: String, p: String) => pfx ++ Path.Utf8("dest", h, p)
-      case Array(h: String) => pfx ++ Path.Utf8("dest", h, "80")
+      case Array(h: String, p: String) => pfx ++ Path.Utf8("ext", h, p)
+      case Array(h: String) => pfx ++ Path.Utf8("ext", h, "80")
       case _ => throw new IllegalArgumentException("unable to parse host for request")
     }
   }
@@ -49,7 +47,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache,
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
       case Some(host) =>
-        Future.join(clusterCache.get(host), routeManager.getRules).map {
+        Future.join(clusterCache.get(host), routeCache.getRules).map {
           case (Some(Cluster(dest, port)), rules: Map[String, RouteRule]) =>
             val filteredRules: Seq[(String, RouteRule)] = rules.filter {
               case (_, r) if r.`destination` == Some(dest) =>
@@ -59,16 +57,16 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeManager: RouteCache,
             }.toSeq
 
             if (filteredRules.isEmpty) {
-              //forward requests which have no matching rules
-              forwardedRequestPath(host)
+              //forward requests which have no matching rules to an empty label selector
+              pfx ++ Path.Utf8("dest", dest, "::", port)
             } else {
               //choose matching rule with the highest precedence
               val topRule = filteredRules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
               pfx ++ Path.Utf8("route", topRule._1, port)
             }
           case b =>
-            // forward requests which have no matching vhosts
-            forwardedRequestPath(host)
+            // forward requests which have no matching vhosts to external
+            externalRequestPath(host)
         }.map { path =>
           val dst = Dst.Path(path, baseDtab(), Dtab.local)
           new IdentifiedRequest(dst, req)
@@ -101,13 +99,13 @@ case class IstioIdentifierConfig(
   ): Identifier[Request] = {
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val routeManager = RouteCache.getManagerFor(host, port)
+    val routeCache = RouteCache.getManagerFor(host, port)
     val discoveryClient = DiscoveryClient(
       discoveryHost.getOrElse(DefaultDiscoveryHost),
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
     )
     val clusterCache = new ClusterCache(discoveryClient)
-    new IstioIdentifier(prefix, baseDtab, routeManager, clusterCache)
+    new IstioIdentifier(prefix, baseDtab, routeCache, clusterCache)
   }
 }
 
