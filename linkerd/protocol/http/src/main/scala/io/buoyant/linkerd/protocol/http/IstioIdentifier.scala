@@ -24,7 +24,7 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, c
     }
   }
 
-  def compareStringMatch(headerValue: String, stringMatch: StringMatch): Boolean = {
+  def headerMatches(headerValue: String, stringMatch: StringMatch): Boolean = {
     stringMatch.`matchType` match {
       case Some(OneofMatchType.Exact(value)) => headerValue == value
       case Some(OneofMatchType.Prefix(pfx)) => headerValue.startsWith(pfx)
@@ -33,13 +33,15 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, c
     }
   }
 
-  def compareMatchConditions(req: Request, matchCondition: MatchCondition): Boolean = {
-    val matchesHeaders = matchCondition.`httpHeaders`.map {
+  def matchesAllConditions(req: Request, matchCondition: MatchCondition): Boolean = {
+    val matchesHeaders = matchCondition.`httpHeaders`.forall {
       case (headerName, stringMatch) =>
-        println(headerName, stringMatch)
         // return false if the headerName does not appear in the request's headerMap
-        req.headerMap.get(headerName).map(compareStringMatch(_, stringMatch)).getOrElse(false)
-    }.fold(true)(_ && _)
+        req.headerMap.get(headerName) match {
+          case Some(headerValue) => headerMatches(headerValue, stringMatch)
+          case None => false
+        }
+    }
     //TODO: add other match conditions
     matchesHeaders
   }
@@ -52,7 +54,10 @@ class IstioIdentifier(pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, c
             val filteredRules: Seq[(String, RouteRule)] = rules.filter {
               case (_, r) if r.`destination` == Some(dest) =>
                 // return true if no match conditions were defined on the route-rule
-                r.`match`.map(compareMatchConditions(req, _)).getOrElse(true)
+                r.`match` match {
+                  case Some(matchCondition) => matchesAllConditions(req, matchCondition)
+                  case None => true
+                }
               case _ => false
             }.toSeq
 

@@ -18,7 +18,7 @@ abstract class PollingApiClient(client: Service[Request, Response]) {
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   registerModules(mapper)
 
-  def registerModules(mapper: ObjectMapper) {}
+  def registerModules(mapper: ObjectMapper): Unit = {}
 
   protected def get[T: Manifest](url: String): Future[T] = {
     val req = Request(url)
