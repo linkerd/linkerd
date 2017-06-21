@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.buoyant.h2.{H2ApplicationProtocol, Request, Response, TracingFilter}
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
+import com.twitter.finagle.pool.SingletonPool
 import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.stack.nilStack
@@ -23,7 +24,8 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       val stk = new StackBuilder(nilStack[Request, Response])
       stk.push(H2ApplicationProtocol.module)
       stk.push(TracingFilter.module)
-      StackClient.newStack[Request, Response] ++ stk.result
+      (StackClient.newStack[Request, Response] ++ stk.result)
+        .replace(StackClient.Role.pool, SingletonPool.module[Request, Response])
     }
 
     val defaultParams = StackClient.defaultParams +
