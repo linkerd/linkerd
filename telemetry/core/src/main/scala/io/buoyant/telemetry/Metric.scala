@@ -27,21 +27,21 @@ object Metric {
     private[this] var resetTime = Time.now
     def startingAt: Time = resetTime
 
-    def add(value: Float): Unit = underlying.synchronized {
+    def add(value: Float): Unit = {
       // TODO track update time to allow detection of stale stats.
       underlying.add(value.toLong)
     }
 
-    def peek: Seq[BucketAndCount] = underlying.synchronized {
+    def peek: Seq[BucketAndCount] = {
       underlying.bucketAndCounts
     }
 
-    def snapshot(): HistogramSummary = underlying.synchronized {
+    def snapshot(): HistogramSummary = {
       summarySnapshot = summary
       summarySnapshot
     }
 
-    def reset(): (Seq[BucketAndCount], Duration) = underlying.synchronized {
+    def reset(): (Seq[BucketAndCount], Duration) = {
       val buckets = underlying.bucketAndCounts
       underlying.clear()
       val now = Time.now
@@ -50,7 +50,7 @@ object Metric {
       (buckets, delta)
     }
 
-    def summary: HistogramSummary = underlying.synchronized {
+    def summary: HistogramSummary = {
       HistogramSummary(
         underlying.count,
         underlying.minimum,
