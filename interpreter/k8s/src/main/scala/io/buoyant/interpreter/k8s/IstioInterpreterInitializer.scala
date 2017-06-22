@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{DiscoveryClient, IstioNamer, RouteCache}
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer, Paths}
 
 class IstioInterpreterInitializer extends InterpreterInitializer {
@@ -21,19 +20,10 @@ case class IstioInterpreterConfig(
   apiserverPort: Option[Port],
   pollIntervalMs: Option[Long]
 ) extends InterpreterConfig {
+  import io.buoyant.k8s.istio._
 
   @JsonIgnore
   override val experimentalRequired = true
-
-  @JsonIgnore
-  val DefaultDiscoveryHost = "istio-manager.default.svc.cluster.local"
-  @JsonIgnore
-  val DefaultDiscoveryPort = 8080
-
-  @JsonIgnore
-  val DefaultApiserverHost = "istio-manager.default.svc.cluster.local"
-  @JsonIgnore
-  val DefaultApiserverPort = 8081
 
   @JsonIgnore
   val prefix: Path = Path.read("/io.l5d.k8s.istio")
