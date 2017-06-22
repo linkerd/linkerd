@@ -377,35 +377,43 @@ routers:
 - protocol: http
   identifier:
     kind: io.l5d.istio
-    pollIntervalMs: 10000
 ```
 
 Key  | Default Value | Description
 ---- | ------------- | -----------
-host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
-port | 8081 | The port of the Istio-Manager's apiserver.
+discoveryHost | `istio-manager` | The host of the Istio-Pilot.
+discoveryPort | 8080 | The port of the Istio-Pilot's discovery service.
+apiserverHost | `istio-manager` | The host of the Istio-Pilot.
+apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
 
 #### Identifier Path Parameters
+
+> Dtab Path Format if the request does not point to a valid k8s cluster
+
+```
+  / dstPrefix / "ext" / host / port
+```
+
+> Dtab Path Format if the request has a valid cluster but DOES NOT match a route-rule
+
+```
+  / dstPrefix / "dest" / cluster / port
+```
 
 > Dtab Path Format if the request matches a route-rule
 
 ```
-  / dstPrefix / "route" / route-rule 
+  / dstPrefix / "route" / route-rule
 ```
 
-
-> Dtab Path Format if the request DOES NOT match a route-rule
-
-```
-  / dstPrefix / "dest" / host / port 
-```
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 route-rule | N/A | The name of the route-rule that matches the incoming request.
-host | N/A | The host to forward the request to.
-port | N/A | The port to forward the request to.
+host | N/A | The host to send the request to.
+cluster | N/A | The cluster to send the request to.
+port | N/A | The port to send the request to.
 
 <a name="static-identifier"></a>
 ### Static Identifier

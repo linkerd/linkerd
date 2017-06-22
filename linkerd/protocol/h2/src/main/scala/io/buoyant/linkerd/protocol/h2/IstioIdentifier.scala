@@ -1,37 +1,34 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd.protocol.h2
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.http.Request
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio.{ClusterCache, IdentifierPreconditions, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
-import io.buoyant.linkerd.protocol.HttpIdentifierConfig
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification}
+import io.buoyant.linkerd.protocol.H2IdentifierConfig
+import io.buoyant.router.RoutingFactory.{BaseDtab, DstPrefix, IdentifiedRequest, Identifier, RequestIdentification}
 
 class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache)
   extends Identifier[Request] with IdentifierPreconditions {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    req.host match {
-      case Some(host) =>
-        Future.join(clusterCache.get(host), routeCache.getRules).map {
-          case (Some(Cluster(dest, port)), rules) =>
-            val filteredRules = filterRules(rules, dest, req.headerMap.get)
-            maxPrecedenceRuleName(filteredRules).map (pfx ++ Path.Utf8("route", _, port)).getOrElse {
-              //forward requests which have no matching rules to an empty label selector
-              pfx ++ Path.Utf8("dest", dest, "::", port)
-            }
-          case b =>
-            // forward requests which have no matching vhosts to external
-            externalRequestPath(host)
-        }.map { path =>
-          val dst = Dst.Path(path, baseDtab(), Dtab.local)
-          new IdentifiedRequest(dst, req)
+    Future.join(clusterCache.get(req.authority), routeCache.getRules).map {
+      case (Some(Cluster(dest, port)), rules) =>
+        val filteredRules = filterRules(rules, dest, req.headers.get)
+        maxPrecedenceRuleName(filteredRules).map(pfx ++ Path.Utf8("route", _, port)).getOrElse {
+          //forward requests which have no matching rules to an empty label selector
+          pfx ++ Path.Utf8("dest", dest, "::", port)
         }
-      case None => throw new IllegalArgumentException("no host found for request")
+      case b =>
+        // forward requests which have no matching vhosts to external
+        externalRequestPath(req.authority)
+    }.map { path =>
+      val dst = Dst.Path(path, baseDtab(), Dtab.local)
+      new IdentifiedRequest(dst, req)
     }
   }
 }
@@ -41,14 +38,14 @@ case class IstioIdentifierConfig(
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
   apiserverPort: Option[Port]
-) extends HttpIdentifierConfig {
+) extends H2IdentifierConfig {
 
-  override def newIdentifier(
-    prefix: Path,
-    baseDtab: () => Dtab = () => Dtab.base
-  ): Identifier[Request] = {
+  @JsonIgnore
+  override def newIdentifier(params: Stack.Params) = {
     import io.buoyant.k8s.istio._
 
+    val DstPrefix(prefix) = params[DstPrefix]
+    val BaseDtab(baseDtab) = params[BaseDtab]
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
     val routeCache = RouteCache.getManagerFor(host, port)
