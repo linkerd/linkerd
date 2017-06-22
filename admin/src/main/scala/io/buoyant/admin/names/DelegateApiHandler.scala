@@ -4,7 +4,6 @@ package admin.names
 import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{io => _, _}
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.annotation.JsonSerialize.Inclusion
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -243,7 +242,7 @@ object DelegateApiHandler {
     }
   }
 
-  private implicit val timer = DefaultTimer.twitter
+  private implicit val timer = DefaultTimer
 
   def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
     val dtabTry = if (dtab == null) Return(Dtab.empty) else Try(Dtab.read(dtab))

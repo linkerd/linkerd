@@ -9,8 +9,8 @@ jobs:
       - image: openjdk:8
         environment:
           CI_TERRIBLENESS: 30.seconds
-        # Run two containers, $CIRCLE_NODE_TOTAL = 2, $CIRCLE_NODE_INDEX = [0|1]
-        parallelism: 2
+    # Run two containers, $CIRCLE_NODE_TOTAL = 2, $CIRCLE_NODE_INDEX = [0|1]
+    parallelism: 2
     working_directory: ~/linkerd
     # All run steps execute in both containers unless otherwise specified.
     # Deploy steps execute on container 0.

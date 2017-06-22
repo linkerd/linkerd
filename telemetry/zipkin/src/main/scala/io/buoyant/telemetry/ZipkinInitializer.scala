@@ -49,7 +49,7 @@ case class ZipkinConfig(
       val rawTracer = ScribeRawZipkinTracer(
         client,
         NullStatsReceiver,
-        DefaultTimer.twitter
+        DefaultTimer
       )
       new ZipkinTracer(
         rawTracer,

@@ -1,10 +1,11 @@
-package com.twitter.finagle.buoyant
+package com.twitter.finagle.naming
+package buoyant
 
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.buoyant.Dst
 import com.twitter.util._
-import io.buoyant.test.{Exceptions, Awaits}
+import io.buoyant.test.{Awaits, Exceptions}
 import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.FunSuite
 

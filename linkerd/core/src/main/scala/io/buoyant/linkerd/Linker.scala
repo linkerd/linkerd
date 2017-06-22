@@ -1,7 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, NullStatsReceiver}
@@ -12,9 +11,9 @@ import com.twitter.logging.Logger
 import com.twitter.server.util.JvmStats
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
+import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
-import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.telemetry._
 import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
 import java.net.InetSocketAddress
@@ -112,7 +111,7 @@ object Linker {
       val metrics = MetricsTree()
 
       val telemeterParams = Stack.Params.empty + param.LinkerConfig(this) + metrics
-      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer)
       val usageTelemeter = usage.getOrElse(UsageDataTelemeterConfig()).mk(telemeterParams)
 
       val telemeters = telemetry.toSeq.flatten.map {

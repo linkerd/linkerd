@@ -244,7 +244,7 @@ case class UsageDataTelemeterConfig(
   def mk(params: Stack.Params): Telemeter =
     if (enabled.getOrElse(true)) {
       val LinkerConfig(config) = params[LinkerConfig]
-      implicit val timer = DefaultTimer.twitter
+      implicit val timer = DefaultTimer
 
       new UsageDataTelemeter(
         Name.bound(Address("stats.buoyant.io", 443)),

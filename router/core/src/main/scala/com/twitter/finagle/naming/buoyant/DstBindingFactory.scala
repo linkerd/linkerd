@@ -1,12 +1,12 @@
-package com.twitter.finagle.buoyant
+package com.twitter.finagle.naming
+package buoyant
 
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.factory.{NameTreeFactory, ServiceFactoryCache}
-import com.twitter.finagle.naming._
+import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.factory.ServiceFactoryCache
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.logging.Logger
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 
@@ -140,7 +140,7 @@ object DstBindingFactory {
     capacity: Capacity = Capacity.default,
     bindingTimeout: BindingTimeout = BindingTimeout.default,
     idleTtl: IdleTtl = IdleTtl.default
-  )(implicit timer: Timer = DefaultTimer.twitter) extends DstBindingFactory[Req, Rsp] {
+  )(implicit timer: Timer = DefaultTimer) extends DstBindingFactory[Req, Rsp] {
     private[this]type Cache[Key] = ServiceFactoryCache[Key, Req, Rsp]
 
     def apply(dst: Dst.Path, conn: ClientConnection): Future[Service[Req, Rsp]] = {
@@ -217,6 +217,6 @@ object DstBindingFactory {
     def close(deadline: Time) =
       Closable.sequence(caches: _*).close(deadline)
 
-    def status = Status.worstOf[Cache[_]](caches, _.status)
+    def status = Status.Open
   }
 }

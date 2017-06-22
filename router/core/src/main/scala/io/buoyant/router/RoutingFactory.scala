@@ -1,9 +1,10 @@
 package io.buoyant.router
 
 import com.twitter.finagle.{param => _, _}
-import com.twitter.finagle.buoyant.{Dst, DstBindingFactory}
+import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Throw, Return, Future, Time}
+import com.twitter.util.{Future, Return, Throw, Time}
 import scala.util.control.NoStackTrace
 
 object RoutingFactory {
