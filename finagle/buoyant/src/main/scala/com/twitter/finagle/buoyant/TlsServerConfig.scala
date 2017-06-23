@@ -13,10 +13,7 @@ case class TlsServerConfig(
   ciphers: Option[Seq[String]] = None,
   requireClientAuth: Option[Boolean] = None
 ) {
-  def params(
-    alpnProtocols: Option[Seq[String]],
-    sslServerEngine: SslServerEngineFactory
-  ): Stack.Params = {
+  def params(alpnProtocols: Option[Seq[String]]): Stack.Params = {
     val trust = caCertPath match {
       case Some(caCertPath) => TrustCredentials.CertCollection(new File(caCertPath))
       case None => TrustCredentials.Unspecified
@@ -40,6 +37,6 @@ case class TlsServerConfig(
       trustCredentials = trust,
       cipherSuites = cipherSuites,
       applicationProtocols = appProtocols
-    ))) + SslServerEngineFactory.Param(sslServerEngine)
+    )))
   }
 }

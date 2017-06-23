@@ -6,9 +6,9 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path}
 import io.buoyant.config.types.Port
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 import com.twitter.finagle.buoyant.TlsServerConfig
-import com.twitter.finagle.ssl.server.LegacyKeyServerEngineFactory
+import com.twitter.finagle.ssl.server.{LegacyKeyServerEngineFactory, SslServerEngineFactory}
 import java.net.{InetAddress, InetSocketAddress}
 
 /**
@@ -30,7 +30,7 @@ abstract class InterfaceConfig extends PolymorphicConfig {
   // PKCS#1 keys.
   @JsonIgnore
   @silent
-  def tlsParams = tls.map(_.params(None, LegacyKeyServerEngineFactory)).getOrElse(Stack.Params.empty)
+  def tlsParams = tls.map(_.params(None)).getOrElse(Stack.Params.empty) + SslServerEngineFactory.Param(LegacyKeyServerEngineFactory)
 
   @JsonIgnore
   protected def defaultAddr: InetSocketAddress

@@ -90,9 +90,10 @@ class ServerConfig { config =>
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
-    .maybeWith(tls.map(_.params(alpnProtocols, sslServerEngine)))
+    .maybeWith(tls.map(_.params(alpnProtocols)))
     .maybeWith(clearContext.map(ClearContext.Enabled(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis))) +
+    SslServerEngineFactory.Param(sslServerEngine) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
