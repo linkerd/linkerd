@@ -251,7 +251,6 @@ Key  | Default Value | Description
 namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
-annotationClass | `linkerd` | The value of the `kubernetes.io/ingress.class` annotation that linkerd expects for each ingress resource.
 
 #### Identifier Path Parameters
 

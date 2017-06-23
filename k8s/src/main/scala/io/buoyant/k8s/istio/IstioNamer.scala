@@ -55,6 +55,7 @@ class IstioNamer(
           case Activity.Pending =>
             Addr.Pending
           case Activity.Failed(e) =>
+            log.debug("SDS lookup failure: %s", e.getMessage)
             Addr.Failed(e)
         }
 
