@@ -16,13 +16,14 @@ class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
   namespace: Option[String],
-  apiClient: Service[http.Request, http.Response]
+  apiClient: Service[http.Request, http.Response],
+  annotationClass: String
 ) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressCache = new IngressCache(namespace, apiClient)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val headerToMatch = req.headers.get(Headers.Authority)
@@ -40,7 +41,8 @@ class IngressIdentifier(
 case class IngressIdentifierConfig(
   host: Option[String],
   port: Option[Port],
-  namespace: Option[String]
+  namespace: Option[String],
+  annotationClass: Option[String]
 ) extends H2IdentifierConfig with ClientConfig {
   override def portNum: Option[Int] = port.map(_.port)
 
@@ -49,7 +51,8 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
+    val annotation = annotationClass.getOrElse("linkerd")
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), annotation)
   }
 }
 
