@@ -20,7 +20,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
         Future.join(clusterCache.get(host), routeCache.getRules).map {
           case (Some(Cluster(dest, port)), rules) =>
             val filteredRules = filterRules(rules, dest, req.headerMap.get)
-            maxPrecedenceRuleName(filteredRules).map (pfx ++ Path.Utf8("route", _, port)).getOrElse {
+            maxPrecedenceRuleName(filteredRules).map(pfx ++ Path.Utf8("route", _, port)).getOrElse {
               //forward requests which have no matching rules to an empty label selector
               pfx ++ Path.Utf8("dest", dest, "::", port)
             }

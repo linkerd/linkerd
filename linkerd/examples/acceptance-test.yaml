@@ -1,8 +1,0 @@
-# A minimal config that routes all traffic to port 9999.  Used for acceptance
-# testing.
-routers:
-- protocol: http
-  dtab: |
-    /svc/* => /$/inet/127.1/9999;
-  servers:
-  - port: 4140

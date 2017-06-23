@@ -2,7 +2,8 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
-import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
+import com.twitter.finagle.tracing.Annotation.BinaryAnnotation
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Time}
 import io.buoyant.router.RoutingFactory.IdentifiedRequest

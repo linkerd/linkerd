@@ -2,7 +2,7 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle._
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
 /**
  * Read a single namer configuration in the form:

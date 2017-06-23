@@ -1,8 +1,8 @@
 package io.buoyant.marathon.v2
 
 import com.twitter.finagle._
-import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util.{NonFatal => _, _}
 import scala.util.control.NonFatal
 
@@ -14,7 +14,7 @@ class AppIdNamer(
   api: Api,
   prefix: Path,
   ttl: Duration,
-  timer: Timer = DefaultTimer.twitter
+  timer: Timer = DefaultTimer
 ) extends Namer {
 
   import AppIdNamer._
