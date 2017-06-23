@@ -4,6 +4,8 @@ import com.twitter.finagle.stats.BucketAndCount
 import com.twitter.common.stats
 import java.util
 
+// Originally copied from
+// finagle/finagle-stats/src/main/scala/com/twitter/finagle/stats/BucketedHistogram.scala
 private[twitter] object MetricsBucketedHistogram {
 
   /**
@@ -127,18 +129,16 @@ private[stats] class MetricsBucketedHistogram(
    * @inheritdoc
    */
   def add(value: Long): Unit = {
-    var index = 0
     var valueToAdd = 0L
-
-    if (value >= Int.MaxValue) {
-      index = countsLength - 1
+    val index = if (value >= Int.MaxValue) {
       valueToAdd = Int.MaxValue
+      countsLength - 1
     } else {
+      valueToAdd = value
       val asInt = value.toInt
       // recall that limits represent upper bounds, exclusive — so take the next position (+1).
       // we assume that no inputs can be larger than the largest value in the limits array.
-      index = Math.abs(util.Arrays.binarySearch(limits, asInt)) + 1
-      valueToAdd = value
+      Math.abs(util.Arrays.binarySearch(limits, asInt) + 1)
     }
 
     counts.synchronized {
