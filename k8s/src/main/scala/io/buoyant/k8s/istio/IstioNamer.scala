@@ -14,7 +14,7 @@ import io.buoyant.k8s.log
 class IstioNamer(
   discoveryClient: DiscoveryClient,
   idPrefix: Path
-)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
+)(implicit timer: Timer = DefaultTimer) extends Namer {
 
   private[this] val PrefixLen = 3
   private[this] val LabelPattern = """(.*):(.*)""".r

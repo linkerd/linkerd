@@ -30,7 +30,7 @@ abstract class PollingApiClient(client: Service[Request, Response]) {
   protected def watch[T: Manifest](
     url: String,
     pollInterval: Duration
-  )(implicit timer: Timer = DefaultTimer.twitter): Activity[T] = {
+  )(implicit timer: Timer = DefaultTimer): Activity[T] = {
     val state = Var.async[Activity.State[T]](Activity.Pending) { update =>
 
       def doUpdate() = get[T](url).respond {

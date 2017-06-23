@@ -47,7 +47,7 @@ private[istio] case class IstioConfig(
 
     new IstioTelemeter(
       client,
-      DefaultTimer.twitter
+      DefaultTimer
     )
   }
 }

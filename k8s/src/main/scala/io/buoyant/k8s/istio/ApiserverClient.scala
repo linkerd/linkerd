@@ -17,7 +17,7 @@ import istio.proxy.v1.config.{RouteRule, StringMatch}
 class ApiserverClient(
   client: Service[Request, Response],
   pollInterval: Duration
-)(implicit timer: Timer = DefaultTimer.twitter) extends PollingApiClient(client) {
+)(implicit timer: Timer = DefaultTimer) extends PollingApiClient(client) {
   import ApiserverClient._
 
   val Url = "/v1alpha1/config/route-rule"

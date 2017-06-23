@@ -28,7 +28,7 @@ class DiscoveryClient(
     cluster: String,
     port: String,
     labels: Map[String, String]
-  )(implicit timer: Timer = DefaultTimer.twitter): Activity[SdsResponse] = {
+  )(implicit timer: Timer = DefaultTimer): Activity[SdsResponse] = {
     val selectors = Seq(port) ++ labels.map { case (k, v) => s"$k=$v" }
     watch[SdsResponse](s"/v1/registration/$cluster|${selectors.mkString("|")}", pollingInterval)
   }
