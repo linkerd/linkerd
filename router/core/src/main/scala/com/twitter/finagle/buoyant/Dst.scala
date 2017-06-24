@@ -18,6 +18,12 @@ object Dst {
       namer.bind(baseDtab ++ localDtab, path).map(BoundTree(_, path))
 
     def mk(): (Path, Stack.Param[Path]) = (this, Path)
+
+    /*
+     * XXX the baseDtab should not be considered for equality/hashing, since it's
+     * potentially very expensive.
+     */
+    override def hashCode() = (path, localDtab).hashCode()
   }
 
   implicit object Path extends Stack.Param[Path] {
