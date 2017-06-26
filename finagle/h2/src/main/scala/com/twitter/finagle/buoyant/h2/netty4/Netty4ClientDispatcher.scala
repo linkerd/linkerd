@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import com.twitter.concurrent.AsyncMutex
 import com.twitter.finagle.{Service, Status => SvcStatus}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -73,25 +74,36 @@ class Netty4ClientDispatcher(
     goAway(GoAway.ProtocolError).before(Future.exception(e))
   }
 
+  /*
+   * In order to ensure that the initial frame for each stream is written to the
+   * transport in order of its stream id, we hold a mutex from when the stream id
+   * is allocated to when the initial frame of that stream is written.
+   */
+  val mutex = new AsyncMutex()
+
   /**
    * Write a request on the underlying connection and return its
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
-    val st = newStreamTransport()
-    // Stream the request while receiving the response and
-    // continue streaming the request until it is complete,
-    // canceled,  or the response fails.
-    val sendFF = st.send(req)
 
-    // If the stream is reset prematurely, cancel the pending write
-    st.onReset.onFailure {
-      case StreamError.Remote(rst: Reset) => sendFF.flatten.raise(rst)
-      case StreamError.Remote(e) => sendFF.flatten.raise(Reset.Cancel)
-      case e => sendFF.flatten.raise(e)
+    mutex.acquire().flatMap { permit =>
+      val st = newStreamTransport()
+      // Stream the request while receiving the response and
+      // continue streaming the request until it is complete,
+      // canceled,  or the response fails.
+      val sendFF = st.send(req)
+
+      // If the stream is reset prematurely, cancel the pending write
+      st.onReset.onFailure {
+        case StreamError.Remote(rst: Reset) => sendFF.flatten.raise(rst)
+        case StreamError.Remote(e) => sendFF.flatten.raise(Reset.Cancel)
+        case e => sendFF.flatten.raise(e)
+      }
+
+      sendFF.ensure(permit.release())
+      sendFF.unit.before(st.onRecvMessage)
     }
-
-    sendFF.unit.before(st.onRecvMessage)
   }
 
 }

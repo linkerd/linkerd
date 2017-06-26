@@ -120,15 +120,10 @@ object Stream {
   def const(s: String): Stream =
     const(Buf.Utf8(s))
 
-  def empty(q: AsyncQueue[Frame]): Stream =
-    new AsyncQueueReader {
-      override protected[this] val frameQ = q
-      override def isEmpty = true
-    }
+  def empty(): Stream = empty(new AsyncQueue[Frame](1))
 
-  def empty(): Stream with Writer =
+  def empty(frameQ: AsyncQueue[Frame]): Stream with Writer =
     new Stream with Writer {
-      private[this] val frameQ = new AsyncQueue[Frame](1)
       override def isEmpty = true
       override def onEnd = Future.Unit
       override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
