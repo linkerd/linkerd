@@ -33,7 +33,6 @@ class IngressIdentifier(
       case Some(a) =>
         val path = pfx ++ Path.Utf8(a.namespace, a.port, a.svc)
         val dst = Dst.Path(path, baseDtab(), Dtab.local)
-        req.host = s"${a.svc}.${a.namespace}"
         Future.value(new IdentifiedRequest(dst, req))
     }
   }

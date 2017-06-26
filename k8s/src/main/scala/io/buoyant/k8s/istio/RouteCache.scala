@@ -18,12 +18,8 @@ class RouteCache(api: ApiserverClient) extends Closable {
     }.toMap
 
   // workaround for https://github.com/FasterXML/jackson-module-scala/issues/87 :(
-  private[this] def mkRouteRule(rr: RouteRule): RouteRule = {
-    Option(rr.`route`) match {
-      case Some(route) => rr
-      case None => rr.copy(`route` = Seq.empty)
-    }
-  }
+  private[this] def mkRouteRule(rr: RouteRule): RouteRule =
+    if (rr.route == null) rr.copy(`route` = Seq.empty) else rr
 
   val routeRules: Activity[Map[String, RouteRule]] = api.watchRouteRules.map(mkRouteMap)
 
