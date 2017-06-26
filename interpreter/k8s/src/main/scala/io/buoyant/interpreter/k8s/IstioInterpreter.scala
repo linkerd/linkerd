@@ -34,13 +34,18 @@ object IstioInterpreter {
           .map { case (k, v) => s"$k:$v" }
           .mkString("::")
         val labelSegment = if (labels.isEmpty) "::" else labels
+        val clusterSegment = weightedDest.`destination`.getOrElse(cluster)
         NameTree.Weighted(
           weightedDest.weight.getOrElse(0).toDouble,
-          NameTree.Leaf(Path.read(s"/#/io.l5d.k8s.istio/$cluster/$labelSegment"))
+          NameTree.Leaf(Path.read(s"/#/io.l5d.k8s.istio/$clusterSegment/$labelSegment"))
         )
       }
+      val dst = if (branches.isEmpty)
+        NameTree.Leaf(Path.read(s"/#/io.l5d.k8s.istio/$cluster/::"))
+      else
+        NameTree.Union(branches: _*)
       val prefix = Dentry.Prefix.read(s"/svc/route/$name")
-      Some(Dentry(prefix, NameTree.Union(branches: _*)))
+      Some(Dentry(prefix, dst))
     }
 
   def apply(routeManager: RouteCache, istioNamer: Namer): NameInterpreter = {
