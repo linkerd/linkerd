@@ -14,8 +14,12 @@ class RouteCache(api: ApiserverClient) extends Closable {
 
   private[this] def mkRouteMap(routeList: Seq[RouteRuleConfig]): Map[String, RouteRule] =
     routeList.collect {
-      case RouteRuleConfig(typ, Some(name), Some(spec)) => name -> spec
+      case RouteRuleConfig(typ, Some(name), Some(spec)) => name -> mkRouteRule(spec)
     }.toMap
+
+  // workaround for https://github.com/FasterXML/jackson-module-scala/issues/87 :(
+  private[this] def mkRouteRule(rr: RouteRule): RouteRule =
+    if (rr.route == null) rr.copy(`route` = Seq.empty) else rr
 
   val routeRules: Activity[Map[String, RouteRule]] = api.watchRouteRules.map(mkRouteMap)
 

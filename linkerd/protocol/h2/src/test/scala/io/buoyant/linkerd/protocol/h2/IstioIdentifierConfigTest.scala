@@ -10,11 +10,6 @@ import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
 class IstioIdentifierConfigTest extends FunSuite with Awaits {
-  test("sanity") {
-    // ensure it doesn't totally blow up
-    val _ = new IstioIdentifierConfig(None, None, None, None).newIdentifier(Params.empty)
-  }
-
   test("service registration") {
     assert(LoadService[IdentifierInitializer].exists(_.isInstanceOf[IstioIdentifierInitializer]))
   }
@@ -22,9 +17,9 @@ class IstioIdentifierConfigTest extends FunSuite with Awaits {
   test("parse config") {
     val yaml =
       s"""|kind: io.l5d.istio
-        |discoveryHost: myHost
-        |discoveryPort: 9999
-        |""".stripMargin
+          |discoveryHost: myHost
+          |discoveryPort: 9999
+          |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(IstioIdentifierInitializer)))
     val config = mapper.readValue[H2IdentifierConfig](yaml).asInstanceOf[IstioIdentifierConfig]
