@@ -115,7 +115,7 @@ class Admin(val address: SocketAddress) {
         log.debug(s"admin: $url => ${service.getClass.getName}")
         muxer.withHandler(url, service)
     }
-    HeadFilter.andThen(notFoundView.andThen(muxer))
+    HeadFilter andThen notFoundView andThen muxer
   }
 
   def serve(app: TApp, extHandlers: Seq[Handler]): ListeningServer =
