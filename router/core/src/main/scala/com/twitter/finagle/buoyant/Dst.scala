@@ -24,7 +24,10 @@ object Dst {
      * potentially very expensive.
      */
     override def hashCode() = (path, localDtab).hashCode()
-    override def equals() = (path, localDtab).equals()
+    override def equals(other: Any) = other match {
+      case Path(p, _, d) => path == p && localDtab == d
+      case _ => false
+    }
   }
 
   implicit object Path extends Stack.Param[Path] {
