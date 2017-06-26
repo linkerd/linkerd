@@ -2,18 +2,22 @@
 
 define([
   'jQuery',
+  'handlebars.runtime',
   'src/colors',
   'src/router_client',
   'src/combined_client_graph',
   'template/compiled_templates'
 ], function(
   $,
+  Handlebars,
   Colors,
   RouterClient,
   CombinedClientGraph,
   templates
 ) {
   var RouterClients = (function() {
+    var clientContainerTemplate = templates.router_client_container;
+    var rateMetricPartial = templates["rate_metric.partial"];
     var EXPAND_CLIENT_THRESHOLD = 6;
     var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
     var activeClients = {};
@@ -71,7 +75,7 @@ define([
     }
 
     return function (metricsCollector, initialData, $clientEl, $combinedClientGraphEl, routerName) {
-      var clientContainerTemplate = templates.router_client_container;
+      Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
       var clients = _.sortBy(initialData[routerName].clients);
       var colorList = Colors;

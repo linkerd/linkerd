@@ -352,6 +352,35 @@ templates['process_info'] = template({"1":function(container,depth0,helpers,part
     + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.stats : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "  </ul>\n</div>\n";
 },"useData":true});
+templates['rate_metric.partial'] = template({"1":function(container,depth0,helpers,partials,data) {
+    var helper;
+
+  return "        "
+    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"value","hash":{},"data":data}) : helper)))
+    + "\n";
+},"3":function(container,depth0,helpers,partials,data) {
+    return "        0\n";
+},"5":function(container,depth0,helpers,partials,data) {
+    var helper;
+
+  return "        "
+    + container.escapeExpression(((helper = (helper = helpers.rate || (depth0 != null ? depth0.rate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"rate","hash":{},"data":data}) : helper)))
+    + "\n";
+},"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+
+  return "<div class=\""
+    + alias4(((helper = (helper = helpers.containerClass || (depth0 != null ? depth0.containerClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"containerClass","hash":{},"data":data}) : helper)))
+    + "\">\n  <div class=\"metric-header\">\n    "
+    + alias4(((helper = (helper = helpers.description || (depth0 != null ? depth0.description : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"description","hash":{},"data":data}) : helper)))
+    + "\n  </div>\n  <div>\n    <span class=\""
+    + alias4(((helper = (helper = helpers.metricClass || (depth0 != null ? depth0.metricClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"metricClass","hash":{},"data":data}) : helper)))
+    + "\">\n"
+    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.value : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data})) != null ? stack1 : "")
+    + "    </span>\n\n    <span class=\"metric-small\">\n"
+    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.rate : depth0),{"name":"if","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + "    </span>\n  </div>\n</div>\n";
+},"useData":true});
 templates['request_stats'] = template({"1":function(container,depth0,helpers,partials,data) {
     var alias1=container.lambda, alias2=container.escapeExpression;
 
@@ -392,11 +421,11 @@ templates['router_client'] = template({"compiler":[7,">= 4.0.0"],"main":function
     var stack1;
 
   return "<div class=\"client-metrics row\">\n  <div class=\"col-md-2\">\n"
-    + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.successRate : stack1),{"name":"metricPartial","hash":{"metricClass":"success-metric metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.successRate : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large success-metric","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.requests : stack1),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "  </div>\n\n  <div class=\"col-md-2\">\n"
-    + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.connections : stack1),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.failures : stack1),{"name":"metricPartial","hash":{"metricClass":"failure-metric metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.metricPartial,((stack1 = (depth0 != null ? depth0.data : depth0)) != null ? stack1.connections : stack1),{"name":"metricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "  </div>\n\n"
     + ((stack1 = container.invokePartial(partials.latencyPartial,(depth0 != null ? depth0.latencies : depth0),{"name":"latencyPartial","data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "</div>\n";
@@ -443,9 +472,10 @@ templates['router_server'] = template({"compiler":[7,">= 4.0.0"],"main":function
 
   return "<div class=\"client-metrics row\">\n  <div class=\"col-md-2\">\n"
     + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.success : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large success-metric","containerClass":"success-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.requests : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large","containerClass":"metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.requests : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large","containerClass":"neutral-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "  </div>\n\n  <div class=\"col-md-2\">\n"
     + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.failures : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large failure-metric","containerClass":"failure-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
+    + ((stack1 = container.invokePartial(partials.rateMetricPartial,((stack1 = (depth0 != null ? depth0.metrics : depth0)) != null ? stack1.connections : stack1),{"name":"rateMetricPartial","hash":{"metricClass":"metric-large","containerClass":"neutral-metric-container metric-container col-md-2"},"data":data,"indent":"    ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "  </div>\n\n"
     + ((stack1 = container.invokePartial(partials.latencyPartial,(depth0 != null ? depth0.latencies : depth0),{"name":"latencyPartial","data":data,"indent":"  ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
     + "</div>\n";
@@ -460,7 +490,7 @@ templates['router_server_container'] = template({"compiler":[7,">= 4.0.0"],"main
 templates['router_service_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
-  return "<div class=\"svc-container svc-"
+  return "<div class=\"svc-container\" data-service=\""
     + alias4(((helper = (helper = helpers.service || (depth0 != null ? depth0.service : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"service","hash":{},"data":data}) : helper)))
     + "\">\n  <div class=\"metric-large\">"
     + alias4(((helper = (helper = helpers.service || (depth0 != null ? depth0.service : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"service","hash":{},"data":data}) : helper)))
@@ -492,9 +522,7 @@ templates['router_service_metrics'] = template({"1":function(container,depth0,he
 templates['router_services_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
-  return "<div class=\"router router-"
-    + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
-    + " row\" data-router=\""
+  return "<div class=\"router row\" data-router=\""
     + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
     + "\">\n  <div class=\"router-subsection-title\">Router</div>\n  <div class=\"metric-large\">"
     + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
@@ -560,35 +588,6 @@ templates['router_summary'] = template({"1":function(container,depth0,helpers,pa
     + "        </div>\n      </div>\n      <div class=\"router-summary-stat col-md-2\">\n        <div class=\"metric-header\">Fail rate</div>\n        <div data-key=\"fail-rate\" class=\"failure-metric\">\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.failureRate : depth0),{"name":"if","hash":{},"fn":container.program(17, data, 0),"inverse":container.program(15, data, 0),"data":data})) != null ? stack1 : "")
     + "        </div>\n      </div>\n    </div>\n  </div>\n</div>\n";
-},"useData":true});
-templates['server_rate_metric.partial'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var helper;
-
-  return "        "
-    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"value","hash":{},"data":data}) : helper)))
-    + "\n";
-},"3":function(container,depth0,helpers,partials,data) {
-    return "        0\n";
-},"5":function(container,depth0,helpers,partials,data) {
-    var helper;
-
-  return "        "
-    + container.escapeExpression(((helper = (helper = helpers.rate || (depth0 != null ? depth0.rate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"rate","hash":{},"data":data}) : helper)))
-    + "\n";
-},"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
-
-  return "<div class=\""
-    + alias4(((helper = (helper = helpers.containerClass || (depth0 != null ? depth0.containerClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"containerClass","hash":{},"data":data}) : helper)))
-    + "\">\n  <div class=\"metric-header\">\n    "
-    + alias4(((helper = (helper = helpers.description || (depth0 != null ? depth0.description : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"description","hash":{},"data":data}) : helper)))
-    + "\n  </div>\n  <div>\n    <span class=\""
-    + alias4(((helper = (helper = helpers.metricClass || (depth0 != null ? depth0.metricClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"metricClass","hash":{},"data":data}) : helper)))
-    + "\">\n"
-    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.value : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data})) != null ? stack1 : "")
-    + "    </span>\n\n    <span class=\"metric-small\">\n"
-    + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.rate : depth0),{"name":"if","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
-    + "    </span>\n  </div>\n</div>\n";
 },"useData":true});
 return templates;
 });

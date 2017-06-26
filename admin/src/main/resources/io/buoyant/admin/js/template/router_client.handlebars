@@ -1,12 +1,12 @@
 <div class="client-metrics row">
   <div class="col-md-2">
-    {{> metricPartial data.successRate containerClass="metric-container" metricClass="success-metric metric-large"}}
+    {{> rateMetricPartial data.successRate containerClass="metric-container" metricClass="metric-large success-metric"}}
     {{> metricPartial data.requests containerClass="metric-container" metricClass="metric-large"}}
   </div>
 
   <div class="col-md-2">
-    {{> metricPartial data.connections containerClass="metric-container" metricClass="metric-large"}}
     {{> metricPartial data.failures containerClass="metric-container" metricClass="failure-metric metric-large"}}
+    {{> metricPartial data.connections containerClass="metric-container" metricClass="metric-large"}}
   </div>
 
   {{> latencyPartial latencies}}

@@ -35,6 +35,10 @@ body {
   border-left: 1px solid #D84A4A;
 }
 
+.neutral-metric-container {
+  border-left: 1px solid #FFFFFF;
+}
+
 .success-metric {
   color: #4AD8AC;
 }

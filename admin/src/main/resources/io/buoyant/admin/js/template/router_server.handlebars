@@ -1,11 +1,12 @@
 <div class="client-metrics row">
   <div class="col-md-2">
     {{> rateMetricPartial metrics.success containerClass="success-metric-container metric-container col-md-2" metricClass="metric-large success-metric"}}
-    {{> rateMetricPartial metrics.requests containerClass="metric-container col-md-2" metricClass="metric-large"}}
+    {{> rateMetricPartial metrics.requests containerClass="neutral-metric-container metric-container col-md-2" metricClass="metric-large"}}
   </div>
 
   <div class="col-md-2">
     {{> rateMetricPartial metrics.failures containerClass="failure-metric-container metric-container col-md-2" metricClass="metric-large failure-metric"}}
+    {{> rateMetricPartial metrics.connections containerClass="neutral-metric-container metric-container col-md-2" metricClass="metric-large"}}
   </div>
 
   {{> latencyPartial latencies}}
