@@ -3,6 +3,7 @@ package io.buoyant.admin
 import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
 import com.twitter.finagle.http.{HttpMuxer, Request, Response}
+import com.twitter.finagle.http.filter.HeadFilter
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.logging.Logger
@@ -114,7 +115,7 @@ class Admin(val address: SocketAddress) {
         log.debug(s"admin: $url => ${service.getClass.getName}")
         muxer.withHandler(url, service)
     }
-    notFoundView.andThen(muxer)
+    HeadFilter.andThen(notFoundView.andThen(muxer))
   }
 
   def serve(app: TApp, extHandlers: Seq[Handler]): ListeningServer =
