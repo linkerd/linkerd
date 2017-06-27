@@ -90,8 +90,8 @@ class MarathonTest extends FunSuite {
       assert(jitter <= maxTtl)
     }
 
-    // assert that at least half of the jittered amounts are distinct
-    assert(jitters.take(300).toSet.size >= 150)
+    // assert that we're generating a reasonable amount of distinct TTLs
+    assert(jitters.take(300).toSet.size >= 50)
 
   }
 
@@ -120,8 +120,8 @@ class MarathonTest extends FunSuite {
       assert(jitter <= maxTtl)
     }
 
-    // assert that at least half of the jittered amounts are distinct
-    assert(jitters.take(300).toSet.size >= 150)
+    // assert that we're generating a reasonable amount of distinct TTLs
+    assert(jitters.take(300).toSet.size >= 50)
 
   }
 }
