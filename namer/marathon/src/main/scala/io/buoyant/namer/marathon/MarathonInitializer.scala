@@ -24,6 +24,7 @@ import scala.util.control.NoStackTrace
  *   port:           80
  *   uriPrefix:      /marathon
  *   ttlMs:          5000
+ *   jitterMs:       50
  *   useHealthCheck: false
  * </pre>
  */
@@ -100,6 +101,7 @@ case class MarathonConfig(
   dst: Option[String],
   uriPrefix: Option[String],
   ttlMs: Option[Int],
+  jitterMs: Option[Int],
   useHealthCheck: Option[Boolean]
 ) extends NamerConfig {
   import MarathonConfig._

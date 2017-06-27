@@ -12,7 +12,8 @@ class MarathonTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
     // We use a name that resolves here
-    val _ = MarathonConfig(Some("localhost"), None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = MarathonConfig(Some("localhost"), None, None, None, None, None,
+                           None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -27,6 +28,7 @@ class MarathonTest extends FunSuite {
                   |port:           80
                   |uriPrefix:      /marathon
                   |ttlMs:          300
+                  |jitterMs:       50
                   |useHealthCheck: false
       """.stripMargin
 
@@ -37,6 +39,7 @@ class MarathonTest extends FunSuite {
     assert(marathon.uriPrefix.contains("/marathon"))
     assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
     assert(marathon.ttlMs.contains(300))
+    assert(marathon.jitterMs.contains(50))
     assert(!marathon.disabled)
   }
 }
