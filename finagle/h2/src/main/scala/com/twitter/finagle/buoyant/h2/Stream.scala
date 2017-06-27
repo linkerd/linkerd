@@ -120,7 +120,7 @@ object Stream {
   def const(s: String): Stream =
     const(Buf.Utf8(s))
 
-  def empty(): Stream = empty(new AsyncQueue[Frame](1))
+  def empty(): Stream with Writer = empty(new AsyncQueue[Frame](1))
 
   def empty(frameQ: AsyncQueue[Frame]): Stream with Writer =
     new Stream with Writer {
