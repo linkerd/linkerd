@@ -7,11 +7,13 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Return, Throw}
+import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import io.buoyant.marathon.v2.{Api, AppIdNamer}
+
 import scala.util.control.NoStackTrace
+import scala.util.Random
 
 /**
  * Supports namer configurations in the form:
@@ -86,6 +88,12 @@ object MarathonConfig {
   private val DefaultHost = "marathon.mesos"
   private val DefaultPrefix = Path.read("/io.l5d.marathon")
 
+  // Default TTL (in milliseconds)
+  private val DefaultTtlMs = 5000
+
+  // Default range by which to jitter the TTL (also in milliseconds)
+  private val DefaultJitterMs = 50
+
   private case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
     def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
       req.host = host
@@ -108,6 +116,18 @@ case class MarathonConfig(
 
   @JsonIgnore
   override def defaultPrefix: Path = DefaultPrefix
+
+  @JsonIgnore
+  private[marathon] val ttl = ttlMs.getOrElse(DefaultTtlMs)
+
+  @JsonIgnore
+  private[marathon] val jitter = jitterMs.getOrElse(DefaultJitterMs)
+
+  /** @return a random TTL for a poll attempt */
+  @JsonIgnore
+  @inline
+  private[marathon] def nextTtl: Duration =
+    (ttl + (Random.nextDouble() * 2 - 1) * jitter).toInt.millis
 
   /**
    * Construct a namer.
@@ -139,7 +159,6 @@ case class MarathonConfig(
     val useHealthCheck0 = useHealthCheck.getOrElse(false)
     val api = Api(service, uriPrefix0, useHealthCheck0)
 
-    val ttl = ttlMs.getOrElse(5000).millis
-    new AppIdNamer(api, prefix, ttl)
+    new AppIdNamer(api, prefix, nextTtl)
   }
 }
