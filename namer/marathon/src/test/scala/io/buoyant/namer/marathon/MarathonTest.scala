@@ -125,4 +125,3 @@ class MarathonTest extends FunSuite {
 
   }
 }
-
