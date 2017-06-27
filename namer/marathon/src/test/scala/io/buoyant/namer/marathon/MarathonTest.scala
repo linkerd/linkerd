@@ -9,6 +9,20 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import org.scalatest.FunSuite
 
 class MarathonTest extends FunSuite {
+  // minimum number of unique TTLs to generate randomly.
+  //
+  // we're testing this by generating 300 jittered TTL durations and asserting
+  // that it contains at least this many distinct unique values.
+  //
+  // since this is probabilistic, we probably want to be fairly conservative
+  // here...it *should* be producing around 95 unique values out of every 300,
+  // and if it's not, that might be a bad sign, but we're lowballing the
+  // expected minimum amount so that we don't see tests breaking due to
+  // something possible but astronomically improbable. ah, the perils of
+  // (pseudo)random number generation!
+  //
+  // change this value if you disagree with my rationale.
+  val MinUniqueTTLs = 2
 
   test("sanity") {
     // ensure it doesn't totally blowup
@@ -90,8 +104,9 @@ class MarathonTest extends FunSuite {
       assert(jitter <= maxTtl)
     }
 
-    // assert that we're generating a reasonable amount of distinct TTLs
-    assert(jitters.take(300).toSet.size >= 50)
+    // assert that we're generating a reasonable amount of distinct TTLs –
+    // see above for what constitutes "reasonable"
+    assert(jitters.take(300).toSet.size >= MinUniqueTTLs)
 
   }
 
@@ -120,8 +135,9 @@ class MarathonTest extends FunSuite {
       assert(jitter <= maxTtl)
     }
 
-    // assert that we're generating a reasonable amount of distinct TTLs
-    assert(jitters.take(300).toSet.size >= 50)
+    // assert that we're generating a reasonable amount of distinct TTLs –
+    // see above for what constitutes "reasonable"
+    assert(jitters.take(300).toSet.size >= MinUniqueTTLs)
 
   }
 }
