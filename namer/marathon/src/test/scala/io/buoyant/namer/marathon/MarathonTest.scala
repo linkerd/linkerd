@@ -80,8 +80,10 @@ class MarathonTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
     val jitters = Stream.continually(marathon.nextTtl)
-    val minTtl = marathon.ttlMs.get.millis - 50.millis
-    val maxTtl = minTtl + 50.millis
+
+    val baseTtl = marathon.ttlMs.get.millis
+    val minTtl = baseTtl - 50.millis
+    val maxTtl = baseTtl + 50.millis
 
     for (jitter <- jitters.take(300)) {
       assert(jitter >= minTtl)
@@ -108,8 +110,10 @@ class MarathonTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
     val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
     val jitters = Stream.continually(marathon.nextTtl)
-    val minTtl = marathon.ttlMs.get.millis - 100.millis
-    val maxTtl = minTtl + 100.millis
+
+    val baseTtl = marathon.ttlMs.get.millis
+    val minTtl = baseTtl - 100.millis
+    val maxTtl = baseTtl + 100.millis
 
     for (jitter <- jitters.take(300)) {
       assert(jitter >= minTtl)
