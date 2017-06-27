@@ -13,7 +13,7 @@ object AppIdNamer {
 class AppIdNamer(
   api: Api,
   prefix: Path,
-  ttl: Duration,
+  ttl: => Duration,
   timer: Timer = DefaultTimer
 ) extends Namer {
 
