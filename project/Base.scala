@@ -208,6 +208,8 @@ class Base extends Build {
   val testUtil = projectDir("test-util")
     .settings(coverageExcludedPackages := "io.buoyant.test.*")
     .settings(libraryDependencies += Deps.scalatest)
+    .settings(libraryDependencies += Deps.scalacheck)
+    .settings(libraryDependencies += Deps.junit)
     .settings(libraryDependencies ++= {
       val deps = Deps.twitterUtil("core") :: Deps.twitterUtil("logging") :: Nil
       if (doDevelopTwitterDeps.value) {
