@@ -7,15 +7,19 @@ import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualConfig, Jittered
 import io.buoyant.test.FunSuite
 import org.scalatest.{Matchers, OptionValues, OutcomeOf}
 import com.twitter.conversions.time._
-import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.prop.{PropertyChecks, TableDrivenPropertyChecks}
+import org.scalacheck.Gen
+import org.junit.runner.RunWith
 
 /**
  * Created by eliza on 6/27/17.
  */
+@RunWith(classOf[JUnitRunner])
 class ConfigTest extends FunSuite
   with Matchers
   with OptionValues
-  with TableDrivenPropertyChecks
+  with PropertyChecks
   with OutcomeOf {
 
   def parse(yaml: String): FailureAccrualConfig = {
@@ -75,6 +79,32 @@ class ConfigTest extends FunSuite
              """.stripMargin
       parse(yaml).backoff.value shouldEqual backoff
     }
+  }
+
+  private[this] val positiveInts = for { n <- Gen.choose(1, Integer.MAX_VALUE) } yield n
+
+  test("constant backoff configs produce streams of constant durations") {
+    forAll { (n: Int) => ConstantBackoffConfig(n).mk.take(100).forall(_ == n.millis) }
+  }
+
+  test("jittered backoff configs produce streams of durations between the minimum and maximum") {
+    forAll((positiveInts, "min"), (positiveInts, "max")) { (min: Int, max: Int) =>
+      whenever(min < max) {
+        JitteredBackoffConfig(Some(min), Some(max)).mk
+          .take(100)
+          .forall(d => d >= min.millis && d <= max.millis)
+      }
+  }
+
+  test("jittered backoff configs throw exceptions when passed invalid min/max") {
+    forAll { (min: Int, max: Int) =>
+      whenever(min >= max || min <= 0 || max <= 0 ) {
+        an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(Some(min), Some(max)).mk
+      }
+    }
+    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(None, Some(1000)).mk
+    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(Some(1000), None).mk
+    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(None, None).mk
   }
 
 }
