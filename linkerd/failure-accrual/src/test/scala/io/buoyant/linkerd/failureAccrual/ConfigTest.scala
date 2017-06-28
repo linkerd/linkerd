@@ -94,11 +94,20 @@ class ConfigTest extends FunSuite
           .take(100)
           .forall(d => d >= min.millis && d <= max.millis)
       }
+    }
+  }
+
+  test("jittered backoff configs produce streams containing at least two unique durations") {
+    forAll((positiveInts, "min"), (positiveInts, "max")) { (min: Int, max: Int) =>
+      whenever(min < max) {
+        JitteredBackoffConfig(Some(min), Some(max)).mk.take(300).toSet.size should be >= 2
+      }
+    }
   }
 
   test("jittered backoff configs throw exceptions when passed invalid min/max") {
     forAll { (min: Int, max: Int) =>
-      whenever(min >= max || min <= 0 || max <= 0 ) {
+      whenever(min >= max || min <= 0 || max <= 0) {
         an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(Some(min), Some(max)).mk
       }
     }
