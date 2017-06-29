@@ -2,7 +2,6 @@ package io.buoyant.linkerd.failureAccrual
 
 import com.twitter.finagle.liveness.FailureAccrualPolicy
 import com.twitter.finagle.util.LoadService
-import com.twitter.conversions.time._
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 import io.buoyant.test.FunSuite

@@ -3,15 +3,14 @@ package io.buoyant.linkerd.failureAccrual
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualConfig, JitteredBackoffConfig}
 import io.buoyant.test.FunSuite
-import org.scalatest.{Matchers, OptionValues, OutcomeOf}
+import org.scalatest.OptionValues
 import com.twitter.conversions.time._
 import org.scalatest.prop.PropertyChecks
 import org.scalacheck.Gen
 
 class ConfigTest extends FunSuite
   with OptionValues
-  with PropertyChecks
-  with OutcomeOf {
+  with PropertyChecks {
 
   def parse(yaml: String): FailureAccrualConfig = {
     val mapper = Parser.objectMapper(yaml, Seq(Seq(
