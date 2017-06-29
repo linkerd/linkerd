@@ -5,7 +5,7 @@ import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualConfig, Jittered
 import io.buoyant.test.FunSuite
 import org.scalatest.{Matchers, OptionValues, OutcomeOf}
 import com.twitter.conversions.time._
-import org.scalatest.prop.{PropertyChecks}
+import org.scalatest.prop.PropertyChecks
 import org.scalacheck.Gen
 
 class ConfigTest extends FunSuite
@@ -76,7 +76,9 @@ class ConfigTest extends FunSuite
   private[this] val positiveInts = for { n <- Gen.choose(1, Integer.MAX_VALUE) } yield n
 
   test("constant backoff configs produce streams of constant durations") {
-    forAll { (n: Int) => ConstantBackoffConfig(n).mk.take(100).forall(_ == n.millis) }
+    forAll { (n: Int) =>
+      ConstantBackoffConfig(n).mk.take(100).foreach(d => assert(d == n.millis))
+    }
   }
 
   test("jittered backoff configs produce streams of durations between the minimum and maximum") {
@@ -84,7 +86,7 @@ class ConfigTest extends FunSuite
       whenever(min < max) {
         JitteredBackoffConfig(Some(min), Some(max)).mk
           .take(100)
-          .forall(d => d >= min.millis && d <= max.millis)
+          .foreach(d => assert(d >= min.millis && d <= max.millis))
       }
     }
   }
