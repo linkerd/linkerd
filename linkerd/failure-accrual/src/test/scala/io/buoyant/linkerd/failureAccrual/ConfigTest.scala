@@ -1,21 +1,13 @@
 package io.buoyant.linkerd.failureAccrual
 
-import com.twitter.finagle.service.Backoff
-import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualConfig, JitteredBackoffConfig}
 import io.buoyant.test.FunSuite
 import org.scalatest.{Matchers, OptionValues, OutcomeOf}
 import com.twitter.conversions.time._
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.prop.{PropertyChecks, TableDrivenPropertyChecks}
+import org.scalatest.prop.{PropertyChecks}
 import org.scalacheck.Gen
-import org.junit.runner.RunWith
 
-/**
- * Created by eliza on 6/27/17.
- */
-@RunWith(classOf[JUnitRunner])
 class ConfigTest extends FunSuite
   with Matchers
   with OptionValues
