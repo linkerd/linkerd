@@ -62,7 +62,7 @@ class ConfigTest extends FunSuite
     for {
       kind <- kinds
       (config, backoff) <- backoffs
-    } yield outcomeOf {
+    } {
       val yaml =
         s"""$kind
              |backoff:
