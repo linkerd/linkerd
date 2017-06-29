@@ -1,7 +1,7 @@
 # Interfaces
 
 An interface is a published network interface to namerd. All of the interfaces
-listed below provide Finage's [`NameInterpreter`](
+listed below provide Finagle's [`NameInterpreter`](
 https://twitter.github.io/finagle/docs/com/twitter/finagle/naming/NameInterpreter.html)
 functionality for remote resolution of destinations using dtabs stored in
 namerd. Additionally, the [`io.l5d.httpController`](#http-controller) interface
@@ -17,7 +17,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter), [`io.l5d.mesh`](#grpc-mesh-interface), or [`io.l5d.httpController`](#http-controller).
 ip | interface dependent | The local IP address on which to serve the namer interface.
-port | interface dependent | The port number on which to server the namer interface.
+port | interface dependent | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ## Thrift Name Interpreter
@@ -31,7 +31,7 @@ destinations via this interface.
 Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
-port | `4100` | The port number on which to server the namer interface.
+port | `4100` | The port number on which to serve the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
 cache | see [cache](#cache) | Binding and address cache size configuration.
@@ -57,7 +57,7 @@ this interface.
 Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
-port | `4321` | The port number on which to server the namer interface.
+port | `4321` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
 ## Http Controller
