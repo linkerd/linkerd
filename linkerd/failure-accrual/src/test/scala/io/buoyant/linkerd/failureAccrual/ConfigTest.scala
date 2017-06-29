@@ -23,13 +23,11 @@ class ConfigTest extends FunSuite
     mapper.readValue[FailureAccrualConfig](yaml)
   }
 
-  val kinds =
-    Table(
-      ("kind"),
-      ("kind: io.l5d.consecutiveFailures"),
-      ("kind: io.l5d.successRate"),
-      ("kind: io.l5d.successRateWindowed"),
-      ("kind: none")
+  val kinds = Seq(
+      "kind: io.l5d.consecutiveFailures",
+      "kind: io.l5d.successRate",
+      "kind: io.l5d.successRateWindowed",
+      "kind: none"
     )
 
   val backoffs =
@@ -47,7 +45,6 @@ class ConfigTest extends FunSuite
     )
 
   test("configs parse to the correct kinds") {
-    // TODO: this could look nicer as a table-based property check
     assert(parse("kind: io.l5d.consecutiveFailures").isInstanceOf[ConsecutiveFailuresConfig])
     assert(parse("kind: io.l5d.successRate").isInstanceOf[SuccessRateConfig])
     assert(parse("kind: io.l5d.successRateWindowed").isInstanceOf[SuccessRateWindowedConfig])
@@ -55,7 +52,7 @@ class ConfigTest extends FunSuite
   }
 
   test("unspecified backoffs should parse to None") {
-    forAll(kinds) { cfg => assert(parse(cfg).backoff.isEmpty) }
+    kinds.foreach { cfg => assert(parse(cfg).backoff.isEmpty) }
   }
 
   test("configs with backoff configurations have the correct backoff") {
