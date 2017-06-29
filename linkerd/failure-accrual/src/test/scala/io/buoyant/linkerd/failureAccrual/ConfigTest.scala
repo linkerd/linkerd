@@ -102,7 +102,7 @@ class ConfigTest extends FunSuite
 
   test("jittered backoff configs throw exceptions when passed invalid min/max") {
     forAll { (min: Int, max: Int) =>
-      whenever(min >= max || min <= 0 || max <= 0) {
+      whenever(min > max || min <= 0 || max <= 0) {
         assertThrows[IllegalArgumentException] { JitteredBackoffConfig(Some(min), Some(max)).mk }
       }
     }
