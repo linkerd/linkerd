@@ -24,7 +24,7 @@ interfaces:
 
 Welcome to the Configuration Reference for namerd!
 
-namerd's configuration is controlled via config file, which must be provided
+namerd's configuration is controlled via a config file, which must be provided
 as a command-line argument. It may be a local file path or `-` to
 indicate that the configuration should be read from the standard input.
 
@@ -62,7 +62,7 @@ Namerd's admin interface mirrors linkerd's, with one exception: the
 `/delegator.json` endpoint in linkerd is served as `/dtab/delegator.json` in
 namerd.
 
-For default admin endpoints have a look at
+To learn about default admin endpoints, have a look at
 [linkerd's administrative interface](https://linkerd.io/config/head/linkerd/index.html#administrative-interface).
 
 For metrics information, namerd also exposes
