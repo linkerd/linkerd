@@ -94,7 +94,7 @@ class ConfigTest extends FunSuite
     forAll((positiveInts, "min"), (positiveInts, "max")) { (min: Int, max: Int) =>
       whenever(min < max) {
         val n_unique = JitteredBackoffConfig(Some(min), Some(max)).mk
-                          .take(300).toSet.size
+          .take(300).toSet.size
         assert(n_unique >= 2)
       }
     }
@@ -107,7 +107,7 @@ class ConfigTest extends FunSuite
       }
     }
     assertThrows[IllegalArgumentException] { JitteredBackoffConfig(None, Some(1000)).mk }
-    assertThrows[IllegalArgumentException] {JitteredBackoffConfig(Some(1000), None).mk }
+    assertThrows[IllegalArgumentException] { JitteredBackoffConfig(Some(1000), None).mk }
     assertThrows[IllegalArgumentException] { JitteredBackoffConfig(None, None).mk }
   }
 
