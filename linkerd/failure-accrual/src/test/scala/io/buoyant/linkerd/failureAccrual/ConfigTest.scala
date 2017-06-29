@@ -9,7 +9,6 @@ import org.scalatest.prop.PropertyChecks
 import org.scalacheck.Gen
 
 class ConfigTest extends FunSuite
-  with Matchers
   with OptionValues
   with PropertyChecks
   with OutcomeOf {
@@ -49,14 +48,14 @@ class ConfigTest extends FunSuite
 
   test("configs parse to the correct kinds") {
     // TODO: this could look nicer as a table-based property check
-    parse("kind: io.l5d.consecutiveFailures") shouldBe a[ConsecutiveFailuresConfig]
-    parse("kind: io.l5d.successRate") shouldBe a[SuccessRateConfig]
-    parse("kind: io.l5d.successRateWindowed") shouldBe a[SuccessRateWindowedConfig]
-    parse("kind: none") shouldBe a[NoneConfig]
+    assert(parse("kind: io.l5d.consecutiveFailures").isInstanceOf[ConsecutiveFailuresConfig])
+    assert(parse("kind: io.l5d.successRate").isInstanceOf[SuccessRateConfig])
+    assert(parse("kind: io.l5d.successRateWindowed").isInstanceOf[SuccessRateWindowedConfig])
+    assert(parse("kind: none").isInstanceOf[NoneConfig])
   }
 
   test("unspecified backoffs should parse to None") {
-    forAll(kinds) { parse(_).backoff shouldBe None }
+    forAll(kinds) { cfg => assert(parse(cfg).backoff.isEmpty) }
   }
 
   test("configs with backoff configurations have the correct backoff") {
@@ -69,7 +68,7 @@ class ConfigTest extends FunSuite
              |backoff:
              |$config
              """.stripMargin
-      parse(yaml).backoff.value shouldEqual backoff
+      assert(parse(yaml).backoff.value == backoff)
     }
   }
 
@@ -94,7 +93,9 @@ class ConfigTest extends FunSuite
   test("jittered backoff configs produce streams containing at least two unique durations") {
     forAll((positiveInts, "min"), (positiveInts, "max")) { (min: Int, max: Int) =>
       whenever(min < max) {
-        JitteredBackoffConfig(Some(min), Some(max)).mk.take(300).toSet.size should be >= 2
+        val n_unique = JitteredBackoffConfig(Some(min), Some(max)).mk
+                          .take(300).toSet.size
+        assert(n_unique >= 2)
       }
     }
   }
@@ -102,12 +103,12 @@ class ConfigTest extends FunSuite
   test("jittered backoff configs throw exceptions when passed invalid min/max") {
     forAll { (min: Int, max: Int) =>
       whenever(min >= max || min <= 0 || max <= 0) {
-        an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(Some(min), Some(max)).mk
+        assertThrows[IllegalArgumentException] { JitteredBackoffConfig(Some(min), Some(max)).mk }
       }
     }
-    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(None, Some(1000)).mk
-    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(Some(1000), None).mk
-    an[IllegalArgumentException] should be thrownBy JitteredBackoffConfig(None, None).mk
+    assertThrows[IllegalArgumentException] { JitteredBackoffConfig(None, Some(1000)).mk }
+    assertThrows[IllegalArgumentException] {JitteredBackoffConfig(Some(1000), None).mk }
+    assertThrows[IllegalArgumentException] { JitteredBackoffConfig(None, None).mk }
   }
 
 }
