@@ -43,7 +43,7 @@ class ConsecutiveFailuresTest extends FunSuite
     val policy = parse(yaml).policy()
     val probeDelays = Stream.continually(policy.markDeadOnFailure()).take(20)
     probeDelays.take(4) should contain only None
-    probeDelays.drop(4) should contain only Some(10000.millis)
+    probeDelays.drop(4).foreach(delay => assert(delay.isDefined))
   }
 
   test("default (exponential) backoff") {
@@ -55,7 +55,25 @@ class ConsecutiveFailuresTest extends FunSuite
     val probeDelays = Stream.continually(policy.markDeadOnFailure()).take(20)
     probeDelays shouldBe sorted // todo: better assertion that the increase is exponential
     probeDelays.take(4) should contain only None
-    probeDelays.drop(4).foreach( delay => assert(delay.isDefined))
+    probeDelays.drop(4).foreach(delay => assert(delay.isDefined))
+  }
+
+  val smallInts = Gen.choose(1, 100).suchThat(n => n > 1 && n < 100)
+
+  test("arbitrary number of consecutive failures") {
+
+    forAll((smallInts, "number of failures")) { n =>
+      val yaml =
+        s"""|kind: io.l5d.consecutiveFailures
+            |failures: $n""".stripMargin
+
+      val policy = parse(yaml).policy()
+      val probeDelays = Stream.continually(policy.markDeadOnFailure()).take(n + 20)
+      probeDelays shouldBe sorted
+      probeDelays.take(n - 1) should contain only None
+      probeDelays.drop(n).foreach(delay => assert(delay.isDefined))
+
+    }
   }
 
 }
