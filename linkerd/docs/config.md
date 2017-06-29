@@ -45,7 +45,7 @@ telemetry:
 
 Welcome to the Configuration Reference for linkerd!
 
-linkerd's configuration is controlled via config file, which must be provided
+linkerd's configuration is controlled via a configuration file, which must be provided
 as a command-line argument. It may be a local file path or `-` to
 indicate that the configuration should be read from the standard input.
 For convenience, the release package includes a default `linkerd.yaml` file in
