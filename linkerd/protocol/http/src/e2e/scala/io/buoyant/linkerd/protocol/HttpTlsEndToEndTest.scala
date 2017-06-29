@@ -6,15 +6,17 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
 
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.http._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.http.{param => _, _}
-import com.twitter.finagle.http.{Status, Method}
+import com.twitter.finagle.http.{Method, Status}
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.ssl.server.SslServerConfiguration
-import com.twitter.finagle.ssl.{KeyCredentials, TrustCredentials}
+import com.twitter.finagle.ssl.{ClientAuth, KeyCredentials, TrustCredentials}
 import com.twitter.finagle.transport.Transport
 import com.twitter.util._
+import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
 
 class HttpTlsEndToEndTest extends FunSuite {
@@ -70,8 +72,81 @@ class HttpTlsEndToEndTest extends FunSuite {
     assert(rsp.status == Status.Ok)
   }
 
+  test("TLS client with unspecified certs from config") {
+    // https://github.com/linkerd/linkerd/issues/1436
+    def parse(yaml: String): TlsClientConfig =
+      Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+
+    val srv = {
+      val srvCert = loadPem("linkerd-tls-e2e-cert")
+      val srvKey = loadPem("linkerd-tls-e2e-key")
+      FinagleHttp.server
+        .configured(Transport.ServerSsl(Some(SslServerConfiguration(
+          keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey)
+        ))))
+        .serve(":*", service)
+    }
+
+    val client = {
+      val isa = srv.boundAddress.asInstanceOf[InetSocketAddress]
+      val addr = Address(isa)
+      val id = Path.read(s"/$$/inet/${isa.getAddress.getHostAddress}/${isa.getPort}")
+      val srvName = Name.Bound(Var.value(Addr.Bound(addr)), id)
+
+      val caCert = loadPem("cacert")
+      val yaml =s"""commonName: "$srvName""""
+      val cfg = parse(yaml)
+      FinagleHttp.client
+        .configuredParams(cfg.params)
+        .newService(srvName, id.show)
+    }
+    val req = Request(Method.Get, "/a/parf")
+    val rsp =
+      try await(client(req))
+      finally await(client.close().before(srv.close()))
+
+    assert(rsp.status == Status.Ok)
+
+
+  }
+
   test("TLS client with unspecified certs") {
     // https://github.com/linkerd/linkerd/issues/1436
+    def parse(yaml: String): TlsClientConfig =
+      Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+
+    val srv = {
+      val srvCert = loadPem("linkerd-tls-e2e-cert")
+      val srvKey = loadPem("linkerd-tls-e2e-key")
+      FinagleHttp.server
+        .configured(Transport.ServerSsl(Some(SslServerConfiguration(
+          keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey),
+          clientAuth = ClientAuth.Unspecified
+        ))))
+        .serve(":*", service)
+    }
+
+    val client = {
+      val isa = srv.boundAddress.asInstanceOf[InetSocketAddress]
+      val addr = Address(isa)
+      val id = Path.read(s"/$$/inet/${isa.getAddress.getHostAddress}/${isa.getPort}")
+      val srvName = Name.Bound(Var.value(Addr.Bound(addr)), id)
+
+      val tls = Transport.ClientSsl(Some(SslClientConfiguration(
+        hostname = Some("linkerd-tls-e2e"),
+        trustCredentials = TrustCredentials.Unspecified
+      )))
+      FinagleHttp.client
+        .configured(tls)
+        .newService(srvName, id.show)
+    }
+    val req = Request(Method.Get, "/a/parf")
+    val rsp =
+      try await(client(req))
+      finally await(client.close().before(srv.close()))
+
+    assert(rsp.status == Status.Ok)
+
 
   }
 }
