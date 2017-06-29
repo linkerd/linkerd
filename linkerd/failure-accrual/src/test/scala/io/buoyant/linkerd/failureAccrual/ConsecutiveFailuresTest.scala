@@ -6,10 +6,13 @@ import com.twitter.conversions.time._
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 import io.buoyant.test.FunSuite
+import org.scalacheck.Gen
 import org.scalatest.Matchers
+import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
 class ConsecutiveFailuresTest extends FunSuite
-  with Matchers {
+  with Matchers
+  with GeneratorDrivenPropertyChecks {
   def parse(yaml: String): FailureAccrualConfig = {
     val mapper = Parser.objectMapper(yaml, Seq(Seq(
       new ConsecutiveFailuresInitializer,
@@ -51,5 +54,8 @@ class ConsecutiveFailuresTest extends FunSuite
     val policy = parse(yaml).policy()
     val probeDelays = Stream.continually(policy.markDeadOnFailure()).take(20)
     probeDelays shouldBe sorted // todo: better assertion that the increase is exponential
+    probeDelays.take(4) should contain only None
+    probeDelays.drop(4).foreach( delay => assert(delay.isDefined))
   }
+
 }
