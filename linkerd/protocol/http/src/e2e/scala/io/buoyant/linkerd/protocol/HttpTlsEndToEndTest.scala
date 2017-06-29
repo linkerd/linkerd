@@ -133,7 +133,7 @@ class HttpTlsEndToEndTest extends FunSuite {
       val srvName = Name.Bound(Var.value(Addr.Bound(addr)), id)
 
       val tls = Transport.ClientSsl(Some(SslClientConfiguration(
-        hostname = Some("linkerd-tls-e2e"),
+        hostname = Some(s"${isa.getAddress.getHostAddress}/${isa.getPort}"),
         trustCredentials = TrustCredentials.Unspecified
       )))
       FinagleHttp.client
