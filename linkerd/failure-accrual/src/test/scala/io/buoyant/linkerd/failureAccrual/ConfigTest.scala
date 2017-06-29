@@ -72,7 +72,7 @@ class ConfigTest extends FunSuite
     }
   }
 
-  private[this] val positiveInts = for { n <- Gen.choose(1, Integer.MAX_VALUE) } yield n
+  private[this] val positiveInts = Gen.choose(1, Integer.MAX_VALUE)
 
   test("constant backoff configs produce streams of constant durations") {
     forAll { (n: Int) =>
