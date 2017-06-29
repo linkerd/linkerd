@@ -146,7 +146,7 @@ class HttpTlsEndToEndTest extends FunSuite {
 //      finally await(client.close().before(srv.close()))
 //
 //    assert(rsp.status == Status.Ok)
-
-
-  }
+//
+//
+//  }
 }
