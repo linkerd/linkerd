@@ -39,8 +39,8 @@ class ConsecutiveFailuresTest extends FunSuite
                   |  ms: 10000""".stripMargin
     val policy = parse(yaml).policy()
     val probeDelays = Stream.continually(policy.markDeadOnFailure()).take(20)
-    probeDelays.take(4) should contain only (None)
-    probeDelays should contain inOrderOnly (None, Some(10000.millis))
+    probeDelays.take(4) should contain only None
+    probeDelays.drop(4) should contain only Some(10000.millis)
   }
 
   test("default (exponential) backoff") {
