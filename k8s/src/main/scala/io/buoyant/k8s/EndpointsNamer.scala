@@ -132,20 +132,18 @@ abstract class EndpointsNamer(
 
       case Some(service) =>
         log.debug("k8s ns %s service %s found", nsName, serviceName)
-        Try(portName.toInt).toOption match {
+        val state: Var[Activity.State[NameTree[Name]]] = Try(portName.toInt).toOption match {
           case Some(portNumber) =>
-            val state: Var[Activity.State[NameTree[Name.Bound]]] = serviceCache.getPortMapping(serviceName, portNumber).map {
-              case Some(targetPort) =>
-                val addr = targetPort.flatMap(service.port)
+            lookupNumberedPort(serviceCache, service, serviceName, portNumber).map {
+              case Some(vaddr) =>
                 log.debug("k8s ns %s service %s port :%d found + %s", nsName, serviceName, portNumber, residual.show)
-                Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
+                Activity.Ok(NameTree.Leaf(Name.Bound(vaddr, idPrefix ++ id, residual)))
               case None =>
                 log.debug("k8s ns %s service %s port :%d missing", nsName, serviceName, portNumber)
                 Activity.Ok(NameTree.Neg)
             }
-            Activity(state)
           case None =>
-            val state: Var[Activity.State[NameTree[Name.Bound]]] = service.port(portName).map {
+            service.port(portName).map {
               case Some(addr) =>
                 log.debug("k8s ns %s service %s port %s found + %s", nsName, serviceName, portName, residual.show)
                 Activity.Ok(NameTree.Leaf(Name.Bound(addr, idPrefix ++ id, residual)))
@@ -153,10 +151,39 @@ abstract class EndpointsNamer(
                 log.debug("k8s ns %s service %s port %s missing", nsName, serviceName, portName)
                 Activity.Ok(NameTree.Neg)
             }
-            Activity(state)
         }
+        Activity(state)
     }
   }
+
+  /**
+   * For a given port number, apply the port mapping of the service.  The target port of the port
+   * mapping may be a named port and the named port may or may not exist.  The outer Var[Option]
+   * of the return type tracks whether the port exists and the inner Var[Addr] tracks the actual
+   * endpoints if the port does exist.
+   */
+  private[this] def lookupNumberedPort(
+    serviceCache: ServiceCache,
+    svc: SvcCache,
+    serviceName: String,
+    portNumber: Int
+  ): Var[Option[Var[Addr]]] =
+    serviceCache.getPortMapping(serviceName, portNumber).flatMap {
+      case Some(targetPort) =>
+        targetPort.flatMap { target =>
+          // target may be an int (port number) or string (port name)
+          Try(target.toInt).toOption match {
+            case Some(targetPortNumber) =>
+              // target port is a number and therefore exists
+              Var(Some(svc.port(targetPortNumber)))
+            case None =>
+              // target port is a name and may or may not exist
+              svc.port(target)
+          }
+        }
+      case None =>
+        Var(None)
+    }
 
   private[k8s] val endpointNs =
     new Ns[Endpoints, EndpointsWatch, EndpointsList, NsCache](backoff, timer) {

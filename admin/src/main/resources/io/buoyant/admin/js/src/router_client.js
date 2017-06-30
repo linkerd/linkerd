@@ -106,8 +106,9 @@ define([
 
       var successRate = new Utils.SuccessRate(summary.success.value || 0, summary.failures.value || 0);
       summary.successRate = {
-        description: "Success Rate",
-        value: successRate.prettyRate(),
+        description: "Successes",
+        value: summary.success.value || 0,
+        rate: successRate.prettyRate(),
         style: successRate.rateStyle()
       };
       summary.successRateRaw = successRate.successRate;

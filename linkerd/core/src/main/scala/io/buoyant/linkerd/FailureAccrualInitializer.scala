@@ -16,7 +16,7 @@ abstract class FailureAccrualConfig extends PolymorphicConfig {
   var backoff: Option[BackoffConfig] = None
 
   @JsonIgnore
-  val backoffOrDefault =
+  def backoffOrDefault: Stream[Duration] =
     backoff.map(_.mk).getOrElse(FailureAccrualConfig.defaultBackoff)
 }
 

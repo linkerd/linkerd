@@ -112,10 +112,10 @@ class ServiceCache(namespace: String)
     stabilize(unstable)
   }
 
-  def getPortMapping(serviceName: String, port: Int): Var[Option[Var[Int]]] = synchronized {
+  def getPortMapping(serviceName: String, port: Int): Var[Option[Var[String]]] = synchronized {
     // we call this unstable because every change to the target port will cause
     // the entire Var[Option[Int]] to update.
-    val unstable: Var[Option[Int]] = cache.get(serviceName) match {
+    val unstable: Var[Option[String]] = cache.get(serviceName) match {
       case Some(ports) =>
         ports.map(_.portMap.get(port))
       case None =>
@@ -189,11 +189,11 @@ class ServiceCache(namespace: String)
 
 object ServiceCache {
 
-  case class CacheEntry(ports: Map[String, Address], portMap: Map[Int, Int])
+  case class CacheEntry(ports: Map[String, Address], portMap: Map[Int, String])
 
   private def extractPorts(service: Service): CacheEntry = {
     val ports = mutable.Map.empty[String, Address]
-    val portMap = mutable.Map.empty[Int, Int]
+    val portMap = mutable.Map.empty[Int, String]
 
     for {
       meta <- service.metadata.toSeq
@@ -210,7 +210,7 @@ object ServiceCache {
 
       portMap += (port.targetPort match {
         case Some(targetPort) => port.port -> targetPort
-        case None => port.port -> port.port
+        case None => port.port -> port.port.toString
       })
     }
     CacheEntry(ports.toMap, portMap.toMap)
