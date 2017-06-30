@@ -13,7 +13,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  * namers:
  * - kind: io.l5d.k8s.istio
  *   experimental: true
- *   host: istio-manager.default.svc.cluster.local
+ *   host: istio-pilot.default.svc.cluster.local
  *   port: 8080
  * </pre>
  */
@@ -28,14 +28,10 @@ case class IstioConfig(
   host: Option[String],
   port: Option[Port]
 ) extends NamerConfig {
+  import io.buoyant.k8s.istio._
 
   @JsonIgnore
   override val experimentalRequired = true
-
-  @JsonIgnore
-  val DefaultHost = "istio-manager.default.svc.cluster.local"
-  @JsonIgnore
-  val DefaultPort = 8080
 
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.k8s.istio")
@@ -47,8 +43,8 @@ case class IstioConfig(
   override def newNamer(params: Stack.Params): Namer = {
     val label = param.Label(s"namer${prefix.show}")
     val discoveryClient = DiscoveryClient(
-      host.getOrElse(DefaultHost),
-      port.map(_.port).getOrElse(DefaultPort)
+      host.getOrElse(DefaultDiscoveryHost),
+      port.map(_.port).getOrElse(DefaultDiscoveryPort)
     )
     new IstioNamer(discoveryClient, prefix)
   }

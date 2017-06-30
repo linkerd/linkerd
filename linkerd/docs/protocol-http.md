@@ -360,7 +360,7 @@ port | N/A | The port name.
 svc | N/A | The name of the service.
 
 
-<a href="istio-identifier></a>
+<a href="istio-identifier"></a>
 ### Istio Identifier
 
 kind: `io.l5d.istio`
@@ -380,9 +380,9 @@ routers:
 
 Key  | Default Value | Description
 ---- | ------------- | -----------
-discoveryHost | `istio-manager` | The host of the Istio-Pilot.
+discoveryHost | `istio-pilot` | The host of the Istio-Pilot.
 discoveryPort | 8080 | The port of the Istio-Pilot's discovery service.
-apiserverHost | `istio-manager` | The host of the Istio-Pilot.
+apiserverHost | `istio-pilot` | The host of the Istio-Pilot.
 apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
 
 #### Identifier Path Parameters
@@ -396,20 +396,20 @@ apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
 > Dtab Path Format if the request has a valid cluster but DOES NOT match a route-rule
 
 ```
-  / dstPrefix / "dest" / cluster / port
+  / dstPrefix / "dest" / cluster / "::" / port
 ```
 
 > Dtab Path Format if the request matches a route-rule
 
 ```
-  / dstPrefix / "route" / route-rule
+  / dstPrefix / "route" / routeRule
 ```
 
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
-route-rule | N/A | The name of the route-rule that matches the incoming request.
+routeRule | N/A | The name of the route-rule that matches the incoming request.
 host | N/A | The host to send the request to.
 cluster | N/A | The cluster to send the request to.
 port | N/A | The port to send the request to.
