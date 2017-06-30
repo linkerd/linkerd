@@ -6,7 +6,7 @@ import com.twitter.util.{Activity, Timer, Var}
 import io.buoyant.k8s.log
 
 /**
- * The Istio namer reads service discovery information from the Istio-Manager's Service Discvoery
+ * The Istio namer reads service discovery information from the Istio-Pilot's Service Discvoery
  * Service API.
  * https://lyft.github.io/envoy/docs/configuration/cluster_manager/sds_api.html
  * Each lookup is backed by a polling loop.
@@ -31,7 +31,7 @@ class IstioNamer(
    *
    * Use :: alone to specify an empty list of labels
    *
-   * /foo.default.svc.cluster.local/foo/::/http
+   * /foo.default.svc.cluster.local/::/http
    */
   def lookup(path: Path): Activity[NameTree[Name]] = {
     val id = path.take(PrefixLen) match {

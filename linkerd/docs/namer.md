@@ -449,14 +449,13 @@ namers:
   experimental: true
   host: istio-manager.default.svc.cluster.local
   port: 8080
-  pollIntervalMs: 5000
 ```
 
 > Then reference the namer in the dtab to use it:
 
 ```
 dtab: |
-  /svc/reviews => /#/io.l5d.k8s.istio/prod/http/reviews/version:v1;
+  /svc/reviews => /#/io.l5d.k8s.istio/version:v1/http/reviews;
 ```
 
 The [Istio](https://istio.io/) namer uses the Istio-Manager's Service Discovery Service to lookup
@@ -468,22 +467,20 @@ prefix | `io.l5d.k8s.istio` | Resolves names with `/#/<prefix>`.
 experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
 port | `8080` | The port of the Istio-Manager.
-pollIntervalMs | 5 seconds | How frequently to poll the SDS, in milliseconds.
 
 ### Istio Path Parameters
 
 > Dtab Path Format
 
 ```yaml
-/#/<prefix>/<namespace>/<port-name>/<svc-name>/<labels>
+/#/<prefix>/<cluster>/<labels>/<port-name>
 ```
 
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the Istio namer.
-namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
-svc-name | yes | The name of the service.
+cluster | yes | The fully qualified name of the service.
 labels | yes | A `::` delimited list of `label:value` pairs.  Only endpoints that match all of these label selectors will be returned.
 
 <a name="marathon"></a>
