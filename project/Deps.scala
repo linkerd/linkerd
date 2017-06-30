@@ -52,6 +52,12 @@ object Deps {
   // testing. duh.
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
 
+  // scalacheck for Property-based testing
+  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
+
+  // junit
+  val junit = "junit" % "junit" % "4.10"
+
   // guava
   val guava = "com.google.guava" % "guava" % "19.0"
 
