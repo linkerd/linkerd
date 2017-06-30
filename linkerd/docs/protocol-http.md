@@ -416,7 +416,7 @@ alternate HTTP implementation to be used.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `netty3` | Either `netty3` or `netty4` (`netty4` will become default in an upcoming release).
+kind | `netty4` | Either `netty3` or `netty4`
 
 <a name="http-headers"></a>
 ## HTTP Headers
