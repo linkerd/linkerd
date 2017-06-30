@@ -6,6 +6,7 @@ import com.twitter.util.Future
 import io.buoyant.k8s.istio._
 import io.buoyant.namer.Paths
 import com.twitter.conversions.time._
+import io.buoyant.k8s.SingleNsNamer
 import io.buoyant.test.{Awaits, FunSuite}
 
 class IstioInterpreterTest extends FunSuite with Awaits {
@@ -45,7 +46,8 @@ class IstioInterpreterTest extends FunSuite with Awaits {
 
   test("successfully parses route-rules with no route field") {
     val istioNamer = new IstioNamer(discoveryClient, Paths.ConfiguredNamerPrefix ++ Path.read("/io.l5d.k8s.istio"))
-    val interpreter = IstioInterpreter(routeCache, istioNamer)
+    val k8sNamer = new SingleNsNamer(Path.read("/io.l5d.k8s.istio"), None, "default", null)
+    val interpreter = IstioInterpreter(routeCache, istioNamer, k8sNamer)
     await(interpreter.bind(Dtab.empty, Path.read("/svc/route/httpbin-3s-rule")).values.toFuture.flatMap(Future.const))
   }
 

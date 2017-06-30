@@ -2,14 +2,17 @@ package io.buoyant.interpreter.k8s
 
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
+import io.buoyant.k8s.SingleNsNamer
 import io.buoyant.k8s.istio.RouteCache
 import io.buoyant.namer.ConfiguredDtabNamer
 import istio.proxy.v1.config.RouteRule
 
 object IstioInterpreter {
   private val istioPfx = "/#/io.l5d.k8s.istio"
+  private val k8sPfx = "/#/io.l5d.k8s.ns"
   private val defaultRouteDtab = Dtab.read(s"""
     |/svc/ext => /$$/inet ;
+    |/svc/dest => $k8sPfx/incoming/istio-egress ;
     |/svc/dest => $istioPfx ;
   """.stripMargin)
 
@@ -48,7 +51,7 @@ object IstioInterpreter {
       Some(Dentry(prefix, dst))
     }
 
-  def apply(routeManager: RouteCache, istioNamer: Namer): NameInterpreter = {
+  def apply(routeManager: RouteCache, istioNamer: Namer, k8sNamer: SingleNsNamer): NameInterpreter = {
 
     val routes = routeManager.routeRules
 
@@ -63,7 +66,8 @@ object IstioInterpreter {
     val dtab = routesDtab.map(defaultRouteDtab ++ _)
 
     ConfiguredDtabNamer(dtab, Seq(
-      Path.read(istioPfx) -> istioNamer
+      Path.read(istioPfx) -> istioNamer,
+      Path.read(k8sPfx) -> k8sNamer
     ))
   }
 }
