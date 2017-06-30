@@ -7,7 +7,6 @@ import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFa
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.StreamIO
 import java.io._
-
 import scala.util.control.NoStackTrace
 
 case class TlsClientConfig(
@@ -30,16 +29,18 @@ case class TlsClientConfig(
       // `TrustCredentials.CertCollection` if we were given a list of certs,
       // but `TrustCredentials.Unspecified` (rather than an empty cert
       // collection file) if we were not.
-      val credentials = certs map { certs: Seq[String] =>
+      val credentials = certs.map { certs =>
         // a temporary file to hold the collection of certificates
         val certCollection = File.createTempFile("certCollection", null)
         // open the cert paths as Streams...
-        val f = certs.map { new FileInputStream(_) }
-          .foldLeft(new FileOutputStream(certCollection)) {
-            // ...and copy the certs into the cert collection
-            // TODO: can this be made more concise with scala.io?
-            (f, cert) => StreamIO.copy(cert, f); f
-          }
+        val f = new FileOutputStream(certCollection)
+        for {
+          cert <- certs
+          certStream = new FileInputStream(cert)
+        } { // ...and copy the certs into the cert collection
+          // TODO: can this be made more concise with scala.io?
+          StreamIO.copy(certStream, f)
+        }
         f.flush()
         f.close()
         certCollection.deleteOnExit()
