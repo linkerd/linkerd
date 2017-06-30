@@ -11,8 +11,9 @@ object IstioInterpreter {
   private val istioPfx = "/#/io.l5d.k8s.istio"
   private val k8sPfx = "/#/io.l5d.k8s.ns"
   private val defaultRouteDtab = Dtab.read(s"""
-    |/svc/ext => /$$/inet ;
-    |/svc/dest => $k8sPfx/incoming/istio-egress ;
+    |/egress => $k8sPfx/incoming/istio-egress ;
+    |/svc/ext => /egress ;
+    |/svc/dest => /egress ;
     |/svc/dest => $istioPfx ;
   """.stripMargin)
 
