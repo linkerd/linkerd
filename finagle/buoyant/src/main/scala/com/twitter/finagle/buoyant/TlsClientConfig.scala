@@ -6,7 +6,7 @@ import com.twitter.finagle.ssl.{KeyCredentials, TrustCredentials}
 import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFactory}
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.StreamIO
-import java.io.{File, FileInputStream, FileOutputStream}
+import java.io._
 import scala.util.control.NoStackTrace
 
 case class TlsClientConfig(
@@ -25,17 +25,36 @@ case class TlsClientConfig(
         SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
     case TlsClientConfig(_, Some(cn), certs, clientAuth) =>
-      val trustStreams = certs.getOrElse(Nil).map(new FileInputStream(_))
-      val certCollection = File.createTempFile("certCollection", null)
-      val f = new FileOutputStream(certCollection)
-      for (cert <- trustStreams) StreamIO.copy(cert, f)
-      f.flush()
-      f.close()
-      certCollection.deleteOnExit()
+      // map over the optional certs parameter - we want to pass
+      // `TrustCredentials.CertCollection` if we were given a list of certs,
+      // but `TrustCredentials.Unspecified` (rather than an empty cert
+      // collection file) if we were not.
+      val credentials = certs.map { certs =>
+        // a temporary file to hold the collection of certificates
+        val certCollection = File.createTempFile("certCollection", null)
+        // open the cert paths as Streams...
+        val f = new FileOutputStream(certCollection)
+        for {
+          cert <- certs
+          certStream = new FileInputStream(cert)
+        } { // ...and copy the certs into the cert collection
+          // TODO: can this be made more concise with scala.io?
+          StreamIO.copy(certStream, f)
+        }
+        f.flush()
+        f.close()
+        certCollection.deleteOnExit()
+        // the credentials we'll pass to `SslClientConfiguration` will
+        // be a collection of certificates
+        TrustCredentials.CertCollection(certCollection)
+      } getOrElse {
+        // otherwise, we want to pass `TrustCredentials.Unspecified`
+        TrustCredentials.Unspecified
+      }
 
       val tlsConfig = SslClientConfiguration(
         hostname = Some(cn),
-        trustCredentials = TrustCredentials.CertCollection(certCollection),
+        trustCredentials = credentials,
         keyCredentials = keyCredentials(clientAuth)
       )
       Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
