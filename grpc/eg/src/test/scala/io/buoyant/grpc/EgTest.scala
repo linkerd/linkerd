@@ -179,6 +179,8 @@ class EgEndToEndTest extends FunSuite {
       rspP.setValue(Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
       assert(await(rspF) == Eg.Rsp(Some(Eg.Message.Enumeration.THREEFOUR)))
 
+      await(tx.close())
+
     } finally {
       await(h2client.close().before(h2srv.close()))
     }

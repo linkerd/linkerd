@@ -50,6 +50,8 @@ object Headers {
   def apply(hd: (String, String), tl: (String, String)*): Headers =
     apply(hd +: tl)
 
+  val empty: Headers = apply(Nil)
+
   /**
    * Typically, headers wrap underlying netty types; but since we
    * don't want to bind user code to any netty APIs, we provide
