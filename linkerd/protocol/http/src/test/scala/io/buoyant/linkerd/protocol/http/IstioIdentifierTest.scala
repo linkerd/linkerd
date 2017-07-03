@@ -61,6 +61,26 @@ class IstioIdentifierTest extends FunSuite with Awaits {
     },
     "route": []
    }
+  },
+  {
+   "type": "route-rule",
+   "name": "bird-watcher-rewrite",
+   "spec": {
+    "destination": "bird-watcher.default.svc.cluster.local",
+    "precedence": 10,
+    "match": {
+      "httpHeaders": {
+        "uri": {
+          "prefix": "/my/bird/prefix"
+        }
+      }
+    },
+    "rewrite": {
+      "uri": "/blackbirds/for/days",
+      "authority": "on.whose.authority"
+    },
+    "route": []
+   }
   }
  ]"""
 
@@ -200,7 +220,6 @@ class IstioIdentifierTest extends FunSuite with Awaits {
   }
 
   test("uses route-rule if request passes all match conditions") {
-    println("start test")
     val reqWithMatchingHeader = FRequest()
     reqWithMatchingHeader.host = "bird-watcher.default.svc.cluster"
     reqWithMatchingHeader.headerMap.add("cookie", "user=bluejay")
@@ -220,5 +239,21 @@ class IstioIdentifierTest extends FunSuite with Awaits {
         assert(name == Path.read("/svc/route/bird-watcher-default/binoculars"))
       case id => fail(s"unexpected response ${id}")
     }
+  }
+
+  test("rewrites uri and/or host header if route-rule specifies rewrites") {
+    val reqWithMatchingPath = FRequest()
+    reqWithMatchingPath.host = "bird-watcher.default.svc.cluster"
+    reqWithMatchingPath.uri = "bird-watcher.default.svc.cluster/my/bird/prefix/and/residual"
+    reqWithMatchingPath.headerMap.add("uri", "/my/bird/prefix/and/residual")
+
+    await(identifier(reqWithMatchingPath)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(req1.host == Some("on.whose.authority"))
+        assert(req1.uri == "bird-watcher.default.svc.cluster/blackbirds/for/days/and/residual")
+        assert(name == Path.read("/svc/route/bird-watcher-rewrite/binoculars"))
+      case id => fail(s"unexpected response ${id}")
+    }
+
   }
 }

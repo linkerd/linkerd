@@ -21,7 +21,11 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
           case (Some(Cluster(dest, port)), rules) =>
             val filteredRules = filterRules(rules, dest, req.headerMap.get)
             maxPrecedenceRuleName(filteredRules) match {
-              case Some(ruleName) => pfx ++ Path.Utf8("route", ruleName, port)
+              case Some((ruleName, rule)) =>
+                val (uri, authority) = httpRewrite(rule, req.uri, req.host)
+                req.uri = uri
+                req.host = authority.getOrElse("")
+                pfx ++ Path.Utf8("route", ruleName, port)
               //forward requests which have no matching rules to an empty label selector
               case None => pfx ++ Path.Utf8("dest", dest, "::", port)
             }

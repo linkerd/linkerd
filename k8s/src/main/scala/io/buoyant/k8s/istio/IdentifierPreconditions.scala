@@ -1,7 +1,7 @@
 package io.buoyant.k8s.istio
 
 import com.twitter.finagle.Path
-import istio.proxy.v1.config.{MatchCondition, RouteRule, StringMatch}
+import istio.proxy.v1.config.{HTTPRewrite, MatchCondition, RouteRule, StringMatch}
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 
 trait IdentifierPreconditions {
@@ -36,6 +36,22 @@ trait IdentifierPreconditions {
     matchesHeaders
   }
 
+  def httpRewrite(rule: RouteRule, uri: String, authority: Option[String]): (String, Option[String]) = {
+    rule.`rewrite` match {
+      case Some(HTTPRewrite(url, updatedAuth)) =>
+        val updatedUri = url.map { replacement =>
+          rule.`match`.flatMap(_.`httpHeaders`.get("uri").flatMap(_.`matchType`)) match {
+            case Some(OneofMatchType.Prefix(pfx)) =>
+              uri.replace(pfx, replacement)
+            case _ =>
+              uri.split("/").head + replacement
+          }
+        }
+        (updatedUri.getOrElse(uri), updatedAuth.orElse(authority))
+      case _ => (uri, authority)
+    }
+  }
+
   def filterRules(rules: Map[String, RouteRule], dest: String, getHeader: (String) => Option[String]): Seq[(String, RouteRule)] = rules.filter {
     case (_, r) if r.`destination`.contains(dest) =>
       // return true if no match conditions were defined on the route-rule
@@ -43,12 +59,12 @@ trait IdentifierPreconditions {
     case _ => false
   }.toSeq
 
-  def maxPrecedenceRuleName(rules: Seq[(String, RouteRule)]): Option[String] = {
+  def maxPrecedenceRuleName(rules: Seq[(String, RouteRule)]): Option[(String, RouteRule)] = {
     if (rules.isEmpty) {
       None
     } else {
       val rule = rules.maxBy[Int] { case (m: String, d: RouteRule) => d.`precedence`.getOrElse(0) }
-      Some(rule._1)
+      Some(rule)
     }
   }
 }
