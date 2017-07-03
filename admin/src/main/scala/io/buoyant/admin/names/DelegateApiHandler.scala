@@ -30,8 +30,12 @@ object DelegateApiHandler {
   case class Address(ip: String, port: Int, meta: Map[String, Any])
   object Address {
     def mk(addr: FAddress): Option[Address] = addr match {
-      case FAddress.Inet(isa, meta) => Some(Address(isa.getAddress.getHostAddress, isa.getPort, meta))
-      case _ => None
+      case FAddress.Inet(isa, meta) =>
+        Option(isa.getAddress).map { address =>
+          Address(address.getHostAddress, isa.getPort, meta)
+        }
+      case _ =>
+        None
     }
 
     def toFinagle(addr: Address): FAddress =
