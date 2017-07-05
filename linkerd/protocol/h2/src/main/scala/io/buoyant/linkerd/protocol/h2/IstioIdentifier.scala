@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.Request
+import com.twitter.finagle.buoyant.h2.{Headers, Request}
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
@@ -18,10 +18,16 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     Future.join(clusterCache.get(req.authority), routeCache.getRules).map {
       case (Some(Cluster(dest, port)), rules) =>
-        val filteredRules = filterRules(rules, dest, req.headers.get)
-        maxPrecedenceRuleName(filteredRules).map(pfx ++ Path.Utf8("route", _, port)).getOrElse {
+        val meta = IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
+        val filteredRules = filterRules(rules, dest, meta)
+        maxPrecedenceRuleName(filteredRules) match {
+          case Some((ruleName, rule)) =>
+            val (uri, authority) = httpRewrite(rule, req.path, Some(req.authority))
+            req.headers.set(Headers.Path, uri)
+            req.headers.set(Headers.Authority, authority.getOrElse(""))
+            pfx ++ Path.Utf8("route", ruleName, port)
           //forward requests which have no matching rules to an empty label selector
-          pfx ++ Path.Utf8("dest", dest, "::", port)
+          case None => pfx ++ Path.Utf8("dest", dest, "::", port)
         }
       case b =>
         // forward requests which have no matching vhosts to external
