@@ -6,4 +6,7 @@ package object istio {
 
   val DefaultApiserverHost = "istio-pilot"
   val DefaultApiserverPort = 8081
+
+  val DefaultMixerHost = "istio-mixer"
+  val DefaultMixerPort = 9091
 }

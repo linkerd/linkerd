@@ -1,18 +1,9 @@
 # A fairly minimal linkerd configuration with istio exporting.
 #
-# To test the Istio telemeter, install Istio per instructions in (../../istio/src/main/protobuf/README.md)
-#
-# Once installed, forward localhost:9091 to the mixer:
-# kubectl port-forward $(kubectl get pod -l istio=mixer -o jsonpath='{.items[0].metadata.name}') 9091:9091
+# To test with Istio, install per instructions in (../../istio/src/main/README.md)
 
 admin:
   port: 9990
-
-telemetry:
-- kind: io.l5d.istio
-  experimental: true
-  mixerHost: 127.0.0.1
-  mixerPort: 9091
 
 routers:
 - protocol: http
@@ -25,5 +16,8 @@ routers:
     experimental: true
     discoveryHost: localhost
     apiserverHost: localhost
+  loggers:
+  - kind: io.l5d.istio
+    mixerHost: localhost
   servers:
   - port: 4140

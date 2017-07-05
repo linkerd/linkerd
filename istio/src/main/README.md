@@ -9,23 +9,10 @@
         directly. The java packages have been changed to `com.google.local` to
         avoid protobuf-java conflicts.
     * [rpc](./protobuf/google/rpc): from [the googleapis repo](https://github.com/googleapis/googleapis/tree/master/google/rpc)
-  * [mixer/v1](./protobuf/mixer/v1): from [the istio mixer api repo](https://github.com/istio/api/tree/master/mixer)
-  * [proxy/v1/config](./protobuf/v1/config): from [the istio proxy api repo](https://github.com/istio/api/tree/master/proxy)
-* [resources/mixer/v1/global_dictionary.yaml](./resources/mixer/v1/global_dictionary.yaml): from [the istio mixer api repo](https://github.com/istio/api/blob/master/mixer/v1/global_dictionary.yaml)
+  * [mixer/v1](./protobuf/mixer/v1): from [a sha of the istio mixer api repo](https://github.com/istio/api/tree/7d82318c70c7ba8611eed585ac1a8da44a005adb/mixer/v1), specified by a [mixer 0.1.6 release dependency](https://github.com/istio/mixer/blob/0.1.6/WORKSPACE#L181)
+  * [proxy/v1/config](./protobuf/proxy/v1/config): from [a sha of the istio proxy api repo](https://github.com/istio/api/tree/6e481630954efcad10c0ab43244e8991a5a36bfc/proxy/v1/config), specified by a [pilot 0.1.6 release dependency](https://github.com/istio/pilot/blob/0.1.6/WORKSPACE#L408)
+* [resources/mixer/v1/global_dictionary.yaml](./resources/mixer/v1/global_dictionary.yaml): from [the istio mixer api repo](https://github.com/istio/api/blob/master/mixer/v1/global_dictionary.yaml), for use with future versions of Mixer
 
 # Istio installation
 
-The protobuf files above require Istio and istioctl built from master.
-
-Follow instructions at https://istio.io/docs/tasks/installing-istio.html, but
-use https://github.com/istio/istio/ rather than a versioned release.
-
-To install istioctl from master:
-
-```bash
-$ git clone https://github.com/istio/istio.git ; cd istio
-$ source istio.VERSION
-$ export MANAGER_HUB=$PILOT_HUB  # Important/needed at the moment
-$ export MANAGER_TAG=$PILOT_TAG  # ditto
-$ curl -L $ISTIOCTL_URL/istioctl-osx > ./istioctl  # change the -osx to your env if needed
-```
+Follow instructions at https://istio.io/docs/tasks/installing-istio.html to install Istio 0.1.6.

@@ -171,10 +171,6 @@ object LinkerdBuild extends Base {
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
       .withTests()
 
-    val istio = projectDir("telemetry/istio")
-      .dependsOn(LinkerdBuild.istio, core)
-      .withTests()
-
     val prometheus = projectDir("telemetry/prometheus")
       .dependsOn(LinkerdBuild.admin, core)
       .withTwitterLibs(Deps.finagle("core"), Deps.finagle("stats"))
@@ -197,7 +193,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core, Router.core)
       .withTests()
 
-    val all = aggregateDir("telemetry", adminMetricsExport, core, influxdb, istio, prometheus, recentRequests, statsd, tracelog, zipkin)
+    val all = aggregateDir("telemetry", adminMetricsExport, core, influxdb, prometheus, recentRequests, statsd, tracelog, zipkin)
   }
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
@@ -334,7 +330,7 @@ object LinkerdBuild extends Base {
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
-      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.istio, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
     val LowMemSettings = BundleSettings ++ Seq(
@@ -579,7 +575,7 @@ object LinkerdBuild extends Base {
       Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
-      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.istio, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
       failureAccrual
     )
@@ -656,7 +652,6 @@ object LinkerdBuild extends Base {
   val telemetryAdminMetricsExport = Telemetry.adminMetricsExport
   val telemetryCore = Telemetry.core
   val telemetryInfluxDb = Telemetry.influxdb
-  val telemetryIstio = Telemetry.istio
   val telemetryPrometheus = Telemetry.prometheus
   val telemetryRecentRequests = Telemetry.recentRequests
   val telemetryStatsD = Telemetry.statsd
