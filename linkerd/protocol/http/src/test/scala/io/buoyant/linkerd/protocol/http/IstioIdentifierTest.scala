@@ -245,7 +245,6 @@ class IstioIdentifierTest extends FunSuite with Awaits {
     val reqWithMatchingPath = FRequest()
     reqWithMatchingPath.host = "bird-watcher.default.svc.cluster"
     reqWithMatchingPath.uri = "bird-watcher.default.svc.cluster/my/bird/prefix/and/residual"
-    reqWithMatchingPath.headerMap.add("uri", "/my/bird/prefix/and/residual")
 
     await(identifier(reqWithMatchingPath)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>

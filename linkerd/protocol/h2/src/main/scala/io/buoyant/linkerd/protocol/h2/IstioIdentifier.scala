@@ -18,7 +18,8 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     Future.join(clusterCache.get(req.authority), routeCache.getRules).map {
       case (Some(Cluster(dest, port)), rules) =>
-        val filteredRules = filterRules(rules, dest, req.headers.get)
+        val meta = IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
+        val filteredRules = filterRules(rules, dest, meta)
         maxPrecedenceRuleName(filteredRules) match {
           case Some((ruleName, rule)) =>
             val (uri, authority) = httpRewrite(rule, req.path, Some(req.authority))
