@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.io.Charsets
 import com.twitter.util.Future
+import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
 import io.buoyant.router.RoutingFactory
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
@@ -29,6 +30,18 @@ class ErrorResponderTest extends FunSuite with Awaits {
   )
   val writeErrorService = await(writeErrorStk.make(Stack.Params.empty)())
 
+  val redirectSvc = Service.mk[Request, Response] { _ =>
+    val redirect = Response(Status.Found)
+    redirect.location = "http://linkerd.io"
+    Future.exception(HttpResponseException(redirect))
+  }
+
+  val redirectStk = ErrorResponder.module.toStack(
+    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(redirectSvc))
+  )
+
+  val redirectService = await(redirectStk.make(Stack.Params.empty)())
+
   test("returns BadRequest for UnknownDst exception") {
     val rsp = await(service(Request()))
     assert(rsp.status == Status.BadRequest)
@@ -45,5 +58,11 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(writeErrorService(Request()))
     assert(rsp.status == Status.BadGateway)
     assert(rsp.headerMap(Headers.Retryable.Key) == "true")
+  }
+
+  test("respects HttpResponseException") {
+    val rsp = await(redirectService(Request()))
+    assert(rsp.status == Status.Found)
+    assert(rsp.location == Some("http://linkerd.io"))
   }
 }

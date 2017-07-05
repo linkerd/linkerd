@@ -23,11 +23,11 @@ class ConfigTest extends FunSuite
   }
 
   val kinds = Seq(
-      "kind: io.l5d.consecutiveFailures",
-      "kind: io.l5d.successRate",
-      "kind: io.l5d.successRateWindowed",
-      "kind: none"
-    )
+    "kind: io.l5d.consecutiveFailures",
+    "kind: io.l5d.successRate",
+    "kind: io.l5d.successRateWindowed",
+    "kind: none"
+  )
 
   val backoffs =
     Table(

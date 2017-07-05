@@ -1,13 +1,12 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.buoyant.linkerd._
-import com.twitter.finagle.http.{MediaType, Request, Response, Status}
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
+import com.twitter.finagle._
 import com.twitter.logging.Logger
 import io.buoyant.router.RoutingFactory
-import java.net.URLEncoder
-import scala.util.control.NonFatal
+import scala.util.control.{NoStackTrace, NonFatal}
 
 class ErrorResponder extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
@@ -17,23 +16,24 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
 
   private[this] val handler: PartialFunction[Throwable, Response] = {
     case NonFatal(e) =>
-      val status = e match {
-        case e@RoutingFactory.UnknownDst(_, _) =>
+      e match {
+        case RoutingFactory.UnknownDst(_, _) =>
           log.debug(e, "unknown dst")
-          Status.BadRequest
+          Headers.Err.respond(e.getMessage, Status.BadRequest)
+        case ErrorResponder.HttpResponseException(rsp) =>
+          rsp
         case _ =>
           log.error(e, "service failure")
-          Status.BadGateway
+          val message = e.getMessage match {
+            case null => e.getClass.getName
+            case msg => msg
+          }
+          val rsp = Headers.Err.respond(message, Status.BadGateway)
+          if (RetryableWriteException.unapply(e).isDefined) {
+            Headers.Retryable.set(rsp.headerMap, retryable = true)
+          }
+          rsp
       }
-      val message = e.getMessage match {
-        case null => e.getClass.getName
-        case msg => msg
-      }
-      val rsp = Headers.Err.respond(message, status)
-      if (RetryableWriteException.unapply(e).isDefined) {
-        Headers.Retryable.set(rsp.headerMap, retryable = true)
-      }
-      rsp
   }
 }
 
@@ -47,4 +47,6 @@ object ErrorResponder {
       def make(factory: ServiceFactory[Request, Response]) =
         filter.andThen(factory)
     }
+
+  case class HttpResponseException(rsp: Response) extends NoStackTrace
 }
