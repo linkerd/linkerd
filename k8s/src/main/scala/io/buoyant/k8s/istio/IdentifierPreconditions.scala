@@ -65,7 +65,8 @@ trait IdentifierPreconditions {
       case Some(HTTPRewrite(url, updatedAuth)) =>
         val updatedUri = url.map { replacement =>
           rule.`match`.flatMap(_.`httpHeaders`.get("uri").flatMap(_.`matchType`)) match {
-            case Some(OneofMatchType.Prefix(pfx)) if uri.startsWith(pfx) => uri.replace(pfx, replacement)
+            case Some(OneofMatchType.Prefix(pfx)) if uri.startsWith(pfx) => uri.replaceFirst(pfx, replacement)
+            case Some(OneofMatchType.Prefix(pfx)) => uri
             case _ => replacement
           }
         }
