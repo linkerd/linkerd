@@ -19,10 +19,10 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
       case Some(host) =>
         Future.join(clusterCache.get(host), routeCache.getRules).map {
           case (Some(Cluster(dest, port)), rules) =>
-            //TODO: request scheme?
-            val meta = IstioRequestMeta(pathFromUri(req.path), "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+            //TODO: match on request scheme
+            val meta = IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
             val filteredRules = filterRules(rules, dest, meta)
-            maxPrecedenceRuleName(filteredRules) match {
+            maxPrecedenceRule(filteredRules) match {
               case Some((ruleName, rule)) =>
                 val (uri, authority) = httpRewrite(rule, req.uri, req.host)
                 req.uri = uri

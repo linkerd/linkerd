@@ -20,7 +20,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCach
       case (Some(Cluster(dest, port)), rules) =>
         val meta = IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
         val filteredRules = filterRules(rules, dest, meta)
-        maxPrecedenceRuleName(filteredRules) match {
+        maxPrecedenceRule(filteredRules) match {
           case Some((ruleName, rule)) =>
             val (uri, authority) = httpRewrite(rule, req.path, Some(req.authority))
             req.headers.set(Headers.Path, uri)

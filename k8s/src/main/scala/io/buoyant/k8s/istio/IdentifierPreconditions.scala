@@ -5,6 +5,11 @@ import istio.proxy.v1.config.{HTTPRewrite, MatchCondition, RouteRule, StringMatc
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 
 trait IdentifierPreconditions {
+
+  /**
+   * Defines a request's metadata for istio rules to match against
+   * (normalizes fields between http and h2)
+   */
   case class IstioRequestMeta(
     uri: String,
     scheme: String,
@@ -12,8 +17,6 @@ trait IdentifierPreconditions {
     authority: String,
     getHeader: (String) => Option[String]
   )
-
-  def pathFromUri(uri: String): String = "/" + uri.split("/").drop(1).mkString("/")
 
   def headerMatches(headerValue: String, stringMatch: StringMatch): Boolean = {
     stringMatch.`matchType` match {
@@ -49,15 +52,21 @@ trait IdentifierPreconditions {
     matchesHeaders
   }
 
+  /**
+   * Rewrites uri and authority based on a route-rule. It doesn't modify
+   * the request directly because it's used by both http and h2.
+   * @param rule
+   * @param uri
+   * @param authority
+   * @return Tuple of uri and authority to used to rewrite headers on the request
+   */
   def httpRewrite(rule: RouteRule, uri: String, authority: Option[String]): (String, Option[String]) = {
     rule.`rewrite` match {
       case Some(HTTPRewrite(url, updatedAuth)) =>
         val updatedUri = url.map { replacement =>
           rule.`match`.flatMap(_.`httpHeaders`.get("uri").flatMap(_.`matchType`)) match {
-            case Some(OneofMatchType.Prefix(pfx)) =>
-              uri.replace(pfx, replacement)
-            case _ =>
-              uri.split("/").head + replacement
+            case Some(OneofMatchType.Prefix(pfx)) if uri.startsWith(pfx) => uri.replace(pfx, replacement)
+            case _ => replacement
           }
         }
         (updatedUri.getOrElse(uri), updatedAuth.orElse(authority))
@@ -72,7 +81,7 @@ trait IdentifierPreconditions {
     case _ => false
   }.toSeq
 
-  def maxPrecedenceRuleName(rules: Seq[(String, RouteRule)]): Option[(String, RouteRule)] = {
+  def maxPrecedenceRule(rules: Seq[(String, RouteRule)]): Option[(String, RouteRule)] = {
     if (rules.isEmpty) {
       None
     } else {

@@ -244,12 +244,12 @@ class IstioIdentifierTest extends FunSuite with Awaits {
   test("rewrites uri and/or host header if route-rule specifies rewrites") {
     val reqWithMatchingPath = FRequest()
     reqWithMatchingPath.host = "bird-watcher.default.svc.cluster"
-    reqWithMatchingPath.uri = "bird-watcher.default.svc.cluster/my/bird/prefix/and/residual"
+    reqWithMatchingPath.uri = "/my/bird/prefix/and/residual"
 
     await(identifier(reqWithMatchingPath)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(req1.host == Some("on.whose.authority"))
-        assert(req1.uri == "bird-watcher.default.svc.cluster/blackbirds/for/days/and/residual")
+        assert(req1.uri == "/blackbirds/for/days/and/residual")
         assert(name == Path.read("/svc/route/bird-watcher-rewrite/binoculars"))
       case id => fail(s"unexpected response ${id}")
     }
