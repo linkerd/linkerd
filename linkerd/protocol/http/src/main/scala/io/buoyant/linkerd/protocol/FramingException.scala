@@ -1,3 +1,3 @@
 package io.buoyant.linkerd.protocol
 
-case class FramingException(why: String) extends Exception
+case class FramingException(reason: String) extends Exception(reason)
