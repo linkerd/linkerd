@@ -1,3 +1,20 @@
+## 1.1.1 2017-07-10
+
+* Add Istio integration! See [the docs](https://linkerd.io/features/istio) for
+  more information.
+* H2 now multiplexes streams over a single connection
+* Fix issue where configured failure accrual backoff was being ignored
+* Fix TLS issue when no trust certs were specified
+* Kubernetes
+  * Fix exception when a service's targetPort is a name
+* Admin service
+  * Admin service now properly handles HEAD requests
+  * Server connections are now displayed in the dashboard
+* Add new request logger plugin interface for writing plugins that take some
+  action (such as logging) on each request.
+* Netty4 is now the default engine for HTTP
+* Upgrade to Finagle 6.45
+
 ## 1.1.0 2017-06-12
 
 * TLS
