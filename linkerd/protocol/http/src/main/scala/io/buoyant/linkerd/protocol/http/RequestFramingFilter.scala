@@ -10,7 +10,7 @@ import com.twitter.util.Future
  * A filter that fails badly-framed requests.
  */
 class RequestFramingFilter extends SimpleFilter[Request, Response] {
-  private[this] lazy val log = Logger.get("RequestFramingFilter")
+  private[this] val log = Logger.get("RequestFramingFilter")
 
   override def apply(
     request: Request,
