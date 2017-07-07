@@ -360,6 +360,61 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
+
+<a href="istio-identifier"></a>
+### Istio Identifier
+
+kind: `io.l5d.k8s.istio`
+
+This identifier compares HTTP requests to
+[istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
+on those rules.
+
+ #### Identifier Configuration:
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.k8s.istio
+```
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+discoveryHost | `istio-pilot` | The host of the Istio-Pilot.
+discoveryPort | 8080 | The port of the Istio-Pilot's discovery service.
+apiserverHost | `istio-pilot` | The host of the Istio-Pilot.
+apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format if the request does not point to a valid k8s cluster
+
+```
+  / dstPrefix / "ext" / host / port
+```
+
+> Dtab Path Format if the request has a valid cluster but DOES NOT match a route-rule
+
+```
+  / dstPrefix / "dest" / cluster / "::" / port
+```
+
+> Dtab Path Format if the request matches a route-rule
+
+```
+  / dstPrefix / "route" / routeRule
+```
+
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+routeRule | N/A | The name of the route-rule that matches the incoming request.
+host | N/A | The host to send the request to.
+cluster | N/A | The cluster to send the request to.
+port | N/A | The port to send the request to.
+
 <a name="static-identifier"></a>
 ### Static Identifier
 
@@ -403,7 +458,31 @@ list of loggers is provided, they each log in the order they are defined.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | No loggers currently supported.
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
+
+<a name="istio-logger"></a>
+### Istio Logger
+
+kind: `io.l5d.k8s.istio`.
+
+With this logger, all HTTP requests are sent to an Istio Mixer for telemetry
+recording and aggregation.
+
+#### Logger Configuration:
+
+> Configuration example
+
+```yaml
+loggers:
+- kind: io.l5d.k8s.istio
+  mixerHost: istio-mixer
+  mixerPort: 9091
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
+mixerPort | `9091` | Port of the Mixer server.
 
 <a name="http-engines"></a>
 ## HTTP Engines

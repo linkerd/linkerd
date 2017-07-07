@@ -1,3 +1,4 @@
 io.buoyant.namer.k8s.K8sExternalInitializer
 io.buoyant.namer.k8s.K8sInitializer
 io.buoyant.namer.k8s.K8sNamespacedInitializer
+io.buoyant.namer.k8s.IstioInitializer

@@ -16,13 +16,14 @@ class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
   namespace: Option[String],
-  apiClient: Service[http.Request, http.Response]
+  apiClient: Service[http.Request, http.Response],
+  annotationClass: String
 ) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressCache = new IngressCache(namespace, apiClient)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val headerToMatch = req.headers.get(Headers.Authority)
@@ -49,7 +50,7 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), "linkerd")
   }
 }
 
