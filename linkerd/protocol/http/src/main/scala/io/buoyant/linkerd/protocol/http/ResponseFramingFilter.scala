@@ -13,14 +13,14 @@ class ResponseFramingFilter extends SimpleFilter[Request, Response] {
     request: Request,
     service: Service[Request, Response]
   ): Future[Response] =
-    service(request) flatMap { response =>
+    service(request).flatMap { response =>
       val numHeaders = response.headerMap.getAll("Content-Length").toSet.size
       if (numHeaders > 1) {
         // if the response has multiple Content-Length headers with unique
         // values, it's invalid
         Future.exception(FramingException(
-          s"$numHeaders conflicting `Content-Length` headers in downstream " +
-            "response"
+          s"""|Recieved $numHeaders conflicting `Content-Length` headers in
+              | response from remote server""".stripMargin
         ))
       } else {
         // otherwise, it's fine
