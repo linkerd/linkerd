@@ -24,7 +24,7 @@ class RequestFramingFilter extends SimpleFilter[Request, Response] {
         "Request contained duplicate `Content-Length` headers",
         Status.BadRequest
       )
-      Future(resp)
+      Future.value(resp)
     } else {
       // otherwise, the request is fine!
       service(request)
