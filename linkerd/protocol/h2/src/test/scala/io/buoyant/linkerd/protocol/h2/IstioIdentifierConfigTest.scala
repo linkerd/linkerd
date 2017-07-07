@@ -16,7 +16,7 @@ class IstioIdentifierConfigTest extends FunSuite with Awaits {
 
   test("parse config") {
     val yaml =
-      s"""|kind: io.l5d.istio
+      s"""|kind: io.l5d.k8s.istio
           |discoveryHost: myHost
           |discoveryPort: 9999
           |""".stripMargin

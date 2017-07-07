@@ -364,7 +364,7 @@ svc | N/A | The name of the service.
 <a href="istio-identifier"></a>
 ### Istio Identifier
 
-kind: `io.l5d.istio`
+kind: `io.l5d.k8s.istio`
 
 This identifier compares HTTP requests to
 [istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
@@ -376,7 +376,7 @@ on those rules.
 routers:
 - protocol: http
   identifier:
-    kind: io.l5d.istio
+    kind: io.l5d.k8s.istio
 ```
 
 Key  | Default Value | Description
@@ -458,12 +458,12 @@ list of loggers is provided, they each log in the order they are defined.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Only [`io.l5d.istio`](#istio-logger) is currently supported.
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
 
 <a name="istio-logger"></a>
 ### Istio Logger
 
-kind: `io.l5d.istio`.
+kind: `io.l5d.k8s.istio`.
 
 With this logger, all HTTP requests are sent to an Istio Mixer for telemetry
 recording and aggregation.
@@ -474,7 +474,7 @@ recording and aggregation.
 
 ```yaml
 loggers:
-- kind: io.l5d.istio
+- kind: io.l5d.k8s.istio
   mixerHost: istio-mixer
   mixerPort: 9091
 ```

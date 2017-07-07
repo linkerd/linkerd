@@ -63,7 +63,7 @@ class IstioLoggerConfigTest extends FunSuite with Awaits {
 
   test("parse config") {
     val yaml =
-      s"""|kind: io.l5d.istio
+      s"""|kind: io.l5d.k8s.istio
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(IstioLoggerInitializer)))
@@ -74,7 +74,7 @@ class IstioLoggerConfigTest extends FunSuite with Awaits {
 
   test("verify default") {
     val yaml =
-      s"""|kind: io.l5d.istio
+      s"""|kind: io.l5d.k8s.istio
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(IstioLoggerInitializer)))
@@ -86,7 +86,7 @@ class IstioLoggerConfigTest extends FunSuite with Awaits {
 
   test("overrides defaults") {
     val yaml =
-      s"""|kind: io.l5d.istio
+      s"""|kind: io.l5d.k8s.istio
           |mixerHost: mixerHost
           |mixerPort: 1234
       """.stripMargin

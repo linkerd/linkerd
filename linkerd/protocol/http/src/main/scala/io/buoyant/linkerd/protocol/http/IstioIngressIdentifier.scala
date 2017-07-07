@@ -96,7 +96,7 @@ case class IstioIngressIdentifierConfig(
 }
 
 object IstioIngressIdentifierConfig {
-  val kind = "io.l5d.istio-ingress"
+  val kind = "io.l5d.k8s.istio-ingress"
 }
 
 class IstioIngressIdentifierInitializer extends IdentifierInitializer {

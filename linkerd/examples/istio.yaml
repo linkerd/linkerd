@@ -8,7 +8,7 @@ admin:
 routers:
 - protocol: http
   identifier:
-    kind: io.l5d.istio
+    kind: io.l5d.k8s.istio
     apiserverHost: localhost
     discoveryHost: localhost
   interpreter:
@@ -17,7 +17,7 @@ routers:
     discoveryHost: localhost
     apiserverHost: localhost
   loggers:
-  - kind: io.l5d.istio
+  - kind: io.l5d.k8s.istio
     mixerHost: localhost
   servers:
   - port: 4140

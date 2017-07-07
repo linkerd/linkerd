@@ -270,7 +270,7 @@ svc | N/A | The name of the service.
 <a href="istio-identifier"></a>
 ### Istio Identifier
 
-kind: `io.l5d.istio`
+kind: `io.l5d.k8s.istio`
 
 This identifier compares H2 requests to
 [istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
@@ -283,7 +283,7 @@ routers:
 - protocol: h2
   experimental: true
   identifier:
-    kind: io.l5d.istio
+    kind: io.l5d.k8s.istio
 ```
 
 Key  | Default Value | Description

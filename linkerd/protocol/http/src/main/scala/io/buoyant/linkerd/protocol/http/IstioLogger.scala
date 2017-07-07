@@ -115,7 +115,7 @@ case class IstioLoggerConfig(
 
 class IstioLoggerInitializer extends LoggerInitializer {
   val configClass = classOf[IstioLoggerConfig]
-  override val configId = "io.l5d.istio"
+  override val configId = "io.l5d.k8s.istio"
 }
 
 object IstioLoggerInitializer extends IstioLoggerInitializer

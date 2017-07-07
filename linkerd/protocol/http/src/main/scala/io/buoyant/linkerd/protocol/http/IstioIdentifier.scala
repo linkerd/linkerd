@@ -69,7 +69,7 @@ case class IstioIdentifierConfig(
 }
 
 object IstioIdentifierConfig {
-  val kind = "io.l5d.istio"
+  val kind = "io.l5d.k8s.istio"
 }
 
 class IstioIdentifierInitializer extends IdentifierInitializer {
