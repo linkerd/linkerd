@@ -9,8 +9,13 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
+<<<<<<< HEAD
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.{Request, Response, param => hparam}
+=======
+import com.twitter.finagle.http.Request
+import com.twitter.finagle.liveness.FailureAccrualFactory
+>>>>>>> Move ResponseFramingFilter into client stack below FailureAccrual
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
@@ -19,6 +24,7 @@ import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.http.AddForwardedHeader
+
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -32,11 +38,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(Headers.Dst.PathFilter.module)
       .replace(StackClient.Role.prepFactory, DelayedRelease.module)
       .prepend(http.ErrorResponder.module)
-<<<<<<< HEAD
       .insertAfter(http.ErrorResponder.role, RequestFramingFilter.module)
-=======
-      .insertAfter(http.ErrorResponder.role, ResponseFramingFilter.module)
->>>>>>> Add ResponseFramingFilter
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
@@ -46,6 +48,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
+      .insertAfter(FailureAccrualFactory.role, ResponseFramingFilter.module)
 
     Http.router
       .withPathStack(pathStack)
