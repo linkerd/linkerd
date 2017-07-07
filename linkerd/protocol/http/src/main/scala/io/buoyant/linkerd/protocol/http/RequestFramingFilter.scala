@@ -16,7 +16,7 @@ class RequestFramingFilter extends SimpleFilter[Request, Response] {
     request: Request,
     service: Service[Request, Response]
   ): Future[Response] =
-    if (request.headerMap.getAll("Content-Length").length > 1) {
+    if (request.headerMap.getAll("Content-Length").toSet.size > 1) {
       // if the length of the Content-Length key in the request's header map
       // is greater than 1, then there are duplicate values.
       log.error("request with duplicate Content-Length headers", request)
