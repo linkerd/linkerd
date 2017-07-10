@@ -1,13 +1,22 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.http.{HeaderMap, Request, Response, Status}
 import com.twitter.logging.Logger
 import com.twitter.util.Future
 import io.buoyant.linkerd.ProtocolException
 
 object FramingFilter {
+  // this is factored out so that the same logic can
+  // be applied to requests from clients and responses from services.
+  def headerErrors(headers: HeaderMap): Option[FramingException] =
+    // if the length of the Content-Length key in the request/response's
+    // header map is greater than 1, then there are duplicate values.
+    if (headers.getAll("Content-Length").toSet.size > 1) {
+      Some(FramingException("conflicting `Content-Length` headers"))
+    }
+    else None
+
   /**
    * A filter that fails badly-framed requests.
    */
@@ -18,19 +27,8 @@ object FramingFilter {
       request: Request,
       service: Service[Request, Response]
     ): Future[Response] =
-      if (request.headerMap.getAll("Content-Length").toSet.size > 1) {
-        // if the length of the Content-Length key in the request's header map
-        // is greater than 1, then there are duplicate values.
-        log.error("request with duplicate Content-Length headers", request)
-        val resp = Headers.Err.respond(
-          "Request contained duplicate `Content-Length` headers",
-          Status.BadRequest
-        )
-        Future.value(resp)
-      } else {
-        // otherwise, the request is fine!
-        service(request)
-      }
+      headerErrors(request.headerMap).map(Future.exception(_))
+        .getOrElse(service(request))
 
   }
 
@@ -43,20 +41,14 @@ object FramingFilter {
    */
   class ClientFilter extends SimpleFilter[Request, Response] {
 
-    override def apply(request: Request, service: Service[Request, Response]): Future[Response] =
+    override def apply(
+      request: Request,
+      service: Service[Request, Response]
+    ): Future[Response] =
       service(request).flatMap { response =>
-        val numHeaders = response.headerMap.getAll("Content-Length").toSet.size
-        if (numHeaders > 1) {
-          // if the response has multiple Content-Length headers with unique
-          // values, it's invalid
-          Future.exception(FramingException(
-            s"""|Recieved $numHeaders conflicting `Content-Length` headers in
-                | response from remote server""".stripMargin
-          ))
-        } else {
-          // otherwise, it's fine
-          Future.value(response)
-        }
+        headerErrors(response.headerMap)
+          .map(Future.exception(_))
+          .getOrElse(Future.value(response))
       }
 
   }
@@ -64,7 +56,6 @@ object FramingFilter {
   object ClientFilter {
     val role = Stack.Role("ClientFramingFilter")
   }
-
 
   val serverModule: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
@@ -83,7 +74,6 @@ object FramingFilter {
       def make(factory: ServiceFactory[Request, Response]) =
         filter.andThen(factory)
     }
-
 
   case class FramingException(reason: String) extends ProtocolException(reason)
 }
