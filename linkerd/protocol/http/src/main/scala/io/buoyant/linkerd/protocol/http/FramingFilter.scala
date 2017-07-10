@@ -14,8 +14,7 @@ object FramingFilter {
     // header map is greater than 1, then there are duplicate values.
     if (headers.getAll("Content-Length").toSet.size > 1) {
       Some(FramingException("conflicting `Content-Length` headers"))
-    }
-    else None
+    } else None
 
   /**
    * A filter that fails badly-framed requests.

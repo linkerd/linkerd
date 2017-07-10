@@ -44,7 +44,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
-      .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
 
     Http.router
       .withPathStack(pathStack)
@@ -70,6 +69,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
+      .insertAfter(http.ErrorResponder.role, FramingFilter.clientModule)
       .prepend(http.StatusCodeStatsFilter.module)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
