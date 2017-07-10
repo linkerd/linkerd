@@ -10,6 +10,8 @@ import io.buoyant.router.RoutingFactory
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.ISO_8859_1
+
+import io.buoyant.linkerd.protocol.http.FramingFilter.FramingException
 import org.scalatest.FunSuite
 
 class ErrorResponderTest extends FunSuite with Awaits {
@@ -17,7 +19,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   val svc = Service.mk[Request, Response] { _ =>
     Future.exception(RoutingFactory.UnknownDst(Request(), s"foo\nbar"))
   }
-  val stk = ErrorResponder.module.toStack(
+  val stk = ErrorResponder.serverModule.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
   )
   val service = await(stk.make(Stack.Params.empty)())
@@ -25,7 +27,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   val writeErrorSvc = Service.mk[Request, Response] { _ =>
     Future.exception(new WriteException {})
   }
-  val writeErrorStk = ErrorResponder.module.toStack(
+  val writeErrorStk = ErrorResponder.serverModule.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(writeErrorSvc))
   )
   val writeErrorService = await(writeErrorStk.make(Stack.Params.empty)())
@@ -36,7 +38,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
     Future.exception(HttpResponseException(redirect))
   }
 
-  val redirectStk = ErrorResponder.module.toStack(
+  val redirectStk = ErrorResponder.serverModule.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(redirectSvc))
   )
 
