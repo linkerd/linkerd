@@ -33,8 +33,8 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val pathStack = Http.router.pathStack
       .prepend(Headers.Dst.PathFilter.module)
       .replace(StackClient.Role.prepFactory, DelayedRelease.module)
-      .prepend(http.ErrorResponder.module)
-      .insertAfter(http.ErrorResponder.role, FramingFilter.serverModule)
+      .prepend(http.ErrorResponder.clientModule)
+      .insertAfter(http.ErrorResponder.role, FramingFilter.clientModule)
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
@@ -68,8 +68,8 @@ class HttpInitializer extends ProtocolInitializer.Simple {
     val stk = Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
-      .prepend(http.ErrorResponder.module)
-      .insertAfter(http.ErrorResponder.role, FramingFilter.clientModule)
+      .prepend(http.ErrorResponder.serverModule)
+      .insertAfter(http.ErrorResponder.role, FramingFilter.serverModule)
       .prepend(http.StatusCodeStatsFilter.module)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 

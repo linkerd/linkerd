@@ -5,10 +5,17 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
 import com.twitter.logging.Logger
+import io.buoyant.linkerd.ProtocolException
 import io.buoyant.router.RoutingFactory
+
 import scala.util.control.{NoStackTrace, NonFatal}
 
-class ErrorResponder extends SimpleFilter[Request, Response] {
+/**
+  * @param protocolErrorStatus the status code to return when encountering a
+  *                            [[ProtocolException]]
+  */
+class ErrorResponder(private[this] val protocolErrorStatus: Status)
+extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
 
   def apply(req: Request, service: Service[Request, Response]) =
@@ -28,7 +35,13 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
             case null => e.getClass.getName
             case msg => msg
           }
-          val rsp = Headers.Err.respond(message, Status.BadGateway)
+          val status =
+            if (e.isInstanceOf[ProtocolException]) {
+              protocolErrorStatus
+            } else {
+              Status.BadGateway
+            }
+          val rsp = Headers.Err.respond(message, status)
           if (RetryableWriteException.unapply(e).isDefined) {
             Headers.Retryable.set(rsp.headerMap, retryable = true)
           }
@@ -39,11 +52,20 @@ class ErrorResponder extends SimpleFilter[Request, Response] {
 
 object ErrorResponder {
   val role = Stack.Role("ErrorResponder")
-  val module: Stackable[ServiceFactory[Request, Response]] =
+  val serverModule: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = ErrorResponder.role
       val description = "Crafts HTTP responses for routing errors"
-      val filter = new ErrorResponder
+      val filter = new ErrorResponder(Status.BadRequest)
+      def make(factory: ServiceFactory[Request, Response]) =
+        filter.andThen(factory)
+    }
+
+  val clientModule: Stackable[ServiceFactory[Request, Response]] =
+    new Stack.Module0[ServiceFactory[Request, Response]] {
+      val role = ErrorResponder.role
+      val description = "Crafts HTTP responses for routing errors"
+      val filter = new ErrorResponder(Status.BadGateway)
       def make(factory: ServiceFactory[Request, Response]) =
         filter.andThen(factory)
     }
