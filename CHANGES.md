@@ -7,7 +7,7 @@ We've added some new features!
 * We've introduced a new request logger plugin interface, for plugins that take an action (such as logging) on each request. This is currently used by the Istio plugin to report metadata about each request.
 
 We’ve fixed some things!
-* HTTP/2 now multiplexes streams over a single connection.
+* We fixed a connection leak in HTTP/2 by properly multiplexing streams over a single connection.
 * The configured failure accrual backoff parameter was being ignored. Now it's not!
 * We fixed a TLS issue when no trust certs were specified.  As a result, using TLS with egress now works again.
 * We fixed an exception when a Kubernetes Service's `targetPort` value is returned as a name instead of a number.
