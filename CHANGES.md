@@ -1,3 +1,22 @@
+## 1.1.1 2017-07-10
+
+This is a big release with lots of fun stuff inside.
+
+We've added some new features!
+* Linkerd now features integration with Istio! (Beta.) This is a big feature. Blog post coming soon.
+* We've introduced a new request logger plugin interface, for plugins that take an action (such as logging) on each request. This is currently used by the Istio plugin to report metadata about each request.
+
+We’ve fixed some things!
+* HTTP/2 now multiplexes streams over a single connection.
+* The configured failure accrual backoff parameter was being ignored. Now it's not!
+* We fixed a TLS issue when no trust certs were specified.  As a result, using TLS with egress now works again.
+* We fixed an exception when a Kubernetes Service's `targetPort` value is returned as a name instead of a number.
+* The admin dashboard now displays server connections, standardizing client and server displays.
+
+We’ve made some internal changes to keep up with the latest and greatest:
+* Netty4 is now the default engine for HTTP.
+* We’ve upgrade to Finagle 6.45 under the hood.
+
 ## 1.1.0 2017-06-12
 
 * TLS
