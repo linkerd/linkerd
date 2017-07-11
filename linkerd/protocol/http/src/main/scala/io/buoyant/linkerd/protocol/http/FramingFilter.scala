@@ -1,33 +1,34 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{HeaderMap, Request, Response, Status}
-import com.twitter.logging.Logger
 import com.twitter.util.Future
 import io.buoyant.linkerd.ProtocolException
 
 object FramingFilter {
   // this is factored out so that the same logic can
   // be applied to requests from clients and responses from services.
-  def headerErrors(headers: HeaderMap): Option[FramingException] =
+  private[FramingFilter] def headerErrors(headers: HeaderMap): Option[FramingException] =
     // if the length of the Content-Length key in the request/response's
     // header map is greater than 1, then there are duplicate values.
     if (headers.getAll("Content-Length").toSet.size > 1) {
       Some(FramingException("conflicting `Content-Length` headers"))
+      // TODO: handle other bad framing error cases here as well
     } else None
 
   /**
    * A filter that fails badly-framed requests.
    */
   class ServerFilter extends SimpleFilter[Request, Response] {
-    private[this] val log = Logger.get("FramingFilter.ServerFilter")
 
     override def apply(
       request: Request,
       service: Service[Request, Response]
     ): Future[Response] =
-      headerErrors(request.headerMap).map(Future.exception(_))
-        .getOrElse(service(request))
+        headerErrors(request.headerMap)
+          .map { err => Future.value(err.toResponse(Status.BadRequest)) }
+          .getOrElse(service(request))
 
   }
 
@@ -74,5 +75,10 @@ object FramingFilter {
         filter.andThen(factory)
     }
 
-  case class FramingException(reason: String) extends ProtocolException(reason)
+  case class FramingException(reason: String) extends ProtocolException(reason) {
+    @inline def toResponse(status: Status): Response = {
+      val message = Option(this.getMessage).getOrElse(this.getClass.getName)
+      Headers.Err.respond(message, status)
+    }
+  }
 }
