@@ -11,6 +11,7 @@ import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine,
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.{Request, Response, param => hparam}
+import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
@@ -32,7 +33,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(Headers.Dst.PathFilter.module)
       .replace(StackClient.Role.prepFactory, DelayedRelease.module)
       .prepend(http.ErrorResponder.module)
-      .insertAfter(http.ErrorResponder.role, RequestFramingFilter.module)
     val boundStack = Http.router.boundStack
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
@@ -42,6 +42,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
+      // ensure the client-stack framing filter is placed below the stats filter
+      // so that any malframed responses it fails are counted as errors
+      .insertAfter(StatusCodeStatsFilter.role, FramingFilter.clientModule)
 
     Http.router
       .withPathStack(pathStack)
@@ -68,6 +71,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      // ensure the server-stack framing filter is placed below the stats filter
+      // so that any malframed requests it fails are counted as errors
+      .insertAfter(StatusCodeStatsFilter.role, FramingFilter.serverModule)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
     Http.server.withStack(stk)

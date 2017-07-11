@@ -5,10 +5,13 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
 import com.twitter.logging.Logger
+import io.buoyant.linkerd.ProtocolException
 import io.buoyant.router.RoutingFactory
+
 import scala.util.control.{NoStackTrace, NonFatal}
 
-class ErrorResponder extends SimpleFilter[Request, Response] {
+class ErrorResponder
+extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
 
   def apply(req: Request, service: Service[Request, Response]) =
