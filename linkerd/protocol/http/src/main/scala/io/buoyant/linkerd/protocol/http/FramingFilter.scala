@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{HeaderMap, Request, Response, Status}
+import com.twitter.finagle.http.{Status, _}
 import com.twitter.util.Future
 import com.twitter.logging.Logger
 import io.buoyant.linkerd.ProtocolException
@@ -14,13 +14,27 @@ object FramingFilter {
 
   // this is factored out so that the same logic can
   // be applied to requests from clients and responses from services.
-  private[FramingFilter] def headerErrors(headers: HeaderMap): Option[FramingException] =
-    // if the length of the Content-Length key in the request/response's
-    // header map is greater than 1, then there are duplicate values.
-    if (headers.getAll("Content-Length").toSet.size > 1) {
-      Some(FramingException("conflicting `Content-Length` headers"))
-      // TODO: handle other bad framing error cases here as well
-    } else None
+  private[FramingFilter] def filterMessage[M <: Message](message: M): Future[M] = {
+    val headers = message.headerMap
+    val contentLengths = message.headerMap.getAll("Content-Length")
+
+    if (contentLengths.toSet.size > 1) {
+      // if the length of the Content-Length key in the request/response's
+      // header map is greater than 1, then there are duplicate values.
+      Future.exception(FramingException("conflicting `Content-Length` headers"))
+    } else {
+      if (contentLengths.nonEmpty &&
+          headers.get("Transfer-Encoding").contains("chunked")) {
+        // if the message contains both a `Content-Length` header and
+        // `Transfer-Encoding: chunked`, remove the `Content-Length` header
+        headers.remove("Content-Length")
+        // this *should* modify the headers in-place? i dislike mutability...
+      }
+      Future.value(message)
+    }
+
+  }
+
 
   /**
    * A filter that fails badly-framed requests.
@@ -31,30 +45,29 @@ object FramingFilter {
     // exceptions to an ErrorResponder
     private[this] val log = Logger.get("FramingFilter.ServerFIlter")
 
-    override def apply(request: Request,
-                       service: Service[Request, Response]): Future[Response] =
-        headerErrors(request.headerMap)
-          .map { case FramingException(reason) =>
-            log.error(reason)
-            Future.value(Headers.Err.respond(reason, Status.BadRequest))
-          }
-          .getOrElse(service(request))
+    override def apply(
+      request: Request,
+      service: Service[Request, Response]
+    ): Future[Response] =
+      filterMessage(request)
+        .flatMap(service(_))
+        .rescue { case e: FramingException =>
+          log.error("framing error", e)
+          Future.value(Headers.Err.respond(e.reason, Status.BadRequest))
+        }
 
   }
-
 
   /**
    * A filter that fails badly-framed responses
    */
   val clientFilter = new SimpleFilter[Request, Response] {
 
-    override def apply(request: Request,
-                       service: Service[Request, Response]): Future[Response] =
-      service(request).flatMap { response =>
-        headerErrors(response.headerMap)
-          .map(Future.exception(_))
-          .getOrElse(Future.value(response))
-      }
+    override def apply(
+      request: Request,
+      service: Service[Request, Response]
+    ): Future[Response] =
+      service(request).flatMap(filterMessage)
 
   }
 
@@ -62,18 +75,16 @@ object FramingFilter {
     new Stack.Module0[ServiceFactory[Request, Response]] {
       override val role: Stack.Role = FramingFilter.role
       override val description = "Fails badly-framed HTTP requests"
-      override def make(factory: ServiceFactory[Request, Response])
-        : ServiceFactory[Request, Response] =
-          serverFilter.andThen(factory)
+      override def make(factory: ServiceFactory[Request, Response]): ServiceFactory[Request, Response] =
+        serverFilter.andThen(factory)
     }
 
   val clientModule: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
       override val role: Stack.Role = FramingFilter.role
       override val description = "Fails badly-framed HTTP responses"
-      override def make(factory: ServiceFactory[Request, Response])
-        : ServiceFactory[Request, Response] =
-          clientFilter.andThen(factory)
+      override def make(factory: ServiceFactory[Request, Response]): ServiceFactory[Request, Response] =
+        clientFilter.andThen(factory)
     }
 
   case class FramingException(reason: String) extends ProtocolException(reason)

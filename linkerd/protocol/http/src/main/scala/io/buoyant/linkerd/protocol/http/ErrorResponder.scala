@@ -11,7 +11,7 @@ import io.buoyant.router.RoutingFactory
 import scala.util.control.{NoStackTrace, NonFatal}
 
 class ErrorResponder
-extends SimpleFilter[Request, Response] {
+  extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
 
   def apply(req: Request, service: Service[Request, Response]) =

@@ -48,12 +48,11 @@ object ResponseClassifiers {
   }
 
   /**
-    * Matches badly-framed responses
-    */
+   * Matches badly-framed responses
+   */
   val FramingExceptionsOnly: PartialFunction[Try[Nothing], Boolean] = {
     case Throw(FramingFilter.FramingException(_)) => true
   }
-
 
   object Responses {
 
