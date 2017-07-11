@@ -68,7 +68,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
-      .insertAfter(http.ErrorResponder.role, FramingFilter.serverModule)
+      .insertAfter(StatusCodeStatsFilter.role, FramingFilter.serverModule)
       .prepend(http.StatusCodeStatsFilter.module)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
