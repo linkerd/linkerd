@@ -32,8 +32,7 @@ object FramingFilter {
     private[this] val log = Logger.get("FramingFilter.ServerFIlter")
 
     override def apply(request: Request,
-                       service: Service[Request, Response])
-      : Future[Response] =
+                       service: Service[Request, Response]): Future[Response] =
         headerErrors(request.headerMap)
           .map { case FramingException(reason) =>
             log.error(reason)
@@ -50,7 +49,7 @@ object FramingFilter {
   val clientFilter = new SimpleFilter[Request, Response] {
 
     override def apply(request: Request,
-                        service: Service[Request, Response]): Future[Response] =
+                       service: Service[Request, Response]): Future[Response] =
       service(request).flatMap { response =>
         headerErrors(response.headerMap)
           .map(Future.exception(_))
@@ -61,20 +60,20 @@ object FramingFilter {
 
   val serverModule: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
-      val role = FramingFilter.role
-      val description = "Fails badly-framed HTTP requests"
-      val filter = serverFilter
-      def make(factory: ServiceFactory[Request, Response]) =
-        filter.andThen(factory)
+      override val role: Stack.Role = FramingFilter.role
+      override val description = "Fails badly-framed HTTP requests"
+      override def make(factory: ServiceFactory[Request, Response])
+        : ServiceFactory[Request, Response] =
+          serverFilter.andThen(factory)
     }
 
   val clientModule: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
-      val role = FramingFilter.role
-      val description = "Fails badly-framed HTTP responses"
-      val filter = clientFilter
-      def make(factory: ServiceFactory[Request, Response]) =
-        filter.andThen(factory)
+      override val role: Stack.Role = FramingFilter.role
+      override val description = "Fails badly-framed HTTP responses"
+      override def make(factory: ServiceFactory[Request, Response])
+        : ServiceFactory[Request, Response] =
+          clientFilter.andThen(factory)
     }
 
   case class FramingException(reason: String) extends ProtocolException(reason)
