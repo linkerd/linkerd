@@ -39,8 +39,8 @@ object FramingFilter {
   /**
    * A filter that fails badly-framed requests.
    */
-  val serverFilter = new SimpleFilter[Request, Response] {
-    // unlike the client-side filter, this needs its own logger, since
+  val clientFilter = new SimpleFilter[Request, Response] {
+    // unlike the server filter, this needs its own logger, since
     // it responds to bad requests directly, rather than bubbling up
     // exceptions to an ErrorResponder
     private[this] val log = Logger.get("FramingFilter.ServerFilter")
@@ -66,7 +66,7 @@ object FramingFilter {
   /**
    * A filter that fails badly-framed responses
    */
-  val clientFilter = new SimpleFilter[Request, Response] {
+  val serverFilter = new SimpleFilter[Request, Response] {
 
     override def apply(
       request: Request,
