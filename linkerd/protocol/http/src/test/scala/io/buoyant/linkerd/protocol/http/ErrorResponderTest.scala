@@ -19,7 +19,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   val svc = Service.mk[Request, Response] { _ =>
     Future.exception(RoutingFactory.UnknownDst(Request(), s"foo\nbar"))
   }
-  val stk = ErrorResponder.serverModule.toStack(
+  val stk = ErrorResponder.module.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
   )
   val service = await(stk.make(Stack.Params.empty)())
@@ -27,7 +27,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   val writeErrorSvc = Service.mk[Request, Response] { _ =>
     Future.exception(new WriteException {})
   }
-  val writeErrorStk = ErrorResponder.serverModule.toStack(
+  val writeErrorStk = ErrorResponder.module.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(writeErrorSvc))
   )
   val writeErrorService = await(writeErrorStk.make(Stack.Params.empty)())
@@ -38,11 +38,21 @@ class ErrorResponderTest extends FunSuite with Awaits {
     Future.exception(HttpResponseException(redirect))
   }
 
-  val redirectStk = ErrorResponder.serverModule.toStack(
+  val redirectStk = ErrorResponder.module.toStack(
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(redirectSvc))
   )
 
   val redirectService = await(redirectStk.make(Stack.Params.empty)())
+
+  val malframedSvc = Service.mk[Request, Response] { _ =>
+    Future.exception(FramingException("malframed!"))
+  }
+
+  val malframedStk = ErrorResponder.module.toStack(
+    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(malframedSvc))
+  )
+
+  val malframedService = await(malframedStk.make(Stack.Params.empty)())
 
   test("returns BadRequest for UnknownDst exception") {
     val rsp = await(service(Request()))
@@ -66,5 +76,10 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(redirectService(Request()))
     assert(rsp.status == Status.Found)
     assert(rsp.location == Some("http://linkerd.io"))
+  }
+
+  test("returns BadGateway for FramingException") {
+    val rsp = await(malframedService(Request()))
+    assert(rsp.status == Status.BadGateway)
   }
 }
