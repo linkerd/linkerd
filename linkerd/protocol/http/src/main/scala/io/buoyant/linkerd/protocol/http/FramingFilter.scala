@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol.http
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Status, _}
-import com.twitter.util.Future
+import com.twitter.util.{Future, Return, Throw}
 import com.twitter.logging.Logger
 import io.buoyant.linkerd.ProtocolException
 
@@ -49,14 +49,17 @@ object FramingFilter {
       service: Service[Request, Response]
     ): Future[Response] =
       filterMessage(request)
-        .handle {
-          case e: FramingException =>
+        .transform {
+          case Throw(e: FramingException) =>
+            // if the exception was a FramingException, turn the Future into
+            // a success by responding with Bad Request
             log.error("framing error in request", e)
-            Headers.Err.respond(e.reason, Status.BadRequest)
+            Future.value(Headers.Err.respond(e.reason, Status.BadRequest))
+          case Throw(e) =>
+            // other exceptions should be propagated
+            Future.exception(e)
+          case Return(request) => service(request)
         }
-        .flatMap(service(_))
-
-
   }
 
   /**
