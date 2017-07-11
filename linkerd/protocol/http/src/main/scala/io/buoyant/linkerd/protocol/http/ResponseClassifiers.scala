@@ -47,6 +47,13 @@ object ResponseClassifiers {
     ))
   }
 
+  /**
+   * Matches badly-framed responses
+   */
+  val FramingExceptionsOnly: PartialFunction[Try[Nothing], Boolean] = {
+    case Throw(FramingFilter.FramingException(_)) => true
+  }
+
   object Responses {
 
     object Failure {
@@ -65,7 +72,9 @@ object ResponseClassifiers {
 
   object RetryableResult {
     private[this] val retryableThrow: PartialFunction[Try[Nothing], Boolean] =
-      TimeoutAndWriteExceptionsOnly.orElse(ChannelClosedExceptionsOnly).orElse { case _ => false }
+      TimeoutAndWriteExceptionsOnly.orElse(ChannelClosedExceptionsOnly)
+        .orElse(FramingExceptionsOnly)
+        .orElse { case _ => false }
 
     def unapply(rsp: Try[Any]): Boolean = rsp match {
       case Return(Responses.Failure.Retryable()) => true

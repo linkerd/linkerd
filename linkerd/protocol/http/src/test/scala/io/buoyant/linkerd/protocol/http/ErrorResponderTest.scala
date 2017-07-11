@@ -10,6 +10,8 @@ import io.buoyant.router.RoutingFactory
 import io.buoyant.test.Awaits
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.ISO_8859_1
+
+import io.buoyant.linkerd.protocol.http.FramingFilter.FramingException
 import org.scalatest.FunSuite
 
 class ErrorResponderTest extends FunSuite with Awaits {
@@ -42,6 +44,16 @@ class ErrorResponderTest extends FunSuite with Awaits {
 
   val redirectService = await(redirectStk.make(Stack.Params.empty)())
 
+  val malframedSvc = Service.mk[Request, Response] { _ =>
+    Future.exception(FramingException("malframed!"))
+  }
+
+  val malframedStk = ErrorResponder.module.toStack(
+    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(malframedSvc))
+  )
+
+  val malframedService = await(malframedStk.make(Stack.Params.empty)())
+
   test("returns BadRequest for UnknownDst exception") {
     val rsp = await(service(Request()))
     assert(rsp.status == Status.BadRequest)
@@ -64,5 +76,10 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(redirectService(Request()))
     assert(rsp.status == Status.Found)
     assert(rsp.location == Some("http://linkerd.io"))
+  }
+
+  test("returns BadGateway for FramingException") {
+    val rsp = await(malframedService(Request()))
+    assert(rsp.status == Status.BadGateway)
   }
 }
