@@ -24,7 +24,7 @@ object FramingFilter {
       Future.exception(FramingException("conflicting `Content-Length` headers"))
     } else {
       if (contentLengths.nonEmpty &&
-          headers.get("Transfer-Encoding").contains("chunked")) {
+        headers.get("Transfer-Encoding").contains("chunked")) {
         // if the message contains both a `Content-Length` header and
         // `Transfer-Encoding: chunked`, remove the `Content-Length` header
         headers.remove("Content-Length")
@@ -34,7 +34,6 @@ object FramingFilter {
     }
 
   }
-
 
   /**
    * A filter that fails badly-framed requests.
@@ -50,11 +49,13 @@ object FramingFilter {
       service: Service[Request, Response]
     ): Future[Response] =
       filterMessage(request)
-        .flatMap(service(_))
-        .rescue { case e: FramingException =>
-          log.error("framing error", e)
-          Future.value(Headers.Err.respond(e.reason, Status.BadRequest))
+        .handle {
+          case e: FramingException =>
+            log.error("framing error in request", e)
+            Headers.Err.respond(e.reason, Status.BadRequest)
         }
+        .flatMap(service(_))
+
 
   }
 
