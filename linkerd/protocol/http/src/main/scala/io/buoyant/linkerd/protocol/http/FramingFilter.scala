@@ -17,11 +17,12 @@ object FramingFilter {
   private[FramingFilter] def filterMessage[M <: Message](message: M): Future[M] = {
     val headers = message.headerMap
     val contentLengths = message.headerMap.getAll("Content-Length")
+    val contentLengthEx = FramingException("conflicting `Content-Length` headers")
 
     if (contentLengths.toSet.size > 1) {
       // if the length of the Content-Length key in the request/response's
       // header map is greater than 1, then there are duplicate values.
-      Future.exception(FramingException("conflicting `Content-Length` headers"))
+      Future.exception(contentLengthEx)
     } else {
       if (contentLengths.nonEmpty &&
         headers.get("Transfer-Encoding").contains("chunked")) {
