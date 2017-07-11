@@ -43,7 +43,7 @@ object FramingFilter {
     // unlike the client-side filter, this needs its own logger, since
     // it responds to bad requests directly, rather than bubbling up
     // exceptions to an ErrorResponder
-    private[this] val log = Logger.get("FramingFilter.ServerFIlter")
+    private[this] val log = Logger.get("FramingFilter.ServerFilter")
 
     override def apply(
       request: Request,
