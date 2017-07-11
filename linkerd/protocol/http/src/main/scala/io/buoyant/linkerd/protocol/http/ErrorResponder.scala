@@ -5,9 +5,7 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
 import com.twitter.logging.Logger
-import io.buoyant.linkerd.ProtocolException
 import io.buoyant.router.RoutingFactory
-
 import scala.util.control.{NoStackTrace, NonFatal}
 
 class ErrorResponder
