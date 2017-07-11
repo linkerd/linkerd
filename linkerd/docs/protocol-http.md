@@ -173,7 +173,7 @@ segments from the start of their HTTP path.
 #### Identifier Configuration:
 
 > With this configuration, a request to `:5000/true/love/waits.php` will be
-mapped to `/http/true/love` and will be routed based on this name by the
+mapped to `/svc/true/love` and will be routed based on this name by the
 corresponding dtab. Additionally, because `consume` is true, after routing,
 requests will be proxied to the destination service with `/waits.php` as the
 path component of the URL.

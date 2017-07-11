@@ -635,6 +635,7 @@ kind: `io.l5d.rewrite`
 ```yaml
 namers:
 - kind: io.l5d.rewrite
+  prefix: /rewrite
   pattern: "/{service}/api"
   name: "/srv/{service}"
 ```
@@ -643,7 +644,7 @@ namers:
 
 ```
 dtab: |
-  /svc => /#/io.l5d.rewrite
+  /svc => /#/rewrite
 ```
 
 A namer that completely rewrites a path.  This is useful to do arbitrary
@@ -659,7 +660,7 @@ the value of the matching path segment and may be used in the final name.
 
 Key     | Default Value    | Description
 ------- | ---------------- | -----------
-prefix  | `io.l5d.rewrite` | Resolves names with `/#/<prefix>`.
+prefix  | _required_       | Resolves names with `/#/<prefix>`.
 pattern | _required_       | If the name matches this prefix, replace it with the name configured in the `name` parameter.  Wildcards and variable capture are allowed (see: `io.buoyant.namer.util.PathMatcher`).
 name    | _required_       | The replacement name.  Variables captured in the pattern may be used in this string.
 
