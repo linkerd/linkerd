@@ -1,6 +1,7 @@
 ## In the next release...
 
 * We fixed an issue where requests that time out were not being retried.
+* Improved memory allocation in InfluxDb and Prometheus telemeters.
 
 ## 1.1.1 2017-07-10
 
