@@ -25,16 +25,15 @@ object FramingFilter {
   /**
    * A filter that fails badly-framed requests.
    */
-  class ServerFilter extends SimpleFilter[Request, Response] {
+  val serverFilter = new SimpleFilter[Request, Response] {
     // unlike the client-side filter, this needs its own logger, since
     // it responds to bad requests directly, rather than bubbling up
     // exceptions to an ErrorResponder
     private[this] val log = Logger.get("FramingFilter.ServerFIlter")
 
-    override def apply(
-      request: Request,
-      service: Service[Request, Response]
-    ): Future[Response] =
+    override def apply(request: Request,
+                       service: Service[Request, Response])
+      : Future[Response] =
         headerErrors(request.headerMap)
           .map { case FramingException(reason) =>
             log.error(reason)
@@ -48,12 +47,10 @@ object FramingFilter {
   /**
    * A filter that fails badly-framed responses
    */
-  class ClientFilter extends SimpleFilter[Request, Response] {
+  val clientFilter = new SimpleFilter[Request, Response] {
 
-    override def apply(
-      request: Request,
-      service: Service[Request, Response]
-    ): Future[Response] =
+    override def apply(request: Request,
+                        service: Service[Request, Response]): Future[Response] =
       service(request).flatMap { response =>
         headerErrors(response.headerMap)
           .map(Future.exception(_))
@@ -66,7 +63,7 @@ object FramingFilter {
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = FramingFilter.role
       val description = "Fails badly-framed HTTP requests"
-      val filter = new ServerFilter
+      val filter = serverFilter
       def make(factory: ServiceFactory[Request, Response]) =
         filter.andThen(factory)
     }
@@ -75,7 +72,7 @@ object FramingFilter {
     new Stack.Module0[ServiceFactory[Request, Response]] {
       val role = FramingFilter.role
       val description = "Fails badly-framed HTTP responses"
-      val filter = new ClientFilter
+      val filter = clientFilter
       def make(factory: ServiceFactory[Request, Response]) =
         filter.andThen(factory)
     }
