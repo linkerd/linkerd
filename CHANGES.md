@@ -1,3 +1,7 @@
+## In the next release...
+
+* We fixed an issue where requests that time out were not being retried.
+
 ## 1.1.1 2017-07-10
 
 This is a big release with lots of fun stuff inside.
