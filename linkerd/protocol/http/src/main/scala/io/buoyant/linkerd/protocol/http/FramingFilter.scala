@@ -36,7 +36,7 @@ object FramingFilter {
         headerErrors(request.headerMap)
           .map { case FramingException(reason) =>
             log.error(reason)
-            Future.value( Headers.Err.respond(reason, Status.BadRequest))
+            Future.value(Headers.Err.respond(reason, Status.BadRequest))
           }
           .getOrElse(service(request))
 
