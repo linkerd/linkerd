@@ -105,13 +105,12 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         log.debug(e, "[%s] dispatcher closed", prefix)
         Future.exception(e)
 
-      case Throw(e: ChannelClosedException) =>
+      case Throw(e: ChannelClosedException)
+      // if all streams have already been closed, then this just means that
+      // the client failed to send a GOAWAY frame...
+      if streams.keySet.asScala.max <= closedId.get || closed.get =>
+        // ...so we don't need to propagate the exception
         log.warning("[%s] client closed connection without sending GOAWAY frame", prefix)
-        // don't propagate the exception?
-        // this may not be technically correct, if the client closed the channel *before* we
-        // finish processing, this indicates a more serious error than if the client just failed
-        // to send a GOAWAY frame after finishing.
-        // TODO: check if we're actually finished with this client or not
         Future.Unit
 
       case Throw(e) =>
