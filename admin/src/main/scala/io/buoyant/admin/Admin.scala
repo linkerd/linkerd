@@ -11,6 +11,7 @@ import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
 import java.net.SocketAddress
+import com.twitter.finagle.buoyant.TlsServerConfig
 
 object Admin {
   val label = "adminhttp"
@@ -103,7 +104,7 @@ object Admin {
   }
 }
 
-class Admin(val address: SocketAddress) {
+class Admin(val address: SocketAddress, val tlsCfg: Option[TlsServerConfig]) {
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
