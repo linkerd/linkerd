@@ -2,41 +2,41 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers, Request}
+import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio.{ClusterCache, IdentifierPreconditions, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
+import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory.{BaseDtab, DstPrefix, IdentifiedRequest, Identifier, RequestIdentification}
+import istio.proxy.v1.config.HTTPRedirect
 
-class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache)
-  extends Identifier[Request] with IdentifierPreconditions {
+class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: RouteCache, val clusterCache: ClusterCache)
+  extends Identifier[Request] with IdentifierPreconditions[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    Future.join(clusterCache.get(req.authority), routeCache.getRules).map {
-      case (Some(Cluster(dest, port)), rules) =>
-        val meta = IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
-        val filteredRules = filterRules(rules, dest, meta)
-        maxPrecedenceRule(filteredRules) match {
-          case Some((ruleName, rule)) =>
-            val (uri, authority) = httpRewrite(rule, req.path, Some(req.authority))
-            req.headers.set(Headers.Path, uri)
-            req.headers.set(Headers.Authority, authority.getOrElse(""))
-            pfx ++ Path.Utf8("route", ruleName, port)
-          //forward requests which have no matching rules to an empty label selector
-          case None => pfx ++ Path.Utf8("dest", dest, "::", port)
-        }
-      case b =>
-        // forward requests which have no matching vhosts to external
-        externalRequestPath(req.authority)
-    }.map { path =>
+    getIdentifiedPath(req).map { path =>
       val dst = Dst.Path(path, baseDtab(), Dtab.local)
       new IdentifiedRequest(dst, req)
     }
   }
+
+  def redirectRequest[H2ResponseException](redir: HTTPRedirect, req: Request): Future[H2ResponseException] = {
+    val resp = Response(Status.Found, Stream.empty())
+    resp.headers.set(Headers.Path, redir.`uri`.getOrElse(req.path))
+    resp.headers.set(Headers.Authority, redir.`authority`.getOrElse(req.authority))
+    Future.exception(H2ResponseException(resp))
+  }
+
+  def rewriteRequest(uri: String, authority: Option[String], req: Request): Unit = {
+    req.headers.set(Headers.Path, uri)
+    req.headers.set(Headers.Authority, authority.getOrElse(""))
+  }
+
+  def reqToMeta(req: Request): IstioRequestMeta =
+    IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
 }
 
 case class IstioIdentifierConfig(

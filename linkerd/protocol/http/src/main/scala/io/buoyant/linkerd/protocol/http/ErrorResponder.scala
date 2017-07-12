@@ -6,6 +6,7 @@ import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
 import com.twitter.logging.Logger
 import io.buoyant.router.RoutingFactory
+import io.buoyant.router.RoutingFactory.ResponseException
 import scala.util.control.{NoStackTrace, NonFatal}
 
 class ErrorResponder extends SimpleFilter[Request, Response] {
@@ -48,5 +49,5 @@ object ErrorResponder {
         filter.andThen(factory)
     }
 
-  case class HttpResponseException(rsp: Response) extends NoStackTrace
+  case class HttpResponseException(rsp: Response) extends ResponseException(rsp)
 }

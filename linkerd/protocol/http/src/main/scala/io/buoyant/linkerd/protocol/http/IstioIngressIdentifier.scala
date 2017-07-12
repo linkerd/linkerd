@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol.http
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.{Dtab, Path, Service, http}
 import com.twitter.util.{Future, Try}
@@ -13,7 +13,9 @@ import io.buoyant.k8s.istio._
 import io.buoyant.k8s.{ClientConfig, IngressCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
+import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
+import istio.proxy.v1.config.HTTPRedirect
 
 class IstioIngressIdentifier(
   val pfx: Path,
@@ -21,9 +23,9 @@ class IstioIngressIdentifier(
   namespace: Option[String],
   apiClient: Service[http.Request, http.Response],
   annotationClass: String,
-  routeCache: RouteCache,
-  clusterCache: ClusterCache
-) extends Identifier[Request] with IdentifierPreconditions {
+  val routeCache: RouteCache,
+  val clusterCache: ClusterCache
+) extends Identifier[Request] with IdentifierPreconditions[Request] {
 
   private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
@@ -44,26 +46,45 @@ class IstioIngressIdentifier(
           case None => Future.value(Some(ingressPath.port))
         }
 
-        Future.join(portName, routeCache.getRules).map {
+        Future.join(portName, routeCache.getRules).flatMap {
           case (Some(port), rules) =>
-            //TODO: match on request scheme
-            val meta = IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
-            val filteredRules = filterRules(rules, clusterName, meta)
-            val path = maxPrecedenceRule(filteredRules) match {
+            val filteredRules = filterRules(rules, clusterName, reqToMeta(req))
+            (maxPrecedenceRule(filteredRules) match {
               case Some((ruleName, rule)) =>
-                val (uri, authority) = httpRewrite(rule, req.uri, req.host)
-                req.uri = uri
-                req.host = authority.getOrElse("")
-                pfx ++ Path.Utf8("route", ruleName, port)
+                rule.`redirect` match {
+                  case Some(redir) => redirectRequest(redir, req)
+                  case None =>
+                    val (uri, authority) = httpRewrite(rule, reqToMeta(req))
+                    rewriteRequest(uri, authority, req)
+                    Future.value(pfx ++ Path.Utf8("route", ruleName, port))
+                }
               //forward requests which have no matching rules to an empty label selector
-              case None => pfx ++ Path.Utf8("dest", clusterName, "::", port)
+              case None => Future.value(pfx ++ Path.Utf8("dest", clusterName, "::", port))
+            }).map { path =>
+              val dst = Dst.Path(path, baseDtab(), Dtab.local)
+              new IdentifiedRequest(dst, req)
             }
-            val dst = Dst.Path(path, baseDtab(), Dtab.local)
-            new IdentifiedRequest(dst, req)
-          case _ => new UnidentifiedRequest(s"ingress path ${ingressPath.svc}:${ingressPath.port} does not match any istio vhosts")
+          case _ => Future.value(new UnidentifiedRequest(s"ingress path ${ingressPath.svc}:${ingressPath.port} does not match any istio vhosts"))
         }
     }
   }
+
+  def reqToMeta(req: Request): IstioRequestMeta =
+    //TODO: match on request scheme
+    IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+
+  def redirectRequest[HttpResponseException](redir: HTTPRedirect, req: Request): Future[HttpResponseException] = {
+    val redirect = Response(Status.Found)
+    redirect.location = redir.`uri`.getOrElse(req.uri)
+    redirect.host = redir.`authority`.orElse(req.host).getOrElse("")
+    Future.exception(HttpResponseException(redirect))
+  }
+
+  def rewriteRequest(uri: String, authority: Option[String], req: Request): Unit = {
+    req.uri = uri
+    req.host = authority.getOrElse("")
+  }
+
 }
 
 case class IstioIngressIdentifierConfig(

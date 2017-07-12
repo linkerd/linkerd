@@ -1,10 +1,12 @@
 package io.buoyant.k8s.istio
 
 import com.twitter.finagle.Path
-import istio.proxy.v1.config.{HTTPRewrite, MatchCondition, RouteRule, StringMatch}
+import com.twitter.util.Future
+import io.buoyant.k8s.istio.ClusterCache.Cluster
 import istio.proxy.v1.config.StringMatch.OneofMatchType
+import istio.proxy.v1.config._
 
-trait IdentifierPreconditions {
+trait IdentifierPreconditions[Req] {
 
   /**
    * Defines a request's metadata for istio rules to match against
@@ -18,6 +20,14 @@ trait IdentifierPreconditions {
     getHeader: (String) => Option[String]
   )
 
+  def clusterCache: ClusterCache
+  def routeCache: RouteCache
+  def pfx: Path
+
+  def redirectRequest[T](redir: HTTPRedirect, req: Req): Future[T]
+  def rewriteRequest(uri: String, authority: Option[String], req: Req): Unit
+  def reqToMeta(req: Req): IstioRequestMeta
+
   def headerMatches(headerValue: String, stringMatch: StringMatch): Boolean = {
     stringMatch.`matchType` match {
       case Some(OneofMatchType.Exact(value)) => headerValue == value
@@ -27,7 +37,6 @@ trait IdentifierPreconditions {
     }
   }
 
-  def pfx: Path
   def externalRequestPath(host: String): Path = {
     host.split(":") match {
       case Array(h: String, p: String) => pfx ++ Path.Utf8("ext", h, p)
@@ -52,26 +61,51 @@ trait IdentifierPreconditions {
     matchesHeaders
   }
 
+  def getIdentifiedPath(req: Req): Future[Path] = {
+    val meta = reqToMeta(req)
+    Future.join(clusterCache.get(meta.authority), routeCache.getRules).flatMap {
+      case (Some(Cluster(dest, port)), rules) =>
+        //TODO: match on request scheme
+        val filteredRules = filterRules(rules, dest, meta)
+        maxPrecedenceRule(filteredRules) match {
+          case Some((ruleName, rule)) =>
+            rule.`redirect` match {
+              case Some(redir) => redirectRequest(redir, req)
+              case None =>
+                val (uri, authority) = httpRewrite(rule, meta)
+                rewriteRequest(uri, authority, req)
+                Future.value(pfx ++ Path.Utf8("route", ruleName, port))
+            }
+          //forward requests which have no matching rules to an empty label selector
+          case None => Future.value(pfx ++ Path.Utf8("dest", dest, "::", port))
+        }
+      case _ =>
+        // forward requests which have no matching vhosts to external
+        Future.value(externalRequestPath(meta.authority))
+    }
+  }
+
   /**
    * Rewrites uri and authority based on a route-rule. It doesn't modify
    * the request directly because it's used by both http and h2.
    * @param rule
-   * @param uri
-   * @param authority
+   * @param meta
    * @return Tuple of uri and authority to used to rewrite headers on the request
    */
-  def httpRewrite(rule: RouteRule, uri: String, authority: Option[String]): (String, Option[String]) = {
+  def httpRewrite(rule: RouteRule, meta: IstioRequestMeta): (String, Option[String]) = {
     rule.`rewrite` match {
       case Some(HTTPRewrite(url, updatedAuth)) =>
         val updatedUri = url.map { replacement =>
           rule.`match`.flatMap(_.`httpHeaders`.get("uri").flatMap(_.`matchType`)) match {
-            case Some(OneofMatchType.Prefix(pfx)) if uri.startsWith(pfx) => uri.replaceFirst(pfx, replacement)
-            case Some(OneofMatchType.Prefix(pfx)) => uri
+            case Some(OneofMatchType.Prefix(pfx)) if meta.uri.startsWith(pfx) => meta.uri.replaceFirst(pfx, replacement)
+            // meta.uri should always start with pfx, because it previously matched the pfx as part of headerMatches
+            // if is doesn't start with pfx for some reason, leave it be
+            case Some(OneofMatchType.Prefix(pfx)) => meta.uri
             case _ => replacement
           }
         }
-        (updatedUri.getOrElse(uri), updatedAuth.orElse(authority))
-      case _ => (uri, authority)
+        (updatedUri.getOrElse(meta.uri), updatedAuth.orElse(Some(meta.authority)))
+      case _ => (meta.uri, Some(meta.authority))
     }
   }
 

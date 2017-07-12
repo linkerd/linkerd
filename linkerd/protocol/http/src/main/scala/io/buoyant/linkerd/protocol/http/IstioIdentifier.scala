@@ -1,45 +1,45 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio.{ClusterCache, IdentifierPreconditions, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
+import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification}
+import istio.proxy.v1.config.HTTPRedirect
 
-class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, routeCache: RouteCache, clusterCache: ClusterCache)
-  extends Identifier[Request] with IdentifierPreconditions {
+class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: RouteCache, val clusterCache: ClusterCache)
+  extends Identifier[Request] with IdentifierPreconditions[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
       case Some(host) =>
-        Future.join(clusterCache.get(host), routeCache.getRules).map {
-          case (Some(Cluster(dest, port)), rules) =>
-            //TODO: match on request scheme
-            val meta = IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
-            val filteredRules = filterRules(rules, dest, meta)
-            maxPrecedenceRule(filteredRules) match {
-              case Some((ruleName, rule)) =>
-                val (uri, authority) = httpRewrite(rule, req.uri, req.host)
-                req.uri = uri
-                req.host = authority.getOrElse("")
-                pfx ++ Path.Utf8("route", ruleName, port)
-              //forward requests which have no matching rules to an empty label selector
-              case None => pfx ++ Path.Utf8("dest", dest, "::", port)
-            }
-          case _ =>
-            // forward requests which have no matching vhosts to external
-            externalRequestPath(host)
-        }.map { path =>
+        getIdentifiedPath(req).map { path =>
           val dst = Dst.Path(path, baseDtab(), Dtab.local)
           new IdentifiedRequest(dst, req)
         }
       case None => throw new IllegalArgumentException("no host found for request")
     }
+  }
+
+  def reqToMeta(req: Request): IstioRequestMeta =
+    //TODO: match on request scheme
+    IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+
+  def redirectRequest[HttpResponseException](redir: HTTPRedirect, req: Request): Future[HttpResponseException] = {
+    val redirect = Response(Status.Found)
+    redirect.location = redir.`uri`.getOrElse(req.uri)
+    redirect.host = redir.`authority`.orElse(req.host).getOrElse("")
+    Future.exception(HttpResponseException(redirect))
+  }
+
+  def rewriteRequest(uri: String, authority: Option[String], req: Request): Unit = {
+    req.uri = uri
+    req.host = authority.getOrElse("")
   }
 }
 

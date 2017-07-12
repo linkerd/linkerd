@@ -53,6 +53,8 @@ object RoutingFactory {
 
   }
 
+  abstract class ResponseException[Rsp](rsp: Rsp) extends NoStackTrace
+
   /** The result of attempting to identify a request. */
   sealed trait RequestIdentification[Req]
 
@@ -165,7 +167,11 @@ class RoutingFactory[Req, Rsp](
             Future.exception(UnknownDst(req0, unidentified.reason))
           case Throw(e) =>
             Annotations.Failure.Identification.record(e.getMessage)
-            Future.exception(UnknownDst(req0, e.getMessage))
+            e match {
+              case e: ResponseException[Rsp] => Future.exception(e)
+              case _ => Future.exception(UnknownDst(req0, e.getMessage))
+            }
+
         }
 
         // Client acquisition failures are recorded within the
