@@ -28,7 +28,7 @@ class MarathonTest extends FunSuite {
     // ensure it doesn't totally blowup
     // We use a name that resolves here
     val _ = MarathonConfig(Some("localhost"), None, None, None, None, None,
-      None).newNamer(Stack.Params.empty)
+      None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -77,6 +77,39 @@ class MarathonTest extends FunSuite {
     assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
     assert(marathon.ttlMs.contains(300))
     assert(marathon.jitterMs.isEmpty)
+    assert(!marathon.disabled)
+  }
+
+  test("parse config with tls") {
+    val yaml = s"""
+                  |kind:           io.l5d.marathon
+                  |prefix:         /io.l5d.marathon
+                  |host:           localhost
+                  |port:           80
+                  |uriPrefix:      /marathon
+                  |ttlMs:          300
+                  |useHealthCheck: false
+                  |tls:
+                  |  disableValidation: false
+                  |  commonName: master.mesos
+                  |  trustCerts:
+                  |    - /foo/caCert.pem
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
+    val marathon = mapper.readValue[NamerConfig](yaml).asInstanceOf[MarathonConfig]
+    assert(marathon.host.contains("localhost"))
+    assert(marathon.port.contains(Port(80)))
+    assert(marathon.uriPrefix.contains("/marathon"))
+    assert(marathon._prefix.contains(Path.read("/io.l5d.marathon")))
+    assert(marathon.ttlMs.contains(300))
+    assert(marathon.jitterMs.isEmpty)
+
+    val tls = marathon.tls.get
+    assert(tls.disableValidation.contains(false))
+    assert(tls.commonName.contains("master.mesos"))
+    assert(tls.trustCerts.contains(List("/foo/caCert.pem")))
+
     assert(!marathon.disabled)
   }
 
