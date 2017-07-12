@@ -1,12 +1,13 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Method, Response, Request}
+import com.twitter.finagle.http.{Method, Request, Response}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle._
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Time, Var}
+import com.twitter.util.{Future, MockTimer, Time, Var}
 import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
@@ -663,6 +664,67 @@ class RetriesEndToEndTest extends FunSuite {
       assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(101))
       assert(stats.gauges.get(Seq("rt", "http", "client", label, "connections")).map(_.apply.toInt) == Some(1))
 
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+
+  }
+
+  test("individual request timeouts should be retried") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+    val timer = new MockTimer
+
+    @volatile var i = 0
+
+    val downstream = Downstream("dog", Service.mk { req =>
+      if (i == 0) {
+        i += 1
+        Future.sleep(2.seconds)(timer).map(_ => Response())
+      } else {
+        val rsp = Response()
+        Future.value(rsp)
+      }
+    })
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${dtab.show}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableRead5XX
+          |  client:
+          |    requestAttemptTimeoutMs: 1000
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+
+      val req = Request()
+      req.host = "dog"
+      Time.withCurrentTimeFrozen { tc =>
+        val rspF = client(req)
+        tc.advance(3.seconds)
+        timer.tick()
+        val rsp = await(rspF)
+        assert(rsp.statusCode == 200)
+        assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("rt", "http", "service", s"svc/dog", "retries", "total")) == Some(1))
+      }
     } finally {
       await(client.close())
       await(downstream.server.close())

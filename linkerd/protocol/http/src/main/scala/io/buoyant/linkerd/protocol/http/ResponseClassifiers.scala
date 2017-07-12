@@ -120,10 +120,14 @@ object ResponseClassifiers {
 
   def HeaderRetryable(classifier: ResponseClassifier): ResponseClassifier =
     ResponseClassifier.named(s"HeaderRetryable[$classifier]") {
-      case rr@ReqRep(req, Return(rsp: Response)) if classifier.isDefinedAt(rr) =>
+      case rr if classifier.isDefinedAt(rr) =>
         val rc = classifier(rr)
-        if (rc == ResponseClass.NonRetryableFailure && Headers.Retryable.get(rsp.headerMap)) {
-          ResponseClass.RetryableFailure
+        if (rc == ResponseClass.NonRetryableFailure) {
+          rr match {
+            case ReqRep(req, Return(rsp: Response)) if Headers.Retryable.get(rsp.headerMap) =>
+              ResponseClass.RetryableFailure
+            case _ => rc
+          }
         } else {
           rc
         }

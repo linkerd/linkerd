@@ -24,12 +24,18 @@ class ErrorResponder
         case ErrorResponder.HttpResponseException(rsp) =>
           rsp
         case _ =>
-          log.error(e, "service failure")
           val message = e.getMessage match {
             case null => e.getClass.getName
             case msg => msg
           }
-          val rsp = Headers.Err.respond(message, Status.BadGateway)
+          val status = e match {
+            case _: TimeoutException | Failure(Some(_: TimeoutException)) =>
+              Status.ServiceUnavailable
+            case _ =>
+              log.error(e, "service failure")
+              Status.BadGateway
+          }
+          val rsp = Headers.Err.respond(message, status)
           if (RetryableWriteException.unapply(e).isDefined) {
             Headers.Retryable.set(rsp.headerMap, retryable = true)
           }

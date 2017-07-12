@@ -1,9 +1,9 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.twitter.finagle.{Service, ServiceFactory, Stack, WriteException}
+import com.twitter.conversions.time._
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Request, Response, Status}
-import com.twitter.io.Charsets
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
 import io.buoyant.router.RoutingFactory
@@ -16,43 +16,31 @@ import org.scalatest.FunSuite
 
 class ErrorResponderTest extends FunSuite with Awaits {
 
-  val svc = Service.mk[Request, Response] { _ =>
-    Future.exception(RoutingFactory.UnknownDst(Request(), s"foo\nbar"))
+  def mkService(rsp: Future[Response]): Service[Request, Response] = {
+    val svc = Service.mk[Request, Response] { _ =>
+      rsp
+    }
+    val stk = ErrorResponder.module.toStack(
+      Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
+    )
+    await(stk.make(Stack.Params.empty)())
   }
-  val stk = ErrorResponder.module.toStack(
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
-  )
-  val service = await(stk.make(Stack.Params.empty)())
 
-  val writeErrorSvc = Service.mk[Request, Response] { _ =>
-    Future.exception(new WriteException {})
-  }
-  val writeErrorStk = ErrorResponder.module.toStack(
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(writeErrorSvc))
-  )
-  val writeErrorService = await(writeErrorStk.make(Stack.Params.empty)())
+  val service = mkService(Future.exception(RoutingFactory.UnknownDst(Request(), s"foo\nbar")))
 
-  val redirectSvc = Service.mk[Request, Response] { _ =>
+  val writeErrorService = mkService(Future.exception(new WriteException {}))
+
+  val redirectService = mkService {
     val redirect = Response(Status.Found)
     redirect.location = "http://linkerd.io"
     Future.exception(HttpResponseException(redirect))
   }
 
-  val redirectStk = ErrorResponder.module.toStack(
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(redirectSvc))
-  )
+  val individualTimeoutService = mkService(Future.exception(new IndividualRequestTimeoutException(1.second)))
 
-  val redirectService = await(redirectStk.make(Stack.Params.empty)())
-
-  val malframedSvc = Service.mk[Request, Response] { _ =>
-    Future.exception(FramingException("malframed!"))
-  }
-
-  val malframedStk = ErrorResponder.module.toStack(
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(malframedSvc))
-  )
-
-  val malframedService = await(malframedStk.make(Stack.Params.empty)())
+  val totalTimeoutService = mkService(Future.exception(new GlobalRequestTimeoutException(1.second)))
+  
+  val malframedService = mkService(Future.exception(FramingException("malframed!")))
 
   test("returns BadRequest for UnknownDst exception") {
     val rsp = await(service(Request()))
@@ -76,6 +64,16 @@ class ErrorResponderTest extends FunSuite with Awaits {
     val rsp = await(redirectService(Request()))
     assert(rsp.status == Status.Found)
     assert(rsp.location == Some("http://linkerd.io"))
+  }
+
+  test("returns ServiceUnavailable for request attempt timeouts") {
+    val rsp = await(individualTimeoutService(Request()))
+    assert(rsp.status == Status.ServiceUnavailable)
+  }
+
+  test("returns ServiceUnavailable for total timeouts") {
+    val rsp = await(totalTimeoutService(Request()))
+    assert(rsp.status == Status.ServiceUnavailable)
   }
 
   test("returns BadGateway for FramingException") {
