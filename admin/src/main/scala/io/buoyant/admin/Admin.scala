@@ -6,12 +6,15 @@ import com.twitter.finagle.http.{HttpMuxer, Request, Response}
 import com.twitter.finagle.http.filter.HeadFilter
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import com.twitter.logging.Logger
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
 import java.net.SocketAddress
 import com.twitter.finagle.buoyant.TlsServerConfig
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
+import com.twitter.finagle.ssl.server.{LegacyServerEngineFactory, SslServerEngineFactory}
 
 object Admin {
   val label = "adminhttp"
@@ -55,7 +58,7 @@ object Admin {
     }
   }
 
-  private val server = Http.server
+  private def makeServer(tls: Stack.Params) = Http.server
     .withLabel(label)
     .withMonitor(loggingMonitor)
     .withStatsReceiver(NullStatsReceiver)
@@ -104,10 +107,15 @@ object Admin {
   }
 }
 
-class Admin(val address: SocketAddress, val tlsCfg: Option[TlsServerConfig]) {
+class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
   import Admin._
 
+  private[this] val tls =
+    tlsCfg.map(cfg => cfg.params(None, Netty4ServerEngineFactory()))
+          .getOrElse(Stack.Params.empty)
+
   private[this] val notFoundView = new NotFoundView()
+  private[this] val server = makeServer(tls)
 
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
