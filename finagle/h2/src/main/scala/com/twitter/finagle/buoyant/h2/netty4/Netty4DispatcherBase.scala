@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.Failure
+import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -104,6 +104,15 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Throw(e) if closed.get =>
         log.debug(e, "[%s] dispatcher closed", prefix)
         Future.exception(e)
+
+      case Throw(e: ChannelClosedException) =>
+        log.warning("[%s] client closed connection without sending GOAWAY frame", prefix)
+        // don't propagate the exception?
+        // this may not be technically correct, if the client closed the channel *before* we
+        // finish processing, this indicates a more serious error than if the client just failed
+        // to send a GOAWAY frame after finishing.
+        // TODO: check if we're actually finished with this client or not
+        Future.Unit
 
       case Throw(e) =>
         log.error(e, "[%s] dispatcher failed", prefix)
