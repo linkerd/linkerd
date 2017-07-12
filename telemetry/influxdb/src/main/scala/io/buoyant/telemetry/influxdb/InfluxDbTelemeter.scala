@@ -20,7 +20,7 @@ class InfluxDbTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithH
     val response = Response()
     response.version = request.version
     response.mediaType = MediaType.Txt
-    val sb = new StringBuilder()
+    val sb = new StringBuilder(Telemeter.DefaultBufferSize)
     val host = request.host.getOrElse("none")
     writeMetrics(metrics, sb, Nil, Seq("host" -> host))
     response.contentString = sb.toString
