@@ -158,7 +158,7 @@ pseudo-header is used.
 #### Namer Configuration:
 
 > With this configuration, a request to
-`:5000/true/love/waits.php?thing=1` will be mapped to `/h2/true/love`
+`:5000/true/love/waits.php?thing=1` will be mapped to `/svc/true/love`
 and will be routed based on this name by the corresponding Dtab.
 
 ```yaml
