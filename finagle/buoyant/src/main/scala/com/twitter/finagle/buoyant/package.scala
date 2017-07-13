@@ -28,4 +28,13 @@ package object buoyant {
       }
     }
   }
+
+  implicit class MaybeTransform[A](val a: A) extends AnyVal {
+    def maybeTransform(f: Option[A => A]): A = {
+      f match {
+        case Some(f) => f(a)
+        case None => a
+      }
+    }
+  }
 }
