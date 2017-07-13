@@ -1,8 +1,8 @@
 package io.buoyant.admin
 
-import io.buoyant.config.types.Port
-import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.finagle.buoyant.TlsServerConfig
+import java.net.{InetAddress, InetSocketAddress}
+import io.buoyant.config.types.Port
 
 case class AdminConfig(
   ip: Option[InetAddress] = None,

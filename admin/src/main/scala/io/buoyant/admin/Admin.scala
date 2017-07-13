@@ -1,22 +1,20 @@
 package io.buoyant.admin
 
+import java.net.SocketAddress
 import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
-import com.twitter.finagle.http.{HttpMuxer, Request, Response}
+import com.twitter.finagle.buoyant._
 import com.twitter.finagle.http.filter.HeadFilter
+import com.twitter.finagle.http.{HttpMuxer, Request, Response}
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.buoyant._
 import com.twitter.logging.Logger
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
-import java.net.SocketAddress
-import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 
 object Admin {
-
-  import scala.language.implicitConversions
   val label = "adminhttp"
   private val log = Logger.get(label)
 
