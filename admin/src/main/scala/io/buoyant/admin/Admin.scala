@@ -63,6 +63,7 @@ object Admin {
     .withMonitor(loggingMonitor)
     .withStatsReceiver(NullStatsReceiver)
     .withTracer(NullTracer)
+    .withParams(tls)
 
   val threadsJs = "<script src='files/js/threads.js'></script>"
 
@@ -112,7 +113,7 @@ class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
 
   private[this] val tls =
     tlsCfg.map(cfg => cfg.params(None, Netty4ServerEngineFactory()))
-          .getOrElse(Stack.Params.empty)
+      .getOrElse(Stack.Params.empty)
 
   private[this] val notFoundView = new NotFoundView()
   private[this] val server = makeServer(tls)
