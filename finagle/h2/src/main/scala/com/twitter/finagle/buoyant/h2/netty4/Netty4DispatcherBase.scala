@@ -105,13 +105,12 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         log.debug(e, "[%s] dispatcher closed", prefix)
         Future.exception(e)
 
-      case Throw(e: ChannelClosedException)
-        // if all streams have already been closed, then this just means that
-        // the client failed to send a GOAWAY frame...
-        if closed.get || streams.isEmpty =>
-          // ...so we don't need to propagate the exception
-          log.debug("[%s] client closed connection without sending GOAWAY frame", prefix)
-          Future.Unit
+      // if all streams have already been closed, then this just means that
+      // the client failed to send a GOAWAY frame...
+      case Throw(e: ChannelClosedException) if streams.isEmpty =>
+        // ...so we don't need to propagate the exception
+        log.debug("[%s] client closed connection without sending GOAWAY frame", prefix)
+        Future.Unit
 
       case Throw(e) =>
         log.error(e, "[%s] dispatcher failed", prefix)
