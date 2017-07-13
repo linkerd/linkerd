@@ -118,6 +118,16 @@ class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
   private[this] val notFoundView = new NotFoundView()
   private[this] val server = makeServer(tls)
 
+  /**
+   * Whether or not this admin service was configured to serve over TLS
+   */
+  lazy val isTls: Boolean = tlsCfg.isDefined
+
+  /**
+   * the name of the scheme the admin page is served over
+   */
+  lazy val scheme: String = if (this.isTls) "https" else "http"
+
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
