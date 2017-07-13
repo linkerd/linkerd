@@ -522,7 +522,7 @@ port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is available at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
 ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
 useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
-tls | no tls | The Marathon namer will make requests to Marathon/DCOS using TLS if this parameter is provided. This is useful when DC/OS is run in [strict](https://docs.mesosphere.com/latest/security/#security-modes) security mode. It must be a [client TLS](client_tls.md#client-tls) object. Note that the `clientAuth` config value will be unused, as DC/OS does not use mutual TLS.
+tls | no tls | The Marathon namer will make requests to Marathon/DCOS using TLS if this parameter is provided. This is useful when DC/OS is run in [strict](https://docs.mesosphere.com/latest/security/#security-modes) security mode. It must be a [client TLS](#client-tls) object. Note that the `clientAuth` config value will be unused, as DC/OS does not use mutual TLS.
 
 ### Marathon Path Parameters
 
