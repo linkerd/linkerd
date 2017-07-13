@@ -66,7 +66,7 @@ object Main extends App {
     linker: Linker
   ): Closable with Awaitable[Unit] = {
     val server = linker.admin.serve(this, LinkerdAdmin(config, linker))
-    log.info(s"serving http admin on %s", server.boundAddress)
+    log.info(s"serving ${linker.admin.scheme} admin on ${server.boundAddress}")
     server
   }
 

@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, Dst}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.Endpoint

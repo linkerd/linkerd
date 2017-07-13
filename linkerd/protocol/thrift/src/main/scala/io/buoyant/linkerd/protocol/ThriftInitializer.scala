@@ -4,7 +4,7 @@ package protocol
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
-import com.twitter.finagle.buoyant.PathMatcher
+import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftServerPrep, ThriftTraceInitializer}
 import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.Thrift

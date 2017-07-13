@@ -4,11 +4,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.github.ghik.silencer.silent
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.conversions.time._
-import com.twitter.finagle.buoyant.TlsServerConfig
+import com.twitter.finagle.buoyant.{TlsServerConfig, ParamsMaybeWith}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.ssl.server.{LegacyKeyServerEngineFactory, SslServerEngineFactory}
 import com.twitter.finagle.{ListeningServer, Path, Stack}
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
