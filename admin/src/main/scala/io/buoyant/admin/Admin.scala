@@ -118,12 +118,12 @@ class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
   /**
    * Whether or not this admin service was configured to serve over TLS
    */
-  lazy val isTls: Boolean = tlsCfg.isDefined
+  val isTls: Boolean = tlsCfg.isDefined
 
   /**
    * the name of the scheme the admin page is served over
    */
-  lazy val scheme: String = if (this.isTls) "https" else "http"
+  val scheme: String = if (this.isTls) "https" else "http"
 
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
