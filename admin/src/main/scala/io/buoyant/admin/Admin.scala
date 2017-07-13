@@ -6,17 +6,17 @@ import com.twitter.finagle.http.{HttpMuxer, Request, Response}
 import com.twitter.finagle.http.filter.HeadFilter
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.buoyant.ParamsMaybeWith
+import com.twitter.finagle.buoyant._
 import com.twitter.logging.Logger
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
 import java.net.SocketAddress
-import com.twitter.finagle.buoyant.TlsServerConfig
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
-import com.twitter.finagle.ssl.server.{LegacyServerEngineFactory, SslServerEngineFactory}
 
 object Admin {
+
+  import scala.language.implicitConversions
   val label = "adminhttp"
   private val log = Logger.get(label)
 
@@ -58,12 +58,13 @@ object Admin {
     }
   }
 
-  private def makeServer(tls: Stack.Params) = Http.server
-    .withLabel(label)
-    .withMonitor(loggingMonitor)
-    .withStatsReceiver(NullStatsReceiver)
-    .withTracer(NullTracer)
-    .withParams(tls)
+  private def makeServer(tls: Option[TlsServerConfig]) =
+    Http.server
+      .withLabel(label)
+      .withMonitor(loggingMonitor)
+      .withStatsReceiver(NullStatsReceiver)
+      .withTracer(NullTracer)
+      .maybeWith(tls.map(_.params(None, Netty4ServerEngineFactory())))
 
   val threadsJs = "<script src='files/js/threads.js'></script>"
 
@@ -111,12 +112,8 @@ object Admin {
 class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
   import Admin._
 
-  private[this] val tls =
-    tlsCfg.map(cfg => cfg.params(None, Netty4ServerEngineFactory()))
-      .getOrElse(Stack.Params.empty)
-
   private[this] val notFoundView = new NotFoundView()
-  private[this] val server = makeServer(tls)
+  private[this] val server = makeServer(tlsCfg)
 
   /**
    * Whether or not this admin service was configured to serve over TLS
