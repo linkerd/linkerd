@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.PathMatcher
+import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter

@@ -6,6 +6,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftMuxServerPrep, ThriftTraceInitializer}
 import com.twitter.finagle.mux
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.{Thrift, ThriftMux}
 

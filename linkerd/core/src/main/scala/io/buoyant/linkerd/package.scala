@@ -1,7 +1,4 @@
 package io.buoyant
-import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.ParamsMaybeWith
-import scala.language.implicitConversions
 /**
  * Linkerd provides a modular & pluggable configuration layer to
  * support programmatic and configuration-driven initialization of
@@ -38,26 +35,4 @@ import scala.language.implicitConversions
  * configuration and initialization. ProtocolInitializer modules are
  * discovered at runtime with finagle's `LoadService` facility.
  */
-package object linkerd {
-  /**
-   * Reimport [[com.twitter.finagle.buoyant.ParamsMaybeWith ParamsMaybeWith]]
-   * so that it's globally visible in the `io.buoyant.linkerd` package.
-   * @param params a [[com.twitter.finagle.Stack.Params Stack.Params]] to
-   *               implicitly enhance with the `maybeWith()` function
-   * @return `params` enhanced with the
-   *        [[ParamsMaybeWith.maybeWith() maybeWith()]] function
-   */
-  @inline
-  final implicit def paramsMaybeWith(params: Stack.Params): ParamsMaybeWith =
-    ParamsMaybeWith(params)
-
-  implicit class MaybeTransform[A](val a: A) extends AnyVal {
-    def maybeTransform(f: Option[A => A]): A = {
-      f match {
-        case Some(f) => f(a)
-        case None => a
-      }
-    }
-  }
-
-}
+package object linkerd
