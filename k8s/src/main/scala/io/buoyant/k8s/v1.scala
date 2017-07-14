@@ -114,7 +114,7 @@ package object v1 {
     def group = v1.group
     def version = v1.version
     override def withNamespace(ns: String) = new NsApi(client, ns)
-    override def withNamespaceWatch(ns: String) = new NsWatchApi(client, ns)
+//    override def withNamespaceWatch(ns: String) = new NsWatchApi(client, ns)
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
     def services = listResource[Service, ServiceWatch, ServiceList]()
   }
@@ -126,10 +126,10 @@ package object v1 {
     def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
   }
 
-  class NsWatchApi(client: Client, ns: String)
-    extends NsWatchVersion[Object](client, v1.group, v1.version, ns) {
-    def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
-  }
+//  class NsWatchApi(client: Client, ns: String)
+//    extends NsWatchVersion[Object](client, v1.group, v1.version, ns) {
+//    def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
+//  }
 
   case class EndpointsList(
     items: Seq[Endpoints],

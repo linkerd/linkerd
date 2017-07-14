@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.{Failure, http}
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
@@ -16,13 +16,44 @@ import scala.util.control.NonFatal
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference]
-  extends Resource {
+private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, G: TypeReference] extends Resource {
   import Watchable._
 
   protected def backoffs: Stream[Duration]
-  protected def watchPath: String
   protected def stats: StatsReceiver
+
+  protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
+    RetryPolicy.backoff(backoffs) {
+      // We will assume 5xx are retryable, everything else is not for now
+      case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      // Don't retry on interruption
+      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
+      case (_, Throw(NonFatal(ex))) =>
+        log.error(s"retrying k8s request to $path on error $ex")
+        true
+    },
+    HighResTimer.Default,
+    stats,
+    RetryBudget.Infinite
+  )
+
+  def get(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None,
+    resourceVersion: Option[String] = None,
+    retryIndefinitely: Boolean = false,
+    watch: Boolean = false
+  ): Future[G] = {
+    val req = Api.mkreq(http.Method.Get,
+      if (watch) watchPath else path,
+      None,
+      "labelSelector" -> labelSelector,
+      "fieldSelector" -> fieldSelector,
+      "resourceVersion" -> resourceVersion)
+    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+    val retryingClient = retry andThen client
+    Trace.letClear(retryingClient(req)).flatMap(Api.parse[G])
+  }
 
   /**
    * implementing classes should define this method to retrieve the current state
@@ -35,20 +66,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     fieldSelector: Option[String] = None
   ): Future[(Seq[W], Option[String])]
 
-  protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
-    RetryPolicy.backoff(backoffs) {
-      // We will assume 5xx are retryable, everything else is not for now
-      case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
-      // Don't retry on interruption
-      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
-      case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying k8s request to $watchPath on error $ex")
-        true
-    },
-    HighResTimer.Default,
-    stats,
-    RetryBudget.Infinite
-  )
 
   /**
    * Watch this resource for changes, using a chunked HTTP request.
