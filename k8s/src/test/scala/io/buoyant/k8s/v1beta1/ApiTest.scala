@@ -63,7 +63,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       http <- rule.http.toSeq;
       path <- http.paths
     ) yield {
-      assert(path.path == Some("/fooPath"))
+      assert(path.path.contains("/fooPath"))
       assert(path.backend.serviceName == "/fooService")
       assert(path.backend.servicePort == "/fooPort")
       path

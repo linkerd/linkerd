@@ -136,7 +136,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
         case 1 =>
           try {
             assert(req.path == "/api/v1/endpoints")
-            assert(req.params.getBoolean("watch") == Some(true))
+            assert(req.params.getBoolean("watch").contains(true))
             rsp.version = req.version
             Future.value(rsp)
           } catch {
@@ -246,16 +246,16 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
           assert(status.status == Some("Failure"))
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
-              assert(mod.metadata.get.resourceVersion.get == "17147786")
-              assert(mod.subsets.get.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+              assert(mod.metadata.get.resourceVersion.contains("17147786"))
+              assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
               await(stream().uncons) match {
                 case Some((EndpointsModified(mod), stream)) =>
-                  assert(mod.metadata.get.resourceVersion.get == "17147808")
-                  assert(mod.subsets.get.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+                  assert(mod.metadata.get.resourceVersion.contains("17147808"))
+                  assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
                   await(stream().uncons) match {
                     case Some((EndpointsModified(mod), stream)) =>
-                      assert(mod.metadata.get.resourceVersion.get == "27147808")
-                      assert(mod.subsets == None)
+                      assert(mod.metadata.get.resourceVersion.contains("27147808"))
+                      assert(mod.subsets.isEmpty)
                       val next = stream().uncons
                       await(closable.close())
                       assert(!next.isDefined)
@@ -361,16 +361,16 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     try {
       await(stream.uncons) match {
         case Some((EndpointsModified(mod), stream)) =>
-          assert(mod.metadata.get.resourceVersion.get == "17147786")
-          assert(mod.subsets.get.head.addresses == Some(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+          assert(mod.metadata.get.resourceVersion.contains("17147786"))
+          assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
           await(stream().uncons) match {
             case Some((EndpointsModified(mod), stream)) =>
-              assert(mod.metadata.get.resourceVersion.get == "17147808")
-              assert(mod.subsets.get.head.addresses == Some(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+              assert(mod.metadata.get.resourceVersion.contains("17147808"))
+              assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
               await(stream().uncons) match {
                 case Some((EndpointsModified(mod), stream)) =>
-                  assert(mod.metadata.get.resourceVersion.get == "27147808")
-                  assert(mod.subsets == None)
+                  assert(mod.metadata.get.resourceVersion.contains("27147808"))
+                  assert(mod.subsets.isEmpty)
                   val next = stream().uncons
                   await(closable.close())
                   assert(!next.isDefined)
