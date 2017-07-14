@@ -4,11 +4,16 @@ define([
   'jQuery',
   'lodash',
   'handlebars.runtime',
+  'src/latency_color_util',
   'src/utils',
   'src/success_rate_graph',
   'src/bar_chart',
   'template/compiled_templates'
-], function($, _, Handlebars,
+], function(
+  $,
+  _,
+  Handlebars,
+  LatencyUtil,
   Utils,
   SuccessRateGraph,
   BarChart,
@@ -51,21 +56,6 @@ define([
   var RouterClient = (function() {
     var template = templates.router_client;
 
-    var metricToColorShade = {
-      "max": "light",
-      "p9990": "tint",
-      "p99": "neutral",
-      "p95": "shade",
-      "p50": "dark"
-    }
-    var latencyKeys = _.keys(metricToColorShade);
-
-    function createLatencyLegend(colorLookup) {
-      return _.mapValues(metricToColorShade, function(shade) {
-        return colorLookup[shade];
-      });
-    }
-
     function getMetricDefinitions(routerName, clientName) {
       return _.map([
         {suffix: "requests", label: "Requests"},
@@ -75,7 +65,7 @@ define([
         {suffix: "loadbalancer/size", label: "Load balancer pool size", isGauge: true},
         {suffix: "loadbalancer/available", label: "Load balancers available", isGauge: true}
       ], function(metric) {
-        var treeKeyRoot = ["rt", routerName, "dst", "id", clientName].concat(metric.suffix.split("/"));
+        var treeKeyRoot = ["rt", routerName, "client", clientName].concat(metric.suffix.split("/"));
 
         return {
           metricSuffix: metric.suffix,
@@ -97,18 +87,6 @@ define([
       $container.html($clientHtml);
     }
 
-    function getLatencyData(data, routerName, clientName, chartLegend) {
-      var latencyData = _.get(data, ["rt", routerName, "dst", "id", clientName, "request_latency_ms"]);
-
-      return _.map(latencyKeys, function(key) {
-        return {
-          latencyLabel: key,
-          latencyValue: _.get(latencyData, "stat." + key),
-          latencyColor: chartLegend[key]
-        };
-      });
-    }
-
     function getSuccessRate(summaryData) {
       var successRate = summaryData.successRateRaw === -1 ? 1 : summaryData.successRateRaw;
       return [{ name: "successRate", delta: successRate * 100 }];
@@ -128,8 +106,9 @@ define([
 
       var successRate = new Utils.SuccessRate(summary.success.value || 0, summary.failures.value || 0);
       summary.successRate = {
-        description: "Success Rate",
-        value: successRate.prettyRate(),
+        description: "Successes",
+        value: summary.success.value || 0,
+        rate: successRate.prettyRate(),
         style: successRate.rateStyle()
       };
       summary.successRateRaw = successRate.successRate;
@@ -138,8 +117,12 @@ define([
     }
 
     return function (metricsCollector, client, $container, routerName, colors, shouldExpandInitially, combinedClientGraph) {
+      var isExpired = false;
       var metricPartial = templates["metric.partial"];
       Handlebars.registerPartial('metricPartial', metricPartial);
+
+      var latencyPartial = templates["latencies.partial"];
+      Handlebars.registerPartial('latencyPartial', latencyPartial);
 
       var $contentContainer = $container.find(".client-content-container");
 
@@ -151,7 +134,7 @@ define([
       var $toggleLinks = $container.find(".client-toggle");
       var $lbBarChart = $container.find(".lb-bar-chart");
 
-      var latencyLegend = createLatencyLegend(colors.colorFamily);
+      var latencyLegend = LatencyUtil.createLatencyLegend(colors.colorFamily);
       var metricDefinitions = getMetricDefinitions(routerName, client);
 
       var $expandLink = $toggleLinks.find(".client-expand");
@@ -161,11 +144,19 @@ define([
       var successRateChart = SuccessRateGraph($chartEl.find(".client-success-rate"), colors.color);
       var lbBarChart = new LoadBalancerBarChart($lbBarChart);
 
+      metricsCollector.registerListener(getClientId(routerName, client), metricsHandler);
+
       // collapse client section by default (deal with large # of clients)
       toggleClientDisplay(shouldExpandInitially);
 
-      $expandLink.click(function() { toggleClientDisplay(true); });
-      $collapseLink.click(function() { toggleClientDisplay(false); });
+      $expandLink.click(function() {
+        $container.trigger("expand-custom");
+        toggleClientDisplay(true);
+      });
+      $collapseLink.click(function() {
+        $container.trigger("expand-custom");
+        toggleClientDisplay(false);
+      });
 
       function toggleClientDisplay(expand) {
         if (expand) {
@@ -173,32 +164,57 @@ define([
           $headerLine.css("border-bottom", "0px");
 
           combinedClientGraph.unIgnoreClient(client);
-          metricsCollector.registerListener(metricsHandler);
         } else {
           $contentContainer.css({'border': null});
           $headerLine.css({'border-bottom': colorBorder});
 
           combinedClientGraph.ignoreClient(client);
-          metricsCollector.deregisterListener(metricsHandler);
         }
 
-        $contentContainer.toggle(expand);
-        $collapseLink.toggle(expand);
-        $expandLink.toggle(!expand);
+        if (expand) {
+          $contentContainer.removeClass("hidden");
+          $collapseLink.removeClass("hidden");
+          $expandLink.addClass("hidden");
+        } else {
+          $contentContainer.addClass("hidden");
+          $collapseLink.addClass("hidden");
+          $expandLink.removeClass("hidden");
+        }
+      }
+
+      function getClientId(router, client) {
+        return "RouterClient_" + router + "_" + client;
       }
 
       function metricsHandler(data) {
-        var summaryData = getSummaryData(data, metricDefinitions);
-        var latencies = getLatencyData(data, routerName, client, latencyLegend);
+        var clientMetrics = _.get(data, ["rt", routerName, "client", client]);
 
-        successRateChart.updateMetrics(getSuccessRate(summaryData));
-        lbBarChart.update(summaryData);
+        if (_.isEmpty(clientMetrics)) {
+          if (!isExpired) {
+            isExpired = true;
+            $container.trigger("expire-client");
+          }
+        } else {
+          if (isExpired) {
+            isExpired = false;
+            $container.trigger("revive-client");
+          }
 
-        renderMetrics($metricsEl, client, summaryData, latencies);
+          var summaryData = getSummaryData(data, metricDefinitions);
+          var latencyData = _.get(data, ["rt", routerName, "client", client, "request_latency_ms"]);
+          var latencies = LatencyUtil.getLatencyData(latencyData, latencyLegend);
+
+          successRateChart.updateMetrics(getSuccessRate(summaryData));
+          lbBarChart.update(summaryData);
+
+          renderMetrics($metricsEl, client, summaryData, latencies);
+        }
       }
 
       return {
-        label: client
+        label: client,
+        isExpired: isExpired,
+        toggleClientDisplay: toggleClientDisplay
       };
     };
   })();

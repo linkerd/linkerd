@@ -1,13 +1,13 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonTypeInfo}
-import com.fasterxml.jackson.core.{io => _}
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
-import com.twitter.util.{Closable, Duration}
+import com.twitter.finagle.buoyant.ParamsMaybeWith
+import com.twitter.util.Closable
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
 import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
 
@@ -161,7 +161,8 @@ trait RouterConfig {
     .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
     .maybeWith(bindingCache.map(_.capacity))
     .maybeWith(client.map(_.clientParams))
-    .maybeWith(service.map(_.pathParams)) +
+    .maybeWith(service.map(_.pathParams))
+    .maybeWith(bindingCache.flatMap(_.idleTtl)) +
     param.Label(label) +
     DstBindingFactory.BindingTimeout(bindingTimeout)
 
@@ -179,5 +180,26 @@ trait RouterConfig {
 
   @JsonIgnore
   def protocol: ProtocolInitializer
+}
+
+case class BindingCacheConfig(
+  paths: Option[Int],
+  trees: Option[Int],
+  bounds: Option[Int],
+  clients: Option[Int],
+  idleTtlSecs: Option[Int]
+) {
+  private[this] val default = DstBindingFactory.Capacity.default
+
+  def capacity = DstBindingFactory.Capacity(
+    paths = paths.getOrElse(default.paths),
+    trees = trees.getOrElse(default.trees),
+    bounds = bounds.getOrElse(default.bounds),
+    clients = clients.getOrElse(default.clients)
+  )
+
+  def idleTtl: Option[DstBindingFactory.IdleTtl] = idleTtlSecs.map { t =>
+    DstBindingFactory.IdleTtl(t.seconds)
+  }
 }
 

@@ -1,11 +1,13 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{Response, Request}
+import com.twitter.finagle.http.{Method, Request, Response}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle._
-import com.twitter.util.{Future, Time, Var}
+import com.twitter.io.Buf
+import com.twitter.util.{Future, MockTimer, Time, Var}
 import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
@@ -47,7 +49,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -79,13 +81,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
+        def budget = stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "budget"))
         def requeues = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "requeues"),
           0
         )
         def requestLimit = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "retries", "request_limit"),
           0
         )
 
@@ -138,7 +140,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", new FailEveryN(2))
     val downstreamB = Downstream("b", new FailEveryN(2))
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -176,15 +178,15 @@ class RetriesEndToEndTest extends FunSuite {
     try {
       Time.withCurrentTimeFrozen { tc =>
 
+        def budget(ds: Downstream) =
+          stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
 
-        def budget(ds: Downstream) = 
-          stats.gauges(Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "budget"))
         def requeues(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "requeues"),
           0
         )
         def requestLimit(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "id", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
+          Seq("rt", "http", "client", s"$$/inet/127.1/${ds.port}", "retries", "request_limit"),
           0
         )
 
@@ -258,7 +260,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -268,7 +270,7 @@ class RetriesEndToEndTest extends FunSuite {
           |      kind: none
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |    retries:
           |      budget:
           |        minRetriesPerSec: 0
@@ -289,13 +291,13 @@ class RetriesEndToEndTest extends FunSuite {
       Time.withCurrentTimeFrozen { tc =>
 
 
-        def budget = stats.gauges(Seq("http", "dst", "path", "svc/foo", "retries", "budget"))
+        def budget = stats.gauges(Seq("rt", "http", "service", "svc/foo", "retries", "budget"))
         def retries = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "total"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
           0
         )
         def budgetExhausted = stats.counters.getOrElse(
-          Seq("http", "dst", "path", "svc/foo", "retries", "budget_exhausted"),
+          Seq("rt", "http", "service", "svc/foo", "retries", "budget_exhausted"),
           0
         )
 
@@ -345,7 +347,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", new FailEveryN(2))
     val downstreamB = Downstream("b", new FailEveryN(2))
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -356,7 +358,7 @@ class RetriesEndToEndTest extends FunSuite {
           |    failureAccrual:
           |      kind: none
           |  service:
-          |    kind: io.l5d.static          
+          |    kind: io.l5d.static
           |    configs:
           |    - prefix: /svc/a
           |      retries:
@@ -374,7 +376,7 @@ class RetriesEndToEndTest extends FunSuite {
           |          ttlSecs: 10
           |    - prefix: /
           |      responseClassifier:
-          |        kind: io.l5d.retryableRead5XX
+          |        kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -388,15 +390,15 @@ class RetriesEndToEndTest extends FunSuite {
     try {
       Time.withCurrentTimeFrozen { tc =>
 
+        def budget(ds: Downstream) =
+          stats.gauges(Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "budget"))
 
-        def budget(ds: Downstream) = 
-          stats.gauges(Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "budget"))
         def retries(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "total"),
+          Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "total"),
           0
         )
         def budgetExhausted(ds: Downstream) = stats.counters.getOrElse(
-          Seq("http", "dst", "path", s"svc/${ds.name}", "retries", "budget_exhausted"),
+          Seq("rt", "http", "service", s"svc/${ds.name}", "retries", "budget_exhausted"),
           0
         )
 
@@ -456,7 +458,7 @@ class RetriesEndToEndTest extends FunSuite {
     val downstreamA = Downstream("a", Service.mk { req => Future.value(Response()) })
     val downstreamB = Downstream("b", Service.mk { req => Future.value(Response()) })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: |
@@ -483,9 +485,9 @@ class RetriesEndToEndTest extends FunSuite {
         // Each budget starts with a balance of 100 from minRetriesPerSec
         // we subtract that off to see just the deposits
         def retryBudget(svc: String): Int =
-          stats.gauges.get(Seq("http", "dst", "path", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
-        def requeueBudget(clnt: String): Int = 
-          stats.gauges.get(Seq("http", "dst", "id", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+          stats.gauges.get(Seq("rt", "http", "service", svc, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
+        def requeueBudget(clnt: String): Int =
+          stats.gauges.get(Seq("rt", "http", "client", clnt, "retries", "budget")).map(_() - 100).getOrElse(0.0f).toInt
 
         // 20% budget
         assert(retryBudget("svc/a") == 2)
@@ -509,5 +511,226 @@ class RetriesEndToEndTest extends FunSuite {
       await(server.close())
       await(router.close())
     }
+  }
+
+  test("l5d-retryable header is respected by default") {
+    var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = i match {
+        case 0 => Future.value {
+          val rsp = Response()
+          rsp.statusCode = 500
+          Headers.Retryable.set(rsp.headerMap, retryable = true)
+          rsp
+        }
+        case 1 => Future.value(Response())
+      }
+      i += 1
+      rsp
+    })
+
+    val config = 
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+      Time.withCurrentTimeFrozen { tc =>
+
+        def retries = stats.counters.getOrElse(
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
+          0
+        )
+
+        val req = Request()
+        req.host = "foo"
+
+        assert(await(client(req)).statusCode == 200)
+        assert(retries == 1)
+      }
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  test("l5d-retryable header takes precedence over repsonse classifier") {
+    var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = i match {
+        case 0 => Future.value {
+          val rsp = Response()
+          rsp.statusCode = 500
+          Headers.Retryable.set(rsp.headerMap, retryable = true)
+          rsp
+        }
+        case 1 => Future.value(Response())
+      }
+      i += 1
+      rsp
+    })
+
+    val config = 
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableRead5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+      Time.withCurrentTimeFrozen { tc =>
+
+        def retries = stats.counters.getOrElse(
+          Seq("rt", "http", "service", "svc/foo", "retries", "total"),
+          0
+        )
+
+        val req = Request()
+        req.method = Method.Post
+        req.host = "foo"
+
+        // POST should not usually be retryable, but l5d-retryable indicates
+        // the request can be retried anyway
+        assert(await(client(req)).statusCode == 200)
+        assert(retries == 1)
+      }
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+  test("chunked error responses should not leak connections on retries") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+
+    val downstream = Downstream("dog", Service.mk { req =>
+      val rsp = Response()
+      rsp.statusCode = 500
+      rsp.setChunked(true)
+      rsp.close()
+      Future.value(rsp)
+    })
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${dtab.show}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableRead5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+
+      val req = Request()
+      req.host = "dog"
+      val errrsp = await(client(req))
+      assert(errrsp.statusCode == 500)
+      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
+      assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(101))
+      assert(stats.gauges.get(Seq("rt", "http", "client", label, "connections")).map(_.apply.toInt) == Some(1))
+
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+
+  }
+
+  test("individual request timeouts should be retried") {
+    val stats = new InMemoryStatsReceiver
+    val tracer = NullTracer
+    val timer = new MockTimer
+
+    @volatile var i = 0
+
+    val downstream = Downstream("dog", Service.mk { req =>
+      if (i == 0) {
+        i += 1
+        Future.sleep(2.seconds)(timer).map(_ => Response())
+      } else {
+        val rsp = Response()
+        Future.value(rsp)
+      }
+    })
+
+    val label = s"$$/inet/127.1/${downstream.port}"
+    val dtab = Dtab.read(s"/svc/dog => /$label;")
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${dtab.show}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableRead5XX
+          |  client:
+          |    requestAttemptTimeoutMs: 1000
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+      .configured(param.Stats(stats))
+      .configured(param.Tracer(tracer))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    try {
+
+      val req = Request()
+      req.host = "dog"
+      Time.withCurrentTimeFrozen { tc =>
+        val rspF = client(req)
+        tc.advance(3.seconds)
+        timer.tick()
+        val rsp = await(rspF)
+        assert(rsp.statusCode == 200)
+        assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
+        assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(2))
+        assert(stats.counters.get(Seq("rt", "http", "service", s"svc/dog", "retries", "total")) == Some(1))
+      }
+    } finally {
+      await(client.close())
+      await(downstream.server.close())
+      await(server.close())
+      await(router.close())
+    }
+
   }
 }

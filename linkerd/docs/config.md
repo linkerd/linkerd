@@ -70,6 +70,9 @@ Key | Required | Description
 admin:
   ip: 127.0.0.1
   port: 9990
+  tls:
+    certPath: /foo/cert.pem
+    keyPath: /foo/key.pem
 ```
 
 linkerd supports an administrative interface, both as a web ui and a collection
@@ -80,6 +83,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | IP for the admin interface.
 port | `9990` | Port for the admin interface.
+tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 
 #### Administrative endpoints
 

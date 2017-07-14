@@ -53,6 +53,7 @@ label | the value of *protocol* | The name of the router (in stats and the admin
     trees: 100
     bounds: 100
     clients: 10
+    idleTtlSecs: 3600
 ```
 
 Key | Default Value | Description
@@ -61,6 +62,7 @@ paths | `1000` | Max number of paths in the path cache.
 trees | `1000` | Max number of trees in the tree cache.
 bounds | `1000` | Max number of bounds in the bounds cache.
 clients | `1000` | Max number of clients in the clients cache.
+idleTtlSecs | 10 minutes | The amount of time, in seconds, to cache idle services and clients before expiring them.
 
 ## Server Parameters
 
@@ -104,7 +106,7 @@ kind | `io.l5d.global` | Either [io.l5d.global](#global-service-config) or [io.l
 - protocol: http
   service:
     kind: io.l5d.global
-    totalTimeoutMs: 500ms
+    totalTimeoutMs: 500
     retries:
       budget:
         minRetriesPerSec: 5
@@ -137,9 +139,9 @@ which will be applied to all services.
           minMs: 10
           maxMs: 10000
     - prefix: /svc/foo
-      totalTimeoutMs: 500ms
+      totalTimeoutMs: 500
     - prefix: /svc/bar
-      totalTimeoutMs: 200ms
+      totalTimeoutMs: 200
 
 ```
 
@@ -158,11 +160,11 @@ taking precedence over those defined earlier.
 These parameters are available to the service regardless of protocol. Services may also have protocol-specific parameters.
 </aside>
 
-Key                 | Default Value            | Description
-------------------- | -------------------------| -----------
-retries             | see [retries](#retries)  | A [retry policy](#retries) for applicaiton-level retries.
-totalTimeoutMs      | no timeout               | The timeout for an entire request, including all retries, in milliseconds.
-responseClassifier  | `io.l5d.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
+Key                 | Default Value                 | Description
+------------------- | ----------------------------- | -----------
+retries             | see [retries](#retries)       | A [retry policy](#retries) for application-level retries.
+totalTimeoutMs      | no timeout                    | The timeout for an entire request, including all retries, in milliseconds.
+responseClassifier  | `io.l5d.http.nonRetryable5XX` | A (sometimes protocol-specific) [response classifier](#http-response-classifiers) that determines which responses should be considered failures and, of those, which should be considered [retryable](#retries).
 
 ## Client Configuration
 

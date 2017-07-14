@@ -5,6 +5,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.buoyant.TotalTimeout
 import com.twitter.finagle.service._
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import com.twitter.util.Duration
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.{ClassifiedRetries, RetryBudgetConfig}
@@ -41,7 +42,9 @@ trait SvcConfig {
 
   @JsonIgnore
   def responseClassifier: Option[ResponseClassifier] =
-    _responseClassifier.map(_.mk orElse baseResponseClassifier)
+    _responseClassifier.map { classifier =>
+      ClassifiedRetries.orElse(classifier.mk, baseResponseClassifier)
+    }
 }
 
 case class RetriesConfig(

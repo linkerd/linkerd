@@ -1,14 +1,10 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes, JsonTypeInfo}
-import com.fasterxml.jackson.core.{JsonParser, TreeNode}
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.finagle.{Path, ServiceFactory, Stack, Stackable}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.param.Label
+import com.twitter.finagle.{ServiceFactory, Stack, Stackable}
+import io.buoyant.router.RouterLabel
 import io.buoyant.router.http.AddForwardedHeader
-import io.buoyant.linkerd.Server
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
@@ -63,7 +59,7 @@ class RouterLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
   override def mk(params: Stack.Params) =
-    AddForwardedHeader.Labeler.ObfuscatedStatic(params[Server.RouterLabel].label)
+    AddForwardedHeader.Labeler.ObfuscatedStatic(params[RouterLabel.Param].label)
 }
 
 /** Uses the given string as an obfuscated label. */

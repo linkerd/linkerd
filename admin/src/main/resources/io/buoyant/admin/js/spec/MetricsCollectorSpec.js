@@ -20,7 +20,7 @@ define([
         var handler = function(resp) {
           data = resp;
         }
-        collector.registerListener(handler);
+        collector.registerListener("testListener", handler);
         var updateMetrics = _.cloneDeep(metricsJson);
         _.set(updateMetrics, targetMetric, _.get(metricsJson, targetMetric) + expectedDelta);
         collector.__update__(updateMetrics);
@@ -36,7 +36,7 @@ define([
         var handler = function(resp) {
           data = resp;
         }
-        collector.registerListener(handler);
+        collector.registerListener("testListener", handler);
         collector.__update__(metricsJson);
 
         expect(typeof data).toEqual("object");
@@ -45,15 +45,20 @@ define([
     });
 
     describe("deregisterListener", function() {
-      it("removes listener", function() {
-        var wasCalled = false;
-        var handler = function() {
-          wasCalled = true;
-        }
-        collector.registerListener(handler, function() { return [];});
-        collector.deregisterListener(handler);
+      it("removes specified listener", function() {
+        var dogWasCalled = false;
+        var catWasCalled = false;
+
+        var dogHandler = function() { dogWasCalled = true; }
+        var catHandler = function() { catWasCalled = true; }
+        collector.registerListener("dogListener", dogHandler);
+        collector.registerListener("catListener", catHandler);
+        collector.deregisterListener("dogListener");
+
         collector.__update__(metricsJson);
-        expect(wasCalled).toEqual(false);
+
+        expect(dogWasCalled).toEqual(false);
+        expect(catWasCalled).toEqual(true);
       });
     });
   });

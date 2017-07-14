@@ -40,7 +40,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     val failureService = Service.mk[Request, Response] { req =>
       val rsp = Response()
       rsp.headerMap.set("X-Consul-Index", "42")
-      rsp.setStatusCode(404)
+      rsp.statusCode = 404
       lastUri = req.uri
       Future.value(rsp)
     }
@@ -87,7 +87,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     val failureService = Service.mk[Request, Response] { req =>
       val rsp = Response()
       rsp.headerMap.set("X-Consul-Index", "42")
-      rsp.setStatusCode(404)
+      rsp.statusCode = 404
       lastUri = req.uri
       Future.value(rsp)
     }
@@ -142,7 +142,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     val failureService = Service.mk[Request, Response] { req =>
       val rsp = Response()
       rsp.headerMap.set("X-Consul-Index", "42")
-      rsp.setStatusCode(404)
+      rsp.statusCode = 404
       lastUri = req.uri
       Future.value(rsp)
     }
@@ -324,7 +324,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       val rsp = Response()
       rsp.content = Buf.Utf8("No path to datacenter")
       rsp.headerMap.set("X-Consul-Index", "0")
-      rsp.setStatusCode(500) //weird that they return 500 for this
+      rsp.statusCode = 500 //weird that they return 500 for this
       lastUri = req.uri
       Future.value(rsp)
     }
@@ -337,7 +337,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("get reports permission errors") {
     val failureService = Service.mk[Request, Response] { req =>
       val rsp = Response()
-      rsp.setStatusCode(403)
+      rsp.statusCode = 403
       lastUri = req.uri
       Future.value(rsp)
     }

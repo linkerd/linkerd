@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.service.ResponseClassifier
 import com.twitter.finagle.service.RetryPolicy.{TimeoutAndWriteExceptionsOnly, ChannelClosedExceptionsOnly}
 import com.twitter.finagle.http.{Method, Request, Response, Status}
@@ -8,6 +9,7 @@ import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.util.{NonFatal, Return, Throw, Try}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
+import io.buoyant.router.ClassifiedRetries
 
 object ResponseClassifiers {
 
@@ -45,6 +47,13 @@ object ResponseClassifiers {
     ))
   }
 
+  /**
+   * Matches badly-framed responses
+   */
+  val FramingExceptionsOnly: PartialFunction[Try[Nothing], Boolean] = {
+    case Throw(FramingFilter.FramingException(_)) => true
+  }
+
   object Responses {
 
     object Failure {
@@ -63,7 +72,9 @@ object ResponseClassifiers {
 
   object RetryableResult {
     private[this] val retryableThrow: PartialFunction[Try[Nothing], Boolean] =
-      TimeoutAndWriteExceptionsOnly.orElse(ChannelClosedExceptionsOnly).orElse { case _ => false }
+      TimeoutAndWriteExceptionsOnly.orElse(ChannelClosedExceptionsOnly)
+        .orElse(FramingExceptionsOnly)
+        .orElse { case _ => false }
 
     def unapply(rsp: Try[Any]): Boolean = rsp match {
       case Return(Responses.Failure.Retryable()) => true
@@ -98,12 +109,27 @@ object ResponseClassifiers {
     HttpResponseClassifier.ServerErrorsAsFailures
 
   def NonRetryableChunked(classifier: ResponseClassifier): ResponseClassifier =
-    ResponseClassifier.named(s"NonRetryableChunked") {
+    ResponseClassifier.named(s"NonRetryableChunked[$classifier]") {
       case rr@ReqRep(req, _) if classifier.isDefinedAt(rr) =>
         (req, classifier(rr)) match {
           case (req: Request, ResponseClass.RetryableFailure) if req.isChunked =>
             ResponseClass.NonRetryableFailure
           case (_, rc) => rc
+        }
+    }
+
+  def HeaderRetryable(classifier: ResponseClassifier): ResponseClassifier =
+    ResponseClassifier.named(s"HeaderRetryable[$classifier]") {
+      case rr if classifier.isDefinedAt(rr) =>
+        val rc = classifier(rr)
+        if (rc == ResponseClass.NonRetryableFailure) {
+          rr match {
+            case ReqRep(req, Return(rsp: Response)) if Headers.Retryable.get(rsp.headerMap) =>
+              ResponseClass.RetryableFailure
+            case _ => rc
+          }
+        } else {
+          rc
         }
     }
 }
@@ -114,7 +140,7 @@ class RetryableIdempotent5XXConfig extends ResponseClassifierConfig {
 
 class RetryableIdempotent5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableIdempotent5XXConfig]
-  override val configId = "io.l5d.retryableIdempotent5XX"
+  override val configId = "io.l5d.http.retryableIdempotent5XX"
 }
 
 object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializer
@@ -125,7 +151,7 @@ class RetryableRead5XXConfig extends ResponseClassifierConfig {
 
 class RetryableRead5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[RetryableRead5XXConfig]
-  override val configId = "io.l5d.retryableRead5XX"
+  override val configId = "io.l5d.http.retryableRead5XX"
 }
 
 object RetryableRead5XXInitializer extends RetryableRead5XXInitializer
@@ -136,7 +162,18 @@ class NonRetryable5XXConfig extends ResponseClassifierConfig {
 
 class NonRetryable5XXInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[NonRetryable5XXConfig]
-  override val configId = "io.l5d.nonRetryable5XX"
+  override val configId = "io.l5d.http.nonRetryable5XX"
 }
 
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer
+
+class AllSuccessfulConfig extends ResponseClassifierConfig {
+  def mk: ResponseClassifier = ClassifiedRetries.Default
+}
+
+class AllSuccessfulInitializer extends ResponseClassifierInitializer {
+  val configClass = classOf[AllSuccessfulConfig]
+  override val configId = "io.l5d.http.allSuccessful"
+}
+
+object AllSuccessfulInitializer extends AllSuccessfulInitializer

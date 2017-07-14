@@ -2,16 +2,13 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
-import com.twitter.finagle.client.{StackClient, StdStackClient}
+import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.service.{Backoff, Retries, RetryBudget}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.stack.{Endpoint, nilStack}
-import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Activity, Duration, Future, MockTimer, Return, Throw, Time, Try, Var}
+import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.test.FunSuite
-import java.util.concurrent.atomic.AtomicInteger
 
 // This is a sort of end-to-end test, but is intended to improve test
 // coverage of Router.scala

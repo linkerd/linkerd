@@ -1,10 +1,8 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.ssl.Ssl
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{Stack, Path, Namer, ThriftMux}
+import com.twitter.finagle.{Namer, Path, Stack, Thrift, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
@@ -18,8 +16,7 @@ import scala.util.Random
 case class ThriftInterpreterInterfaceConfig(
   retryBaseSecs: Option[Int] = None,
   retryJitterSecs: Option[Int] = None,
-  cache: Option[CapacityConfig] = None,
-  tls: Option[TlsServerConfig] = None
+  cache: Option[CapacityConfig] = None
 ) extends InterpreterInterfaceConfig {
   @JsonIgnore
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
@@ -31,6 +28,8 @@ case class ThriftInterpreterInterfaceConfig(
     store: DtabStore,
     stats: StatsReceiver
   ): Servable = {
+    val stats1 = stats.scope(ThriftInterpreterInterfaceConfig.kind)
+
     val retryIn: () => Duration = {
       val retry = retryBaseSecs.map(_.seconds).getOrElse(10.minutes)
       val jitter = retryJitterSecs.map(_.seconds).getOrElse(1.minute)
@@ -42,12 +41,12 @@ case class ThriftInterpreterInterfaceConfig(
       new LocalStamper,
       retryIn,
       cache.map(_.capacity).getOrElse(ThriftNamerInterface.Capacity.default),
-      stats
+      stats1
     )
-    val params = (tls match {
-      case Some(tlsConfig) => Stack.Params.empty + tlsConfig.param
-      case None => Stack.Params.empty
-    }) + param.Stats(stats) + param.Label(ThriftInterpreterInterfaceConfig.kind)
+    val params =
+      tlsParams +
+        param.Stats(stats1) +
+        Thrift.ThriftImpl.Netty4
     ThriftServable(addr, iface, params)
   }
 }
@@ -81,11 +80,5 @@ case class CapacityConfig(
     bindingCacheInactive = bindingCacheInactive.getOrElse(default.bindingCacheInactive),
     addrCacheActive = addrCacheActive.getOrElse(default.addrCacheActive),
     addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive)
-  )
-}
-
-case class TlsServerConfig(certPath: String, keyPath: String) {
-  val param = Transport.TLSServerEngine(
-    Some(() => Ssl.server(certPath, keyPath, null, null, null))
   )
 }

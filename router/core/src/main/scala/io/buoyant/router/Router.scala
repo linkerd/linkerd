@@ -3,6 +3,7 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
@@ -181,6 +182,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
       val role = RoutingFactory.role
       val description = RoutingFactory.description
       val parameters = Seq(
+        implicitly[Stack.Param[DstBindingFactory.IdleTtl]],
         implicitly[Stack.Param[DstBindingFactory.Capacity]],
         implicitly[Stack.Param[DstBindingFactory.Namer]],
         implicitly[Stack.Param[param.Stats]]
@@ -196,9 +198,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
             label
           case param.Label(label) => label
         }
-        val param.Stats(stats0) = params[param.Stats]
-        val stats = stats0.scope(label)
-        val clientStats = param.Stats(stats.scope("dst", "id"))
+        val param.Stats(stats) = params[param.Stats]
+        val clientStats = param.Stats(stats.scope("client"))
 
         // if this router has been configured as an originator, add a
         // gauge to reflect that in the router's stats
@@ -206,11 +207,12 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         if (originator) { stats.provideGauge("originator")(1f) }
 
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
-          val sr = stats.scope("dst", "path", dst.path.show.stripPrefix("/"))
+          val sr = stats.scope("service", dst.path.show.stripPrefix("/"))
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
-          stk.make(params ++ pathParams + dst + param.Stats(sr))
+          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
+            RouterLabel.Param(label))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -244,8 +246,9 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           namer,
           stats.scope("bindcache"),
           params[DstBindingFactory.Capacity],
-          params[DstBindingFactory.BindingTimeout]
-        )
+          params[DstBindingFactory.BindingTimeout],
+          params[DstBindingFactory.IdleTtl]
+        )(params[param.Timer].timer)
 
         Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
       }
@@ -303,21 +306,14 @@ object StackRouter {
      * protocol-specific annotating tracing filters, to provide response
      * classification annotations (success, failure, or retryable).
      *
-     * Install the TlsClientPrep module below the endpoint stack so that it
-     * may avail itself of any and all params to set TLS params.
-     *
      * Augment the default client StatsFilter with a
      * per-logical-destination stats filter.
      */
-    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
-      val stk = new StackBuilder(stack.nilStack[Req, Rsp])
-      stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
-      (orig ++ stk.result)
-        .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
+      orig.insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
-    }
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -359,6 +355,7 @@ object StackRouter {
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
+    stk.push(PathRegistry.module)
     stk.result
   }
 

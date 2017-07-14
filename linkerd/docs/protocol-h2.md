@@ -20,12 +20,11 @@ routers:
   dtab: |
     /svc => /#/io.l5d.fs ;
   client:
+    prefix: "/#/io.l5d.fs/{service}"
     tls:
       kind: io.l5d.boundPath
       caCertPath: .../ca.pem
-      names:
-      - prefix: "/#/io.l5d.fs/{service}"
-        commonNamePattern: "{service}"
+      commonName: "{service}"
 ```
 
 > Below: plaintext gRPC
@@ -154,12 +153,12 @@ kind: `io.l5d.header.path`
 
 With this identifier, requests are identified using a path read from a
 header. This is useful for routing gRPC requests. By default, the `:path`
-psuedo-header is used.
+pseudo-header is used.
 
 #### Namer Configuration:
 
 > With this configuration, a request to
-`:5000/true/love/waits.php?thing=1` will be mapped to `/h2/true/love`
+`:5000/true/love/waits.php?thing=1` will be mapped to `/svc/true/love`
 and will be routed based on this name by the corresponding Dtab.
 
 ```yaml
@@ -268,6 +267,61 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
+<a href="istio-identifier"></a>
+### Istio Identifier
+
+kind: `io.l5d.k8s.istio`
+
+This identifier compares H2 requests to
+[istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
+on those rules.
+
+ #### Identifier Configuration:
+
+```yaml
+routers:
+- protocol: h2
+  experimental: true
+  identifier:
+    kind: io.l5d.k8s.istio
+```
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+discoveryHost | `istio-pilot` | The host of the Istio-Pilot.
+discoveryPort | 8080 | The port of the Istio-Pilot's discovery service.
+apiserverHost | `istio-pilot` | The host of the Istio-Pilot.
+apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format if the request does not point to a valid k8s cluster
+
+```
+  / dstPrefix / "ext" / host / port
+```
+
+> Dtab Path Format if the request has a valid cluster but DOES NOT match a route-rule
+
+```
+  / dstPrefix / "dest" / cluster / "::" / port
+```
+
+> Dtab Path Format if the request matches a route-rule
+
+```
+  / dstPrefix / "route" / routeRule
+```
+
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+routeRule | N/A | The name of the route-rule that matches the incoming request.
+host | N/A | The host to send the request to.
+cluster | N/A | The cluster to send the request to.
+port | N/A | The port to send the request to.
+
 ## HTTP/2 Headers
 
 linkerd reads and sets several headers prefixed by `l5d-`, as is done
@@ -325,8 +379,8 @@ The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | The logical name of the request as identified by linkerd.
-`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
 `l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 

@@ -3,7 +3,6 @@ package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Service
-import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
@@ -14,7 +13,7 @@ import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 
-class Netty4ServerDispatchTest extends FunSuite {
+class Netty4ServerDispatcherTest extends FunSuite {
   setLogLevel(com.twitter.logging.Level.OFF)
 
   test("serves multiple concurrent requests ") {
@@ -68,7 +67,7 @@ class Netty4ServerDispatchTest extends FunSuite {
       hs.method("GET")
       hs.authority("bartman")
       hs.path("/")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(3)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(3)
     }))
     eventually { assert(bartmanCalled.get) }
 
@@ -79,7 +78,7 @@ class Netty4ServerDispatchTest extends FunSuite {
       hs.method("GET")
       hs.authority("elbarto")
       hs.path("/")
-      new DefaultHttp2HeadersFrame(hs, true).setStreamId(5)
+      new DefaultHttp2HeadersFrame(hs, true).streamId(5)
     }))
     eventually { assert(elBartoCalled.get) }
 
@@ -91,7 +90,7 @@ class Netty4ServerDispatchTest extends FunSuite {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
         hs.status("222")
-        new DefaultHttp2HeadersFrame(hs, false).setStreamId(3)
+        new DefaultHttp2HeadersFrame(hs, false).streamId(3)
       })
     }
     sentq = sentq.tail
@@ -102,7 +101,7 @@ class Netty4ServerDispatchTest extends FunSuite {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
         hs.status("222")
-        new DefaultHttp2HeadersFrame(hs, false).setStreamId(5)
+        new DefaultHttp2HeadersFrame(hs, false).streamId(5)
       })
     }
     sentq = sentq.tail

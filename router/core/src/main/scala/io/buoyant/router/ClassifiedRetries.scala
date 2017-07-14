@@ -29,6 +29,16 @@ object ClassifiedRetries {
   }
 
   /**
+   * A replacement for ResponseClassifier's orElse that gives a nice toString.
+   */
+  def orElse(a: ResponseClassifier, b: ResponseClassifier): ResponseClassifier = new ResponseClassifier {
+    private[this] val underlying = a orElse b
+    def isDefinedAt(reqRep: ReqRep): Boolean = underlying.isDefinedAt(reqRep)
+    def apply(reqRep: ReqRep): ResponseClass = underlying(reqRep)
+    override def toString: String = s"$a orElse $b"
+  }
+
+  /**
    * A RetryPolicy that uses a ResponseClassifier.
    */
   private class ClassifiedPolicy[Req, Rsp](backoff: Stream[Duration], classifier: ResponseClassifier)
@@ -51,12 +61,22 @@ object ClassifiedRetries {
     }
   }
 
+  case class ResponseDiscarder[Rsp](discard: Rsp => Unit)
+  object ResponseDiscarder {
+    private val _param = new Stack.Param[ResponseDiscarder[Any]] {
+      val default = ResponseDiscarder(RetryFilter.noopDiscard[Any])
+    }
+    // Ah... the illusion of type safety
+    def param[Rsp] = _param.asInstanceOf[Stack.Param[ResponseDiscarder[Rsp]]]
+  }
+
   /**
    * A stack module that installs a RetryFilter that uses the stack's
    * ResponseClassifier.
    */
-  def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-    new Stack.Module5[Backoffs, param.ResponseClassifier, Retries.Budget, param.HighResTimer, param.Stats, ServiceFactory[Req, Rsp]] {
+  def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] = {
+    implicit val discarderParam = ResponseDiscarder.param[Rsp]
+    new Stack.Module6[Backoffs, param.ResponseClassifier, Retries.Budget, param.HighResTimer, param.Stats, ResponseDiscarder[Rsp], ServiceFactory[Req, Rsp]] {
       val role = ClassifiedRetries.role
       val description = "Retries requests that are classified to be retryable"
       def make(
@@ -65,6 +85,7 @@ object ClassifiedRetries {
         _budget: Retries.Budget,
         _timer: param.HighResTimer,
         _stats: param.Stats,
+        _discard: ResponseDiscarder[Rsp],
         next: ServiceFactory[Req, Rsp]
       ): ServiceFactory[Req, Rsp] = {
         val Backoffs(backoff) = _backoffs
@@ -72,9 +93,11 @@ object ClassifiedRetries {
         val Retries.Budget(budget, _) = _budget
         val param.HighResTimer(timer) = _timer
         val param.Stats(stats) = _stats
+        val ResponseDiscarder(discard) = _discard
         val policy = new ClassifiedPolicy[Req, Rsp](backoff, classifier)
-        val filter = new RetryFilter[Req, Rsp](policy, timer, stats, budget)
+        val filter = new RetryFilter[Req, Rsp](policy, timer, stats, budget, discard)
         filter andThen next
       }
     }
+  }
 }

@@ -3,8 +3,11 @@ package protocol
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.Stack
+import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftMuxServerPrep, ThriftTraceInitializer}
 import com.twitter.finagle.mux
+import com.twitter.finagle.buoyant.ParamsMaybeWith
+import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.{Thrift, ThriftMux}
 
 class ThriftMuxInitializer extends ProtocolInitializer {
@@ -23,8 +26,11 @@ class ThriftMuxInitializer extends ProtocolInitializer {
     ThriftMux.router.withClientStack(stack)
   }
 
-  protected val adapter = ThriftMux.Router.IngestingFilter
+  override protected def configureServer(router: Router, server: Server): Server =
+    super.configureServer(router, server)
+      .configured(router.params[param.ProtocolFactory])
 
+  protected val adapter = ThriftMux.Router.IngestingFilter
   protected val defaultServer = {
     val stack = ThriftMux.server.stack
       .insertBefore(Stack.Role("appExceptionHandling"), ThriftTraceInitializer.serverModule[mux.Request, mux.Response])
@@ -40,7 +46,8 @@ class ThriftMuxInitializer extends ProtocolInitializer {
 object ThriftMuxInitializer extends ThriftMuxInitializer
 
 case class ThriftMuxConfig(
-  thriftMethodInDst: Option[Boolean]
+  thriftMethodInDst: Option[Boolean],
+  thriftProtocol: Option[ThriftProtocol]
 ) extends RouterConfig {
 
   var servers: Seq[ThriftServerConfig] = Nil
@@ -55,4 +62,5 @@ case class ThriftMuxConfig(
 
   override def routerParams = super.routerParams
     .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
 }

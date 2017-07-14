@@ -19,7 +19,7 @@ class ThriftNamerClient(
   namespace: String,
   statsReceiver: StatsReceiver = NullStatsReceiver,
   clientId: Path = Path.empty,
-  _timer: Timer = DefaultTimer.twitter
+  _timer: Timer = DefaultTimer
 ) extends NameInterpreter with Delegator {
   import ThriftNamerInterface._
 

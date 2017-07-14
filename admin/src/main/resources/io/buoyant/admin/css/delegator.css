@@ -45,6 +45,10 @@
   margin-left: 10px;
 }
 
+.list-group-item .path {
+  opacity: 0.5;
+}
+
 .dtab {
   margin: 5px 15px;
 }
@@ -96,12 +100,24 @@
   color: #f4f4f4;
 }
 
-#edit-dtab-btn {
-  margin-left: 20px;
+#dtab-edit {
+  margin-bottom: 10px;
+  width: 50%;
+  padding-right: 15px;
+}
+
+#reset-dtab-link {
+  font-size: 12px;
+  padding: 5px 10px;
+  line-height: 1.5;
 }
 
 .save-warning {
   font-size: 12px;
   color: grey;
   padding: 5px 0;
+}
+
+.namerd-dtab-warning {
+  padding-bottom: 5px;
 }

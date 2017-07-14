@@ -2,7 +2,7 @@ package io.buoyant.transformer
 package k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Stack}
 import io.buoyant.namer._
 import java.net.InetAddress
 
@@ -18,7 +18,7 @@ case class LocalNodeTransformerConfig(hostNetwork: Option[Boolean])
   val defaultPrefix = Path.read("/io.l5d.k8s.localnode")
 
   @JsonIgnore
-  override def mk(): NameTreeTransformer = {
+  override def mk(params: Stack.Params): NameTreeTransformer = {
     if (hostNetwork.getOrElse(false)) {
       val nodeName = sys.env.getOrElse(
         "NODE_NAME",

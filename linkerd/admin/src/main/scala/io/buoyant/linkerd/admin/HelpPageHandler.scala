@@ -30,8 +30,9 @@ object HelpPageHandler {
             If you still need help, you can reach us in a couple ways:
           </p>
           <ul>
+              <li>Ask questions about configuration or troubleshooting in the <a href="https://discourse.linkerd.io/">linkerd Discourse instance</a>.</li>
               <li>Chat with us in <a href="http://slack.linkerd.io">the linkerd public Slack</a>.</li>
-              <li>Email us at <a href="mailto:help@buoyant.io">help@buoyant.io</a>.</li>
+              <li>Email us at <a href="mailto:linkerd-users@googlegroups.com">linkerd-users@googlegroups.com</a>.</li>
           </ul>
           <p>You can also report bugs or file feature requests on the <a href="https://github.com/buoyantio/linkerd">linkerd Github repo</a>.</p>
           <h1 id="remote-diagnosis">Remote diagnosis</h1>

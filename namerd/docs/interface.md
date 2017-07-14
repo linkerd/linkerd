@@ -18,6 +18,7 @@ Key | Default Value | Description
 kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter), [`io.l5d.mesh`](#grpc-mesh-interface), or [`io.l5d.httpController`](#http-controller).
 ip | interface dependent | The local IP address on which to serve the namer interface.
 port | interface dependent | The port number on which to server the namer interface.
+tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ## Thrift Name Interpreter
 
@@ -34,7 +35,7 @@ port | `4100` | The port number on which to server the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
 cache | see [cache](#cache) | Binding and address cache size configuration.
-tls | no tls | The namer interface will serve over TLS if this parameter is provided. see [TLS](#namerd-server-tls).
+tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ### Cache
 
@@ -44,15 +45,6 @@ bindingCacheActive | `1000` | The size of the binding active cache.
 bindingCacheInactive | `100` | The size of the binding inactive cache.
 addrCacheActive | `1000` | The size of the address active cache.
 addrCacheInactive | `100` | The size of the address inactive cache.
-
-### namerd server tls
-
-In order to accept incoming tls traffic, the tls parameter must be defined.
-
-Key | Default Value | Description
---- | ------------- | -----------
-certPath | _required_ | File path to the TLS certificate file.
-keyPath | _required_ | File path to the TLS key file.
 
 ## gRPC Mesh Interface
 
@@ -66,6 +58,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
 port | `4321` | The port number on which to server the namer interface.
+tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
 ## Http Controller
 
@@ -82,6 +75,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback | The local IP address on which to serve the namer interface.
 port | `4180` | The port number on which to serve the namer interface.
+tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ### GET /api/1/dtabs
 

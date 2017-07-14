@@ -5,7 +5,7 @@ ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true))
 addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.6.0")
 
 // testing
-addSbtPlugin("org.scoverage"  % "sbt-scoverage" % "1.3.5")
+addSbtPlugin("org.scoverage"  % "sbt-scoverage" % "1.5.0")
 
 addSbtPlugin("org.scoverage"  % "sbt-coveralls" % "1.1.0")
 
@@ -18,7 +18,7 @@ addSbtPlugin("com.eed3si9n"      % "sbt-assembly"  % "0.14.1")
 addSbtPlugin("se.marcuslonnberg" % "sbt-docker"    % "1.4.1")
 
 // scrooge
-addSbtPlugin("com.twitter" %% "scrooge-sbt-plugin" % "4.6.0")
+addSbtPlugin("com.twitter" %% "scrooge-sbt-plugin" % "4.18.0")
 
 // microbenchmarking for tests.
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.6")

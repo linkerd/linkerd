@@ -2,16 +2,13 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.{ChannelClosedException, ChannelWriteException, Failure}
-import com.twitter.finagle.stats.{StatsReceiver => FStatsReceiver, NullStatsReceiver => FNullStatsReceiver}
+import com.twitter.finagle.Failure
+import com.twitter.finagle.stats.{NullStatsReceiver => FNullStatsReceiver, StatsReceiver => FStatsReceiver}
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, Promise, Return, Stopwatch, Throw, Try}
-import io.netty.buffer.CompositeByteBuf
+import com.twitter.util.{Future, Promise, Return, Throw}
 import io.netty.handler.codec.http2._
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import scala.collection.immutable.Queue
-import scala.util.control.NoStackTrace
 
 /**
  * Reads and writes a bi-directional HTTP/2 stream.
@@ -24,11 +21,11 @@ import scala.util.control.NoStackTrace
  *   dispatcher.
  *
  * - Dispatchers write a `LocalMsg`-typed message _to_ a socket.  The
- *   stream transport reasds from the message's stream until it
+ *   stream transport reads from the message's stream until it
  *   _fails_, so that errors may be propagated if the local side of
  *   the stream is reset.
  *
- * When both sides of the stram are closed, the `onReset` future is
+ * When both sides of the stream are closed, the `onReset` future is
  * satisfied.
  *
  * Either side may reset the stream prematurely, causing the `onReset`
@@ -93,7 +90,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    * Since the local half of the stream is written from the dispatcher
    * to the transport, we simply track whether this has completed.
    *
-   * The remote half of the connection is represented with by a
+   * The remote half of the connection is represented with a
    * [[RemoteState]] so that received frames may be passed inbound to
    * the application: first, by satisfying the `onRemoteMessage`
    * Future with [[RemotePending]], and then by offering data and
@@ -187,7 +184,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] val stateRef: AtomicReference[StreamState] = {
     val remoteMsgP = new Promise[RecvMsg]
 
-    // When the remote message--especially a client's repsonse--is
+    // When the remote message--especially a client's response--is
     // canceled, close the transport, sending a RST_STREAM as
     // appropriate.
     remoteMsgP.setInterruptHandler {
@@ -217,7 +214,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
   val onRecvMessage: Future[RecvMsg] = stateRef.get match {
     case Open(rp@RemotePending()) => rp.future
-    case s => sys.error(s"unexpected initailzation state: $s")
+    case s => sys.error(s"unexpected initialization state: $s")
   }
 
   /**
@@ -259,6 +256,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case _ => false
     }
 
+  /**
+   * Updates the stateRef to reflect that the local stream has been closed.
+   *
+   * If the ref is already local closed, then the remote stream is reset and
+   * the reset promise results in an exception. If the ref is remote closed,
+   * then the ref becomes fully closed and the reset promise is completed.
+   */
   @tailrec private[this] def closeLocal(): Unit =
     stateRef.get match {
       case Closed(_) =>
@@ -274,7 +278,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
       case state@RemoteClosed() =>
         if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
-          state.close()
           resetP.setDone(); ()
         } else closeLocal()
     }
@@ -308,7 +311,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       if (remote.offer(f)) {
         statsReceiver.recordRemoteFrame(f)
         true
-      } else false
+      } else {
+        log.debug("[%s] remote offer failed", prefix)
+        false
+      }
 
     in match {
       case rst: Http2ResetFrame =>
@@ -352,9 +358,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case Open(remote@RemoteStreaming()) =>
             if (stateRef.compareAndSet(state, remote.toRemoteClosed)) {
-              val f = toFrame(hdrs)
-              statsReceiver.recordRemoteFrame(f)
-              remote.offer(f)
+              if (recvFrame(toFrame(hdrs), remote)) {
+                remote.close()
+                true
+              } else false
             } else recv(hdrs)
 
           case state@LocalClosed(remote@RemotePending()) =>
@@ -372,9 +379,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
           case LocalClosed(remote@RemoteStreaming()) =>
             if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
-              val f = toFrame(hdrs)
-              if (remote.offer(f)) {
-                statsReceiver.recordRemoteFrame(f)
+              if (recvFrame(toFrame(hdrs), remote)) {
                 remote.close()
                 resetP.setDone()
                 true
@@ -387,6 +392,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         // initiate a message (i.e. when the remote is still pending).
         state match {
           case Closed(_) => false
+
           case state@RemoteClosed() =>
             if (resetFromLocal(state, Reset.Closed)) false
             else recv(hdrs)
@@ -422,6 +428,36 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             }
         }
 
+      case data: Http2DataFrame if data.isEndStream =>
+        state match {
+          case Closed(_) => false
+
+          case state@RemoteClosed() =>
+            if (resetFromLocal(state, Reset.Closed)) false
+            else recv(data)
+
+          case RemoteOpen(remote@RemotePending()) =>
+            if (resetFromLocal(remote, Reset.InternalError)) false
+            else recv(data)
+
+          case Open(remote@RemoteStreaming()) =>
+            if (stateRef.compareAndSet(state, remote.toRemoteClosed)) {
+              if (recvFrame(toFrame(data), remote)) {
+                remote.close()
+                true
+              } else throw new IllegalStateException("stream queue closed prematurely")
+            } else recv(data)
+
+          case LocalClosed(remote@RemoteStreaming()) =>
+            if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
+              if (recvFrame(toFrame(data), remote)) {
+                remote.close()
+                resetP.setDone()
+                true
+              } else throw new IllegalStateException("stream queue closed prematurely")
+            } else recv(data)
+        }
+
       case data: Http2DataFrame =>
         state match {
           case Closed(_) => false
@@ -435,27 +471,16 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             else recv(data)
 
           case Open(remote@RemoteStreaming()) =>
-            if (data.isEndStream) {
-              if (stateRef.compareAndSet(state, remote.toRemoteClosed)) {
-                if (recvFrame(toFrame(data), remote)) true
-                else throw new IllegalStateException("stream queue closed prematurely")
-              } else recv(data)
-            } else {
-              if (recvFrame(toFrame(data), remote)) true
+            if (recvFrame(toFrame(data), remote)) true
+            else {
+              if (resetFromLocal(remote, Reset.Closed)) false
               else recv(data)
             }
 
           case LocalClosed(remote@RemoteStreaming()) =>
-            if (data.isEndStream) {
-              if (stateRef.compareAndSet(state, Closed(Reset.NoError))) {
-                if (recvFrame(toFrame(data), remote)) {
-                  remote.close()
-                  resetP.setDone()
-                  true
-                } else throw new IllegalStateException("stream queue closed prematurely")
-              } else recv(data)
-            } else {
-              if (recvFrame(toFrame(data), remote)) true
+            if (recvFrame(toFrame(data), remote)) true
+            else {
+              if (resetFromLocal(remote, Reset.Closed)) false
               else recv(data)
             }
         }
@@ -517,7 +542,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     streamFF
   }
 
-  private[this] def writeHeaders(hdrs: Headers, eos: Boolean): Future[Unit] =
+  private[this] val writeHeaders: (Headers, Boolean) => Future[Unit] = { (hdrs, eos) =>
     stateRef.get match {
       case Closed(rst) => Future.exception(StreamError.Remote(rst))
       case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
@@ -526,9 +551,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           Future.exception(StreamError.Local(Reset.ProtocolError))
         } else localResetOnCancel(transport.write(streamId, hdrs, eos))
     }
+  }
 
   /** Write a request stream to the underlying transport */
-  private[this] def writeStream(stream: Stream): Future[Unit] = {
+  private[this] val writeStream: Stream => Future[Unit] = { stream =>
     def loop(): Future[Unit] =
       stream.read().rescue(wrapLocalEx)
         .flatMap { f =>

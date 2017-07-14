@@ -101,11 +101,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       get("felix") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
+        ()
       }
 
       get("clifford", "/the/big/red/dog") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "woof")
+        ()
       }
 
       // todo check stats
@@ -158,7 +160,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("client", s"$$/inet/127.1/${downstream.port}", name)
       stats.counters.get(k)
     }
 
@@ -239,11 +241,11 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("client", s"$$/inet/127.1/${downstream.port}", name)
       stats.counters.get(k)
     }
     def serverCounter(name: String) = {
-      val k = Seq("srv", name)
+      val k = Seq("server", name)
       stats.counters.get(k)
     }
 
@@ -273,7 +275,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         .configured(param.Stats(stats))
         .factory()
       Http.server
-        .configured(param.Stats(stats.scope("srv")))
+        .configured(param.Stats(stats.scope("server")))
         .serve(new InetSocketAddress(0), factory)
     }
 

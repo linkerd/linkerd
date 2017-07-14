@@ -4,7 +4,6 @@ package admin.names
 import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{io => _, _}
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.annotation.JsonSerialize.Inclusion
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -31,8 +30,12 @@ object DelegateApiHandler {
   case class Address(ip: String, port: Int, meta: Map[String, Any])
   object Address {
     def mk(addr: FAddress): Option[Address] = addr match {
-      case FAddress.Inet(isa, meta) => Some(Address(isa.getAddress.getHostAddress, isa.getPort, meta))
-      case _ => None
+      case FAddress.Inet(isa, meta) =>
+        Option(isa.getAddress).map { address =>
+          Address(address.getHostAddress, isa.getPort, meta)
+        }
+      case _ =>
+        None
     }
 
     def toFinagle(addr: Address): FAddress =
@@ -243,6 +246,8 @@ object DelegateApiHandler {
     }
   }
 
+  private implicit val timer = DefaultTimer
+
   def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
     val dtabTry = if (dtab == null) Return(Dtab.empty) else Try(Dtab.read(dtab))
     val pathTry = Try(Path.read(path))
@@ -257,7 +262,7 @@ object DelegateApiHandler {
             rsp
           }.within(2.seconds).rescue {
             case e: TimeoutException =>
-              err(Status.ServiceUnavailable, "Request to namerd timed out.")
+              err(Status.ServiceUnavailable, "Request timed out.")
           }
       case (Throw(e), _) =>
         err(Status.BadRequest, s"Invalid dtab: ${e.getMessage}")
@@ -265,8 +270,6 @@ object DelegateApiHandler {
         err(Status.BadRequest, s"Invalid path: ${e.getMessage}")
     }
   }
-
-  private implicit val timer = DefaultTimer.twitter
 
   case class DelegationRequest(
     namespace: Option[String],
@@ -315,12 +318,12 @@ class DelegateApiHandler(
   }
 
   private def getResponse(ns: Option[String], dtab: String, path: String) = ns match {
-    case Some(namesapce) =>
-      interpreters(namesapce) match {
+    case Some(namespace) =>
+      interpreters(namespace) match {
         case delegator: Delegator =>
           getDelegateRsp(dtab, path, delegator)
         case _ =>
-          err(Status.NotImplemented, s"Name Interpreter for $namesapce cannot show delegations")
+          err(Status.NotImplemented, s"Name Interpreter for $namespace cannot show delegations")
       }
     case None =>
       getDelegateRsp(dtab, path, ConfiguredNamersInterpreter(namers))

@@ -1,11 +1,9 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Path, Dtab, Stack}
-import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.{Dtab, Path, Stack}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import io.buoyant.config.Parser
-import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
+import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreter, TestInterpreterInitializer}
 import io.buoyant.router.{Originator, RetryBudgetConfig, RoutingFactory}
 import io.buoyant.test.Exceptions
 import java.net.InetAddress

@@ -19,7 +19,7 @@ These parameters are available to the loadbalancer regardless of kind. The loadb
 Key | Default Value | Description
 --- | ------------- | -----------
 kind | `p2c` | Either [`p2c`](#power-of-two-choices-least-loaded), [`ewma`](#power-of-two-choices-peak-ewma), [`aperture`](#aperture-least-loaded), [`heap`](#heap-least-loaded), or [`roundRobin`](#round-robin).
-enableProbation | `false` | If `true`, endpoints are eagerly evicted from service discovery. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28).
+enableProbation | `false` | If `true`, removals from service discovery are treated as advisory and the removed endpoints will remain in the load balancer pool as long as they remain healthy. See Finagle's [LoadBalancerFactory.EnableProbation](https://github.com/twitter/finagle/blob/develop/finagle-core/src/main/scala/com/twitter/finagle/loadbalancer/LoadBalancerFactory.scala#L28).
 
 [p2c]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-least-loaded
 [ewma]: https://twitter.github.io/finagle/guide/Clients.html#power-of-two-choices-p2c-peak-ewma

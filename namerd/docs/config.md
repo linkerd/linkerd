@@ -35,9 +35,10 @@ The configuration may be specified as a JSON or YAML object.
 Key | Required | Description
 --- | -------- | -----------
 [admin](#administrative-interface) | no | Configures namerd's administrative interface. namerd admin has the same options as linkerd admin.
-[interfaces](#interfaces) | no | Configures namerd's published network interfaces.
+[interfaces](#interfaces) | yes | Configures namerd's published network interfaces.
 [storage](#storage) | yes | Configures namerd's storage backend.
 [namers](https://linkerd.io/config/head/linkerd#namers) | no | Configures namerd's integration with various service discovery backends. namerd uses the same namers as linkerd.
+[telemetry](https://linkerd.io/config/head/linkerd#telemetry) | no | Configures namerd's metrics instrumentation. Namerd does not support tracing, so tracers provided by telemeters are ignored.
 
 ### Administrative interface
 

@@ -1,0 +1,22 @@
+# Config for serving linkerd admin page over TLS
+
+admin:
+  ip: 0.0.0.0
+  port: 9990
+  tls:
+    certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
+    keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
+    caCertPath: finagle/h2/src/e2e/resources/cacert.pem
+
+telemetry:
+- kind: io.l5d.recentRequests
+  sampleRate: 1.0
+
+routers:
+- protocol: http
+  label: linkerd-admin
+  dtab: |
+    /svc/* => /$/inet/127.1/9990;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0

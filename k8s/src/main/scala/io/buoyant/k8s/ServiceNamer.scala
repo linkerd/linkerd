@@ -8,6 +8,7 @@ import com.twitter.util._
 import io.buoyant.k8s.Ns.ObjectCache
 import io.buoyant.k8s.v1._
 import java.net.InetSocketAddress
+import scala.collection.mutable
 
 /**
  * Accepts names in the form:
@@ -21,7 +22,7 @@ class ServiceNamer(
   labelName: Option[String],
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
-)(implicit timer: Timer = DefaultTimer.twitter) extends Namer {
+)(implicit timer: Timer = DefaultTimer) extends Namer {
 
   private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
@@ -68,45 +69,67 @@ class ServiceNamer(
 class ServiceCache(namespace: String)
   extends ObjectCache[Service, ServiceWatch, ServiceList] {
 
-  def get(serviceName: String, portName: String): Var[Option[Var[Address]]] = synchronized {
-    // we call this unstable because every change to the Address will cause
-    // the entire Var[Option[Address]] to update.
-    val unstable: Var[Option[Address]] = cache.get(serviceName) match {
-      case Some(ports) => ports.map(_.get(portName))
-      case None =>
-        val ports = Var(Map.empty[String, Address])
-        cache += serviceName -> ports
-        ports.map(_.get(portName))
-    }
-
-    // We can stabilize this by changing the type to Var[Option[Var[Address]]].
-    // If this service port is created or deleted, the outer Var will update.
-    // If the address of the service port changes, only the inner Var will
-    // update.
+  /**
+   * We can stabilize this by changing the type to Var[Option[Var[T]]].
+   * If this Option changes from None to Some or vice versa, the outer Var will
+   * update.  If the value contained in the Some changes, only the inner Var
+   * will update.
+   */
+  private[this] def stabilize[T](unstable: Var[Option[T]]): Var[Option[Var[T]]] = {
     val init = unstable.sample().map(Var(_))
-    Var.async[Option[VarUp[Address]]](init) { update =>
+    Var.async[Option[VarUp[T]]](init) { update =>
       // the current inner Var, null if the outer Var is None
-      @volatile var addr: VarUp[Address] = null
+      @volatile var current: VarUp[T] = null
 
       unstable.changes.respond {
-        case Some(address) if addr == null =>
-          // Address created
-          addr = Var(address)
-          update() = Some(addr)
-        case Some(address) =>
-          // Address modified
-          addr() = address
+        case Some(t) if current == null =>
+          // T created
+          current = Var(t)
+          update() = Some(current)
+        case Some(t) =>
+          // T modified
+          current() = t
         case None =>
-          // Address deleted
-          addr = null
+          // T deleted
+          current = null
           update() = None
       }
     }
   }
 
+  def get(serviceName: String, portName: String): Var[Option[Var[Address]]] = synchronized {
+    // we call this unstable because every change to the Address will cause
+    // the entire Var[Option[Address]] to update.
+    val unstable: Var[Option[Address]] = cache.get(serviceName) match {
+      case Some(ports) =>
+        ports.map(_.ports.get(portName))
+      case None =>
+        val ports = Var(ServiceCache.CacheEntry(Map.empty, Map.empty))
+        cache += serviceName -> ports
+        ports.map(_.ports.get(portName))
+    }
+
+    stabilize(unstable)
+  }
+
+  def getPortMapping(serviceName: String, port: Int): Var[Option[Var[String]]] = synchronized {
+    // we call this unstable because every change to the target port will cause
+    // the entire Var[Option[Int]] to update.
+    val unstable: Var[Option[String]] = cache.get(serviceName) match {
+      case Some(ports) =>
+        ports.map(_.portMap.get(port))
+      case None =>
+        val ports = Var(ServiceCache.CacheEntry(Map.empty, Map.empty))
+        cache += serviceName -> ports
+        ports.map(_.portMap.get(port))
+    }
+
+    stabilize(unstable)
+  }
+
   private[this]type VarUp[T] = Var[T] with Updatable[T]
 
-  private[this] var cache = Map.empty[String, VarUp[Map[String, Address]]]
+  private[this] var cache = Map.empty[String, VarUp[ServiceCache.CacheEntry]]
 
   def initialize(list: ServiceList): Unit = synchronized {
     val services = for {
@@ -153,9 +176,9 @@ class ServiceCache(namespace: String)
           log.debug("k8s ns %s deleted service : %s", namespace, name)
           cache.get(name) match {
             case Some(ports) =>
-              ports() = Map.empty
+              ports() = ServiceCache.CacheEntry(Map.empty, Map.empty)
             case None =>
-              cache += (name -> Var(Map.empty))
+              cache += (name -> Var(ServiceCache.CacheEntry(Map.empty, Map.empty)))
           }
         }
       case ServiceError(status) =>
@@ -165,16 +188,31 @@ class ServiceCache(namespace: String)
 }
 
 object ServiceCache {
-  private def extractPorts(service: Service): Map[String, Address] = {
-    val ports = for {
+
+  case class CacheEntry(ports: Map[String, Address], portMap: Map[Int, String])
+
+  private def extractPorts(service: Service): CacheEntry = {
+    val ports = mutable.Map.empty[String, Address]
+    val portMap = mutable.Map.empty[Int, String]
+
+    for {
       meta <- service.metadata.toSeq
       name <- meta.name.toSeq
       status <- service.status.toSeq
       lb <- status.loadBalancer.toSeq
-      ingress <- lb.ingress.toSeq.flatten
       spec <- service.spec.toSeq
       port <- spec.ports
-    } yield port.name -> Address(new InetSocketAddress(ingress.ip, port.port))
-    ports.toMap
+    } {
+      for {
+        ingress <- lb.ingress.toSeq.flatten
+        hostname <- ingress.hostname.orElse(ingress.ip)
+      } ports += port.name -> Address(new InetSocketAddress(hostname, port.port))
+
+      portMap += (port.targetPort match {
+        case Some(targetPort) => port.port -> targetPort
+        case None => port.port -> port.port.toString
+      })
+    }
+    CacheEntry(ports.toMap, portMap.toMap)
   }
 }

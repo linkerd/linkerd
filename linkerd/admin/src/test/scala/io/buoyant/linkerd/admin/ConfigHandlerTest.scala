@@ -25,11 +25,12 @@ routers:
   - ip: 127.0.0.1
     port: 1
 - protocol: thrift
+  thriftProtocol: binary
   client:
-    thriftProtocol: binary
+    thriftFramed: true
   servers:
   - port: 2
-    thriftProtocol: compact
+    thriftFramed: false
                              """, initializers)
     val handler = new ConfigHandler(linker, initializers.iter)
     val req = Request()
@@ -44,8 +45,9 @@ routers:
       |    {"protocol":"plain","servers":[{"port":1, "ip":"localhost"}]},
       |    {
       |      "protocol":"thrift",
-      |      "servers":[{"thriftProtocol":"compact", "port":2}],
-      |      "client":{"thriftProtocol":"binary", "kind": "io.l5d.global"}
+      |      "thriftProtocol":"binary",
+      |      "servers":[{"thriftFramed":false, "port":2}],
+      |      "client":{"thriftFramed":true, "kind":"io.l5d.global"}
       |    }
       |  ]
       |}""".stripMargin.replaceAll("\\s", ""))

@@ -16,6 +16,10 @@ trait Telemeter {
 
 object Telemeter {
 
+  // default initial buffer size for StringBuilder objects, used by
+  // InfluxDbTelemeter and PrometheusTelemeter
+  val DefaultBufferSize = 16384
+
   /**
    * A utility useful when a Telemeter has no _run_ning to do.
    */

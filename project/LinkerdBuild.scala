@@ -32,8 +32,13 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
+  lazy val istio = projectDir("istio")
+    .withLibs(Deps.jackson)
+    .withGrpc
+    .withTests()
+
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core)
+    .dependsOn(Namer.core, istio)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -59,6 +64,7 @@ object LinkerdBuild extends Base {
     val http = projectDir("router/http")
       .dependsOn(core)
       .withTwitterLibs(Deps.finagle("http"))
+      .withLib(Deps.boringssl)
       .withTests()
       .withE2e()
 
@@ -274,6 +280,7 @@ object LinkerdBuild extends Base {
 
       val mesh = projectDir("namerd/iface/mesh")
         .dependsOn(core, Mesh.core)
+        .withTests()
 
       val all = aggregateDir(
         "namerd/iface",
@@ -323,7 +330,7 @@ object LinkerdBuild extends Base {
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
-      Telemetry.adminMetricsExport
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
     val LowMemSettings = BundleSettings ++ Seq(
@@ -467,7 +474,7 @@ object LinkerdBuild extends Base {
 
       val h2 = projectDir("linkerd/protocol/h2")
         .dependsOn(core, Router.h2, k8s)
-        .withTests()
+        .withTests().withE2e()
         .withTwitterLibs(Deps.finagle("netty4"))
 
       val http = projectDir("linkerd/protocol/http")
@@ -476,6 +483,7 @@ object LinkerdBuild extends Base {
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           k8s,
+          istio,
           failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",
@@ -712,6 +720,7 @@ object LinkerdBuild extends Base {
       consul,
       etcd,
       k8s,
+      istio,
       marathon,
       testUtil,
       Finagle.all,

@@ -117,7 +117,11 @@ class Client(
     val rsps = svc.streamingOutputCall(req)
 
     def read(rspSizes: Seq[Int]): Future[Unit] = rspSizes match {
-      case Nil => Future.Unit
+      case Nil =>
+        // Read the end-of-stream
+        rsps.recv().unit.handle {
+          case GrpcStatus.Ok(_) => ()
+        }
       case Seq(expected, rest@_*) =>
         rsps.recv().transform {
           case Throw(GrpcStatus.Ok(_)) => Future.Unit
@@ -144,8 +148,11 @@ class Client(
     val rsps = svc.fullDuplexCall(reqs)
 
     def sendRecv(sizes: Seq[(Int, Int)]): Future[Unit] = sizes match {
-      case Nil => Future.Unit
-
+      case Nil =>
+        // Close the request stream and read the response stream eos
+        reqs.close().before(rsps.recv()).unit.handle {
+          case GrpcStatus.Ok(_) => ()
+        }
       case Seq((reqSz, rspSz), rest@_*) =>
         val req = pb.StreamingOutputCallRequest(
           responseParameters = Seq(pb.ResponseParameters(size = Some(rspSz))),
@@ -166,7 +173,7 @@ class Client(
               case rsp =>
                 release().before(Future.exception(new IllegalArgumentException(s"invalid response: $rsp")))
             }
-          }.before(reqs.close())
+          }
         }
     }
 

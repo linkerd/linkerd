@@ -1,15 +1,18 @@
 package io.buoyant.admin
 
+import java.net.SocketAddress
 import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant._
+import com.twitter.finagle.http.filter.HeadFilter
 import com.twitter.finagle.http.{HttpMuxer, Request, Response}
+import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.logging.Logger
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
-import java.net.SocketAddress
 
 object Admin {
   val label = "adminhttp"
@@ -53,11 +56,13 @@ object Admin {
     }
   }
 
-  private val server = Http.server
-    .withLabel(label)
-    .withMonitor(loggingMonitor)
-    .withStatsReceiver(NullStatsReceiver)
-    .withTracer(NullTracer)
+  private def makeServer(tls: Option[TlsServerConfig]) =
+    Http.server
+      .withLabel(label)
+      .withMonitor(loggingMonitor)
+      .withStatsReceiver(NullStatsReceiver)
+      .withTracer(NullTracer)
+      .maybeWith(tls.map(_.params(None, Netty4ServerEngineFactory())))
 
   val threadsJs = "<script src='files/js/threads.js'></script>"
 
@@ -102,10 +107,21 @@ object Admin {
   }
 }
 
-class Admin(val address: SocketAddress) {
+class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
+  private[this] val server = makeServer(tlsCfg)
+
+  /**
+   * Whether or not this admin service was configured to serve over TLS
+   */
+  val isTls: Boolean = tlsCfg.isDefined
+
+  /**
+   * the name of the scheme the admin page is served over
+   */
+  val scheme: String = if (this.isTls) "https" else "http"
 
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
@@ -114,7 +130,7 @@ class Admin(val address: SocketAddress) {
         log.debug(s"admin: $url => ${service.getClass.getName}")
         muxer.withHandler(url, service)
     }
-    notFoundView.andThen(muxer)
+    HeadFilter andThen notFoundView andThen muxer
   }
 
   def serve(app: TApp, extHandlers: Seq[Handler]): ListeningServer =

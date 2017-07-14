@@ -6,13 +6,16 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.http.{param => hparam}
-import com.twitter.finagle.buoyant.PathMatcher
+import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.filter.DtabStatsFilter
+import com.twitter.finagle.http.filter.StatsFilter
+import com.twitter.finagle.http.{Request, Response, param => hparam}
+import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
-import com.twitter.finagle.{Path, Stack, param => fparam}
+import com.twitter.finagle.stack.nilStack
+import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
@@ -37,8 +40,12 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
+      .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
+      // ensure the client-stack framing filter is placed below the stats filter
+      // so that any malframed responses it fails are counted as errors
+      .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
 
     Http.router
       .withPathStack(pathStack)
@@ -65,6 +72,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      // ensure the server-stack framing filter is placed below the stats filter
+      // so that any malframed requests it fails are counted as errors
+      .insertAfter(StatsFilter.role, FramingFilter.serverModule)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
     Http.server.withStack(stk)
@@ -136,12 +146,18 @@ class HttpSvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) w
 trait HttpSvcConfig extends SvcConfig {
 
   @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
+  override def baseResponseClassifier = ClassifiedRetries.orElse(
+    ResponseClassifiers.NonRetryableServerFailures,
+    super.baseResponseClassifier
+  )
 
   @JsonIgnore
   override def responseClassifier =
-    super.responseClassifier.map(ResponseClassifiers.NonRetryableChunked(_))
+    super.responseClassifier.map { classifier =>
+      ResponseClassifiers.NonRetryableChunked(
+        ResponseClassifiers.HeaderRetryable(classifier)
+      )
+    }
 }
 
 case class HttpServerConfig(
@@ -176,6 +192,7 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
 case class HttpConfig(
   httpAccessLog: Option[String],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
+  loggers: Option[Seq[HttpLoggerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -194,8 +211,22 @@ case class HttpConfig(
 
   @JsonIgnore
   override val defaultResponseClassifier = ResponseClassifiers.NonRetryableChunked(
-    ResponseClassifiers.NonRetryableServerFailures orElse ClassifiedRetries.Default
+    ResponseClassifiers.HeaderRetryable(
+      ClassifiedRetries.orElse(
+        ResponseClassifiers.NonRetryableServerFailures,
+        ClassifiedRetries.Default
+      )
+    )
   )
+
+  @JsonIgnore
+  private[this] val loggerParam = loggers.map { configs =>
+    val loggerStack =
+      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
+        config.module.toStack(next)
+      }
+    HttpLoggerConfig.param.Logger(loggerStack)
+  }
 
   @JsonIgnore
   private[this] val combinedIdentifier = identifier.map { configs =>
@@ -203,10 +234,10 @@ case class HttpConfig(
       RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
     }
   }
-
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
+    .maybeWith(loggerParam)
     .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))

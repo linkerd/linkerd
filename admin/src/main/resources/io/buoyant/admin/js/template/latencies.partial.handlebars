@@ -1,0 +1,13 @@
+<div class="col-md-2 router-latencies-container">
+  <div class="metric-header">Latencies</div>
+  <div class="router-latencies">
+    {{#each this}}
+      <div>
+        <span class="latency-label">
+          <span class="latency-legend" style="background-color:{{latencyColor}};">&nbsp;</span>{{latencyLabel}}
+        </span>
+        <span class="pull-right latency-value">{{latencyValue}} ms</span>
+      </div>
+    {{/each}}
+  </div>
+</div>

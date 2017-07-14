@@ -34,13 +34,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
 
   test("success") {
     val downstream = Downstream("ds", Service.mk { req => Future.value(Response()) })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -55,9 +55,11 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("http", "dst", "path", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "success")) == 1)
+    println("THIS IS WHAT IT IS YO")
+    println(stats.counters)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
   }
 
   test("non-retryable failure") {
@@ -67,13 +69,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
       rsp.statusCode = 500
       Future.value(rsp)
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -89,9 +91,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/foo", "failures")) == 1)
-    assert(stats.counters(Seq("http", "dst", "path", "svc/foo", "failures")) == 1)
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 1)
   }
 
   test("retryable failure") {
@@ -107,13 +109,13 @@ class ResponseClassificationEndToEndTest extends FunSuite {
         Future.value(Response())
       }
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.retryableRead5XX
+          |      kind: io.l5d.http.retryableRead5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -128,12 +130,12 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
-    assert(stats.counters(Seq("http", "dst", "path", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("http", "dst", "path", "svc/foo", "failures")) == None)
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/foo", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
 
   test("per service classification") {
@@ -149,19 +151,19 @@ class ResponseClassificationEndToEndTest extends FunSuite {
         Future.value(Response())
       }
     })
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    kind: io.l5d.static
           |    configs:
-          |    - prefix: /svc/a    
+          |    - prefix: /svc/a
           |      responseClassifier:
-          |        kind: io.l5d.retryableRead5XX
+          |        kind: io.l5d.http.retryableRead5XX
           |    - prefix: /svc/b
           |      responseClassifier:
-          |        kind: io.l5d.nonRetryable5XX
+          |        kind: io.l5d.http.nonRetryable5XX
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -178,23 +180,57 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "a"
     await(client(req))
 
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("http", "srv", "127.0.0.1/0", "failures")) == None)
-    assert(stats.counters(Seq("http", "dst", "path", "svc/a", "success")) == 1)
-    assert(stats.counters.get(Seq("http", "dst", "path", "svc/a", "failures")) == None)
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/a", "success")) == 1)
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/a", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/a", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/a", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "failures")) == 1)
 
     // Request to "b" is non-retryable
     // fails and doesn't retry
     req.host = "b"
     await(client(req))
 
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters(Seq("http", "srv", "127.0.0.1/0", "failures")) == 1)
-    assert(stats.counters.get(Seq("http", "dst", "path", "svc/b", "success")) == None)
-    assert(stats.counters(Seq("http", "dst", "path", "svc/b", "failures")) == 1)
-    assert(stats.counters.get(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/b", "success")) == None)
-    assert(stats.counters(Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", "path", "svc/b", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/b", "success")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/b", "failures")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")) == None)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "failures")) == 1)
+  }
+
+  test("client stats use service response classifier") {
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response()
+      rsp.statusCode = 500
+      Future.value(rsp)
+    })
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.allSuccessful
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.method = Method.Post
+    req.host = "foo"
+    await(client(req))
+
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "success")) == Some(1))
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
+    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
   }
 }

@@ -37,11 +37,14 @@ import scala.collection.breakOut
  *   - `l5d-reqid`: a token that may be used to correlate requests in
  *                  a callgraph across services and linkerd instances
  *
- * And in addition to the context headers, lay may emit the following
+ * And in addition to the context headers, linkerd may emit the following
  * headers on outgoing responses:
  *
  *   - `l5d-err`: indicates a linkerd-generated error. Error responses
  *                that do not have this header are application errors.
+ *   - `l5d-retryable`: if true, the request for this response is known to be
+ *                safe to retry (for example, because it was not delivered to
+ *                its destination)
  */
 object Headers {
   val Prefix = "l5d-"
@@ -383,15 +386,15 @@ object Headers {
    * next hop.
    */
   object Dst {
-    val Path = Prefix + "dst-logical"
-    val Bound = Prefix + "dst-concrete"
+    val Path = Prefix + "dst-service"
+    val Bound = Prefix + "dst-client"
     val Residual = Prefix + "dst-residual"
 
-    /** Encodes `l5d-dst-path` on outgoing requests. */
+    /** Encodes `l5d-dst-service` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
       private[this] val pathShow = path.show
       def apply(req: Request, service: Service[Request, Response]) = {
-        req.headers().set(Path, pathShow)
+        req.headerMap.set(Path, pathShow)
         service(req)
       }
     }
@@ -416,7 +419,7 @@ object Headers {
         case path => Some(path.show)
       }
       private[this] def annotate(msg: Message): Unit = {
-        val headers = msg.headers()
+        val headers = msg.headerMap
         val _b = headers.set(Bound, boundShow)
         pathShow match {
           case None =>
@@ -444,12 +447,21 @@ object Headers {
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
     def apply(req: Request, service: Service[Request, Response]) = {
-      for (k <- req.headerMap.keys) {
+      clearLinkerdHeaders(req)
+      service(req).map { rsp =>
+        rsp.headerMap.get(Err.Key)
+          .foreach(_ => rsp.clearContent())
+        clearLinkerdHeaders(rsp)
+        rsp
+      }
+    }
+
+    private def clearLinkerdHeaders(msg: Message) = {
+      for (k <- msg.headerMap.keys) {
         if (k.toLowerCase.startsWith(Headers.Prefix)) {
-          req.headerMap -= k
+          msg.headerMap -= k
         }
       }
-      service(req)
     }
   }
 
@@ -468,5 +480,23 @@ object Headers {
       rsp.contentString = msg
       rsp
     }
+  }
+
+  /**
+   * The `l5d-retryable` header indicates that the request for this response is
+   * known to be safe to retry (for example, because it was not delivered to its
+   * destination)
+   */
+  object Retryable {
+    val Key = Prefix + "retryable"
+
+    def set(headers: HeaderMap, retryable: Boolean): Unit = {
+      val _ = headers.set(Key, retryable.toString)
+    }
+
+    def get(headers: HeaderMap): Boolean =
+      headers.get(Key).flatMap { value =>
+        Try(value.toBoolean).toOption
+      }.getOrElse(false)
   }
 }

@@ -3,7 +3,7 @@ package io.buoyant.config
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.annotation.PropertyAccessor
-import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.{JsonFactory, JsonParser}
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.ser.std.StdSerializer
@@ -81,6 +81,7 @@ object Parser {
     mapper.registerModule(customTypes)
     mapper.setSerializationInclusion(Include.NON_ABSENT)
     mapper.setVisibility(PropertyAccessor.ALL, Visibility.PUBLIC_ONLY)
+    mapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
 
     // Subtypes with the same config deserializer parent must not conflict
     for (kinds <- configInitializers) {

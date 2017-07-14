@@ -117,11 +117,19 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
             }
 
           // invalid dtab
-          case Throw(_) => Future.value(Response(Status.BadRequest))
+          case Throw(e: IllegalArgumentException) =>
+            val rsp = Response(Status.BadRequest)
+            rsp.setContentString(e.getMessage)
+            Future.value(rsp)
+          case Throw(_) =>
+            Future.value(Response(Status.BadRequest))
         }
 
       // invalid content type
-      case None => Future.value(Response(Status.BadRequest))
+      case None =>
+        val rsp = Response(Status.BadRequest)
+        rsp.setContentString(s"""Invalid Content-Type "${req.contentType.getOrElse("")}". """)
+        Future.value(rsp)
     }
 
   private[this] def post(ns: String, req: Request): Future[Response] =

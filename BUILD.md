@@ -149,7 +149,7 @@ configurations to support packaging:
 ```
 > linkerd/assembly
 [info] SHA-1: 5599e65540ebe6122da114be4a8b9a763475b789
-[info] Packaging ...linkerd/target/scala-2.11/linkerd-0.0.10-SNAPSHOT-exec ...
+[info] Packaging ...linkerd/target/scala-2.12/linkerd-0.0.10-SNAPSHOT-exec ...
 [info] Done packaging.
 [success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
 ```
@@ -173,8 +173,8 @@ For example, in order to build the 0.0.10 release of linkerd:
 1. Ensure that the head version is 0.0.10
 2. `git tag 0.0.10 && git push origin 0.0.10`
 3. `./sbt linkerd/assembly namerd/assembly` will produce executables
-  in _linkerd/target/scala-2.11/linkerd-0.0.10-exec_ and
-  _namerd/target/scala-2.11/namerd-0.0.10-exec_.
+  in _linkerd/target/scala-2.12/linkerd-0.0.10-exec_ and
+  _namerd/target/scala-2.12/namerd-0.0.10-exec_.
 
 #### Docker ####
 
@@ -234,7 +234,7 @@ The assembly script executes two commands serially:
 
 ```bash
 $ ./sbt namerd/dcos:assembly
-$ namerd/target/scala-2.11/namerd-0.9.1-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
+$ namerd/target/scala-2.12/namerd-0.9.1-SNAPSHOT-dcos-exec namerd/examples/zk.yaml
 ```
 
 ##### Run assembly script in docker #####

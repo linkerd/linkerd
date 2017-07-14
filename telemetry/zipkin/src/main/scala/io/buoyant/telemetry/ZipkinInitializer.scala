@@ -1,5 +1,6 @@
 package io.buoyant.telemetry
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.client.DefaultPool
@@ -20,7 +21,7 @@ class ZipkinInitializer extends TelemeterInitializer {
 case class ZipkinConfig(
   host: Option[String],
   port: Option[Int],
-  sampleRate: Option[Double]
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double]
 ) extends TelemeterConfig {
 
   private[this] val tracer: Tracer = new Tracer {
@@ -48,7 +49,7 @@ case class ZipkinConfig(
       val rawTracer = ScribeRawZipkinTracer(
         client,
         NullStatsReceiver,
-        DefaultTimer.twitter
+        DefaultTimer
       )
       new ZipkinTracer(
         rawTracer,
