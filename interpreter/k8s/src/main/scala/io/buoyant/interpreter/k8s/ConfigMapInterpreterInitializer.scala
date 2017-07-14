@@ -49,9 +49,6 @@ case class ConfigMapInterpreterConfig(
   val nsApi = api.withNamespace(nsOrDefault)
 
   @JsonIgnore
-  val nsWatchApi = api.withNamespaceWatch(nsOrDefault)
-
-  @JsonIgnore
   private[this] object Closed extends Throwable
 
   @JsonIgnore
@@ -62,7 +59,7 @@ case class ConfigMapInterpreterConfig(
       case Return(configMap) =>
         val initState = getDtab(configMap)
         state.update(Activity.Ok(initState))
-        val (stream, close) = nsWatchApi.configMap(name).watch(None, None, None)
+        val (stream, close) = nsApi.configMap(name).watch(None, None, None)
         closeRef.set(close)
         val _ = stream.foldLeft(initState) { (dtab, watchEvent) =>
           val newState: Dtab = watchEvent match {
