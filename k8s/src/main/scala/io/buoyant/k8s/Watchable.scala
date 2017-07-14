@@ -21,7 +21,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
   import Watchable._
 
   protected def backoffs: Stream[Duration]
-  protected def path: String
+  protected def watchPath: String
   protected def stats: StatsReceiver
 
   /**
@@ -42,7 +42,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying k8s request to $path on error $ex")
+        log.error(s"retrying k8s request to $watchPath on error $ex")
         true
     },
     HighResTimer.Default,
@@ -68,8 +68,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
     // Internal method used to recursively retry watches as needed on failures.
     def _watch(resourceVersion: Option[String] = None): AsyncStream[W] = {
-      val req = Api.mkreq(http.Method.Get, path, None,
-        "watch" -> Some("true"),
+      val req = Api.mkreq(http.Method.Get, watchPath, None,
         "labelSelector" -> labelSelector,
         "fieldSelector" -> fieldSelector,
         "resourceVersion" -> resourceVersion)
@@ -129,7 +128,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           case status =>
             close.set(Closable.nop)
-            log.debug(s"k8s failed to watch resource $path: ${status.code} ${status.reason}")
+            log.debug(s"k8s failed to watch resource $watchPath: ${status.code} ${status.reason}")
             val f = Future.exception(Api.UnexpectedResponse(rsp))
             AsyncStream.fromFuture(f)
         }
