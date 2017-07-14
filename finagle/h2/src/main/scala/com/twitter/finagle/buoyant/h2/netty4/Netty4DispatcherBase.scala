@@ -187,7 +187,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
 
   protected[this] val onTransportClose: Throwable => Unit = { e =>
-    log.debug(e, "[%s] transport closed", prefix)
+    log.debug("[%s] transport closed", prefix)
     resetStreams(Reset.Cancel); ()
   }
 }
