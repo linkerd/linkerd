@@ -76,7 +76,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // The local side initiated a reset, so send a reset to
         // the remote.
         if (streams.replace(id, open, StreamLocalReset)) {
-          log.debug(e, "[%s S:%d] stream reset from local; resetting remote", prefix, id)
+          log.debug("[%s S:%d] stream reset from local; resetting remote: %s", prefix, id, e)
           val rst = e match {
             case rst: Reset => rst
             case _ => Reset.Cancel
@@ -102,7 +102,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def demux(): Future[Unit] = {
     lazy val loop: Try[Http2Frame] => Future[Unit] = {
       case Throw(e) if closed.get =>
-        log.debug(e, "[%s] dispatcher closed", prefix)
+        log.debug("[%s] dispatcher closed: %s", prefix, e)
         Future.exception(e)
 
       // if all streams have already been closed, then this just means that
@@ -187,7 +187,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
 
   protected[this] val onTransportClose: Throwable => Unit = { e =>
-    log.debug(e, "[%s] transport closed", prefix)
+    log.debug("[%s] transport closed: %s", prefix, e)
     resetStreams(Reset.Cancel); ()
   }
 }

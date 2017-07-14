@@ -32,7 +32,7 @@ class ErrorResponder
             case _: TimeoutException | Failure(Some(_: TimeoutException)) =>
               Status.ServiceUnavailable
             case _ =>
-              log.error(e, "service failure")
+              log.error("service failure: %s", e)
               Status.BadGateway
           }
           val rsp = Headers.Err.respond(message, status)
