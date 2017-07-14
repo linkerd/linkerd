@@ -29,6 +29,7 @@ trait Resource extends Closable {
  */
 private[k8s] trait Version[O <: KubeObject] extends Resource {
   val path = s"/$group/$version"
+  val watchPath = s"$path/watch"
 
   /**
    * The first portion of the API path. Currently-known groups are "api" (for the core k8s v1 API)
@@ -47,7 +48,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](client, path, backoffs, stats)
+  )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](client, path, watchPath, backoffs, stats)
 }
 
 /**
@@ -69,19 +70,21 @@ private[k8s] class NsVersion[O <: KubeObject](
 )
   extends Resource {
   val path = s"/$group/$version/namespaces/$ns"
+  val watchPath = s"$group/$version/watch/namespaces/$ns"
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, path, backoffs, stats)
+  )(implicit od: ObjectDescriptor[T, W]) =
+    new NsListResource[T, W, L](client, path, watchPath, backoffs, stats)
 
   def objectResource[T <: O: TypeReference, W <: Watch[T]: TypeReference](
     name: String,
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = {
+  )(implicit od: ObjectDescriptor[T, W]): NsObjectResource[T, W] = {
     val listName = implicitly[ObjectDescriptor[T, W]].listName
-    new NsObjectResource[T, W](client, s"$path/$listName", name, backoffs, stats)
+    new NsObjectResource[T, W](client, s"$path/$listName", s"$watchPath/$listName", name, backoffs, stats)
   }
 }
 
@@ -96,6 +99,8 @@ private[k8s] class NsVersion[O <: KubeObject](
  * @param ns The namespace
  * @tparam O The parent type for all [[KubeObject]]s served by this version.
  */
+// currently - this does nothing, watches come from NsVersion
+// TODO: do we want to remove all watch stuff from NsVersion (we do)
 private[k8s] class NsWatchVersion[O <: KubeObject](
   val client: Client,
   group: String,
@@ -112,7 +117,11 @@ private[k8s] class NsWatchVersion[O <: KubeObject](
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = {
     val listName = implicitly[ObjectDescriptor[T, W]].listName
-    new NsObjectResource[T, W](client, s"$path/$listName", name, backoffs, stats, Some(s"$nonWatchPath/$listName"))
+    new NsObjectResource[T, W](
+      client,
+      s"$nonWatchPath/$listName",
+      s"$path/$listName",
+      name, backoffs, stats, Some(s"$nonWatchPath/$listName"))
   }
 }
 
@@ -134,7 +143,7 @@ trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
 
   def version: String = ThirdPartyVersion.version(owner, ownerVersion)
   def basePath: String = s"/${ThirdPartyVersion.group}/$version"
-  val group = ThirdPartyVersion.group
+  val group: String = ThirdPartyVersion.group
   override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
 }
 
@@ -156,11 +165,13 @@ class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerV
 private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
   val client: Client,
   basePath: String,
+  baseWatchPath: String,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends Watchable[O, W] with Resource {
   val name = implicitly[ObjectDescriptor[O, W]].listName
   val path = s"$basePath/$name"
+  val watchPath = s"$baseWatchPath/$name"
 
   def get(
     labelSelector: Option[String] = None,
@@ -193,12 +204,13 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
 private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
   client: Client,
   basePath: String,
+  baseWatchPath: String,
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
-)(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](client, basePath, backoffs, stats) {
+)(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](client, basePath, baseWatchPath, backoffs, stats) {
   // TODO: add watched method?
   def named(name: String): NsObjectResource[O, W] =
-    new NsObjectResource[O, W](client, path, name)
+    new NsObjectResource[O, W](client, path, watchPath, name)
 
   /**
    * Creates an Object within the represented List via an HTTP POST.
@@ -217,19 +229,28 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
 private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference](
   val client: Client,
   listPath: String,
+  baseWatchPath: String,
   objectName: String,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver,
   protected val nonWatchListPath: Option[String] = None
 )(implicit od: ObjectDescriptor[O, W]) extends Watchable[O, W] with Resource {
   val path = s"$listPath/$objectName"
-  val nonWatchPath = s"${nonWatchListPath.getOrElse(listPath)}/$objectName"
+  val watchPath = s"$baseWatchPath/$objectName"
 
-  def get(reqPath: String = path): Future[O] = {
-    val req = Api.mkreq(http.Method.Get, reqPath, None)
-    Trace.letClear(client(req)).flatMap { rsp =>
-      Api.parse[O](rsp)
-    }
+  def get(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None,
+    resourceVersion: Option[String] = None,
+    retryIndefinitely: Boolean = false
+  ): Future[O] = {
+    val req = Api.mkreq(http.Method.Get, this.path, None,
+      "labelSelector" -> labelSelector,
+      "fieldSelector" -> fieldSelector,
+      "resourceVersion" -> resourceVersion)
+    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+    val retryingClient = retry andThen client
+    Trace.letClear(retryingClient(req)).flatMap(Api.parse[O])
   }
 
   def put(obj: O): Future[O] = {
@@ -250,7 +271,7 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None
   ): Future[(Seq[W], Option[String])] =
-    get(nonWatchPath).map { configMap =>
-      (Seq(od.toWatch(configMap)), None)
+    get(labelSelector, fieldSelector, None, retryIndefinitely = true).map { obj  =>
+      (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
     }
 }
