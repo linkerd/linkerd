@@ -69,9 +69,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   }
 
   override def goAway(err: GoAway, deadline: Time): Future[Unit] = {
-    write(goAwayFrame(err))
-
-    close(deadline)
+    write(goAwayFrame(err)).flatMap { _ => close(deadline) }
   }
 }
 
