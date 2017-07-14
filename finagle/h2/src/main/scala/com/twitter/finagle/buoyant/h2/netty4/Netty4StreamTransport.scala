@@ -189,23 +189,23 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     // appropriate.
     remoteMsgP.setInterruptHandler {
       case err: Reset =>
-        log.debug(err, "[%s] remote message interrupted", prefix)
+        log.debug("[%s] remote message interrupted: %s", prefix, err)
         localReset(err)
 
       case Failure(Some(err: Reset)) =>
-        log.debug(err, "[%s] remote message interrupted", prefix)
+        log.debug("[%s] remote message interrupted: %s", prefix, err)
         localReset(err)
 
       case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-        log.debug(f, "[%s] remote message interrupted", prefix)
+        log.debug("[%s] remote message interrupted: %s", prefix, f)
         localReset(Reset.Cancel)
 
       case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
-        log.debug(f, "[%s] remote message interrupted", prefix)
+        log.debug("[%s] remote message interrupted: %s", prefix, f)
         localReset(Reset.Refused)
 
       case e =>
-        log.debug(e, "[%s] remote message interrupted", prefix)
+        log.debug("[%s] remote message interrupted: %s", prefix, e)
         localReset(Reset.InternalError)
     }
 
@@ -523,7 +523,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           case rst: Reset => rst
           case _ => Reset.Cancel
         }
-        log.debug(e, "[%s] remote write failed: %s", prefix, rst)
+        log.debug("[%s] remote write failed: %s", prefix, rst)
         remoteReset(rst)
 
       case Throw(StreamError.Local(e)) =>
@@ -531,7 +531,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           case rst: Reset => rst
           case _ => Reset.Cancel
         }
-        log.debug(e, "[%s] stream read failed: %s", prefix, rst)
+        log.debug("[%s] stream read failed: %s", prefix, rst)
         localReset(rst)
 
       case Throw(e) =>

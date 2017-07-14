@@ -39,7 +39,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   val individualTimeoutService = mkService(Future.exception(new IndividualRequestTimeoutException(1.second)))
 
   val totalTimeoutService = mkService(Future.exception(new GlobalRequestTimeoutException(1.second)))
-  
+
   val malframedService = mkService(Future.exception(FramingException("malframed!")))
 
   test("returns BadRequest for UnknownDst exception") {
