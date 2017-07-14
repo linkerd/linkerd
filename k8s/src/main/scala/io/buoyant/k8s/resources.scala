@@ -71,8 +71,9 @@ private[k8s] class NsVersion[O <: KubeObject](
   val client: Client,
   group: String,
   version: String,
-  ns: String)
-extends Resource  {
+  val ns: String
+)
+  extends Resource {
   override lazy val path = s"/$group/$version/namespaces/$ns"
   override lazy val watchPath = s"/$group/$version/watch/namespaces/$ns"
 
@@ -91,7 +92,6 @@ extends Resource  {
     new NsObjectResource[T, W](this, name, Some(listName), backoffs, stats)
   }
 }
-
 
 /**
  * A third-party version contains ThirdPartyResource-typed objects. See
@@ -137,7 +137,7 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W])
-extends Watchable[O, W, L]
+  extends Watchable[O, W, L]
   with Resource {
 
   override val client: Client = parent.client
@@ -145,17 +145,19 @@ extends Watchable[O, W, L]
   final override lazy val path = s"${parent.path}/$name"
   final override lazy val watchPath = s"${parent.watchPath}/$name"
   /**
-    * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
-    */
+   * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
+   */
   override protected def restartWatches(
     labelSelector: Option[String],
-    fieldSelector: Option[String])
-  : Future[(Seq[W], Option[String])] =
-    get(labelSelector,
+    fieldSelector: Option[String]
+  ): Future[(Seq[W], Option[String])] =
+    get(
+      labelSelector,
       fieldSelector,
       None,
       retryIndefinitely = true,
-      watch = true)
+      watch = true
+    )
       .map { list =>
         (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
       }
@@ -166,11 +168,12 @@ extends Watchable[O, W, L]
  * retrieval of individual items in the list. (We don't have a full implementation yet).
  */
 private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
-  parent: Resource,
+  parent: NsVersion[_],
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](parent, backoffs, stats) {
 
+  lazy val ns: String = parent.ns
   def named(objName: String): NsObjectResource[O, W] =
     new NsObjectResource[O, W](this, objName, None, backoffs, stats)
 
@@ -195,7 +198,7 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W])
-extends Watchable[O, W, O]
+  extends Watchable[O, W, O]
   with Resource {
 
   override val client: Client = parent.client
@@ -219,14 +222,16 @@ extends Watchable[O, W, O]
 
   override protected def restartWatches(
     labelSelector: Option[String] = None,
-    fieldSelector: Option[String] = None)
-  : Future[(Seq[W], Option[String])] =
-    get(labelSelector,
+    fieldSelector: Option[String] = None
+  ): Future[(Seq[W], Option[String])] =
+    get(
+      labelSelector,
       fieldSelector,
       None,
       retryIndefinitely = true,
-      watch = true)
-      .map { obj  =>
+      watch = true
+    )
+      .map { obj =>
         (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
       }
 }
