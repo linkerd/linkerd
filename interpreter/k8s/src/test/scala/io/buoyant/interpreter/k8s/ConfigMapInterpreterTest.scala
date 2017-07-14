@@ -20,12 +20,13 @@ class ConfigMapInterpreterTest extends FunSuite
           |""".stripMargin
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConfigMapInterpreterInitializer)))
     val config = mapper.readValue[InterpreterConfig](yaml).asInstanceOf[ConfigMapInterpreterConfig]
-    inside(config) { case ConfigMapInterpreterConfig(host, port, namespace, name, filename) =>
+    inside(config) {
+      case ConfigMapInterpreterConfig(host, port, namespace, name, filename) =>
         assert(host.contains("foo"))
         assert(port.contains(Port(8888)))
         assert(namespace.contains("my-great-namespace"))
         assert(name == "configMap")
-        assert(filename == "filenName")
+        assert(filename == "fileName")
     }
   }
 }
