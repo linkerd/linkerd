@@ -54,7 +54,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     val ns = Api(service).withNamespace("srv")
-    val ingress = await(ns.ingresses.named("test-ingress").get)
+    val ingress = await(ns.ingresses.named("test-ingress").get())
 
     val paths = for (
       spec <- ingress.spec.toSeq;

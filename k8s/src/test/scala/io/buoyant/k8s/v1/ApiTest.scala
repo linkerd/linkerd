@@ -45,7 +45,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     val ns = Api(service).withNamespace("srv")
-    val endpoints = await(ns.endpoints.named("accounts").get)
+    val endpoints = await(ns.endpoints.named("accounts").get())
     assert(endpoints == Endpoints(
       subsets = Some(Seq(
         EndpointSubset(
