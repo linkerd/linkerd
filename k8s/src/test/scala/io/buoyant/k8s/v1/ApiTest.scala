@@ -457,19 +457,19 @@ class ApiTest extends FunSuite
               failure = e
               Future.exception(e)
           }
-//        case 2 if req.uri == "/api/v1/namespaces/test/configmaps/another-test-config" =>
-//          try {
-//            val rsp = Response()
-//            rsp.version = req.version
-//            rsp.setContentTypeJson()
-//            rsp.headerMap("Transfer-Encoding") = "chunked"
-//            rsp.writer.write(Buf.Utf8(configMap1)) before rsp.writer.close()
-//            Future.value(rsp)
-//          } catch {
-//            case e: Throwable =>
-//              failure = e
-//              Future.exception(e)
-//          }
+        //        case 2 if req.uri == "/api/v1/namespaces/test/configmaps/another-test-config" =>
+        //          try {
+        //            val rsp = Response()
+        //            rsp.version = req.version
+        //            rsp.setContentTypeJson()
+        //            rsp.headerMap("Transfer-Encoding") = "chunked"
+        //            rsp.writer.write(Buf.Utf8(configMap1)) before rsp.writer.close()
+        //            Future.value(rsp)
+        //          } catch {
+        //            case e: Throwable =>
+        //              failure = e
+        //              Future.exception(e)
+        //          }
 
         case _ => Future.never
       }
@@ -477,13 +477,14 @@ class ApiTest extends FunSuite
 
     val ns = Api(service).withNamespace("test")
     val configMap0Result = await(ns.configMap("test-config").get())
-    inside (configMap0Result) { case ConfigMap(data, kind, metadata, apiVersion) =>
-      assert(apiVersion.contains("v1"))
-      assert(kind.contains("ConfigMap"))
-      assert(metadata.value.name.contains("test-config"))
-      assert(metadata.value.namespace.contains("test"))
-      assert(data.get("property-1").contains("my-great-value"))
-      assert(data.get("property-2").contains("help im trapped in a config map factory"))
+    inside(configMap0Result) {
+      case ConfigMap(data, kind, metadata, apiVersion) =>
+        assert(apiVersion.contains("v1"))
+        assert(kind.contains("ConfigMap"))
+        assert(metadata.value.name.contains("test-config"))
+        assert(metadata.value.namespace.contains("test"))
+        assert(data.get("property-1").contains("my-great-value"))
+        assert(data.get("property-2").contains("help im trapped in a config map factory"))
     }
   }
 
@@ -515,14 +516,15 @@ class ApiTest extends FunSuite
 
     val ns = Api(service).withNamespace("test")
     val configMap1Result = await(ns.configMap("another-test-config").get())
-    inside (configMap1Result) { case ConfigMap(data, kind, metadata, apiVersion) =>
-      assert(apiVersion.contains("v1"))
-      assert(kind.contains("ConfigMap"))
-      assert(metadata.value.name.contains("another-test-config"))
-      assert(metadata.value.namespace.contains("test"))
-      // TODO: rewrite `ConfigMap` to try and parse these instead!
-      assert(data.get("object-property").contains("""{"key1":"value1", "key2":1234}"""))
-      assert(data.get("array-property").contains("""["foo","bar","baz","quux"]"""))
+    inside(configMap1Result) {
+      case ConfigMap(data, kind, metadata, apiVersion) =>
+        assert(apiVersion.contains("v1"))
+        assert(kind.contains("ConfigMap"))
+        assert(metadata.value.name.contains("another-test-config"))
+        assert(metadata.value.namespace.contains("test"))
+        // TODO: rewrite `ConfigMap` to try and parse these instead!
+        assert(data.get("object-property").contains("""{"key1":"value1", "key2":1234}"""))
+        assert(data.get("array-property").contains("""["foo","bar","baz","quux"]"""))
     }
   }
 }
