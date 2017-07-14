@@ -37,7 +37,7 @@ case class ConfigMapInterpreterConfig(
   private[this] val log = Logger()
 
   @JsonIgnore
-  val nsOrDefault = namespace.getOrElse(ClientConfig.DefaultNamespace)
+  val nsOrDefault = namespace.getOrElse(DefaultNamespace)
 
   @JsonIgnore
   val api = {
