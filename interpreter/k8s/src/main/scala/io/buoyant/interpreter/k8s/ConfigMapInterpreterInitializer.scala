@@ -21,7 +21,6 @@ class ConfigMapInterpreterInitializer extends InterpreterInitializer {
 
 object ConfigMapInterpreterInitializer extends ConfigMapInterpreterInitializer
 
-// TODO: make experimental
 case class ConfigMapInterpreterConfig(
   host: Option[String],
   port: Option[Port],
@@ -29,6 +28,9 @@ case class ConfigMapInterpreterConfig(
   name: String,
   filename: String
 ) extends InterpreterConfig with ClientConfig {
+
+  @JsonIgnore
+  override def experimentalRequired = true
 
   @JsonIgnore
   def portNum = port.map(_.port)
