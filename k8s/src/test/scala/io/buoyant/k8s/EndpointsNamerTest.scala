@@ -226,6 +226,15 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     @volatile var req: Request = null
 
     val service = Service.mk[Request, Response] {
+      case r if r.path.startsWith("/api/v1/watch/namespaces/srv/endpoints") =>
+        req = r
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+      case r if r.path.startsWith("/api/v1/watch/namespaces/srv/services") =>
+        val rsp = Response()
+        rsp.content = Rsps.Services
+        Future.value(rsp)
       case r if r.path.startsWith("/api/v1/namespaces/srv/endpoints") =>
         req = r
         val rsp = Response()
@@ -235,8 +244,8 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         val rsp = Response()
         rsp.content = Rsps.Services
         Future.value(rsp)
-      case _ =>
-        fail(s"unexpected request: $req")
+      case r =>
+        fail(s"unexpected request: $r")
     }
 
     val api = v1.Api(service)

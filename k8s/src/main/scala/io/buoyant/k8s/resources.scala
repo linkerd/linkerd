@@ -70,7 +70,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
 private[k8s] class NsVersion[O <: KubeObject](
   val client: Client,
   group: String,
-  version: String,
+  val version: String,
   val ns: String
 )
   extends Resource {
