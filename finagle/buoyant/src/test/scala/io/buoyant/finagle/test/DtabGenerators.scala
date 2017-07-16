@@ -1,9 +1,9 @@
 
-package io.buoyant.test
+package io.buoyant.finagle.test
 
 import com.twitter.io.Buf
 import com.twitter.io.Buf.ByteArray
-import org.scalacheck.Gen
+import org.scalacheck.{Arbitrary, Gen}
 
 trait DtabGenerators {
   val alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#._"
@@ -11,4 +11,5 @@ trait DtabGenerators {
   val label: Gen[Buf] = Gen.sized { size =>
     Gen.listOfN(size, labelChar).map(list => ByteArray(list.map(_.toByte):_*))
   }
+
 }
