@@ -8,24 +8,24 @@ import io.buoyant.test.{Awaits, FunSuite}
 
 class StreamStatsFilterTest extends FunSuite with Awaits {
   val successCounters = Seq(
-    Seq("stream", "response", "stream_successes"),
-    Seq("stream", "request", "stream_successes"),
+    Seq("response", "stream", "stream_successes"),
+    Seq("request", "stream", "stream_successes"),
     Seq("stream", "stream_successes"),
-    Seq("response", "successes")
+    Seq("successes")
   )
   val failureCounters = Seq(
-    Seq("stream", "response", "stream_failures"),
-    Seq("stream", "request", "stream_failures"),
+    Seq("response", "stream", "stream_failures"),
+    Seq("request", "stream", "stream_failures"),
     Seq("stream", "stream_failures"),
-    Seq("response", "failures")
+    Seq("failures")
   )
   val requestCounter = Seq("requests")
   val allCounters = successCounters ++ failureCounters :+ requestCounter
   val latencyStats = Seq(
-    Seq("stream", "response", "stream_duration_ms"),
-    Seq("stream", "request", "stream_duration_ms"),
+    Seq("response", "stream", "stream_duration_ms"),
+    Seq("request", "stream", "stream_duration_ms"),
     Seq("stream", "total_latency_ms"),
-    Seq("response", "response_latency_ms")
+    Seq("request_latency_ms")
   )
 
   private[this] def setup(response: Request => Future[Response]) = {
@@ -95,8 +95,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val expectedCounters = Seq(
       requestCounter,
-      Seq("response", "failures"),
-      Seq("stream", "request", "stream_successes"))
+      Seq("failures"),
+      Seq("request", "stream", "stream_successes"))
 
     assertThrows[Throwable] { await(service(req)) }
     withClue("after first failure") {
@@ -150,7 +150,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     assertThrows[Throwable] { await(service(req)) }
     withClue("after failure") {
-      for { stat <- latencyStats.filter(_ != Seq("stream", "response", "stream_duration_ms")) }
+      for { stat <- latencyStats.filter(_ != Seq("response", "stream", "stream_duration_ms")) }
         withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
     }
   }

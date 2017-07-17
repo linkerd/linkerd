@@ -25,14 +25,14 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
     stats: StatsReceiver,
     durationName: Option[String] = None,
     successName: Option[String] = None
-  )(scopes: String*) {
+  ) {
 
-    private[this] val (durationMs, successes, failures) = {
-      val scope = scopes.foldLeft(statsReceiver) { (scope, name) => scope.scope(name) }
-      (scope.stat(s"${durationName.getOrElse("stream_duration")}_ms"),
-       scope.counter(s"${successName.getOrElse("stream_")}successes"),
-       scope.counter(s"${successName.getOrElse("stream_")}failures"))
-    }
+    private[this] val durationMs =
+      stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
+    private[this] val successes =
+      stats.counter(s"${successName.getOrElse("stream_")}successes")
+    private[this] val failures =
+      stats.counter(s"${successName.getOrElse("stream_")}failures")
 
     @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
       durationMs.add(startT().inMillis)
@@ -46,10 +46,17 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
   //   total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
 
-  private[this] val reqStreamStats = new StreamStats(statsReceiver)("stream", "request")
-  private[this] val rspStreamStats = new StreamStats(statsReceiver)("stream", "response")
-  private[this] val totalStreamStats = new StreamStats(statsReceiver, Some("total_latency"))("stream")
-  private[this] val rspFutureStats = new StreamStats(statsReceiver, Some("response_latency"), Some(""))("response")
+  private[this] val reqStreamStats =
+    new StreamStats(statsReceiver.scope("request").scope("stream"))
+  private[this] val rspStreamStats =
+    new StreamStats(statsReceiver.scope("response").scope("stream"))
+  private[this] val totalStreamStats =
+    new StreamStats(statsReceiver.scope("stream"),
+                    durationName = Some("total_latency"))
+  private[this] val rspFutureStats =
+    new StreamStats(statsReceiver,
+                    durationName = Some("request_latency"),
+                    successName = Some(""))
 
   override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
@@ -60,10 +67,11 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
     service(req)
       .respond { result =>
         rspFutureStats(reqT)(result)
-        val _ = (result match {
+        val stream = result match {
           case Return(rsp) => req.stream.onEnd.join(rsp.stream.onEnd)
           case Throw(_) => req.stream.onEnd
-        }).respond(totalStreamStats(reqT))
+        }
+        val _ = stream.respond(totalStreamStats(reqT))
       }
       .onSuccess { rsp =>
         val rspT = Stopwatch.start()
