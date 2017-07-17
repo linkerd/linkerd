@@ -1,24 +1,29 @@
 package io.buoyant.router.h2
 
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Stream}
+import com.twitter.finagle.buoyant.h2.{Request, Response, Stream, H2ResponseClassifier, param => h2param}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module1[param.Stats, ServiceFactory[Request, Response]] {
+    new Stack.Module2[param.Stats,
+                      h2param.H2ResponseClassifier,
+                      ServiceFactory[Request, Response]] {
       override def role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
-      override def make(statsP: param.Stats, next: ServiceFactory[Request, Response]) = {
+      override def make(statsP: param.Stats,
+                        classifierP: h2param.H2ResponseClassifier,
+                        next: ServiceFactory[Request, Response]) = {
         val param.Stats(stats) = statsP
-        new StreamStatsFilter(stats).andThen(next)
+        val h2param.H2ResponseClassifier(classifier) = classifierP
+        new StreamStatsFilter(stats, classifier).andThen(next)
       }
     }
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver)
+class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
   extends SimpleFilter[Request, Response] {
 
   class StreamStats(
