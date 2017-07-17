@@ -7,7 +7,7 @@ import com.twitter.util.{Future, Try}
   * @param underlying the [[Stream]] wrapped by this proxy
   * @param onFrame function called for each [[Frame]] in the underlying [[Stream]]
   */
-class StreamProxy(private[this] val underlying: Stream, onFrame: Try[Frame] => ()) extends Stream {
+class StreamProxy(private[this] val underlying: Stream, onFrame: Try[Frame] => Unit) extends Stream {
   override def isEmpty: Boolean = underlying.isEmpty
 
   override def read(): Future[Frame] = underlying.read().respond(onFrame)
@@ -28,6 +28,6 @@ object StreamProxy {
     * @param stream
     */
   implicit class OnFrame(val stream: Stream) extends AnyRef {
-    def onFrame(onFrame: Try[Frame] => ()): StreamProxy = new StreamProxy(stream, onFrame)
+    def onFrame(onFrame: Try[Frame] => Unit): StreamProxy = new StreamProxy(stream, onFrame)
   }
 }
