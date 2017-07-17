@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{ClusterCache, IdentifierPreconditions, RouteCache}
+import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
@@ -14,7 +14,7 @@ import io.buoyant.router.RoutingFactory.{BaseDtab, DstPrefix, IdentifiedRequest,
 import istio.proxy.v1.config.HTTPRedirect
 
 class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: RouteCache, val clusterCache: ClusterCache)
-  extends Identifier[Request] with IdentifierPreconditions[Request] {
+  extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     getIdentifiedPath(req).map { path =>
@@ -23,7 +23,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: Route
     }
   }
 
-  def redirectRequest[H2ResponseException](redir: HTTPRedirect, req: Request): Future[H2ResponseException] = {
+  def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
     val resp = Response(Status.Found, Stream.empty())
     resp.headers.set(Headers.Path, redir.`uri`.getOrElse(req.path))
     resp.headers.set(Headers.Authority, redir.`authority`.getOrElse(req.authority))

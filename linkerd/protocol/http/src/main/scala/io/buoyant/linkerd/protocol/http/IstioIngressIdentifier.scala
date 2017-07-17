@@ -25,7 +25,7 @@ class IstioIngressIdentifier(
   annotationClass: String,
   val routeCache: RouteCache,
   val clusterCache: ClusterCache
-) extends Identifier[Request] with IdentifierPreconditions[Request] {
+) extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
@@ -73,7 +73,7 @@ class IstioIngressIdentifier(
     //TODO: match on request scheme
     IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
 
-  def redirectRequest[HttpResponseException](redir: HTTPRedirect, req: Request): Future[HttpResponseException] = {
+  def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
     val redirect = Response(Status.Found)
     redirect.location = redir.`uri`.getOrElse(req.uri)
     redirect.host = redir.`authority`.orElse(req.host).getOrElse("")

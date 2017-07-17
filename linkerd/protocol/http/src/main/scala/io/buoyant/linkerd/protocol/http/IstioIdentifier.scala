@@ -5,7 +5,7 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{ClusterCache, IdentifierPreconditions, RouteCache}
+import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
@@ -13,7 +13,7 @@ import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestI
 import istio.proxy.v1.config.HTTPRedirect
 
 class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: RouteCache, val clusterCache: ClusterCache)
-  extends Identifier[Request] with IdentifierPreconditions[Request] {
+  extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     req.host match {
@@ -30,7 +30,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: Route
     //TODO: match on request scheme
     IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
 
-  def redirectRequest[HttpResponseException](redir: HTTPRedirect, req: Request): Future[HttpResponseException] = {
+  def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
     val redirect = Response(Status.Found)
     redirect.location = redir.`uri`.getOrElse(req.uri)
     redirect.host = redir.`authority`.orElse(req.host).getOrElse("")

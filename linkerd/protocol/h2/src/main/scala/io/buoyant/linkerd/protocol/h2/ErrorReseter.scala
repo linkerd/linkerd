@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Request, Reset, Response}
-import com.twitter.logging.Logger
+import com.twitter.logging.{Level, Logger}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory
@@ -48,5 +48,7 @@ object ErrorReseter {
       def make(factory: ServiceFactory[Request, Response]) = filter.andThen(factory)
     }
 
-  case class H2ResponseException(rsp: Response) extends ResponseException(rsp)
+  case class H2ResponseException(rsp: Response) extends ResponseException {
+    val logLevel = Level.TRACE
+  }
 }

@@ -4,7 +4,7 @@ import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
-import com.twitter.logging.Logger
+import com.twitter.logging.{Level, Logger}
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
 import scala.util.control.{NoStackTrace, NonFatal}
@@ -49,5 +49,7 @@ object ErrorResponder {
         filter.andThen(factory)
     }
 
-  case class HttpResponseException(rsp: Response) extends ResponseException(rsp)
+  case class HttpResponseException(rsp: Response) extends ResponseException {
+    val logLevel = Level.TRACE
+  }
 }

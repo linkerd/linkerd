@@ -6,7 +6,7 @@ import io.buoyant.k8s.istio.ClusterCache.Cluster
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 import istio.proxy.v1.config._
 
-trait IdentifierPreconditions[Req] {
+trait IstioIdentifierBase[Req] {
 
   /**
    * Defines a request's metadata for istio rules to match against
@@ -24,7 +24,7 @@ trait IdentifierPreconditions[Req] {
   def routeCache: RouteCache
   def pfx: Path
 
-  def redirectRequest[T](redir: HTTPRedirect, req: Req): Future[T]
+  def redirectRequest(redir: HTTPRedirect, req: Req): Future[Nothing]
   def rewriteRequest(uri: String, authority: Option[String], req: Req): Unit
   def reqToMeta(req: Req): IstioRequestMeta
 

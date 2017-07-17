@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant._
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.tracing.Annotation.BinaryAnnotation
 import com.twitter.finagle.tracing._
+import com.twitter.logging.Level
 import com.twitter.util.{Future, Time}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, ResponseException}
 import io.buoyant.test.FunSuite
@@ -70,7 +71,9 @@ class RoutingFactoryTest extends FunSuite {
 
   test("passes through ResponseExceptions") {
     val tracer = new TestTracer()
-    case class MyResponseException(rsp: Response) extends ResponseException(rsp)
+    case class MyResponseException(rsp: Response) extends ResponseException {
+      val logLevel = Level.TRACE
+    }
 
     Trace.letTracer(tracer) {
       val service = mkService(pathMk = (_: Request) => Future.exception(MyResponseException(Response())))
