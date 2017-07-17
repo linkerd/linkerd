@@ -30,12 +30,9 @@ trait Resource extends Closable {
  * @tparam O The parent type for all [Object]s served by this version.
  */
 private[k8s] trait Version[O <: KubeObject] extends Resource {
-  // alex, I know you don't like lazy-evaluation, but i thought it was
-  // reasonable here, since the behaviour is fairly predictable, and
-  // it's nice to save us a handful of string allocations if we only
-  // want one or the other
-  override lazy val path = s"/$group/$version"
-  override lazy val watchPath = s"/$group/$version/watch"
+
+  override val path = s"/$group/$version"
+  override val watchPath = s"/$group/$version/watch"
 
   /**
    * The first portion of the API path. Currently-known groups are "api" (for the core k8s v1 API)
@@ -74,8 +71,8 @@ private[k8s] class NsVersion[O <: KubeObject](
   val ns: String
 )
   extends Resource {
-  override lazy val path = s"/$group/$version/namespaces/$ns"
-  override lazy val watchPath = s"/$group/$version/watch/namespaces/$ns"
+  override val path = s"/$group/$version/namespaces/$ns"
+  override val watchPath = s"/$group/$version/watch/namespaces/$ns"
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
@@ -109,9 +106,9 @@ trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
   /** version within owner domain, i.e. "v1" */
   def ownerVersion: String
 
-  override lazy val version: String = ThirdPartyVersion.version(owner, ownerVersion)
-  override lazy val path: String = s"/${ThirdPartyVersion.group}/$version"
-  override lazy val watchPath: String = s"/${ThirdPartyVersion.group}/$version/watch"
+  override val version: String = ThirdPartyVersion.version(owner, ownerVersion)
+  override val path: String = s"/${ThirdPartyVersion.group}/$version"
+  override val watchPath: String = s"/${ThirdPartyVersion.group}/$version/watch"
 
   val group: String = ThirdPartyVersion.group
   override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
@@ -141,9 +138,9 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
   with Resource {
 
   override val client: Client = parent.client
-  lazy val name: String = implicitly[ObjectDescriptor[O, W]].listName
-  final override lazy val path = s"${parent.path}/$name"
-  final override lazy val watchPath = s"${parent.watchPath}/$name"
+  val name: String = implicitly[ObjectDescriptor[O, W]].listName
+  final override val path = s"${parent.path}/$name"
+  final override val watchPath = s"${parent.watchPath}/$name"
   /**
    * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
    */
@@ -173,7 +170,7 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
   stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](parent, backoffs, stats) {
 
-  lazy val ns: String = parent.ns
+  val ns: String = parent.ns
   def named(objName: String): NsObjectResource[O, W] =
     new NsObjectResource[O, W](this, objName, None, backoffs, stats)
 
@@ -202,9 +199,13 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
   with Resource {
 
   override val client: Client = parent.client
-  private[this] lazy val listName = maybeListName.map(_ + "/").getOrElse("")
-  override lazy val path = s"${parent.path}/$listName$objectName"
-  override lazy val watchPath = s"${parent.watchPath}/$listName$objectName"
+  override val (path, watchPath) = {
+    // the value of listName can be dropped when we're done with it,
+    // so allocate it in a scope.
+    val listName = maybeListName.map(_ + "/").getOrElse("")
+    (s"${parent.path}/$listName$objectName",
+     s"${parent.watchPath}/$listName$objectName")
+  }
 
   def put(obj: O): Future[O] = {
     val req = Api.mkreq(http.Method.Put, path, Some(Json.writeBuf[O](obj)))
