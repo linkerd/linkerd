@@ -1,7 +1,8 @@
 package io.buoyant.router.h2
 
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Stream, H2ResponseClassifier, param => h2param}
+import com.twitter.finagle.buoyant.h2.{Frame, H2ResponseClassifier, Request, Response, Stream, param => h2param}
+import com.twitter.finagle.buoyant.h2.StreamProxy._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 
@@ -62,14 +63,27 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     new StreamStats(statsReceiver,
                     durationName = Some("request_latency"),
                     successName = Some(""))
+  private[this] val frameSizes = statsReceiver.stat("stream", "data_frame", "bytes")
 
   override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
-
     req.stream.onEnd.respond(reqStreamStats(reqT))
 
     service(req)
+      .transform {
+        case Return(rsp0) =>
+          val stream = rsp0.stream.onFrame {
+            case Return(frame) if frame.isEnd =>
+              ???
+            case Return(frame: Frame.Data) =>
+              // if the frame is a data frame, update the data frame size stat
+              frameSizes.add(frame.buf.length)
+            case Throw(e) =>
+              ???
+          }
+          Future.value(Response(rsp0.headers, stream))
+      }
       .respond { result =>
         rspFutureStats(reqT)(result)
         val stream = result match {
