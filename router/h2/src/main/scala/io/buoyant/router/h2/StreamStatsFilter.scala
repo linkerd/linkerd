@@ -47,9 +47,9 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
   private[this] val reqCount = statsReceiver.counter("requests")
 
   private[this] val reqStreamStats =
-    new StreamStats(statsReceiver.scope("request").scope("stream"))
+    new StreamStats(statsReceiver.scope("request", "stream"))
   private[this] val rspStreamStats =
-    new StreamStats(statsReceiver.scope("response").scope("stream"))
+    new StreamStats(statsReceiver.scope("response", "stream"))
   private[this] val totalStreamStats =
     new StreamStats(statsReceiver.scope("stream"),
                     durationName = Some("total_latency"))
