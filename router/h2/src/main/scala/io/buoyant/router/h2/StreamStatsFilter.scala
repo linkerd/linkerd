@@ -3,7 +3,7 @@ package io.buoyant.router.h2
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.buoyant.h2.{Request, Response, Stream}
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.util.{Future, Return, Stopwatch, Throw}
+import com.twitter.util._
 
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
@@ -21,73 +21,50 @@ object StreamStatsFilter {
 class StreamStatsFilter(statsReceiver: StatsReceiver)
   extends SimpleFilter[Request, Response] {
 
+  class StreamStats(
+    scopes: Seq[String] = Nil,
+    durationName: Option[String] = None,
+    successName: Option[String] = None) {
+
+    private[this] val (durationMs, successes, failures) = {
+      val scope = scopes.foldLeft(statsReceiver){ (scope, name) => scope.scope(name) }
+      ( scope.stat(s"${durationName.getOrElse("stream_duration")}_ms")
+      , scope.counter(s"${successName.getOrElse("stream")}_successes")
+      , scope.counter(s"${successName.getOrElse("stream")}_failures"))
+    }
+
+    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
+      durationMs.add(startT().inMillis)
+      result match {
+        case Return(_) => successes.incr()
+        case Throw(_) => failures.incr()
+      }
+    }
+  }
+
   // total number of requests received
   private[this] val reqCount = statsReceiver.counter("stream", "requests")
-  // time from request until request stream completes (successfully or not)
-  private[this] val reqStreamTimeMs = statsReceiver.stat("stream", "request", "stream_duration_ms")
-  // time from response until response stream completes (successfully or not)
-  private[this] val rspStreamTimeMs = statsReceiver.stat("stream", "response", "stream_duration_ms")
 
-  // number of response futures that succeed
-  private[this] val rspSuccess = statsReceiver.counter("stream", "response", "response_success")
-  // number of response futures that fail
-  private[this] val rspFailures = statsReceiver.counter("stream", "response", "response_failures")
-  // number of request streams that fail
-  private[this] val reqStreamFailures = statsReceiver.counter("stream", "request", "stream_failures")
-  // number of request streams that succeed
-  private[this] val reqStreamSuccesses = statsReceiver.counter("stream", "request", "stream_success")
-  // number of response streams that fail
-  private[this] val rspStreamFailures = statsReceiver.counter("stream", "response", "stream_failures")
-  // number of response futures that succeed
-  private[this] val rspStreamSuccesses = statsReceiver.counter("stream", "response", "stream_success")
-  // number of times any stream fails
-  private[this] val streamFailures = statsReceiver.counter("stream", "failures")
-  // number of times both streams succeed
-  private[this] val streamSuccesses = statsReceiver.counter("stream", "success")
-
-
-  // time from request until response future completes (successfully or not)
-  private[this] val rspLatencyMs = statsReceiver.stat("stream", "response", "latency_ms")
-  // time from request until both streams complete (successfully or not)
-  private[this] val totalLatencyMs = statsReceiver.stat("stream", "total_latency_ms")
+  private[this] val reqStreamStats = new StreamStats(Seq("stream", "request"))
+  private[this] val rspStreamStats = new StreamStats(Seq("stream", "response"))
+  private[this] val totalStreamStats = new StreamStats(Seq("stream"), Some("total_latency"))
+  private[this] val rspFutureStats = new StreamStats(Seq("response"), Some("response_latency"), Some("response"))
 
   override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
 
-    req.stream.onEnd.respond { result =>
-      reqStreamTimeMs.add(reqT().inMillis)
-      result match {
-        case Return(_) => reqStreamSuccesses.incr()
-        case Throw(_) => reqStreamFailures.incr()
-      }
-    }
+    req.stream.onEnd.respond(reqStreamStats(reqT))
 
     service(req)
+      .respond(rspFutureStats(reqT))
       .onSuccess { rsp =>
-        rspLatencyMs.add(reqT().inMillis)
-        rspSuccess.incr()
-
         val rspT = Stopwatch.start()
-        rsp.stream.onEnd.respond { result =>
-          rspStreamTimeMs.add(rspT().inMillis)
-          result match {
-            case Throw(_) => rspStreamFailures.incr()
-            case Return(_) => rspStreamSuccesses.incr()
-          }
-        }
+        rsp.stream.onEnd.respond(rspStreamStats(rspT))
 
-        val _ = req.stream.onEnd.join(rsp.stream.onEnd).respond { result =>
-          totalLatencyMs.add(reqT().inMillis)
-          result match {
-            case Return(_) => streamSuccesses.incr()
-            case Throw(_) => streamFailures.incr()
-          }
-        }
-      }
-      .onFailure { err =>
-        rspLatencyMs.add(reqT().inMillis)
-        rspFailures.incr()
+        val _ = req.stream.onEnd
+          .join(rsp.stream.onEnd)
+          .respond(totalStreamStats(reqT))
       }
   }
 
