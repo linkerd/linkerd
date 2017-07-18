@@ -84,33 +84,24 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
   }
 
   private[this] object Closed extends Throwable
-  private[this] val state = Var.async[IngressState](Activity.Pending) { state =>
-    val closeRef = new AtomicReference[Closable](Closable.nop)
-    val pending = api.get(retryIndefinitely = true).respond {
-      case Throw(e) => state() = Activity.Failed(e)
-      case Return(ingressList) =>
-        val initState: Seq[IngressSpec] = ingressList.items.flatMap(mkIngress)
-        state.update(Activity.Ok(initState))
-        val (stream, close) = api.watch(None, None, ingressList.metadata.flatMap(_.resourceVersion))
-        closeRef.set(close)
-        val _ = stream.foldLeft(initState) { (ingresses, watchEvent) =>
-          val newState: Seq[IngressSpec] = watchEvent match {
-            case v1beta1.IngressAdded(a) => ingresses ++ mkIngress(a)
-            case v1beta1.IngressModified(m) => mkIngress(m).map(item => ingresses.filterNot(isNameEqual(_, item)) :+ item).getOrElse(ingresses)
-            case v1beta1.IngressDeleted(d) => mkIngress(d).map(item => ingresses.filterNot(isNameEqual(_, item))).getOrElse(ingresses)
-            case v1beta1.IngressError(e) =>
-              log.error("k8s watch error: %s", e)
-              ingresses
-          }
-          state() = Activity.Ok(newState)
-          newState
-        }
-    }
-    Closable.make { t =>
-      pending.raise(Closed)
-      Closable.ref(closeRef).close(t)
-    }
+  private[this] val state = api.activity(_.items.flatMap(mkIngress)){
+    (ingresses, watchEvent) =>
+      watchEvent match {
+        case v1beta1.IngressAdded(a) => ingresses ++ mkIngress(a)
+        case v1beta1.IngressModified(m) =>
+          mkIngress(m)
+            .map { item => ingresses.filterNot(isNameEqual(_, item)) :+ item }
+            .getOrElse(ingresses)
+        case v1beta1.IngressDeleted(d) =>
+          mkIngress(d)
+            .map{ item => ingresses.filterNot(isNameEqual(_, item)) }
+            .getOrElse(ingresses)
+        case v1beta1.IngressError(e) =>
+          log.error("k8s watch error: %s", e)
+          ingresses
+      }
   }
+
 
   private[this] lazy val ingresses: Activity[Seq[IngressSpec]] = {
     val act = Activity(state)
