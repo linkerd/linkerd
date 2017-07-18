@@ -28,10 +28,7 @@ object StreamStatsFilter {
 class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
   extends SimpleFilter[Request, Response] {
 
-  class StreamStats(
-    stats: StatsReceiver,
-    durationName: Option[String] = None,
-  ) {
+  class StreamStats(stats: StatsReceiver, durationName: Option[String] = None) {
 
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
@@ -59,7 +56,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     new StreamStats(statsReceiver.scope("stream"),
                     durationName = Some("total_latency"))
   private[this] val frameSizes = statsReceiver.stat("stream", "data_frame", "bytes")
-  private[this] val reqLatency = statsReceiver.stat("request_latency")
+  private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
   // overall successes stat from response classifier
   private[this] val successes = statsReceiver.counter("successes")
   // overall failures stat from response classifier
@@ -90,6 +87,13 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
               }
           }
           Future.value(Response(rsp0.headers, stream))
+        case Throw(e) =>
+          // TODO: make this less repetitive
+          classifier(H2ReqRep(req, Throw(e)))  match {
+            case Successful(_) => successes.incr()
+            case _ => failures.incr()
+          }
+          Future.exception(e)
       }
       .respond { result =>
         reqLatency.add(reqT().inMillis)
