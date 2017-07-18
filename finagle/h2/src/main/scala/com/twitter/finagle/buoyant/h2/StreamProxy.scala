@@ -10,7 +10,7 @@ import com.twitter.util.{Future, Try}
 class StreamProxy(underlying: Stream, onFrame: Try[Frame] => Unit) extends Stream {
   override def isEmpty: Boolean = underlying.isEmpty
 
-  override def read(): Future[Frame] = underlying.read().respond(onFrame)
+  override def read(): Future[Frame] = underlying.read().respond(frame => onFrame(frame) )
 
   /**
     * Satisfied when an end-of-stream frame has been read from this
