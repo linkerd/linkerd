@@ -73,17 +73,22 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           val rspT = Stopwatch.start()
 //          rsp0.stream.onEnd.transform[Unit]{ value => rspStreamStats(rspT)(value); Future.value(()) }
           val stream = rsp0.stream.onFrame {
-            case Return(frame) if frame.isEnd =>
-              classifier(H2ReqRep(req, Return((rsp0, Return(frame))))) match {
-                case Successful(_) => successes.incr()
-                case _ => failures.incr()
+            case Return(frame) =>
+              if (frame.isEnd) {
+                classifier(H2ReqRep(req, Return((rsp0, Return(frame))))) match {
+                  case Successful(_) => successes.incr()
+                  case _ => failures.incr()
+                }
               }
-            case Return(frame: Frame.Data) =>
-              // if the frame is a data frame, update the data frame size stat
-              frameSizes.add(frame.buf.length)
-            case Throw(frame) =>
+              frame match {
+                case frame: Frame.Data =>
+                  // if the frame is a data frame, update the data frame size stat
+                  frameSizes.add(frame.buf.length)
+                case _ =>
+              }
+            case e @ Throw(_) =>
               // TODO: make this less repetitive
-              classifier(H2ReqRep(req, Return((rsp0, Throw(frame)))))  match {
+              classifier(H2ReqRep(req, Return((rsp0, e))))  match {
                 case Successful(_) => successes.incr()
                 case _ => failures.incr()
               }
