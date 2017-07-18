@@ -1,6 +1,5 @@
 package io.buoyant.router
 
-import com.twitter.conversions.time._
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.thrift.ThriftClientRequest
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
@@ -89,6 +88,8 @@ class ThriftEndToEndTest extends FunSuite with Awaits {
         val path = "/thrift"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
+          assert(anns.contains(Annotation.Rpc("ping")))
+          assert(anns.contains(Annotation.Rpc("thrift /thrift")))
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
