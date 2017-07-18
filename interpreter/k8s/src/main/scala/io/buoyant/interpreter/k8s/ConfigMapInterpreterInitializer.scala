@@ -54,16 +54,18 @@ case class ConfigMapInterpreterConfig(
   private[this] object Closed extends Throwable
 
   @JsonIgnore
-  val stateWithClose = nsApi.configMap(name).activity()(getDtab){
-    (dtab, event) => event match {
-      case ConfigMapAdded(a) => getDtab(a)
-      case ConfigMapModified(m) => getDtab(m)
-      case ConfigMapDeleted(_) => Dtab.empty
-      case ConfigMapError(e) =>
-        log.error("k8s watch error: %s", e)
-        dtab
-      }
-  }
+  val stateWithClose = nsApi.configMap(name)
+    .activity(getDtab, resourceVersion = false) {
+      (dtab, event) =>
+        event match {
+          case ConfigMapAdded(a) => getDtab(a)
+          case ConfigMapModified(m) => getDtab(m)
+          case ConfigMapDeleted(_) => Dtab.empty
+          case ConfigMapError(e) =>
+            log.error("k8s watch error: %s", e)
+            dtab
+        }
+    }
 
   @JsonIgnore
   val act = Activity(stateWithClose)

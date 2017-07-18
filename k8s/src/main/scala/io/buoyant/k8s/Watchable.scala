@@ -17,7 +17,11 @@ import scala.util.control.NonFatal
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, G <: KubeObject: TypeReference] extends Resource {
+private[k8s] abstract class Watchable [
+    O <: KubeObject: TypeReference,
+    W <: Watch[O]: TypeReference,
+    G <: KubeMetadata: TypeReference
+] extends Resource {
   import Watchable._
 
   protected def backoffs: Stream[Duration]
@@ -157,30 +161,27 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     (_watch(resourceVersion), Closable.ref(close))
   }
 
-
   /**
-    * Convert this Watchable into an [[Activity]]
-    * @param resourceVersion whether or not to send the initial resource
-    *                        version of the watched resource. this is a
-    *                        special case due to errors with the
-    *                        ConfigMap interpreter
-    * @param onEvent function called on each [[Watch]] event
-    * TODO: i wish this returned a [[Activity.State]] so that the caller
-    *       of this function could turn a [[Watch.Error]] into an
-    *       [[Activity.Failed]] if they wanted watch errors to fail this
-    *       [[Activity]], although none of our current code exhibits this
-    *       use-case...
-    *         - eliza, 7/18/2017
-    * @return
-    */
-  def activity[T](convert: G => T, resourceVersion: Boolean = true)
-    (onEvent: (T, W) => T)
-  : Var[Activity.State[T]] =
+   * Convert this Watchable into an [[Activity]]
+   * @param resourceVersion whether or not to send the initial resource
+   *                        version of the watched resource. this is a
+   *                        special case due to errors with the
+   *                        ConfigMap interpreter
+   * @param onEvent function called on each [[Watch]] event
+   * TODO: i wish this returned a [[Activity.State]] so that the caller
+   *       of this function could turn a [[Watch.Error]] into an
+   *       [[Activity.Failed]] if they wanted watch errors to fail this
+   *       [[Activity]], although none of our current code exhibits this
+   *       use-case...
+   *         - eliza, 7/18/2017
+   * @return
+   */
+  def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Var[Activity.State[T]] =
     Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
         // if the initial GET failed, then the activity is a failure
-        .onFailure { e =>  state.update(Activity.Failed(e)) }
+        .onFailure { e => state.update(Activity.Failed(e)) }
         // otherwise, update the activity with the initial state, and
         // apply the onEvent function to each successive watch event in
         // the stream
@@ -196,7 +197,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           closeRef.set(close)
           val _ = stream.scanLeft(initialState) { onEvent }
-                        .foreach { s => state.update(Activity.Ok(s)) }
+            .foreach { s => state.update(Activity.Ok(s)) }
         }
 
       Closable.make { t =>
