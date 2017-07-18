@@ -51,9 +51,6 @@ case class ConfigMapInterpreterConfig(
   val nsApi = api.withNamespace(nsOrDefault)
 
   @JsonIgnore
-  private[this] object Closed extends Throwable
-
-  @JsonIgnore
   val act = nsApi.configMap(name)
     .activity(getDtab, resourceVersion = false) {
       (dtab, event) =>

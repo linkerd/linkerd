@@ -83,8 +83,6 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     case None => v1beta1.Api(apiClient).ingresses
   }
 
-  private[this] object Closed extends Throwable
-
   private[this] lazy val ingresses: Activity[Seq[IngressSpec]] = {
     val act = api.activity(_.items.flatMap(mkIngress)) {
       (ingresses, watchEvent) =>

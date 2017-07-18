@@ -53,7 +53,6 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   }
 
   private[this]type NsMap = Map[String, VersionedDtab]
-  private[this] object Closed extends Throwable
   private[this] val dtabListToNsMap: DtabList => NsMap = _.items.map(toDtabMap)(breakOut)
 
   // Set up a watch on the Kubernetes API to update our internal state
