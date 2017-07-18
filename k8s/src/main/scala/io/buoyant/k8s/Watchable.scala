@@ -198,8 +198,11 @@ private[k8s] abstract class Watchable [
           val (stream, close) = watch(None, None, version)
 
           closeRef.set(close)
-          val _ = stream.scanLeft(initialState) { onEvent }
-            .foreach { s => state.update(Activity.Ok(s)) }
+          val _ = stream.foldLeft(initialState){ (state0, event ) =>
+            val state1 = onEvent(state0, event)
+            state.update(Activity.Ok(state1))
+            state1
+          }
         }
 
       Closable.make { t =>
