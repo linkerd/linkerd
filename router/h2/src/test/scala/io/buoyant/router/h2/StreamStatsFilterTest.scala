@@ -1,8 +1,11 @@
 package io.buoyant.router.h2
 
+import com.twitter.concurrent.AsyncQueue
+import com.twitter.finagle.buoyant.h2.Frame.Trailers
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
-import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{Frame, Method, Request, Response, Status, Stream}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
 
@@ -41,8 +44,9 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   }
 
   test("increments success counters on success") {
+
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      Future.value(Response(Status.Ok, Stream.const("aaaaaaaaaaaa")))
     }
 
     // all counters should be empty before firing request
@@ -52,14 +56,21 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
-    await(service(req))
+    var rsp = await(service(req))
+    var stream = rsp.stream
+    var frame = await(stream.read())
+    frame.release()
 
     withClue("after first response") {
       for { counter <- successCounters :+ requestCounter }
         withClue(s"stat: $counter") { assert(stats.counters(counter) == 1) }
     }
 
-    await(service(req))
+    rsp = await(service(req))
+    stream = rsp.stream
+    frame = await(stream.read())
+    frame.release
+
     withClue("after second response") {
       for { counter <- successCounters :+ requestCounter }
         withClue(s"stat: $counter") { assert(stats.counters(counter) == 2) }
@@ -68,18 +79,25 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
   test("does not increment failure counters after successes") {
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      val stream = Stream.const("aaaaaaaaa")
+      Future.value(Response(Status.Ok, stream))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
-    await(service(req))
+    var rsp = await(service(req))
+    var stream = rsp.stream
+    var frame = await(stream.read())
 
     withClue("after first response") {
       for { counter <- failureCounters }
         withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
     }
 
-    await(service(req))
+    rsp = await(service(req))
+    stream = rsp.stream
+    frame = await(stream.read())
+    frame.release
+
     withClue("after second response") {
       for { counter <- failureCounters }
         withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
@@ -121,7 +139,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
   test("stats are defined after success") {
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      Future.value(Response(Status.Ok, Stream.const("aaaaaaaaa")))
     }
     withClue("before request") {
       // stats undefined before request
@@ -130,7 +148,10 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
-    await(service(req))
+    val rsp = await(service(req))
+    val stream = rsp.stream
+    val frame = await(stream.read())
+    frame.release()
     withClue("after success") {
       for {stat <- latencyStats}
         withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
