@@ -13,7 +13,7 @@ object TracingFilter {
   val module: Stackable[ServiceFactory[ThriftClientRequest, Array[Byte]]] =
     new Stack.Module2[param.Tracer, tparam.ProtocolFactory, ServiceFactory[ThriftClientRequest, Array[Byte]]] {
       val role = TracingFilter.role
-      val description = "Traces HTTP-specific request metadata"
+      val description = "Traces Thrift-specific request metadata"
       def make(_tracer: param.Tracer, _pf: tparam.ProtocolFactory, next: ServiceFactory[ThriftClientRequest, Array[Byte]]) = {
         val param.Tracer(tracer) = _tracer
         if (tracer.isNull) next
