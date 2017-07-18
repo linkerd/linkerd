@@ -1,8 +1,11 @@
 package io.buoyant.router.h2
 
+import com.twitter.concurrent.AsyncQueue
+import com.twitter.finagle.buoyant.h2.Frame.Trailers
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
-import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{Frame, Method, Request, Response, Status, Stream}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
 
@@ -41,8 +44,13 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   }
 
   test("increments success counters on success") {
+
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      val q = new AsyncQueue[Frame]
+      q.offer(Frame.Data("aa", false))
+      q.offer(Frame.Data.eos(Buf.Utf8("aaaaaaaaaaa")))
+      val stream = Stream.empty(q)
+      Future.value(Response(Status.Ok, stream))
     }
 
     // all counters should be empty before firing request
@@ -53,7 +61,6 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     await(service(req))
-
     withClue("after first response") {
       for { counter <- successCounters :+ requestCounter }
         withClue(s"stat: $counter") { assert(stats.counters(counter) == 1) }
@@ -68,7 +75,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
   test("does not increment failure counters after successes") {
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      val stream = Stream.const("aaaaaaaaa")
+      Future.value(Response(Status.Ok, stream))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -121,7 +129,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
   test("stats are defined after success") {
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.empty()))
+      Future.value(Response(Status.Ok, Stream.const("aaaaaaaaa")))
     }
     withClue("before request") {
       // stats undefined before request

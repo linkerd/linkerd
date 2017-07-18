@@ -23,7 +23,7 @@ object H2ResponseClassifier {
     * if and only if the response and response stream are both successful
     */
   val Default: H2ResponseClassifier = named("DefaultH2ResponseClassifier") {
-    case H2ReqRep(_, Return((_, Return(_)))) => ResponseClass.Success
+    case H2ReqRep(_, Return((_, Return(frame)))) => frame.release(); ResponseClass.Success
     case _ => ResponseClass.NonRetryableFailure
   }
 
