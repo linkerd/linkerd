@@ -54,33 +54,15 @@ case class ConfigMapInterpreterConfig(
   private[this] object Closed extends Throwable
 
   @JsonIgnore
-  val stateWithClose = Var.async[Activity.State[Dtab]](Activity.Pending) { state =>
-    val closeRef = new AtomicReference[Closable](Closable.nop)
-    val pending = nsApi.configMap(name).get().respond {
-      case Throw(e) => state.update(Activity.Failed(e))
-      case Return(configMap) =>
-        val initState = getDtab(configMap)
-        state.update(Activity.Ok(initState))
-        val (stream, close) = nsApi.configMap(name).watch(None, None, None)
-        closeRef.set(close)
-        val _ = stream.foldLeft(initState) { (dtab, watchEvent) =>
-          val newState: Dtab = watchEvent match {
-            case ConfigMapAdded(a) => getDtab(a)
-            case ConfigMapModified(m) => getDtab(m)
-            case ConfigMapDeleted(_) => Dtab.empty
-            case ConfigMapError(e) =>
-              log.error("k8s watch error: %s", e)
-              dtab
-          }
-          state.update(Activity.Ok(newState))
-          newState
-        }
-    }
-
-    Closable.make { t =>
-      pending.raise(Closed)
-      Closable.ref(closeRef).close(t)
-    }
+  val stateWithClose = nsApi.configMap(name).activity()(getDtab){
+    (dtab, event) => event match {
+      case ConfigMapAdded(a) => getDtab(a)
+      case ConfigMapModified(m) => getDtab(m)
+      case ConfigMapDeleted(_) => Dtab.empty
+      case ConfigMapError(e) =>
+        log.error("k8s watch error: %s", e)
+        dtab
+      }
   }
 
   @JsonIgnore
