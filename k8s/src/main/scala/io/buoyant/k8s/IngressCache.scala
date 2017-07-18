@@ -84,26 +84,25 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
   }
 
   private[this] object Closed extends Throwable
-  private[this] val state = api.activity(_.items.flatMap(mkIngress)) {
-    (ingresses, watchEvent) =>
-      watchEvent match {
-        case v1beta1.IngressAdded(a) => ingresses ++ mkIngress(a)
-        case v1beta1.IngressModified(m) =>
-          mkIngress(m)
-            .map { item => ingresses.filterNot(isNameEqual(_, item)) :+ item }
-            .getOrElse(ingresses)
-        case v1beta1.IngressDeleted(d) =>
-          mkIngress(d)
-            .map { item => ingresses.filterNot(isNameEqual(_, item)) }
-            .getOrElse(ingresses)
-        case v1beta1.IngressError(e) =>
-          log.error("k8s watch error: %s", e)
-          ingresses
-      }
-  }
 
   private[this] lazy val ingresses: Activity[Seq[IngressSpec]] = {
-    val act = Activity(state)
+    val act = api.activity(_.items.flatMap(mkIngress)) {
+      (ingresses, watchEvent) =>
+        watchEvent match {
+          case v1beta1.IngressAdded(a) => ingresses ++ mkIngress(a)
+          case v1beta1.IngressModified(m) =>
+            mkIngress(m)
+              .map { item => ingresses.filterNot(isNameEqual(_, item)) :+ item }
+              .getOrElse(ingresses)
+          case v1beta1.IngressDeleted(d) =>
+            mkIngress(d)
+              .map { item => ingresses.filterNot(isNameEqual(_, item)) }
+              .getOrElse(ingresses)
+          case v1beta1.IngressError(e) =>
+            log.error("k8s watch error: %s", e)
+            ingresses
+        }
+    }
     val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
     act
   }

@@ -54,8 +54,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
 
   private[this]type NsMap = Map[String, VersionedDtab]
   private[this] object Closed extends Throwable
-  private[this] val dtabListToNsMap: DtabList => NsMap
-    = _.items.map(toDtabMap)(breakOut)
+  private[this] val dtabListToNsMap: DtabList => NsMap = _.items.map(toDtabMap)(breakOut)
 
   // Set up a watch on the Kubernetes API to update our internal state
   // NOTE: this currently relies on our watch connection to update the internal state, rather than
@@ -63,20 +62,18 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val states: Var[Activity.State[NsMap]] =
+  private[this] val act: Activity[NsMap] =
     watchApi.dtabs.activity(dtabListToNsMap) {
-    (nsMap: NsMap, watchEvent) =>
-      watchEvent match {
-        case DtabAdded(a) => nsMap + toDtabMap(a)
-        case DtabModified(m) => nsMap + toDtabMap(m)
-        case DtabDeleted(d) => nsMap - name(d)
-        case DtabError(e) =>
-          log.error("k8s watch error: %s", e)
-          nsMap
-      }
-  }
-
-  private[this] val act = Activity(states)
+      (nsMap: NsMap, watchEvent) =>
+        watchEvent match {
+          case DtabAdded(a) => nsMap + toDtabMap(a)
+          case DtabModified(m) => nsMap + toDtabMap(m)
+          case DtabDeleted(d) => nsMap - name(d)
+          case DtabError(e) =>
+            log.error("k8s watch error: %s", e)
+            nsMap
+        }
+    }
 
   /** List all Dtab namespaces */
   def list(): Activity[Set[Ns]] = act.map(_.keySet)

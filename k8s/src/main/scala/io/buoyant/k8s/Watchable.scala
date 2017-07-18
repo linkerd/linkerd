@@ -176,8 +176,10 @@ private[k8s] abstract class Watchable [
    *         - eliza, 7/18/2017
    * @return
    */
-  def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Var[Activity.State[T]] =
-    Var.async[Activity.State[T]](Activity.Pending) { state =>
+  def activity[T](convert: G => T, resourceVersion: Boolean = true)
+                  (onEvent: (T, W) => T)
+  : Activity[T] =
+    Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
         // if the initial GET failed, then the activity is a failure
@@ -205,7 +207,7 @@ private[k8s] abstract class Watchable [
         Closable.ref(closeRef).close(t)
       }
 
-    }
+    })
 }
 
 object Watchable {

@@ -54,7 +54,7 @@ case class ConfigMapInterpreterConfig(
   private[this] object Closed extends Throwable
 
   @JsonIgnore
-  val stateWithClose = nsApi.configMap(name)
+  val act = nsApi.configMap(name)
     .activity(getDtab, resourceVersion = false) {
       (dtab, event) =>
         event match {
@@ -66,9 +66,6 @@ case class ConfigMapInterpreterConfig(
             dtab
         }
     }
-
-  @JsonIgnore
-  val act = Activity(stateWithClose)
 
   @JsonIgnore
   def getDtab(configMap: ConfigMap): Dtab =
