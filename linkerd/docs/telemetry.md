@@ -93,6 +93,7 @@ sampleRate | `0.01` | A value between 0.0 and 1.0 indicating what proportion of 
 telemetry:
 - kind: io.l5d.tracelog
   sampleRate: 0.2
+  level: TRACE
 ```
 
 kind: `io.l5d.tracelog`
@@ -103,7 +104,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | Host to send trace data to.
 sampleRate | `1.0` | A value between 0.0 and 1.0 indicating what proportion of traces to log.
-level | `INFO` | Log-level used to log traces. It should be equal (or greater) to the linkerd log level, set by the `-log.level` flag (defaults to `INFO`). It can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [TwitterServer's Logging documentation](https://twitter.github.io/twitter-server/Features.html#logging).
+level | `INFO` | Log-level used to log traces. It should be equal (or greater) to the linkerd log level, set by the `-log.level` flag or at runtime in the logging tab of the admin dashboard (defaults to `INFO`). Field can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [TwitterServer's Logging documentation](https://twitter.github.io/twitter-server/Features.html#logging).
 
 ## Recent Requests
 

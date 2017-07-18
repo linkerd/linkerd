@@ -40,6 +40,7 @@ telemetry:
   sampleRate: 0.01
 - kind: io.l5d.tracelog
   sampleRate: 0.2
+  level: TRACE
 ```
 
 Welcome to the Configuration Reference for linkerd!
@@ -182,7 +183,7 @@ telemetry:
   sampleRate: 0.01
 - kind: io.l5d.tracelog
   sampleRate: 0.2
-  level: INFO
+  level: TRACE
 ```
 
 A telemeter may receive stats and trace annotations, i.e. to send to a collector
