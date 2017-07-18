@@ -51,12 +51,16 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
   private[this] val rspStreamStats =
     new StreamStats(statsReceiver.scope("response", "stream"))
   private[this] val totalStreamStats =
-    new StreamStats(statsReceiver.scope("stream"),
-                    durationName = Some("total_latency"))
+    new StreamStats(
+      statsReceiver.scope("stream"),
+      durationName = Some("total_latency")
+    )
   private[this] val rspFutureStats =
-    new StreamStats(statsReceiver,
-                    durationName = Some("request_latency"),
-                    successName = Some(""))
+    new StreamStats(
+      statsReceiver,
+      durationName = Some("request_latency"),
+      successName = Some("")
+    )
 
   override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
@@ -77,7 +81,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
         val rspT = Stopwatch.start()
         val _ = rsp.stream.onEnd.respond(rspStreamStats(rspT))
       }
-
 
   }
 

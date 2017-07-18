@@ -40,7 +40,6 @@ object H2 extends Router[Request, Response]
         .mkStack(FinagleH2.Client.newStack)
         .replace(StatsFilter.role, StreamStatsFilter.module)
 
-
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
   }

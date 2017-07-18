@@ -1,13 +1,10 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{Thrift => FinagleThrift, Server => FinagleServer, _}
-import com.twitter.finagle.buoyant._
+import com.twitter.finagle.{Server => FinagleServer, Thrift => FinagleThrift, _}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.param.ProtocolLibrary
-import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.thrift.ThriftClientRequest
-import com.twitter.util._
-import io.buoyant.router.thrift.Identifier
+import io.buoyant.router.thrift.{Identifier, TracingFilter}
 import java.net.SocketAddress
 
 object Thrift extends Router[ThriftClientRequest, Array[Byte]]
@@ -30,6 +27,7 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
     val client: StackClient[ThriftClientRequest, Array[Byte]] =
       FinagleThrift.client
         .transformed(StackRouter.Client.mkStack(_))
+        .transformed(_.replace(TracingFilter.role, TracingFilter.module))
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
