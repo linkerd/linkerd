@@ -8,8 +8,9 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
+import org.scalatest.Matchers
 
-class StreamStatsFilterTest extends FunSuite with Awaits {
+class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
   val successCounters = Seq(
     Seq("response", "stream", "stream_successes"),
     Seq("request", "stream", "stream_successes"),
@@ -155,6 +156,25 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     withClue("after success") {
       for {stat <- latencyStats}
         withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
+    }
+  }
+
+  test("frame size stat") {
+    val (stats, service) = setup { _ =>
+      Future.value(Response(Status.Ok, Stream.const("aaaaaaaa")))
+    }
+    withClue("before request") {
+      // stats undefined before request
+      assert(!stats.stats.isDefinedAt(Seq("stream", "data_frame", "bytes")))
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    val rsp = await(service(req))
+    val stream = rsp.stream
+    val frame = await(stream.read())
+    frame.release()
+    withClue("after success") {
+      stats.stats(Seq("stream", "data_frame", "bytes")) should contain only (8f)
     }
   }
 
