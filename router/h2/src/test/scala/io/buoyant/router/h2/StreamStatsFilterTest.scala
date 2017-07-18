@@ -52,7 +52,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
 
     // all counters should be empty before firing request
     withClue("before request") {
-      for {counter <- allCounters}
+      for { counter <- allCounters }
         withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
     }
 
@@ -115,7 +115,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     val expectedCounters = Seq(
       requestCounter,
       Seq("failures"),
-      Seq("request", "stream", "stream_successes"))
+      Seq("request", "stream", "stream_successes")
+    )
 
     assertThrows[Throwable] { await(service(req)) }
     withClue("after first failure") {
@@ -144,7 +145,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     }
     withClue("before request") {
       // stats undefined before request
-      for {stat <- latencyStats}
+      for { stat <- latencyStats }
         withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
     }
 
@@ -154,7 +155,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     val frame = await(stream.read())
     frame.release()
     withClue("after success") {
-      for {stat <- latencyStats}
+      for { stat <- latencyStats }
         withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
     }
   }
@@ -184,8 +185,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     }
     withClue("before request") {
       // stats undefined before request
-      for {stat <- latencyStats}
-        withClue(s"stat: $stat") {assert(!stats.stats.isDefinedAt(stat)) }
+      for { stat <- latencyStats }
+        withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())

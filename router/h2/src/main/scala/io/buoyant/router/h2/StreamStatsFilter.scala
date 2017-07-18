@@ -10,14 +10,14 @@ import com.twitter.util._
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module2[param.Stats,
-                      h2param.H2ResponseClassifier,
-                      ServiceFactory[Request, Response]] {
+    new Stack.Module2[param.Stats, h2param.H2ResponseClassifier, ServiceFactory[Request, Response]] {
       override def role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
-      override def make(statsP: param.Stats,
-                        classifierP: h2param.H2ResponseClassifier,
-                        next: ServiceFactory[Request, Response]) = {
+      override def make(
+        statsP: param.Stats,
+        classifierP: h2param.H2ResponseClassifier,
+        next: ServiceFactory[Request, Response]
+      ) = {
         val param.Stats(stats) = statsP
         val h2param.H2ResponseClassifier(classifier) = classifierP
         new StreamStatsFilter(stats, classifier).andThen(next)
@@ -53,8 +53,10 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
   private[this] val rspStreamStats =
     new StreamStats(statsReceiver.scope("response", "stream"))
   private[this] val totalStreamStats =
-    new StreamStats(statsReceiver.scope("stream"),
-                    durationName = Some("total_latency"))
+    new StreamStats(
+      statsReceiver.scope("stream"),
+      durationName = Some("total_latency")
+    )
   private[this] val frameSizes = statsReceiver.stat("stream", "data_frame", "bytes")
   private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
   // overall successes stat from response classifier
@@ -71,7 +73,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       .transform {
         case Return(rsp0) =>
           val rspT = Stopwatch.start()
-//          rsp0.stream.onEnd.transform[Unit]{ value => rspStreamStats(rspT)(value); Future.value(()) }
           val stream = rsp0.stream.onFrame {
             case Return(frame) =>
               if (frame.isEnd) {
@@ -86,9 +87,9 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
                   frameSizes.add(frame.buf.length)
                 case _ =>
               }
-            case e @ Throw(_) =>
+            case e@Throw(_) =>
               // TODO: make this less repetitive
-              classifier(H2ReqRep(req, Return((rsp0, e))))  match {
+              classifier(H2ReqRep(req, Return((rsp0, e)))) match {
                 case Successful(_) => successes.incr()
                 case _ => failures.incr()
               }
@@ -97,7 +98,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           Future.value(Response(rsp0.headers, stream))
         case Throw(e) =>
           // TODO: make this less repetitive
-          classifier(H2ReqRep(req, Throw(e)))  match {
+          classifier(H2ReqRep(req, Throw(e))) match {
             case Successful(_) => successes.incr()
             case _ => failures.incr()
           }
@@ -112,7 +113,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
         }
         val _ = stream.respond(totalStreamStats(reqT))
       }
-
 
   }
 
