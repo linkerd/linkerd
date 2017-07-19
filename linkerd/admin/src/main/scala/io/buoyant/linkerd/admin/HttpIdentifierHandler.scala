@@ -1,5 +1,6 @@
 package io.buoyant.linkerd.admin
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -15,6 +16,7 @@ case class IdResult(path: Option[String] = None, dtab: Option[String] = None, er
 object Json {
   private[this] val mapper = new ObjectMapper with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
+  mapper.setSerializationInclusion(Include.NON_EMPTY)
 
   def write[T](t: T): Buf =
     Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))

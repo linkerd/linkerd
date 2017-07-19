@@ -70,7 +70,8 @@ object Main extends App {
 
     config.admin.flatMap(_.httpIdentifierPort) match {
       case Some(p) =>
-        val idServer = linker.admin.serveHandler(new InetSocketAddress(p.port), LinkerdAdmin.identifierHandler(config, linker))
+        val idServer = linker.admin.serveHandler(p.port, LinkerdAdmin.identifierHandler(config, linker))
+        log.info(s"serving http identifier on ${idServer.boundAddress}")
         Seq(server, idServer)
       case None => Seq(server)
     }
