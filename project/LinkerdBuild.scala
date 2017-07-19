@@ -732,6 +732,7 @@ object LinkerdBuild extends Base {
       Namerd.all,
       Namerd.examples,
       Router.all,
-      Telemetry.all
+      Telemetry.all,
+      Mesh.all
     )
 }
