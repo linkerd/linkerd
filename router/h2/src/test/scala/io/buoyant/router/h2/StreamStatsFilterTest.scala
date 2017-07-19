@@ -51,7 +51,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   private[this] def readAll(stream: Stream): Future[Unit] =
     stream.read().flatMap { frame =>
       val end = frame.isEnd
-      frame.release().flatMap { _ =>
+      frame.release().before {
         if (end) Future.Done else readAll(stream)
       }
     }

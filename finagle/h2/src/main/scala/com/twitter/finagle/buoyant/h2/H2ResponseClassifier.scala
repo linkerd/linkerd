@@ -7,9 +7,6 @@ object H2ResponseClassifier {
 
   /**
    * Create a [[H2ResponseClassifier]] with the given name for its `toString`.
-   *
-   * @note be careful when `underlying` composes other `H2ResponseClassifiers`
-   *       which are not total.
    */
   def named(name: String)(underlying: H2ResponseClassifier): H2ResponseClassifier =
     new H2ResponseClassifier {

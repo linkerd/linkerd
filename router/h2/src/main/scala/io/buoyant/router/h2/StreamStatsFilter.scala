@@ -1,8 +1,7 @@
 package io.buoyant.router.h2
 
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.buoyant.h2.{Frame, H2ReqRep, H2ResponseClassifier, Request, Response, Stream, param => h2param}
-import com.twitter.finagle.buoyant.h2.StreamProxy._
+import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._

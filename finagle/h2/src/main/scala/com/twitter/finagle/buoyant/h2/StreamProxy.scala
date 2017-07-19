@@ -21,14 +21,3 @@ class StreamProxy(underlying: Stream, onFrame: Try[Frame] => Unit) extends Strea
   override def onEnd: Future[Unit] = underlying.onEnd
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
-
-object StreamProxy {
-
-  /**
-   * Adds an `onFrame` function to [[Stream]]s, allowing simple creation of [[StreamProxy StreamProxies]]
-   * @param stream
-   */
-  implicit class OnFrame(val stream: Stream) extends AnyRef {
-    def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamProxy(stream, onFrame)
-  }
-}
