@@ -71,6 +71,19 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       = onFrame(startT)(stream)
   }
 
+  object ClassifierStats {
+    // overall successes stat from response classifier
+    private[this] val successes = statsReceiver.counter("successes")
+    // overall failures stat from response classifier
+    private[this] val failures = statsReceiver.counter("failures")
+
+    def apply(reqrep: H2ReqRep): Unit
+      = classifier(reqrep) match {
+      case Successful(_) => successes.incr()
+      case _ => failures.incr()
+    }
+  }
+
   //   total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
 
@@ -85,10 +98,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     )
 
   private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
-  // overall successes stat from response classifier
-  private[this] val successes = statsReceiver.counter("successes")
-  // overall failures stat from response classifier
-  private[this] val failures = statsReceiver.counter("failures")
 
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
@@ -101,25 +110,13 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           val rspT = Stopwatch.start()
           val stream = rsp0.stream.onFrame {
             case Return(frame) if frame.isEnd =>
-              classifier(H2ReqRep(req1, Return((rsp0, Return(frame))))) match {
-                case Successful(_) => successes.incr()
-                case _ => failures.incr()
-              }
+              ClassifierStats(H2ReqRep(req1, Return((rsp0, Return(frame)))))
             case e@Throw(_) =>
-              // TODO: make this less repetitive
-              classifier(H2ReqRep(req1, Return((rsp0, e)))) match {
-                case Successful(_) => successes.incr()
-                case _ => failures.incr()
-              }
-            case _ =>
+              ClassifierStats(H2ReqRep(req1, Return((rsp0, e))))
           }
           Future.value(Response(rsp0.headers, rspStreamStats(rspT)(stream)))
         case Throw(e) =>
-          // TODO: make this less repetitive
-          classifier(H2ReqRep(req1, Throw(e))) match {
-            case Successful(_) => successes.incr()
-            case _ => failures.incr()
-          }
+          ClassifierStats(H2ReqRep(req1, Throw(e)))
           Future.exception(e)
       }
       .respond { result =>
