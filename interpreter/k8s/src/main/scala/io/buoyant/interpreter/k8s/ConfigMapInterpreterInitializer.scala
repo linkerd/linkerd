@@ -38,20 +38,16 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   private[this] val log = Logger()
 
-  @JsonIgnore
-  val nsOrDefault = namespace.getOrElse(DefaultNamespace)
 
   @JsonIgnore
   val api = {
     val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
-    Api(client.newService(dst))
+    val nsOrDefault = namespace.getOrElse(DefaultNamespace)
+    Api(client.newService(dst)).withNamespace(nsOrDefault)
   }
 
   @JsonIgnore
-  val nsApi = api.withNamespace(nsOrDefault)
-
-  @JsonIgnore
-  val act = nsApi.configMap(name)
+  val act = api.configMap(name)
     .activity(getDtab, resourceVersion = false) {
       (dtab, event) =>
         event match {
