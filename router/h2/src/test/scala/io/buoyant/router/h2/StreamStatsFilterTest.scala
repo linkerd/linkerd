@@ -8,10 +8,10 @@ import io.buoyant.test.{Awaits, FunSuite}
 
 class StreamStatsFilterTest extends FunSuite with Awaits {
   val successCounters = Seq(
-    Seq("response", "stream", "stream_successes"),
-    Seq("request", "stream", "stream_successes"),
-    Seq("stream", "stream_successes"),
-    Seq("successes")
+    Seq("response", "stream", "stream_success"),
+    Seq("request", "stream", "stream_success"),
+    Seq("stream", "stream_success"),
+    Seq("success")
   )
   val failureCounters = Seq(
     Seq("response", "stream", "stream_failures"),
@@ -96,7 +96,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     val expectedCounters = Seq(
       requestCounter,
       Seq("failures"),
-      Seq("request", "stream", "stream_successes")
+      Seq("request", "stream", "stream_success")
     )
 
     assertThrows[Throwable] { await(service(req)) }
