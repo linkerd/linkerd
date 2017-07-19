@@ -699,7 +699,7 @@ would be rewritten to `/pfx/foo/resource/name`
 ```
 
 Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
-not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-is
+not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
 For example,
@@ -720,7 +720,7 @@ would be rewritten to `/pfx/host/port/etc`.
 ```
 
 Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
-not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-is
+not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
 For example,
