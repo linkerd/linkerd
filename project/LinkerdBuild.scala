@@ -522,7 +522,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
-      .dependsOn(LinkerdBuild.admin, Namer.core)
+      .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")
