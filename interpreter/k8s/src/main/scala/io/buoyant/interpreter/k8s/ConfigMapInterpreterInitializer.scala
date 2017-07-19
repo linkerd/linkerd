@@ -57,7 +57,9 @@ case class ConfigMapInterpreterConfig(
         event match {
           case ConfigMapAdded(a) => getDtab(a)
           case ConfigMapModified(m) => getDtab(m)
-          case ConfigMapDeleted(_) => Dtab.empty
+          case ConfigMapDeleted(_) =>
+            log.warning(s"k8s ConfigMap $name was deleted!")
+            Dtab.empty
           case ConfigMapError(e) =>
             log.error("k8s watch error: %s", e)
             dtab
@@ -67,7 +69,9 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   def getDtab(configMap: ConfigMap): Dtab =
     configMap.data.get(filename) match {
-      case None => Dtab.empty
+      case None =>
+        log.warning(s"dtab at $filename in k8s ConfigMap $name did not exist!")
+        Dtab.empty
       case Some(data) => Dtab.read(data)
     }
 

@@ -183,7 +183,10 @@ private[k8s] abstract class Watchable [
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
         // if the initial GET failed, then the activity is a failure
-        .onFailure { e => state.update(Activity.Failed(e)) }
+        .onFailure { e =>
+          log.warning(s"k8s failed to get resource at $path: $e")
+          state.update(Activity.Failed(e))
+        }
         // otherwise, update the activity with the initial state, and
         // apply the onEvent function to each successive watch event in
         // the stream
