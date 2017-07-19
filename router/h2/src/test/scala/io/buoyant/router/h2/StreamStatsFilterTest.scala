@@ -31,6 +31,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("stream", "total_latency_ms"),
     Seq("request_latency_ms")
   )
+  val frameSizeStat = Seq("stream", "data_frame", "bytes")
 
   private[this] def setup(response: Request => Future[Response]) = {
 
@@ -184,6 +185,43 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     }
   }
+
+  test("frame size stat for a stream with multiple frames") {
+    val data1 = "aaaaaaaa"
+    val data2 = "bbbbbbbbbb"
+    val (stats, service) = setup { _ =>
+      val q = new AsyncQueue[Frame]()
+      val stream = Stream(q)
+      q.offer(Frame.Data(data1, eos = false))
+      q.offer(Frame.Data(data2, eos = true))
+      Future.value(Response(Status.Ok, stream))
+    }
+
+    withClue("before request") {
+      // stats undefined before request
+      assert(!stats.stats.isDefinedAt(Seq("stream", "data_frame", "bytes")))
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    var rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after success") {
+      assert(stats.stats(frameSizeStat)
+        .contains(data1.length.asInstanceOf[Float]))
+      assert(stats.stats(frameSizeStat)
+        .contains(data2.length.asInstanceOf[Float]))
+      assert(stats.stats(frameSizeStat).length == 2)
+
+    }
+    rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after second success") {
+      assert(stats.stats(frameSizeStat).length == 4)
+    }
+  }
+
 
 
   test("stats are defined after failure") {
