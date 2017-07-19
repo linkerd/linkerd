@@ -17,11 +17,7 @@ import scala.util.control.NonFatal
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable [
-    O <: KubeObject: TypeReference,
-    W <: Watch[O]: TypeReference,
-    G <: KubeMetadata: TypeReference
-] extends Resource {
+private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, G <: KubeMetadata: TypeReference] extends Resource {
   import Watchable._
 
   protected def backoffs: Stream[Duration]
@@ -176,9 +172,7 @@ private[k8s] abstract class Watchable [
    *         - eliza, 7/18/2017
    * @return
    */
-  def activity[T](convert: G => T, resourceVersion: Boolean = true)
-                  (onEvent: (T, W) => T)
-  : Activity[T] =
+  def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Activity[T] =
     Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
@@ -201,7 +195,7 @@ private[k8s] abstract class Watchable [
           val (stream, close) = watch(None, None, version)
 
           closeRef.set(close)
-          val _ = stream.foldLeft(initialState){ (state0, event ) =>
+          val _ = stream.foldLeft(initialState) { (state0, event) =>
             val state1 = onEvent(state0, event)
             state.update(Activity.Ok(state1))
             state1

@@ -103,14 +103,14 @@ trait KubeObject extends KubeMetadata {
 }
 
 /**
-  * A Kubernetes API response with a `metadata` field.
-  *
-  * This is factored out from [[KubeObject]] and [[KubeList]] so that
-  * the `G` type param on [[Watchable]] can be constrained based on it,
-  * while still allowing both [[KubeObject]]s and [[KubeList]]s to be
-  * [[Watchable]], *and* maintaining the distinction between objects
-  * and lists.
-  */
+ * A Kubernetes API response with a `metadata` field.
+ *
+ * This is factored out from [[KubeObject]] and [[KubeList]] so that
+ * the `G` type param on [[Watchable]] can be constrained based on it,
+ * while still allowing both [[KubeObject]]s and [[KubeList]]s to be
+ * [[Watchable]], *and* maintaining the distinction between objects
+ * and lists.
+ */
 trait KubeMetadata {
   def metadata: Option[ObjectMeta]
 }

@@ -204,7 +204,7 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
     // so allocate it in a scope.
     val listName = maybeListName.map(_ + "/").getOrElse("")
     (s"${parent.path}/$listName$objectName",
-     s"${parent.watchPath}/$listName$objectName")
+      s"${parent.watchPath}/$listName$objectName")
   }
 
   def put(obj: O): Future[O] = {
