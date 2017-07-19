@@ -15,7 +15,7 @@ routers:
     /http => /$/inet/127.1/8080;
 ```
 
-In order to accept incoming tls traffic, the tls parameter must be defined on
+In order to accept incoming TLS traffic, the tls parameter must be defined on
 the server.
 
 Key | Default Value | Description

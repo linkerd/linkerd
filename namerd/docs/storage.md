@@ -1,7 +1,7 @@
 # Storage
 
 A storage object configures the namerd dtabStore which stores and retrieves
-dtabs. This object supports the following params:
+dtabs. This object supports the following parameters:
 
 <aside class="notice">
 These parameters are available to the storage regardless of kind. Storage may also have kind-specific parameters.
