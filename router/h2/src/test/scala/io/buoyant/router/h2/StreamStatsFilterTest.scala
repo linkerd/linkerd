@@ -8,9 +8,8 @@ import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
-import org.scalatest.Matchers
 
-class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
+class StreamStatsFilterTest extends FunSuite with Awaits {
   val successCounters = Seq(
     Seq("response", "stream", "stream_successes"),
     Seq("request", "stream", "stream_successes"),
@@ -156,13 +155,17 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     frame.release()
     withClue("after success") {
       for { stat <- latencyStats }
-        withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
+        withClue(s"stat: $stat") {
+          assert(stats.stats.isDefinedAt(stat))
+          assert(stats.stats(stat).length == 1)
+        }
     }
   }
 
-  test("frame size stat") {
+  test("frame size stat for a single frame") {
+    val data = "aaaaaaaa"
     val (stats, service) = setup { _ =>
-      Future.value(Response(Status.Ok, Stream.const("aaaaaaaa")))
+      Future.value(Response(Status.Ok, Stream.const(data)))
     }
     withClue("before request") {
       // stats undefined before request
@@ -174,8 +177,12 @@ class StreamStatsFilterTest extends FunSuite with Awaits with Matchers {
     val stream = rsp.stream
     val frame = await(stream.read())
     frame.release()
+
     withClue("after success") {
-      stats.stats(Seq("stream", "data_frame", "bytes")) should contain only (8f)
+      val length = data.length.asInstanceOf[Float]
+      assert(stats.stats(Seq("stream", "data_frame", "bytes")).contains(length))
+      assert(stats.stats(Seq("stream", "data_frame", "bytes")).length == 1)
+
     }
   }
 
