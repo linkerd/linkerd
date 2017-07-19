@@ -28,14 +28,15 @@ object StreamStatsFilter {
 class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
   extends SimpleFilter[Request, Response] {
 
-  class StreamStats(stats: StatsReceiver, durationName: Option[String] = None) {
+  class StreamStats(protected val stats: StatsReceiver, durationName: Option[String] = None) {
 
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
     private[this] val successes = stats.counter("stream_successes")
     private[this] val failures = stats.counter("stream_failures")
 
-    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
+
+    @inline def onEnd(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
       durationMs.add(startT().inMillis)
       result match {
         case Return(_) => successes.incr()
@@ -43,62 +44,79 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       }
     }
 
+    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = onEnd(startT)(result)
+
+  }
+
+  trait FrameStats extends StreamStats {
+    private[this] val frameSize = stats.stat("data_frame", "bytes")
+    private[this] val frameCount = stats.stat("data_frame", "count")
+
+    def onFrame(startT: Stopwatch.Elapsed)(stream0: Stream): Stream = {
+      var streamFrameCount = 0
+      val stream1 = stream0.onFrame {
+        case Return(frame: Frame.Data) =>
+          frameSize.add(frame.buf.length)
+          streamFrameCount += 1
+        case _ =>
+      }
+      val _ = stream1.onEnd.respond { result =>
+        frameCount.add(streamFrameCount)
+        this.onEnd(startT)(result)
+      }
+      stream1
+    }
+
+    @inline def apply(startT: Stopwatch.Elapsed)(stream: Stream): Stream
+      = onFrame(startT)(stream)
   }
 
   //   total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
 
   private[this] val reqStreamStats =
-    new StreamStats(statsReceiver.scope("request", "stream"))
+    new StreamStats(statsReceiver.scope("request", "stream")) with FrameStats
   private[this] val rspStreamStats =
-    new StreamStats(statsReceiver.scope("response", "stream"))
+    new StreamStats(statsReceiver.scope("response", "stream")) with FrameStats
   private[this] val totalStreamStats =
     new StreamStats(
       statsReceiver.scope("stream"),
       durationName = Some("total_latency")
     )
-  private[this] val frameSizes = statsReceiver.stat("stream", "data_frame", "bytes")
+
   private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
   // overall successes stat from response classifier
   private[this] val successes = statsReceiver.counter("successes")
   // overall failures stat from response classifier
   private[this] val failures = statsReceiver.counter("failures")
 
-  override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
+  override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
-    req.stream.onEnd.respond(reqStreamStats(reqT))
+    val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    service(req)
+    service(req1)
       .transform {
         case Return(rsp0) =>
           val rspT = Stopwatch.start()
           val stream = rsp0.stream.onFrame {
-            case Return(frame) =>
-              if (frame.isEnd) {
-                classifier(H2ReqRep(req, Return((rsp0, Return(frame))))) match {
-                  case Successful(_) => successes.incr()
-                  case _ => failures.incr()
-                }
-              }
-              frame match {
-                case frame: Frame.Data =>
-                  // if the frame is a data frame, update the data frame size stat
-                  frameSizes.add(frame.buf.length)
-                case _ =>
-              }
-            case e@Throw(_) =>
-              // TODO: make this less repetitive
-              classifier(H2ReqRep(req, Return((rsp0, e)))) match {
+            case Return(frame) if frame.isEnd =>
+              classifier(H2ReqRep(req1, Return((rsp0, Return(frame))))) match {
                 case Successful(_) => successes.incr()
                 case _ => failures.incr()
               }
+            case e@Throw(_) =>
+              // TODO: make this less repetitive
+              classifier(H2ReqRep(req1, Return((rsp0, e)))) match {
+                case Successful(_) => successes.incr()
+                case _ => failures.incr()
+              }
+            case _ =>
           }
-          stream.onEnd.respond(rspStreamStats(rspT))
-          Future.value(Response(rsp0.headers, stream))
+          Future.value(Response(rsp0.headers, rspStreamStats(rspT)(stream)))
         case Throw(e) =>
           // TODO: make this less repetitive
-          classifier(H2ReqRep(req, Throw(e))) match {
+          classifier(H2ReqRep(req1, Throw(e))) match {
             case Successful(_) => successes.incr()
             case _ => failures.incr()
           }
@@ -108,8 +126,8 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
         reqLatency.add(reqT().inMillis)
         val stream = result match {
           case Return(rsp) =>
-            req.stream.onEnd.join(rsp.stream.onEnd)
-          case Throw(_) => req.stream.onEnd
+            req1.stream.onEnd.join(rsp.stream.onEnd)
+          case Throw(_) => req1.stream.onEnd
         }
         val _ = stream.respond(totalStreamStats(reqT))
       }

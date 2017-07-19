@@ -31,7 +31,10 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("stream", "total_latency_ms"),
     Seq("request_latency_ms")
   )
-  val frameSizeStat = Seq("stream", "data_frame", "bytes")
+  val rspFrameSizeStat = Seq("response", "stream", "data_frame", "bytes")
+  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
+  val allStats = latencyStats :+ rspFrameCountStat :+ rspFrameSizeStat
+  val reqStats = allStats.withFilter(_.head != "response")
 
   private[this] def setup(response: Request => Future[Response]) = {
 
@@ -147,7 +150,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
     withClue("before request") {
       // stats undefined before request
-      for { stat <- latencyStats }
+      for { stat <- allStats }
         withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
     }
 
@@ -156,7 +159,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     await(readAll(rsp.stream))
 
     withClue("after success") {
-      for { stat <- latencyStats }
+      for { stat <- allStats }
         withClue(s"stat: $stat") {
           assert(stats.stats.isDefinedAt(stat))
           assert(stats.stats(stat).length == 1)
@@ -171,7 +174,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
     withClue("before request") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(Seq("stream", "data_frame", "bytes")))
+      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -180,8 +183,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after success") {
       val length = data.length.asInstanceOf[Float]
-      assert(stats.stats(Seq("stream", "data_frame", "bytes")).contains(length))
-      assert(stats.stats(Seq("stream", "data_frame", "bytes")).length == 1)
+      assert(stats.stats(rspFrameSizeStat).contains(length))
+      assert(stats.stats(rspFrameSizeStat).length == 1)
 
     }
   }
@@ -199,7 +202,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     withClue("before request") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(Seq("stream", "data_frame", "bytes")))
+      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -207,21 +210,83 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     await(readAll(rsp.stream))
 
     withClue("after success") {
-      assert(stats.stats(frameSizeStat)
+      assert(stats.stats(rspFrameSizeStat)
         .contains(data1.length.asInstanceOf[Float]))
-      assert(stats.stats(frameSizeStat)
+      assert(stats.stats(rspFrameSizeStat)
         .contains(data2.length.asInstanceOf[Float]))
-      assert(stats.stats(frameSizeStat).length == 2)
+      assert(stats.stats(rspFrameSizeStat).length == 2)
 
     }
     rsp = await(service(req))
     await(readAll(rsp.stream))
 
     withClue("after second success") {
-      assert(stats.stats(frameSizeStat).length == 4)
+      assert(stats.stats(rspFrameSizeStat).length == 4)
     }
   }
 
+  test("frame count stat for a stream with one frame") {
+    val (stats, service) = setup { _ =>
+      val stream = Stream.const("aaaaaaaaa")
+      Future.value(Response(Status.Ok, stream))
+    }
+
+    withClue("before request") {
+      // stats undefined before request
+      assert(!stats.stats.isDefinedAt(rspFrameCountStat))
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    var rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after success") {
+      assert(stats.stats(rspFrameCountStat).contains(1))
+      assert(stats.stats(rspFrameCountStat).length == 1)
+
+    }
+    rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after second success") {
+      assert(stats.stats(rspFrameCountStat).forall(_ == 1))
+      assert(stats.stats(rspFrameCountStat).length == 2)
+    }
+  }
+
+  test("frame count stat for a stream with multiple frames") {
+    val data1 = "aaaaaaaa"
+    val data2 = "bbbbbbbbbb"
+    val (stats, service) = setup { _ =>
+      val q = new AsyncQueue[Frame]()
+      val stream = Stream(q)
+      q.offer(Frame.Data(data1, eos = false))
+      q.offer(Frame.Data(data2, eos = true))
+      Future.value(Response(Status.Ok, stream))
+    }
+
+    withClue("before request") {
+      // stats undefined before request
+      assert(!stats.stats.isDefinedAt(rspFrameCountStat))
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    var rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after success") {
+      assert(stats.stats(rspFrameCountStat).contains(2))
+      assert(stats.stats(rspFrameCountStat).length == 1)
+
+    }
+    rsp = await(service(req))
+    await(readAll(rsp.stream))
+
+    withClue("after second success") {
+      assert(stats.stats(rspFrameCountStat).forall(_ == 2))
+      assert(stats.stats(rspFrameCountStat).length == 2)
+    }
+  }
 
 
   test("stats are defined after failure") {
@@ -230,14 +295,14 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
     withClue("before request") {
       // stats undefined before request
-      for { stat <- latencyStats }
+      for { stat <- allStats }
         withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     assertThrows[Throwable] { await(service(req)) }
     withClue("after failure") {
-      for { stat <- latencyStats.filter(_ != Seq("response", "stream", "stream_duration_ms")) }
+      for { stat <- reqStats }
         withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
     }
   }
