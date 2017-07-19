@@ -12,10 +12,10 @@ import scala.annotation.tailrec
 
 class StreamStatsFilterTest extends FunSuite with Awaits {
   val successCounters = Seq(
-    Seq("response", "stream", "stream_successes"),
-    Seq("request", "stream", "stream_successes"),
-    Seq("stream", "stream_successes"),
-    Seq("successes")
+    Seq("response", "stream", "stream_success"),
+    Seq("request", "stream", "stream_success"),
+    Seq("stream", "stream_success"),
+    Seq("success")
   )
   val failureCounters = Seq(
     Seq("response", "stream", "stream_failures"),

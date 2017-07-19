@@ -31,7 +31,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
-    private[this] val successes = stats.counter("stream_successes")
+    private[this] val successes = stats.counter("stream_success")
     private[this] val failures = stats.counter("stream_failures")
 
     @inline def onEnd(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
@@ -70,7 +70,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
   object ClassifierStats {
     // overall successes stat from response classifier
-    private[this] val successes = statsReceiver.counter("successes")
+    private[this] val successes = statsReceiver.counter("success")
     // overall failures stat from response classifier
     private[this] val failures = statsReceiver.counter("failures")
 
