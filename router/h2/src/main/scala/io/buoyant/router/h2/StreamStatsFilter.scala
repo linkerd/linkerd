@@ -35,7 +35,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     private[this] val successes = stats.counter("stream_successes")
     private[this] val failures = stats.counter("stream_failures")
 
-
     @inline def onEnd(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
       durationMs.add(startT().inMillis)
       result match {
@@ -67,8 +66,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       stream1
     }
 
-    @inline def apply(startT: Stopwatch.Elapsed)(stream: Stream): Stream
-      = onFrame(startT)(stream)
+    @inline def apply(startT: Stopwatch.Elapsed)(stream: Stream): Stream = onFrame(startT)(stream)
   }
 
   object ClassifierStats {
@@ -77,8 +75,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     // overall failures stat from response classifier
     private[this] val failures = statsReceiver.counter("failures")
 
-    def apply(reqrep: H2ReqRep): Unit
-      = classifier(reqrep) match {
+    def apply(reqrep: H2ReqRep): Unit = classifier(reqrep) match {
       case Successful(_) => successes.incr()
       case _ => failures.incr()
     }
