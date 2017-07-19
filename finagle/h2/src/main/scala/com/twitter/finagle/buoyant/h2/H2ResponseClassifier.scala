@@ -19,7 +19,7 @@ object H2ResponseClassifier {
    * a simple total [[H2ResponseClassifier]] that classifies responses as successful
    * if and only if the response and response stream are both successful
    */
-  val Default: H2ResponseClassifier = named("DefaultH2ResponseClassifier") {
+  val ReturnsOnly: H2ResponseClassifier = named("ReturnsOnlyH2ResponseClassifier") {
     case H2ReqRep(_, Return((_, Return(frame)))) => ResponseClass.Success
     case _ => ResponseClass.NonRetryableFailure
   }
@@ -29,9 +29,9 @@ object H2ResponseClassifier {
    * the response and response stream are both successful, and the status code
    * is less than 500
    */
-  val Not5xxH2ResponseClassifier: H2ResponseClassifier =
-    named("Not5xxH2ResponseClassifier") {
+  val Default: H2ResponseClassifier =
+    named("DefaultResponseClassifier") {
       case H2ReqRep(_, Return((response, Return(_)))) if response.status.code < 500 => ResponseClass.Success
+      case _ => ResponseClass.NonRetryableFailure
     }
-
 }
