@@ -10,13 +10,13 @@ object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module2[param.Stats, h2param.H2ResponseClassifier, ServiceFactory[Request, Response]] {
-      override def role = StreamStatsFilter.role
+      override def role: Stack.Role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
       override def make(
         statsP: param.Stats,
         classifierP: h2param.H2ResponseClassifier,
         next: ServiceFactory[Request, Response]
-      ) = {
+      ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
         val h2param.H2ResponseClassifier(classifier) = classifierP
         new StreamStatsFilter(stats, classifier).andThen(next)
