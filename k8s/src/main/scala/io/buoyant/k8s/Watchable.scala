@@ -168,12 +168,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    *                        special case due to errors with the
    *                        ConfigMap interpreter
    * @param onEvent function called on each [[Watch]] event
-   * TODO: i wish this returned a [[Activity.State]] so that the caller
-   *       of this function could turn a [[Watch.Error]] into an
-   *       [[Activity.Failed]] if they wanted watch errors to fail this
-   *       [[Activity]], although none of our current code exhibits this
-   *       use-case...
-   *         - eliza, 7/18/2017
    * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
    *         where `T` is the return type of the `onEvent` function
    */
@@ -181,7 +175,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
-        // if the initial GET failed, then the activity is a failure.
+        // since we're retrying the GET request forever, this `onFailure`
+        // should probably never fire. but who knows?
         .onFailure { e =>
           log.warning(s"k8s failed to get resource at $path: $e")
           state.update(Activity.Failed(e))

@@ -201,8 +201,6 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
   override val watchResourceVersion: Boolean = false
   override val client: Client = parent.client
   override val (path, watchPath) = {
-    // the value of listName can be dropped when we're done with it,
-    // so allocate it in a scope.
     val listNameOrDefault = listName.map(_ + "/").getOrElse("")
     (s"${parent.path}/$listNameOrDefault$objectName",
       s"${parent.watchPath}/$listNameOrDefault$objectName")
