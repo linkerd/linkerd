@@ -39,7 +39,7 @@ private object HostColonPort {
 class hostportPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, HostColonPort(host, port)) =>
-      Some(Path.Utf8(pfx, host, port.toString) ++ path.drop(2))
+      Some(Path.Utf8(pfx, host, port) ++ path.drop(2))
     case _ => None
   }
 }
@@ -56,7 +56,7 @@ class hostportPfx extends RewritingNamer {
 class porthostPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, HostColonPort(host, port)) =>
-      Some(Path.Utf8(pfx, port.toString, host) ++ path.drop(2))
+      Some(Path.Utf8(pfx, port, host) ++ path.drop(2))
     case _ => None
   }
 }
