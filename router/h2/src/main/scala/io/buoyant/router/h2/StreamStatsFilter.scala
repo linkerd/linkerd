@@ -1,5 +1,6 @@
 package io.buoyant.router.h2
 
+import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
@@ -27,43 +28,35 @@ object StreamStatsFilter {
 class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
   extends SimpleFilter[Request, Response] {
 
-  // the `StreamStats` (and the related `FrameStats`) class is really just
-  // a "stateful function" – essentially a closure, but closing over state
-  // (the actual stat values) defined within its own scope. this is kind of
-  // a FP take on object orientation, isn't scala cool?
-  class StreamStats(protected val stats: StatsReceiver, durationName: Option[String] = None) {
+
+  class StreamStats(
+    protected val stats: StatsReceiver,
+    durationName: Option[String] = None
+  ) {
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
     private[this] val successes = stats.counter("stream_success")
     private[this] val failures = stats.counter("stream_failures")
 
-    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
-      durationMs.add(startT().inMillis)
-      result match {
-        case Return(_) => successes.incr()
-        case Throw(_) => failures.incr()
-      }
+    def success(streamDuration: Duration): Unit = {
+      durationMs.add(streamDuration.inMillis)
+      successes.incr()
     }
 
-  }
-
-  class FrameStats(
-    protected val stats: StatsReceiver,
-    protected val streamStats: StreamStats
-  ) {
-
+    def failure(streamDuration: Duration): Unit = {
+      durationMs.add(streamDuration.inMillis)
+      successes.incr()
+    }
     private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
 
-    def this(stats: StatsReceiver) = this(stats, new StreamStats(stats))
 
     def apply(
       startT: Stopwatch.Elapsed,
       classifyFrame: Option[Try[Frame]] => Unit = { _ => }
     )(underlying: Stream): Stream = {
       // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
-      var streamFrameBytes: Int = 0
+      val streamFrameBytes = new AtomicInteger(0)
       // partially evaluate this w/ a reference to the start time
-      val streamStatsT = streamStats(startT)(_)
       val stream =
         if (underlying.isEmpty) {
           // it would be easier to just put this in `stream.onEnd` and handle
@@ -79,25 +72,25 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           //  - eliza, 7/20/2017
           frameBytes.add(0)
           classifyFrame(None)
-          streamStatsT(Return(None))
+          success(startT())
           underlying
         } else underlying.onFrame {
           case Return(frame) =>
             frame match {
-              case data: Frame.Data => streamFrameBytes += data.buf.length
+              case data: Frame.Data => val _ = streamFrameBytes.addAndGet(data.buf.length)
               case _ =>
             }
             if (frame.isEnd) {
               // end frames get special-cased since the `.respond {}`
               // callback we were placing on `stream.onEnd` gets
               // clobbered – see above comment
-              frameBytes.add(streamFrameBytes)
+              frameBytes.add(streamFrameBytes.get())
               classifyFrame(Some(Return(frame)))
-              streamStatsT(Return(frame))
+              success(startT())
             }
           case Throw(e) =>
             classifyFrame(Some(Throw(e)))
-            streamStatsT(Throw(e))
+            failure(startT())
         }
       stream
     }
@@ -106,23 +99,23 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
   // total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
+  // total latency from receipt of request to completion of response future
+  private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
+  // overall successes stat from response classifier
+  private[this] val successes = statsReceiver.counter("success")
+  // overall failures stat from response classifier
+  private[this] val failures = statsReceiver.counter("failures")
 
   private[this] val reqStreamStats =
-    new FrameStats(statsReceiver.scope("request", "stream"))
+    new StreamStats(statsReceiver.scope("request", "stream"))
   private[this] val rspStreamStats =
-    new FrameStats(statsReceiver.scope("response", "stream"))
+    new StreamStats(statsReceiver.scope("response", "stream"))
   private[this] val totalStreamStats =
     new StreamStats(
       statsReceiver.scope("stream"),
       durationName = Some("total_latency")
     )
 
-  private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
-
-  // overall successes stat from response classifier
-  private[this] val successes = statsReceiver.counter("success")
-  // overall failures stat from response classifier
-  private[this] val failures = statsReceiver.counter("failures")
 
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
@@ -154,7 +147,10 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
             req1.stream.onEnd.join(rsp.stream.onEnd)
           case Throw(_) => req1.stream.onEnd
         }
-        val _ = stream.respond(totalStreamStats(reqT))
+        val _ = stream.respond {
+          case Return(_) => totalStreamStats.success(reqT())
+          case Throw(_) => totalStreamStats.failure(reqT())
+        }
       }
 
   }

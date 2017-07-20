@@ -39,6 +39,7 @@ trait Stream {
    * @return a [[StreamProxy]] wrapping this [[Stream]]
    */
   def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamProxy(this, onFrame)
+
 }
 
 /**
