@@ -31,7 +31,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("stream", "total_latency_ms"),
     Seq("request_latency_ms")
   )
-  val rspFrameSizeStat = Seq("response", "stream", "data_frame", "bytes")
+  val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
   val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
   protected val allStats = latencyStats :+ rspFrameCountStat :+ rspFrameSizeStat
   protected val reqStats = allStats.withFilter(_.head != "response")

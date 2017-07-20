@@ -47,7 +47,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
   }
 
   trait FrameStats extends StreamStats {
-    private[this] val frameBytes = stats.stat("data_frame", "bytes")
+    private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
     private[this] val frameCount = stats.stat("data_frame", "count")
 
     def onFrame(startT: Stopwatch.Elapsed)(underlyingStream: Stream): Stream = {
