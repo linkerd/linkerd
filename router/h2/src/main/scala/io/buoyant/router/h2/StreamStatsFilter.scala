@@ -55,29 +55,51 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     def this(stats: StatsReceiver) = this(stats, new StreamStats(stats))
 
     def apply(startT: Stopwatch.Elapsed, classifyFrame: Try[Frame] => Unit = { _ => })
-             (stream: Stream): Stream = {
+             (underlying: Stream): Stream = {
+      // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
       var streamFrameBytes: Int = 0
+      // partially evaluate this w/ a reference to the start time
       val streamStatsT = streamStats(startT)(_)
-      stream.onFrame {
-        case Return(frame) =>
-          frame match {
-            case data: Frame.Data => streamFrameBytes += data.buf.length
-            case _ =>
+      val stream =
+        if (underlying.isEmpty) {
+          // it would be easier to just put this in `stream.onEnd` and handle
+          // both the empty-stream case and the end of a non-empty stream case
+          // in the same block of code, but `join()`ing `rsp.stream.onEnd` with
+          // the `req` stream's `.onEnd` future in `StreamStatsFilter.apply()`
+          // somehow clobbers this callback, so it never triggers.
+          //
+          // i strongly suspect this is a bug in `Stream.onEnd`, since this
+          // behaviour certainly doesn't *seem* right, to me. i'd like to fix
+          // this at the source, but for now, this is a (somewhat inelegant)
+          // workaround...
+          //  - eliza, 7/20/2017
+          frameBytes.add(0)
+          streamStatsT(Return(()))
+          underlying
+        } else underlying.onFrame {
+            case Return(frame) =>
+              frame match {
+                case data: Frame.Data => streamFrameBytes += data.buf.length
+                case _ =>
+              }
+              if (frame.isEnd) {
+                // end frames get special-cased since the `.respond {}`
+                // callback we were placing on `stream.onEnd` gets
+                // clobbered – see above comment
+                frameBytes.add(streamFrameBytes)
+                classifyFrame(Return(frame))
+                streamStatsT(Return(frame))
+              }
+            case e @ Throw(_) =>
+              classifyFrame(e)
+              streamStatsT(e)
           }
-          if (frame.isEnd) {
-            classifyFrame(Return(frame))
-            frameBytes.add(streamFrameBytes)
-            streamStatsT(Return(frame))
-          }
-        case e @ Throw(_) =>
-          classifyFrame(e)
-          streamStatsT(e)
-      }
+      stream
     }
 
   }
 
-  //   total number of requests received
+  // total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
 
   private[this] val reqStreamStats =
@@ -97,8 +119,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
   // overall failures stat from response classifier
   private[this] val failures = statsReceiver.counter("failures")
 
-
-
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
@@ -109,7 +129,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
         case Successful(_) => successes.incr()
         case _ => failures.incr()
       }
-
 
     service(req1)
       .transform {
@@ -125,6 +144,8 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
         reqLatency.add(reqT().inMillis)
         val stream = result match {
           case Return(rsp) =>
+            // this is the call i mentioned above that seems to be wiping out
+            // the `.onEnd.respond { }` callback in `frameStats.apply()`...
             req1.stream.onEnd.join(rsp.stream.onEnd)
           case Throw(_) => req1.stream.onEnd
         }
