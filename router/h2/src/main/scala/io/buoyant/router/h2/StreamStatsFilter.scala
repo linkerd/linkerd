@@ -54,18 +54,25 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
     def this(stats: StatsReceiver) = this(stats, new StreamStats(stats))
 
-    @inline def apply(startT: Stopwatch.Elapsed)(underlyingStream: Stream): Stream = {
+    def apply(startT: Stopwatch.Elapsed, classifyFrame: Try[Frame] => Unit = { _ => })
+             (stream: Stream): Stream = {
       var streamFrameBytes: Int = 0
-      val stream = underlyingStream.onFrame {
-        case Return(frame: Frame.Data) =>
-          streamFrameBytes += frame.buf.length
-        case _ =>
+      val streamStatsT = streamStats(startT)(_)
+      stream.onFrame {
+        case Return(frame) =>
+          frame match {
+            case data: Frame.Data => streamFrameBytes += data.buf.length
+            case _ =>
+          }
+          if (frame.isEnd) {
+            classifyFrame(Return(frame))
+            frameBytes.add(streamFrameBytes)
+            streamStatsT(Return(frame))
+          }
+        case e @ Throw(_) =>
+          classifyFrame(e)
+          streamStatsT(e)
       }
-      val _ = stream.onEnd.respond {
-        frameBytes.add(streamFrameBytes)
-        streamStats(startT)(_)
-      }
-      stream
     }
 
   }
@@ -97,25 +104,21 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     val reqT = Stopwatch.start()
     val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    @inline def _classify(rsp: Try[(Response, Try[Frame])]): Unit =
-      classifier(H2ReqRep(req1, rsp)) match {
+    @inline def classify(rsp: Try[Response])(frame: Try[Frame]): Unit =
+      classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
         case Successful(_) => successes.incr()
         case _ => failures.incr()
       }
 
+
     service(req1)
       .transform {
-        case Return(rsp0) =>
+        case Return(response) =>
           val rspT = Stopwatch.start()
-          val stream = rsp0.stream.onFrame {
-            case Return(frame) if frame.isEnd =>
-              _classify(Return((rsp0, Return(frame))))
-            case e@Throw(_) => _classify(Return((rsp0, e)))
-            case _ =>
-          }
-          Future.value(Response(rsp0.headers, rspStreamStats(rspT)(stream)))
+          val stream = rspStreamStats(rspT, classify(Return(response)))(response.stream)
+          Future.value(Response(response.headers, stream))
         case Throw(e) =>
-          _classify(Throw(e))
+          classify(Throw(e))(Throw(e))
           Future.exception(e)
       }
       .respond { result =>
