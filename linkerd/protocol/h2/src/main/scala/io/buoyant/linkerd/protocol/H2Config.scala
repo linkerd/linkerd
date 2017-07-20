@@ -6,14 +6,17 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
-import com.twitter.finagle.{Stack, param}
+import com.twitter.finagle.stack.nilStack
+import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
+import io.buoyant.linkerd.protocol.h2.H2LoggerConfig
 import io.buoyant.router.h2.DupRequest
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
@@ -42,6 +45,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
     val clientStack = H2.router.clientStack
       .replace(H2TraceInitializer.role, H2TraceInitializer.clientModule)
       .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
+      .insertAfter(DtabStatsFilter.role, H2LoggerConfig.module)
 
     //  .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
 
@@ -74,7 +78,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
 object H2Initializer extends H2Initializer
 
-class H2Config extends RouterConfig {
+case class H2Config(loggers: Option[Seq[H2LoggerConfig]] = None) extends RouterConfig {
 
   var client: Option[H2Client] = None
   var service: Option[H2Svc] = None
@@ -95,9 +99,17 @@ class H2Config extends RouterConfig {
   )
 
   @JsonIgnore
+  private[this] def loggerParam = loggers.map { configs =>
+    val loggerStack =
+      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
+        config.module.toStack(next)
+      }
+    H2LoggerConfig.param.Logger(loggerStack)
+  }
+
+  @JsonIgnore
   override def routerParams: Stack.Params =
-    super.routerParams +
-      identifierParam
+    (super.routerParams + identifierParam).maybeWith(loggerParam)
 
   private[this] def identifierParam: H2.Identifier = identifier match {
     case None => h2.HeaderTokenIdentifier.param
