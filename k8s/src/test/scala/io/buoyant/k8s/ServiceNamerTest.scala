@@ -32,7 +32,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Init
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/pythonsky/services?watch=true&resourceVersion=11600623" =>
+      case req if req.uri == "/api/v1/watch/namespaces/pythonsky/services?resourceVersion=11600623" =>
         val rsp = Response()
         rsp.setChunked(true)
 

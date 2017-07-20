@@ -15,6 +15,8 @@ import com.twitter.util.{Closable, _}
 trait Resource extends Closable {
   def client: Client
   def close(deadline: Time) = client.close(deadline)
+  def path: String
+  def watchPath: String
 }
 
 /**
@@ -28,7 +30,9 @@ trait Resource extends Closable {
  * @tparam O The parent type for all [Object]s served by this version.
  */
 private[k8s] trait Version[O <: KubeObject] extends Resource {
-  val path = s"/$group/$version"
+
+  override val path = s"/$group/$version"
+  override val watchPath = s"/$group/$version/watch"
 
   /**
    * The first portion of the API path. Currently-known groups are "api" (for the core k8s v1 API)
@@ -46,7 +50,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](client, path, backoffs, stats)
+  )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](this, backoffs, stats)
 }
 
 /**
@@ -64,15 +68,26 @@ private[k8s] class NsVersion[O <: KubeObject](
   val client: Client,
   group: String,
   val version: String,
-  ns: String
+  val ns: String
 )
   extends Resource {
-  val path = s"/$group/$version/namespaces/$ns"
+  override val path = s"/$group/$version/namespaces/$ns"
+  override val watchPath = s"/$group/$version/watch/namespaces/$ns"
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
-  )(implicit od: ObjectDescriptor[T, W]) = new NsListResource[T, W, L](client, ns, path, backoffs, stats)
+  )(implicit od: ObjectDescriptor[T, W]) =
+    new NsListResource[T, W, L](this, backoffs, stats)
+
+  def objectResource[T <: O: TypeReference, W <: Watch[T]: TypeReference](
+    name: String,
+    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    stats: StatsReceiver = DefaultStatsReceiver
+  )(implicit od: ObjectDescriptor[T, W]): NsObjectResource[T, W] = {
+    val listName = implicitly[ObjectDescriptor[T, W]].listName
+    new NsObjectResource[T, W](this, name, Some(listName), backoffs, stats)
+  }
 }
 
 /**
@@ -91,9 +106,11 @@ trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
   /** version within owner domain, i.e. "v1" */
   def ownerVersion: String
 
-  def version: String = ThirdPartyVersion.version(owner, ownerVersion)
-  def basePath: String = s"/${ThirdPartyVersion.group}/$version"
-  val group = ThirdPartyVersion.group
+  override val version: String = ThirdPartyVersion.version(owner, ownerVersion)
+  override val path: String = s"/${ThirdPartyVersion.group}/$version"
+  override val watchPath: String = s"/${ThirdPartyVersion.group}/$version/watch"
+
+  val group: String = ThirdPartyVersion.group
   override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
 }
 
@@ -113,36 +130,34 @@ class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerV
  * `/api/v1/namespaces/{namespace}/endpoints`.
  */
 private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
-  val client: Client,
-  basePath: String,
+  parent: Resource,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
-)(implicit od: ObjectDescriptor[O, W]) extends Watchable[O, W] with Resource {
-  val name = implicitly[ObjectDescriptor[O, W]].listName
-  val path = s"$basePath/$name"
+)(implicit od: ObjectDescriptor[O, W])
+  extends Watchable[O, W, L]
+  with Resource {
 
-  def get(
-    labelSelector: Option[String] = None,
-    fieldSelector: Option[String] = None,
-    resourceVersion: Option[String] = None,
-    retryIndefinitely: Boolean = false
-  ): Future[L] = {
-    val req = Api.mkreq(http.Method.Get, this.path, None,
-      "labelSelector" -> labelSelector,
-      "fieldSelector" -> fieldSelector,
-      "resourceVersion" -> resourceVersion)
-    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
-    val retryingClient = retry andThen client
-    Trace.letClear(retryingClient(req)).flatMap(Api.parse[L])
-  }
-
-  protected def restartWatches(
-    labelSelector: Option[String] = None,
-    fieldSelector: Option[String] = None
+  override val client: Client = parent.client
+  val name: String = implicitly[ObjectDescriptor[O, W]].listName
+  final override val path = s"${parent.path}/$name"
+  final override val watchPath = s"${parent.watchPath}/$name"
+  /**
+   * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
+   */
+  override protected def restartWatches(
+    labelSelector: Option[String],
+    fieldSelector: Option[String]
   ): Future[(Seq[W], Option[String])] =
-    get(labelSelector, fieldSelector, None, true).map { list =>
-      (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
-    }
+    get(
+      labelSelector,
+      fieldSelector,
+      None,
+      retryIndefinitely = true,
+      watch = true
+    )
+      .map { list =>
+        (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+      }
 }
 
 /**
@@ -150,14 +165,14 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
  * retrieval of individual items in the list. (We don't have a full implementation yet).
  */
 private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
-  client: Client,
-  val ns: String,
-  basePath: String,
+  parent: NsVersion[_],
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
-)(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](client, basePath, backoffs, stats) {
-  def named(name: String): NsObjectResource[O, W] =
-    new NsObjectResource[O, W](client, path, name)
+)(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](parent, backoffs, stats) {
+
+  val ns: String = parent.ns
+  def named(objName: String): NsObjectResource[O, W] =
+    new NsObjectResource[O, W](this, objName, None, backoffs, stats)
 
   /**
    * Creates an Object within the represented List via an HTTP POST.
@@ -174,19 +189,22 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
 }
 
 private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference](
-  val client: Client,
-  listPath: String,
+  parent: Resource,
   objectName: String,
+  maybeListName: Option[String] = None,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
-)(implicit od: ObjectDescriptor[O, W]) extends Resource {
-  private[this] val path = s"$listPath/$objectName"
+)(implicit od: ObjectDescriptor[O, W])
+  extends Watchable[O, W, O]
+  with Resource {
 
-  def get: Future[O] = {
-    val req = Api.mkreq(http.Method.Get, path, None)
-    Trace.letClear(client(req)).flatMap { rsp =>
-      Api.parse[O](rsp)
-    }
+  override val client: Client = parent.client
+  override val (path, watchPath) = {
+    // the value of listName can be dropped when we're done with it,
+    // so allocate it in a scope.
+    val listName = maybeListName.map(_ + "/").getOrElse("")
+    (s"${parent.path}/$listName$objectName",
+      s"${parent.watchPath}/$listName$objectName")
   }
 
   def put(obj: O): Future[O] = {
@@ -202,4 +220,19 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       Api.parse[O](rsp)
     }
   }
+
+  override protected def restartWatches(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None
+  ): Future[(Seq[W], Option[String])] =
+    get(
+      labelSelector,
+      fieldSelector,
+      None,
+      retryIndefinitely = true,
+      watch = true
+    )
+      .map { obj =>
+        (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
+      }
 }

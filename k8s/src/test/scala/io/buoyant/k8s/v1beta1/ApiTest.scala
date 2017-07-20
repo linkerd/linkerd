@@ -54,7 +54,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     val ns = Api(service).withNamespace("srv")
-    val ingress = await(ns.ingresses.named("test-ingress").get)
+    val ingress = await(ns.ingresses.named("test-ingress").get())
 
     val paths = for (
       spec <- ingress.spec.toSeq;
@@ -63,7 +63,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       http <- rule.http.toSeq;
       path <- http.paths
     ) yield {
-      assert(path.path == Some("/fooPath"))
+      assert(path.path.contains("/fooPath"))
       assert(path.backend.serviceName == "/fooService")
       assert(path.backend.servicePort == "/fooPort")
       path
