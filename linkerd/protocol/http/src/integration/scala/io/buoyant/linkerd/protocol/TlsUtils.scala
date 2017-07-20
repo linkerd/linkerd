@@ -1,7 +1,8 @@
 package io.buoyant.linkerd.protocol
 
 import com.twitter.finagle.http.{Response, Request, TlsFilter}
-import com.twitter.finagle.ssl.Ssl
+import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.ssl.{KeyCredentials, Ssl}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.transport.Transport
@@ -117,9 +118,9 @@ object TlsUtils {
         .configured(param.Label(name))
         .configured(param.Tracer(NullTracer))
         .configured(
-          Transport.TLSServerEngine(
-            Some(() => Ssl.server(cert.getPath, key.getPath, null, null, null))
-          )
+          Transport.ServerSsl(Some(SslServerConfiguration(
+            keyCredentials = KeyCredentials.CertAndKey(cert, key)
+          )))
         )
         .serve(":*", service)
       Downstream(name, server)

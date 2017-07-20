@@ -1,8 +1,8 @@
 package io.buoyant.marathon.v2
 
 import com.twitter.finagle._
-import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util.{NonFatal => _, _}
 import scala.util.control.NonFatal
 
@@ -13,8 +13,8 @@ object AppIdNamer {
 class AppIdNamer(
   api: Api,
   prefix: Path,
-  ttl: Duration,
-  timer: Timer = DefaultTimer.twitter
+  ttl: => Duration,
+  timer: Timer = DefaultTimer
 ) extends Namer {
 
   import AppIdNamer._
@@ -37,9 +37,11 @@ class AppIdNamer(
   def lookup(path: Path): Activity[NameTree[Name]] =
     if (path.isEmpty) Activity.value(NameTree.Neg)
     else {
+      val Path.Utf8(segs@_*) = path
+      val lowercasePath = Path.Utf8(segs.map(_.toLowerCase): _*)
       // each time the map of all Apps updates, find the
       // shortest-matching part of `path` that exists as an App ID.
-      val possibleIds = (1 to path.size).map(path.take(_))
+      val possibleIds = (1 to lowercasePath.size).map(lowercasePath.take(_))
       appsActivity.map { apps =>
         Trace.recordBinary("marathon.path", path.show)
         val found = possibleIds.collectFirst {

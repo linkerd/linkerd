@@ -63,7 +63,10 @@ class GatewayTransformer(
           // select the gateway addresses that share a subnet with addr
           gatewayAddrs.filter(gatewayPredicate(addr, _))
         }
-        Addr.Bound(selected, meta)
+        if (selected.isEmpty)
+          Addr.Neg
+        else
+          Addr.Bound(selected, meta)
       case List(addr, _) => addr
     }
     bound.id match {

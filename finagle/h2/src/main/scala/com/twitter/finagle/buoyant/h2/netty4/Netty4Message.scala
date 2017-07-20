@@ -24,7 +24,13 @@ private[h2] object Netty4Message {
       buf.result
     }
 
-    override def get(key: String): Seq[String] =
+    override def get(key: String): Option[String] =
+      underlying.get(key) match {
+        case null => None
+        case str => Some(str.toString)
+      }
+
+    override def getAll(key: String): Seq[String] =
       underlying.getAll(key).asScala.map(_.toString)
 
     override def contains(key: String): Boolean =
@@ -39,7 +45,7 @@ private[h2] object Netty4Message {
     }
 
     override def remove(key: String): Seq[String] = {
-      val removed = get(key)
+      val removed = getAll(key)
       underlying.remove(key)
       removed
     }
@@ -89,7 +95,7 @@ private[h2] object Netty4Message {
 
     def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
       val sz = f.content.readableBytes + f.padding
-      val buf = ByteBufAsBuf.Owned(f.content.retain())
+      val buf = ByteBufAsBuf(f.content.retain())
       val releaser: () => Future[Unit] =
         if (sz > 0) () => updateWindow(sz)
         else () => Future.Unit

@@ -3,8 +3,9 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.service.{FailFastFactory, Retries, RetryBudget, StatsFilter}
+import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.util.{Future, Time}
@@ -181,10 +182,10 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
       val role = RoutingFactory.role
       val description = RoutingFactory.description
       val parameters = Seq(
+        implicitly[Stack.Param[DstBindingFactory.IdleTtl]],
         implicitly[Stack.Param[DstBindingFactory.Capacity]],
         implicitly[Stack.Param[DstBindingFactory.Namer]],
-        implicitly[Stack.Param[param.Stats]],
-        implicitly[Stack.Param[Retries.Budget]]
+        implicitly[Stack.Param[param.Stats]]
       )
 
       def make(
@@ -197,33 +198,26 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
             label
           case param.Label(label) => label
         }
-        val param.Stats(stats0) = params[param.Stats]
-        val stats = stats0.scope(label)
-        val clientStats = param.Stats(stats.scope("dst", "id"))
+        val param.Stats(stats) = params[param.Stats]
+        val clientStats = param.Stats(stats.scope("client"))
 
         // if this router has been configured as an originator, add a
         // gauge to reflect that in the router's stats
         val Originator.Param(originator) = params[Originator.Param]
         if (originator) { stats.provideGauge("originator")(1f) }
 
-        // Since the retry budget is shared across the path stack
-        // (RetryFilter) and client stack (RequeueFilter), the lower
-        // filter must not deposit into the budget. So, we wrap it in
-        // a WithdrawOnlyRetryBudget.
-        val withdrawOnlyBudget = {
-          val Retries.Budget(budget, requeueBackoffs) = params[Retries.Budget]
-          Retries.Budget(new StackRouter.WithdrawOnlyRetryBudget(budget), requeueBackoffs)
-        }
-
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
-          val sr = stats.scope("dst", "path", dst.path.show.stripPrefix("/"))
+          val sr = stats.scope("service", dst.path.show.stripPrefix("/"))
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
-          stk.make(params + dst + param.Stats(sr))
+
+          val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
+          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
+            RouterLabel.Param(label))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
           val stk = (boundStack ++ Stack.Leaf(Endpoint, sf))
-          stk.make(params + withdrawOnlyBudget + bound)
+          stk.make(params + bound)
         }
 
         def mkClientLabel(bound: Name.Bound): String = bound.id match {
@@ -233,10 +227,16 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           case _ => "unknown"
         }
 
-        // client stats are scoped by label within .newClient
-        def clientMk(bound: Name.Bound) =
-          client.withParams(params + clientStats + withdrawOnlyBudget)
+        def clientMk(bound: Name.Bound) = {
+          val name = bound.id match {
+            case id: Path => id
+            case _ => Path.empty
+          }
+          val clientParams = params[StackRouter.Client.PerClientParams].paramsFor(name)
+          // client stats are scoped by label within .newClient
+          client.withParams(params ++ clientParams + clientStats)
             .newClient(bound, mkClientLabel(bound))
+        }
 
         val DstBindingFactory.Namer(namer) = params[DstBindingFactory.Namer]
         val cache = new DstBindingFactory.Cached[Req, Rsp](
@@ -246,8 +246,9 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           namer,
           stats.scope("bindcache"),
           params[DstBindingFactory.Capacity],
-          params[DstBindingFactory.BindingTimeout]
-        )
+          params[DstBindingFactory.BindingTimeout],
+          params[DstBindingFactory.IdleTtl]
+        )(params[param.Timer].timer)
 
         Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
       }
@@ -259,20 +260,6 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
 object StackRouter {
 
-  /**
-   * A single budget needs to be shared across a `RequeueFilter` and
-   * a `RetryFilter` for debiting purposes, but we only want one of
-   * the calls to `RetryBudget.request()` to count. This allows for
-   * swallowing the call to `request` in the second filter.
-   *
-   * Copied from com.twitter.finagle.service.Retries.
-   */
-  class WithdrawOnlyRetryBudget(underlying: RetryBudget) extends RetryBudget {
-    def deposit(): Unit = ()
-    def tryWithdraw(): Boolean = underlying.tryWithdraw()
-    def balance: Long = underlying.balance
-  }
-
   object Server {
     def newStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] =
       StackServer.newStack[Req, Rsp]
@@ -280,25 +267,53 @@ object StackRouter {
 
   object Client {
 
+    case class ClientParams(prefix: PathMatcher, mk: Map[String, String] => Stack.Params)
+
+    case class PerClientParams(params: Seq[ClientParams]) {
+      def paramsFor(name: Path): Stack.Params = {
+        params.foldLeft(Stack.Params.empty) {
+          case (params, ClientParams(prefix, mk)) =>
+            prefix.extract(name) match {
+              case Some(vars) => params ++ mk(vars)
+              case None => params
+            }
+        }
+      }
+    }
+    implicit object PerClientParams extends Stack.Param[PerClientParams] {
+      val default: PerClientParams = PerClientParams(Seq.empty)
+    }
+
+    case class PathParams(prefix: PathMatcher, mk: Map[String, String] => Stack.Params)
+
+    case class PerPathParams(params: Seq[PathParams]) {
+      def paramsFor(name: Path): Stack.Params = {
+        params.foldLeft(Stack.Params.empty) {
+          case (params, PathParams(prefix, mk)) =>
+            prefix.extract(name) match {
+              case Some(vars) => params ++ mk(vars)
+              case None => params
+            }
+        }
+      }
+    }
+    implicit object PerPathParams extends Stack.Param[PerPathParams] {
+      val default: PerPathParams = PerPathParams(Seq.empty)
+    }
+
     /**
      * Install the ClassifiedTracing filter immediately above any
      * protocol-specific annotating tracing filters, to provide response
      * classification annotations (success, failure, or retryable).
      *
-     * Install the TlsClientPrep module below the endpoint stack so that it
-     * may avail itself of any and all params to set TLS params.
-     *
      * Augment the default client StatsFilter with a
      * per-logical-destination stats filter.
      */
-    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
-      val stk = new StackBuilder(stack.nilStack[Req, Rsp])
-      stk.push(TlsClientPrep.configureFinagleTls[Req, Rsp])
-      stk.push(TlsClientPrep.insecure[Req, Rsp])
-      (orig ++ stk.result)
-        .insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
+      orig.insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
-    }
+        .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
+        .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -309,6 +324,12 @@ object StackRouter {
      *   that we have a logical view of the request.  Success rate may
      *   be computed from these stats to reflect the upstream client's
      *   view of this endpoint.
+     *
+     * - The total timeout module sets a timeout for the request including all
+     *   retries and therefore must be above the retries module.
+     *
+     * - A non-shared retry budget is instantiated for this stack by the
+     *   RetryBudgetModule.
      *
      * - Application-level retries are controlled by [[ClassifiedRetries]].
      *
@@ -327,10 +348,14 @@ object StackRouter {
     stk.push(failureRecording)
     stk.push(StackClient.Role.prepFactory, identity[ServiceFactory[Req, Rsp]](_))
     stk.push(factoryToService)
+    stk.push(ResponseClassifierCtx.Setter.module)
     stk.push(ClassifiedRetries.module)
+    stk.push(RetryBudgetModule.module)
+    stk.push(TotalTimeout.module)
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
+    stk.push(PathRegistry.module)
     stk.result
   }
 

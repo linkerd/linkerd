@@ -1,10 +1,9 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver}
+import com.twitter.finagle.stats.{BroadcastStatsReceiver, LoadedStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
@@ -12,9 +11,9 @@ import com.twitter.logging.Logger
 import com.twitter.server.util.JvmStats
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
+import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
-import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig
 import io.buoyant.telemetry._
 import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
 import java.net.InetSocketAddress
@@ -43,15 +42,15 @@ object Linker {
     namer: Seq[NamerInitializer] = Nil,
     interpreter: Seq[InterpreterInitializer] = Nil,
     transformer: Seq[TransformerInitializer] = Nil,
-    tlsClient: Seq[TlsClientInitializer] = Nil,
     identifier: Seq[IdentifierInitializer] = Nil,
     classifier: Seq[ResponseClassifierInitializer] = Nil,
     telemetry: Seq[TelemeterInitializer] = Nil,
     announcer: Seq[AnnouncerInitializer] = Nil,
-    failureAccrual: Seq[FailureAccrualInitializer] = Nil
+    failureAccrual: Seq[FailureAccrualInitializer] = Nil,
+    loggers: Seq[LoggerInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, tlsClient, identifier, transformer, classifier, telemetry, announcer, failureAccrual)
+      Seq(protocol, namer, interpreter, identifier, transformer, classifier, telemetry, announcer, failureAccrual, loggers)
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -67,12 +66,12 @@ object Linker {
     LoadService[NamerInitializer],
     LoadService[InterpreterInitializer] :+ DefaultInterpreterInitializer,
     LoadService[TransformerInitializer],
-    LoadService[TlsClientInitializer],
     LoadService[IdentifierInitializer],
     LoadService[ResponseClassifierInitializer],
     LoadService[TelemeterInitializer],
     LoadService[AnnouncerInitializer],
-    LoadService[FailureAccrualInitializer]
+    LoadService[FailureAccrualInitializer],
+    LoadService[LoggerInitializer]
   )
 
   def parse(
@@ -114,7 +113,7 @@ object Linker {
       val metrics = MetricsTree()
 
       val telemeterParams = Stack.Params.empty + param.LinkerConfig(this) + metrics
-      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer.twitter)
+      val adminTelemeter = new AdminMetricsExportTelemeter(metrics, histogramSnapshotInterval(), DefaultTimer)
       val usageTelemeter = usage.getOrElse(UsageDataTelemeterConfig()).mk(telemeterParams)
 
       val telemeters = telemetry.toSeq.flatten.map {
@@ -127,7 +126,7 @@ object Linker {
 
       // Telemeters may provide StatsReceivers.
       val stats = mkStats(metrics, telemeters)
-      LoadedStatsReceiver.self = stats
+      LoadedStatsReceiver.self = NullStatsReceiver
       JvmStats.register(stats)
 
       val tracer = mkTracer(telemeters)
@@ -182,8 +181,9 @@ object Linker {
       }
 
       val impls = routers.map { router =>
-        val interpreter = router.interpreter.interpreter(params + Label(router.label))
-        router.router(params + DstBindingFactory.Namer(interpreter))
+        val stats = params[fparam.Stats].statsReceiver.scope(router.label)
+        val interpreter = router.interpreter.interpreter(params + Label(router.label) + fparam.Stats(stats))
+        router.router(params + fparam.Stats(stats) + DstBindingFactory.Namer(interpreter))
       }
 
       // Server sockets must not conflict
@@ -209,6 +209,11 @@ object Linker {
     admin: Admin
   ) extends Linker {
     override def configured[T: Stack.Param](t: T) =
-      copy(routers = routers.map(_.configured(t)))
+      copy(routers = routers.map { rt =>
+        t match {
+          case fparam.Stats(sr) => rt.configured(fparam.Stats(sr.scope("rt", rt.label)))
+          case _ => rt.configured(t)
+        }
+      })
   }
 }

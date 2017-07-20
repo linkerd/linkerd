@@ -17,7 +17,8 @@ class RetryFilter[Req, Rep](
   retryPolicy: RetryPolicy[(Req, Try[Rep])],
   timer: Timer,
   statsReceiver: StatsReceiver,
-  retryBudget: RetryBudget
+  retryBudget: RetryBudget,
+  discard: Rep => Unit
 )
   extends Filter[Req, Rep, Req, Rep] {
 
@@ -29,7 +30,8 @@ class RetryFilter[Req, Rep](
     retryPolicy,
     timer,
     statsReceiver,
-    RetryBudget()
+    RetryBudget(),
+    RetryFilter.noopDiscard[Rep]
   )
 
   private[this] val retriesStat = statsReceiver.scope("retries").stat("per_request")
@@ -38,6 +40,8 @@ class RetryFilter[Req, Rep](
 
   private[this] val budgetExhausted =
     statsReceiver.scope("retries").counter("budget_exhausted")
+
+  private[this] val budgetGauge = statsReceiver.scope("retries").addGauge("budget") { retryBudget.balance }
 
   @inline
   private[this] def schedule(d: Duration)(f: => Future[Rep]) = {
@@ -61,6 +65,8 @@ class RetryFilter[Req, Rep](
       policy((req, rep)) match {
         case Some((howlong, nextPolicy)) =>
           if (retryBudget.tryWithdraw()) {
+            // we will retry, discard the current response (if there is one)
+            rep.foreach(discard)
             schedule(howlong) {
               Trace.record("finagle.retry")
               totalRetries.incr()
@@ -82,4 +88,8 @@ class RetryFilter[Req, Rep](
     retryBudget.deposit()
     dispatch(request, service, retryPolicy)
   }
+}
+
+object RetryFilter {
+  def noopDiscard[Rep]: Rep => Unit = _ => ()
 }

@@ -10,8 +10,8 @@ object Finagle extends Base {
   val h2 = projectDir("finagle/h2")
     .dependsOn(buoyantCore)
     .withLibs(
-      Deps.netty4("codec-http2"), Deps.netty4("handler"),
-      "io.netty" % "netty-tcnative-boringssl-static" % "1.1.33.Fork23")
+      Deps.netty4("codec-http2"), Deps.netty4("handler"), Deps.boringssl
+    )
     .withTests()
     .withE2e()
 

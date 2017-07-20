@@ -3,7 +3,7 @@
 ```yaml
 routers:
 - ...
-  client:
+  service:
     retries:
       budget:
         minRetriesPerSec: 5
@@ -15,21 +15,40 @@ routers:
         maxMs: 10000
 ```
 
-linkerd can automatically retry requests on certain failures (for example,
-connection errors) and can be configured via the retries block.
+linkerd can automatically retry requests on certain failures and can be
+configured via the retries block.  Retries fall into two categories: retries
+and requeues.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 budget | See [retry budget](#retry-budget-parameters) | Object that determins _how many_ failed requests are eligible to be retried.
 backoff | See [retry backoff](#retry-backoff-parameters) | Object that determines which backoff algorithm should be used.
 
+## Retries
+
+Retries are for application-level failures (such as 5XX responses in the case of
+HTTP) as determined by the response classifier.  If the response classifier
+determines that a request is a retryable failure, and the retry budget is not
+empty, then the request will be retried.  Retries are configured by the
+`retries` parameter on the `service` object.  On the `retries` object you may
+specify the retry budget and retry backoff schedule.  Each service has its own
+retry budget that is not shared with other services or clients.
+
+## Requeues
+
+Requeues are for connection-level failures that are guaranteed to be idempotent.
+If a connection-level failure is encountered and there is requeue budget
+available, then the request will be retried.  Requeue budgets are configured
+by the `requeueBudget` parameter on the `client` object.  Requeues happen
+immediately with no backoff.  Each client has its own requeue budget that is not
+shared with other clients or services.
 
 ## Retry Budget Parameters
 
 > For every 10 non-retry calls, allow 1 retry
 
 ```yaml
-client:
+service:
   retries:
     budget:
       percentCanRetry: 0.1
@@ -38,7 +57,7 @@ client:
 > For every non-retry call, allow 2 retries
 
 ```yaml
-client:
+service:
   retries:
     budget:
       percentCanRetry: 2.0

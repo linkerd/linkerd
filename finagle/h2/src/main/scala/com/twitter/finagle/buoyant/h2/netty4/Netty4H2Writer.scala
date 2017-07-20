@@ -2,17 +2,15 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.WriteException
-import com.twitter.finagle.netty4.{BufAsByteBuf, ByteBufAsBuf}
-import com.twitter.finagle.stats.{StatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, NonFatal, Stopwatch, Time}
+import com.twitter.util.{Future, Time}
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 
 private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
-  import Netty4H2Writer.log
 
   protected[this] def write(f: Http2Frame): Future[Unit]
   protected[this] def close(deadline: Time): Future[Unit]
@@ -24,7 +22,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   override def write(id: Int, msg: Headers, eos: Boolean): Future[Unit] = {
     val headers = Netty4Message.Headers.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
-    if (id >= 0) frame.setStreamId(id)
+    if (id >= 0) frame.streamId(id)
     write(frame)
   }
 
@@ -34,9 +32,9 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   }
 
   override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
-    val bb = BufAsByteBuf.Owned(buf)
+    val bb = BufAsByteBuf(buf)
     val frame = new DefaultHttp2DataFrame(bb, eos)
-    if (id >= 0) frame.setStreamId(id)
+    if (id >= 0) frame.streamId(id)
     write(frame.retain()).ensure {
       // just for reference-counting, not flow control.
       frame.release(); ()
@@ -45,14 +43,14 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 
   override def updateWindow(id: Int, incr: Int): Future[Unit] = {
     val frame = new DefaultHttp2WindowUpdateFrame(incr)
-    if (id >= 0) frame.setStreamId(id)
+    if (id >= 0) frame.streamId(id)
     write(frame)
   }
 
   override def reset(id: Int, rst: Reset): Future[Unit] = {
     require(id > 0)
     val code = Netty4Message.Reset.toHttp2Error(rst)
-    val frame = new DefaultHttp2ResetFrame(code).setStreamId(id)
+    val frame = new DefaultHttp2ResetFrame(code).streamId(id)
     write(frame)
   }
 

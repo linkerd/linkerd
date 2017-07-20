@@ -4,6 +4,7 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
+import io.buoyant.namer.RichActivity
 
 case class IngressSpec(
   name: Option[String],
@@ -57,7 +58,6 @@ case class IngressPath(
 object IngressCache {
   type IngressState = Activity.State[Seq[IngressSpec]]
   val annotationKey = "kubernetes.io/ingress.class"
-  val annotationValue = "linkerd"
 
   private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ingresses: Seq[IngressSpec]): Option[IngressPath] =
     ingresses
@@ -75,7 +75,7 @@ object IngressCache {
  * @param namespace: The k8s namespace to filter on. If None, it watches all namespaces.
  */
 
-class IngressCache(namespace: Option[String], apiClient: Service[Request, Response]) {
+class IngressCache(namespace: Option[String], apiClient: Service[Request, Response], annotationClass: String) {
   import IngressCache._
 
   val api = namespace match {
@@ -122,7 +122,7 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     //make sure that this ingress resource is not specified for someone else
     val annotations = ingress.metadata.flatMap(meta => meta.annotations).getOrElse(Map.empty)
     annotations.get(annotationKey) match {
-      case Some(ingressClass) if ingressClass != annotationValue => return None
+      case Some(ingressClass) if ingressClass != annotationClass => return None
       case _ =>
     }
 
@@ -146,5 +146,5 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
   def matchPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] =
     ingresses.map { cache: Seq[IngressSpec] =>
       getMatchingPath(hostHeader, requestPath, cache)
-    }.values.toFuture.flatMap(Future.const)
+    }.toFuture
 }

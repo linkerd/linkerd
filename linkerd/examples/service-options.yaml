@@ -1,0 +1,26 @@
+# A config that demonstrates basic service options.
+routers:
+- protocol: http
+  label: foobar
+  dtab: |
+    /svc/* => /$/inet/localhost/8080
+  service:
+    kind: io.l5d.static
+    configs:
+    - prefix: /svc # default for all services
+      totalTimeoutMs: 500
+    - prefix: /svc/foo
+      totalTimeoutMs: 1000 # overrides the default from above
+    - prefix: /svc/bar
+      # applies only to the /svc/bar service
+      retries:
+        budget:
+          minRetriesPerSec: 5
+          percentCanRetry: 0.5
+          ttlSecs: 15
+        backoff:
+          kind: jittered
+          minMs: 10
+          maxMs: 10000
+  servers:
+  - port: 4140

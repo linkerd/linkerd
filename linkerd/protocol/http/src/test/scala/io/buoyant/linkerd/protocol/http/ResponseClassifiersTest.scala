@@ -6,8 +6,8 @@ import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util.{Duration, Return, Throw, Try, TimeoutException}
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer, RouterConfig}
-import io.buoyant.linkerd.protocol.HttpInitializer
+import io.buoyant.linkerd._
+import io.buoyant.linkerd.protocol.{HttpDefaultSvc, HttpInitializer}
 import org.scalatest.FunSuite
 
 class ResponseClassifiersTest extends FunSuite {
@@ -17,7 +17,7 @@ class ResponseClassifiersTest extends FunSuite {
     method: Method,
     status: Try[Status],
     classification: Option[ResponseClass]
-  ): Unit = {
+  ) = {
     val key = ReqRep(Request(method, "/"), status.map(Response(_)))
     classification match {
       case None =>
@@ -150,13 +150,15 @@ class ResponseClassifiersTest extends FunSuite {
     test(s"parse router with $kind") {
       val yaml =
         s"""|protocol: http
-            |responseClassifier:
-            |  kind: $kind
+            |service:
+            |  responseClassifier:
+            |    kind: $kind
             |servers:
             |- port: 0
             |""".stripMargin
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(init)))
-      assert(mapper.readValue[RouterConfig](yaml)._responseClassifier.isDefined)
+      val router = mapper.readValue[RouterConfig](yaml)
+      assert(router.service.get.asInstanceOf[HttpDefaultSvc]._responseClassifier.isDefined)
     }
   }
 

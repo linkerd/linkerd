@@ -2,14 +2,15 @@ package io.buoyant.linkerd
 package admin
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.DstBindingFactory
+import com.twitter.finagle.http.Request
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.server.handler.{ResourceHandler, SummaryHandler => _}
+import com.twitter.server.handler.ResourceHandler
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
 import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter, _}
-import io.buoyant.namer.{Delegator, EnumeratingNamer, NamespacedInterpreterConfig}
-import io.buoyant.router.RoutingFactory
+import io.buoyant.namer.EnumeratingNamer
+import io.buoyant.router.{Http, RoutingFactory}
 
 object LinkerdAdmin {
 
@@ -52,6 +53,20 @@ object LinkerdAdmin {
     Handler("/logging", new LoggingHandler(adminHandler)),
     Handler("/logging.json", new LoggingApiHandler())
   )
+
+  def identifierHandler(lc: Linker.LinkerConfig, linker: Linker): Handler = {
+    linker.routers.head.protocol.configId
+
+    val identifiers = linker.routers.collect {
+      case router if router.protocol.configId == "http" =>
+        val RoutingFactory.DstPrefix(pfx) = router.params[RoutingFactory.DstPrefix]
+        val RoutingFactory.BaseDtab(baseDtab) = router.params[RoutingFactory.BaseDtab]
+        val Http.param.HttpIdentifier(id) = router.params[Http.param.HttpIdentifier]
+        router.label -> id(pfx, baseDtab)
+    }.toMap
+
+    Handler("/", new HttpIdentifierHandler(identifiers))
+  }
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Seq[Handler] = {
     val navItems = Seq(

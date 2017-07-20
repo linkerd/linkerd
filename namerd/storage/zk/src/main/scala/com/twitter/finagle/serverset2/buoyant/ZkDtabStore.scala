@@ -8,9 +8,9 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namerd.{Ns, VersionedDtab, DtabStore, RichActivity}
-import io.buoyant.namerd.DtabStore.{DtabVersionMismatchException, DtabNamespaceDoesNotExistException, DtabNamespaceAlreadyExistsException, Forbidden}
-import io.buoyant.namerd.storage.{AuthInfo, Acl}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
+import io.buoyant.namerd.storage.{Acl, AuthInfo}
+import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
 import java.nio.ByteBuffer
 
 /**
@@ -29,7 +29,7 @@ class ZkDtabStore(
   private[this] val retryStream = RetryStream()
   private[this] val stats = DefaultStatsReceiver.scope("zkclient").scope(Zk2Resolver.statsOf(hosts))
 
-  private[this] implicit val timer = DefaultTimer.twitter
+  private[this] implicit val timer = DefaultTimer
   private[this] val builder = ClientBuilder()
     .hosts(hosts)
     .sessionTimeout(sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout))

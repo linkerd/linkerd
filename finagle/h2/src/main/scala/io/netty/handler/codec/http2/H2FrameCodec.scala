@@ -203,14 +203,13 @@ object H2FrameCodec {
 
     val encoder = {
       val fw = new Http2OutboundFrameLogger(new DefaultHttp2FrameWriter, frameLogger)
-      new DefaultHttp2ConnectionEncoder(conn, fw)
+      new BetterHttp2ConnectionEncoder(conn, fw)
     }
 
     val decoder = {
       val fr = new Http2InboundFrameLogger(new DefaultHttp2FrameReader, frameLogger)
       new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
-    decoder.localSettings(settings)
     decoder.frameListener(new FrameListener)
 
     val handler = new ConnectionHandler(decoder, encoder, settings)
@@ -243,7 +242,7 @@ object H2FrameCodec {
 
     override def onRstStreamRead(ctx: ChannelHandlerContext, id: Int, code: Long): Unit = {
       val rst = new DefaultHttp2ResetFrame(code)
-      rst.setStreamId(id)
+      rst.streamId(id)
       ctx.fireChannelRead(rst); ()
     }
 
@@ -266,7 +265,7 @@ object H2FrameCodec {
       eos: Boolean
     ): Unit = {
       val hdrs = new DefaultHttp2HeadersFrame(headers, eos, padding)
-      hdrs.setStreamId(streamId)
+      hdrs.streamId(streamId)
       ctx.fireChannelRead(hdrs); ()
     }
 
@@ -278,7 +277,7 @@ object H2FrameCodec {
       eos: Boolean
     ): Int = {
       val data = new DefaultHttp2DataFrame(content.retain(), eos, padding)
-      data.setStreamId(streamId)
+      data.streamId(streamId)
       ctx.fireChannelRead(data)
       0 // bytes are marked as consumed via WindowUpdateFrame writes
     }

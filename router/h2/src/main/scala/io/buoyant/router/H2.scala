@@ -1,15 +1,14 @@
 package io.buoyant.router
 
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{Dst, H2 => FinagleH2, TlsClientPrep}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset}
-import com.twitter.finagle.param
-import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
-import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
-import com.twitter.finagle.service.StatsFilter
-import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Closable, Future}
+import com.twitter.finagle.buoyant.h2.{Request, Response, ResponseClassifiers}
+import com.twitter.finagle.buoyant.{H2 => FinagleH2}
+import com.twitter.finagle.client.StackClient
+import com.twitter.finagle.{param, _}
+import com.twitter.finagle.server.StackServer
+import com.twitter.util.Future
 import java.net.SocketAddress
+import com.twitter.finagle.service.StatsFilter
+import io.buoyant.router.h2.StreamStatsFilter
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -30,17 +29,16 @@ object H2 extends Router[Request, Response]
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] = {
       val stk = StackRouter.newPathStack[Request, Response]
-      h2.ViaHeaderFilter.module +: stk
+      h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +: stk
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack
 
     val clientStack: Stack[ServiceFactory[Request, Response]] =
-      // The H2 transporter configures its own TLS, so disable finagle's
-      // TLS handlers.
-      StackRouter.Client.mkStack(FinagleH2.Client.newStackWithoutTlsClientPrep)
-        .replace(TlsClientPrep.role.finagle, TlsClientPrep.disableFinagleTls[Request, Response])
+      StackRouter.Client
+        .mkStack(FinagleH2.Client.newStack)
+        .replace(StatsFilter.role, StreamStatsFilter.module)
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
@@ -79,9 +77,16 @@ object H2 extends Router[Request, Response]
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
+      .replace(StatsFilter.role, StreamStatsFilter.module)
+
+    private val serverResponseClassifier = ClassifiedRetries.orElse(
+      h2.ClassifierFilter.successClassClassifier,
+      ResponseClassifiers.NonRetryableServerFailures
+    )
+    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(serverResponseClassifier)
   }
 
-  val server = FinagleH2.server.withStack(Server.newStack)
+  val server = FinagleH2.Server(Server.newStack, Server.defaultParams)
 
   def serve(addr: SocketAddress, service: ServiceFactory[Request, Response]): ListeningServer =
     server.serve(addr, service)

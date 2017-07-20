@@ -8,20 +8,24 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.26.0")
-      .exclude("com.twitter", "finagle-zipkin_2.11")
+    ("com.twitter" %% "twitter-server" % "1.30.0")
+      .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "6.40.0"
+    "com.twitter" %% s"util-$mod" % "6.45.0"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.41.0"
+    "com.twitter" %% s"finagle-$mod" % "6.45.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.4.Final"
+    "io.netty" % s"netty-$mod" % "4.1.10.Final"
 
-  def zkCandidate = "com.twitter.common.zookeeper" % "candidate" % "0.0.76"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.1.Final"
+
+  def zkCandidate =
+    ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
+      .exclude("com.twitter.common", "util")
 
   // Jackson (parsing)
   val jacksonVersion = "2.8.4"
@@ -46,15 +50,21 @@ object Deps {
   )
 
   // testing. duh.
-  val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+
+  // scalacheck for Property-based testing
+  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
+
+  // junit
+  val junit = "junit" % "junit" % "4.10"
 
   // guava
   val guava = "com.google.guava" % "guava" % "19.0"
 
   // jwt for Marathon API
-  val jwt = "com.pauldijou" %% "jwt-core" % "0.9.0"
+  val jwt = "com.pauldijou" %% "jwt-core" % "0.12.1"
 
-  val protobuf = "com.google.protobuf" % "protobuf-java" % "3.1.0"
+  val protobuf = "com.google.protobuf" % "protobuf-java" % "3.3.1"
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"

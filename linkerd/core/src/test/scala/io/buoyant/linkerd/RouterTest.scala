@@ -1,12 +1,10 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Path, Dtab, Stack}
-import com.twitter.finagle.buoyant.DstBindingFactory
-import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.{Dtab, Path, Stack}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import io.buoyant.config.Parser
-import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreterInitializer, TestInterpreter}
-import io.buoyant.router.{Originator, RoutingFactory}
+import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreter, TestInterpreterInitializer}
+import io.buoyant.router.{Originator, RetryBudgetConfig, RoutingFactory}
 import io.buoyant.test.Exceptions
 import java.net.InetAddress
 import org.scalatest.FunSuite
@@ -54,16 +52,13 @@ servers:
   test("with timeout") {
     val yaml =
       """|protocol: plain
-         |timeoutMs: 1234
+         |client:
+         |  requestAttemptTimeoutMs: 1234
          |servers:
          |- port: 4321
          |""".stripMargin
-    val router = parse(yaml)
-    assert(router.servers.size == 1)
-    assert(router.servers.head.params[TimeoutFilter.Param] ==
-      TimeoutFilter.Param(1234.millis))
-    assert(router.params[TimeoutFilter.Param] ==
-      TimeoutFilter.Param(1234.millis))
+    val client = parseConfig(yaml).client.get.asInstanceOf[DefaultClient]
+    assert(client.requestAttemptTimeoutMs == Some(1234))
   }
 
   test("loopback & protocol-specific default port used when no ports specified") {
@@ -141,7 +136,7 @@ servers:
   test("with retries") {
     val yaml =
       """|protocol: plain
-         |client:
+         |service:
          |  retries:
          |    backoff:
          |      kind: jittered
@@ -152,7 +147,8 @@ servers:
          |      minRetriesPerSec: 3
          |      percentCanRetry: 0.33
          |""".stripMargin
-    assert(parseConfig(yaml).client.flatMap(_.retries) == Some(RetriesConfig(
+    val svc = parseConfig(yaml).service.get.asInstanceOf[DefaultSvc]
+    assert(svc.retries == Some(RetriesConfig(
       Some(JitteredBackoffConfig(Some(1), Some(1000))),
       Some(RetryBudgetConfig(Some(30), Some(3), Some(0.33)))
     )))

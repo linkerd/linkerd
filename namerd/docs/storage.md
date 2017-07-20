@@ -1,7 +1,7 @@
 # Storage
 
 A storage object configures the namerd dtabStore which stores and retrieves
-dtabs. This object supports the following params:
+dtabs. This object supports the following parameters:
 
 <aside class="notice">
 These parameters are available to the storage regardless of kind. Storage may also have kind-specific parameters.
@@ -31,7 +31,6 @@ running Kubernetes 1.2+ with the ThirdPartyResource feature enabled.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
 namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
@@ -42,61 +41,32 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 </aside>
 
 **How to check ThirdPartyResource is enabled**
-    1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
-    2. Check that kind `ThirdPartyResource` exists in response:
 
-    ```
+1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
+2. Check that kind `ThirdPartyResource` exists in the response.
+
+> Example ThirdPartyResource response
+
+```yaml
+{
+  "kind": "APIResourceList",
+  "groupVersion": "extensions/v1beta1",
+  "resources": [
+    ...
     {
-      "kind": "APIResourceList",
-      "groupVersion": "extensions/v1beta1",
-      "resources": [
-        ...
-        {
-          "name": "thirdpartyresources",
-          "namespaced": false,
-          "kind": "ThirdPartyResource"
-        }
-      ]
+      "name": "thirdpartyresources",
+      "namespaced": false,
+      "kind": "ThirdPartyResource"
     }
-    ```
+  ]
+}
+```
 
 **Example of configuration for ThirdPartyResource in Kubernetes**
 
-  ```yaml
-  metadata:
-    name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
-  apiVersion: extensions/v1beta1
-  kind: ThirdPartyResource
-  description: stores dtabs used by Buoyant's `namerd` service
-  versions:
-    - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
-  ```
----
-*Complete example of `Namerd` configuration with `k8s` storage and exposed 2 services for sync with `Linkerd` and `Namerd API`:*
+Use this configuration to create the ThirdPartyResource if it does not exist.
 
 ```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: namerd-sync
-spec:
-  selector:
-    app: namerd
-  ports:
-  - name: sync
-    port: 4100
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: namerd-api
-spec:
-  selector:
-    app: namerd
-  ports:
-  - name: api
-    port: 4180
----
 metadata:
   name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
 apiVersion: extensions/v1beta1
@@ -104,77 +74,10 @@ kind: ThirdPartyResource
 description: stores dtabs used by Buoyant's `namerd` service
 versions:
   - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: namerd-config
-data:
-  config.yml: |-
-    admin:
-      ip: 127.0.0.1
-      port: 9991
-    storage:
-      kind: io.l5d.k8s
-      experimental: true
-    namers:
-      - kind: io.l5d.k8s
-        experimental: true
-        host: 127.0.0.1
-        port: 8001
-    interfaces:
-      - kind: io.l5d.thriftNameInterpreter
-        ip: 0.0.0.0
-        port: 4100
-      - kind: io.l5d.httpController
-        ip: 0.0.0.0
-        port: 4180
----
-kind: ReplicationController
-apiVersion: v1
-metadata:
-  name: namerd
-spec:
-  replicas: 1
-  selector:
-    app: namerd
-  template:
-    metadata:
-      labels:
-        app: namerd
-    spec:
-      dnsPolicy: ClusterFirst
-      volumes:
-        - name: namerd-config
-          configMap:
-            name: namerd-config
-      containers:
-        - name: namerd
-          image: buoyantio/namerd:<version> # specify required version or remove to use the latest
-          args:
-            - /io.buoyant/namerd/config/config.yml
-            - -com.twitter.finagle.tracing.debugTrace=true
-            - -log.level=DEBUG
-          imagePullPolicy: Always
-          ports:
-            - name: sync
-              containerPort: 4100
-            - name: api
-              containerPort: 4180
-          volumeMounts:
-            - name: "namerd-config"
-              mountPath: "/io.buoyant/namerd/config"
-              readOnly: true
-        - name: kubectl
-          image: buoyantio/kubectl:<version> # specify required version or remove to use the latest
-          args:
-          - "proxy"
-          - "-p"
-          - "8001"
-          imagePullPolicy: Always
 ```
 
-
+For a complete example configuration for `Namerd` configured with `k8s` storage,
+see the [linkerd-examples](https://github.com/linkerd/linkerd-examples/blob/master/k8s-daemonset/k8s/namerd.yml) repo.
 
 ## ZooKeeper
 
@@ -184,7 +87,6 @@ Stores the dtab in ZooKeeper.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
 pathPrefix | `/dtabs` | The ZooKeeper path under which dtabs should be stored.
 sessionTimeoutMs | `10000` | ZooKeeper session timeout in milliseconds.
@@ -227,7 +129,6 @@ Stores the dtab in Consul KV storage.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because this storage is still considered experimental, you must set this to `true` to use it.
 host | `localhost` | The location of the consul API.
 port | `8500` | The port used to connect to the consul API.
 pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.

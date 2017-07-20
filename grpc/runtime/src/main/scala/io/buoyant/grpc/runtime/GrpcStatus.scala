@@ -73,9 +73,9 @@ object GrpcStatus {
   }
 
   def fromTrailers(tlrs: h2.Frame.Trailers): GrpcStatus = {
-    val msg = tlrs.get("grpc-message").headOption.getOrElse("")
+    val msg = tlrs.get("grpc-message").getOrElse("")
     tlrs.get("grpc-status") match {
-      case Seq(code, _*) =>
+      case Some(code) =>
         try GrpcStatus(code.toInt, msg)
         catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
       case _ => GrpcStatus.Unknown(msg)

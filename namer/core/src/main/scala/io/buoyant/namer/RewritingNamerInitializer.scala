@@ -2,8 +2,8 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Namer, Path}
+import com.twitter.finagle.buoyant.PathMatcher
 import com.twitter.finagle.Stack.Params
-import io.buoyant.namer.util.PathMatcher
 
 class RewritingNamerInitializer extends NamerInitializer {
   override val configId = "io.l5d.rewrite"

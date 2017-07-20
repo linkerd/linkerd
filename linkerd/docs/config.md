@@ -45,7 +45,7 @@ telemetry:
 
 Welcome to the Configuration Reference for linkerd!
 
-linkerd's configuration is controlled via config file, which must be provided
+linkerd's configuration is controlled via a configuration file, which must be provided
 as a command-line argument. It may be a local file path or `-` to
 indicate that the configuration should be read from the standard input.
 For convenience, the release package includes a default `linkerd.yaml` file in
@@ -70,6 +70,9 @@ Key | Required | Description
 admin:
   ip: 127.0.0.1
   port: 9990
+  tls:
+    certPath: /foo/cert.pem
+    keyPath: /foo/key.pem
 ```
 
 linkerd supports an administrative interface, both as a web ui and a collection
@@ -80,6 +83,8 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | `0.0.0.0` | IP for the admin interface.
 port | `9990` | Port for the admin interface.
+httpIdentifierPort | none | Port for the http identifier debug endpoint.
+tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 
 #### Administrative endpoints
 
@@ -125,6 +130,12 @@ Endpoint | Description
 
 Note that in addition to a default set of admin endpoints, linkerd plugins may
 dynamically add their own endpoints.
+
+HTTP Identifier Endpoints (running on `httpIdentifierPort`):
+
+Endpoint | Description
+-------- | -----------
+`/` | identifies the request and returns a json map of identified results
 
 This administrative interface was originally based on
 [TwitterServer](https://twitter.github.io/twitter-server), more information may
@@ -198,8 +209,8 @@ usage:
 
 In order to make improvements and prioritize features, we'd like to gain a
 broader picture of how users run linkerd. Linkerd gathers anonymized usage data,
-and sends to buoyant once an hour.  This behavior can be configured or disabled
-in the usage config.
+and sends it to Buoyant once an hour.  This behavior can be configured or
+disabled in the usage config.
 
 The kind of data captured is as follows:
 

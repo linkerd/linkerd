@@ -1,20 +1,24 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.http.{param => hparam}
+import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.filter.DtabStatsFilter
+import com.twitter.finagle.http.filter.StatsFilter
+import com.twitter.finagle.http.{Request, Response, param => hparam}
+import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
-import com.twitter.finagle.{Path, Stack}
+import com.twitter.finagle.stack.nilStack
+import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
-import io.buoyant.router.{Http, RoutingFactory}
+import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.http.AddForwardedHeader
 import scala.collection.JavaConverters._
@@ -36,8 +40,12 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
+      .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
+      // ensure the client-stack framing filter is placed below the stats filter
+      // so that any malframed responses it fails are counted as errors
+      .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
 
     Http.router
       .withPathStack(pathStack)
@@ -64,6 +72,9 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      // ensure the server-stack framing filter is placed below the stats filter
+      // so that any malframed requests it fails are counted as errors
+      .insertAfter(StatsFilter.role, FramingFilter.serverModule)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
 
     Http.server.withStack(stk)
@@ -83,15 +94,70 @@ class HttpInitializer extends ProtocolInitializer.Simple {
 
 object HttpInitializer extends HttpInitializer
 
-case class HttpClientConfig(
-  engine: Option[HttpEngine]
-) extends ClientConfig {
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[HttpDefaultClient]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[HttpDefaultClient], name = "io.l5d.global"),
+  new JsonSubTypes.Type(value = classOf[HttpStaticClient], name = "io.l5d.static")
+))
+abstract class HttpClient extends Client
+
+class HttpDefaultClient extends HttpClient with DefaultClient with HttpClientConfig
+
+class HttpStaticClient(val configs: Seq[HttpPrefixConfig]) extends HttpClient with StaticClient
+
+class HttpPrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with HttpClientConfig
+
+trait HttpClientConfig extends ClientConfig {
+
+  var engine: Option[HttpEngine] = None
 
   @JsonIgnore
-  override def clientParams = engine match {
-    case Some(engine) => engine.mk(super.clientParams)
-    case None => super.clientParams
+  override def params(vars: Map[String, String]) = engine match {
+    case Some(engine) => engine.mk(super.params(vars))
+    case None => super.params(vars)
   }
+}
+
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.EXISTING_PROPERTY,
+  property = "kind",
+  visible = true,
+  defaultImpl = classOf[HttpDefaultSvc]
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[HttpDefaultSvc], name = "io.l5d.global"),
+  new JsonSubTypes.Type(value = classOf[HttpStaticSvc], name = "io.l5d.static")
+))
+abstract class HttpSvc extends Svc
+
+class HttpDefaultSvc extends HttpSvc with DefaultSvc with HttpSvcConfig
+
+class HttpStaticSvc(val configs: Seq[HttpSvcPrefixConfig]) extends HttpSvc with StaticSvc
+
+class HttpSvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with HttpSvcConfig
+
+trait HttpSvcConfig extends SvcConfig {
+
+  @JsonIgnore
+  override def baseResponseClassifier = ClassifiedRetries.orElse(
+    ResponseClassifiers.NonRetryableServerFailures,
+    super.baseResponseClassifier
+  )
+
+  @JsonIgnore
+  override def responseClassifier =
+    super.responseClassifier.map { classifier =>
+      ResponseClassifiers.NonRetryableChunked(
+        ResponseClassifiers.HeaderRetryable(classifier)
+      )
+    }
 }
 
 case class HttpServerConfig(
@@ -126,6 +192,7 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
 case class HttpConfig(
   httpAccessLog: Option[String],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
+  loggers: Option[Seq[HttpLoggerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -135,19 +202,31 @@ case class HttpConfig(
   compressionLevel: Option[Int]
 ) extends RouterConfig {
 
-  var client: Option[HttpClientConfig] = None
+  var client: Option[HttpClient] = None
   var servers: Seq[HttpServerConfig] = Nil
-
-  @JsonIgnore
-  override def baseResponseClassifier =
-    ResponseClassifiers.NonRetryableServerFailures orElse super.baseResponseClassifier
-
-  @JsonIgnore
-  override def responseClassifier =
-    ResponseClassifiers.NonRetryableChunked(super.responseClassifier)
+  var service: Option[HttpSvc] = None
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer
+
+  @JsonIgnore
+  override val defaultResponseClassifier = ResponseClassifiers.NonRetryableChunked(
+    ResponseClassifiers.HeaderRetryable(
+      ClassifiedRetries.orElse(
+        ResponseClassifiers.NonRetryableServerFailures,
+        ClassifiedRetries.Default
+      )
+    )
+  )
+
+  @JsonIgnore
+  private[this] val loggerParam = loggers.map { configs =>
+    val loggerStack =
+      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
+        config.module.toStack(next)
+      }
+    HttpLoggerConfig.param.Logger(loggerStack)
+  }
 
   @JsonIgnore
   private[this] val combinedIdentifier = identifier.map { configs =>
@@ -155,10 +234,10 @@ case class HttpConfig(
       RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
     }
   }
-
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
+    .maybeWith(loggerParam)
     .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))

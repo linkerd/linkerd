@@ -35,6 +35,10 @@ body {
   border-left: 1px solid #D84A4A;
 }
 
+.neutral-metric-container {
+  border-left: 1px solid #FFFFFF;
+}
+
 .success-metric {
   color: #4AD8AC;
 }
@@ -149,7 +153,6 @@ nav.navbar {
 
 .dashboard-container {
   margin: 0 27px 0;
-  border-bottom: 2px solid grey;
 }
 
 .proc-info {
@@ -157,6 +160,7 @@ nav.navbar {
   font-size: 13px;
   line-height: 16px;
   margin: 10px 27px 0;
+  border-top: 2px solid grey;
 }
 
 .router:not(:last-child) {
@@ -210,7 +214,11 @@ nav.navbar {
 */
 
 .router-servers {
-  padding-bottom: 30px;
+  padding: 30px 0;
+}
+
+.router-server {
+  margin-top: 10px;
 }
 
 .server-metric-container, .server-success-chart {
@@ -389,4 +397,38 @@ a.router-list-item:last-of-type:after {
 }
 .namerd-metrics-container .metric-container:not(:first-child) {
   margin-left: 30px;
+}
+
+/*
+* Service client view
+*/
+
+.service-dashboard-container .router {
+  padding: 15px 0;
+}
+
+.service-dashboard-container .svc-subsection {
+  margin-top: 15px;
+}
+
+.service-subsection-header {
+  color: #878787;
+  font-size: 14px;
+}
+
+.service-client-metrics {
+  margin: 10px 0 0 30px;
+}
+
+.service-client-metrics .metric-large {
+  margin-bottom: 10px;
+}
+.service-client-metrics .client-metrics div {
+  padding: 12px 0 2px 0;
+}
+
+.service-client-metrics .trail-in {
+  text-align: center;
+  margin-left: 10px;
+  border-left: 1px solid white;
 }

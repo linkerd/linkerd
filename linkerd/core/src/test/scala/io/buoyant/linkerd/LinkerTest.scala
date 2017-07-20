@@ -216,7 +216,7 @@ class LinkerTest extends FunSuite with Exceptions {
     val param.Stats(stats) = linker.routers.head.params[param.Stats]
     stats.counter("rad").incr()
     treceivers.foreach { r =>
-      assert(r.counters == Map(Seq("rt", "rad") -> 1))
+      assert(r.counters == Map(Seq("rt", "plain", "rad") -> 1))
     }
 
     val param.Tracer(tracer) = linker.routers.head.params[param.Tracer]

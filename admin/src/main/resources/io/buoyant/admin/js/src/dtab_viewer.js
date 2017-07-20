@@ -5,14 +5,22 @@ define(['jQuery'], function($) {
     this.dtab = initialDtab;
     this.template = dentryTemplate;
     this.seenSoFar = 0;
+    this.baseDtabEdited = false;
 
     this.render();
     window.addEventListener('resize', this.render.bind(this), false);
 
-    $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
+    this.$saveWarning = $(".save-warning");
+    this.$textArea = $("#dtab-input");
+    this.$goBtn = $(".go");
+    this.$pathInput = $('#path-input');
+    this.$delegationResult = $(".result");
 
-    $('#save-dtab-btn').click(function(_e){
-      var text = $("#dtab-input").val().replace(/\s+/g, '');
+    $('#edit-dtab-btn').click(this._toggleEdit.bind(this));
+    this.$saveWarning.hide();
+
+    $('#save-dtab-btn').click(function(){
+      var text = this.$textArea.val().replace(/\s+/g, '');
       var dentries = text.split(";");
       if (dentries[dentries.length - 1] === "") {
         dentries = dentries.slice(0, -1);
@@ -21,12 +29,26 @@ define(['jQuery'], function($) {
         var tuple = e.split("=>");
         return { prefix: tuple[0], dst: tuple[1] };
       });
+      this.baseDtabEdited = true;
       this.render();
       this._toggleEdit();
+      this._rerunDelegation();
+    }.bind(this));
+
+    $('#reset-dtab-link').click(function() {
+      $('.confirm-modal').modal();
+    });
+
+    $('.confirm-modal .confirm').click(function() {
+      this.dtab = initialDtab;
+      this.baseDtabEdited = false;
+      $("#reset-dtab-link").addClass("hide disabled");
+      this.render();
+      this._rerunDelegation();
     }.bind(this));
 
     //make the input bigger when you hit enter
-    $("#dtab-input").on('paste input', function () {
+    this.$textArea.on('paste input', function () {
       if ($(this).outerHeight() > this.scrollHeight){
         $(this).height(1);
       }
@@ -38,16 +60,31 @@ define(['jQuery'], function($) {
     });
   }
 
+  DtabViewer.prototype._rerunDelegation = function() {
+    if (this.$pathInput.val() !== "") {
+      this.$goBtn.click();
+    } else {
+      this.$delegationResult.empty();
+    }
+  }
+
   DtabViewer.prototype._toggleEdit = function() {
     $("#dtab-base, #dtab-edit").toggleClass("hide");
 
     if($('#edit-dtab-btn').hasClass("active")) {
       $('#edit-dtab-btn').removeClass("active").text("Edit");
       $("#save-dtab-btn").addClass("hide disabled");
+      $("#reset-dtab-link").addClass("hide disabled");
+      if (this.baseDtabEdited) { // don't show unless edits have actually been made
+        $("#reset-dtab-link").removeClass("hide disabled");
+      }
+      this.$saveWarning.hide();
       this._renderDtabInput();
     } else {
       $('#edit-dtab-btn').addClass("active").text("Cancel");
       $("#save-dtab-btn").removeClass("hide");
+      this.$saveWarning.show();
+      this._resizeDtabTextArea();
     }
   };
 
@@ -69,6 +106,10 @@ define(['jQuery'], function($) {
     } else {
       $prefix.width(halfPageWidth);
     }
+  }
+
+  DtabViewer.prototype._resizeDtabTextArea = function() {
+    this.$textArea.height(this.$textArea[0].scrollHeight);
   }
 
   DtabViewer.prototype.render = function() {

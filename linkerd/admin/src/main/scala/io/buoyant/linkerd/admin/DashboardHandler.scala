@@ -15,6 +15,7 @@ private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Servic
         case Some(router) => adminHandler.mkResponse(dashboardHtml(router))
         case None => adminHandler.mkResponse(dashboardHtml())
       }
+    case "/services" => adminHandler.mkResponse(dashboardHtml())
     case _ => Future.value(Response(Status.NotFound))
   }
 
@@ -26,7 +27,8 @@ private[admin] class DashboardHandler(adminHandler: AdminHandler) extends Servic
           data-linkerd-version="${build.version}"
           data-router-name="${router}"
           style="visibility:hidden"></div>
-        <div class="dashboard-container"></div>
+        <div class="client-dashboard-container dashboard-container"></div>
+        <div class="service-dashboard-container dashboard-container"></div>
         <div class="row proc-info">
         </div>
       """,

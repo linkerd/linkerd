@@ -1,0 +1,136 @@
+
+version: 2
+jobs:
+  build:
+    docker:
+      # openjdk provides Scala dependencides. We may want to consider rolling
+      # our own image to also include JavaScript dependencies. Would speed up CI
+      # at the cost of maintaining a Docker image.
+      - image: openjdk:8
+        environment:
+          CI_TERRIBLENESS: 30.seconds
+    # Run two containers, $CIRCLE_NODE_TOTAL = 2, $CIRCLE_NODE_INDEX = [0|1]
+    parallelism: 2
+    working_directory: ~/linkerd
+    # All run steps execute in both containers unless otherwise specified.
+    # Deploy steps execute on container 0.
+    steps:
+      # Check out linkerd source code into ~/linkerd.
+      - checkout
+
+      # This allows us to run docker commands Since we're already in a docker
+      # container, this step sets up a remote docker environment for us.
+      - setup_remote_docker
+
+      # cat the entire contents of the project/ directory, to be used in cache
+      # keys.
+      - run:
+          name: Generate cache seeds
+          command: |
+            set -x
+            find ~/linkerd/project ~/linkerd/admin/src/main/resources/io/buoyant/admin/package.json -type f -exec cat {} \; > /tmp/project-seed.txt
+
+      # Restore build dependencies and downloaded files from the save_cache
+      # step. We use the contents of the project/ directory as a proxy for Scala
+      # dependency changes. We use package.json as a proxy for JavaScript
+      # dependency changes. All of these files are cat'd together in
+      # project-seed.txt.
+      - restore_cache:
+          key: linkerd-{{ checksum "/tmp/project-seed.txt" }}
+
+      # Install Docker client to enable running commands on the remote Docker,
+      # set up above.
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            if [ ! -f docker-17.03.0-ce.tgz ]; then
+              curl -sLO https://get.docker.com/builds/Linux/x86_64/docker-17.03.0-ce.tgz
+            fi
+            tar -xz -C /tmp -f docker-17.03.0-ce.tgz
+            mv /tmp/docker/* /usr/bin
+
+      # Download and install Node.js. Skip download if already in cache.
+      - run:
+          name: Install Node.js
+          command: |
+            set -x
+            if [ ! -f node-v6.10.2-linux-x64.tar.xz ]; then
+              curl -sLO https://nodejs.org/dist/v6.10.2/node-v6.10.2-linux-x64.tar.xz
+            fi
+            tar -xf node-v6.10.2-linux-x64.tar.xz
+            cp -a node-v6.10.2-linux-x64/* /usr/
+
+      # Run ./sbt update, optionally run ./ci/twitter-develop.sh if
+      # $TWITTER_DEVELOP is set. Dependencies may already be in cache.
+      - run:
+          name: Install sbt dependencies
+          command: |
+            sh -x ci/update.sh
+
+      # Download and install npm dependencies. They may already be in cache.
+      - run:
+          name: Install Node.js and npm dependencies
+          command: |
+            set -x
+            cd admin/src/main/resources/io/buoyant/admin
+            npm install
+
+      # Run npm linting and tests on container 0 only.
+      - run:
+          name: Run npm tests
+          command: |
+            set -x
+            if [ "$CIRCLE_NODE_INDEX" == "0" ]; then
+              cd admin/src/main/resources/io/buoyant/admin
+              npm run eslint
+              npm test
+            fi
+
+      # Run unit and e2e tests in parallel. ci/test.sh will execute unit tests
+      # on container 0 and e2e tests on container 1.
+      - run:
+          name: Run unit and e2e tests
+          command: |
+            sh -x ci/test.sh
+
+      # Save downloaded files and build dependencies, keyed off of files most
+      # relevant to dependency changes.
+      - save_cache:
+          key: linkerd-{{ checksum "/tmp/project-seed.txt" }}
+          paths:
+            - "docker-17.03.0-ce.tgz"
+            - "node-v6.10.2-linux-x64.tar.xz"
+            - "~/.gitshas"
+            - "~/.ivy2"
+            - "~/.sbt"
+            - ".protoc"
+            - ".sbt-launch.jar"
+            - "admin/src/main/resources/io/buoyant/admin/node_modules"
+
+      - deploy:
+          name: Publish coverage
+          command: |
+            set -x
+            ci/coverage-publish.sh || true # We don't want to block the build on a failure to publish coverage results
+
+      # If a nightly build on master branch, publish "nightly" containers to
+      # Docker hub.
+      - deploy:
+          name: Publish Docker
+          command: |
+            if [ "$CIRCLE_BRANCH" == "master" ] && [ "$NIGHTLY" == "1" ]; then
+              ci/docker-publish.sh nightly
+            fi
+
+      # Gather test reports for store_test_results step.
+      - deploy:
+          name: Gather test reports
+          command: |
+            set -x
+            mkdir -p "/tmp/test-results/junit"
+            find . -type f -regex ".*/target/test-reports/.*xml" -exec cp {} "/tmp/test-results/junit/" \;
+
+      # Store test results from previous step.
+      - store_test_results:
+          path: /tmp/test-results

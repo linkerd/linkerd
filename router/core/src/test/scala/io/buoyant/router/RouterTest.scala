@@ -2,16 +2,13 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
-import com.twitter.finagle.client.{StackClient, StdStackClient}
+import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.service.{Backoff, Retries, RetryBudget}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.stack.{Endpoint, nilStack}
-import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Activity, Duration, Future, MockTimer, Return, Throw, Time, Try, Var}
+import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
 import io.buoyant.test.FunSuite
-import java.util.concurrent.atomic.AtomicInteger
 
 // This is a sort of end-to-end test, but is intended to improve test
 // coverage of Router.scala
@@ -59,48 +56,6 @@ class RouterTest extends FunSuite {
         new IdentifiedRequest[String](Dst.Path(pfx ++ Path.Utf8(in), baseDtab(), Dtab.local), in)
       )
     }
-  }
-
-  val depositModule: Stackable[ServiceFactory[String, Int]] =
-    new Stack.Module1[Retries.Budget, ServiceFactory[String, Int]] {
-      def role = Stack.Role("Desposit")
-      def description = "deposits into the retry budget"
-      def make(_budget: Retries.Budget, next: ServiceFactory[String, Int]) = {
-        val Retries.Budget(budget, _) = _budget
-        val filter = Filter.mk[String, Int, String, Int] { (s, svc) =>
-          budget.deposit()
-          svc(s)
-        }
-        filter andThen next
-      }
-    }
-
-  test("path retry budget deposits, client retry budget does not") {
-    val deposits = new AtomicInteger(0)
-    val budget = new RetryBudget {
-      def deposit(): Unit = {
-        val _ = deposits.incrementAndGet()
-      }
-      def tryWithdraw() = true
-      def balance = 1L
-    }
-    val namer = new NameInterpreter {
-      def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
-        Activity.value(NameTree.Leaf(Name.Bound(Var.value(Addr.Pending), Path.Utf8("svc"))))
-    }
-
-    val factory = TestRouter()
-      .configured(Retries.Budget(budget, Backoff.const(Duration.Zero)))
-      .configured(DstBindingFactory.Namer(namer))
-      .withPathStack(depositModule +: nilStack)
-      .withBoundStack(depositModule +: nilStack)
-      .withClientStack(depositModule +: nilStack)
-      .factory()
-
-    val svc = await(factory())
-    assert(deposits.get() == 0)
-    assert(await(svc("12")) == 12)
-    assert(deposits.get() == 1)
   }
 
   test("client labeling") {

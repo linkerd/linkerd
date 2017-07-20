@@ -41,7 +41,7 @@ class FlowControlEndToEndTest
 
   val WindowSize = 65535
 
-  def testFlowControl(reader: Stream, writer: Stream.Writer) = {
+  def testFlowControl(reader: Stream, writer: Stream.Writer): Unit = {
     // The first frame is too large to fit in a window. It should not
     // be released until all of the data has been flushed.  This
     // cannot happen until the reader reads and releases some of the
@@ -107,5 +107,6 @@ class FlowControlEndToEndTest
       }
     }
     assert(read == 3 * WindowSize)
+    ()
   }
 }

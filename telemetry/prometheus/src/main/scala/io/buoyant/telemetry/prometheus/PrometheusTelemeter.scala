@@ -1,7 +1,7 @@
 package io.buoyant.telemetry.prometheus
 
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{MediaType, Request}
+import com.twitter.finagle.http.{MediaType, Response, Request}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, Future}
@@ -17,9 +17,10 @@ import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
 class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithHandlers {
 
   private[prometheus] val handler = Service.mk { request: Request =>
-    val response = request.response
+    val response = Response()
+    response.version = request.version
     response.mediaType = MediaType.Txt
-    val sb = new StringBuilder()
+    val sb = new StringBuilder(Telemeter.DefaultBufferSize)
     writeMetrics(metrics, sb)
     response.contentString = sb.toString
     Future.value(response)
@@ -33,21 +34,29 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
   def tracer = NullTracer
   def run(): Closable with Awaitable[Unit] = Telemeter.nopRun
 
-  private[this] val disallowedChars = "[^a-zA-Z0-9:]".r
-  private[this] def escapeKey(key: String) = disallowedChars.replaceAllIn(key, "_")
+  private[this] val metricNameDisallowedChars = "[^a-zA-Z0-9:]".r
+  private[this] def escapeKey(key: String) = metricNameDisallowedChars.replaceAllIn(key, "_")
+
+  private[this] val labelKeyDisallowedChars = "[^a-zA-Z0-9_]".r
+  private[this] def escapeLabelKey(key: String) = labelKeyDisallowedChars.replaceAllIn(key, "_")
+
+  // https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
+  private[this] val labelValDisallowedChars = """(\\|\"|\n)""".r
+  private[this] def escapeLabelVal(key: String) = labelValDisallowedChars.replaceAllIn(key, """\\\\""")
 
   private[this] def formatLabels(labels: Seq[(String, String)]): String =
     if (labels.nonEmpty) {
       labels.map {
         case (k, v) =>
-          s"""$k="$v""""
+          s"""${escapeLabelKey(k)}="${escapeLabelVal(v)}""""
       }.mkString("{", ", ", "}")
     } else {
       ""
     }
 
+  private[this] val first: ((String, String)) => String = _._1
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
-    labels.exists(_._1 == name)
+    labels.toIterator.map(first).contains(name)
 
   private[this] def writeMetrics(
     tree: MetricsTree,
@@ -60,14 +69,14 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
     val (prefix1, labels1) = prefix0 match {
       case Seq("rt", router) if !labelExists(labels0, "rt") =>
         (Seq("rt"), labels0 :+ ("rt" -> router))
-      case Seq("rt", "dst", "path", path) if !labelExists(labels0, "dst_path") =>
-        (Seq("rt", "dst_path"), labels0 :+ ("dst_path" -> path))
-      case Seq("rt", "dst", "id", id) if !labelExists(labels0, "dst_id") =>
-        (Seq("rt", "dst_id"), labels0 :+ ("dst_id" -> id))
-      case Seq("rt", "dst_id", "path", path) if !labelExists(labels0, "dst_path") =>
-        (Seq("rt", "dst_id", "dst_path"), labels0 :+ ("dst_path" -> path))
-      case Seq("rt", "srv", srv) if !labelExists(labels0, "srv") =>
-        (Seq("rt", "srv"), labels0 :+ ("srv" -> srv))
+      case Seq("rt", "service", path) if !labelExists(labels0, "service") =>
+        (Seq("rt", "service"), labels0 :+ ("service" -> path))
+      case Seq("rt", "client", id) if !labelExists(labels0, "client") =>
+        (Seq("rt", "client"), labels0 :+ ("client" -> id))
+      case Seq("rt", "client", "service", path) if !labelExists(labels0, "service") =>
+        (Seq("rt", "client", "service"), labels0 :+ ("service" -> path))
+      case Seq("rt", "server", srv) if !labelExists(labels0, "server") =>
+        (Seq("rt", "server"), labels0 :+ ("server" -> srv))
       case _ => (prefix0, labels0)
     }
 

@@ -2,8 +2,8 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.service.exp.FailureAccrualPolicy
-import com.twitter.finagle.service.{Backoff, FailureAccrualFactory}
+import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
+import com.twitter.finagle.service.Backoff
 import com.twitter.util.Duration
 import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
 
@@ -16,7 +16,7 @@ abstract class FailureAccrualConfig extends PolymorphicConfig {
   var backoff: Option[BackoffConfig] = None
 
   @JsonIgnore
-  val backoffOrDefault =
+  def backoffOrDefault: Stream[Duration] =
     backoff.map(_.mk).getOrElse(FailureAccrualConfig.defaultBackoff)
 }
 
@@ -31,6 +31,8 @@ object FailureAccrualConfig {
   private val defaultPolicy =
     () => FailureAccrualPolicy.consecutiveFailures(defaultConsecutiveFailures, defaultBackoff)
 
-  def param(config: Option[FailureAccrualConfig]): FailureAccrualFactory.Param =
-    FailureAccrualFactory.Param(config.map(_.policy).getOrElse(defaultPolicy))
+  def default: FailureAccrualFactory.Param = FailureAccrualFactory.Param(defaultPolicy)
+
+  def param(config: FailureAccrualConfig): FailureAccrualFactory.Param =
+    FailureAccrualFactory.Param(config.policy)
 }

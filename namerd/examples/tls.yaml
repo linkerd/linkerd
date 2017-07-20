@@ -1,5 +1,16 @@
+# this namerd config is intended to work in conjunction with linkerd/namerd-tls.yaml
+# it servers 4 endpoints:
+# 1. thrift/4100
+# 2. http/4180
+# 3. http/4181 (requireClientAuth: true)
+# 4. mesh/4321 (requireClientAuth: true)
+
 admin:
   port: 9991
+  tls:
+    certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
+    keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
+    caCertPath: finagle/h2/src/e2e/resources/cacert.pem
 storage:
   kind: io.l5d.inMemory
   namespaces:
@@ -14,3 +25,19 @@ interfaces:
     certPath: namerd/examples/certs/namerd-cert.pem
     keyPath: namerd/examples/certs/namerd-key.pem
 - kind: io.l5d.httpController
+  tls:
+    certPath: namerd/examples/certs/namerd-cert.pem
+    keyPath: namerd/examples/certs/namerd-key.pem
+- kind: io.l5d.httpController
+  port: 4181
+  tls:
+    certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
+    keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
+    caCertPath: finagle/h2/src/e2e/resources/cacert.pem
+    requireClientAuth: true
+- kind: io.l5d.mesh
+  tls:
+    certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
+    keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
+    caCertPath: finagle/h2/src/e2e/resources/cacert.pem
+    requireClientAuth: true

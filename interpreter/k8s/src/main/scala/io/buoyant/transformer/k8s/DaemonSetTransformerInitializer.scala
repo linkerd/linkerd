@@ -4,10 +4,10 @@ package k8s
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.{NameTree, Path}
+import com.twitter.finagle.{NameTree, Path, param}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1.Api
-import io.buoyant.k8s.{ClientConfig, EndpointsNamer}
+import io.buoyant.k8s.{ClientConfig, EndpointsNamer, MultiNsNamer}
 import io.buoyant.namer.{Metadata, NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.InetAddress
 
@@ -41,10 +41,10 @@ case class DaemonSetTransformerConfig(
   private[this] val netmask = InetAddress.getByName("255.255.255.0")
 
   @JsonIgnore
-  override def mk(): NameTreeTransformer = {
-    val client = mkClient(Params.empty).configured(Label("daemonsetTransformer"))
+  override def mk(params: Params): NameTreeTransformer = {
+    val client = mkClient(params).configured(param.Label("client"))
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
-    val namer = new EndpointsNamer(Path.empty, None, mkNs)
+    val namer = new MultiNsNamer(Path.empty, None, mkNs)
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     if (hostNetwork.getOrElse(false))
       new MetadataGatewayTransformer(prefix, daemonSet, Metadata.nodeName)

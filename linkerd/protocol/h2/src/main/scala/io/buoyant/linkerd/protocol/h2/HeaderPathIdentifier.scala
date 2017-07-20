@@ -4,8 +4,8 @@ package h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
-import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers => H2Headers, LinkerdHeaders, Request}
+import com.twitter.finagle.buoyant.{Dst, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.h2.{Request, Headers => H2Headers}
 import com.twitter.util.Future
 import io.buoyant.router.H2
 import io.buoyant.router.RoutingFactory._
@@ -45,7 +45,7 @@ class HeaderPathIdentifier(
     }
 
   private[this] def reqPath(req: Request): Path =
-    req.headers.get(header).lastOption match {
+    req.headers.get(header) match {
       case Some(UriPath(p)) if p.nonEmpty => Path.read(p)
       case _ => Path.empty
     }
@@ -109,7 +109,7 @@ class HeaderPathIdentifierConfig extends H2IdentifierConfig {
 
 class HeaderPathIdentifierInitializer extends IdentifierInitializer {
   val configClass = classOf[HeaderPathIdentifierConfig]
-  override val configId = "io.l5d.headerPath"
+  override val configId = "io.l5d.header.path"
 }
 
 object HeaderPathIdentifierInitializer extends HeaderPathIdentifierInitializer

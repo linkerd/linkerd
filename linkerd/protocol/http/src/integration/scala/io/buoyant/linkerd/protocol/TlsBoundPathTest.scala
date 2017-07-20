@@ -4,7 +4,6 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Status, Request, Response}
 import com.twitter.finagle.{Failure, Service}
-import io.buoyant.linkerd.clientTls.BoundPathInitializer
 import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.namer.fs.FsInitializer
 import io.buoyant.test.Awaits
@@ -48,14 +47,15 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |  servers:
              |  - port: 0
              |  client:
-             |    engine:
-             |      kind: netty4
-             |    tls:
-             |      kind: io.l5d.boundPath
-             |      caCertPath: ${certs.caCert.getPath}
-             |      names:
-             |      - prefix: "/#/io.l5d.fs/{host}"
-             |        commonNamePattern: "{host}.buoyant.io"
+             |    kind: io.l5d.static
+             |    configs:
+             |    - prefix: "/#/io.l5d.fs/{host}"
+             |      engine:
+             |        kind: netty4
+             |      tls:
+             |        commonName: "{host}.buoyant.io"
+             |        trustCerts:
+             |        - ${certs.caCert.getPath}
              |""".
               stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -72,6 +72,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
+            ()
           }
         }
       } finally {
@@ -109,15 +110,15 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |  servers:
             |  - port: 0
             |  client:
-            |    engine:
-            |      kind: netty4
-            |    tls:
-            |      kind: io.l5d.boundPath
-            |      caCertPath: ${certs.caCert.getPath}
-            |      strict: false
-            |      names:
-            |      - prefix: "/#/io.l5d.fs/bill"
-            |        commonNamePattern: "bill.buoyant.io"
+            |    kind: io.l5d.static
+            |    configs:
+            |    - prefix: "/#/io.l5d.fs/bill"
+            |      engine:
+            |        kind: netty4
+            |      tls:
+            |        commonName: "bill.buoyant.io"
+            |        trustCerts:
+            |        - ${certs.caCert.getPath}
             |""".
             stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -134,6 +135,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
+            ()
           }
         }
       } finally {
@@ -176,16 +178,22 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |  servers:
             |  - port: 0
             |  client:
-            |    engine:
-            |      kind: netty4
-            |    tls:
-            |      kind: io.l5d.boundPath
-            |      caCertPath: ${certs.caCert.getPath}
-            |      names:
-            |      - prefix: "/#/io.l5d.fs/bill"
-            |        commonNamePattern: excellent
-            |      - prefix: "/#/io.l5d.fs/ted"
-            |        commonNamePattern: righteous
+            |    kind: io.l5d.static
+            |    configs:
+            |    - prefix: "/#/io.l5d.fs/bill"
+            |      engine:
+            |        kind: netty4
+            |      tls:
+            |        commonName: excellent
+            |        trustCerts:
+            |        - ${certs.caCert.getPath}
+            |    - prefix: "/#/io.l5d.fs/ted"
+            |      engine:
+            |        kind: netty4
+            |      tls:
+            |        commonName: righteous
+            |        trustCerts:
+            |        - ${certs.caCert.getPath}            
             |""".
             stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -202,7 +210,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               await(client(req))
             }
             assert(tedRsp.contentString == "dude")
-
+            ()
           }
         }
       } finally {
@@ -244,19 +252,21 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |
              |  servers:
              |  - port: 0
-             |  client:
-             |    engine:
-             |      kind: netty4
+             |  service:
              |    retries:
              |      budget:
              |        minRetriesPerSec: 0
              |        percentCanRetry: 0.0
-             |    tls:
-             |      kind: io.l5d.boundPath
-             |      caCertPath: ${certs.caCert.getPath}
-             |      names:
-             |      - prefix: "/#/io.l5d.fs/{host}"
-             |        commonNamePattern: "{host}.buoyant.io"
+             |  client:
+             |    kind: io.l5d.static
+             |    configs:
+             |    - prefix: "/#/io.l5d.fs/{host}"
+             |      engine:
+             |        kind: netty4
+             |      tls:
+             |        commonName: "{host}.buoyant.io"
+             |        trustCerts:
+             |        - ${certs.caCert.getPath}             
              |""".stripMargin
           withLinkerdClient(linkerConfig) { client =>
             val billRsp = {
@@ -270,6 +280,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
               req.host = "ted"
               assert(await(client(req)).status == Status.BadGateway)
             }
+            ()
           }
         }
       } finally {
@@ -295,8 +306,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   private[this] def withLinkerdClient(config: String)(f: Service[Request, Response] => Unit): Unit = {
     val init = Linker.Initializers(
       protocol = Seq(HttpInitializer),
-      namer = Seq(FsInitializer),
-      tlsClient = Seq(BoundPathInitializer)
+      namer = Seq(FsInitializer)
     )
     val linker = init.load(config)
     val router = linker.routers.head.initialize()

@@ -103,7 +103,7 @@ class StreamingNamerClient(
       }
     }
 
-    val state = StreamingNamerClient.asyncStreamToVar(Activity.Pending, mkStream, Closable.make { _ =>
+    val state = StreamingNamerClient.asyncStreamToVar(Activity.Pending, mkStream _, Closable.make { _ =>
       rspF.onSuccess { _.reader.discard() }
       rspF.raise(StreamingNamerClient.Closed)
       Future.Unit
@@ -127,7 +127,7 @@ class StreamingNamerClient(
       }
     }
 
-    StreamingNamerClient.asyncStreamToVar(Addr.Pending, mkStream, Closable.make { _ =>
+    StreamingNamerClient.asyncStreamToVar(Addr.Pending, mkStream _, Closable.make { _ =>
       rspF.onSuccess { _.reader.discard() }
       rspF.raise(StreamingNamerClient.Closed)
       Future.Unit
@@ -164,7 +164,7 @@ class StreamingNamerClient(
       }
     }
 
-    val state = StreamingNamerClient.asyncStreamToVar(Activity.Pending, mkStream, Closable.make { _ =>
+    val state = StreamingNamerClient.asyncStreamToVar(Activity.Pending, mkStream _, Closable.make { _ =>
       rspF.onSuccess { _.reader.discard() }
       rspF.raise(StreamingNamerClient.Closed)
       Future.Unit

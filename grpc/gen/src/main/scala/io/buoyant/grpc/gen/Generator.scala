@@ -1,10 +1,10 @@
 package io.buoyant.grpc.gen
 
 import com.google.protobuf.DescriptorProtos._
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Label._
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type._
 import com.google.protobuf.compiler.PluginProtos.{CodeGeneratorRequest, CodeGeneratorResponse}
-import com.twitter.util.{Future, Return, Throw, Try}
+import com.twitter.util.{Return, Throw, Try}
+import io.buoyant.grpc.gen.ProtoFile.TypeRef
 import java.io.InputStream
 import scala.collection.JavaConverters._
 
@@ -134,8 +134,8 @@ object Generator {
 
   private[this] def genEnum(enum: ProtoFile.EnumType, indent: String): String = {
     val decoders = enum.values.map { v => s"case ${v.number} => ${v.name}" }
-    val encoders = enum.values.map { v => s"case ${v.name} => pbos.writeEnumNoTag(${v.number})" }
-    val sizers = enum.values.map { v => s"case ${v.name} => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
+    val encoders = enum.values.map { v => s"case `${v.name}` => pbos.writeEnumNoTag(${v.number})" }
+    val sizers = enum.values.map { v => s"case `${v.name}` => ${PBOS}.computeEnumSizeNoTag(${v.number})" }
 
     s"""|${indent}object ${enum.name} extends scala.Enumeration {
         |${indent}  val ${enum.values.map(_.name).mkString(", ")} = Value
@@ -184,19 +184,34 @@ object Generator {
     val msgTypeName = upperHead(msgType.name)
     val scope = s"${scope0}.`${msgTypeName}`"
 
+    val mapMessages = msgType.messages.filter(_.isMap)
+
     // First off, let's figure out the list of fields that will be
     // present in the case class. We have to merge oneofs and fields
     // to accomplish this (since we only have one slot to represent
     // all fields in the oneof):
-
     val fieldArgs = msgType.fields.map {
       case f =>
         val name = snakeToLowerCamel(f.name)
-        val typ = genFieldType(f, translateType)
-        val boxed = if (f.isRepeated) s"Seq[${typ}]" else s"Option[${typ}]"
-        val default = if (f.isRepeated) "Nil" else "None"
-        FieldArg(name, typ, boxed, default, Left(f))
+        f.typeRef match {
+          case ProtoFile.TypeRef.Message(msg) if f.isMap =>
+            // find the nested message that represents entries in the map
+            // we expect this message to have "key" and "value" fields
+            mapMessages.collectFirst {
+              case mp if msg.endsWith(mp.name) =>
+                val key = mapEntryType(mp, "key", translateType)
+                val value = mapEntryType(mp, "value", translateType)
+                val typ = s"Map[${key}, ${value}]"
+                FieldArg(name, typ, typ, s"${typ}()", Left(f))
+            }.getOrElse(throw new IllegalArgumentException(s"expected ${name} to have nested map entry message type"))
+          case _ =>
+            val typ = genFieldType(f, translateType)
+            val boxed = if (f.isRepeated) s"Seq[${typ}]" else s"Option[${typ}]"
+            val default = if (f.isRepeated) "Nil" else "None"
+            FieldArg(name, typ, boxed, default, Left(f))
+        }
     }
+
     val oneofArgs = msgType.oneofs.toSeq.map {
       case (_, o) =>
         val name = snakeToLowerCamel(o.name)
@@ -225,6 +240,11 @@ object Generator {
         |${indent}}
         |""".stripMargin
   }
+
+  private[this] def mapEntryType(mp: ProtoFile.MessageType, fieldName: String, translateType: String => String): String =
+    mp.fields.collectFirst {
+      case f if f.name.equals(fieldName) => genFieldType(f, translateType)
+    }.getOrElse("String")
 
   private[this] def genNestedTypes(
     msgType: ProtoFile.MessageType,
@@ -284,13 +304,22 @@ object Generator {
         s"var ${name}Arg: $boxed = $default"
     }
     val varNames = args.map(a => s"${a.name}Arg")
-
     val varDecoders = args.flatMap {
       case FieldArg(name, _, _, _, Left(f)) =>
         val wireType = genWireType(f)
         val reader = genReader(f)
         val readArg =
-          if (f.isRepeated) s"${name}Arg :+ ${reader}"
+          if (f.isMap) {
+            val ref = f.typeRef match {
+              case TypeRef.Message(msg) => translateType(msg)
+              case _ => throw new IllegalArgumentException("expected message")
+            }
+            //convert reader's tuple value into message entries
+            s"""|${name}Arg ++ ${ref}.unapply(${reader}).flatMap {
+                |${indent}    case (Some(a), Some(b)) => Some((a,b))
+                |${indent}    case _ => None
+                |${indent}  }""".stripMargin
+          } else if (f.isRepeated) s"${name}Arg :+ ${reader}"
           else s"Option(${reader})"
 
         s"""|${indent}      case ${f.number} => // ${name}: ${f.typeRef}
@@ -384,7 +413,15 @@ object Generator {
   ): String = {
     val encoders = args.map {
       case FieldArg(name, typ, _, _, Left(f)) if f.isRepeated =>
-        val writer = genWriteKind(f, translateType, "value", s"${indent}    ")
+        val writer =
+          //when iterating over maps, convert tuple value into entry types
+          if (f.isMap) f.typeRef match {
+            case ProtoFile.TypeRef.Message(msg) =>
+              genWriteKind(f, translateType, s"${translateType(msg)}(Some(value._1), Some(value._2))", s"${indent}    ")
+            case _ => throw new IllegalArgumentException("excepted typeRef of type Message")
+          }
+          else genWriteKind(f, translateType, "value", s"${indent}    ")
+
         s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
             |${indent}  while (${name}Iter.hasNext) {
             |${indent}    val value = ${name}Iter.next()
@@ -403,7 +440,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldWriters = o.fields.map { f =>
-          val ftyp = s"${typ}.`${upperHead(f.name)}`"
+          val ftyp = s"${typ}.`${snakeToUpperCamel(f.name)}`"
           val writer = genWriteKind(f, translateType, "value", s"${indent}      ")
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${writer}""".stripMargin
@@ -428,6 +465,19 @@ object Generator {
     indent: String
   ): String = {
     val sizeAdditions = args.map {
+      case FieldArg(name, typ, _, _, Left(f)) if f.isMap =>
+        val sizeOf = f.typeRef match {
+          case ProtoFile.TypeRef.Message(msg) =>
+            genComputeSizeTagged(f, s"${translateType(msg)}(Some(value._1), Some(value._2))", translateType)
+          case _ => ""
+        }
+        s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
+            |${indent}  while (${name}Iter.hasNext) {
+            |${indent}    val value = ${name}Iter.next()
+            |${indent}    val sz = ${sizeOf}
+            |${indent}    size += sz
+            |${indent}  }""".stripMargin
+
       case FieldArg(name, typ, _, _, Left(f)) if f.isRepeated =>
         val sizeOf = genComputeSizeTagged(f, "value", translateType)
         s"""|${indent}  val ${name}Iter = msg.`${name}`.iterator
@@ -448,7 +498,7 @@ object Generator {
 
       case FieldArg(name, typ, _, _, Right(o)) =>
         val fieldSizes = o.fields.map { f =>
-          val ftyp = s"${typ}.${upperHead(f.name)}"
+          val ftyp = s"${typ}.${snakeToUpperCamel(f.name)}"
           val sizeOf = genComputeSizeTagged(f, "value", translateType)
           s"""|${indent}    case Some(${ftyp}(value)) =>
               |${indent}      val sz = ${sizeOf}
@@ -495,8 +545,8 @@ object Generator {
     case TYPE_INT64 => "Int64"
     case TYPE_UINT32 => "UInt32"
     case TYPE_UINT64 => "UInt64"
-    case TYPE_SINT32 => "Sint32"
-    case TYPE_SINT64 => "Sint64"
+    case TYPE_SINT32 => "SInt32"
+    case TYPE_SINT64 => "SInt64"
     case TYPE_FIXED32 => "Fixed32"
     case TYPE_FIXED64 => "Fixed64"
     case TYPE_SFIXED32 => "Sfixed32"
@@ -516,6 +566,11 @@ object Generator {
       val typ = translateType(enum)
       s"""|${indent}pbos.writeTag(${f.number}, ${WIRET}_VARINT)
           |${indent}${typ}.codec.encode(${valueName}, pbos)""".stripMargin
+
+    case ProtoFile.TypeRef.Message(msgt) if f.isMap =>
+      val typ = translateType(msgt)
+      s"""|${indent}pbos.writeTag(${f.number}, ${WIRET}_LENGTH_DELIMITED)
+          |${indent}${typ}.codec.encodeEmbedded(${valueName}, pbos)""".stripMargin
 
     case ProtoFile.TypeRef.Message(msgt) =>
       val typ = translateType(msgt)
@@ -538,6 +593,8 @@ object Generator {
   ): String = f.typeRef match {
     case ProtoFile.TypeRef.Enum(typ) =>
       s"${translateType(typ)}.codec.sizeOf(${name})"
+    case ProtoFile.TypeRef.Message(typ) if f.isMap =>
+      s"${translateType(typ)}.codec.sizeOfEmbedded(${name})"
     case ProtoFile.TypeRef.Message(typ) =>
       s"${translateType(typ)}.codec.sizeOfEmbedded(${name})"
     case ProtoFile.TypeRef.Simple(TYPE_BYTES) =>

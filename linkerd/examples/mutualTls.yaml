@@ -1,0 +1,19 @@
+# A router that receives encrypted traffic with TLS and requires client auth.
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  dtab: |
+    /svc => /#/io.l5d.fs
+  servers:
+  - port: 4140
+    # Expect the incoming connection to be encryped.
+    tls:
+      certPath: /foo/cert.pem
+      keyPath: /foo/key.pem
+      # clients must provide a valid certificate
+      requireClientAuth: true 
+      # the authority used to validate client certificates
+      caCertPath: /foo/cacert.pem 

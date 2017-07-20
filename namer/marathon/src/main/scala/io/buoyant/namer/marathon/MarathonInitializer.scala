@@ -2,16 +2,17 @@ package io.buoyant.namer.marathon
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.param.Label
-import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
-import com.twitter.logging.Logger
-import com.twitter.util.{Return, Throw}
+import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import io.buoyant.marathon.v2.{Api, AppIdNamer}
+
 import scala.util.control.NoStackTrace
+import scala.util.Random
 
 /**
  * Supports namer configurations in the form:
@@ -19,12 +20,12 @@ import scala.util.control.NoStackTrace
  * <pre>
  * namers:
  * - kind:           io.l5d.marathon
- *   experimental:   true
  *   prefix:         /io.l5d.marathon
  *   host:           marathon.mesos
  *   port:           80
  *   uriPrefix:      /marathon
  *   ttlMs:          5000
+ *   jitterMs:       50
  *   useHealthCheck: false
  * </pre>
  */
@@ -59,7 +60,8 @@ case class MarathonSecret(
  *   - https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL
  */
 object MarathonSecret {
-  val EnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
+  val DCOSEnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
+  val basicEnvKey = "MARATHON_HTTP_AUTH_CREDENTIAL"
 
   case class Invalid(secret: MarathonSecret) extends NoStackTrace
 
@@ -71,7 +73,7 @@ object MarathonSecret {
   }
 
   def load(): Option[MarathonSecret] =
-    sys.env.get(EnvKey) match {
+    sys.env.get(DCOSEnvKey) match {
       case None => None
       case Some(json) =>
         Api.readJson[MarathonSecret](Buf.Utf8(json)) match {
@@ -84,6 +86,12 @@ object MarathonSecret {
 object MarathonConfig {
   private val DefaultHost = "marathon.mesos"
   private val DefaultPrefix = Path.read("/io.l5d.marathon")
+
+  // Default TTL (in milliseconds)
+  private val DefaultTtlMs = 5000
+
+  // Default range by which to jitter the TTL (also in milliseconds)
+  private val DefaultJitterMs = 50
 
   private case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
     def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
@@ -100,15 +108,26 @@ case class MarathonConfig(
   dst: Option[String],
   uriPrefix: Option[String],
   ttlMs: Option[Int],
-  useHealthCheck: Option[Boolean]
+  jitterMs: Option[Int],
+  useHealthCheck: Option[Boolean],
+  tls: Option[TlsClientConfig]
 ) extends NamerConfig {
   import MarathonConfig._
 
   @JsonIgnore
-  override val experimentalRequired = true
+  override def defaultPrefix: Path = DefaultPrefix
 
   @JsonIgnore
-  override def defaultPrefix: Path = DefaultPrefix
+  private[marathon] val ttl = ttlMs.getOrElse(DefaultTtlMs)
+
+  @JsonIgnore
+  private[marathon] val jitter = jitterMs.getOrElse(DefaultJitterMs)
+
+  /** @return a random TTL for a poll attempt */
+  @JsonIgnore
+  @inline
+  private[marathon] def nextTtl: Duration =
+    (ttl + (Random.nextDouble() * 2 - 1) * jitter).toInt.millis
 
   /**
    * Construct a namer.
@@ -118,25 +137,30 @@ case class MarathonConfig(
     val port0 = port.map(_.port).getOrElse(80)
     val dst0 = dst.getOrElse(s"/$$/inet/$host0/$port0")
 
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+
     val client = Http.client
-      .withParams(params)
-      .configured(Label("namer" + prefix.show))
+      .withParams(params ++ tlsParams)
+      .withLabel("client")
       .withTracer(NullTracer)
       .filtered(SetHost(host0))
       .newService(dst0)
 
-    val service = MarathonSecret.load() match {
-      case None => client
-      case Some(secret) =>
+    val service = (MarathonSecret.load(), sys.env.get(MarathonSecret.basicEnvKey)) match {
+      case (Some(secret), _) =>
         val auth = MarathonSecret.mkAuthRequest(secret)
         new Authenticator.Authenticated(client, auth)
+      case (None, Some(http_auth_token)) =>
+        val filter = new BasicAuthenticatorFilter(http_auth_token)
+        filter.andThen(client)
+      case (None, None) => client
+
     }
 
     val uriPrefix0 = uriPrefix.getOrElse("")
     val useHealthCheck0 = useHealthCheck.getOrElse(false)
     val api = Api(service, uriPrefix0, useHealthCheck0)
 
-    val ttl = ttlMs.getOrElse(5000).millis
-    new AppIdNamer(api, prefix, ttl)
+    new AppIdNamer(api, prefix, nextTtl)
   }
 }

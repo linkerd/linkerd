@@ -12,7 +12,7 @@ import scala.sys.process.{Process, ProcessLogger}
 
 object Validator extends TwitterServer {
 
-  private[this] implicit val timer = DefaultTimer.twitter
+  private[this] implicit val timer = DefaultTimer
 
   val namerdExec = flag("namerd.exec", "", "Path to namerd executable")
   val linkerdExec = flag("linkerd.exec", "", "Path to linkerd executable")
@@ -298,6 +298,6 @@ object Validator extends TwitterServer {
       }
     }
 
-    try f(kill) finally kill()
+    try f(() => kill()) finally kill()
   }
 }

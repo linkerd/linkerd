@@ -1,7 +1,7 @@
 package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Stack}
 
 class ReplaceTransformerInitializer extends TransformerInitializer {
   val configClass = classOf[ReplaceTransformerConfig]
@@ -14,5 +14,5 @@ case class ReplaceTransformerConfig(path: Path) extends TransformerConfig {
   val defaultPrefix = Path.read("/io.l5d.replace")
 
   @JsonIgnore
-  override def mk(): NameTreeTransformer = new ReplaceTransformer(prefix, path)
+  override def mk(params: Stack.Params): NameTreeTransformer = new ReplaceTransformer(prefix, path)
 }

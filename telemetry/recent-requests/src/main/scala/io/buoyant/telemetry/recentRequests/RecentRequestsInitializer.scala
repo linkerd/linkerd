@@ -1,6 +1,7 @@
 package io.buoyant.telemetry.recentRequests
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.finagle.Stack.Params
 import io.buoyant.telemetry.{Telemeter, TelemeterConfig, TelemeterInitializer}
 
@@ -10,7 +11,10 @@ class RecentRequestsInitializer extends TelemeterInitializer {
   val configClass = classOf[RecentRequestsConfig]
 }
 
-case class RecentRequestsConfig(sampleRate: Option[Double], capacity: Option[Int] = None) extends TelemeterConfig {
+case class RecentRequestsConfig(
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double],
+  capacity: Option[Int] = None
+) extends TelemeterConfig {
   @JsonIgnore
   private[this] val _sampleRate = sampleRate
     .filter(r => r >= 0.0 && r <= 1.0)

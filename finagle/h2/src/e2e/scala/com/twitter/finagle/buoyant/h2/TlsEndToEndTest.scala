@@ -2,7 +2,11 @@ package com.twitter.finagle.buoyant
 package h2
 
 import com.twitter.finagle.{Addr, Address, Name, Path, Service}
-import com.twitter.finagle.transport.{TlsConfig, Transport}
+import com.twitter.finagle.ssl.{KeyCredentials, TrustCredentials}
+import com.twitter.finagle.ssl.client.SslClientConfiguration
+import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.transport.Transport
+import com.twitter.io.TempFile
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import java.io.{File, FileInputStream, InputStream}
@@ -33,7 +37,9 @@ class TlsEndToEndTest extends FunSuite {
       val srvCert = loadPem("linkerd-tls-e2e-cert")
       val srvKey = loadPem("linkerd-tls-e2e-key")
       H2.server
-        .configured(Transport.Tls(TlsConfig.ServerCertAndKey(srvCert.getPath, srvKey.getPath, None, None, None)))
+        .configured(Transport.ServerSsl(Some(SslServerConfiguration(
+          keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey)
+        ))))
         .serve(":*", service)
     }
 
@@ -43,15 +49,14 @@ class TlsEndToEndTest extends FunSuite {
       val id = Path.read(s"/$$/inet/${isa.getAddress.getHostAddress}/${isa.getPort}")
       val srvName = Name.Bound(Var.value(Addr.Bound(addr)), id)
 
-      val caCert = CertificateFactory.getInstance("X.509")
-        .generateCertificate(loadResource("/ca.pem"))
-        .asInstanceOf[X509Certificate]
+      val caCert = loadPem("cacert")
 
-      val security = TlsClientPrep.TransportSecurity.Secure()
-      val trust = TlsClientPrep.Trust.Verified("linkerd-tls-e2e", Seq(caCert))
+      val tls = Transport.ClientSsl(Some(SslClientConfiguration(
+        hostname = Some("linkerd-tls-e2e"),
+        trustCredentials = TrustCredentials.CertCollection(caCert)
+      )))
       H2.client
-        .configured(TlsClientPrep.TransportSecurity(security))
-        .configured(TlsClientPrep.Trust(trust))
+        .configured(tls)
         .newService(srvName, id.show)
     }
 

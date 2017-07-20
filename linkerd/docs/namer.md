@@ -15,7 +15,7 @@ These parameters are available to the namer regardless of kind. Namers may also 
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery-experimental), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), or [`io.l5d.rewrite`](#rewrite).
+kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), or [`io.l5d.rewrite`](#rewrite).
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
@@ -58,7 +58,12 @@ $ cat config/web
 192.0.2.210 8080 * 2.0
 ```
 
-linkerd ships with a simple file-based service discovery mechanism, called the
+<aside class="warning">
+Due to the implmentation of file watches in Java, this namer consumes a high
+amount of CPU and is not suitable for production use.
+</aside>
+
+linkerd ships with a simple file-based service discovery mechanism called the
 *file-based namer*. This system is intended to act as a structured form of
 basic host lists.
 
@@ -318,9 +323,168 @@ port-name | yes | The port name.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
+### K8s Namespaced Configuration
+
+> Example usage of the namespaced namer that routes traffic to services within the current namespace
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: l5d-config
+data:
+  config.yaml: |-
+    namers:
+    - kind: io.l5d.k8s.ns
+      host: localhost
+      port: 8001
+      envVar: MY_POD_NAMESPACE
+
+    routers:
+    - protocol: http
+      dtab: |
+        /svc => /#/io.l5d.k8s.ns/admin;
+      servers:
+      - port: 4140
+        ip: 0.0.0.0
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: l5d
+  name: l5d
+spec:
+  template:
+    metadata:
+      labels:
+        app: l5d
+    spec:
+      volumes:
+      - name: l5d-config
+        configMap:
+          name: "l5d-config"
+      containers:
+      - name: l5d
+        image: buoyantio/linkerd:latest
+        # Use the downward api to populate an environment variable
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        args:
+        - /io.buoyant/linkerd/config/config.yaml
+        ports:
+        - name: http
+          containerPort: 4140
+        - name: admin
+          containerPort: 9990
+        volumeMounts:
+        - name: "l5d-config"
+          mountPath: "/io.buoyant/linkerd/config"
+          readOnly: true
+
+      - name: kubectl
+        image: buoyantio/kubectl:v1.6.2
+        args: ["proxy", "-p", "8001"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: l5d
+spec:
+  selector:
+    app: l5d
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 4140
+  - name: admin
+    port: 9990
+
+```
+
+
+The [Kubernetes](https://k8s.io/) Namespaced namer scopes service discovery to
+the current namespace, as provided by the
+[Kubernetes downward api](https://kubernetes.io/docs/tasks/configure-pod-container/environment-variable-expose-pod-information/#the-downward-api).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.k8s.ns` | Resolves names with `/#/<prefix>`.
+envVar | `POD_NAMESPACE` | Environment variable that contains the namespace name.
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master port.
+labelSelector | none | The key of the label to filter services.
+
+<aside class="notice">
+The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+</aside>
+
+### K8s Namespaced Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<port-name>/<svc-name>[/<label-value>]
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the k8s external namer.
+port-name | yes | The port name.
+svc-name | yes | The name of the service.
+label-value | yes if `labelSelector` is defined | The label value used to filter services.
+
+### Istio Configuration
+
+> Configure an Istio namer
+
+```yaml
+namers:
+- kind: io.l5d.k8s.istio
+  experimental: true
+  host: istio-manager.default.svc.cluster.local
+  port: 8080
+```
+
+> Then reference the namer in the dtab to use it:
+
+```
+dtab: |
+  /svc/reviews => /#/io.l5d.k8s.istio/version:v1/http/reviews;
+```
+
+The [Istio](https://istio.io/) namer uses the Istio-Manager's Service Discovery Service to lookup
+the endpoints for a given namespace, port, service, and list of label selectors.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.k8s.istio` | Resolves names with `/#/<prefix>`.
+experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
+host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
+port | `8080` | The port of the Istio-Manager.
+
+### Istio Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<cluster>/<labels>/<port-name>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the Istio namer.
+port-name | yes | The port name.
+cluster | yes | The fully qualified name of the service.
+labels | yes | A `::` delimited list of `label:value` pairs.  Only endpoints that match all of these label selectors will be returned.
 
 <a name="marathon"></a>
-## Marathon service discovery (experimental)
+## Marathon service discovery
 
 kind: `io.l5d.marathon`
 
@@ -331,7 +495,6 @@ kind: `io.l5d.marathon`
 ```yaml
 namers:
 - kind:           io.l5d.marathon
-  experimental:   true
   prefix:         /io.l5d.marathon
   host:           marathon.mesos
   port:           80
@@ -354,12 +517,12 @@ linkerd provides support for service discovery via
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.marathon` | Resolves names with `/#/<prefix>`.
-experimental | _required_ | Because this namer is still considered experimental, you must set this to `true` to use it.
 host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is available at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
 ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
 useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
+tls | no tls | The Marathon namer will make requests to Marathon/DCOS using TLS if this parameter is provided. This is useful when DC/OS is run in [strict](https://docs.mesosphere.com/latest/security/#security-modes) security mode. It must be a [client TLS](#client-tls) object. Note that the `clientAuth` config value will be unused, as DC/OS does not use mutual TLS.
 
 ### Marathon Path Parameters
 
@@ -376,7 +539,7 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 
 ### Marathon Authentication
 
-> Example environment variable
+> Example DCOS environment variable
 
 ```json
 {
@@ -387,12 +550,20 @@ appId | yes | The app id of a marathon application. This id can be multiple path
 }
 ```
 
-The Marathon namer supports loading authentication data from a
-`DCOS_SERVICE_ACCOUNT_CREDENTIAL` environment variable at boot time.
+> Example basic HTTP authentication variable
+
+```bash
+dXNlcm5hbWU6cGFzc3dvcmQ=
+```
+
+The Marathon namer supports loading authentication data from an environment variable for DCOS private key in the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` variable and standalone Marathon basic HTTP authentication in the `MARATHON_HTTP_AUTH_CREDENTIAL` environment variable. If both are provided the `DCOS_SERVICE_ACCOUNT_CREDENTIAL` takes precedence.
+
+Basic authentication token is base64 encoded and should not include the `Basic` prefix, only in the format `username:password`.
 
 Further reading:
 
-* [Mesosphere Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Mesosphere DCOS Authentication Docs](https://docs.mesosphere.com/1.8/administration/id-and-access-mgt/service-auth/custom-service-auth/)
+* [Marathon basic HTTP Authentication Docs](https://mesosphere.github.io/marathon/docs/ssl-basic-access-authentication.html#enabling-basic-access-authentication)
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>
@@ -465,6 +636,7 @@ kind: `io.l5d.rewrite`
 ```yaml
 namers:
 - kind: io.l5d.rewrite
+  prefix: /rewrite
   pattern: "/{service}/api"
   name: "/srv/{service}"
 ```
@@ -473,10 +645,10 @@ namers:
 
 ```
 dtab: |
-  /svc => /#/io.l5d.rewrite
+  /svc => /#/rewrite
 ```
 
-A namer that completely rewrites a path.  This is useful to do arbitrary
+A namer that completely rewrites a path.  This is useful for doing arbitrary
 reordering of the path segments that is not possible using standard prefix
 replacement.  While this is a general purpose tool for reordering path
 segments, it cannot be used to modify or split individual segments (for
@@ -489,7 +661,7 @@ the value of the matching path segment and may be used in the final name.
 
 Key     | Default Value    | Description
 ------- | ---------------- | -----------
-prefix  | `io.l5d.rewrite` | Resolves names with `/#/<prefix>`.
+prefix  | _required_       | Resolves names with `/#/<prefix>`.
 pattern | _required_       | If the name matches this prefix, replace it with the name configured in the `name` parameter.  Wildcards and variable capture are allowed (see: `io.buoyant.namer.util.PathMatcher`).
 name    | _required_       | The replacement name.  Variables captured in the pattern may be used in this string.
 
@@ -571,8 +743,8 @@ would be rewritten to `/pfx/foo/resource/name`
 ```
 
 Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
-not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-
-is, due to bracket characters).
+not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
+due to bracket characters).
 
 For example,
 `/$/io.buoyant.hostportPfx/pfx/host:port/etc`
@@ -592,8 +764,8 @@ would be rewritten to `/pfx/host/port/etc`.
 ```
 
 Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
-not not support IPv6 host IPs (because ipv6 notation doesn't work in Paths as-
-is, due to bracket characters).
+not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
+due to bracket characters).
 
 For example,
 `/$/io.buoyant.porthostPfx/pfx/host:port/etc`

@@ -13,4 +13,4 @@ routers:
 telemetry:
 - kind: io.l5d.tracelog
   sampleRate: 0.2
-  level: TRACE
+  level: INFO

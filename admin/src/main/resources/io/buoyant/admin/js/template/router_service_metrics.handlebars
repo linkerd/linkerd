@@ -1,0 +1,15 @@
+<div class="service-client-metrics row">
+  <div class="service-subsection-header">Requests per client</div>
+  {{#each clients}}
+  <div class="client-metrics row">
+    <div class="col-md-1 trail-in">
+      {{#if requests}}
+        {{requests}}
+      {{else}}
+        0
+      {{/if}}
+    </div>
+    <div class="col-md-2">{{client}}</div>
+  </div>
+  {{/each}}
+</div>

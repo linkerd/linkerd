@@ -3,6 +3,7 @@ package io.buoyant.namerd.iface
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service._
@@ -27,7 +28,7 @@ case class NamerdHttpInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
   retry: Option[Retry],
-  tls: Option[ClientTlsConfig]
+  tls: Option[TlsClientConfig]
 ) extends NamespacedInterpreterConfig {
 
   @JsonIgnore
@@ -79,13 +80,14 @@ case class NamerdHttpInterpreterConfig(
         }
     }
 
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+
     val client = Http.client
-      .withParams(Http.client.params ++ params)
+      .withParams(Http.client.params ++ tlsParams ++ params + Http.Netty4Impl)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
       .withStreaming(true)
       .transformed(retryTransformer)
-      .transformed(TlsTransformer(tls))
 
     new StreamingNamerClient(client.newService(name, label), namespace.getOrElse("default"))
   }

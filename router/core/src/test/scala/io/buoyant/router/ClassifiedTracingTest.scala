@@ -1,10 +1,13 @@
 package io.buoyant.router
 
-import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
+import com.twitter.finagle.{Service, ServiceFactory, Stack, param, Path}
+import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.stack._
 import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Return, Throw}
+import io.buoyant.router.context.{DstPathCtx, ResponseClassifierCtx}
 import io.buoyant.test.FunSuite
 
 class ClassifiedTracingTest extends FunSuite {
@@ -24,10 +27,14 @@ class ClassifiedTracingTest extends FunSuite {
         case "fail" => Future.exception(new Exception)
         case s => Future.value(0.84)
       })
-      val stk = ClassifiedTracing.module[String, Double] +: Stack.Leaf(Endpoint, sf)
+      val stk = DstPathCtx.Setter.module[String, Double] +:
+        ResponseClassifierCtx.Setter.module[String, Double] +:
+        ClassifiedTracing.module[String, Double] +:
+        Stack.Leaf(Endpoint, sf)
       val params = Stack.Params.empty +
+        param.Tracer(tracer) +
         param.ResponseClassifier(classifier) +
-        param.Tracer(tracer)
+        Dst.Path(Path.read("/foo"))
       stk.make(params)
     }
 

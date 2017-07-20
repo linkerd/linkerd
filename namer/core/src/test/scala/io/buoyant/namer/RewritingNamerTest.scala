@@ -1,19 +1,18 @@
 package io.buoyant.namer
 
 import com.twitter.finagle.{Name, NameTree, Namer, Path}
-import io.buoyant.namer.util.PathMatcher
+import com.twitter.finagle.buoyant.PathMatcher
 import io.buoyant.test.FunSuite
 
 class RewritingNamerTest extends FunSuite {
 
-  def assertDelegates(from: String, to: String)(implicit namer: Namer): Unit = {
+  def assertDelegates(from: String, to: String)(implicit namer: Namer) = {
     val NameTree.Leaf(Name.Path(result)) = namer.lookup(Path.read(from)).sample()
     assert(result == Path.read(to))
   }
 
-  def assertDelegatesToNeg(from: String)(implicit namer: Namer): Unit = {
+  def assertDelegatesToNeg(from: String)(implicit namer: Namer) =
     assert(namer.lookup(Path.read(from)).sample() == NameTree.Neg)
-  }
 
   test("matches prefix") {
     implicit val namer = new RewritingNamer(PathMatcher("/one/two"), "/success")

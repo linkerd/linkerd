@@ -13,7 +13,6 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  * <pre>
  * namers:
  * - kind: io.l5d.k8s
- *   exerimental: true
  *   host: localhost
  *   port: 8001
  * </pre>
@@ -42,11 +41,10 @@ case class K8sConfig(
    */
   @JsonIgnore
   override def newNamer(params: Stack.Params): Namer = {
-    val client = mkClient(params)
+    val client = mkClient(params).withLabel("client")
     def mkNs(ns: String) = {
-      val label = param.Label(s"namer${prefix.show}/$ns")
-      Api(client.configured(label).newService(dst)).withNamespace(ns)
+      Api(client.newService(dst)).withNamespace(ns)
     }
-    new EndpointsNamer(prefix, labelSelector, mkNs)
+    new MultiNsNamer(prefix, labelSelector, mkNs)
   }
 }

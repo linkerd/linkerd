@@ -6,11 +6,11 @@ namers:
 routers:
 - protocol: http
   dtab: |
-    /svc => /#/io.l5d.fs
-  responseClassifier:
-    # Retry 5XXs for GETs, HEADs, OPTIONs, PUTs, and DELETEs.
-    kind: io.l5d.retryableIdempotent5XX
-  client:
+    /svc/* => /#/io.l5d.fs/dog & /#/io.l5d.fs/cat
+  service:
+    responseClassifier:
+      # Retry 5XXs for GETs, HEADs, OPTIONs, PUTs, and DELETEs.
+      kind: io.l5d.http.retryableIdempotent5XX
     retries:
       budget:
         minRetriesPerSec: 5
@@ -20,5 +20,22 @@ routers:
         kind: jittered
         minMs: 10
         maxMs: 10000
+    # This is the total amount of time a request is allowed to take to complete
+    # including the time taken for retries.  Once this timeout is reached, the
+    # current request attempt is canceled and no more retries will be made.
+    #
+    # Note that each individual request attempt may be made on the dog or the
+    # cat client.
+    totalTimeoutMs: 1000
+  client:
+    kind: io.l5d.static
+    configs:
+    - prefix: /#/io.l5d.fs/dog
+      # The timeout for a single request attempt on the dog client.  If this
+      # timeout is reached, the request attempt will be canceled and the request
+      # will be retried if there is still time remaining in the total timeout.
+      requestAttemptTimeoutMs: 100
+    - prefix: /#/io.l5d.fs/cat
+      requestAttemptTimeoutMs: 200
   servers:
   - port: 4140

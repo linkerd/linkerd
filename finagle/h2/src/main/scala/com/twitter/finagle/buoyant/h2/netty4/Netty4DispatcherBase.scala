@@ -7,7 +7,8 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2.{Http2Frame, Http2GoAwayFrame, Http2StreamFrame}
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
@@ -28,7 +29,6 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
    */
   private[this] sealed trait StreamTransport
   private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
-  private[this] object StreamClosed extends StreamTransport
   private[this] object StreamLocalReset extends StreamTransport
   private[this] object StreamRemoteReset extends StreamTransport
   private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
@@ -36,6 +36,13 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
   private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
   protected[this] def isClosed = closed.get
+
+  private[this] val closedId: AtomicInteger = new AtomicInteger(0)
+  @tailrec private[this] def addClosedId(id: Int): Unit = {
+    val i = closedId.get
+    val max = if (id > i) id else i
+    if (!closedId.compareAndSet(i, max)) addClosedId(id)
+  }
 
   protected[this] def demuxing: Future[Unit]
 
@@ -51,9 +58,9 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     val _ = stream.onReset.respond {
       case Return(_) =>
         // Free and clear.
-        if (streams.replace(id, open, StreamClosed)) {
-          log.debug("[%s S:%d] stream closed", prefix, id)
-        }
+        addClosedId(id)
+        streams.remove(id)
+        log.debug("[%s S:%d] stream closed", prefix, id)
 
       case Throw(StreamError.Remote(e)) =>
         // The remote initiated a reset, so just update the state and
@@ -69,7 +76,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // The local side initiated a reset, so send a reset to
         // the remote.
         if (streams.replace(id, open, StreamLocalReset)) {
-          log.debug(e, "[%s S:%d] stream reset from local; resetting remote", prefix, id)
+          log.debug("[%s S:%d] stream reset from local; resetting remote: %s", prefix, id, e)
           val rst = e match {
             case rst: Reset => rst
             case _ => Reset.Cancel
@@ -95,8 +102,15 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def demux(): Future[Unit] = {
     lazy val loop: Try[Http2Frame] => Future[Unit] = {
       case Throw(e) if closed.get =>
-        log.debug(e, "[%s] dispatcher closed", prefix)
+        log.debug("[%s] dispatcher closed: %s", prefix, e)
         Future.exception(e)
+
+      // if all streams have already been closed, then this just means that
+      // the client failed to send a GOAWAY frame...
+      case Throw(e: ChannelClosedException) if streams.isEmpty =>
+        // ...so we don't need to propagate the exception
+        log.debug("[%s] client closed connection without sending GOAWAY frame", prefix)
+        Future.Unit
 
       case Throw(e) =>
         log.error(e, "[%s] dispatcher failed", prefix)
@@ -114,6 +128,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
           case id =>
             streams.get(id) match {
+              case null if id <= closedId.get =>
+                // The stream has been closed and should know better than
+                // to send us messages.
+                writer.reset(id, Reset.Closed)
+
               case null =>
                 demuxNewStream(f).before {
                   if (closed.get) Future.Unit
@@ -132,8 +151,8 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
                 if (closed.get) Future.Unit
                 else transport.read().transform(loop)
 
-              case StreamClosed | StreamRemoteReset =>
-                // The stream has been closed and should know better than
+              case StreamRemoteReset =>
+                // The stream has been reset and should know better than
                 // to send us messages.
                 writer.reset(id, Reset.Closed)
             }
@@ -168,7 +187,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
 
   protected[this] val onTransportClose: Throwable => Unit = { e =>
-    log.debug(e, "[%s] transport closed", prefix)
+    log.debug("[%s] transport closed: %s", prefix, e)
     resetStreams(Reset.Cancel); ()
   }
 }

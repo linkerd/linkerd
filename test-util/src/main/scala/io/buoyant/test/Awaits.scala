@@ -14,7 +14,7 @@ trait Awaits extends Eventually {
   implicit override val patienceConfig =
     PatienceConfig(timeout = scaled(Span(defaultWait.inMillis, Millis)))
 
-  def awaitStackDepth: Int = 4
+  def awaitStackDepth: Int = 5
 
   def await[T](t: Duration)(f: => Future[T]): T =
     try Await.result(f, t) catch {

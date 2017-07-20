@@ -78,11 +78,14 @@ object Codec {
       stream.read().flatMap {
         case t: h2.Frame.Trailers =>
           val status = GrpcStatus.fromTrailers(t)
+          t.release()
           Future.value(orig -> status)
 
         case d: h2.Frame.Data =>
           val buf = orig.concat(d.buf)
-          if (d.isEnd) Future.value(buf -> GrpcStatus.Unknown())
+          val isEnd = d.isEnd
+          d.release()
+          if (isEnd) Future.value(buf -> GrpcStatus.Unknown())
           else accum(buf)
       }
 

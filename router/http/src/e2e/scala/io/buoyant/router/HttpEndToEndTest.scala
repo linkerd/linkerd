@@ -101,11 +101,13 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       get("felix") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "meow")
+        ()
       }
 
       get("clifford", "/the/big/red/dog") { rsp =>
         assert(rsp.status == Status.Ok)
         assert(rsp.contentString == "woof")
+        ()
       }
 
       // todo check stats
@@ -158,7 +160,7 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("client", s"$$/inet/127.1/${downstream.port}", name)
       stats.counters.get(k)
     }
 
@@ -234,16 +236,16 @@ class HttpEndToEndTest extends FunSuite with Awaits {
 
   test("http/1.0: server closes connection after response") {
     val downstream = Downstream.mk("ds") { req =>
-      val status = req.version match {
-        case Version.Http11 => Status.HttpVersionNotSupported
-        case Version.Http10 => Status.Ok
-      }
-      Response(Version.Http10, status)
+      Response(Version.Http10, Status.Ok)
     }
 
     val stats = new InMemoryStatsReceiver
     def downstreamCounter(name: String) = {
-      val k = Seq("http", "dst", "id", s"$$/inet/127.1/${downstream.port}", name)
+      val k = Seq("client", s"$$/inet/127.1/${downstream.port}", name)
+      stats.counters.get(k)
+    }
+    def serverCounter(name: String) = {
+      val k = Seq("server", name)
       stats.counters.get(k)
     }
 
@@ -272,7 +274,9 @@ class HttpEndToEndTest extends FunSuite with Awaits {
         .configured(RoutingFactory.BaseDtab(() => dtab))
         .configured(param.Stats(stats))
         .factory()
-      Http.serve(new InetSocketAddress(0), factory)
+      Http.server
+        .configured(param.Stats(stats.scope("server")))
+        .serve(new InetSocketAddress(0), factory)
     }
 
     val client = upstream(router)
@@ -289,17 +293,21 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       assert(err == None)
       assert(rsp0.status == Status.Ok)
       assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(1))
 
       val rsp1 = get()
       assert(err == None)
       assert(rsp1.status == Status.Ok)
-      assert(downstreamCounter("connects") == Some(2))
+      // downstream connection is reused but upstream is not
+      assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(2))
 
       retriesToDo = 1
       val rsp2 = get()
       assert(err == None)
       assert(rsp2.status == Status.Ok)
-      assert(downstreamCounter("connects") == Some(4))
+      assert(downstreamCounter("connects") == Some(1))
+      assert(serverCounter("connects") == Some(3))
 
     } finally {
       await(client.close())

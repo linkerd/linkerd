@@ -31,12 +31,14 @@ Key | Default Value | Description
 dstPrefix | `/svc` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
+loggers | A list of loggers.  See [Http-specific loggers](#http-1-1-loggers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
 maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
 maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
 maxResponseKB | 5120 | The maximum size of a non-chunked HTTP response payload.
 compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
+streamingEnabled | `true` | Streaming allows linkerd to work with HTTP messages that have large (or infinite) content bodies using chunked encoding.  Disabling this is highly discouraged.
 
 <aside class="warning">
 These memory constraints are selected to allow reliable
@@ -51,7 +53,8 @@ significantly alter linkerd's performance characteristics.
 HTTP servers accept additional configuration parameters.
 
 > Example: default
-```
+
+```yaml
 addForwardedHeader: {}
 ```
 
@@ -80,8 +83,7 @@ The `Forwarded` header includes labels describing the endpoints of the
 upstream connection. Because this is sensitive information, it is
 typically randomized.
 
-> Example
-```
+```yaml
 addForwardedHeader:
   for: {kind: ip}
   by:
@@ -90,11 +92,11 @@ addForwardedHeader:
 ```
 
 Kind | Description
----- |
+---- | -----------
 ip | A textual IP address like `192.168.1.1` or `"[2001:db8:cafe::17]"`.
 ip:port | A textual IP:PORT address like `"192.168.1.1:80"` or `"[2001:db8:cafe::17]:80"`.
 connectionRandom | An obfuscated random label like `_6Oq8jJ` _generated for all requests on a connection_.
-**requestRandom** | An obfuscated random label like `_6Oq8jJ` _generated for each request_.
+requestRandom | An obfuscated random label like `_6Oq8jJ` _generated for each request_.
 router | Uses the router's `label` as an obfuscated static label.
 static | Accepts a `label` parameter. Produces obfuscated static labels like `_linkerd`.
 
@@ -171,7 +173,7 @@ segments from the start of their HTTP path.
 #### Identifier Configuration:
 
 > With this configuration, a request to `:5000/true/love/waits.php` will be
-mapped to `/http/true/love` and will be routed based on this name by the
+mapped to `/svc/true/love` and will be routed based on this name by the
 corresponding dtab. Additionally, because `consume` is true, after routing,
 requests will be proxied to the destination service with `/waits.php` as the
 path component of the URL.
@@ -211,8 +213,8 @@ urlPath | N/A | A path from the URL whose number of segments is set in the ident
 kind: `io.l5d.header`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.  The value of the HTTP header is interpreted as a path and therefore must
-start with a `/`.
+value of an HTTP header.  The value of the HTTP header is interpreted as a path
+and therefore must start with a `/`.
 
 #### Identifier Configuration:
 
@@ -252,8 +254,8 @@ headerValue | N/A | The value of the HTTP header as a path.
 kind: `io.l5d.header.token`
 
 With this identifier, HTTP requests are turned into names based only on the
-value of an HTTP header.  The name is a path with one segment and the value of that segment is
-taken from the HTTP header.
+value of an HTTP header.  The name is a path with one segment and the value of
+that segment is taken from the HTTP header.
 
 #### Identifier Configuration:
 
@@ -292,7 +294,10 @@ headerValue | N/A | The value of the HTTP header as a path segment.
 
 kind: `io.l5d.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress controller. The ingress identifier compares HTTP requests to [ingress resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a name based on those rules.
+Using this identifier enables linkerd to function as a Kubernetes ingress
+controller. The ingress identifier compares HTTP requests to [ingress
+resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a
+name based on those rules.
 
 #### Identifier Configuration:
 
@@ -355,6 +360,61 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
+
+<a href="istio-identifier"></a>
+### Istio Identifier
+
+kind: `io.l5d.k8s.istio`
+
+This identifier compares HTTP requests to
+[istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
+on those rules.
+
+ #### Identifier Configuration:
+
+```yaml
+routers:
+- protocol: http
+  identifier:
+    kind: io.l5d.k8s.istio
+```
+
+Key  | Default Value | Description
+---- | ------------- | -----------
+discoveryHost | `istio-pilot` | The host of the Istio-Pilot.
+discoveryPort | 8080 | The port of the Istio-Pilot's discovery service.
+apiserverHost | `istio-pilot` | The host of the Istio-Pilot.
+apiserverPort | 8081 | The port of the Istio-Pilot's apiserver.
+
+#### Identifier Path Parameters
+
+> Dtab Path Format if the request does not point to a valid k8s cluster
+
+```
+  / dstPrefix / "ext" / host / port
+```
+
+> Dtab Path Format if the request has a valid cluster but DOES NOT match a route-rule
+
+```
+  / dstPrefix / "dest" / cluster / "::" / port
+```
+
+> Dtab Path Format if the request matches a route-rule
+
+```
+  / dstPrefix / "route" / routeRule
+```
+
+
+Key | Default Value | Description
+--- | ------------- | -----------
+dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
+routeRule | N/A | The name of the route-rule that matches the incoming request.
+host | N/A | The host to send the request to.
+cluster | N/A | The cluster to send the request to.
+port | N/A | The port to send the request to.
+
 <a name="static-identifier"></a>
 ### Static Identifier
 
@@ -389,6 +449,41 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 path | N/A | The path given in the configuration.
 
+<a name="http-1-1-loggers"></a>
+## HTTP/1.1 Loggers
+
+Loggers allow recording of arbitrary information about requests. Destination of
+information is specific to each logger. All HTTP/1.1 loggers have a `kind`. If a
+list of loggers is provided, they each log in the order they are defined.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
+
+<a name="istio-logger"></a>
+### Istio Logger
+
+kind: `io.l5d.k8s.istio`.
+
+With this logger, all HTTP requests are sent to an Istio Mixer for telemetry
+recording and aggregation.
+
+#### Logger Configuration:
+
+> Configuration example
+
+```yaml
+loggers:
+- kind: io.l5d.k8s.istio
+  mixerHost: istio-mixer
+  mixerPort: 9091
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
+mixerPort | `9091` | Port of the Mixer server.
+
 <a name="http-engines"></a>
 ## HTTP Engines
 
@@ -412,7 +507,7 @@ alternate HTTP implementation to be used.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `netty3` | Either `netty3` or `netty4` (`netty4` will become default in an upcoming release).
+kind | `netty4` | Either `netty3` or `netty4`
 
 <a name="http-headers"></a>
 ## HTTP Headers
@@ -472,8 +567,8 @@ The informational headers linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-logical` | The logical name of the request as identified by linkerd.
-`l5d-dst-concrete` | The concrete client name after delegation.
+`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
 `l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
 
@@ -490,11 +585,12 @@ headers from requests sent to the outside world.
 
 The informational headers linkerd emits on outgoing responses.
 
-Header | Description
------- | -----------
-`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+Header          | Description
+--------------- | -----------
+`l5d-err`       | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+`l5d-retryable` | Indicates that the request for this response is known to be safe to retry (for example, because it was not delivered to its destination).
 
-Applications are not required to forward these headers on upstream
+Applications should not forward these headers on upstream
 responses.
 
 <aside class="notice">

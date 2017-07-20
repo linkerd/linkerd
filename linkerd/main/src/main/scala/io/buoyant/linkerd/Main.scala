@@ -39,11 +39,11 @@ object Main extends App {
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
           Closable.all(telemeters: _*),
-          admin
+          Closable.all(admin: _*)
         ))
         Await.all(routers: _*)
         Await.all(telemeters: _*)
-        Await.result(admin)
+        Await.all(admin: _*)
 
       case _ => exitOnError("usage: linkerd path/to/config")
     }
@@ -64,10 +64,17 @@ object Main extends App {
   private def initAdmin(
     config: Linker.LinkerConfig,
     linker: Linker
-  ): Closable with Awaitable[Unit] = {
+  ): Seq[Closable with Awaitable[Unit]] = {
     val server = linker.admin.serve(this, LinkerdAdmin(config, linker))
-    log.info(s"serving http admin on %s", server.boundAddress)
-    server
+    log.info(s"serving ${linker.admin.scheme} admin on ${server.boundAddress}")
+
+    config.admin.flatMap(_.httpIdentifierPort) match {
+      case Some(p) =>
+        val idServer = linker.admin.serveHandler(p.port, LinkerdAdmin.identifierHandler(config, linker))
+        log.info(s"serving http identifier on ${idServer.boundAddress}")
+        Seq(server, idServer)
+      case None => Seq(server)
+    }
   }
 
   private def initRouter(config: Router): Closable with Awaitable[Unit] = {

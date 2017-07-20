@@ -4,7 +4,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.util.{Activity, Await, Var}
+import com.twitter.util.{Activity, Await, Duration, Var}
 import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
@@ -16,7 +16,7 @@ import org.scalatest.FunSuite
 class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
 
-  def retryIn() = 1.second
+  val retryIn = () => 1.second
   val clientId = TPath(Path.empty)
   val ns = "testns"
 
@@ -26,7 +26,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
       def bind(dtab: Dtab, path: Path) = Activity(states)
     }
     val stampCounter = new AtomicLong(1)
-    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
     val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
@@ -77,7 +77,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     }
 
     val stampCounter = new AtomicLong(1)
-    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
     val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
@@ -112,7 +112,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     }
 
     val stampCounter = new AtomicLong(1)
-    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
     val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
 
     val initF = service.dtab(thrift.DtabReq(TStamp.empty, "pandoracorn", clientId))
@@ -131,7 +131,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     val states = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
     val namers = Map(pfx -> new Namer { def lookup(path: Path) = Activity(states) })
     val stampCounter = new AtomicLong(1)
-    def stamper() = Stamp.mk(stampCounter.getAndIncrement)
+    val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
     val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, Capacity.default, NullStatsReceiver)
   }
 

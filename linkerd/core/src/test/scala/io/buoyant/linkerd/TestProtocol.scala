@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, Dst}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.Endpoint
@@ -115,7 +115,8 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
 class Plain extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
-  var client: Option[ClientConfig] = None
+  var service: Option[Svc] = None
+  var client: Option[Client] = None
 
   @JsonIgnore
   override def protocol: ProtocolInitializer = TestProtocol.Plain
@@ -124,7 +125,8 @@ class Plain extends RouterConfig {
 case class Fancy(fancy: Option[Boolean]) extends RouterConfig {
 
   var servers: Seq[ServerConfig] = Nil
-  var client: Option[ClientConfig] = None
+  var service: Option[Svc] = None
+  var client: Option[Client] = None
 
   @JsonIgnore
   override def protocol: ProtocolInitializer = TestProtocol.Fancy

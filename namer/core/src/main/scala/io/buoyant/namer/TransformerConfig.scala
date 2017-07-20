@@ -1,8 +1,8 @@
 package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
-import com.twitter.finagle.Path
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import com.twitter.finagle.{Path, Stack}
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
 abstract class TransformerConfig extends PolymorphicConfig {
 
@@ -15,7 +15,7 @@ abstract class TransformerConfig extends PolymorphicConfig {
   def prefix = Paths.TransformerPrefix ++ _prefix.getOrElse(defaultPrefix)
 
   @JsonIgnore
-  def mk(): NameTreeTransformer
+  def mk(params: Stack.Params): NameTreeTransformer
 }
 
 trait TransformerInitializer extends ConfigInitializer

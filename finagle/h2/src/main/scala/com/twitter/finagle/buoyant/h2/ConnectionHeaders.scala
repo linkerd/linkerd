@@ -1,5 +1,4 @@
 package com.twitter.finagle.buoyant.h2
-package netty4
 
 /**
  * Detect connection-headers in accordance with RFC 7540 §8.1.2.2:
@@ -54,5 +53,5 @@ object ConnectionHeaders {
   }
 
   private def detectTE(headers: Headers): Boolean =
-    headers.contains(Te) && (headers.get(Te) != TeTrailers)
+    headers.contains(Te) && (headers.getAll(Te) != TeTrailers)
 }

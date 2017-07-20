@@ -1,7 +1,6 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2.{Headers, Request}
@@ -17,16 +16,17 @@ class IngressIdentifier(
   pfx: Path,
   baseDtab: () => Dtab,
   namespace: Option[String],
-  apiClient: Service[http.Request, http.Response]
+  apiClient: Service[http.Request, http.Response],
+  annotationClass: String
 ) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressCache = new IngressCache(namespace, apiClient)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val headerToMatch = req.headers.get(Headers.Authority).lastOption
+    val headerToMatch = req.headers.get(Headers.Authority)
     val matchingPath = ingressCache.matchPath(headerToMatch, req.path)
     matchingPath.flatMap {
       case None => Future.value(unidentified)
@@ -50,12 +50,12 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst))
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), "linkerd")
   }
 }
 
 object IngressIdentifierConfig {
-  val kind = "io.l5d.h2.ingress"
+  val kind = "io.l5d.ingress"
 }
 
 class IngressIdentifierInitializer extends IdentifierInitializer {

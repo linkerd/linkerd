@@ -12,16 +12,13 @@ case class K8sConfig(
 ) extends DtabStoreConfig with ClientConfig {
 
   @JsonIgnore
-  override val experimentalRequired = true
-
-  @JsonIgnore
   def portNum = port.map(_.port)
 
   @JsonIgnore
   override def mkDtabStore: DtabStore = {
     val client = mkClient()
 
-    new K8sDtabStore(client, dst, namespace.getOrElse(ClientConfig.DefaultNamespace))
+    new K8sDtabStore(client, dst, namespace.getOrElse(DefaultNamespace))
   }
 }
 

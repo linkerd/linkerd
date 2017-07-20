@@ -22,6 +22,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("/")))
         assert(rsp.status == Status.Ok)
+        ()
       }
     }
   }
@@ -31,6 +32,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("files/css/dashboard.css")))
         assert(rsp.status == Status.Ok)
+        ()
       }
     }
   }
@@ -40,6 +42,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("foo")))
         assert(rsp.status == Status.NotFound)
+        ()
       }
     }
   }
@@ -49,6 +52,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("admin")))
         assert(rsp.status == Status.Ok)
+        ()
       }
     }
   }
@@ -58,6 +62,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("admin/files/css/dashboard.css")))
         assert(rsp.status == Status.Ok)
+        ()
       }
     }
   }
@@ -67,6 +72,7 @@ class LinkerdAdminTest extends FunSuite with Awaits {
       override def main() {
         val rsp = await(client(Request("admin/metrics.json")))
         assert(rsp.status == Status.Ok)
+        ()
       }
     }
   }

@@ -27,7 +27,8 @@ sealed trait Message {
 trait Headers {
   def toSeq: Seq[(String, String)]
   def contains(k: String): Boolean
-  def get(k: String): Seq[String]
+  def get(k: String): Option[String]
+  def getAll(k: String): Seq[String]
   def add(k: String, v: String): Unit
   def set(k: String, v: String): Unit
   def remove(key: String): Seq[String]
@@ -49,6 +50,8 @@ object Headers {
   def apply(hd: (String, String), tl: (String, String)*): Headers =
     apply(hd +: tl)
 
+  val empty: Headers = apply(Nil)
+
   /**
    * Typically, headers wrap underlying netty types; but since we
    * don't want to bind user code to any netty APIs, we provide
@@ -60,7 +63,8 @@ object Headers {
     def toSeq = synchronized(current)
     override def toString = s"""Headers(${toSeq.mkString(", ")})"""
     def contains(key: String) = toSeq.exists { case (k, _) => key == k }
-    def get(key: String) = toSeq.collect { case (k, v) if key == k => v }
+    def get(key: String) = toSeq.find(_._1 == key).map(_._2)
+    def getAll(key: String) = toSeq.collect { case (k, v) if key == k => v }
     def add(key: String, value: String) = synchronized {
       current = current :+ (key -> value)
     }
@@ -113,13 +117,13 @@ object Request {
   private case class Impl(headers: Headers, stream: Stream) extends Request {
     override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
-    override def scheme = headers.get(Headers.Scheme).headOption.getOrElse("")
-    override def method = headers.get(Headers.Method).headOption match {
+    override def scheme = headers.get(Headers.Scheme).getOrElse("")
+    override def method = headers.get(Headers.Method) match {
       case Some(name) => Method(name)
       case None => throw new IllegalArgumentException("missing :method header")
     }
-    override def authority = headers.get(Headers.Authority).headOption.getOrElse("")
-    override def path = headers.get(Headers.Path).headOption.getOrElse("/")
+    override def authority = headers.get(Headers.Authority).getOrElse("")
+    override def path = headers.get(Headers.Path).getOrElse("/")
   }
 }
 

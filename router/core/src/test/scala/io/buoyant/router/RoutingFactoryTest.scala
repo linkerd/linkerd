@@ -2,10 +2,12 @@ package io.buoyant.router
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
-import com.twitter.finagle.tracing.Annotation.{BinaryAnnotation, Rpc}
+import com.twitter.finagle.naming.buoyant.DstBindingFactory
+import com.twitter.finagle.tracing.Annotation.BinaryAnnotation
 import com.twitter.finagle.tracing._
+import com.twitter.logging.Level
 import com.twitter.util.{Future, Time}
-import io.buoyant.router.RoutingFactory.IdentifiedRequest
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, ResponseException}
 import io.buoyant.test.FunSuite
 
 class RoutingFactoryTest extends FunSuite {
@@ -63,6 +65,26 @@ class RoutingFactoryTest extends FunSuite {
       } catch {
         case e: Exception => assert(e.getMessage.contains(req.toString))
         case _: Throwable => assert(false)
+      }
+    }
+  }
+
+  test("passes through ResponseExceptions") {
+    val tracer = new TestTracer()
+    case class MyResponseException(rsp: Response) extends ResponseException {
+      val logLevel = Level.TRACE
+    }
+
+    Trace.letTracer(tracer) {
+      val service = mkService(pathMk = (_: Request) => Future.exception(MyResponseException(Response())))
+
+      val req = Request()
+      try {
+        await(service(req))
+        assert(false)
+      } catch {
+        case _: Exception => assert(false)
+        case e: Throwable => assert(e.isInstanceOf[MyResponseException])
       }
     }
   }

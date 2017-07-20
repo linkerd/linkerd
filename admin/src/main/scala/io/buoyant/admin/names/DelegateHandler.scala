@@ -7,7 +7,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.{Future, TimeoutException}
 import io.buoyant.admin.HtmlView
-import io.buoyant.namer.Delegator
+import io.buoyant.namer.{Delegator, RichActivity}
 
 class DelegateHandler(
   view: HtmlView,
@@ -15,7 +15,7 @@ class DelegateHandler(
   interpreter: String => NameInterpreter
 ) extends Service[Request, Response] {
 
-  private[this] implicit val time = DefaultTimer.twitter
+  private[this] implicit val time = DefaultTimer
 
   def apply(req: Request): Future[Response] = {
 
@@ -33,7 +33,7 @@ class DelegateHandler(
   private[this] def getInterpreterDtab(ns: String): Future[(String, Dtab)] =
     interpreter(ns) match {
       case delegator: Delegator =>
-        delegator.dtab.values.toFuture.flatMap(Future.const).map(ns -> _)
+        delegator.dtab.toFuture.map(ns -> _)
       case _ => Future.value(ns -> Dtab.empty)
     }
 

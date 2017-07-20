@@ -77,7 +77,10 @@ private[runtime] trait DecodingStream[+T] extends Stream[T] {
     frames.read().transform {
       case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
-      case Return(t: h2.Frame.Trailers) => Future.exception(getStatus(t))
+      case Return(t: h2.Frame.Trailers) =>
+        val status = getStatus(t)
+        t.release()
+        Future.exception(status)
       case Return(f: h2.Frame.Data) =>
         decodeFrame(s0, f, decoder) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
@@ -269,10 +272,10 @@ object DecodingStream {
 
     private[this] def mk(f: h2.Frame): Releaser = f match {
       case f: h2.Frame.Trailers =>
-        FrameReleaser(SegmentLatch(f.release), 0, 0, Nil)
+        FrameReleaser(SegmentLatch(f.release _), 0, 0, Nil)
 
       case f: h2.Frame.Data =>
-        FrameReleaser(SegmentLatch(f.release), 0, f.buf.length, Nil)
+        FrameReleaser(SegmentLatch(f.release _), 0, f.buf.length, Nil)
     }
   }
 

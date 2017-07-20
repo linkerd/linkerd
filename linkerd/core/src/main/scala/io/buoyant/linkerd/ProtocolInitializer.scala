@@ -1,10 +1,8 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.TlsClientPrep
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.server.StackServer
-import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.stack.nilStack
 import com.twitter.util.{Future, Time}
 import io.buoyant.config.ConfigInitializer
@@ -45,10 +43,8 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
     val param.Stats(stats) = router.params[param.Stats]
     val routerLabel = router.label
     server.configured(param.Label(s"$ip/$port"))
-      .configured(Server.RouterLabel(routerLabel))
-      .configured(param.Stats(stats.scope(routerLabel, "srv")))
-      .configured(router.params[TimeoutFilter.Param])
-      .configured(router.params[param.ResponseClassifier])
+      .configured(RouterLabel.Param(routerLabel))
+      .configured(param.Stats(stats.scope("server")))
       .configured(router.params[param.Tracer])
   }
 
@@ -80,7 +76,13 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
         throw new IllegalStateException(s"router '$name' has no servers")
       }
 
-      val factory = router.factory()
+      val pathStk = router.pathStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+      val clientStk = router.clientStack.prepend(MetricsPruningModule.module[RouterReq, RouterRsp])
+
+      val factory = router
+        .withPathStack(pathStk)
+        .withClientStack(clientStk)
+        .factory()
 
       // Don't let server closure close the router.
       val adapted = new ServiceFactoryProxy(adapter.andThen(factory)) {
@@ -99,12 +101,6 @@ abstract class ProtocolInitializer extends ConfigInitializer { initializer =>
         ServerInitializer(protocol, s.addr, stacked, adapted, s.announce)
       }
       InitializedRouter(protocol, params, factory, servable, announcers)
-    }
-
-    def withTls(tls: TlsClientConfig): Router = {
-      val stk = router.clientStack
-        .replace(TlsClientPrep.role, tls.tlsClientPrep[RouterReq, RouterRsp])
-      copy(router = router.withClientStack(stk))
     }
   }
 
@@ -167,7 +163,7 @@ object ProtocolInitializer {
     announce: Seq[Path]
   ) extends Server.Initializer {
     def params = server.params
-    def router: String = server.params[Server.RouterLabel].label
+    def router: String = server.params[RouterLabel.Param].label
     def ip = addr.getAddress
     def port = addr.getPort
     def serve() = server.serve(addr, factory)

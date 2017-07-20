@@ -30,6 +30,7 @@ import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 import scala.language.reflectiveCalls
+import scala.util.Random
 
 private[telemeter] object UsageDataTelemeter {
   val DefaultPeriod = 1.hour
@@ -108,7 +109,8 @@ private[telemeter] object UsageDataTelemeter {
     Seq(
       Gauge(Some("jvm_mem"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
       Gauge(Some("jvm/gc/msec"), gaugeValue(metrics.resolve(Seq("jvm", "mem", "current", "used")).metric)),
-      Gauge(Some("jvm/uptime"), gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric))
+      Gauge(Some("jvm/uptime"), gaugeValue(metrics.resolve(Seq("jvm", "uptime")).metric)),
+      Gauge(Some("jvm/num_cpus"), gaugeValue(metrics.resolve(Seq("jvm", "num_cpus")).metric))
     )
 
   def counterValue(metric: Metric): Option[Long] = metric match {
@@ -119,7 +121,7 @@ private[telemeter] object UsageDataTelemeter {
   def mkCounters(metrics: MetricsTree): Seq[Counter] = {
     val counters = for {
       router <- metrics.resolve(Seq("rt")).children.values
-      server <- router.resolve(Seq("srv")).children.values
+      server <- router.resolve(Seq("server")).children.values
       counter <- counterValue(server.resolve(Seq("requests")).metric)
     } yield Counter(Some("srv_requests"), Some(counter))
     counters.toSeq
@@ -178,13 +180,13 @@ private[telemeter] object UsageDataTelemeter {
  *
  * Defines neither its own tracer nor its own stats receiver.
  */
-case class UsageDataTelemeter(
+class UsageDataTelemeter(
   metricsDst: Name,
   withTls: Boolean,
   config: Linker.LinkerConfig,
   metrics: MetricsTree,
-  orgId: Option[String]
-) extends Telemeter with Admin.WithHandlers {
+  val orgId: Option[String]
+)(implicit timer: Timer) extends Telemeter with Admin.WithHandlers {
   import UsageDataTelemeter._
 
   val tracer = NullTracer
@@ -206,15 +208,17 @@ case class UsageDataTelemeter(
     Handler("/admin/metrics/usage", new UsageDataHandler(metricsService, config, pid, orgId, metrics))
   )
 
+  def jitter(i: Duration): Duration = (Random.nextGaussian() * i.inSeconds).toInt.seconds
+
   // Only run at most once.
   def run(): Closable with Awaitable[Unit] =
     if (started.compareAndSet(false, true)) run0()
     else Telemeter.nopRun
 
   private[this] def run0() = {
-    val _ = client(metrics)
+    Future.sleep(jitter(1.minute)).before(client(metrics))
 
-    val task = DefaultTimer.twitter.schedule(DefaultPeriod) {
+    val task = timer.schedule(DefaultPeriod.plus(jitter(1.minute))) {
       val _ = client(metrics)
     }
 
@@ -240,6 +244,7 @@ case class UsageDataTelemeterConfig(
   def mk(params: Stack.Params): Telemeter =
     if (enabled.getOrElse(true)) {
       val LinkerConfig(config) = params[LinkerConfig]
+      implicit val timer = DefaultTimer
 
       new UsageDataTelemeter(
         Name.bound(Address("stats.buoyant.io", 443)),
