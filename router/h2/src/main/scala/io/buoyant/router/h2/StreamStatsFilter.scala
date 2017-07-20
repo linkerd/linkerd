@@ -1,6 +1,6 @@
 package io.buoyant.router.h2
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
@@ -55,7 +55,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       classifyFrame: Option[Try[Frame]] => Unit = { _ => }
     )(underlying: Stream): Stream = {
       // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
-      val streamFrameBytes = new AtomicInteger(0)
+      val streamFrameBytes = new AtomicLong(0)
       // partially evaluate this w/ a reference to the start time
       val stream =
         if (underlying.isEmpty) {
