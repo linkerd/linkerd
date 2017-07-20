@@ -31,9 +31,10 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("stream", "total_latency_ms"),
     Seq("request_latency_ms")
   )
-  val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
+  private[this] val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
+  private[this] val reqFrameSizeStat = Seq("request", "stream", "data_frame", "total_bytes")
 //  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
-  private[this] val allStats = latencyStats :+ rspFrameSizeStat
+  private[this] val allStats = latencyStats :+ rspFrameSizeStat :+ reqFrameSizeStat
   private[this] val reqStats = allStats.withFilter(_.head != "response")
 
   private[this] def setup(response: Request => Future[Response]) = {
@@ -182,7 +183,29 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     await(readAll(rsp.stream))
 
     withClue("after success:") {
+      assert(stats.stats(reqFrameSizeStat).contains(0))
+      assert(stats.stats(reqFrameSizeStat).length == 1)
       assert(stats.stats(rspFrameSizeStat).contains(data.length))
+      assert(stats.stats(rspFrameSizeStat).length == 1)
+
+    }
+  }
+
+  test("frame size stat for an empty stream") {
+    val (stats, service) = setup { _ =>
+      Future.value(Response(Status.Ok, Stream.empty()))
+    }
+    withClue("before request:") {
+      // stats undefined before request
+      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    val rsp = await(service(req))
+    withClue("after success:") {
+      assert(stats.stats(reqFrameSizeStat).contains(0))
+      assert(stats.stats(reqFrameSizeStat).length == 1)
+      assert(stats.stats(rspFrameSizeStat).contains(0))
       assert(stats.stats(rspFrameSizeStat).length == 1)
 
     }
@@ -210,6 +233,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     await(readAll(rsp.stream))
 
     withClue("after success:") {
+      assert(stats.stats(reqFrameSizeStat).contains(0))
+      assert(stats.stats(reqFrameSizeStat).length == 1)
       assert(stats.stats(rspFrameSizeStat).contains(streamBytes))
       assert(stats.stats(rspFrameSizeStat).length == 1)
 
@@ -218,6 +243,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     await(readAll(rsp.stream))
 
     withClue("after second success:") {
+      assert(stats.stats(reqFrameSizeStat).contains(0))
+      assert(stats.stats(reqFrameSizeStat).length == 2)
       assert(stats.stats(rspFrameSizeStat).forall(_ == streamBytes))
       assert(stats.stats(rspFrameSizeStat).length == 2)
 
