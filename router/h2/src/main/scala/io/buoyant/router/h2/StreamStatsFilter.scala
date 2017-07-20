@@ -50,21 +50,21 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     private[this] val frameBytes = stats.stat("data_frame", "bytes")
     private[this] val frameCount = stats.stat("data_frame", "count")
 
-    def onFrame(startT: Stopwatch.Elapsed)(stream0: Stream): Stream = {
+    def onFrame(startT: Stopwatch.Elapsed)(underlyingStream: Stream): Stream = {
       var streamFrameCount: Int = 0
       var streamFrameBytes: Int = 0
-      val stream1 = stream0.onFrame {
+      val stream = underlyingStream.onFrame {
         case Return(frame: Frame.Data) =>
           streamFrameBytes += frame.buf.length
           streamFrameCount += 1
         case _ =>
       }
-      val _ = stream1.onEnd.respond { result =>
+      val _ = stream.onEnd.respond { result =>
         frameCount.add(streamFrameCount)
         frameBytes.add(streamFrameBytes)
         this.onEnd(startT)(result)
       }
-      stream1
+      stream
     }
 
     @inline def apply(startT: Stopwatch.Elapsed)(stream: Stream): Stream = onFrame(startT)(stream)
