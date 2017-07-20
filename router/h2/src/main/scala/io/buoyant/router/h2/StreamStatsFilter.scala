@@ -1,6 +1,6 @@
 package io.buoyant.router.h2
 
-import com.twitter.finagle.{Status => _, _}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
 import com.twitter.finagle.stats.StatsReceiver
@@ -54,8 +54,10 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
     def this(stats: StatsReceiver) = this(stats, new StreamStats(stats))
 
-    def apply(startT: Stopwatch.Elapsed, classifyFrame: Try[Frame] => Unit = { _ => })
-             (underlying: Stream): Stream = {
+    def apply(
+      startT: Stopwatch.Elapsed,
+      classifyFrame: Try[Option[Frame]] => Unit = { _ => })
+      (underlying: Stream): Stream = {
       // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
       var streamFrameBytes: Int = 0
       // partially evaluate this w/ a reference to the start time
@@ -74,7 +76,8 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           // workaround...
           //  - eliza, 7/20/2017
           frameBytes.add(0)
-          streamStatsT(Return(()))
+          classifyFrame(Return(None))
+          streamStatsT(Return(None))
           underlying
         } else underlying.onFrame {
             case Return(frame) =>
@@ -87,12 +90,12 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
                 // callback we were placing on `stream.onEnd` gets
                 // clobbered – see above comment
                 frameBytes.add(streamFrameBytes)
-                classifyFrame(Return(frame))
-                streamStatsT(Return(frame))
+                classifyFrame(Return(Some(frame)))
+                streamStatsT(Return(Some(frame)))
               }
-            case e @ Throw(_) =>
-              classifyFrame(e)
-              streamStatsT(e)
+            case Throw(e) =>
+              classifyFrame(Throw(e))
+              streamStatsT(Throw(e))
           }
       stream
     }
@@ -124,7 +127,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
     val reqT = Stopwatch.start()
     val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    @inline def classify(rsp: Try[Response])(frame: Try[Frame]): Unit =
+    @inline def classify(rsp: Try[Response])(frame: Try[Option[Frame]]): Unit =
       classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
         case Successful(_) => successes.incr()
         case _ => failures.incr()
