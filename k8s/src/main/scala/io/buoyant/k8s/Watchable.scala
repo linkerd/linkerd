@@ -22,6 +22,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   protected def backoffs: Stream[Duration]
   protected def stats: StatsReceiver
+  // whether or not to pass resource versions on watches; this should be true
+  // for List resources & false for object resources.
+  // TODO: there is probably a more elegant way to represent this...
+  protected val watchResourceVersion: Boolean
 
   protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
@@ -49,9 +53,9 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       http.Method.Get,
       if (watch) watchPath else path,
       None,
-      "labelSelector" -> labelSelector,
-      "fieldSelector" -> fieldSelector,
-      "resourceVersion" -> resourceVersion
+      LabelSelectorKey -> labelSelector,
+      FieldSelectorKey -> fieldSelector,
+      ResourceVersionKey -> resourceVersion
     )
     val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
     val retryingClient = retry andThen client
@@ -88,9 +92,9 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     // Internal method used to recursively retry watches as needed on failures.
     def _watch(resourceVersion: Option[String] = None): AsyncStream[W] = {
       val req = Api.mkreq(http.Method.Get, watchPath, None,
-        "labelSelector" -> labelSelector,
-        "fieldSelector" -> fieldSelector,
-        "resourceVersion" -> resourceVersion)
+        LabelSelectorKey -> labelSelector,
+        FieldSelectorKey -> fieldSelector,
+        ResourceVersionKey -> resourceVersion)
       val retryingClient = infiniteRetryFilter andThen client
       val initialState = Trace.letClear(retryingClient(req))
 
@@ -170,20 +174,21 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    *       [[Activity]], although none of our current code exhibits this
    *       use-case...
    *         - eliza, 7/18/2017
-   * @return
+   * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
+   *         where `T` is the return type of the `onEvent` function
    */
   def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Activity[T] =
     Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
-        // if the initial GET failed, then the activity is a failure
+        // if the initial GET failed, then the activity is a failure.
         .onFailure { e =>
           log.warning(s"k8s failed to get resource at $path: $e")
           state.update(Activity.Failed(e))
         }
         // otherwise, update the activity with the initial state, and
         // apply the onEvent function to each successive watch event in
-        // the stream
+        // the stream.
         .onSuccess { initial =>
           val initialState = convert(initial)
           state.update(Activity.Ok(initialState))
@@ -213,6 +218,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 object Watchable {
   def DefaultBackoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds)
   private object Closed extends Throwable
+
+  private[k8s] val LabelSelectorKey = "labelSelector"
+  private[k8s] val FieldSelectorKey = "fieldSelector"
+  private[k8s] val ResourceVersionKey = "resourceVersion"
 
   implicit class RichAsyncStream[T](as: AsyncStream[T]) {
     /**
