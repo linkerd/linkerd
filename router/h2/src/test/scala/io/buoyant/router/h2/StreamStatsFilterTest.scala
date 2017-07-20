@@ -24,7 +24,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("failures")
   )
   val requestCounter = Seq("requests")
-  val allCounters = successCounters ++ failureCounters :+ requestCounter
+  protected val allCounters = successCounters ++ failureCounters :+ requestCounter
   val latencyStats = Seq(
     Seq("response", "stream", "stream_duration_ms"),
     Seq("request", "stream", "stream_duration_ms"),
@@ -33,8 +33,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   )
   val rspFrameSizeStat = Seq("response", "stream", "data_frame", "bytes")
   val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
-  val allStats = latencyStats :+ rspFrameCountStat :+ rspFrameSizeStat
-  val reqStats = allStats.withFilter(_.head != "response")
+  protected val allStats = latencyStats :+ rspFrameCountStat :+ rspFrameSizeStat
+  protected val reqStats = allStats.withFilter(_.head != "response")
 
   private[this] def setup(response: Request => Future[Response]) = {
 
@@ -120,7 +120,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     val expectedCounters = Seq(
       requestCounter,
       Seq("failures"),
-      Seq("request", "stream", "stream_successes")
+      Seq("request", "stream", "stream_success")
     )
 
     assertThrows[Throwable] { await(service(req)) }
