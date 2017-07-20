@@ -1,7 +1,8 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.finagle.service._
-import com.twitter.util.{NonFatal, Return, Throw, Try}
+import com.twitter.util.{Return, Throw, Try}
+import scala.util.control.NonFatal
 
 object ResponseClassifiers {
 
@@ -32,7 +33,7 @@ object ResponseClassifiers {
      *   the methods OPTIONS and TRACE SHOULD NOT have side effects, and
      *   so are inherently idempotent.
      */
-    val Idempotent = ReadOnly.withMethods(Set(
+    val Idempotent: ByMethod = ReadOnly.withMethods(Set(
       Method.Put,
       Method.Delete
     ))

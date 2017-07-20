@@ -11,21 +11,21 @@ import io.buoyant.test.{Awaits, FunSuite}
 import scala.annotation.tailrec
 
 class StreamStatsFilterTest extends FunSuite with Awaits {
-  val successCounters = Seq(
+  private[this] val successCounters = Seq(
     Seq("response", "stream", "stream_success"),
     Seq("request", "stream", "stream_success"),
     Seq("stream", "stream_success"),
     Seq("success")
   )
-  val failureCounters = Seq(
+  private[this] val failureCounters = Seq(
     Seq("response", "stream", "stream_failures"),
     Seq("request", "stream", "stream_failures"),
     Seq("stream", "stream_failures"),
     Seq("failures")
   )
-  val requestCounter = Seq("requests")
-  protected val allCounters = successCounters ++ failureCounters :+ requestCounter
-  val latencyStats = Seq(
+  private[this] val requestCounter = Seq("requests")
+  private[this] val allCounters = successCounters ++ failureCounters :+ requestCounter
+  private[this] val latencyStats = Seq(
     Seq("response", "stream", "stream_duration_ms"),
     Seq("request", "stream", "stream_duration_ms"),
     Seq("stream", "total_latency_ms"),
@@ -33,8 +33,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   )
   val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
 //  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
-  protected val allStats = latencyStats :+ rspFrameSizeStat
-  protected val reqStats = allStats.withFilter(_.head != "response")
+  private[this] val allStats = latencyStats :+ rspFrameSizeStat
+  private[this] val reqStats = allStats.withFilter(_.head != "response")
 
   private[this] def setup(response: Request => Future[Response]) = {
 
