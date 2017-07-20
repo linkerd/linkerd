@@ -1,6 +1,5 @@
 package io.buoyant.admin
 
-import java.net.SocketAddress
 import com.twitter.app.{App => TApp}
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
@@ -13,6 +12,8 @@ import com.twitter.logging.Logger
 import com.twitter.server.handler.{SummaryHandler => _, _}
 import com.twitter.server.view.{NotFoundView, TextBlockView}
 import com.twitter.util.Monitor
+import io.buoyant.config.types.Port
+import java.net.{InetSocketAddress, SocketAddress}
 
 object Admin {
   val label = "adminhttp"
@@ -107,7 +108,7 @@ object Admin {
   }
 }
 
-class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
+class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig]) {
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
@@ -135,4 +136,10 @@ class Admin(val address: SocketAddress, tlsCfg: Option[TlsServerConfig]) {
 
   def serve(app: TApp, extHandlers: Seq[Handler]): ListeningServer =
     server.serve(address, mkService(app, extHandlers))
+
+  def serveHandler(port: Int, handler: Handler): ListeningServer = {
+    val addrWithPort = new InetSocketAddress(address.getAddress, port)
+    val muxer = new HttpMuxer().withHandler(handler.url, handler.service)
+    makeServer(tlsCfg).serve(addrWithPort, muxer)
+  }
 }

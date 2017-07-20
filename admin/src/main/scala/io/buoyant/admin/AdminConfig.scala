@@ -8,7 +8,8 @@ case class AdminConfig(
   ip: Option[InetAddress] = None,
   port: Option[Port] = None,
   shutdownGraceMs: Option[Int] = None,
-  tls: Option[TlsServerConfig] = None
+  tls: Option[TlsServerConfig] = None,
+  httpIdentifierPort: Option[Port] = None
 ) {
 
   def mk(defaultAddr: InetSocketAddress): Admin = {
