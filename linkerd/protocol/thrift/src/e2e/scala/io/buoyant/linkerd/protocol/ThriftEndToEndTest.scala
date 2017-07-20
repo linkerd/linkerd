@@ -53,7 +53,7 @@ class ThriftEndToEndTest extends FunSuite {
   test("end-to-end echo routing") {
     val cat = Downstream.const("cat", "meow")
     val router = {
-      val config = new ThriftConfig(Some(true), None) {
+      val config = new ThriftConfig(Some(true), None, None) {
         dtab = Some(Dtab.read(s"""/svc/cat => /$$/inet/127.1/${cat.port} ;"""))
         servers = Seq(
           new ThriftServerConfig(None) {
@@ -88,7 +88,7 @@ class ThriftEndToEndTest extends FunSuite {
   test("multiple clients") {
     val cat = Downstream.const("cat", "meow")
     val router = {
-      val config = new ThriftConfig(Some(true), None) {
+      val config = new ThriftConfig(Some(true), None, None) {
         dtab = Some(Dtab.read(s"""/svc/cat => /$$/inet/127.1/${cat.port} ;"""))
         servers = Seq(
           new ThriftServerConfig(None) {
@@ -128,7 +128,7 @@ class ThriftEndToEndTest extends FunSuite {
   test("linker-to-linker echo routing") {
     val cat = Downstream.const("cat", "meow")
     val incoming = {
-      val config = new ThriftConfig(Some(true), None) {
+      val config = new ThriftConfig(Some(true), None, None) {
         _label = Some("incoming")
         dtab = Some(Dtab.read(s"""/svc/cat => /$$/inet/127.1/${cat.port} ;"""))
         servers = Seq(
@@ -144,7 +144,7 @@ class ThriftEndToEndTest extends FunSuite {
     }
 
     val outgoing = {
-      val config = new ThriftConfig(Some(true), None) {
+      val config = new ThriftConfig(Some(true), None, None) {
         _label = Some("outgoing")
         dtab = Some(Dtab.read(s"""/svc/cat => /$$/inet/127.1/${incoming.boundAddress.asInstanceOf[InetSocketAddress].getPort} ;"""))
         servers = Seq(

@@ -34,6 +34,7 @@ ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
 port | `4100` | The port number on which to serve the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
+maxRequestSize | 1 megabyte | The maximum size, in bytes, of requests to accept.
 cache | see [cache](#cache) | Binding and address cache size configuration.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 

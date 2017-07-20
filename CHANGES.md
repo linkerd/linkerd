@@ -1,3 +1,8 @@
+## In the next release...
+
+* Enforce a maximum request size for Thrift requests to prevent large requests
+  from causing Linkerd/Namerd to OOM.
+
 ## 1.1.2 2017-07-12
 
 * Marathon Namer TLS support, for DC/OS strict mode.
