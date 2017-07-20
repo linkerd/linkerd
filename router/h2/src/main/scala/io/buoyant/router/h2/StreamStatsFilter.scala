@@ -74,18 +74,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
   }
 
-  object ClassifierStats {
-    // overall successes stat from response classifier
-    private[this] val successes = statsReceiver.counter("success")
-    // overall failures stat from response classifier
-    private[this] val failures = statsReceiver.counter("failures")
-
-    def apply(reqrep: H2ReqRep): Unit = classifier(reqrep) match {
-      case Successful(_) => successes.incr()
-      case _ => failures.incr()
-    }
-  }
-
   //   total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
 
@@ -101,10 +89,23 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
   private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
 
+  // overall successes stat from response classifier
+  private[this] val successes = statsReceiver.counter("success")
+  // overall failures stat from response classifier
+  private[this] val failures = statsReceiver.counter("failures")
+
+
+
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
     val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
+
+    @inline def _classify(rsp: Try[(Response, Try[Frame])]): Unit =
+      classifier(H2ReqRep(req1, rsp)) match {
+        case Successful(_) => successes.incr()
+        case _ => failures.incr()
+      }
 
     service(req1)
       .transform {
@@ -112,14 +113,13 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           val rspT = Stopwatch.start()
           val stream = rsp0.stream.onFrame {
             case Return(frame) if frame.isEnd =>
-              ClassifierStats(H2ReqRep(req1, Return((rsp0, Return(frame)))))
-            case e@Throw(_) =>
-              ClassifierStats(H2ReqRep(req1, Return((rsp0, e))))
+              _classify(Return((rsp0, Return(frame))))
+            case e@Throw(_) => _classify(Return((rsp0, e)))
             case _ =>
           }
           Future.value(Response(rsp0.headers, rspStreamStats(rspT)(stream)))
         case Throw(e) =>
-          ClassifierStats(H2ReqRep(req1, Throw(e)))
+          _classify(Throw(e))
           Future.exception(e)
       }
       .respond { result =>
