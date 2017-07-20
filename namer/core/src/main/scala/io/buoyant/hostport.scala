@@ -9,15 +9,15 @@ import com.twitter.finagle.Path
  * work in Paths as-is, due to bracket characters).
  */
 private object HostColonPort {
-  object PortStr {
-    def unapply(s: String): Option[Int] = {
-      val port = try s.toInt catch { case _: java.lang.NumberFormatException => -1 }
-      if (0 < port && port < math.pow(2, 16)) Some(port) else None
-    }
-  }
+  /**
+    * regex for capturing the `port` part of a [[HostColonPort]].
+    * this is based on the `DNS_LABEL` regex in Kubernetes:
+    * https://github.com/kubernetes/kubernetes/blob/master/pkg/api/types.go#L40-L43
+    */
+  private[this] val DnsLabel  = """[a-z0-9]([-a-z0-9]*[a-z0-9])?""".r
 
-  def unapply(s: String): Option[(String, Int)] = s.split(":") match {
-    case Array(host, PortStr(port)) => Some((host, port))
+  def unapply(s: String): Option[(String, String)] = s.split(":") match {
+    case Array(host, DnsLabel(port)) if port.length <= 63 => Some((host, port))
     case _ => None
   }
 }
