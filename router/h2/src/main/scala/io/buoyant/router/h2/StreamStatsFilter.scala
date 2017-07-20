@@ -25,9 +25,8 @@ object StreamStatsFilter {
     }
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
+class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassifier)
   extends SimpleFilter[Request, Response] {
-
 
   class StreamStats(
     protected val stats: StatsReceiver,
@@ -48,7 +47,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       successes.incr()
     }
     private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
-
 
     def apply(
       startT: Stopwatch.Elapsed,
@@ -77,7 +75,8 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
         } else underlying.onFrame {
           case Return(frame) =>
             frame match {
-              case data: Frame.Data => val _ = streamFrameBytes.addAndGet(data.buf.length)
+              case data: Frame.Data =>
+                val _ = streamFrameBytes.addAndGet(data.buf.length)
               case _ =>
             }
             if (frame.isEnd) {
@@ -115,7 +114,6 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       statsReceiver.scope("stream"),
       durationName = Some("total_latency")
     )
-
 
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()

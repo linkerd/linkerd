@@ -18,6 +18,7 @@ import io.buoyant.router.RetryBudgetModule.{param => ev}
  * class as part of config deserialization.
  */
 trait SvcConfig {
+  type ProtocolResponseClassifier = ResponseClassifier
 
   var totalTimeoutMs: Option[Int] = None
   var retries: Option[RetriesConfig] = None
@@ -37,11 +38,11 @@ trait SvcConfig {
   var _responseClassifier: Option[ResponseClassifierConfig] = None
 
   @JsonIgnore
-  def baseResponseClassifier: ResponseClassifier =
+  def baseResponseClassifier: ProtocolResponseClassifier =
     ClassifiedRetries.Default
 
   @JsonIgnore
-  def responseClassifier: Option[ResponseClassifier] =
+  def responseClassifier: Option[ProtocolResponseClassifier] =
     _responseClassifier.map { classifier =>
       ClassifiedRetries.orElse(classifier.mk, baseResponseClassifier)
     }

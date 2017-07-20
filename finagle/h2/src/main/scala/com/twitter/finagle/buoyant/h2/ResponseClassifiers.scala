@@ -1,8 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.finagle.service._
+import com.twitter.finagle.service.{ResponseClass, RetryPolicy}
 import com.twitter.util.{Return, Throw, Try}
-import scala.util.control.NonFatal
 
 object ResponseClassifiers {
 
@@ -69,12 +68,22 @@ object ResponseClassifiers {
   }
 
   /**
+   * Create a [[ResponseClassifier]] with the given name for its `toString`.
+   */
+  def named(name: String)(underlying: ResponseClassifier): ResponseClassifier =
+    new ResponseClassifier {
+      def isDefinedAt(reqRep: H2ReqRep): Boolean = underlying.isDefinedAt(reqRep)
+      def apply(reqRep: H2ReqRep): ResponseClass = underlying(reqRep)
+      override def toString: String = name
+    }
+
+  /**
    * Classifies 5XX responses as failures. If the method is idempotent
    * (as described by RFC2616), it is classified as retryable.
    */
   val RetryableIdempotentFailures: ResponseClassifier =
-    ResponseClassifier.named("RetryableIdempotentFailures") {
-      case ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
+    named("RetryableIdempotentFailures") {
+      case H2ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -82,8 +91,8 @@ object ResponseClassifiers {
    * operation, it is classified as retryable.
    */
   val RetryableReadFailures: ResponseClassifier =
-    ResponseClassifier.named("RetryableReadFailures") {
-      case ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
+    named("RetryableReadFailures") {
+      case H2ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -91,14 +100,14 @@ object ResponseClassifiers {
    * failures.
    */
   val NonRetryableServerFailures: ResponseClassifier =
-    ResponseClassifier.named(s"NonRetryableServerFailures") {
-      case ReqRep(_, Throw(_) | Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
+    named(s"NonRetryableServerFailures") {
+      case H2ReqRep(_, Throw(_) | Return((Responses.Failure(), _))) => ResponseClass.NonRetryableFailure
     }
 
   // TODO allow fully-buffered streams to be retried.
   def NonRetryableStream(classifier: ResponseClassifier): ResponseClassifier =
-    ResponseClassifier.named(s"NonRetryableStream") {
-      case rr@ReqRep(req: Request, _) if classifier.isDefinedAt(rr) =>
+    named(s"NonRetryableStream") {
+      case rr@H2ReqRep(req: Request, _) if classifier.isDefinedAt(rr) =>
         classifier(rr) match {
           case ResponseClass.RetryableFailure if req.stream.nonEmpty =>
             ResponseClass.NonRetryableFailure
@@ -106,4 +115,40 @@ object ResponseClassifiers {
           case rc => rc
         }
     }
+
+  /**
+   * a simple [[ResponseClassifier]] that classifies responses as failures
+   * if an exception was [[com.twitter.util.Throw]]n
+   */
+  val ExceptionsAsFailures: ResponseClassifier =
+    named("ExceptionsAsFailuresH2ResponseClassifier") {
+      case H2ReqRep(_, Throw(_)) | H2ReqRep(_, Return((_, Some(Throw(_))))) =>
+        ResponseClass.NonRetryableFailure
+    }
+
+  /**
+   * an [[ResponseClassifier]] that classifies responses as failures if
+   * the status code was greater than or equal to 500 (server errors)
+   */
+  val ServerErrorsAsFailures: ResponseClassifier =
+    named("ServerErrorsAsFailuresH2ResponseClassifier") {
+      case H2ReqRep(_, Return((Responses.Failure(), Some(Return(_)))))
+        | H2ReqRep(_, Return((Responses.Failure(), None))) =>
+        ResponseClass.NonRetryableFailure
+    }
+
+  val AssumeSuccess: ResponseClassifier = {
+    case _ => ResponseClass.Success
+  }
+
+  /**
+   * an [[ResponseClassifier]] that first tries to classify [[ExceptionsAsFailures]],
+   * then tries to classify [[ServerErrorsAsFailures]] and finally
+   * [[AssumeSuccess assumes success]] for unclassified responses
+   */
+  val Default: ResponseClassifier =
+    named("DefaultH2ResponseClassifier") {
+      ExceptionsAsFailures orElse ServerErrorsAsFailures orElse AssumeSuccess
+    }
+
 }

@@ -33,7 +33,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
   )
   private[this] val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
   private[this] val reqFrameSizeStat = Seq("request", "stream", "data_frame", "total_bytes")
-//  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
+  //  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
   private[this] val allStats = latencyStats :+ rspFrameSizeStat :+ reqFrameSizeStat
   private[this] val reqStats = allStats.withFilter(_.head != "response")
 
@@ -250,7 +250,6 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     }
   }
-
 
   test("stats are defined after failure") {
     val (stats, service) = setup { _ =>

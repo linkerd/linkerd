@@ -23,5 +23,5 @@ package object h2 {
    * except that it takes the final [[Frame]] in the [[Stream]] as well as
    * a [[Response]] as inputs.
    */
-  type H2ResponseClassifier = PartialFunction[H2ReqRep, ResponseClass]
+  type ResponseClassifier = PartialFunction[H2ReqRep, ResponseClass]
 }
