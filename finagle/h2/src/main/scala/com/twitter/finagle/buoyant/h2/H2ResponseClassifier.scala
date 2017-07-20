@@ -19,7 +19,7 @@ object H2ResponseClassifier {
 
   /**
    * a simple [[H2ResponseClassifier]] that classifies responses as failures
-    * if an exception was [[com.twitter.util.Throw]]n
+   * if an exception was [[com.twitter.util.Throw]]n
    */
   val ExceptionsAsFailures: H2ResponseClassifier =
     named("ExceptionsAsFailuresH2ResponseClassifier") {
@@ -42,14 +42,13 @@ object H2ResponseClassifier {
   }
 
   /**
-    * an [[H2ResponseClassifier]] that first tries to classify [[ExceptionsAsFailures]],
-    * then tries to classify [[ServerErrorsAsFailures]] and finally
-    * [[AssumeSuccess assumes success]] for unclassified responses
-    */
+   * an [[H2ResponseClassifier]] that first tries to classify [[ExceptionsAsFailures]],
+   * then tries to classify [[ServerErrorsAsFailures]] and finally
+   * [[AssumeSuccess assumes success]] for unclassified responses
+   */
   val Default: H2ResponseClassifier =
-    named("DefaultH2ResponseClassifier"){
+    named("DefaultH2ResponseClassifier") {
       ExceptionsAsFailures orElse ServerErrorsAsFailures orElse AssumeSuccess
     }
-
 
 }

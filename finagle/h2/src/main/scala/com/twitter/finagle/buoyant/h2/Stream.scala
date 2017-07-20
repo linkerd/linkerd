@@ -34,10 +34,10 @@ trait Stream {
   def onEnd: Future[Unit]
 
   /**
-    * Wraps this [[Stream]] with a [[StreamProxy]] that calls the provided function on each frame after [[read()]]
-    * @param onFrame the function to call on each frame.
-    * @return a [[StreamProxy]] wrapping this [[Stream]]
-    */
+   * Wraps this [[Stream]] with a [[StreamProxy]] that calls the provided function on each frame after [[read()]]
+   * @param onFrame the function to call on each frame.
+   * @return a [[StreamProxy]] wrapping this [[Stream]]
+   */
   def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamProxy(this, onFrame)
 }
 

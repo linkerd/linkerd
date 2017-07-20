@@ -47,8 +47,10 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
   }
 
-  class FrameStats(protected val stats: StatsReceiver,
-                   protected val streamStats: StreamStats) {
+  class FrameStats(
+    protected val stats: StatsReceiver,
+    protected val streamStats: StreamStats
+  ) {
 
     private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
 
@@ -56,8 +58,8 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
 
     def apply(
       startT: Stopwatch.Elapsed,
-      classifyFrame: Try[Option[Frame]] => Unit = { _ => })
-      (underlying: Stream): Stream = {
+      classifyFrame: Try[Option[Frame]] => Unit = { _ => }
+    )(underlying: Stream): Stream = {
       // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
       var streamFrameBytes: Int = 0
       // partially evaluate this w/ a reference to the start time
@@ -80,23 +82,23 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           streamStatsT(Return(None))
           underlying
         } else underlying.onFrame {
-            case Return(frame) =>
-              frame match {
-                case data: Frame.Data => streamFrameBytes += data.buf.length
-                case _ =>
-              }
-              if (frame.isEnd) {
-                // end frames get special-cased since the `.respond {}`
-                // callback we were placing on `stream.onEnd` gets
-                // clobbered – see above comment
-                frameBytes.add(streamFrameBytes)
-                classifyFrame(Return(Some(frame)))
-                streamStatsT(Return(Some(frame)))
-              }
-            case Throw(e) =>
-              classifyFrame(Throw(e))
-              streamStatsT(Throw(e))
-          }
+          case Return(frame) =>
+            frame match {
+              case data: Frame.Data => streamFrameBytes += data.buf.length
+              case _ =>
+            }
+            if (frame.isEnd) {
+              // end frames get special-cased since the `.respond {}`
+              // callback we were placing on `stream.onEnd` gets
+              // clobbered – see above comment
+              frameBytes.add(streamFrameBytes)
+              classifyFrame(Return(Some(frame)))
+              streamStatsT(Return(Some(frame)))
+            }
+          case Throw(e) =>
+            classifyFrame(Throw(e))
+            streamStatsT(Throw(e))
+        }
       stream
     }
 
