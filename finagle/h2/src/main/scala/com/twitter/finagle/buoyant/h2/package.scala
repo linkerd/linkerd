@@ -16,7 +16,7 @@ package object h2 {
    */
   // TODO: consider changing this type to `(Request, Try[Response], Try[Option[Frame]])`
   //       so that patterns matching it can be a little bit less gross?
-  case class H2ReqRep(request: Request, response: Try[(Response, Try[Option[Frame]])])
+  case class H2ReqRep(request: Request, response: Try[(Response, Option[Try[Frame]])])
   /**
    * A HTTP/2 response classifier is like a standard
    * [[com.twitter.finagle.service.ResponseClassifier ResponseClassifier]],

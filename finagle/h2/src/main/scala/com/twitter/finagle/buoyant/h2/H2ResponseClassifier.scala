@@ -23,7 +23,7 @@ object H2ResponseClassifier {
    */
   val ExceptionsAsFailures: H2ResponseClassifier =
     named("ExceptionsAsFailuresH2ResponseClassifier") {
-      case H2ReqRep(_, Throw(_)) | H2ReqRep(_, Return((_, Throw(_)))) =>
+      case H2ReqRep(_, Throw(_)) | H2ReqRep(_, Return((_, Some(Throw(_))))) =>
         ResponseClass.NonRetryableFailure
     }
 
@@ -33,7 +33,9 @@ object H2ResponseClassifier {
    */
   val ServerErrorsAsFailures: H2ResponseClassifier =
     named("ServerErrorsAsFailuresH2ResponseClassifier") {
-      case H2ReqRep(_, Return((response, Return(_)))) if is500(response) =>
+      case H2ReqRep(_, Return((response, Some(Return(_))))) if is500(response) =>
+        ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return((response, None))) if is500(response) =>
         ResponseClass.NonRetryableFailure
     }
 
