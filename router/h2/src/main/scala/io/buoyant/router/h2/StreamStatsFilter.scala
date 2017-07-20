@@ -47,19 +47,21 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
   }
 
   trait FrameStats extends StreamStats {
-    private[this] val frameSize = stats.stat("data_frame", "bytes")
+    private[this] val frameBytes = stats.stat("data_frame", "bytes")
     private[this] val frameCount = stats.stat("data_frame", "count")
 
     def onFrame(startT: Stopwatch.Elapsed)(stream0: Stream): Stream = {
-      var streamFrameCount = 0
+      var streamFrameCount: Int = 0
+      var streamFrameBytes: Int = 0
       val stream1 = stream0.onFrame {
         case Return(frame: Frame.Data) =>
-          frameSize.add(frame.buf.length)
+          streamFrameBytes += frame.buf.length
           streamFrameCount += 1
         case _ =>
       }
       val _ = stream1.onEnd.respond { result =>
         frameCount.add(streamFrameCount)
+        frameBytes.add(streamFrameBytes)
         this.onEnd(startT)(result)
       }
       stream1
@@ -109,6 +111,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
               ClassifierStats(H2ReqRep(req1, Return((rsp0, Return(frame)))))
             case e@Throw(_) =>
               ClassifierStats(H2ReqRep(req1, Return((rsp0, e))))
+            case _ =>
           }
           Future.value(Response(rsp0.headers, rspStreamStats(rspT)(stream)))
         case Throw(e) =>
