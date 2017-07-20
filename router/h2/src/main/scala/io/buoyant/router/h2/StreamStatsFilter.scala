@@ -30,7 +30,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
     private[this] val successes =
-      stats.counter(s"${successName.getOrElse("stream_")}successes")
+      stats.counter(s"${successName.getOrElse("stream_")}success")
     private[this] val failures =
       stats.counter(s"${successName.getOrElse("stream_")}failures")
 
