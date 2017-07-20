@@ -27,14 +27,17 @@ object StreamStatsFilter {
 class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClassifier)
   extends SimpleFilter[Request, Response] {
 
+  // the `StreamStats` (and the related `FrameStats`) class is really just
+  // a "stateful function" – essentially a closure, but closing over state
+  // (the actual stat values) defined within its own scope. this is kind of
+  // a FP take on object orientation, isn't scala cool?
   class StreamStats(protected val stats: StatsReceiver, durationName: Option[String] = None) {
-
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
     private[this] val successes = stats.counter("stream_success")
     private[this] val failures = stats.counter("stream_failures")
 
-    @inline def onEnd(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
+    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
       durationMs.add(startT().inMillis)
       result match {
         case Return(_) => successes.incr()
@@ -42,15 +45,17 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
       }
     }
 
-    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = onEnd(startT)(result)
-
   }
 
-  trait FrameStats extends StreamStats {
+  class FrameStats(protected val stats: StatsReceiver,
+                   protected val streamStats: StreamStats) {
+
     private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
     private[this] val frameCount = stats.stat("data_frame", "count")
 
-    def onFrame(startT: Stopwatch.Elapsed)(underlyingStream: Stream): Stream = {
+    def this(stats: StatsReceiver) = this(stats, new StreamStats(stats))
+
+    @inline def apply(startT: Stopwatch.Elapsed)(underlyingStream: Stream): Stream = {
       var streamFrameCount: Int = 0
       var streamFrameBytes: Int = 0
       val stream = underlyingStream.onFrame {
@@ -59,15 +64,14 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
           streamFrameCount += 1
         case _ =>
       }
-      val _ = stream.onEnd.respond { result =>
+      val _ = stream.onEnd.respond {
         frameCount.add(streamFrameCount)
         frameBytes.add(streamFrameBytes)
-        this.onEnd(startT)(result)
+        streamStats(startT)(_)
       }
       stream
     }
 
-    @inline def apply(startT: Stopwatch.Elapsed)(stream: Stream): Stream = onFrame(startT)(stream)
   }
 
   object ClassifierStats {
@@ -86,9 +90,9 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2ResponseClas
   private[this] val reqCount = statsReceiver.counter("requests")
 
   private[this] val reqStreamStats =
-    new StreamStats(statsReceiver.scope("request", "stream")) with FrameStats
+    new FrameStats(statsReceiver.scope("request", "stream"))
   private[this] val rspStreamStats =
-    new StreamStats(statsReceiver.scope("response", "stream")) with FrameStats
+    new FrameStats(statsReceiver.scope("response", "stream"))
   private[this] val totalStreamStats =
     new StreamStats(
       statsReceiver.scope("stream"),
