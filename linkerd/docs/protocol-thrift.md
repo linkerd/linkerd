@@ -38,6 +38,7 @@ Key | Default Value | Description
 dstPrefix | `/svc` | A path prefix used in `dtab`.
 thriftMethodInDst | `false` | If `true`, thrift method names are appended to destinations for outgoing requests.
 thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompactProtocol). Applies to both clients and servers.
+maxRequestSize | 1 megabyte | The maximum size, in bytes, of requests to accept.
 
 
 ## Thrift Server Parameters

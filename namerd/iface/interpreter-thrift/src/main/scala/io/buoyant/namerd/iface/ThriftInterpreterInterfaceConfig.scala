@@ -1,10 +1,12 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.storage._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path, Stack, Thrift, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
+import com.twitter.finagle.thrift.Protocols
 import com.twitter.scrooge.ThriftService
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
@@ -16,10 +18,14 @@ import scala.util.Random
 case class ThriftInterpreterInterfaceConfig(
   retryBaseSecs: Option[Int] = None,
   retryJitterSecs: Option[Int] = None,
-  cache: Option[CapacityConfig] = None
+  cache: Option[CapacityConfig] = None,
+  maxRequestSize: Option[Int] = None
 ) extends InterpreterInterfaceConfig {
   @JsonIgnore
   protected def defaultAddr = ThriftInterpreterInterfaceConfig.defaultAddr
+
+  @JsonIgnore
+  val readLength = maxRequestSize.getOrElse(1.megabyte.bytes.toInt)
 
   @JsonIgnore
   def mk(
@@ -47,7 +53,9 @@ case class ThriftInterpreterInterfaceConfig(
       tlsParams +
         param.Stats(stats1) +
         Thrift.ThriftImpl.Netty4
-    ThriftServable(addr, iface, params)
+    val server = ThriftMux.server.withParams(ThriftMux.server.params ++ params)
+      .withProtocolFactory(Protocols.binaryFactory(readLength = readLength))
+    ThriftServable(addr, iface, server)
   }
 }
 
@@ -61,10 +69,9 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
   val configClass = classOf[ThriftInterpreterInterfaceConfig]
 }
 
-case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, params: Stack.Params) extends Servable {
+case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, server: ThriftMux.Server) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
-  val thriftMux = ThriftMux.server
-  def serve() = thriftMux.withParams(thriftMux.params ++ params).serveIface(addr, iface)
+  def serve() = server.serveIface(addr, iface)
 }
 
 case class CapacityConfig(

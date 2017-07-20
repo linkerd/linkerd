@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
+import com.twitter.conversions.storage._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.Thrift.param
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftMuxServerPrep, ThriftTraceInitializer}
@@ -47,7 +48,8 @@ object ThriftMuxInitializer extends ThriftMuxInitializer
 
 case class ThriftMuxConfig(
   thriftMethodInDst: Option[Boolean],
-  thriftProtocol: Option[ThriftProtocol]
+  thriftProtocol: Option[ThriftProtocol],
+  maxRequestBytes: Option[Int]
 ) extends RouterConfig {
 
   var servers: Seq[ThriftServerConfig] = Nil
@@ -58,9 +60,12 @@ case class ThriftMuxConfig(
   def client: Option[ThriftClient] = _client.orElse(Some(new ThriftDefaultClient))
 
   @JsonIgnore
+  val readLength = maxRequestBytes.getOrElse(1.megabyte.bytes.toInt)
+
+  @JsonIgnore
   override def protocol = ThriftMuxInitializer
 
   override def routerParams = super.routerParams
     .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
-    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
+    .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory(readLength = readLength))))
 }

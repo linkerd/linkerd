@@ -7,16 +7,16 @@ import io.buoyant.config.{ConfigDeserializer, ConfigSerializer}
 import org.apache.thrift.protocol.{TCompactProtocol, TProtocolFactory}
 
 sealed trait ThriftProtocol {
-  def factory: TProtocolFactory
+  def factory(readLength: Int): TProtocolFactory
   def name: String
 }
 object ThriftProtocol {
   object Binary extends ThriftProtocol {
-    def factory = Protocols.binaryFactory()
+    def factory(readLength: Int) = Protocols.binaryFactory(readLength = readLength)
     val name = "binary"
   }
   object Compact extends ThriftProtocol {
-    def factory = new TCompactProtocol.Factory
+    def factory(readLength: Int) = new TCompactProtocol.Factory
     val name = "compact"
   }
 }
