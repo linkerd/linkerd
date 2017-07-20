@@ -147,6 +147,6 @@ package object param {
   }
   object H2ResponseClassifier {
     implicit val param: Stack.Param[H2ResponseClassifier] =
-      Stack.Param(H2ResponseClassifier(FH2ResponseClassifier.ServerErrorsAsFailures))
+      Stack.Param(H2ResponseClassifier(FH2ResponseClassifier.Default))
   }
 }
