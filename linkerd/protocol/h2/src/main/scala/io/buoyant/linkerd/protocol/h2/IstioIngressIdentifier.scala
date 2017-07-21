@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol.h2
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Status}
+import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Status, Stream}
 import com.twitter.finagle.param.Label
 import com.twitter.finagle._
 import com.twitter.util.{Future, Try}
@@ -70,7 +70,7 @@ class IstioIngressIdentifier(
   }
 
   def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
-    val resp = Response(Status.Found, Stream.empty(0))
+    val resp = Response(Status.Found, Stream.empty())
     resp.headers.set(Headers.Path, redir.`uri`.getOrElse(req.path))
     resp.headers.set(Headers.Authority, redir.`authority`.getOrElse(req.authority))
     Future.exception(H2ResponseException(resp))
