@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol.h2
 import com.twitter.io.Buf
 import com.twitter.finagle.{ChannelClosedException, Failure, RequestTimeoutException}
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.buoyant.h2.service.ResponseClassifiers
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, ResponseClassifiers}
 import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.finagle.util.LoadService
 import com.twitter.util.{Duration, Return, Throw, TimeoutException, Try}
@@ -21,7 +21,7 @@ class ResponseClassifiersTest extends FunSuite {
     classification: Option[ResponseClass]
   ) = {
     val req = Request("http", method, "auf", "/", Stream.empty())
-    val key = ReqRep(req, status.map(Response(_, Stream.empty())))
+    val key = H2ReqRep(req, status.map(s => (Response(s, Stream.empty()), None)))
     classification match {
       case None =>
         assert(!classifier.isDefinedAt(key))

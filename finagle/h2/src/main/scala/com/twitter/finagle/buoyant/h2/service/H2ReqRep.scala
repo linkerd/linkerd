@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package service
 
-import com.twitter.finagle.buoyant.h2.service.H2ReqRep.RepAndFrame
+import com.twitter.finagle.buoyant.h2.service.H2ReqRep.{FinalFrame, RepAndFrame}
 import com.twitter.finagle.service.ReqRep
 import com.twitter.util.{Return, Throw, Try}
 
@@ -15,13 +15,33 @@ import com.twitter.util.{Return, Throw, Try}
  *                 in a [[Try]], in case the [[Stream]] [[com.twitter.util.Throw Throw]]s.
  */
 class H2ReqRep(override val request: Request, override val response: Try[RepAndFrame])
-  extends ReqRep(request, response)
+  extends ReqRep(request, response) {
+
+  /**
+   * the [[Response]] part of `this.response`,
+   * ignoring the final frame of the response stream
+   */
+  def responseOnly: Try[Response] = response.map { case (rsp, _) => rsp }
+
+  /**
+   * the final [[Frame]] of the response stream
+   */
+  def finalFrame: FinalFrame = response.map { case (_, f) => f }.getOrElse(None)
+
+  override def toString: String = s"H2ReqRep($request, $responseOnly, finalFrame=$finalFrame)"
+}
 
 object H2ReqRep {
+  // type aliases to minimise typing
   type RepAndFrame = (Response, Option[Try[Frame]])
+  type FinalFrame = Option[Try[Frame]]
 
-  @inline def apply(request: Request, response: Try[RepAndFrame]): H2ReqRep =
+  def apply(request: Request, response: Try[RepAndFrame]): H2ReqRep =
     new H2ReqRep(request, response)
+
+  @inline def apply(request: Request, response: Try[Response], finalFrame: FinalFrame = None): H2ReqRep = H2ReqRep(request, response.map(r => (r, finalFrame)))
+
+  @inline def apply(request: Request, err: Throwable): H2ReqRep = H2ReqRep(request, Throw(err))
 
   def unapply(reqrep: ReqRep): Option[(Request, Try[RepAndFrame])] =
     reqrep match {
