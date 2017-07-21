@@ -1,14 +1,11 @@
 package io.buoyant.router.h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.buoyant.h2.Frame.Trailers
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.buoyant.h2.{Frame, Method, Request, Response, Status, Stream}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.Buf
-import com.twitter.util.{Future, Return}
+import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
-import scala.annotation.tailrec
 
 class StreamStatsFilterTest extends FunSuite with Awaits {
   private[this] val successCounters = Seq(
@@ -31,8 +28,8 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     Seq("stream", "total_latency_ms"),
     Seq("request_latency_ms")
   )
-  private[this] val rspFrameSizeStat = Seq("response", "stream", "data_frame", "total_bytes")
-  private[this] val reqFrameSizeStat = Seq("request", "stream", "data_frame", "total_bytes")
+  private[this] val rspFrameSizeStat = Seq("response", "stream", "data_bytes")
+  private[this] val reqFrameSizeStat = Seq("request", "stream", "data_bytes")
   //  val rspFrameCountStat = Seq("response", "stream", "data_frame", "count")
   private[this] val allStats = latencyStats :+ rspFrameSizeStat :+ reqFrameSizeStat
   private[this] val reqStats = allStats.withFilter(_.head != "response")

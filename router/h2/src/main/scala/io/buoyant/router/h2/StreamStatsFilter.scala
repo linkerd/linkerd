@@ -46,11 +46,12 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassi
       durationMs.add(streamDuration.inMillis)
       successes.incr()
     }
-    private[this] val frameBytes = stats.stat("data_frame", "total_bytes")
+
+    private[this] val frameBytes = stats.stat("data_bytes")
 
     def apply(
       startT: Stopwatch.Elapsed,
-      classifyFrame: Option[Try[Frame]] => Unit = { _ => }
+      onFinalFrame: Option[Try[Frame]] => Unit = { _ => }
     )(underlying: Stream): Stream = {
       // TODO: add a fold to `StreamProxy`, so we don't have to use a `var`?
       val streamFrameBytes = new AtomicLong(0)
@@ -69,7 +70,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassi
           // workaround...
           //  - eliza, 7/20/2017
           frameBytes.add(0)
-          classifyFrame(None)
+          onFinalFrame(None)
           success(startT())
           underlying
         } else underlying.onFrame {
@@ -84,11 +85,11 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassi
               // callback we were placing on `stream.onEnd` gets
               // clobbered – see above comment
               frameBytes.add(streamFrameBytes.get())
-              classifyFrame(Some(Return(frame)))
+              onFinalFrame(Some(Return(frame)))
               success(startT())
             }
           case Throw(e) =>
-            classifyFrame(Some(Throw(e)))
+            onFinalFrame(Some(Throw(e)))
             failure(startT())
         }
       stream
