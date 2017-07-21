@@ -163,15 +163,11 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   /**
    * Convert this Watchable into an [[Activity]]
-   * @param resourceVersion whether or not to send the initial resource
-   *                        version of the watched resource. this is a
-   *                        special case due to errors with the
-   *                        ConfigMap interpreter
    * @param onEvent function called on each [[Watch]] event
    * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
    *         where `T` is the return type of the `onEvent` function
    */
-  def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Activity[T] =
+  def activity[T](convert: G => T)(onEvent: (T, W) => T): Activity[T] =
     Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(retryIndefinitely = true)
@@ -188,7 +184,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           val initialState = convert(initial)
           state.update(Activity.Ok(initialState))
 
-          val version = if (resourceVersion) {
+          val version = if (watchResourceVersion) {
             initial.metadata.flatMap(_.resourceVersion)
           } else None
 
