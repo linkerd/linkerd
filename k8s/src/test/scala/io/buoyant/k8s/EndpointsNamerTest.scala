@@ -32,7 +32,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Init
         doInit before Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319481" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=5319481" =>
         val rsp = Response()
 
         doScaleUp before rsp.writer.write(Rsps.ScaleUp) before {
@@ -44,7 +44,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         }
 
         Future.value(rsp)
-      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319582" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=5319582" =>
         val rsp = Response()
 
         doScaleDown before rsp.writer.write(Rsps.ScaleDown)
@@ -56,7 +56,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Services
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=33787896" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/services?resourceVersion=33787896" =>
         val rsp = Response()
         Future.value(rsp)
 
@@ -103,7 +103,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Init
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319481" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=5319481" =>
         request = req
         val rsp = Response()
         Future.value(rsp)
@@ -114,7 +114,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Services
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=33787896" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/services?resourceVersion=33787896" =>
         request = req
         val rsp = Response()
         Future.value(rsp)
@@ -129,7 +129,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       state = s
     }
 
-    assert(request.uri.startsWith("/api/v1/namespaces/srv/services"))
+    assert(request.uri.startsWith("/api/v1/watch/namespaces/srv/services"))
     state match {
       case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
         assert(bound.id == Path.Utf8("test", "http", "sessions"))
@@ -178,7 +178,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Init
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&resourceVersion=5319481" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=5319481" =>
         Future.value(Response())
 
       case req if req.uri == "/api/v1/namespaces/srv/services" =>
@@ -186,7 +186,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Services
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/namespaces/srv/services?watch=true&resourceVersion=33787896" =>
+      case req if req.uri == "/api/v1/watch/namespaces/srv/services?resourceVersion=33787896" =>
         val rsp = Response()
         Future.value(rsp)
 
@@ -226,24 +226,33 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     @volatile var req: Request = null
 
     val service = Service.mk[Request, Response] {
-      case r if r.path == "/api/v1/namespaces/srv/endpoints" =>
+      case r if r.path.startsWith("/api/v1/watch/namespaces/srv/endpoints") =>
         req = r
         val rsp = Response()
         rsp.content = Rsps.Init
         Future.value(rsp)
-      case r if r.path == "/api/v1/namespaces/srv/services" =>
+      case r if r.path.startsWith("/api/v1/watch/namespaces/srv/services") =>
         val rsp = Response()
         rsp.content = Rsps.Services
         Future.value(rsp)
-      case _ =>
-        fail(s"unexpected request: $req")
+      case r if r.path.startsWith("/api/v1/namespaces/srv/endpoints") =>
+        req = r
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+      case r if r.path.startsWith("/api/v1/namespaces/srv/services") =>
+        val rsp = Response()
+        rsp.content = Rsps.Services
+        Future.value(rsp)
+      case r =>
+        fail(s"unexpected request: $r")
     }
 
     val api = v1.Api(service)
     val namer = new MultiNsNamer(Path.read("/test"), Some("versionLabel"), api.withNamespace)
     namer.lookup(Path.read("/srv/thrift/sessions/d3adb33f"))
 
-    assert(req.uri == "/api/v1/namespaces/srv/endpoints?watch=true&labelSelector=versionLabel%3Dd3adb33f&resourceVersion=5319481")
+    assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?labelSelector=versionLabel%3Dd3adb33f&resourceVersion=5319481")
   }
 
   test("NameTree doesn't update on endpoint change") {
