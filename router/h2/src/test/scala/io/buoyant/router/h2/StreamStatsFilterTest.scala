@@ -84,6 +84,35 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
   }
 
+
+  test("increments success counters on success with empty stream") {
+
+    val (stats, service) = setup { _ =>
+      Future.value(Response(Status.Ok, Stream.empty()))
+    }
+
+    // all counters should be empty before firing request
+    withClue("before request:") {
+      for { counter <- allCounters }
+        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+    }
+
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    var rsp = await(service(req))
+
+    withClue("after first response") {
+      for { counter <- successCounters :+ requestCounter }
+        withClue(s"stat: $counter") { assert(stats.counters(counter) == 1) }
+    }
+
+    rsp = await(service(req))
+
+    withClue("after second response") {
+      for { counter <- successCounters :+ requestCounter }
+        withClue(s"stat: $counter") { assert(stats.counters(counter) == 2) }
+    }
+  }
+
   test("does not increment failure counters after successes") {
     val (stats, service) = setup { _ =>
       val stream = Stream.const("aaaaaaaaa")
