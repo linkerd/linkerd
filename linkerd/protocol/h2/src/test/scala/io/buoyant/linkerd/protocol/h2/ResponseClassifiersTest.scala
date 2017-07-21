@@ -3,9 +3,10 @@ package io.buoyant.linkerd.protocol.h2
 import com.twitter.io.Buf
 import com.twitter.finagle.{ChannelClosedException, Failure, RequestTimeoutException}
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
+import com.twitter.finagle.buoyant.h2.service.ResponseClassifiers
+import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.finagle.util.LoadService
-import com.twitter.util.{Duration, Return, Throw, Try, TimeoutException}
+import com.twitter.util.{Duration, Return, Throw, TimeoutException, Try}
 import io.buoyant.config.Parser
 import io.buoyant.linkerd._
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}

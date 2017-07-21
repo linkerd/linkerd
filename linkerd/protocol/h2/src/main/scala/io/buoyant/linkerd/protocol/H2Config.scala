@@ -9,6 +9,7 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.param._
+import com.twitter.finagle.buoyant.h2.service.ResponseClassifiers
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.{Stack, param, service}
@@ -174,7 +175,7 @@ class H2StaticSvc(val configs: Seq[H2SvcPrefixConfig]) extends H2Svc with Static
 class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with H2SvcConfig
 
 trait H2SvcConfig extends SvcConfig {
-  override type ProtocolResponseClassifier = ResponseClassifier
+
   @JsonIgnore
   override def baseResponseClassifier = ResponseClassifiers.Default
   // TODO: insert classified retries here
@@ -186,6 +187,7 @@ trait H2SvcConfig extends SvcConfig {
   // TODO: gRPC (trailers-aware)
   @JsonIgnore
   override def responseClassifier = Some(baseResponseClassifier)
+    .map(ResponseClassifiers.NonRetryableStream(_))
   //    super.responseClassifier.map(ResponseClassifiers.NonRetryableStream(_))
 }
 

@@ -1,6 +1,7 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.buoyant.h2._
+import com.twitter.finagle.buoyant.h2.service.ResponseClassifiers
 import com.twitter.finagle.service.ResponseClassifier
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
 import io.buoyant.router.ClassifiedRetries
