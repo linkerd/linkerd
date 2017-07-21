@@ -21,7 +21,7 @@ class ResponseClassifiersTest extends FunSuite {
     classification: Option[ResponseClass]
   ) = {
     val req = Request("http", method, "auf", "/", Stream.empty())
-    val key = H2ReqRep(req, status.map(s => (Response(s, Stream.empty()), None)))
+    val key = H2ReqRep(req, status.map(Response(_, Stream.empty())))
     classification match {
       case None =>
         assert(!classifier.isDefinedAt(key))
@@ -170,13 +170,13 @@ class ResponseClassifiersTest extends FunSuite {
     val req = Request("http", Method.Get, "auf", "/", Stream.const(Buf.Utf8("yo")))
     val rsp = Response(Status.EatMyShorts, Stream.empty())
     Response(Status.Ok, Stream.empty())
-    assert(classifier(ReqRep(req, Return(rsp))) == ResponseClass.NonRetryableFailure)
+    assert(classifier(H2ReqRep(req, Return(rsp))) == ResponseClass.NonRetryableFailure)
   }
 
   test("NonRetryableStream: does not change RetryableFailures when not chunked") {
     val classifier = ResponseClassifiers.NonRetryableStream { case ReqRep(_, _) => ResponseClass.RetryableFailure }
     val req = Request("http", Method.Get, "auf", "/", Stream.empty())
     val rsp = Response(Status.EatMyShorts, Stream.empty())
-    assert(classifier(ReqRep(req, Return(rsp))) == ResponseClass.RetryableFailure)
+    assert(classifier(H2ReqRep(req, Return(rsp))) == ResponseClass.RetryableFailure)
   }
 }
