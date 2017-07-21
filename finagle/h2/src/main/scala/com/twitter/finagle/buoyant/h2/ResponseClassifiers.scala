@@ -101,7 +101,10 @@ object ResponseClassifiers {
    */
   val NonRetryableServerFailures: ResponseClassifier =
     named(s"NonRetryableServerFailures") {
-      case H2ReqRep(_, Throw(_) | Return((Responses.Failure(), _))) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_,
+        Throw(_) | Return((Responses.Failure(), _))
+                 | Return((_, Some(Throw(_))))
+      ) => ResponseClass.NonRetryableFailure
     }
 
   // TODO allow fully-buffered streams to be retried.
