@@ -1,9 +1,10 @@
 package io.buoyant.k8s
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonIgnore}
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.{http, Service => FService}
 import io.buoyant.k8s.{KubeObject => BaseObject}
+import scala.collection.breakOut
 
 package object v1 {
 
@@ -114,14 +115,15 @@ package object v1 {
     def group = v1.group
     def version = v1.version
     override def withNamespace(ns: String) = new NsApi(client, ns)
-    def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
-    def services = listResource[Service, ServiceWatch, ServiceList]()
   }
 
   class NsApi(client: Client, ns: String)
     extends NsVersion[Object](client, v1.group, v1.version, ns) {
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
+    def endpoints(name: String): NsObjectResource[v1.Endpoints, v1.EndpointsWatch] = endpoints.named(name)
     def services = listResource[Service, ServiceWatch, ServiceList]()
+
+    def service(name: String): NsObjectResource[Service, ServiceWatch] = services.named(name)
     def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
   }
 
@@ -137,13 +139,38 @@ package object v1 {
     kind: Option[String] = None,
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None
-  ) extends Object
+  ) extends Object {
+    /** @return the subsets list on this `Endpoints` object,
+     *          or an empty [[Seq]] if it is empty.
+     */
+    @JsonIgnore
+    @inline
+    def subsetsSeq: Seq[EndpointSubset] =
+    subsets.getOrElse(Seq.empty)
+
+    @JsonIgnore
+    @inline
+    def getName: Option[String] =
+      for {meta <- metadata
+           name <- meta.name}
+        yield name
+  }
 
   case class EndpointSubset(
     notReadyAddresses: Option[Seq[EndpointAddress]] = None,
     addresses: Option[Seq[EndpointAddress]] = None,
     ports: Option[Seq[EndpointPort]] = None
-  )
+  ) {
+    @JsonIgnore
+    @inline
+    def addressesSeq: Seq[EndpointAddress] =
+      addresses.getOrElse(Seq.empty)
+
+    @JsonIgnore
+    @inline
+    def portsSeq: Seq[EndpointPort] =
+      ports.getOrElse(Seq.empty)
+  }
 
   case class EndpointAddress(
     ip: String,
@@ -170,7 +197,23 @@ package object v1 {
     kind: Option[String] = None,
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None
-  ) extends Object
+  ) extends Object {
+    /**
+     * @return a `Map[Int, String]` containing all the port to target port
+     *         mappings in this `Service` object.
+     */
+    @JsonIgnore
+    def portMappings: Map[Int, String] =
+      (for {
+        meta <- metadata.toSeq
+        status <- status.toSeq
+        spec <- spec.toSeq
+        v1.ServicePort(port, targetPort, _) <- spec.ports
+      } yield {
+        port -> targetPort.getOrElse(port.toString)
+      })(breakOut)
+
+  }
 
   case class ServiceStatus(
     loadBalancer: Option[LoadBalancerStatus] = None
@@ -178,7 +221,12 @@ package object v1 {
 
   case class LoadBalancerStatus(
     ingress: Option[Seq[LoadBalancerIngress]]
-  )
+  ) {
+    @JsonIgnore
+    @inline
+    def ingressSeq: Seq[LoadBalancerIngress]
+    = ingress.getOrElse(Seq.empty)
+  }
 
   case class LoadBalancerIngress(
     ip: Option[String] = None,

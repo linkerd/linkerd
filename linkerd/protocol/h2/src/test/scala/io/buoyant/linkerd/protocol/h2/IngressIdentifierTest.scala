@@ -52,7 +52,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
       val rsp = FResponse()
       rsp.content = ingressListResource
       Future.value(rsp)
-    case req if req.uri == "/apis/extensions/v1beta1/watch/ingresses" =>
+    case req if req.uri == "/apis/extensions/v1beta1/ingresses?watch=true" =>
       val rsp = FResponse()
       rsp.content = ingressListResource
       Future.value(rsp)

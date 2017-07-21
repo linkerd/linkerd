@@ -5,9 +5,9 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
-import io.buoyant.k8s.Ns.ObjectCache
+import io.buoyant.k8s.Ns.ListCache
 
-abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest, Cache <: ObjectCache[O, W, L]](
+abstract class Ns[O <: KubeObject : Manifest, W <: Watch[O] : Manifest, L <: KubeList[O] : Manifest, Cache <: ListCache[O, W, L]](
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds),
   timer: Timer = DefaultTimer
 ) {
@@ -95,8 +95,15 @@ abstract class Ns[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeL
 }
 
 object Ns {
-  abstract class ObjectCache[O <: KubeObject: Manifest, W <: Watch[O]: Manifest, L <: KubeList[O]: Manifest] {
-    def initialize(list: L): Unit
+
+  trait CacheLike[O <: KubeObject, W <: Watch[O], I] extends Stabilize {
     def update(event: W): Unit
+    def initialize(init: I): Unit
   }
+
+  abstract class ObjectCache[O <: KubeObject : Manifest, W <: Watch[O] : Manifest]
+    extends CacheLike[O, W, O]
+
+  abstract class ListCache[O <: KubeObject : Manifest, W <: Watch[O] : Manifest, L <: KubeList[O] : Manifest]
+    extends CacheLike[O, W, L]
 }
