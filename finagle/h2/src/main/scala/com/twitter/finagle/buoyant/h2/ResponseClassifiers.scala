@@ -129,29 +129,18 @@ object ResponseClassifiers {
         ResponseClass.NonRetryableFailure
     }
 
-  /**
-   * an [[ResponseClassifier]] that classifies responses as failures if
-   * the status code was greater than or equal to 500 (server errors)
-   */
-  val ServerErrorsAsFailures: ResponseClassifier =
-    named("ServerErrorsAsFailuresH2ResponseClassifier") {
-      case H2ReqRep(_, Return((Responses.Failure(), Some(Return(_)))))
-        | H2ReqRep(_, Return((Responses.Failure(), None))) =>
-        ResponseClass.NonRetryableFailure
-    }
-
   val AssumeSuccess: ResponseClassifier = {
     case _ => ResponseClass.Success
   }
 
   /**
    * an [[ResponseClassifier]] that first tries to classify [[ExceptionsAsFailures]],
-   * then tries to classify [[ServerErrorsAsFailures]] and finally
+   * then tries to classify [[NonRetryableServerFailures]] and finally
    * [[AssumeSuccess assumes success]] for unclassified responses
    */
   val Default: ResponseClassifier =
     named("DefaultH2ResponseClassifier") {
-      ExceptionsAsFailures orElse ServerErrorsAsFailures orElse AssumeSuccess
+      ExceptionsAsFailures orElse NonRetryableServerFailures orElse AssumeSuccess
     }
 
 }
