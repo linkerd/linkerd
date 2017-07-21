@@ -214,6 +214,7 @@ object LinkerdBuild extends Base {
        |   -XX:-TieredCompilation                            \
        |   -XX:+UseStringDeduplication                       \
        |   -Dcom.twitter.util.events.sinkEnabled=false       \
+       |   -Dorg.apache.thrift.readLength=10485760           \
        |   ${LOCAL_JVM_OPTIONS:-}                            "
        |""".stripMargin
 
