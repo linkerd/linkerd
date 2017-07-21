@@ -56,17 +56,24 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassi
       onFinalFrame: Option[Try[Frame]] => Unit = { _ => }
     )(underlying: Stream): Stream = {
       val streamFrameBytes = new AtomicLong(0)
-      val stream = underlying.onFrame {
-        case Return(frame) =>
-          frame match {
-            case data: Frame.Data =>
-              val _ = streamFrameBytes.addAndGet(data.buf.length)
-            case _ =>
-          }
-          if (frame.isEnd) onFinalFrame(Some(Return(frame)))
-        case Throw(e) =>
-          onFinalFrame(Some(Throw(e)))
-          failure(startT())
+      val stream = if (underlying.isEmpty) {
+        // if the stream is empty, we still need to call the response
+        // classifier with `None`, so add that to the `onEnd` callback.
+        underlying.onEnd.respond { _ => onFinalFrame(None) }
+        underlying
+      } else {
+        underlying.onFrame {
+          case Return(frame) =>
+            frame match {
+              case data: Frame.Data =>
+                val _ = streamFrameBytes.addAndGet(data.buf.length)
+              case _ =>
+            }
+            if (frame.isEnd) onFinalFrame(Some(Return(frame)))
+          case Throw(e) =>
+            onFinalFrame(Some(Throw(e)))
+            failure(startT())
+        }
       }
       stream.onEnd.respond { result =>
         frameBytes.add(streamFrameBytes.get())
