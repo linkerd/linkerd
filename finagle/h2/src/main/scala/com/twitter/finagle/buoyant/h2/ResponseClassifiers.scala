@@ -52,6 +52,12 @@ object ResponseClassifiers {
         def unapply(rsp: Response): Boolean = Failure.unapply(rsp)
       }
     }
+    object Success {
+      def unapply(rsp: Response): Boolean = rsp.status match {
+        case Status.ServerError(_) => false
+        case _ => true
+      }
+    }
   }
 
   object RetryableResult {
@@ -60,8 +66,10 @@ object ResponseClassifiers {
         .orElse(RetryPolicy.ChannelClosedExceptionsOnly)
         .orElse { case _ => false }
 
-    def unapply(rsp: Try[Any]): Boolean = rsp match {
-      case Return(Responses.Failure.Retryable()) => true
+    def unapply(rsp: Try[(Response, Option[Try[Frame]])]): Boolean = rsp match {
+      case Return((Responses.Failure.Retryable(), None | Some(Return(_)))) => true
+      case Return((Responses.Success() | Responses.Failure.Retryable(),
+                   Some(Throw(e)))) => retryableThrow(Throw(e))
       case Throw(e) => retryableThrow(Throw(e))
       case _ => false
     }
@@ -124,7 +132,7 @@ object ResponseClassifiers {
    * if an exception was [[com.twitter.util.Throw]]n
    */
   val ExceptionsAsFailures: ResponseClassifier =
-    named("ExceptionsAsFailuresH2ResponseClassifier") {
+    named("ExceptionsAsFailures") {
       case H2ReqRep(_, Throw(_)) | H2ReqRep(_, Return((_, Some(Throw(_))))) =>
         ResponseClass.NonRetryableFailure
     }
