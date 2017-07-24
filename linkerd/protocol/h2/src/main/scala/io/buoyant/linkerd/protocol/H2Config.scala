@@ -12,12 +12,11 @@ import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.buoyant.h2.service.{ResponseClassifier, ResponseClassifiers}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
-import com.twitter.finagle.{Stack, param, service}
-//import com.twitter.finagle.service.{ResponseClassifier => H1ResponseClassifier}
+import com.twitter.finagle.{Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.{ResponseClassifierConfig => H1ResponseClassifierConfig}
-import io.buoyant.linkerd.protocol.h2.H2ResponseClassifierConfig
+import io.buoyant.linkerd.protocol.h2.ResponseClassifierConfig
 import io.buoyant.router.h2.DupRequest
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
@@ -172,7 +171,7 @@ trait H2SvcConfig extends SvcConfig {
   override def _responseClassifier_=(r: H1ResponseClassifierConfig): Unit = {}
 
   @JsonProperty("responseClassifier")
-  var _h2ResponseClassifier: Option[H2ResponseClassifierConfig] = None
+  var _h2ResponseClassifier: Option[ResponseClassifierConfig] = None
 
   @JsonIgnore
   def h2BaseResponseClassifier = ResponseClassifiers.Default
