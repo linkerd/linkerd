@@ -22,12 +22,10 @@ class ExamplesTest extends FunSuite {
         val lines = source.getLines().toSeq
         val firstLine = lines.headOption
         if (!firstLine.contains("#notest")) {
-          withClue(s"example: ${file.getName}") {
-            val yaml = lines.mkString("\n")
-            val parsed = Linker.parse(yaml)
-            val loaded = parsed.mk()
-            assert(mapper.writeValueAsString(parsed).nonEmpty)
-          }
+          val yaml = lines.mkString("\n")
+          val parsed = Linker.parse(yaml)
+          val loaded = parsed.mk()
+          assert(mapper.writeValueAsString(parsed).nonEmpty)
         }
       } finally source.close()
     }
