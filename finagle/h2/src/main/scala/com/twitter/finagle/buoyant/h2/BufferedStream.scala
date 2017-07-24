@@ -29,9 +29,11 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
 
   // Mutable state.  All mutations of state must be explicitly synchronized
   private[this] val buffer = mutable.MutableList[RefCountedFrame]()
-  private[this] var bufferSize = 0L
+  private[this] var _bufferSize = 0L
   private[this] val forks = mutable.MutableList[AsyncQueue[Frame]]()
   private[this] var state: State = State.Buffering
+
+  def bufferSize: Long = _bufferSize
 
   /** Begin reading Frames from the underlying Stream.  Completes when all Frames have been read. */
   def read(): Future[Unit] = loop()
@@ -127,9 +129,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
     }
     if (state == State.Buffering) {
       // Attempt to add the Frame to the buffer
-      if (bufferSize + size <= bufferCapacity) {
+      if (_bufferSize + size <= bufferCapacity) {
         buffer += frame
-        bufferSize += size
+        _bufferSize += size
       } else {
         // There is not enough room in the buffer for this Frame.  Since it is now impossible
         // for a newly created child Stream to catch up, discard the buffer.
