@@ -37,7 +37,7 @@ class NonRetryable5XXInitializer extends ResponseClassifierInitializer {
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer
 
 class AllSuccessfulConfig extends ResponseClassifierConfig {
-  def mk: ResponseClassifier = ??? //ClassifiedRetries.Default
+  def mk: ResponseClassifier = ResponseClassifiers.Default
   // TODO: we still need h2 ClassifiedRetries
 }
 
