@@ -141,12 +141,12 @@ package object param {
     implicit val param: Stack.Param[Tracer] = Stack.Param(Tracer(DefaultTracer))
   }
 
-  //  case class H2ResponseClassifier(classifier: ResponseClassifier) {
-  //    def mk(): (H2ResponseClassifier, Stack.Param[H2ResponseClassifier]) =
-  //      (this, H2ResponseClassifier.param)
-  //  }
-  //  object H2ResponseClassifier {
-  //    implicit val param: Stack.Param[H2ResponseClassifier] =
-  //      Stack.Param(H2ResponseClassifier(ResponseClassifiers.Default))
-  //  }
+  case class H2ResponseClassifier(classifier: service.ResponseClassifier) {
+    def mk(): (H2ResponseClassifier, Stack.Param[H2ResponseClassifier]) =
+      (this, H2ResponseClassifier.param)
+  }
+  object H2ResponseClassifier {
+    implicit val param: Stack.Param[H2ResponseClassifier] =
+      Stack.Param(H2ResponseClassifier(ResponseClassifiers.Default))
+  }
 }

@@ -1,7 +1,8 @@
 package com.twitter.finagle.buoyant.h2.service
 
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier, RetryPolicy}
+import com.twitter.finagle.buoyant.h2.service.H2ReqRep.RepAndFrame
+import com.twitter.finagle.service.{ResponseClass, RetryPolicy}
 import com.twitter.util.{Return, Throw, Try}
 
 object ResponseClassifiers {
@@ -67,7 +68,7 @@ object ResponseClassifiers {
         .orElse(RetryPolicy.ChannelClosedExceptionsOnly)
         .orElse { case _ => false }
 
-    def unapply(rsp: Try[(Response, Option[Try[Frame]])]): Boolean = rsp match {
+    def unapply(rsp: Try[RepAndFrame]): Boolean = rsp match {
       case Return((Responses.Failure.Retryable(), None | Some(Return(_)))) => true
       case Return((Responses.Success() | Responses.Failure.Retryable(),
         Some(Throw(e)))) => retryableThrow(Throw(e))
@@ -81,8 +82,8 @@ object ResponseClassifiers {
    */
   def named(name: String)(underlying: ResponseClassifier): ResponseClassifier =
     new ResponseClassifier {
-      def isDefinedAt(reqRep: ReqRep): Boolean = underlying.isDefinedAt(reqRep)
-      def apply(reqRep: ReqRep): ResponseClass = underlying(reqRep)
+      def isDefinedAt(reqRep: H2ReqRep): Boolean = underlying.isDefinedAt(reqRep)
+      def apply(reqRep: H2ReqRep): ResponseClass = underlying(reqRep)
       override def toString: String = name
     }
 

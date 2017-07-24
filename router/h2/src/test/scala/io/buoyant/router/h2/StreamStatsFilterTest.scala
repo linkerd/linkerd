@@ -84,7 +84,6 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
   }
 
-
   test("increments success counters on success with empty stream") {
 
     val (stats, service) = setup { _ =>

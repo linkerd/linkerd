@@ -83,7 +83,7 @@ object H2 extends Router[Request, Response]
     private val serverResponseClassifier =
       // TODO: insert H2 classified retries here?
       ResponseClassifiers.NonRetryableServerFailures
-    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(serverResponseClassifier)
+    val defaultParams = StackServer.defaultParams + h2param.H2ResponseClassifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)
