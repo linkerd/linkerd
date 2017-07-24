@@ -9,14 +9,14 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.param._
-import com.twitter.finagle.buoyant.h2.service.{ResponseClassifier, ResponseClassifiers}
+import com.twitter.finagle.buoyant.h2.service.{H2StreamClassifier, H2StreamClassifiers}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.{Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.linkerd.{ResponseClassifierConfig => H1ResponseClassifierConfig}
-import io.buoyant.linkerd.protocol.h2.ResponseClassifierConfig
+import io.buoyant.linkerd.ResponseClassifierConfig
+import io.buoyant.linkerd.protocol.h2.H2StreamClassifierConfig
 import io.buoyant.router.h2.DupRequest
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
@@ -171,25 +171,25 @@ trait H2SvcConfig extends SvcConfig {
    * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
    * so that we can set `JsonIgnore` on it (and rewire [[_h2ResponseClassifier]]
    * to the `"responseClassifier"` JSON property).
-   * @param r a HTTP [[H1ResponseClassifierConfig]]. Not used.
+   * @param r a HTTP [[ResponseClassifierConfig]]. Not used.
    */
   @JsonIgnore
-  final override def responseClassifierConfig_=(r: Option[H1ResponseClassifierConfig]): Unit =
+  final override def responseClassifierConfig_=(r: Option[ResponseClassifierConfig]): Unit =
     throw new UnsupportedOperationException(
       "attempt to set HTTP ResponseClassifierConfig on H2SvcConfig!"
     )
 
   @JsonIgnore
-  final override def responseClassifierConfig: Option[H1ResponseClassifierConfig] =
+  final override def responseClassifierConfig: Option[ResponseClassifierConfig] =
     throw new UnsupportedOperationException(
       "attempt to access HTTP ResponseClassifierConfig from H2SvcConfig!"
     )
 
   @JsonProperty("responseClassifier")
-  var _h2ResponseClassifier: Option[ResponseClassifierConfig] = None
+  var _h2ResponseClassifier: Option[H2StreamClassifierConfig] = None
 
   @JsonIgnore
-  def h2BaseResponseClassifier = ResponseClassifiers.Default
+  def h2BaseResponseClassifier = H2StreamClassifiers.Default
 
   // TODO: insert classified retries here
   //  ClassifiedRetries.orElse(
@@ -199,9 +199,9 @@ trait H2SvcConfig extends SvcConfig {
 
   // TODO: gRPC (trailers-aware)
   @JsonIgnore
-  def h2ResponseClassifier: Option[ResponseClassifier] =
+  def h2ResponseClassifier: Option[H2StreamClassifier] =
     _h2ResponseClassifier
-      .map { c => ResponseClassifiers.NonRetryableStream(c.mk) }
+      .map { c => H2StreamClassifiers.NonRetryableStream(c.mk) }
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

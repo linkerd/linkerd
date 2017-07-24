@@ -2,7 +2,7 @@ package io.buoyant.router.h2
 
 import java.util.concurrent.atomic.AtomicLong
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, ResponseClassifier}
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
 import com.twitter.finagle.stats.StatsReceiver
@@ -11,22 +11,22 @@ import com.twitter.util._
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module2[param.Stats, h2param.H2ResponseClassifier, ServiceFactory[Request, Response]] {
+    new Stack.Module2[param.Stats, h2param.H2StreamClassifier, ServiceFactory[Request, Response]] {
       override def role: Stack.Role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
       override def make(
         statsP: param.Stats,
-        classifierP: h2param.H2ResponseClassifier,
+        classifierP: h2param.H2StreamClassifier,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
-        val h2param.H2ResponseClassifier(classifier) = classifierP
+        val h2param.H2StreamClassifier(classifier) = classifierP
         new StreamStatsFilter(stats, classifier).andThen(next)
       }
     }
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: ResponseClassifier)
+class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2StreamClassifier)
   extends SimpleFilter[Request, Response] {
 
   class StreamStats(

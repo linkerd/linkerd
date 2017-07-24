@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.h2.service.ResponseClassifiers
+import com.twitter.finagle.buoyant.h2.service.H2StreamClassifiers
 import com.twitter.finagle.tracing.{DefaultTracer, Tracer => FTracer}
 import com.twitter.util.StorageUnit
 
@@ -141,12 +141,12 @@ package object param {
     implicit val param: Stack.Param[Tracer] = Stack.Param(Tracer(DefaultTracer))
   }
 
-  case class H2ResponseClassifier(classifier: service.ResponseClassifier) {
-    def mk(): (H2ResponseClassifier, Stack.Param[H2ResponseClassifier]) =
-      (this, H2ResponseClassifier.param)
+  case class H2StreamClassifier(classifier: service.H2StreamClassifier) {
+    def mk(): (H2StreamClassifier, Stack.Param[H2StreamClassifier]) =
+      (this, H2StreamClassifier.param)
   }
-  object H2ResponseClassifier {
-    implicit val param: Stack.Param[H2ResponseClassifier] =
-      Stack.Param(H2ResponseClassifier(ResponseClassifiers.Default))
+  object H2StreamClassifier {
+    implicit val param: Stack.Param[H2StreamClassifier] =
+      Stack.Param(H2StreamClassifier(H2StreamClassifiers.Default))
   }
 }
