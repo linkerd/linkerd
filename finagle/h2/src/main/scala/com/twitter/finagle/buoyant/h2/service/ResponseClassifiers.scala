@@ -150,7 +150,7 @@ object ResponseClassifiers {
    */
   val Default: ResponseClassifier =
     named("DefaultH2ResponseClassifier") {
-      ExceptionsAsFailures orElse NonRetryableServerFailures orElse AssumeSuccess
+      ExceptionsAsFailures.orElse(NonRetryableServerFailures).orElse(AssumeSuccess)
     }
 
 }
