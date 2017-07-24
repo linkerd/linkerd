@@ -32,7 +32,7 @@ trait Resource extends Closable {
 private[k8s] trait Version[O <: KubeObject] extends Resource {
 
   override val path = s"/$group/$version"
-  override val watchPath = s"/$group/$version/watch"
+  override val watchPath = s"$path/watch"
 
   /**
    * The first portion of the API path. Currently-known groups are "api" (for the core k8s v1 API)
@@ -108,7 +108,7 @@ trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
 
   override val version: String = ThirdPartyVersion.version(owner, ownerVersion)
   override val path: String = s"/${ThirdPartyVersion.group}/$version"
-  override val watchPath: String = s"/${ThirdPartyVersion.group}/$version/watch"
+  override val watchPath: String = s"$path/watch"
 
   val group: String = ThirdPartyVersion.group
   override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
@@ -137,6 +137,7 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
   extends Watchable[O, W, L]
   with Resource {
 
+  override val watchResourceVersion: Boolean = true
   override val client: Client = parent.client
   val name: String = implicitly[ObjectDescriptor[O, W]].listName
   final override val path = s"${parent.path}/$name"
@@ -154,10 +155,9 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
       None,
       retryIndefinitely = true,
       watch = true
-    )
-      .map { list =>
-        (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
-      }
+    ).map { list =>
+      (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+    }
 }
 
 /**
@@ -170,6 +170,7 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
   stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](parent, backoffs, stats) {
 
+  override val watchResourceVersion: Boolean = true
   val ns: String = parent.ns
   def named(objName: String): NsObjectResource[O, W] =
     new NsObjectResource[O, W](this, objName, None, backoffs, stats)
@@ -191,20 +192,18 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
 private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference](
   parent: Resource,
   objectName: String,
-  maybeListName: Option[String] = None,
+  listName: Option[String] = None,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W])
   extends Watchable[O, W, O]
   with Resource {
-
+  override val watchResourceVersion: Boolean = false
   override val client: Client = parent.client
   override val (path, watchPath) = {
-    // the value of listName can be dropped when we're done with it,
-    // so allocate it in a scope.
-    val listName = maybeListName.map(_ + "/").getOrElse("")
-    (s"${parent.path}/$listName$objectName",
-      s"${parent.watchPath}/$listName$objectName")
+    val listNameOrDefault = listName.map(_ + "/").getOrElse("")
+    (s"${parent.path}/$listNameOrDefault$objectName",
+      s"${parent.watchPath}/$listNameOrDefault$objectName")
   }
 
   def put(obj: O): Future[O] = {
@@ -231,8 +230,7 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       None,
       retryIndefinitely = true,
       watch = true
-    )
-      .map { obj =>
-        (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
-      }
+    ).map { obj =>
+      (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
+    }
 }
