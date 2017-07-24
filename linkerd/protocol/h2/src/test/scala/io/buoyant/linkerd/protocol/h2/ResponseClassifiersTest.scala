@@ -163,7 +163,7 @@ class ResponseClassifiersTest extends FunSuite {
       val router = mapper.readValue[RouterConfig](yaml)
       assert(router.service.get.asInstanceOf[H2DefaultSvc]._h2ResponseClassifier.isDefined)
       assert(
-        router.service.get.asInstanceOf[H2DefaultSvc]._responseClassifier.isEmpty,
+        router.service.get.asInstanceOf[H2DefaultSvc].responseClassifierConfig.isEmpty,
         "H1 ResponseClassifier field was defined!"
       )
     }

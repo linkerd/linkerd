@@ -174,7 +174,16 @@ trait H2SvcConfig extends SvcConfig {
    * @param r a HTTP [[H1ResponseClassifierConfig]]. Not used.
    */
   @JsonIgnore
-  final override def responseClassifier_=(r: H1ResponseClassifierConfig): Unit = {}
+  final override def responseClassifierConfig_=(r: Option[H1ResponseClassifierConfig]): Unit =
+    throw new UnsupportedOperationException(
+      "attempt to set HTTP ResponseClassifierConfig on H2SvcConfig!"
+    )
+
+  @JsonIgnore
+  final override def responseClassifierConfig: Option[H1ResponseClassifierConfig] =
+    throw new UnsupportedOperationException(
+      "attempt to access HTTP ResponseClassifierConfig from H2SvcConfig!"
+    )
 
   @JsonProperty("responseClassifier")
   var _h2ResponseClassifier: Option[ResponseClassifierConfig] = None

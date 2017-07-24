@@ -158,7 +158,7 @@ class ResponseClassifiersTest extends FunSuite {
             |""".stripMargin
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(init)))
       val router = mapper.readValue[RouterConfig](yaml)
-      assert(router.service.get.asInstanceOf[HttpDefaultSvc]._responseClassifier.isDefined)
+      assert(router.service.get.asInstanceOf[HttpDefaultSvc].responseClassifierConfig.isDefined)
     }
   }
 
