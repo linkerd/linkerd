@@ -36,4 +36,12 @@ object H2ReqRep {
   // type aliases to minimise typing
   type RepAndFrame = (Response, FinalFrame)
   type FinalFrame = Option[Try[Frame]]
+
+  @inline def apply(
+    request: Request,
+    response: Try[Response],
+    finalFrame: FinalFrame = None
+  ): H2ReqRep =
+    H2ReqRep(request, response.map { (_, finalFrame) })
+
 }
