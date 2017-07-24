@@ -38,7 +38,6 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   private[this] val log = Logger()
 
-
   @JsonIgnore
   val api = {
     val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
@@ -48,7 +47,7 @@ case class ConfigMapInterpreterConfig(
 
   @JsonIgnore
   val act = api.configMap(name)
-    .activity(getDtab, resourceVersion = false) {
+    .activity(getDtab) {
       (dtab, event) =>
         event match {
           case ConfigMapAdded(a) => getDtab(a)

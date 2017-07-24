@@ -457,20 +457,6 @@ class ApiTest extends FunSuite
               failure = e
               Future.exception(e)
           }
-        //        case 2 if req.uri == "/api/v1/namespaces/test/configmaps/another-test-config" =>
-        //          try {
-        //            val rsp = Response()
-        //            rsp.version = req.version
-        //            rsp.setContentTypeJson()
-        //            rsp.headerMap("Transfer-Encoding") = "chunked"
-        //            rsp.writer.write(Buf.Utf8(configMap1)) before rsp.writer.close()
-        //            Future.value(rsp)
-        //          } catch {
-        //            case e: Throwable =>
-        //              failure = e
-        //              Future.exception(e)
-        //          }
-
         case _ => Future.never
       }
     }
