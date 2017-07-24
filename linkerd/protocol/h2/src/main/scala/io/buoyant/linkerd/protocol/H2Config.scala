@@ -167,8 +167,14 @@ class H2StaticSvc(val configs: Seq[H2SvcPrefixConfig]) extends H2Svc with Static
 class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with H2SvcConfig
 
 trait H2SvcConfig extends SvcConfig {
+  /**
+   * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
+   * so that we can set `JsonIgnore` on it (and rewire [[_h2ResponseClassifier]]
+   * to the `"responseClassifier"` JSON property).
+   * @param r a HTTP [[H1ResponseClassifierConfig]]. Not used.
+   */
   @JsonIgnore
-  override def _responseClassifier_=(r: H1ResponseClassifierConfig): Unit = {}
+  final override def responseClassifier_=(r: H1ResponseClassifierConfig): Unit = {}
 
   @JsonProperty("responseClassifier")
   var _h2ResponseClassifier: Option[ResponseClassifierConfig] = None

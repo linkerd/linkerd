@@ -33,10 +33,10 @@ trait SvcConfig {
    * responseClassifier categorizes responses to determine whether
    * they are failures and if they are retryable.
    */
-  private[this] var _responseClassifier: Option[ResponseClassifierConfig] = None
+  var _responseClassifier: Option[ResponseClassifierConfig] = None
 
   @JsonProperty("responseClassifier")
-  def _responseClassifier_=(r: ResponseClassifierConfig): Unit = _responseClassifier = Some(r)
+  def responseClassifier_=(r: ResponseClassifierConfig): Unit = _responseClassifier = Some(r)
 
   @JsonIgnore
   def baseResponseClassifier: ResponseClassifier =
