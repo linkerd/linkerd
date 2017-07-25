@@ -55,8 +55,6 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    println("THIS IS WHAT IT IS YO")
-    println(stats.counters)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)

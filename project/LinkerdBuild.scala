@@ -214,6 +214,7 @@ object LinkerdBuild extends Base {
        |   -XX:-TieredCompilation                            \
        |   -XX:+UseStringDeduplication                       \
        |   -Dcom.twitter.util.events.sinkEnabled=false       \
+       |   -Dorg.apache.thrift.readLength=10485760           \
        |   ${LOCAL_JVM_OPTIONS:-}                            "
        |""".stripMargin
 
@@ -522,7 +523,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
-      .dependsOn(LinkerdBuild.admin, Namer.core)
+      .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
       .dependsOn(Protocol.thrift % "test")
 
     val main = projectDir("linkerd/main")

@@ -15,7 +15,7 @@ routers:
 ```
 
 linkerd uses failure accrual to track the number of requests that have failed to
-a given node, and it will backoff sending requets to any nodes whose failures
+a given node, and it will back off sending requests to any nodes whose failures
 have exceeded a given threshold. Both the failure threshold and the backoff
 behavior are configurable. By default, if linkerd observes 5 consecutive
 failures from a node, it will mark the node as dead and only attempt to resend

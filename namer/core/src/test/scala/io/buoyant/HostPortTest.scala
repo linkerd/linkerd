@@ -28,4 +28,24 @@ class HostPortTest extends FunSuite {
     val path = Path.read("/$/io.buoyant.porthostPfx/ia/127.1:8080/etc")
     assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("ia", "8080", "127.1", "etc"))))
   }
+
+  test("io.buoyant.hostportPfx matches HOST:PORT with string port") {
+    val path = Path.read("/$/io.buoyant.hostportPfx/ia/google.com:http/etc")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("ia", "google.com", "http", "etc"))))
+  }
+
+  test("io.buoyant.hostportPfx matches IP:PORT with string port") {
+    val path = Path.read("/$/io.buoyant.hostportPfx/ia/127.1:http/etc")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("ia", "127.1", "http", "etc"))))
+  }
+
+  test("io.buoyant.hostportPfx does not match HOST:PORT:ETC with string port") {
+    val path = Path.read("/$/io.buoyant.hostportPfx/ia/google.com:http:abcdef/etc")
+    assert(lookup(path) == NameTree.Neg)
+  }
+
+  test("io.buoyant.porthostPfx matches IP:PORT with string port") {
+    val path = Path.read("/$/io.buoyant.porthostPfx/ia/127.1:http/etc")
+    assert(lookup(path) == NameTree.Leaf(Name.Path(Path.Utf8("ia", "http", "127.1", "etc"))))
+  }
 }

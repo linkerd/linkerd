@@ -4,8 +4,9 @@
 
 ## Getting Help ##
 
-If you have a question about linkerd or have encountered problems using it, you
-may [file an issue][issue] or join us on [Slack][slack].
+If you have a question about linkerd or have encountered problems using it,
+start by [asking a question in the forums][discourse] or join us on
+[Slack][slack].
 
 ## Submitting a Pull Request ##
 
@@ -85,6 +86,7 @@ Describe the testing you've done to validate your change.  Performance-related
 changes should include before- and after- benchmark results.
 
 [cla]: https://buoyant.io/cla/
+[discourse]: https://discourse.linkerd.io/
 [es]: https://twitter.github.io/effectivescala/
 [issue]: https://github.com/linkerd/linkerd/issues/new
 [members]: https://github.com/orgs/linkerd/people

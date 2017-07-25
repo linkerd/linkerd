@@ -1,6 +1,6 @@
 # Telemetry
 
-A telemeter may receive stats and trace annotations, i.e. to send to a collector
+A telemeter may receive stats and trace annotations, e.g., to send to a collector
 or export. Telemetry data can be collected and exported from a linkerd process by
 configuring telemeters via a top-level `telemetry` section.
 
@@ -121,7 +121,7 @@ kind: `io.l5d.recentRequests`
 
 The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
 the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the
-admin port.  Recording requests can have an impact on linkerd performance so make sure to set a
+admin port.  Recording requests can have an impact on linkerd performance, so make sure to set a
 sample rate that is appropriate for your level of traffic.
 
 Key        | Default Value | Description
