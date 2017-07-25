@@ -28,6 +28,8 @@ case class ConfigMapInterpreterConfig(
   name: String,
   filename: String
 ) extends InterpreterConfig with ClientConfig {
+  require(filename != null, "dtab 'filename' field is required")
+  require(name != null, "ConfigMap 'name' field is required")
 
   @JsonIgnore
   override def experimentalRequired = true
@@ -37,7 +39,6 @@ case class ConfigMapInterpreterConfig(
 
   @JsonIgnore
   private[this] val log = Logger()
-
 
   @JsonIgnore
   val api = {
