@@ -21,6 +21,19 @@ class ConfigMapInterpreterInitializer extends InterpreterInitializer {
 
 object ConfigMapInterpreterInitializer extends ConfigMapInterpreterInitializer
 
+/**
+  * Configuration for a `ConfigMap` Interpreter
+  * @param host the hostname of the Kubernetes API endpoint from which to read
+  *             the ConfigMap. Defaults to `localhost` if not provided (as per
+  *             [[ClientConfig]]).
+  * @param port the port on `host` that serves the Kubernetes API. defaults to
+  *             `8001` (as per [[ClientConfig]]).
+  * @param namespace the namespace containing the `ConfigMap`. defaults to
+  *                  `default` (once again, as per [[ClientConfig]]).
+  * @param name the name of the `ConfigMap`. must be provided.
+  * @param filename the key within the `ConfigMap` corresponding to the dtab
+  *                 to read from. must be provided.
+  */
 case class ConfigMapInterpreterConfig(
   host: Option[String],
   port: Option[Port],
