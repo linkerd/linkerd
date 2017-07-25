@@ -12,7 +12,6 @@ class BufferedStreamTest extends FunSuite {
     val sourceQ = new AsyncQueue[Frame]()
     val source = Stream(sourceQ)
     val buffer = new BufferedStream(source)
-    buffer.read()
 
     // fork children
     val children = (1 to 10).map(_ => buffer.fork().get)
@@ -59,7 +58,6 @@ class BufferedStreamTest extends FunSuite {
     val sourceQ = new AsyncQueue[Frame]()
     val source = Stream(sourceQ)
     val buffer = new BufferedStream(source)
-    buffer.read()
 
     // fork children
     val children = (1 to 10).map(_ => buffer.fork().get)
@@ -104,7 +102,6 @@ class BufferedStreamTest extends FunSuite {
     val sourceQ = new AsyncQueue[Frame]()
     val source = Stream(sourceQ)
     val buffer = new BufferedStream(source)
-    buffer.read()
 
     // send frames
     val frames = (1 to 10).map { i =>
@@ -141,28 +138,27 @@ class BufferedStreamTest extends FunSuite {
     val sourceQ = new AsyncQueue[Frame]()
     val source = Stream(sourceQ)
     val buffer = new BufferedStream(source, bufferCapacity = 10)
-    buffer.read()
 
     // send frames
     sourceQ.offer(Frame.Data(Buf.ByteArray(0, 1, 2, 3, 4), eos = false))
     sourceQ.offer(Frame.Data(Buf.ByteArray(5, 6, 7, 8, 9), eos = false))
+    sourceQ.offer(Frame.Data(Buf.ByteArray(10, 11, 12, 13, 14), eos = false))
 
     val child = buffer.fork().get
+
+    val frame1 = await(child.read()).asInstanceOf[Frame.Data]
+    val frame2 = await(child.read()).asInstanceOf[Frame.Data]
 
     assert(!buffer.onBufferDiscarded.isDone)
 
     // not enough room for this in the buffer; discard the buffer
-    sourceQ.offer(Frame.Data(Buf.ByteArray(10, 11, 12, 13, 14), eos = false))
+    val frame3 = await(child.read()).asInstanceOf[Frame.Data]
 
     assert(buffer.onBufferDiscarded.isDone)
     assert(buffer.fork().isThrow)
 
     // even after buffer is discarded, frames should be fanned out to existing children
     sourceQ.offer(Frame.Data(Buf.ByteArray(15, 16, 17, 18, 19), eos = true))
-
-    val frame1 = await(child.read()).asInstanceOf[Frame.Data]
-    val frame2 = await(child.read()).asInstanceOf[Frame.Data]
-    val frame3 = await(child.read()).asInstanceOf[Frame.Data]
     val frame4 = await(child.read()).asInstanceOf[Frame.Data]
 
     assert(frame1.buf == Buf.ByteArray(0, 1, 2, 3, 4))

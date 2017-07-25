@@ -43,7 +43,6 @@ class BufferedStreamBenchmark extends StdBenchAnnotations with Awaits with Strea
   var stream = Stream(q)
 
   var bufferedStream = new BufferedStream(stream, BufferCapacity.bytes)
-  bufferedStream.read()
   var child = bufferedStream.fork().get
 
   @Setup(Level.Iteration)
@@ -54,7 +53,6 @@ class BufferedStreamBenchmark extends StdBenchAnnotations with Awaits with Strea
       stream = Stream(q)
       bufferedStream.discardBuffer()
       bufferedStream = new BufferedStream(stream, BufferCapacity.bytes)
-      bufferedStream.read()
       child = bufferedStream.fork().get()
     }
   }
@@ -85,7 +83,6 @@ class BufferedStreamFanoutBenchmark extends StdBenchAnnotations with Awaits with
   val FanoutMax = 5
 
   var bufferedStream = new BufferedStream(stream, BufferCapacity.bytes)
-  bufferedStream.read()
   var children: Array[Stream] = _
   var results: Array[Frame] = _
 
@@ -102,7 +99,6 @@ class BufferedStreamFanoutBenchmark extends StdBenchAnnotations with Awaits with
       stream = Stream(q)
       bufferedStream.discardBuffer()
       bufferedStream = new BufferedStream(stream, BufferCapacity.bytes)
-      bufferedStream.read()
       for (i <- 0 until Fanout) children(i) = bufferedStream.fork().get
     }
   }

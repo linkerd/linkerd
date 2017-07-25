@@ -30,8 +30,6 @@ class ClassifiedRetryFilter(
     // Buffer the request stream so that we can fork another child stream if we need to retry
     val requestBuffer = new BufferedStream(request.stream, requestBufferSize)
     val fork = Future.const(requestBuffer.fork())
-    // begin reading the request stream
-    requestBuffer.read()
 
     def dispatch(reqStream: Stream): Future[Response] = {
       val req = Request(request.headers.dup(), reqStream)
@@ -42,25 +40,8 @@ class ClassifiedRetryFilter(
         // We eagerly create a child response stream since we need something to return in case we
         // don't want to (or can't) retry.
         val responseStream = responseBuffer.fork()
-        val onFullyBufferd = responseBuffer.read()
-        // Wait until the response stream is fully buffered or the buffer becomes full
-        Future.selectIndex(IndexedSeq(onFullyBufferd, responseBuffer.onBufferDiscarded)).flatMap {
-          // Response stream is fully buffered
-          case 0 =>
-            // Create a child response stream for the sole purpose of getting the last frame for
-            // response classification and determine if the request is retryable.
-            responseBuffer.fork() match {
-              case Return(s) => retryable(req, rsp, s)
-              case Throw(e) => Future.False
-            }
-          // Response buffer is full
-          case 1 =>
-            // Cannot retry because the buffer was not big enough to wait for the final response
-            // Frame.
-            Future.False
-          case _ =>
-            throw new IllegalStateException()
-        }.flatMap { retryable =>
+
+        retryable(req, rsp, responseBuffer).flatMap { retryable =>
           if (retryable) {
             // Request is retryable, attempt to create a new child request stream
             requestBuffer.fork() match {
@@ -89,6 +70,25 @@ class ClassifiedRetryFilter(
     }
 
     fork.flatMap(dispatch)
+  }
+
+  private[this] def retryable(req: Request, rsp: Response, responseBuffer: BufferedStream): Future[Boolean] = {
+    // Create a child response stream for the sole purpose of getting the last frame for
+    // response classification and determine if the request is retryable.
+    responseBuffer.fork() match {
+      case Return(s) =>
+        // Attempt to determin retryability based on the final frame.  Completes when the stream is
+        // fully buffered.
+        val fullyBuffered = retryable(req, rsp, s)
+        // If the buffer is discarded before reading the final frame, we cannot retry.
+        val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
+
+        // Wait until the response stream is fully buffered or the buffer becomes full.
+        Future.select(Seq(fullyBuffered, bufferDiscarded))
+          .flatMap(select => Future.const(select._1))
+      case Throw(e) =>
+        Future.False
+    }
   }
 
   /**

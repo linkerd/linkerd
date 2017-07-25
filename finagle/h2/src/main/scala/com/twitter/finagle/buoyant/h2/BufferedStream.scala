@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant.h2
 import com.twitter.conversions.storage._
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
+import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
 import com.twitter.util._
@@ -25,18 +26,18 @@ import scala.util.control.NoStackTrace
  * buffer itself releases the Frame.  Threrefore you should always call discardBuffer on a
  * BufferedStream before it leaves scope.
  */
-class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.bytes) {
+class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.bytes) { bufferedStream =>
 
   // Mutable state.  All mutations of state must be explicitly synchronized
   private[this] val buffer = mutable.MutableList[RefCountedFrame]()
   private[this] var _bufferSize = 0L
   private[this] val forks = mutable.MutableList[AsyncQueue[Frame]]()
   private[this] var state: State = State.Buffering
+  private[this] val _onEnd = new Promise[Unit]
 
   def bufferSize: Long = _bufferSize
 
-  /** Begin reading Frames from the underlying Stream.  Completes when all Frames have been read. */
-  def read(): Future[Unit] = loop()
+  def onEnd: Future[Unit] = _onEnd
 
   /**
    * Attempt to create a child Stream.  If the buffer has not yet been discarded, returns a
@@ -60,7 +61,15 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
         val stream = if (underlying.isEmpty) {
           Stream.empty(q)
         } else {
-          Stream(q)
+          new AsyncQueueReader { child =>
+            override protected[this] val frameQ = q
+            override def read(): Future[Frame] = child.synchronized {
+              // If the queue is empty, pull a Frame from the underlying Stream (which will be
+              // offered to all child Streams) before polling the queue.
+              if (q.size == 0) bufferedStream.pull()
+              super.read()
+            }
+          }
         }
         Return(stream)
       }
@@ -86,11 +95,10 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   }
 
   /**
-   * Continuously read from the underlying Stream and write the Frames into the buffer and offer
-   * them to the child Streams.  Completes once all Frames have been read from the underlying
-   * Stream.
+   * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
+   * Streams.
    */
-  private[this] def loop(): Future[Unit] = {
+  private[this] def pull(): Future[Unit] = {
     if (underlying.isEmpty) {
       Future.Unit
     } else {
@@ -98,13 +106,15 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
         case Return(f: Frame.Data) => synchronized {
           val refCounted = new RefCountedDataFrame(f)
           handleFrame(refCounted, f.buf.length)
-          if (f.isEnd) Future.Unit else loop()
+          if (f.isEnd) _onEnd.setDone()
+          Future.Unit
         }
         case Return(f: Frame.Trailers) => synchronized {
           val refCounted = new RefCountedTrailersFrame(f)
           // TODO: Determine size of Trailers Frame to count against buffer capacity
           handleFrame(refCounted, 0)
-          if (f.isEnd) Future.Unit else loop()
+          if (f.isEnd) _onEnd.setDone()
+          Future.Unit
         }
         case Throw(e) => synchronized {
           // If we fail to read from the underlying stream, discard the buffer and fail the children
