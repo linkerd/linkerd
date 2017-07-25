@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
@@ -9,6 +9,7 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.param._
+import com.twitter.finagle.buoyant.h2.service.{H2StreamClassifier, H2StreamClassifiers}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
@@ -16,6 +17,8 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
+import io.buoyant.linkerd.ResponseClassifierConfig
+import io.buoyant.linkerd.protocol.h2.H2StreamClassifierConfig
 import io.buoyant.linkerd.protocol.h2.H2LoggerConfig
 import io.buoyant.router.h2.DupRequest
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
@@ -89,14 +92,6 @@ case class H2Config(loggers: Option[Seq[H2LoggerConfig]] = None) extends RouterC
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = H2Initializer
-
-  @JsonIgnore
-  override val defaultResponseClassifier = ResponseClassifiers.NonRetryableStream(
-    ClassifiedRetries.orElse(
-      ResponseClassifiers.NonRetryableServerFailures,
-      ClassifiedRetries.Default
-    )
-  )
 
   @JsonIgnore
   private[this] def loggerParam = loggers.map { configs =>
@@ -184,17 +179,41 @@ class H2StaticSvc(val configs: Seq[H2SvcPrefixConfig]) extends H2Svc with Static
 class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with H2SvcConfig
 
 trait H2SvcConfig extends SvcConfig {
+  /**
+   * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
+   * so that we can set `JsonIgnore` on it (and rewire [[_h2ResponseClassifier]]
+   * to the `"responseClassifier"` JSON property).
+   * @param r a HTTP [[ResponseClassifierConfig]]. Not used.
+   */
+  @JsonIgnore
+  final override def responseClassifierConfig_=(r: Option[ResponseClassifierConfig]): Unit =
+    throw new UnsupportedOperationException(
+      "attempt to set HTTP ResponseClassifierConfig on H2SvcConfig!"
+    )
 
   @JsonIgnore
-  override def baseResponseClassifier = ClassifiedRetries.orElse(
-    ResponseClassifiers.NonRetryableServerFailures,
-    super.baseResponseClassifier
-  )
+  final override def responseClassifierConfig: Option[ResponseClassifierConfig] =
+    throw new UnsupportedOperationException(
+      "attempt to access HTTP ResponseClassifierConfig from H2SvcConfig!"
+    )
+
+  @JsonProperty("responseClassifier")
+  var _h2ResponseClassifier: Option[H2StreamClassifierConfig] = None
+
+  @JsonIgnore
+  def h2BaseResponseClassifier = H2StreamClassifiers.Default
+
+  // TODO: insert classified retries here
+  //  ClassifiedRetries.orElse(
+  //    ResponseClassifiers.NonRetryableServerFailures,
+  //    super.baseResponseClassifier
+  //  )
 
   // TODO: gRPC (trailers-aware)
   @JsonIgnore
-  override def responseClassifier =
-    super.responseClassifier.map(ResponseClassifiers.NonRetryableStream(_))
+  def h2ResponseClassifier: Option[H2StreamClassifier] =
+    _h2ResponseClassifier
+      .map { c => H2StreamClassifiers.NonRetryableStream(c.mk) }
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

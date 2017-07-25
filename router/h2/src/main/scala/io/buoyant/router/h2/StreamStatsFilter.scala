@@ -1,50 +1,97 @@
 package io.buoyant.router.h2
 
-import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.buoyant.h2.{Request, Response, Stream}
+import java.util.concurrent.atomic.AtomicLong
+import com.twitter.finagle._
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.buoyant.h2.{param => h2param, _}
+import com.twitter.finagle.service.ResponseClass.Successful
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module1[param.Stats, ServiceFactory[Request, Response]] {
-      override def role = StreamStatsFilter.role
+    new Stack.Module2[param.Stats, h2param.H2StreamClassifier, ServiceFactory[Request, Response]] {
+      override def role: Stack.Role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
-      override def make(statsP: param.Stats, next: ServiceFactory[Request, Response]) = {
+      override def make(
+        statsP: param.Stats,
+        classifierP: h2param.H2StreamClassifier,
+        next: ServiceFactory[Request, Response]
+      ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
-        new StreamStatsFilter(stats).andThen(next)
+        val h2param.H2StreamClassifier(classifier) = classifierP
+        new StreamStatsFilter(stats, classifier).andThen(next)
       }
     }
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver)
+class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2StreamClassifier)
   extends SimpleFilter[Request, Response] {
 
   class StreamStats(
-    stats: StatsReceiver,
-    durationName: Option[String] = None,
-    successName: Option[String] = None
+    protected val stats: StatsReceiver,
+    durationName: Option[String] = None
   ) {
-
     private[this] val durationMs =
       stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
-    private[this] val successes =
-      stats.counter(s"${successName.getOrElse("stream_")}success")
-    private[this] val failures =
-      stats.counter(s"${successName.getOrElse("stream_")}failures")
+    private[this] val successes = stats.counter("stream_success")
+    private[this] val failures = stats.counter("stream_failures")
 
-    @inline def apply(startT: Stopwatch.Elapsed)(result: Try[_]): Unit = {
-      durationMs.add(startT().inMillis)
-      result match {
-        case Return(_) => successes.incr()
-        case Throw(_) => failures.incr()
-      }
+    def success(streamDuration: Duration): Unit = {
+      durationMs.add(streamDuration.inMillis)
+      successes.incr()
     }
+
+    def failure(streamDuration: Duration): Unit = {
+      durationMs.add(streamDuration.inMillis)
+      successes.incr()
+    }
+
+    private[this] val frameBytes = stats.stat("data_bytes")
+
+    def apply(
+      startT: Stopwatch.Elapsed,
+      onFinalFrame: Option[Try[Frame]] => Unit = { _ => }
+    )(underlying: Stream): Stream = {
+      val streamFrameBytes = new AtomicLong(0)
+      val stream = if (underlying.isEmpty) {
+        // if the stream is empty, we still need to call the response
+        // classifier with `None`, so add that to the `onEnd` callback.
+        underlying.onEnd.respond { _ => onFinalFrame(None) }
+        underlying
+      } else {
+        underlying.onFrame {
+          case Return(frame) =>
+            frame match {
+              case data: Frame.Data =>
+                val _ = streamFrameBytes.addAndGet(data.buf.length)
+              case _ =>
+            }
+            if (frame.isEnd) onFinalFrame(Some(Return(frame)))
+          case Throw(e) =>
+            onFinalFrame(Some(Throw(e)))
+            failure(startT())
+        }
+      }
+      stream.onEnd.respond { result =>
+        frameBytes.add(streamFrameBytes.get())
+        if (result.isReturn) success(startT())
+        else failure(startT())
+      }
+      stream
+    }
+
   }
 
-  //   total number of requests received
+  // total number of requests received
   private[this] val reqCount = statsReceiver.counter("requests")
+  // total latency from receipt of request to completion of response future
+  private[this] val reqLatency = statsReceiver.stat("request_latency_ms")
+  // overall successes stat from response classifier
+  private[this] val successes = statsReceiver.counter("success")
+  // overall failures stat from response classifier
+  private[this] val failures = statsReceiver.counter("failures")
 
   private[this] val reqStreamStats =
     new StreamStats(statsReceiver.scope("request", "stream"))
@@ -55,31 +102,39 @@ class StreamStatsFilter(statsReceiver: StatsReceiver)
       statsReceiver.scope("stream"),
       durationName = Some("total_latency")
     )
-  private[this] val rspFutureStats =
-    new StreamStats(
-      statsReceiver,
-      durationName = Some("request_latency"),
-      successName = Some("")
-    )
 
-  override def apply(req: Request, service: Service[Request, Response]): Future[Response] = {
+  override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
+    val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    req.stream.onEnd.respond(reqStreamStats(reqT))
-
-    service(req)
-      .respond { result =>
-        rspFutureStats(reqT)(result)
-        val stream = result match {
-          case Return(rsp) => req.stream.onEnd.join(rsp.stream.onEnd)
-          case Throw(_) => req.stream.onEnd
-        }
-        val _ = stream.respond(totalStreamStats(reqT))
+    @inline def classify(rsp: Try[Response])(frame: Option[Try[Frame]]): Unit =
+      classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
+        case Successful(_) => successes.incr()
+        case _ => failures.incr()
       }
-      .onSuccess { rsp =>
-        val rspT = Stopwatch.start()
-        val _ = rsp.stream.onEnd.respond(rspStreamStats(rspT))
+
+    service(req1)
+      .transform {
+        case Return(response) =>
+          val rspT = Stopwatch.start()
+          val stream = rspStreamStats(rspT, classify(Return(response)))(response.stream)
+          Future.value(Response(response.headers, stream))
+        case Throw(e) =>
+          classify(Throw(e))(None)
+          Future.exception(e)
+      }
+      .respond { result =>
+        reqLatency.add(reqT().inMillis)
+        val stream = result match {
+          case Return(rsp) =>
+            req1.stream.onEnd.join(rsp.stream.onEnd)
+          case Throw(_) => req1.stream.onEnd
+        }
+        val _ = stream.respond {
+          case Return(_) => totalStreamStats.success(reqT())
+          case Throw(_) => totalStreamStats.failure(reqT())
+        }
       }
 
   }

@@ -86,7 +86,6 @@ object Router {
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "protocol")
 trait RouterConfig {
-
   // RouterConfig subtypes are required to implement these so that they may
   // refine to more specific config types.
   def servers: Seq[ServerConfig]
