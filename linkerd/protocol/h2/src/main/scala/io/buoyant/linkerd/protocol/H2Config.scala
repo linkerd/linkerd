@@ -94,14 +94,6 @@ case class H2Config(loggers: Option[Seq[H2LoggerConfig]] = None) extends RouterC
   override val protocol: ProtocolInitializer = H2Initializer
 
   @JsonIgnore
-  override val defaultResponseClassifier = ResponseClassifiers.NonRetryableStream(
-    ClassifiedRetries.orElse(
-      ResponseClassifiers.NonRetryableServerFailures,
-      ClassifiedRetries.Default
-    )
-  )
-
-  @JsonIgnore
   private[this] def loggerParam = loggers.map { configs =>
     val loggerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
