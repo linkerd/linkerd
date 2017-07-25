@@ -135,3 +135,12 @@ returns the configured path, even when the original NameTree is `Neg`.
 Key | Default Value | Description
 --- | ------------- | -----------
 path | _required_ | Ignore the input and return this path.
+
+## Ec2Host
+
+kind: `io.l5d.ec2Host`
+
+The ec2Host transformer filters the list of addresses down to only addresses
+that have the same IP address as ec2 instance that linkerd is running on.  The IP address is determined
+by doing a one-time lookup using the [AWS meta endpoint](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html).  
+This transformer can be used by an incoming router to only route traffic to local destinations.

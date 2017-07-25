@@ -437,6 +437,7 @@ object LinkerdBuild extends Base {
 
     val perHost = projectDir("interpreter/per-host")
       .dependsOn(Namer.core, subnet)
+      .withTwitterLib(Deps.finagle("http"))
       .withTests()
 
     val k8s = projectDir("interpreter/k8s")
