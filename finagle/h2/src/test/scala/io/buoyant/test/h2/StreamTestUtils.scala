@@ -26,7 +26,6 @@ object StreamTestUtils {
       }
     }
 
-
   /**
    * Enhances a [[Stream]] by providing the [[readToEnd()]] function in the
    * method position
