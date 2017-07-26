@@ -14,8 +14,18 @@ object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
 
   /**
-   * Creates a [[com.twitter.finagle.Stackable]] [[StreamStatsFilter]].
-   */
+  * Configures a [[StreamStatsFilter.module]] to track latency using the
+  * given [[TimeUnit]].
+  */
+  case class Param(unit: TimeUnit) {
+    def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
+  }
+
+  object Param {
+    implicit val param = Stack.Param(Param(TimeUnit.MILLISECONDS))
+  }
+
+  val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module4[
       param.Stats,
