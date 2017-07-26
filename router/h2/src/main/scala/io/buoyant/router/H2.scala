@@ -9,7 +9,9 @@ import com.twitter.util.Future
 import java.net.SocketAddress
 import com.twitter.finagle.buoyant.h2.service.H2StreamClassifiers
 import com.twitter.finagle.service.StatsFilter
-import io.buoyant.router.h2.StreamStatsFilter
+import io.buoyant.router.context.ResponseClassifierCtx
+import io.buoyant.router.context.h2.StreamClassifierCtx
+import io.buoyant.router.h2.{PerDstPathStreamStatsFilter, StreamStatsFilter}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -40,6 +42,8 @@ object H2 extends Router[Request, Response]
       StackRouter.Client
         .mkStack(FinagleH2.Client.newStack)
         .replace(StatsFilter.role, StreamStatsFilter.module)
+        .replace(ResponseClassifierCtx.Setter.role, StreamClassifierCtx.Setter.module[Request, Response])
+        .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
