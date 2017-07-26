@@ -11,9 +11,9 @@ import com.twitter.util._
 
 object StreamStatsFilter {
   /**
-   * Configures a [[StreamStatsFilter.module]] to track latency using the
-   * given [[TimeUnit]].
-   */
+  * Configures a [[StreamStatsFilter.module]] to track latency using the
+  * given [[TimeUnit]].
+  */
   case class Param(unit: TimeUnit) {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
@@ -21,6 +21,7 @@ object StreamStatsFilter {
   object Param {
     implicit val param = Stack.Param(Param(TimeUnit.MILLISECONDS))
   }
+
 
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
@@ -45,8 +46,7 @@ object StreamStatsFilter {
 class StreamStatsFilter(
   statsReceiver: StatsReceiver,
   classifier: H2StreamClassifier,
-  timeUnit: TimeUnit
-)
+  timeUnit: TimeUnit)
   extends SimpleFilter[Request, Response] {
 
   private[this] val latencyStatSuffix: String =
