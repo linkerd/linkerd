@@ -45,7 +45,6 @@ object LocalClassifierStreamStatsFilter {
             val filter = new PerDstPathFilter(mkClassifiedStatsFilter)
             filter.andThen(next)
 
-
           // if the stats receiver is the `NullReceiver`, don't make a filter.
           case _ => next
 

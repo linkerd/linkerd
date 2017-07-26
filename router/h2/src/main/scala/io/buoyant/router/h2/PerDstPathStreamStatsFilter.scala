@@ -14,7 +14,7 @@ import io.buoyant.router.context.h2.StreamClassifierCtx
 object PerDstPathStreamStatsFilter {
 
   def module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module3[param.Stats, StreamStatsFilter.Param, H2StreamClassifier, ServiceFactory[Request, Response]] {
+    new Stack.Module2[param.Stats, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
       val role: Stack.Role = PerDstPathStatsFilter.role
       val description =
         s"${PerDstPathStatsFilter.role}, using H2 stream classification"
@@ -23,7 +23,6 @@ object PerDstPathStreamStatsFilter {
         statsP: param.Stats,
         exHandlerP: param.ExceptionStatsHandler,
         statsFilterP: StreamStatsFilter.Param,
-        classifierP: H2StreamClassifier,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
         statsP match {
