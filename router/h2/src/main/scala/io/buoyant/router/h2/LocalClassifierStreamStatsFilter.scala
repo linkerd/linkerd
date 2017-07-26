@@ -27,15 +27,15 @@ object LocalClassifierStreamStatsFilter {
           case param.Stats(stats) if !stats.isNull =>
             val StreamStatsFilter.Param(timeUnit) = statsFilterP
 
-            def mkScopedStatsFilter(path: Path): Filter[Request, Response, Request, Response] = {
-              val name = path.show.stripPrefix("/")
-              val scopedStats = stats.scope("service", name)
+            // We memoize on the dst path.  The assumes that the response classifier for a dst path
+            // never changes.
+            def mkClassifiedStatsFilter(path: Path): SimpleFilter[Request, Response] = {
               val H2StreamClassifier(classifier) =
                 StreamClassifierCtx.current.getOrElse(H2StreamClassifier.param.default)
-              new StreamStatsFilter(scopedStats, classifier, timeUnit)
+              new StreamStatsFilter(stats, classifier, timeUnit)
             }
 
-            val filter = new PerDstPathFilter(mkScopedStatsFilter _)
+            val filter = new PerDstPathFilter(mkClassifiedStatsFilter _)
             filter.andThen(next)
 
           // can this actually be null? the HTTP1 `PerDstPathStatsFilter`
