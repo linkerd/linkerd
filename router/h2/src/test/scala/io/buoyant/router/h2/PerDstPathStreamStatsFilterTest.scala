@@ -70,13 +70,24 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     assert(stats.counters.get(dogPfx :+ "requests").contains(2))
     assert(stats.counters.get(dogPfx :+ "success").contains(2))
 
-//    assert(stats.gauges.keys == Set(
-//      (catPfx :+ "pending"),
-//      (dogPfx :+ "pending")
-//    ))
+    //    assert(stats.gauges.keys == Set(
+    //      (catPfx :+ "pending"),
+    //      (dogPfx :+ "pending")
+    //    ))
     assert(stats.histogramDetails.keys == Set(
-      "pfx/service/req/cat/stream/request_latency_ms",
-      "pfx/service/req/dog/stream/request_latency_ms"
+      "pfx/service/req/cat/request_latency_ms",
+      "pfx/service/req/dog/request_latency_ms",
+
+      "pfx/service/req/cat/stream/total_latency_ms",
+      "pfx/service/req/dog/stream/total_latency_ms",
+
+      "pfx/service/req/cat/request/stream/stream_duration_ms",
+      "pfx/service/req/dog/request/stream/stream_duration_ms",
+      "pfx/service/req/dog/response/stream/stream_duration_ms",
+
+      "pfx/service/req/cat/request/stream/data_bytes",
+      "pfx/service/req/dog/request/stream/data_bytes",
+      "pfx/service/req/dog/response/stream/data_bytes"
     ))
   }
 
