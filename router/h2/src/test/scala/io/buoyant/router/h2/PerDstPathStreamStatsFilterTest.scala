@@ -5,6 +5,7 @@ import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.stack.{Endpoint, nilStack}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
 import com.twitter.util.{Future, Local}
 import io.buoyant.router.context.DstPathCtx
 import io.buoyant.test.FunSuite
@@ -15,35 +16,38 @@ class DangCat extends Exception("meow", new NotDog)
 
 class PerDstPathStreamStatsFilterTest extends FunSuite {
 
-  def setContext(f: String => Path) =
-    Filter.mk[String, Unit, String, Unit] { (req, service) =>
+  def setContext(f: Request => Path) =
+    Filter.mk[Request, Response, Request, Response] { (req, service) =>
       val save = Local.save()
       try Contexts.local.let(DstPathCtx, Dst.Path(f(req))) { service(req) }
       finally Local.restore(save)
     }
 
-  val service = Service.mk[String, Unit] {
-    case "cat" => Future.exception(new DangCat)
-    case _ => Future.Unit
+  val service = Service.mk[Request, Response] {
+    case r: Request if r.path == "cat" => Future.exception(new DangCat)
+    case _ => Future.value(Response(Status.Ok, Stream.empty()))
   }
 
   val stack = {
     val sf = ServiceFactory(() => Future.value(service))
-    val stk = new StackBuilder[ServiceFactory[String, Unit]](nilStack)
-    stk.push(PerDstPathStreamStatsFilter.module[String, Unit])
+    val stk = new StackBuilder[ServiceFactory[Request, Response]](nilStack)
+    stk.push(PerDstPathStreamStatsFilter.module)
     stk.result ++ Stack.Leaf(Endpoint, sf)
   }
 
+  val dogReq = Request("http", Method.Get, "foo", "dog", Stream.empty())
+
+  val catReq = Request("http", Method.Get, "foo", "cat", Stream.empty())
   test("module installs a per-path StreamStatsFilter") {
     val stats = new InMemoryStatsReceiver
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
-    val ctxFilter = setContext(Path.Utf8("req", _))
+    val ctxFilter = setContext({ r => Path.Utf8("req", r.path) })
     val factory = ctxFilter.andThen(stack.make(params))
     val service = await(factory())
 
-    await(service("dog"))
-    assert(await(service("cat").liftToTry).isThrow)
-    await(service("dog"))
+    await(service(dogReq))
+    assert(await(service(catReq).liftToTry).isThrow)
+    await(service(dogReq))
 
     val pfx = Seq("pfx", "service")
     val catPfx = pfx :+ "req/cat/stream"
@@ -73,9 +77,9 @@ class PerDstPathStreamStatsFilterTest extends FunSuite {
     val service = await(factory())
 
     Contexts.local.letClear(DstPathCtx) {
-      await(service("dog"))
-      assert(await(service("cat").liftToTry).isThrow)
-      await(service("dog"))
+      await(service(dogReq))
+      assert(await(service(catReq).liftToTry).isThrow)
+      await(service(dogReq))
     }
 
     assert(stats.counters.isEmpty)
@@ -91,9 +95,9 @@ class PerDstPathStreamStatsFilterTest extends FunSuite {
     val service = await(factory())
 
     Contexts.local.letClear(DstPathCtx) {
-      await(service("dog"))
-      assert(await(service("cat").liftToTry).isThrow)
-      await(service("dog"))
+      await(service(dogReq))
+      assert(await(service(catReq).liftToTry).isThrow)
+      await(service(dogReq))
     }
 
     assert(stats.counters.isEmpty)
