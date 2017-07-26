@@ -14,9 +14,9 @@ object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
 
   /**
-  * Configures a [[StreamStatsFilter.module]] to track latency using the
-  * given [[TimeUnit]].
-  */
+   * Configures a [[StreamStatsFilter.module]] to track latency using the
+   * given [[TimeUnit]].
+   */
   case class Param(unit: TimeUnit) {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
