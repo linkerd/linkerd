@@ -15,21 +15,22 @@ object StreamTestUtils {
     * @param stream the [[Stream]] to read to the end
     * @return a [[Future]] that will finish when the whole stream is read
     */
-  final def readAll(stream: Stream): Future[Unit] =
+  final def readToEnd(stream: Stream): Future[Unit] =
     stream.read().flatMap { frame =>
       val end = frame.isEnd
       frame.release().before {
-        if (end) Future.Done else readAll(stream)
+        if (end) Future.Done else readToEnd(stream)
       }
     }
 
   /**
-    * Enhances a [[Stream]] by providing the [[readAll()]] function in the
+    * Enhances a [[Stream]] by providing the [[readToEnd()]] function in the
     * method position
+ *
     * @param stream the underlying [[Stream]]
     */
   implicit class ReadAllStream(val stream: Stream) extends AnyVal {
-    @inline def readAll: Future[Unit] = StreamTestUtils.readAll(stream)
+    @inline def readToEnd: Future[Unit] = StreamTestUtils.readToEnd(stream)
   }
 
 }
