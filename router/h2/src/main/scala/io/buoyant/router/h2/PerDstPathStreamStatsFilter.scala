@@ -13,13 +13,8 @@ import io.buoyant.router.context.h2.StreamClassifierCtx
  */
 object PerDstPathStreamStatsFilter {
 
-  val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module3[
-      param.Stats,
-      param.ExceptionStatsHandler,
-      StreamStatsFilter.Param,
-      ServiceFactory[Request, Response]
-    ] {
+  def module: Stackable[ServiceFactory[Request, Response]] =
+    new Stack.Module3[param.Stats, StreamStatsFilter.Param, H2StreamClassifier, ServiceFactory[Request, Response]] {
       val role: Stack.Role = PerDstPathStatsFilter.role
       val description =
         s"${PerDstPathStatsFilter.role}, using H2 stream classification"
@@ -28,6 +23,7 @@ object PerDstPathStreamStatsFilter {
         statsP: param.Stats,
         exHandlerP: param.ExceptionStatsHandler,
         statsFilterP: StreamStatsFilter.Param,
+        classifierP: H2StreamClassifier,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
         statsP match {
@@ -43,7 +39,7 @@ object PerDstPathStreamStatsFilter {
               new StreamStatsFilter(scopedStats, classifier, exHandler, timeUnit)
             }
 
-            val filter = new PerDstPathFilter(mkScopedStatsFilter)
+            val filter = new PerDstPathFilter(mkScopedStatsFilter _)
             filter.andThen(next)
 
           // if the stats receiver is the `NullReceiver`, don't make a filter.
