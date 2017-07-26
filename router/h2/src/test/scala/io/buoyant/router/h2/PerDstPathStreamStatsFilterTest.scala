@@ -9,12 +9,13 @@ import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream
 import com.twitter.util.{Future, Local}
 import io.buoyant.router.context.DstPathCtx
 import io.buoyant.test.FunSuite
+import org.scalatest.Matchers
 
 class NotDog extends Exception
 
 class DangCat extends Exception("meow", new NotDog)
 
-class PerDstPathStreamStatsFilterTest extends FunSuite {
+class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
 
   def setContext(f: Request => Path) =
     Filter.mk[Request, Response, Request, Response] { (req, service) =>
@@ -50,16 +51,18 @@ class PerDstPathStreamStatsFilterTest extends FunSuite {
     await(service(dogReq))
 
     val pfx = Seq("pfx", "service")
-    val catPfx = pfx :+ "req/cat/stream"
-    val dogPfx = pfx :+ "req/dog/stream"
-    assert(stats.counters == Map(
-      (catPfx :+ "requests") -> 1,
-      (catPfx :+ "failures") -> 1,
-      (catPfx :+ "failures" :+ "io.buoyant.router.DangCat") -> 1,
-      (catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog") -> 1,
-      (dogPfx :+ "requests") -> 2,
-      (dogPfx :+ "success") -> 2
-    ))
+    val catPfx = pfx :+ "req/cat"
+    val dogPfx = pfx :+ "req/dog"
+    assert(stats.counters.get(catPfx :+ "requests").contains(1))
+    assert(stats.counters.get(catPfx :+ "failures").contains(1))
+    assert(stats.counters.get(catPfx :+ "stream" :+ "requests" :+ "io.buoyant.router.DangCat").contains(1))
+    assert(stats.counters.get(catPfx :+ "stream" :+ "requests" :+ "io.buoyant.router.DangCat" + "io.buoyant.router.NotDog").contains(1))
+    assert(stats.counters.get(catPfx :+ "failures" :+ "io.buoyant.router.DangCat").contains(1))
+    assert(stats.counters.get(catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog").contains(1))
+
+    assert(stats.counters.get(dogPfx :+ "requests").contains(2))
+    assert(stats.counters.get(dogPfx :+ "success").contains(2))
+
     assert(stats.gauges.keys == Set(
       (catPfx :+ "pending"),
       (dogPfx :+ "pending")
