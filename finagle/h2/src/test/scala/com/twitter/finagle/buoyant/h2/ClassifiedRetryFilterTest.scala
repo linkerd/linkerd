@@ -1,12 +1,29 @@
 package com.twitter.finagle.buoyant.h2
 
+import com.twitter.conversions.time._
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Service
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier, H2StreamClassifiers}
+import com.twitter.finagle.service.ResponseClass
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
-import com.twitter.util.Future
+import com.twitter.util.{Future, Return}
 import io.buoyant.test.FunSuite
+import scala.{Stream => SStream}
 
 class ClassifiedRetryFilterTest extends FunSuite {
+
+  val classifier: H2StreamClassifier = {
+    case H2ReqRep(req, Return((rsp, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("true") =>
+      ResponseClass.RetryableFailure
+    case H2ReqRep(req, Return((rsp, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("false") =>
+      ResponseClass.NonRetryableFailure
+    case _ =>
+      ResponseClass.Success
+  }
+  implicit val timer = DefaultTimer
+
+  val filter = new ClassifiedRetryFilter(classifier, SStream.continually(0.millis))
 
   def read(stream: Stream): Future[(Buf, Option[Frame.Trailers])] = {
     if (stream.isEmpty) Future.exception(new IllegalStateException("empty stream"))
@@ -54,7 +71,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = new ClassifiedRetryFilter().andThen(new TestService())
+    val svc = filter.andThen(new TestService())
 
     val rsp = await(svc(req))
 
@@ -71,7 +88,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = new ClassifiedRetryFilter().andThen(new TestService(tries = 1))
+    val svc = filter.andThen(new TestService(tries = 1))
 
     val rsp = await(svc(req))
 
@@ -88,7 +105,11 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = new ClassifiedRetryFilter(requestBufferSize = 3).andThen(new TestService())
+    val svc = new ClassifiedRetryFilter(
+      classifier,
+      SStream.continually(0.millis),
+      requestBufferSize = 3
+    ).andThen(new TestService())
 
     val rsp = await(svc(req))
 
@@ -105,7 +126,11 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = new ClassifiedRetryFilter(responseBufferSize = 4).andThen(new TestService())
+    val svc = new ClassifiedRetryFilter(
+      classifier,
+      SStream.continually(0.millis),
+      responseBufferSize = 4
+    ).andThen(new TestService())
 
     val rsp = await(svc(req))
 
