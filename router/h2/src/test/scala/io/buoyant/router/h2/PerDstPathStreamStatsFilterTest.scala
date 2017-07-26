@@ -9,6 +9,7 @@ import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream
 import com.twitter.util.{Future, Local}
 import io.buoyant.router.context.DstPathCtx
 import io.buoyant.test.FunSuite
+import org.scalatest.Matchers
 
 class NotDog extends Exception
 
