@@ -214,6 +214,12 @@ trait H2SvcConfig extends SvcConfig {
   def h2ResponseClassifier: Option[H2StreamClassifier] =
     _h2ResponseClassifier
       .map { c => H2StreamClassifiers.NonRetryableStream(c.mk) }
+
+  @JsonIgnore
+  override def params(vars: Map[String, String]): Stack.Params =
+    super.params(vars)
+      .maybeWith(h2ResponseClassifier.map(H2StreamClassifier(_)))
+
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
