@@ -1,10 +1,11 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.conversions.time._
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.conversions.time._
 import com.twitter.finagle.Service
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier, H2StreamClassifiers}
-import com.twitter.finagle.service.ResponseClass
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.service.{ResponseClass, RetryBudget}
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
 import com.twitter.util.{Future, Return}
@@ -23,7 +24,12 @@ class ClassifiedRetryFilterTest extends FunSuite {
   }
   implicit val timer = DefaultTimer
 
-  val filter = new ClassifiedRetryFilter(classifier, SStream.continually(0.millis))
+  def filter(stats: StatsReceiver) = new ClassifiedRetryFilter(
+    stats,
+    classifier,
+    SStream.continually(0.millis),
+    RetryBudget.Infinite
+  )
 
   def read(stream: Stream): Future[(Buf, Option[Frame.Trailers])] = {
     if (stream.isEmpty) Future.exception(new IllegalStateException("empty stream"))
@@ -31,15 +37,12 @@ class ClassifiedRetryFilterTest extends FunSuite {
       case f: Frame.Data if f.isEnd =>
         f.release()
         Future.value((f.buf, None))
-      case f: Frame.Trailers if f.isEnd =>
+      case f: Frame.Trailers =>
         f.release()
         Future.value((Buf.Empty, Some(f)))
       case f: Frame.Data =>
         f.release()
         read(stream).map { case (next, trailers) => (f.buf.concat(next), trailers) }
-      case f: Frame.Trailers => // impossible
-        f.release()
-        read(stream)
     }
   }
 
@@ -71,7 +74,9 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = filter.andThen(new TestService())
+    val stats = new InMemoryStatsReceiver
+
+    val svc = filter(stats).andThen(new TestService())
 
     val rsp = await(svc(req))
 
@@ -79,6 +84,11 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(Buf.Utf8("goodbye") == buf)
     assert(trailers.get("i") == Some("3"))
     assert(trailers.get("retry") == Some("false"))
+
+    assert(stats.counters(Seq("retries", "total")) == 2)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(2f))
+    assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
   }
 
   test("response not retryable") {
@@ -88,7 +98,9 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
-    val svc = filter.andThen(new TestService(tries = 1))
+    val stats = new InMemoryStatsReceiver
+
+    val svc = filter(stats).andThen(new TestService(tries = 1))
 
     val rsp = await(svc(req))
 
@@ -96,6 +108,11 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(Buf.Utf8("goodbye") == buf)
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("false"))
+
+    assert(stats.counters.get(Seq("retries", "total")) == None)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
+    assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
   }
 
   test("request stream too long to retry") {
@@ -105,9 +122,13 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
+    val stats = new InMemoryStatsReceiver
+
     val svc = new ClassifiedRetryFilter(
+      stats,
       classifier,
       SStream.continually(0.millis),
+      RetryBudget.Infinite,
       requestBufferSize = 3
     ).andThen(new TestService())
 
@@ -117,6 +138,11 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(Buf.Utf8("goodbye") == buf)
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("true")) // response is retryable but req stream too long
+
+    assert(stats.counters.get(Seq("retries", "total")) == None)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
+    assert(stats.counters(Seq("retries", "request_stream_too_long")) == 1)
+    assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
   }
 
   test("response stream too long to retry") {
@@ -126,9 +152,13 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val reqStream = Stream(reqQ)
     val req = Request(Headers.empty, reqStream)
 
+    val stats = new InMemoryStatsReceiver
+
     val svc = new ClassifiedRetryFilter(
+      stats,
       classifier,
       SStream.continually(0.millis),
+      RetryBudget.Infinite,
       responseBufferSize = 4
     ).andThen(new TestService())
 
@@ -138,5 +168,10 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(Buf.Utf8("goodbye") == buf)
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("true")) // response is retryable but response stream too long
+
+    assert(stats.counters.get(Seq("retries", "total")) == None)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
+    assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
+    assert(stats.counters(Seq("retries", "response_stream_too_long")) == 1)
   }
 }

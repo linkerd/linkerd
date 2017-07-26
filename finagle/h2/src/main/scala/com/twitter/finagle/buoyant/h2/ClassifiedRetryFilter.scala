@@ -1,9 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
-import com.twitter.finagle.service.ResponseClass
+import com.twitter.finagle.service.{ResponseClass, RetryBudget}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
 import scala.{Stream => SStream}
@@ -20,23 +20,38 @@ import scala.{Stream => SStream}
  * the service.  If not, we return the response stream to the caller.
  */
 class ClassifiedRetryFilter(
+  stats: StatsReceiver,
   classifier: H2StreamClassifier,
   backoffs: SStream[Duration],
-  requestBufferSize: Long = 8.kilobytes.bytes,
-  responseBufferSize: Long = 8.kilobytes.bytes
+  budget: RetryBudget,
+  requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
+  responseBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize
 )(implicit timer: Timer) extends SimpleFilter[Request, Response] {
-  // TODO: accept a Stream of backoffs
+
+  private[h2] val retriesStat = stats.scope("retries").stat("per_request")
+  private[h2] val totalRetries = stats.scope("retries").counter("total")
+  private[h2] val budgetExhausted =
+    stats.scope("retries").counter("budget_exhausted")
+  private[h2] val backoffsExhausted =
+    stats.scope("retries").counter("backoffs_exhausted")
+  private[h2] val requestStreamTooLong =
+    stats.scope("retries").counter("request_stream_too_long")
+  private[h2] val responseStreamTooLong =
+    stats.scope("retries").counter("response_stream_too_long")
+  private[h2] val budgetGauge = stats.scope("retries").addGauge("budget") { budget.balance }
 
   override def apply(
     request: Request,
     service: Service[Request, Response]
   ): Future[Response] = {
 
+    budget.deposit()
+
     // Buffer the request stream so that we can fork another child stream if we need to retry
     val requestBuffer = new BufferedStream(request.stream, requestBufferSize)
     val fork = Future.const(requestBuffer.fork())
 
-    def dispatch(reqStream: Stream, backoffs: SStream[Duration]): Future[Response] = {
+    def dispatch(reqStream: Stream, backoffs: SStream[Duration], count: Int): Future[Response] = {
       val req = Request(request.headers.dup(), reqStream)
 
       // Attempt to retry.
@@ -47,15 +62,27 @@ class ClassifiedRetryFilter(
           case Return(s) =>
             backoffs match {
               case pause #:: rest =>
-                // Retry!
-                onRetry
-                schedule(pause)(dispatch(s, rest))
+                if (budget.tryWithdraw()) {
+                  // Retry!
+                  onRetry
+                  totalRetries.incr()
+                  schedule(pause)(dispatch(s, rest, count + 1))
+                } else {
+                  // Not enough retry budget to retry
+                  budgetExhausted.incr()
+                  retriesStat.add(count)
+                  orElse
+                }
               case _ =>
                 // We ran out of retries.
+                backoffsExhausted.incr()
+                retriesStat.add(count)
                 orElse
             }
           case Throw(e) =>
             // We could not create a new child request stream so just return the response stream
+            requestStreamTooLong.incr()
+            retriesStat.add(count)
             orElse
         }
       }
@@ -87,6 +114,7 @@ class ClassifiedRetryFilter(
             retry(orElse = discardAndReturn(), onRetry = discardResponse())
           } else {
             // Request is not retryable so just return the response stream
+            retriesStat.add(count)
             discardAndReturn()
           }
         }
@@ -97,7 +125,7 @@ class ClassifiedRetryFilter(
       }
     }
 
-    fork.flatMap(dispatch(_, backoffs))
+    fork.flatMap(dispatch(_, backoffs, 0))
   }
 
   @inline
@@ -123,9 +151,15 @@ class ClassifiedRetryFilter(
         val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
 
         // Wait until the response stream is fully buffered or the buffer becomes full.
-        Future.select(Seq(fullyBuffered, bufferDiscarded))
-          .flatMap(select => Future.const(select._1))
-      case Throw(e) =>
+        Future.selectIndex(IndexedSeq(fullyBuffered, bufferDiscarded)).flatMap {
+          case 0 =>
+            fullyBuffered
+          case 1 =>
+            responseStreamTooLong.incr()
+            bufferDiscarded
+        }
+      case Throw(_) =>
+        responseStreamTooLong.incr()
         Future.False
     }
   }
@@ -172,4 +206,8 @@ class ClassifiedRetryFilter(
         }
       }
     }
+}
+
+object ClassifiedRetryFilter {
+  val DefaultBufferSize = 65535
 }
