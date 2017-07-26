@@ -8,9 +8,9 @@ import io.buoyant.router.{PerDstPathFilter, PerDstPathStatsFilter}
 import io.buoyant.router.context.h2.StreamClassifierCtx
 
 /**
-  * Like [[io.buoyant.router.LocalClassifierStatsFilter]],
-  * but specialized for H2 streams.
-  */
+ * Like [[io.buoyant.router.LocalClassifierStatsFilter]],
+ * but specialized for H2 streams.
+ */
 object LocalClassifierStreamStatsFilter {
 
   def module: Stackable[ServiceFactory[Request, Response]] =
