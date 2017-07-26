@@ -207,12 +207,7 @@ trait H2SvcConfig extends SvcConfig {
   @JsonIgnore
   def h2ResponseClassifier: Option[H2StreamClassifier] =
     _h2ResponseClassifier
-      .map { classifier =>
-        // TODO: insert classified retries here?
-        H2StreamClassifiers.NonRetryableStream(
-          classifier.mk.orElse(h2BaseResponseClassifier)
-        )
-      }
+      .map { c => H2StreamClassifiers.NonRetryableStream(c.mk) }
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
