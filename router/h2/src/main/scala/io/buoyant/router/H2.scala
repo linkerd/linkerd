@@ -11,7 +11,7 @@ import com.twitter.finagle.buoyant.h2.service.H2StreamClassifiers
 import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.StreamClassifierCtx
-import io.buoyant.router.h2.{PerDstPathStreamStatsFilter, StreamStatsFilter}
+import io.buoyant.router.h2.{LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -47,6 +47,7 @@ object H2 extends Router[Request, Response]
         .replace(StatsFilter.role, StreamStatsFilter.module)
         .replace(ResponseClassifierCtx.Setter.role, StreamClassifierCtx.Setter.module[Request, Response])
         .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
+        .replace(LocalClassifierStatsFilter.role, LocalClassifierStreamStatsFilter.module)
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
