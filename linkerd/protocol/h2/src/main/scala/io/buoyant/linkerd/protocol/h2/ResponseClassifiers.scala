@@ -37,7 +37,7 @@ class NonRetryable5XXInitializer extends H2StreamClassifierInitializer {
 object NonRetryable5XXInitializer extends NonRetryable5XXInitializer
 
 class AllSuccessfulConfig extends H2StreamClassifierConfig {
-  def mk: H2StreamClassifier = H2StreamClassifiers.Default
+  def mk: H2StreamClassifier = H2StreamClassifiers.AllSuccessful
   // TODO: we still need h2 ClassifiedRetries
 }
 
