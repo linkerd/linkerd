@@ -203,17 +203,14 @@ trait H2SvcConfig extends SvcConfig {
   @JsonIgnore
   def h2BaseResponseClassifier = H2StreamClassifiers.Default
 
-  // TODO: insert classified retries here
-  //  ClassifiedRetries.orElse(
-  //    ResponseClassifiers.NonRetryableServerFailures,
-  //    super.baseResponseClassifier
-  //  )
-
-  // TODO: gRPC (trailers-aware)
   @JsonIgnore
   def h2ResponseClassifier: Option[H2StreamClassifier] =
     _h2ResponseClassifier
-      .map { c => H2StreamClassifiers.NonRetryableStream(c.mk) }
+      .map { c => H2StreamClassifiers.NonRetryableStream(c.mk).orElse(h2BaseResponseClassifier) }
+
+  @JsonIgnore
+  override def params(vars: Map[String, String]): Stack.Params = super.params(vars)
+    .maybeWith(h2ResponseClassifier.map(H2StreamClassifier(_)))
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

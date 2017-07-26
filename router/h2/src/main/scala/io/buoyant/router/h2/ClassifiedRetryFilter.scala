@@ -1,7 +1,8 @@
-package com.twitter.finagle.buoyant.h2
+package io.buoyant.router.h2
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
