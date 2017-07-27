@@ -30,24 +30,20 @@ object H2 extends Router[Request, Response]
   }
 
   object Router {
-    val pathStack: Stack[ServiceFactory[Request, Response]] ={
-      val stk = h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +:
-        StackRouter.newPathStack[Request, Response]
-      stk.replace(
-        ResponseClassifierCtx.Setter.role,
-        StreamClassifierCtx.Setter.module[Request, Response])
-    }
+    val pathStack: Stack[ServiceFactory[Request, Response]] =
+      StreamClassifierCtx.Setter.module[Request, Response]    +:
+      h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +:
+      StackRouter.newPathStack[Request, Response]
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack
 
-    val clientStack: Stack[ServiceFactory[Request, Response]] =
-      StackRouter.Client
-        .mkStack(FinagleH2.Client.newStack)
-        .replace(StatsFilter.role, StreamStatsFilter.module)
-        .replace(ResponseClassifierCtx.Setter.role, StreamClassifierCtx.Setter.module[Request, Response])
+    val clientStack: Stack[ServiceFactory[Request, Response]] = {
+      val stk = FinagleH2.Client.newStack
+      StackRouter.Client.mkStack(stk)
         .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
         .replace(LocalClassifierStatsFilter.role, LocalClassifierStreamStatsFilter.module)
+    }
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
