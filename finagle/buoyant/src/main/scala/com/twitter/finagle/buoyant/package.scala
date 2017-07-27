@@ -1,6 +1,7 @@
 package com.twitter.finagle
 
 import com.twitter.finagle.Stack.Parameterized
+import com.twitter.finagle.service.ResponseClassificationSyntheticException
 
 package object buoyant {
 
@@ -37,4 +38,11 @@ package object buoyant {
       }
     }
   }
+
+  /**
+   * Reexport [[ResponseClassificationSyntheticException]]
+   * publicly so it can be used in H2 `StreamStatsFilter`.
+   * @return a [[ResponseClassificationSyntheticException]]
+   */
+  def syntheticException: ResponseClassificationSyntheticException = new ResponseClassificationSyntheticException()
 }
