@@ -208,7 +208,7 @@ trait H2SvcConfig extends SvcConfig {
   def h2ResponseClassifier: Option[H2StreamClassifier] =
     _h2ResponseClassifier
       .map { classifier =>
-        // TODO: insert classified retries here
+        // TODO: insert classified retries here?
         H2StreamClassifiers.NonRetryableStream(
           classifier.mk.orElse(h2BaseResponseClassifier)
         )
