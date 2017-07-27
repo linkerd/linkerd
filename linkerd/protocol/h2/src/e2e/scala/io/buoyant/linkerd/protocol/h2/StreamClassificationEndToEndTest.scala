@@ -1,12 +1,14 @@
 package io.buoyant.linkerd.protocol.h2
 
 import java.net.InetSocketAddress
+import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.H2
-import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Method, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.Frame.Trailers
+import com.twitter.finagle.buoyant.h2.{Frame, LinkerdHeaders, Method, Request, Response, Status, Stream}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.util.{Future, Var}
+import com.twitter.util.{Future, Return, Var}
 import io.buoyant.linkerd.Linker
 import io.buoyant.test.{Awaits, FunSuite}
 import io.buoyant.test.h2.StreamTestUtils._
@@ -298,4 +300,128 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
     assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
   }
+
+
+  test("classifier filter sets l5d-success-class headers") {
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response(Status.Ok, Stream.empty)
+      Future.value(rsp)
+    })
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.h2.allSuccessful
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+    val req = Request("http", Method.Get, "foo", "/", Stream.empty)
+    val rsp = await(client(req))
+    await(rsp.stream.readToEnd)
+    withClue("after request") {
+      assert(rsp.headers.contains("l5d-success-class"), s", did get headers: ${rsp.headers.toSeq}")
+    }
+  }
+
+  test("classifier filter sets l5d-success-class headers in stream trailers") {
+    val q = new AsyncQueue[Frame]()
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response(Status.Ok, Stream(q))
+
+      q.offer(Frame.Data("aaaaaaaa", eos = false))
+      q.offer(Frame.Data("bbbbb", eos = false))
+      q.offer(Frame.Trailers())
+      Future.value(rsp)
+    })
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.h2.allSuccessful
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+    val req = Request("http", Method.Get, "foo", "/", Stream.empty)
+    val rsp = await(client(req))
+
+    assert(!rsp.headers.contains("l5d-success-class"))
+
+    var trailersFound = false
+    val stream = rsp.stream.onFrame {
+      case Return(frame: Trailers) =>
+        assert(frame.contains("l5d-success-class"), s", did get headers: ${rsp.headers}")
+        trailersFound = true
+      case _ =>
+    }
+    stream.onEnd.onSuccess { _ =>
+      val _ = assert(trailersFound, ", meaning we never received stream trailers!")
+    }
+    await(stream.readToEnd)
+  }
+
+  test("classifier filter does not set l5d-success-class headers on failures") {
+    val q = new AsyncQueue[Frame]()
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response(Status.InternalServerError, Stream(q))
+
+      q.offer(Frame.Data("aaaaaaaa", eos = false))
+      q.offer(Frame.Data("bbbbb", eos = false))
+      q.offer(Frame.Trailers())
+      Future.value(rsp)
+    })
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.h2.nonRetryable5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request("http", Method.Get, "foo", "/", Stream.empty)
+    val rsp = await(client(req))
+
+    assert(!rsp.headers.contains("l5d-success-class"))
+
+    var trailersFound = false
+    val stream = rsp.stream.onFrame {
+      case Return(frame: Trailers) =>
+        assert(!frame.contains("l5d-success-class"))
+        trailersFound = true
+      case _ =>
+    }
+    stream.onEnd.onSuccess { _ =>
+      val _ = assert(trailersFound, ", meaning we never received stream trailers!")
+    }
+    await(stream.readToEnd)
+
+  }
+
 }
