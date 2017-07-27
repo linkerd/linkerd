@@ -152,5 +152,9 @@ object H2StreamClassifiers {
     named("DefaultH2ResponseClassifier") {
       ExceptionsAsFailures.orElse(NonRetryableServerFailures).orElse(AssumeSuccess)
     }
+  val AllSuccessful: H2StreamClassifier =
+    named("AllSuccessful") {
+      ExceptionsAsFailures.orElse(AssumeSuccess)
+    }
 
 }
