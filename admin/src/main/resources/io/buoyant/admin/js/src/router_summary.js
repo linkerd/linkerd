@@ -89,23 +89,23 @@ define([
     }
 
     function processResponses(data, routerName, metrics) {
-      function process(metric) {
+      function summarize(metric) {
         var m = metrics[metric];
         var datum = _(data).get(m.accessor);
 
-        return _.reduce(datum, function(mem, entityData) {
-          mem += _.get(entityData, m.metricAccessor) || 0;
-          return mem;
+        return _.reduce(datum, function(totalValue, entityData) {
+          totalValue += _.get(entityData, m.metricAccessor) || 0;
+          return totalValue;
         }, 0);
       }
 
       var result = {
         router: routerName,
-        load: process("load", true),
-        requests: process("requests"),
-        success: process("success"),
-        failures: process("failures"),
-        retries: process("pathRetries") + process("requeues")
+        load: summarize("load", true),
+        requests: summarize("requests"),
+        success: summarize("success"),
+        failures: summarize("failures"),
+        retries: summarize("pathRetries") + summarize("requeues")
       }
       var rates = getSuccessAndFailureRate(result);
       return  $.extend(result, rates);
