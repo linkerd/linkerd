@@ -3,7 +3,6 @@ package io.buoyant.router.h2
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import com.twitter.finagle.{param, _}
-import com.twitter.finagle.buoyant.syntheticException
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
@@ -25,15 +24,11 @@ object StreamStatsFilter {
     implicit val param = Stack.Param(Param(TimeUnit.MILLISECONDS))
   }
 
-  val role = Stack.Role("StreamStatsFilter")
+  /**
+   * Creates a [[com.twitter.finagle.Stackable]] [[StreamStatsFilter]].
+   */
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module4[
-      param.Stats,
-      h2param.H2StreamClassifier,
-      param.ExceptionStatsHandler,
-      Param,
-      ServiceFactory[Request, Response]
-    ] {
+    new Stack.Module4[param.Stats, h2param.H2StreamClassifier, param.ExceptionStatsHandler, Param, ServiceFactory[Request, Response]] {
       override val role: Stack.Role = StreamStatsFilter.role
       override val description = "Record stats on h2 streams"
       override def make(
@@ -88,7 +83,7 @@ class StreamStatsFilter(
 
     def failure(streamDuration: Duration, e: Throwable): Unit = {
       duration.add(streamDuration.inUnit(timeUnit))
-      failures.incr()
+      successes.incr()
       exceptionStats.record(stats, e)
     }
 
@@ -177,6 +172,7 @@ class StreamStatsFilter(
           Future.value(Response(response.headers, stream))
         case Throw(e) =>
           classify(Throw(e))(None)
+          exceptionStats.record(statsReceiver, e)
           Future.exception(e)
       }
       .respond { result =>
