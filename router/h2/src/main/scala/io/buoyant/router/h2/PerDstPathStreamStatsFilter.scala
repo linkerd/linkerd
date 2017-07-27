@@ -21,7 +21,6 @@ object PerDstPathStreamStatsFilter {
 
       override def make(
         statsP: param.Stats,
-        exHandlerP: param.ExceptionStatsHandler,
         statsFilterP: StreamStatsFilter.Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
@@ -30,12 +29,11 @@ object PerDstPathStreamStatsFilter {
             val StreamStatsFilter.Param(timeUnit) = statsFilterP
             val H2StreamClassifier(classifier) =
               StreamClassifierCtx.current.getOrElse(H2StreamClassifier.param.default)
-            val param.ExceptionStatsHandler(exHandler) = exHandlerP
 
-            def mkScopedStatsFilter(path: Path): SimpleFilter[Request, Response] = {
+            def mkScopedStatsFilter(path: Path): Filter[Request, Response, Request, Response] = {
               val name = path.show.stripPrefix("/")
               val scopedStats = stats.scope("service", name)
-              new StreamStatsFilter(scopedStats, classifier, exHandler, timeUnit)
+              new StreamStatsFilter(scopedStats, classifier, timeUnit)
             }
 
             val filter = new PerDstPathFilter(mkScopedStatsFilter)
