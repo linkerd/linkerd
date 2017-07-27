@@ -29,7 +29,13 @@ object StreamStatsFilter {
    * Creates a [[com.twitter.finagle.Stackable]] [[StreamStatsFilter]].
    */
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module4[param.Stats, h2param.H2StreamClassifier, param.ExceptionStatsHandler, Param, ServiceFactory[Request, Response]] {
+    new Stack.Module4[
+      param.Stats,
+      h2param.H2StreamClassifier,
+      param.ExceptionStatsHandler,
+      Param,
+      ServiceFactory[Request, Response]
+    ] {
       override val role: Stack.Role = StreamStatsFilter.role
       override val description = "Record stats on h2 streams"
       override def make(
@@ -92,13 +98,13 @@ class StreamStatsFilter(
 
     def apply(
       startT: Stopwatch.Elapsed,
-      onFinalFrame: Option[Try[Frame]] => Try[Unit] => Unit = { _ => _ => }
+      onFinalFrame: Option[Try[Frame]] => Unit = { _ => }
     )(underlying: Stream): Stream = {
       val streamFrameBytes = new AtomicLong(0)
       val stream = if (underlying.isEmpty) {
         // if the stream is empty, we still need to call the response
-        // classifier with `None`, so add that to the `onEnd` callback.
-        underlying.onEnd.respond { onFinalFrame(None)(_) }
+        // classifier with `None`.
+        onFinalFrame(None)
         underlying
       } else {
         underlying.onFrame {
@@ -108,9 +114,9 @@ class StreamStatsFilter(
                 val _ = streamFrameBytes.addAndGet(data.buf.length)
               case _ =>
             }
-            if (frame.isEnd) onFinalFrame(Some(Return(frame)))(Return(()))
+            if (frame.isEnd) onFinalFrame(Some(Return(frame)))
           case Throw(e) =>
-            onFinalFrame(Some(Throw(e)))(Throw(e))
+            onFinalFrame(Some(Throw(e)))
             failure(startT(), e)
         }
       }
@@ -154,14 +160,15 @@ class StreamStatsFilter(
     val reqT = Stopwatch.start()
     val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    @inline def classify(rsp: Try[Response])(frame: Option[Try[Frame]])(e: Try[Unit] = Return(())): Unit =
+    @inline def classify(rsp: Try[Response])(frame: Option[Try[Frame]]): Unit =
       classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
         case Successful(_) => successes.incr()
         case _ =>
-          exceptionStats.record(
-            statsReceiver,
-            e.asScala.failed.getOrElse(StreamStatsFilter.SyntheticException)
-          )
+          val exception =
+            failed(rsp)
+              .orElse(frame.flatMap(failed))
+              .getOrElse(StreamStatsFilter.SyntheticException)
+          exceptionStats.record(statsReceiver, exception)
       }
 
     service(req1)
@@ -171,7 +178,7 @@ class StreamStatsFilter(
           val stream = rspStreamStats(rspT, classify(Return(response)))(response.stream)
           Future.value(Response(response.headers, stream))
         case Throw(e) =>
-          classify(Throw(e))(None)(Throw(e))
+          classify(Throw(e))(None)
           Future.exception(e)
       }
       .respond { result =>
