@@ -12,8 +12,10 @@ import com.twitter.util.{Future, Return, Var}
 import io.buoyant.linkerd.Linker
 import io.buoyant.test.{Awaits, FunSuite}
 import io.buoyant.test.h2.StreamTestUtils._
+import org.scalatest.Assertion
 
 class StreamClassificationEndToEndTest extends FunSuite with Awaits {
+
   case class Downstream(name: String, service: Service[Request, Response]) {
     val stack = H2.server.stack.remove(LinkerdHeaders.Ctx.serverModule.role)
     val server = H2.server.withStack(stack)
@@ -47,7 +49,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
   )
 
   private[this] val failureReqCounters = Seq(
-//    Seq("request", "stream", "stream_failures"),/**/
+    //    Seq("request", "stream", "stream_failures"),/**/
     Seq("requests")
   )
 
@@ -56,21 +58,28 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     Seq("failures")
   )
 
-
   def requestSuccessCounters(port: Int, svc: String): Seq[Seq[String]] =
-    for { counter <- successReqCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}
+    for {counter <- successReqCounters} yield {
+      Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter
+    }
 
   def responseSuccessCounters(port: Int, svc: String): Seq[Seq[String]] =
     requestSuccessCounters(port, svc) ++
-    (for { counter <- successRspCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}) :+
+      (for {counter <- successRspCounters} yield {
+        Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter
+      }) :+
       Seq("rt", "h2", "client", s"$$/inet/127.1/$port", "service", s"svc/$svc", "success")
 
 
   def requestFailureCounters(port: Int, svc: String): Seq[Seq[String]] =
-    for { counter <- failureReqCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}
+    for {counter <- failureReqCounters} yield {
+      Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter
+    }
 
   def responseFailureCounters(port: Int, svc: String): Seq[Seq[String]] =
-      (for { counter <- failureRspCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}) :+
+    (for {counter <- failureRspCounters} yield {
+      Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter
+    }) :+
       Seq("rt", "h2", "client", s"$$/inet/127.1/$port", "service", s"svc/$svc", "failures")
 
   test("success") {
@@ -100,7 +109,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val rsp = await(client(req))
 
     withClue("after request, before response:") {
-      for { counter <- requestSuccessCounters(downstream.port, "foo") } {
+      for {counter <- requestSuccessCounters(downstream.port, "foo")} {
         assert(stats.counters(counter) == 1)
       }
     }
@@ -108,12 +117,13 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after response:") {
-      for { counter <- responseSuccessCounters(downstream.port, "foo") } {
+      for {counter <- responseSuccessCounters(downstream.port, "foo")} {
         assert(stats.counters(counter) == 1)
       }
     }
 
   }
+
   test("non-retryable failure") {
     val downstream = Downstream("ds", Service.mk { req =>
       Future.value(Response(Status.InternalServerError, Stream.empty()))
@@ -141,7 +151,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val rsp = await(client(req))
 
     withClue("after request, before response:") {
-      for { counter <- requestSuccessCounters(downstream.port, "foo") } {
+      for {counter <- requestSuccessCounters(downstream.port, "foo")} {
         assert(stats.counters(counter) == 1)
       }
     }
@@ -149,15 +159,14 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.onEnd)
 
     withClue("after response:") {
-      for { counter <- responseFailureCounters(downstream.port, "foo") } {
+      for {counter <- responseFailureCounters(downstream.port, "foo")} {
         assert(stats.counters(counter) == 1)
       }
     }
   }
 
-
-    ignore("retryable failure") {
-      // disabled b/c retries isn't done yet
+  ignore("retryable failure") {
+    // disabled b/c retries isn't done yet
     @volatile var i = 0
     val downstream = Downstream("ds", Service.mk { req =>
       if (i == 0) {
@@ -195,8 +204,10 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
     assert(stats.counters(Seq("rt", "h2", "service", "svc/foo", "success")) == 1)
     assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
-    assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
+    assert(stats
+      .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats
+      .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
 
   ignore("per service classification") {
@@ -241,12 +252,15 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after first response: ") {
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == Some(1), s", did get ${stats.counters}")
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == Some(1),
+        s", did get ${stats.counters}")
       assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
       assert(stats.counters(Seq("rt", "h2", "service", "svc/a", "success")) == 1)
       assert(stats.counters.get(Seq("rt", "h2", "service", "svc/a", "failures")) == None)
-      assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
-      assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "failures")) == 1)
+      assert(stats
+        .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
+      assert(stats
+        .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "failures")) == 1)
     }
 
     // Request to "b" is non-retryable
@@ -268,11 +282,9 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     }
   }
 
-  test("client stats use service response classifier") {
-    val downstream = Downstream("ds", Service.mk { req =>
-      val rsp = Response(Status.InternalServerError, Stream.empty)
-      Future.value(rsp)
-    })
+  def mkTestClassifier(downstream: Downstream)
+    (classifier: String)
+    (expect: InMemoryStatsReceiver => Assertion): Assertion = {
     val config =
       s"""|routers:
           |- protocol: h2
@@ -280,7 +292,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
           |  service:
           |    responseClassifier:
-          |      kind: io.l5d.h2.allSuccessful
+          |      kind: $classifier
           |  servers:
           |  - port: 0
           |""".stripMargin
@@ -294,13 +306,53 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val req = Request("http", Method.Post, "foo", "/", Stream.empty)
     val rsp = await(client(req))
     await(rsp.stream.readToEnd)
-
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
-    assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+    withClue(s"classifier: $classifier") {
+      expect(stats)
+    }
   }
 
+  test("client stats use service response classifier") {
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response(Status.InternalServerError, Stream.empty)
+      Future.value(rsp)
+    })
+    val testClassifier = mkTestClassifier(downstream) _
+
+    testClassifier("io.l5d.h2.allSuccessful") { stats =>
+      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "success")) == Some(1))
+      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
+      assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+    }
+
+    testClassifier("io.l5d.h2.nonRetryable5XX") { stats =>
+      for {counter <- responseFailureCounters(downstream.port, "foo")} {
+        assert(stats.counters(counter) == 1)
+      }
+      succeed
+    }
+
+  }
+
+  test("server stats use service response classifier") {
+    val downstream = Downstream("ds", Service.mk { req =>
+      val rsp = Response(Status.InternalServerError, Stream.empty)
+      Future.value(rsp)
+    })
+    val testClassifier = mkTestClassifier(downstream) _
+
+    testClassifier("io.l5d.h2.allSuccessful") { stats =>
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).contains(1))
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).isEmpty)
+      succeed
+    }
+
+    testClassifier("io.l5d.h2.nonRetryable5XX") { stats =>
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).isEmpty)
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).contains(1))
+      succeed
+    }
+  }
 
   test("classifier filter sets l5d-success-class headers") {
     val downstream = Downstream("ds", Service.mk { req =>
@@ -321,12 +373,13 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
-    val router = linker.routers.head.initialize()
-    val server = router.servers.head.serve()
+    val router = linker.routers .head.initialize()
+    val server =router.servers.head.serve()
     val client = upstream(server)
     val req = Request("http", Method.Get, "foo", "/", Stream.empty)
     val rsp = await(client(req))
     await(rsp.stream.readToEnd)
+
     withClue("after request") {
       assert(rsp.headers.contains("l5d-success-class"), s", did get headers: ${rsp.headers.toSeq}")
     }
@@ -336,7 +389,6 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val q = new AsyncQueue[Frame]()
     val downstream = Downstream("ds", Service.mk { req =>
       val rsp = Response(Status.Ok, Stream(q))
-
       q.offer(Frame.Data("aaaaaaaa", eos = false))
       q.offer(Frame.Data("bbbbb", eos = false))
       q.offer(Frame.Trailers())
@@ -357,35 +409,40 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
-    val server = router.servers.head.serve()
+    val server = router.servers.head. serve()
     val client = upstream(server)
     val req = Request("http", Method.Get, "foo", "/", Stream.empty)
     val rsp = await(client(req))
-
-    assert(!rsp.headers.contains("l5d-success-class"))
+    assert(!rsp.headers.contains( "l5d-success-class"))
 
     var trailersFound = false
     val stream = rsp.stream.onFrame {
       case Return(frame: Trailers) =>
-        assert(frame.contains("l5d-success-class"), s", did get headers: ${rsp.headers}")
+        assert(frame.get("l5d-success-class") == Some("1.0"),
+          s", did get headers: ${rsp.headers}")
         trailersFound = true
       case _ =>
     }
-    stream.onEnd.onSuccess { _ =>
-      val _ = assert(trailersFound, ", meaning we never received stream trailers!")
-    }
     await(stream.readToEnd)
+
+    assert(trailersFound,", meaning we never received stream trailers!")
   }
 
   test("classifier filter does not set l5d-success-class headers on failures") {
     val q = new AsyncQueue[Frame]()
-    val downstream = Downstream("ds", Service.mk { req =>
-      val rsp = Response(Status.InternalServerError, Stream(q))
+    val downstream =
+      Downstream("ds", Service.mk { req =>
+        val rsp = Response(Status.InternalServerError, Stream(q))
 
-      q.offer(Frame.Data("aaaaaaaa", eos = false))
-      q.offer(Frame.Data("bbbbb", eos = false))
-      q.offer(Frame.Trailers())
-      Future.value(rsp)
+      q.offer(Frame.Data("aaaaaaaa", eos =
+            false))
+      q.offer(
+        Frame.Data("bbbbb", eos = false))
+      q.offer(Frame
+        .Trailers()
+      )
+      Future.value(rsp
+      )
     })
     val config =
       s"""|routers:
@@ -413,14 +470,13 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     var trailersFound = false
     val stream = rsp.stream.onFrame {
       case Return(frame: Trailers) =>
-        assert(!frame.contains("l5d-success-class"))
+        assert(frame.get("l5d-success-class") == Some("0.0"))
         trailersFound = true
       case _ =>
     }
-    stream.onEnd.onSuccess { _ =>
-      val _ = assert(trailersFound, ", meaning we never received stream trailers!")
-    }
     await(stream.readToEnd)
+    await(stream.onEnd)
+    assert(trailersFound, ", meaning we never received stream trailers!")
 
   }
 
