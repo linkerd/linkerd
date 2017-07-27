@@ -1,5 +1,6 @@
 package io.buoyant.router.h2
 
+import com.twitter.finagle.buoyant.h2.Frame.Trailers
 import com.twitter.finagle.buoyant.h2.param
 import com.twitter.finagle.buoyant.h2.service.H2ReqRep.FinalFrame
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
@@ -43,12 +44,22 @@ class ClassifierFilter(classifier: H2StreamClassifier) extends SimpleFilter[Requ
 
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     svc(req).map { rep =>
-      successClass(H2ReqRep(req, Return(rep))) match {
-        case Some(success) =>
-          rep.headers.set(ClassifierFilter.SuccessClassHeader, success.toString)
-        case None =>
+      val stream1 = rep.stream.onFrame {
+        case Return(f: Trailers) =>
+          successClass(H2ReqRep(req, Return(rep), Some(Return(f)))) match {
+            case Some(success) =>
+              f.set(ClassifierFilter.SuccessClassHeader, success.toString)
+            case None =>
+          }
+        case Return(f) if f.isEnd =>
+          successClass(H2ReqRep(req, Return(rep), Some(Return(f)))) match {
+            case Some(success) =>
+              rep.headers.set(ClassifierFilter.SuccessClassHeader, success.toString)
+            case None =>
+          }
+        case _ =>
       }
-      rep
+      Response(rep.headers, stream1)
     }
   }
 }
