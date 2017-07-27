@@ -60,8 +60,8 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     assertCounter(catPfx :+ "requests", Some(1))
     assertCounter(catPfx :+ "failures", Some(1))
 
-    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.DangCat", Some(1))
-    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog", Some(1))
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat", Some(1))
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat" :+ "io.buoyant.router.h2.NotDog", Some(1))
 
     assertCounter(dogPfx :+ "requests", Some(2))
     assertCounter(dogPfx :+ "success", Some(2))
