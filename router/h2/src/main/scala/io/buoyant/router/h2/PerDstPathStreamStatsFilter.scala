@@ -38,7 +38,7 @@ object PerDstPathStreamStatsFilter {
               new StreamStatsFilter(scopedStats, classifier, exHandler, timeUnit)
             }
 
-            val filter = new PerDstPathFilter(mkScopedStatsFilter _)
+            val filter = new PerDstPathFilter(mkScopedStatsFilter)
             filter.andThen(next)
 
           // if the stats receiver is the `NullReceiver`, don't make a filter.
