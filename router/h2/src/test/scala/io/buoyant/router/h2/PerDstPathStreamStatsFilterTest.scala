@@ -42,7 +42,7 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     val stats = new InMemoryStatsReceiver
 
     def assertCounter(stat: Seq[String], value: Option[Int]) =
-      withClue(s"stat \"${stat.mkString("/")}\": ") { assert(stats.counters.get(stat) == value) }
+      withClue(s"stat ${stat.mkString("/")}: ") { assert(stats.counters.get(stat) == value) }
 
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val ctxFilter = setContext({ r => Path.Utf8("req", r.path) })
