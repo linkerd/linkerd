@@ -37,7 +37,10 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
 
   def bufferSize: Long = _bufferSize
 
-  def onEnd: Future[Unit] = _onEnd
+  def onEnd: Future[Unit] = if (underlying.isEmpty)
+    Future.Unit
+  else
+    _onEnd
 
   /**
    * Attempt to create a child Stream.  If the buffer has not yet been discarded, returns a
