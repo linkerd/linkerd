@@ -53,7 +53,7 @@ define([
     function getMetrics(routerName) {
       var serverAccessor = ["rt", routerName, "server"];
       var clientAccessor = ["rt", routerName, "client"];
-      var pathAccessor = ["rt", routerName, "service", "svc"];
+      var pathAccessor = ["rt", routerName, "service"];
 
       return _.each({
         load: {
@@ -79,8 +79,7 @@ define([
         },
         pathRetries: {
           metricKey: ["retries", "total", "counter"],
-          accessor: pathAccessor,
-          isPath: true
+          accessor: pathAccessor
         },
       }, function(defn) {
         var key = _.clone(defn.metricKey);
@@ -90,27 +89,23 @@ define([
     }
 
     function processResponses(data, routerName, metrics) {
-      function process(metric) {
+      function summarize(metric) {
         var m = metrics[metric];
         var datum = _(data).get(m.accessor);
 
-        if(m.isPath) {
-          return _.get(datum, m.metricAccessor) || 0;
-        } else {
-          return _.reduce(datum, function(mem, entityData) {
-            mem += _.get(entityData, m.metricAccessor) || 0;
-            return mem;
-          }, 0);
-        }
+        return _.reduce(datum, function(totalValue, entityData) {
+          totalValue += _.get(entityData, m.metricAccessor) || 0;
+          return totalValue;
+        }, 0);
       }
 
       var result = {
         router: routerName,
-        load: process("load", true),
-        requests: process("requests"),
-        success: process("success"),
-        failures: process("failures"),
-        retries: process("pathRetries") + process("requeues")
+        load: summarize("load", true),
+        requests: summarize("requests"),
+        success: summarize("success"),
+        failures: summarize("failures"),
+        retries: summarize("pathRetries") + summarize("requeues")
       }
       var rates = getSuccessAndFailureRate(result);
       return  $.extend(result, rates);
