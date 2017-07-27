@@ -25,8 +25,7 @@ object ClassifierFilter {
     }
 
   val successClassClassifier: H2StreamClassifier = {
-    case H2ReqRep(req, Return((rep: Response, frame: FinalFrame)))
-      if rep.headers.contains(SuccessClassHeader) =>
+    case H2ReqRep(req, Return((rep: Response, frame: FinalFrame))) if rep.headers.contains(SuccessClassHeader) =>
       val success = rep.headers.get(SuccessClassHeader)
         .flatMap { value =>
           Try(value.toDouble).toOption
@@ -43,23 +42,25 @@ class ClassifierFilter(classifier: H2StreamClassifier) extends SimpleFilter[Requ
   private[this] val successClass = classifier.andThen(_.fractionalSuccess).lift
 
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
-    svc(req).map { rep =>
-      val stream1 = rep.stream.onFrame {
-        case Return(f: Trailers) =>
-          successClass(H2ReqRep(req, Return(rep), Some(Return(f)))) match {
-            case Some(success) =>
+    svc(req).map {
+      case rep if rep.stream.isEmpty =>
+        successClass(H2ReqRep(req, Return(rep), None)).foreach { success =>
+          rep.headers.set(ClassifierFilter.SuccessClassHeader, success.toString)
+        }
+        rep
+      case rep =>
+        val stream = rep.stream.onFrame {
+          case Return(f: Trailers) =>
+            successClass(H2ReqRep(req, Return(rep), Some(Return(f)))).foreach { success =>
               f.set(ClassifierFilter.SuccessClassHeader, success.toString)
-            case None =>
-          }
-        case Return(f) if f.isEnd =>
-          successClass(H2ReqRep(req, Return(rep), Some(Return(f)))) match {
-            case Some(success) =>
+            }
+          case Return(f) if f.isEnd =>
+            successClass(H2ReqRep(req, Return(rep), Some(Return(f)))).foreach { success =>
               rep.headers.set(ClassifierFilter.SuccessClassHeader, success.toString)
-            case None =>
-          }
-        case _ =>
-      }
-      Response(rep.headers, stream1)
+            }
+          case _ =>
+        }
+        Response(rep.headers, stream)
     }
   }
 }
