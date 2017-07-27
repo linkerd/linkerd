@@ -16,14 +16,13 @@ object StreamTestUtils {
    * @return a [[Future]] that will finish when the whole stream is read
    */
   final def readToEnd(stream: Stream): Future[Unit] =
-    if (stream.isEmpty) { Future.Done }
-    else {
+    if (stream.isEmpty) Future.Unit
+    else
       stream.read().flatMap { frame =>
         val end = frame.isEnd
         frame.release().before {
-          if (end) Future.Done else readToEnd(stream)
+          if (end) Future.Unit else readToEnd(stream)
         }
-      }
     }
 
   /**

@@ -16,7 +16,8 @@ object PerDstPathStreamStatsFilter {
   def module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module2[param.Stats, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
       val role: Stack.Role = PerDstPathStatsFilter.role
-      val description = "Report request statistics for each logical destination"
+      val description =
+        s"${PerDstPathStatsFilter.role}, using H2 stream classification"
 
       override def make(
         statsP: param.Stats,
@@ -35,11 +36,10 @@ object PerDstPathStreamStatsFilter {
               new StreamStatsFilter(scopedStats, classifier, timeUnit)
             }
 
-            val filter = new PerDstPathFilter(mkScopedStatsFilter _)
+            val filter = new PerDstPathFilter(mkScopedStatsFilter)
             filter.andThen(next)
 
-          // can this actually be null? the HTTP1 `PerDstPathStatsFilter`
-          // checks for this case, so i figured we ought to here as well...
+          // if the stats receiver is the `NullReceiver`, don't make a filter.
           case _ => next
 
         }

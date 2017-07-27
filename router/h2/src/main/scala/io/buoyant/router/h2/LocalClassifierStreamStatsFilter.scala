@@ -4,7 +4,7 @@ import com.twitter.finagle.param
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.finagle.buoyant.h2.param.H2StreamClassifier
-import io.buoyant.router.{PerDstPathFilter, PerDstPathStatsFilter}
+import io.buoyant.router.{LocalClassifierStatsFilter, PerDstPathFilter}
 import io.buoyant.router.context.h2.StreamClassifierCtx
 
 /**
@@ -15,8 +15,8 @@ object LocalClassifierStreamStatsFilter {
 
   def module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module2[param.Stats, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
-      val role: Stack.Role = PerDstPathStatsFilter.role
-      val description = "Report request statistics for each logical destination"
+      val role: Stack.Role = LocalClassifierStatsFilter.role
+      val description = "Report request statistics using local H2 stream classifier"
 
       override def make(
         statsP: param.Stats,
@@ -35,11 +35,11 @@ object LocalClassifierStreamStatsFilter {
               new StreamStatsFilter(stats, classifier, timeUnit)
             }
 
-            val filter = new PerDstPathFilter(mkClassifiedStatsFilter _)
+            val filter = new PerDstPathFilter(mkClassifiedStatsFilter)
             filter.andThen(next)
 
-          // can this actually be null? the HTTP1 `PerDstPathStatsFilter`
-          // checks for this case, so i figured we ought to here as well...
+
+          // if the stats receiver is the `NullReceiver`, don't make a filter.
           case _ => next
 
         }
