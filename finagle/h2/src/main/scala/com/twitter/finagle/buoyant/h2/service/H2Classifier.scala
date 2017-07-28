@@ -16,8 +16,13 @@ trait H2Classifier { self =>
   def responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = PartialFunction.empty
 
   def orElse(next: H2Classifier): H2Classifier = new H2Classifier {
+<<<<<<< HEAD
     override lazy val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = self.streamClassifier.orElse(next.streamClassifier)
     override lazy val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = self.responseClassifier.orElse(next.responseClassifier)
+=======
+    override def streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = self.streamClassifier.orElse(next.streamClassifier)
+    override def responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = self.responseClassifier.orElse(next.responseClassifier)
+>>>>>>> Allow early H2 classification
     override def toString: String = s"$self orElse $next"
   }
 }
