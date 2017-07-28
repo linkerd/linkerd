@@ -23,7 +23,7 @@ object StreamTestUtils {
         frame.release().before {
           if (end) Future.Unit else readToEnd(stream)
         }
-    }
+      }
 
   /**
    * Enhances a [[Stream]] by providing the [[readToEnd()]] function in the

@@ -3,9 +3,9 @@ package io.buoyant.router.h2
 import com.twitter.finagle.param
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Request, Response}
-import com.twitter.finagle.buoyant.h2.param.H2StreamClassifier
+import com.twitter.finagle.buoyant.h2.param.H2Classifier
 import io.buoyant.router.{LocalClassifierStatsFilter, PerDstPathFilter}
-import io.buoyant.router.context.h2.StreamClassifierCtx
+import io.buoyant.router.context.h2.H2ClassifierCtx
 
 /**
  * Like [[io.buoyant.router.LocalClassifierStatsFilter]],
@@ -30,14 +30,13 @@ object LocalClassifierStreamStatsFilter {
             // We memoize on the dst path.  The assumes that the response classifier for a dst path
             // never changes.
             def mkClassifiedStatsFilter(path: Path): SimpleFilter[Request, Response] = {
-              val H2StreamClassifier(classifier) =
-                StreamClassifierCtx.current.getOrElse(H2StreamClassifier.param.default)
+              val H2Classifier(classifier) =
+                H2ClassifierCtx.current.getOrElse(H2Classifier.param.default)
               new StreamStatsFilter(stats, classifier, timeUnit)
             }
 
             val filter = new PerDstPathFilter(mkClassifiedStatsFilter)
             filter.andThen(next)
-
 
           // if the stats receiver is the `NullReceiver`, don't make a filter.
           case _ => next
