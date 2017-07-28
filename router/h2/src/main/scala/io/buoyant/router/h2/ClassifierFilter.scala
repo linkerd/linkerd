@@ -54,10 +54,6 @@ class ClassifierFilter(classifier: H2StreamClassifier) extends SimpleFilter[Requ
             successClass(H2ReqRep(req, Return(rep), Some(Return(f)))).foreach { success =>
               f.set(ClassifierFilter.SuccessClassHeader, success.toString)
             }
-          case Return(f) if f.isEnd =>
-            successClass(H2ReqRep(req, Return(rep), Some(Return(f)))).foreach { success =>
-              rep.headers.set(ClassifierFilter.SuccessClassHeader, success.toString)
-            }
           case _ =>
         }
         Response(rep.headers, stream)
