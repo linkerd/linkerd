@@ -179,8 +179,9 @@ class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) wit
 trait H2SvcConfig extends SvcConfig {
   /**
    * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
-   * so that we can set `JsonIgnore` on it (and rewire [[_h2ResponseClassifier]]
+   * so that we can set `JsonIgnore` on it (and rewire [[_h2Classifier]]
    * to the `"responseClassifier"` JSON property).
+   *
    * @param r a HTTP [[ResponseClassifierConfig]]. Not used.
    */
   @JsonIgnore
@@ -196,16 +197,16 @@ trait H2SvcConfig extends SvcConfig {
     )
 
   @JsonProperty("responseClassifier")
-  var _h2ResponseClassifier: Option[H2ClassifierConfig] = None
+  var _h2Classifier: Option[H2ClassifierConfig] = None
 
   @JsonIgnore
-  def h2ResponseClassifier: Option[H2Classifier] =
-    _h2ResponseClassifier.map(_.mk)
+  def h2Classifier: Option[H2Classifier] =
+    _h2Classifier.map(_.mk)
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
     super.params(vars)
-      .maybeWith(h2ResponseClassifier.map(h2Param.H2Classifier(_)))
+      .maybeWith(h2Classifier.map(h2Param.H2Classifier(_)))
 
 }
 

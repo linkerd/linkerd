@@ -4,7 +4,8 @@ import com.twitter.finagle.buoyant.h2.service.{H2Classifiers, H2Classifier}
 import io.buoyant.router.ClassifiedRetries
 
 class RetryableIdempotent5XXConfig extends H2ClassifierConfig {
-  def mk: H2Classifier = H2Classifiers.RetryableIdempotentFailures
+  def mk: H2Classifier =
+    H2Classifiers.RetryableIdempotentFailures
 }
 
 class RetryableIdempotent5XXInitializer extends H2ClassifierInitializer {
@@ -16,7 +17,7 @@ object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializ
 
 class RetryableRead5XXConfig extends H2ClassifierConfig {
   def mk: H2Classifier =
-    H2Classifiers.RetryableReadFailures.orElse(H2Classifiers.NonRetryableServerFailures)
+    H2Classifiers.RetryableReadFailures
 }
 
 class RetryableRead5XXInitializer extends H2ClassifierInitializer {
@@ -28,7 +29,7 @@ object RetryableRead5XXInitializer extends RetryableRead5XXInitializer
 
 class NonRetryable5XXConfig extends H2ClassifierConfig {
   def mk: H2Classifier =
-    H2Classifiers.RetryableReadFailures.orElse(H2Classifiers.NonRetryableServerFailures)
+    H2Classifiers.NonRetryableServerFailures
 }
 
 class NonRetryable5XXInitializer extends H2ClassifierInitializer {

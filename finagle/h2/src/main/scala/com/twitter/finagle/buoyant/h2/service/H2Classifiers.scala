@@ -81,10 +81,20 @@ object H2Classifiers {
   case object RetryableIdempotentFailures extends H2Classifier {
     override val responseClassifier = {
       case H2ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
+      case H2ReqRep(_, Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
     }
     override val streamClassifier = {
       case H2ReqRepFrame(Requests.Idempotent(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
         ResponseClass.RetryableFailure
+      case H2ReqRepFrame(Requests.Idempotent(), Return((_, Some(Throw(e))))) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Throw(_)) =>
+        ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) =>
+        ResponseClass.NonRetryableFailure
+      case _ =>
+        ResponseClass.Success
     }
   }
 
@@ -95,10 +105,20 @@ object H2Classifiers {
   case object RetryableReadFailures extends H2Classifier {
     override val responseClassifier = {
       case H2ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
+      case H2ReqRep(_, Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
     }
     override val streamClassifier = {
       case H2ReqRepFrame(Requests.ReadOnly(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
         ResponseClass.RetryableFailure
+      case H2ReqRepFrame(Requests.ReadOnly(), Return((_, Some(Throw(e))))) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Throw(_)) =>
+        ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) =>
+        ResponseClass.NonRetryableFailure
+      case _ =>
+        ResponseClass.Success
     }
   }
 
