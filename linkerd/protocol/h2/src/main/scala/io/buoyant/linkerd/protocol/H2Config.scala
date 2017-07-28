@@ -204,7 +204,9 @@ trait H2SvcConfig extends SvcConfig {
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
-    super.params(vars).maybeWith(h2ResponseClassifier.map(h2Param.H2Classifier(_)))
+    super.params(vars)
+      .maybeWith(h2ResponseClassifier.map(h2Param.H2Classifier(_)))
+
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

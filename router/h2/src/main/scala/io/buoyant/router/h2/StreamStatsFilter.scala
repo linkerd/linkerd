@@ -1,5 +1,6 @@
 package io.buoyant.router.h2
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2ReqRepFrame, H2Classifier}
@@ -9,42 +10,70 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 
 object StreamStatsFilter {
+  /**
+   * Configures a [[StreamStatsFilter.module]] to track latency using the
+   * given [[TimeUnit]].
+   */
+  case class Param(unit: TimeUnit) {
+    def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
+  }
+
+  object Param {
+    implicit val param = Stack.Param(Param(TimeUnit.MILLISECONDS))
+  }
+
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module2[param.Stats, h2param.H2Classifier, ServiceFactory[Request, Response]] {
+    new Stack.Module3[param.Stats, h2param.H2Classifier, Param, ServiceFactory[Request, Response]] {
       override def role: Stack.Role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
       override def make(
         statsP: param.Stats,
         classifierP: h2param.H2Classifier,
+        timeP: Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
         val h2param.H2Classifier(classifier) = classifierP
-        new StreamStatsFilter(stats, classifier).andThen(next)
+        val Param(timeUnit) = timeP
+        new StreamStatsFilter(stats, classifier, timeUnit).andThen(next)
       }
     }
+
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2Classifier)
+class StreamStatsFilter(
+  statsReceiver: StatsReceiver,
+  classifier: H2Classifier,
+  timeUnit: TimeUnit
+)
   extends SimpleFilter[Request, Response] {
+
+  private[this] val latencyStatSuffix: String =
+    timeUnit match {
+      case TimeUnit.NANOSECONDS => "ns"
+      case TimeUnit.MICROSECONDS => "us"
+      case TimeUnit.MILLISECONDS => "ms"
+      case TimeUnit.SECONDS => "secs"
+      case _ => timeUnit.toString.toLowerCase
+    }
 
   class StreamStats(
     protected val stats: StatsReceiver,
     durationName: Option[String] = None
   ) {
-    private[this] val durationMs =
-      stats.stat(s"${durationName.getOrElse("stream_duration")}_ms")
+    private[this] val duration =
+      stats.stat(s"${durationName.getOrElse("stream_duration")}_$latencyStatSuffix")
     private[this] val successes = stats.counter("stream_success")
     private[this] val failures = stats.counter("stream_failures")
 
     def success(streamDuration: Duration): Unit = {
-      durationMs.add(streamDuration.inMillis)
+      duration.add(streamDuration.inUnit(timeUnit))
       successes.incr()
     }
 
     def failure(streamDuration: Duration): Unit = {
-      durationMs.add(streamDuration.inMillis)
+      duration.add(streamDuration.inUnit(timeUnit))
       successes.incr()
     }
 
@@ -127,7 +156,7 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2Classifier)
           Future.exception(e)
       }
       .respond { result =>
-        reqLatency.add(reqT().inMillis)
+        reqLatency.add(reqT().inUnit(timeUnit))
         classifier.responseClassifier.lift(H2ReqRep(req1, result)) match {
           case Some(Successful(_)) => successes.incr()
           case Some(_) => failures.incr()
