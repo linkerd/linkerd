@@ -18,7 +18,7 @@ These parameters are available to the identifier regardless of kind. Identifiers
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd-thrift), [`io.l5d.namerd.http`](#namerd-http), [`io.l5d.mesh`](#namerd-mesh), or [`io.l5d.fs`](#file-system).
+kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd-thrift), [`io.l5d.namerd.http`](#namerd-http), [`io.l5d.mesh`](#namerd-mesh), [`io.l5d.fs`](#file-system), or [`io.l5d.k8s.configMap`](#kubernetes-configmap).
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 ## Default
@@ -108,3 +108,33 @@ for changes so that the dtab may be edited live.
 Key | Default Value | Description
 --- | ------------- | -----------
 dtabFile | _required_ | The file-system path to a file containing a dtab.
+
+## Kubernetes ConfigMap
+
+kind: `io.l5d.k8s.configMap`
+
+The Kubernetes ConfigMap interpreter resolves names via the configured
+[`namers`](#namers), just like the default interpreter, but also uses
+a dtab read from a [ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/#understanding-configmaps) using the Kubernetes API. The specified ConfigMap is watched for changes, as in the [file-system interpreter](#file-system).
+
+> Example configuration
+
+```yaml
+routers:
+- ...
+  interpreter:
+    kind: io.l5d.k8s.configMap
+    experimental: true
+    name: dtabs
+    filename: my-dtab
+```
+
+
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because the ConfigMap interpreter is still considered experimental, you must set this to `true` to use it.
+name | _required_ | The name of the ConfigMap object containing the dtab
+filename | _required_ | The ConfigMap key corresponding to the desired dtab
+host | `localhost` | The Kubernetes master host.
+port | `8001` | The Kubernetes master port.
+namespace | `default` | The Kubernetes [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) containing the ConfigMap

@@ -1,1 +1,2 @@
+io.buoyant.interpreter.k8s.ConfigMapInterpreterInitializer
 io.buoyant.interpreter.k8s.IstioInterpreterInitializer
