@@ -2,10 +2,6 @@ import sbt._
 
 object Deps {
 
-  val curatorFramework = "org.apache.curator" % "curator-framework" % "2.9.1"
-  val curatorClient = "org.apache.curator" % "curator-client" % "2.9.1"
-  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "2.9.1"
-
   // process lifecycle
   val twitterServer =
     ("com.twitter" %% "twitter-server" % "1.30.0")
@@ -68,4 +64,10 @@ object Deps {
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
+
+  // curator service discovery
+  val curatorSD = "org.apache.curator" % "curator-x-discovery" % "2.12.0"
+
+  // kafka
+  val kafka = "org.apache.kafka" % "kafka_2.12" % "0.10.1.1"
 }

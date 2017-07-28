@@ -1,8 +1,8 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Path, Announcement}
-import com.twitter.util.{Closable, Future}
+import com.twitter.finagle.{Announcement, Path}
+import com.twitter.util.{Closable, Future, Time}
 import java.net.InetSocketAddress
 
 class TestAnnouncerInitializer extends AnnouncerInitializer {
@@ -36,4 +36,6 @@ class TestAnnouncer extends Announcer {
       }
     }
   }
+
+  override def close(deadline: Time): Future[Unit] = Future.Unit
 }

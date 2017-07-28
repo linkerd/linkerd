@@ -5,7 +5,7 @@ import com.twitter.util.{Closable, Future, Return, Throw, Time}
 import java.util.concurrent.atomic.AtomicReference
 import java.net.InetSocketAddress
 
-abstract class Announcer {
+abstract class Announcer extends Closable {
   def scheme: String
   def announce(addr: InetSocketAddress, name: Path): Closable
 }
