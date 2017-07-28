@@ -1,11 +1,10 @@
 package com.twitter.finagle.buoyant.h2.service
 
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.buoyant.h2.service.H2ReqRep.RepAndFrame
 import com.twitter.finagle.service.{ResponseClass, RetryPolicy}
 import com.twitter.util.{Return, Throw, Try}
 
-object H2StreamClassifiers {
+object H2Classifiers {
 
   object Requests {
 
@@ -63,94 +62,72 @@ object H2StreamClassifiers {
   }
 
   object RetryableResult {
-    private[this] val retryableThrow: PartialFunction[Try[Nothing], Boolean] =
+    private[H2Classifiers] val retryableThrow: PartialFunction[Try[Nothing], Boolean] =
       RetryPolicy.TimeoutAndWriteExceptionsOnly
         .orElse(RetryPolicy.ChannelClosedExceptionsOnly)
         .orElse { case _ => false }
 
-    def unapply(rsp: Try[RepAndFrame]): Boolean = rsp match {
-      case Return((Responses.Failure.Retryable(), None | Some(Return(_)))) => true
-      case Return((Responses.Success() | Responses.Failure.Retryable(),
-        Some(Throw(e)))) => retryableThrow(Throw(e))
+    def unapply(rsp: Try[Response]): Boolean = rsp match {
+      case Return(Responses.Failure.Retryable()) => true
       case Throw(e) => retryableThrow(Throw(e))
       case _ => false
     }
   }
 
   /**
-   * Create a [[H2StreamClassifier]] with the given name for its `toString`.
-   */
-  def named(name: String)(underlying: H2StreamClassifier): H2StreamClassifier =
-    new H2StreamClassifier {
-      def isDefinedAt(reqRep: H2ReqRep): Boolean = underlying.isDefinedAt(reqRep)
-      def apply(reqRep: H2ReqRep): ResponseClass = underlying(reqRep)
-      override def toString: String = name
-    }
-
-  /**
    * Classifies 5XX responses as failures. If the method is idempotent
    * (as described by RFC2616), it is classified as retryable.
    */
-  val RetryableIdempotentFailures: H2StreamClassifier =
-    named("RetryableIdempotentFailures") {
+  case object RetryableIdempotentFailures extends H2Classifier {
+    override val responseClassifier = {
       case H2ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
     }
+    override val streamClassifier = {
+      case H2ReqRepFrame(Requests.Idempotent(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+    }
+  }
 
   /**
    * Classifies 5XX responses as failures. If the method is a read
    * operation, it is classified as retryable.
    */
-  val RetryableReadFailures: H2StreamClassifier =
-    named("RetryableReadFailures") {
+  case object RetryableReadFailures extends H2Classifier {
+    override val responseClassifier = {
       case H2ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
     }
+    override val streamClassifier = {
+      case H2ReqRepFrame(Requests.ReadOnly(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+    }
+  }
 
   /**
    * Classifies 5XX responses and all exceptions as non-retryable
    * failures.
    */
-  val NonRetryableServerFailures: H2StreamClassifier =
-    named(s"NonRetryableServerFailures") {
-      case H2ReqRep(_,
-        Throw(_) | Return((Responses.Failure(), _))
-        | Return((_, Some(Throw(_))))
-        ) => ResponseClass.NonRetryableFailure
+  case object NonRetryableServerFailures extends H2Classifier {
+    override val responseClassifier = {
+      case H2ReqRep(_, Throw(_) | Return((Responses.Failure()))) => ResponseClass.NonRetryableFailure
     }
-
-  // TODO allow fully-buffered streams to be retried.
-  def NonRetryableStream(classifier: H2StreamClassifier): H2StreamClassifier =
-    named(s"NonRetryableStream") {
-      case rr@H2ReqRep(req: Request, _) if classifier.isDefinedAt(rr) =>
-        classifier(rr) match {
-          case ResponseClass.RetryableFailure if req.stream.nonEmpty =>
-            ResponseClass.NonRetryableFailure
-
-          case rc => rc
-        }
+    override val streamClassifier = {
+      case H2ReqRepFrame(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) => ResponseClass.NonRetryableFailure
+      case _ => ResponseClass.Success
     }
-
-  /**
-   * a simple [[H2StreamClassifier]] that classifies responses as failures
-   * if an exception was [[com.twitter.util.Throw]]n
-   */
-  val ExceptionsAsFailures: H2StreamClassifier =
-    named("ExceptionsAsFailures") {
-      case H2ReqRep(_, Throw(_)) | H2ReqRep(_, Return((_, Some(Throw(_))))) =>
-        ResponseClass.NonRetryableFailure
-    }
-
-  val AssumeSuccess: H2StreamClassifier = {
-    case _ => ResponseClass.Success
   }
 
-  /**
-   * an [[H2StreamClassifier]] that first tries to classify [[ExceptionsAsFailures]],
-   * then tries to classify [[NonRetryableServerFailures]] and finally
-   * [[AssumeSuccess assumes success]] for unclassified responses
-   */
-  val Default: H2StreamClassifier =
-    named("DefaultH2ResponseClassifier") {
-      ExceptionsAsFailures.orElse(NonRetryableServerFailures).orElse(AssumeSuccess)
+  case object AllSuccessful extends H2Classifier {
+    override val responseClassifier = {
+      case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
     }
+    override val streamClassifier = {
+      case H2ReqRepFrame(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) => ResponseClass.NonRetryableFailure
+      case _ => ResponseClass.Success
+    }
+  }
+
+  val Default: H2Classifier = NonRetryableServerFailures
 
 }

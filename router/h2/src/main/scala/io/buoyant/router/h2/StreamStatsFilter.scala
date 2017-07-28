@@ -2,7 +2,7 @@ package io.buoyant.router.h2
 
 import java.util.concurrent.atomic.AtomicLong
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2ReqRepFrame, H2Classifier}
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
 import com.twitter.finagle.stats.StatsReceiver
@@ -11,22 +11,22 @@ import com.twitter.util._
 object StreamStatsFilter {
   val role = Stack.Role("StreamStatsFilter")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module2[param.Stats, h2param.H2StreamClassifier, ServiceFactory[Request, Response]] {
+    new Stack.Module2[param.Stats, h2param.H2Classifier, ServiceFactory[Request, Response]] {
       override def role: Stack.Role = StreamStatsFilter.role
       override def description = "Record stats on h2 streams"
       override def make(
         statsP: param.Stats,
-        classifierP: h2param.H2StreamClassifier,
+        classifierP: h2param.H2Classifier,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
-        val h2param.H2StreamClassifier(classifier) = classifierP
+        val h2param.H2Classifier(classifier) = classifierP
         new StreamStatsFilter(stats, classifier).andThen(next)
       }
     }
 }
 
-class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2StreamClassifier)
+class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2Classifier)
   extends SimpleFilter[Request, Response] {
 
   class StreamStats(
@@ -108,24 +108,31 @@ class StreamStatsFilter(statsReceiver: StatsReceiver, classifier: H2StreamClassi
     val reqT = Stopwatch.start()
     val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
 
-    @inline def classify(rsp: Try[Response])(frame: Option[Try[Frame]]): Unit =
-      classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
-        case Successful(_) => successes.incr()
-        case _ => failures.incr()
+    @inline def classify(rsp: Response)(frame: Option[Try[Frame]]): Unit =
+      // Only classify if early classification wasn't applicable.
+      if (!classifier.responseClassifier.isDefinedAt(H2ReqRep(req1, Return(rsp)))) {
+        classifier.streamClassifier(H2ReqRepFrame(req1, Return((rsp, frame)))) match {
+          case Successful(_) => successes.incr()
+          case _ => failures.incr()
+        }
       }
 
     service(req1)
       .transform {
         case Return(response) =>
           val rspT = Stopwatch.start()
-          val stream = rspStreamStats(rspT, classify(Return(response)))(response.stream)
+          val stream = rspStreamStats(rspT, classify(response))(response.stream)
           Future.value(Response(response.headers, stream))
         case Throw(e) =>
-          classify(Throw(e))(None)
           Future.exception(e)
       }
       .respond { result =>
         reqLatency.add(reqT().inMillis)
+        classifier.responseClassifier.lift(H2ReqRep(req1, result)) match {
+          case Some(Successful(_)) => successes.incr()
+          case Some(_) => failures.incr()
+          case None => ()
+        }
         val stream = result match {
           case Return(rsp) =>
             req1.stream.onEnd.join(rsp.stream.onEnd)

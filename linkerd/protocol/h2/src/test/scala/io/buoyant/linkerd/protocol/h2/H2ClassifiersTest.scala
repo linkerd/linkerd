@@ -1,21 +1,20 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.io.Buf
-import com.twitter.finagle.{ChannelClosedException, Failure, RequestTimeoutException}
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier, H2StreamClassifiers}
+import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2Classifiers, H2ReqRep}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.util.LoadService
-import com.twitter.util.{Duration, Return, Throw, TimeoutException, Try}
+import com.twitter.finagle.{ChannelClosedException, RequestTimeoutException}
+import com.twitter.util._
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}
 import org.scalatest.FunSuite
 
-class H2StreamClassifiersTest extends FunSuite {
+class H2ClassifiersTest extends FunSuite {
 
   def testClassifier(
-    classifier: H2StreamClassifier,
+    classifier: H2Classifier,
     method: Method,
     status: Try[Status],
     classification: Option[ResponseClass]
@@ -24,10 +23,10 @@ class H2StreamClassifiersTest extends FunSuite {
     val key = H2ReqRep(req, status.map { Response(_, Stream.empty()) })
     classification match {
       case None =>
-        assert(!classifier.isDefinedAt(key))
+        assert(!classifier.responseClassifier.isDefinedAt(key))
       case Some(classification) =>
-        assert(classifier.isDefinedAt(key))
-        assert(classifier(key) == classification)
+        assert(classifier.responseClassifier.isDefinedAt(key))
+        assert(classifier.responseClassifier(key) == classification)
     }
   }
 
@@ -45,9 +44,9 @@ class H2StreamClassifiersTest extends FunSuite {
 
   for (
     (classifier, retryMethods) <- Map(
-      H2StreamClassifiers.RetryableIdempotentFailures ->
+      H2Classifiers.RetryableIdempotentFailures ->
         Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace),
-      H2StreamClassifiers.RetryableReadFailures ->
+      H2Classifiers.RetryableReadFailures ->
         Set(Method.Get, Method.Head, Method.Options, Method.Trace)
     )
   ) {
@@ -118,7 +117,7 @@ class H2StreamClassifiersTest extends FunSuite {
   }
 
   {
-    val classifier = H2StreamClassifiers.NonRetryableServerFailures
+    val classifier = H2Classifiers.NonRetryableServerFailures
     for (method <- allMethods) {
       test(s"$classifier: ignores $method 1XX-4XX") {
         for (code <- 100 to 499)
@@ -147,7 +146,7 @@ class H2StreamClassifiersTest extends FunSuite {
     val kind = init.configId
 
     test(s"loads $kind") {
-      assert(LoadService[H2StreamClassifierInitializer]().exists(_.configId == kind))
+      assert(LoadService[H2ClassifierInitializer]().exists(_.configId == kind))
     }
 
     test(s"parse router with $kind") {
@@ -166,20 +165,5 @@ class H2StreamClassifiersTest extends FunSuite {
         router.service.get.asInstanceOf[H2DefaultSvc].responseClassifierConfig
       }
     }
-  }
-
-  test("NonRetryableStream: makes RetryableFailures NonRetryableFailures when chunked") {
-    val classifier = H2StreamClassifiers.NonRetryableStream { case H2ReqRep(_, _) => ResponseClass.RetryableFailure }
-    val req = Request("http", Method.Get, "auf", "/", Stream.const(Buf.Utf8("yo")))
-    val rsp = Response(Status.EatMyShorts, Stream.empty())
-    Response(Status.Ok, Stream.empty())
-    assert(classifier(H2ReqRep(req, Return(rsp))) == ResponseClass.NonRetryableFailure)
-  }
-
-  test("NonRetryableStream: does not change RetryableFailures when not chunked") {
-    val classifier = H2StreamClassifiers.NonRetryableStream { case H2ReqRep(_, _) => ResponseClass.RetryableFailure }
-    val req = Request("http", Method.Get, "auf", "/", Stream.empty())
-    val rsp = Response(Status.EatMyShorts, Stream.empty())
-    assert(classifier(H2ReqRep(req, Return(rsp))) == ResponseClass.RetryableFailure)
   }
 }
