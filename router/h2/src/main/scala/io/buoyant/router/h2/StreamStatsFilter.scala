@@ -2,18 +2,21 @@ package io.buoyant.router.h2
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
-import com.twitter.finagle._
+import com.twitter.finagle.{param, _}
+import com.twitter.finagle.buoyant.syntheticException
 import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
 import com.twitter.finagle.buoyant.h2.{param => h2param, _}
 import com.twitter.finagle.service.ResponseClass.Successful
-import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.stats.{ExceptionStatsHandler, StatsReceiver}
 import com.twitter.util._
 
 object StreamStatsFilter {
+  val role = Stack.Role("StreamStatsFilter")
+
   /**
-   * Configures a [[StreamStatsFilter.module]] to track latency using the
-   * given [[TimeUnit]].
-   */
+    * Configures a [[StreamStatsFilter.module]] to track latency using the
+    * given [[TimeUnit]].
+    */
   case class Param(unit: TimeUnit) {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
@@ -22,32 +25,45 @@ object StreamStatsFilter {
     implicit val param = Stack.Param(Param(TimeUnit.MILLISECONDS))
   }
 
-  val role = Stack.Role("StreamStatsFilter")
+  /**
+   * Creates a [[com.twitter.finagle.Stackable]] [[StreamStatsFilter]].
+   */
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module3[param.Stats, h2param.H2StreamClassifier, Param, ServiceFactory[Request, Response]] {
-      override def role: Stack.Role = StreamStatsFilter.role
-      override def description = "Record stats on h2 streams"
+    new Stack.Module4[
+      param.Stats,
+      h2param.H2StreamClassifier,
+      param.ExceptionStatsHandler,
+      Param,
+      ServiceFactory[Request, Response]
+    ] {
+      override val role: Stack.Role = StreamStatsFilter.role
+      override val description = "Record stats on h2 streams"
       override def make(
         statsP: param.Stats,
         classifierP: h2param.H2StreamClassifier,
+        handlerP: param.ExceptionStatsHandler,
         timeP: Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] = {
         val param.Stats(stats) = statsP
         val h2param.H2StreamClassifier(classifier) = classifierP
+        val param.ExceptionStatsHandler(handler) = handlerP
         val Param(timeUnit) = timeP
-        new StreamStatsFilter(stats, classifier, timeUnit).andThen(next)
+        new StreamStatsFilter(stats, classifier, handler, timeUnit).andThen(next)
       }
     }
+
+  private[StreamStatsFilter] val SyntheticException =
+    syntheticException
 
 }
 
 class StreamStatsFilter(
   statsReceiver: StatsReceiver,
   classifier: H2StreamClassifier,
+  exceptionStats: ExceptionStatsHandler,
   timeUnit: TimeUnit
-)
-  extends SimpleFilter[Request, Response] {
+) extends SimpleFilter[Request, Response] {
 
   private[this] val latencyStatSuffix: String =
     timeUnit match {
@@ -72,9 +88,10 @@ class StreamStatsFilter(
       successes.incr()
     }
 
-    def failure(streamDuration: Duration): Unit = {
+    def failure(streamDuration: Duration, e: Throwable): Unit = {
       duration.add(streamDuration.inUnit(timeUnit))
-      successes.incr()
+      failures.incr()
+      exceptionStats.record(stats, e)
     }
 
     private[this] val frameBytes = stats.stat("data_bytes")
@@ -86,8 +103,8 @@ class StreamStatsFilter(
       val streamFrameBytes = new AtomicLong(0)
       val stream = if (underlying.isEmpty) {
         // if the stream is empty, we still need to call the response
-        // classifier with `None`, so add that to the `onEnd` callback.
-        underlying.onEnd.respond { _ => onFinalFrame(None) }
+        // classifier with `None`.
+        onFinalFrame(None)
         underlying
       } else {
         underlying.onFrame {
@@ -100,13 +117,15 @@ class StreamStatsFilter(
             if (frame.isEnd) onFinalFrame(Some(Return(frame)))
           case Throw(e) =>
             onFinalFrame(Some(Throw(e)))
-            failure(startT())
+            failure(startT(), e)
         }
       }
       stream.onEnd.respond { result =>
         frameBytes.add(streamFrameBytes.get())
-        if (result.isReturn) success(startT())
-        else failure(startT())
+        result match {
+          case Return(_) => success(startT())
+          case Throw(e) => failure(startT(), e)
+        }
       }
       stream
     }
@@ -132,6 +151,10 @@ class StreamStatsFilter(
       durationName = Some("total_latency")
     )
 
+  private[this] val failed: Try[_] => Option[Throwable] = {
+    case Throw(e) => Some(e); case _ => None
+  }
+
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
@@ -140,7 +163,12 @@ class StreamStatsFilter(
     @inline def classify(rsp: Try[Response])(frame: Option[Try[Frame]]): Unit =
       classifier(H2ReqRep(req1, rsp.map((_, frame)))) match {
         case Successful(_) => successes.incr()
-        case _ => failures.incr()
+        case _ =>
+          val exception =
+            failed(rsp)
+              .orElse(frame.flatMap(failed))
+              .getOrElse(StreamStatsFilter.SyntheticException)
+          exceptionStats.record(statsReceiver, exception)
       }
 
     service(req1)
@@ -162,7 +190,7 @@ class StreamStatsFilter(
         }
         val _ = stream.respond {
           case Return(_) => totalStreamStats.success(reqT())
-          case Throw(_) => totalStreamStats.failure(reqT())
+          case Throw(e) => totalStreamStats.failure(reqT(), e)
         }
       }
 
