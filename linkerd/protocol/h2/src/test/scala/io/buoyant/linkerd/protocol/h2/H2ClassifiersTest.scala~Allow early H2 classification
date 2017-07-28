@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2Classifiers, H2ReqRep}
+import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{ChannelClosedException, RequestTimeoutException}
@@ -17,17 +17,15 @@ class H2ClassifiersTest extends FunSuite {
     classifier: H2Classifier,
     method: Method,
     status: Try[Status],
+    frame: Option[Try[Frame]],
     classification: Option[ResponseClass]
   ) = {
     val req = Request("http", method, "auf", "/", Stream.empty())
-    val key = H2ReqRep(req, status.map { Response(_, Stream.empty()) })
-    classification match {
-      case None =>
-        assert(!classifier.responseClassifier.isDefinedAt(key))
-      case Some(classification) =>
-        assert(classifier.responseClassifier.isDefinedAt(key))
-        assert(classifier.responseClassifier(key) == classification)
-    }
+    val reqRep = H2ReqRep(req, status.map { Response(_, Stream.empty()) })
+    val reqRepFrame = H2ReqRepFrame(req, status.map { Response(_, Stream.empty()) -> frame })
+
+    val rc = classifier.responseClassifier.lift(reqRep).orElse(classifier.streamClassifier.lift(reqRepFrame))
+    assert(rc == classification)
   }
 
   val allMethods = Set(
@@ -44,17 +42,17 @@ class H2ClassifiersTest extends FunSuite {
 
   for (
     (classifier, retryMethods) <- Map(
-      H2Classifiers.RetryableIdempotentFailures ->
+      new RetryableIdempotent5XXConfig().mk ->
         Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace),
-      H2Classifiers.RetryableReadFailures ->
+      new RetryableRead5XXConfig().mk ->
         Set(Method.Get, Method.Head, Method.Options, Method.Trace)
     )
   ) {
 
     for (method <- retryMethods) {
-      test(s"$classifier: ignores $method 1XX-4XX") {
+      test(s"$classifier: $method 1XX-4XX success") {
         for (code <- 100 to 499)
-          testClassifier(classifier, method, Return(Status(code)), None)
+          testClassifier(classifier, method, Return(Status(code)), None, Some(ResponseClass.Success))
       }
 
       test(s"$classifier: retries $method 5XX") {
@@ -63,6 +61,7 @@ class H2ClassifiersTest extends FunSuite {
             classifier,
             method,
             Return(Status(code)),
+            None,
             Some(ResponseClass.RetryableFailure)
           )
       }
@@ -72,6 +71,17 @@ class H2ClassifiersTest extends FunSuite {
           classifier,
           method,
           Throw(new TimeoutException("timeout")),
+          None,
+          Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: retries $method stream timeout") {
+        testClassifier(
+          classifier,
+          method,
+          Return(Status(200)),
+          Some(Throw(new TimeoutException("timeout"))),
           Some(ResponseClass.RetryableFailure)
         )
       }
@@ -81,6 +91,7 @@ class H2ClassifiersTest extends FunSuite {
           classifier,
           method,
           Throw(new RequestTimeoutException(Duration.Zero, "timeout")),
+          None,
           Some(ResponseClass.RetryableFailure)
         )
       }
@@ -90,38 +101,84 @@ class H2ClassifiersTest extends FunSuite {
           classifier,
           method,
           Throw(new ChannelClosedException),
+          None,
           Some(ResponseClass.RetryableFailure)
         )
       }
 
-      test(s"$classifier: retries $method errors") {
+      test(s"$classifier: retries $method stream channel closed") {
+        testClassifier(
+          classifier,
+          method,
+          Return(Status(200)),
+          Some(Throw(new ChannelClosedException)),
+          Some(ResponseClass.RetryableFailure)
+        )
+      }
+
+      test(s"$classifier: does not retry $method errors") {
         testClassifier(
           classifier,
           method,
           Throw(new Exception),
-          None
+          None,
+          Some(ResponseClass.NonRetryableFailure)
+        )
+      }
+
+      test(s"$classifier: does not retry $method stream errors") {
+        testClassifier(
+          classifier,
+          method,
+          Return(Status(200)),
+          Some(Throw(new Exception)),
+          Some(ResponseClass.NonRetryableFailure)
         )
       }
     }
 
     for (method <- allMethods -- retryMethods) {
-      test(s"$classifier: ignores $method responses") {
-        for (code <- 100 to 599)
-          testClassifier(classifier, method, Return(Status(code)), None)
+      test(s"$classifier: $method responses successful") {
+        for (code <- 100 to 499)
+          testClassifier(classifier, method, Return(Status(code)), None, Some(ResponseClass.Success))
+      }
+
+      test(s"$classifier: $method responses stream successful") {
+        for (code <- 100 to 499)
+          testClassifier(classifier, method, Return(Status(code)), Some(Return(Frame.Trailers())), Some(ResponseClass.Success))
+      }
+
+      test(s"$classifier: $method does not retry responses") {
+        for (code <- 500 to 599)
+          testClassifier(classifier, method, Return(Status(code)), None, Some(ResponseClass.NonRetryableFailure))
       }
 
       test(s"$classifier: fails $method error") {
-        testClassifier(classifier, method, Throw(new Exception), None)
+        testClassifier(classifier, method, Throw(new Exception), None, Some(ResponseClass.NonRetryableFailure))
+      }
+
+      test(s"$classifier: fails $method stream error") {
+        testClassifier(classifier, method, Return(Status(200)), Some(Throw(new Exception)), Some(ResponseClass.NonRetryableFailure))
       }
     }
   }
 
   {
-    val classifier = H2Classifiers.NonRetryableServerFailures
+    val classifier = new NonRetryable5XXConfig().mk
     for (method <- allMethods) {
-      test(s"$classifier: ignores $method 1XX-4XX") {
+      test(s"$classifier: $method 1XX-4XX success") {
         for (code <- 100 to 499)
-          testClassifier(classifier, method, Return(Status(code)), None)
+          testClassifier(classifier, method, Return(Status(code)), None, Some(ResponseClass.Success))
+      }
+
+      test(s"$classifier: $method 1XX-4XX stream success") {
+        for (code <- 100 to 499)
+          testClassifier(classifier, method, Return(Status(code)), Some(Return(Frame.Trailers())), Some(ResponseClass.Success))
+      }
+
+      test(s"$classifier: $method 1XX-4XX stream failure") {
+        for (code <- 100 to 499)
+          testClassifier(classifier, method, Return(Status(code)), Some(Throw(new Exception)), Some(ResponseClass.NonRetryableFailure))
       }
 
       test(s"$classifier: fails $method 5XX") {
@@ -130,6 +187,7 @@ class H2ClassifiersTest extends FunSuite {
             classifier,
             method,
             Return(Status(code)),
+            None,
             Some(ResponseClass.NonRetryableFailure)
           )
       }
@@ -160,7 +218,7 @@ class H2ClassifiersTest extends FunSuite {
             |""".stripMargin
       val mapper = Parser.objectMapper(yaml, Iterable(Seq(H2Initializer), Seq(init)))
       val router = mapper.readValue[RouterConfig](yaml)
-      assert(router.service.get.asInstanceOf[H2DefaultSvc]._h2ResponseClassifier.isDefined)
+      assert(router.service.get.asInstanceOf[H2DefaultSvc]._h2Classifier.isDefined)
       assertThrows[UnsupportedOperationException] {
         router.service.get.asInstanceOf[H2DefaultSvc].responseClassifierConfig
       }
