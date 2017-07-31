@@ -10,27 +10,18 @@ import io.buoyant.grpc.runtime.GrpcStatus.{Internal, Ok, Unavailable}
   */
 object GrpcClassifiers {
 
-  private[this] val AlwaysRetryable: PartialFunction[GrpcStatus, Boolean] = {
-    case Unavailable(_) => true
-  }
-
-  private[this] val RetryableIfIdempotent: PartialFunction[GrpcStatus, Boolean] =
-    AlwaysRetryable.orElse {
-      case Internal(_) => true
-    }
-
 
   /**
-    * [[H2Classifier]] for idempotent gRPC requests
+    * [[H2Classifier]] that classifies all error status
+    * codes as [[ResponseClass.RetryableFailure]]
     */
-  object IdempotentRequest extends H2Classifier {
+  object AlwaysRetryable extends H2Classifier {
 
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) =>
         ResponseClass.Success
-      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status))))))
-        if RetryableIfIdempotent(status) => ResponseClass.RetryableFailure
-      case _ => ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(_)))))) =>
+        ResponseClass.RetryableFailure
     }
 
     /**
@@ -44,17 +35,17 @@ object GrpcClassifiers {
   }
 
   /**
-    * [[H2Classifier]] for non-idempotent gRPC requests
+    * [[H2Classifier]] that classifies all error status
+    * codes as [[ResponseClass.NonRetryableFailure]]
     */
-  object NonIdempotentRequest extends H2Classifier {
+  object NeverRetryable extends H2Classifier {
+
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) =>
         ResponseClass.Success
-      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status))))))
-        if AlwaysRetryable(status) => ResponseClass.RetryableFailure
-      case _ => ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(_)))))) =>
+        ResponseClass.NonRetryableFailure
     }
-
 
     /**
       * @inheritdoc
@@ -65,4 +56,6 @@ object GrpcClassifiers {
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] =
       PartialFunction.empty
   }
+
+
 }
