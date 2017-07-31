@@ -2,10 +2,10 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
-import com.twitter.finagle.buoyant.h2.service.H2StreamClassifier
+import com.twitter.finagle.buoyant.h2.service.H2Classifier
 import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
-abstract class H2StreamClassifierInitializer extends ConfigInitializer
+abstract class H2ClassifierInitializer extends ConfigInitializer
 
 @JsonSubTypes(Array(
   new Type(
@@ -25,7 +25,7 @@ abstract class H2StreamClassifierInitializer extends ConfigInitializer
     name = "io.l5d.h2.allSuccessful"
   )
 ))
-abstract class H2StreamClassifierConfig extends PolymorphicConfig {
+abstract class H2ClassifierConfig extends PolymorphicConfig {
   @JsonIgnore
-  def mk: H2StreamClassifier
+  def mk: H2Classifier
 }
