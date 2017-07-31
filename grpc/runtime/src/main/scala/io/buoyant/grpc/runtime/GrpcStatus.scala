@@ -1,6 +1,7 @@
 package io.buoyant.grpc.runtime
 
 import com.twitter.finagle.buoyant.h2
+import scala.util.Try
 import scala.util.control.NoStackTrace
 
 sealed abstract class GrpcStatus(val code: Int) extends NoStackTrace {
@@ -52,8 +53,20 @@ object GrpcStatus {
     case 16 => Unauthenticated(msg)
     case code => Other(code, msg)
   }
+  private[this] val StatusKey = "grpc-status"
+  private[this] val MessageKey = "grpc-status"
 
   def unapply(s: GrpcStatus): Option[(Int, String)] = Some((s.code, s.message))
+
+  def unapply(frame: h2.Frame): Option[GrpcStatus] =
+    frame match {
+      case trailers: h2.Frame.Trailers =>
+        for { headerValue <- trailers.get(StatusKey)
+              code <- Try(headerValue.toInt).toOption
+              status <- GrpcStatus(code, trailers.get(MessageKey).getOrElse("")) }
+          yield status
+      case _ => None
+    }
 
   def fromReset(rst: h2.Reset): GrpcStatus = rst match {
     case h2.Reset.NoError |
@@ -73,8 +86,8 @@ object GrpcStatus {
   }
 
   def fromTrailers(tlrs: h2.Frame.Trailers): GrpcStatus = {
-    val msg = tlrs.get("grpc-message").getOrElse("")
-    tlrs.get("grpc-status") match {
+    val msg = tlrs.get(MessageKey).getOrElse("")
+    tlrs.get(StatusKey) match {
       case Some(code) =>
         try GrpcStatus(code.toInt, msg)
         catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
