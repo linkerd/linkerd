@@ -1,9 +1,30 @@
 package io.buoyant.grpc.runtime
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.twitter.finagle.buoyant.h2
 import scala.util.Try
 import scala.util.control.NoStackTrace
 
+@JsonSubTypes(Array(
+  new Type(value = classOf[GrpcStatus.Ok], name = "Ok"),
+  new Type(value = classOf[GrpcStatus.Canceled], name = "Cancelled"),
+  new Type(value = classOf[GrpcStatus.Unknown], name = "Unknown"),
+  new Type(value = classOf[GrpcStatus.InvalidArgument], name = "InvalidArgument"),
+  new Type(value = classOf[GrpcStatus.DeadlineExceeded], name = "DeadlineExceeded"),
+  new Type(value = classOf[GrpcStatus.NotFound], name = "NotFound"),
+  new Type(value = classOf[GrpcStatus.AlreadyExists], name = "AlreadyExists"),
+  new Type(value = classOf[GrpcStatus.PermissionDenied], name = "PermissionDenied"),
+  new Type(value = classOf[GrpcStatus.Unauthenticated], name = "Unauthenticated"),
+  new Type(value = classOf[GrpcStatus.ResourceExhausted], name = "ResourceExhausted"),
+  new Type(value = classOf[GrpcStatus.FailedPrecondition], name = "FailedPrecondition"),
+  new Type(value = classOf[GrpcStatus.Aborted], name = "Aborted"),
+  new Type(value = classOf[GrpcStatus.OutOfRange], name = "OutOfRange"),
+  new Type(value = classOf[GrpcStatus.Unimplemented], name = "Unimplemented"),
+  new Type(value = classOf[GrpcStatus.Internal], name = "Internal"),
+  new Type(value = classOf[GrpcStatus.Unavailable], name = "Unavailable"),
+  new Type(value = classOf[GrpcStatus.DataLoss], name = "DataLoss")
+))
 sealed abstract class GrpcStatus(val code: Int) extends NoStackTrace {
   def message: String
 
