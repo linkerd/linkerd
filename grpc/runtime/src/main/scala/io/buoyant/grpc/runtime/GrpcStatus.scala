@@ -63,7 +63,7 @@ object GrpcStatus {
       case trailers: h2.Frame.Trailers =>
         for { headerValue <- trailers.get(StatusKey)
               code <- Try(headerValue.toInt).toOption
-              status <- GrpcStatus(code, trailers.get(MessageKey).getOrElse("")) }
+              status = GrpcStatus(code, trailers.get(MessageKey).getOrElse("")) }
           yield status
       case _ => None
     }
