@@ -93,7 +93,7 @@ class StreamClassificationEndToEndTest
           |  - port: 0
           |""".stripMargin
 
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
@@ -134,7 +134,7 @@ class StreamClassificationEndToEndTest
           |  - port: 0
           |""".stripMargin
 
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
@@ -184,7 +184,7 @@ class StreamClassificationEndToEndTest
           |  - port: 0
           |""".stripMargin
 
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
@@ -233,7 +233,7 @@ class StreamClassificationEndToEndTest
           |  - port: 0
           |""".stripMargin
 
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
@@ -296,7 +296,7 @@ class StreamClassificationEndToEndTest
           |  - port: 0
           |""".stripMargin
 
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
