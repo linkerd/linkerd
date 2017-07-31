@@ -8,14 +8,14 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
 import com.twitter.util.{Future, Local}
 import io.buoyant.router.context.DstPathCtx
-import io.buoyant.test.FunSuite
+import io.buoyant.test.{FunSuite, StatsAssertions}
 import org.scalatest.Matchers
 
 class NotDog extends Exception
 
 class DangCat extends Exception("meow", new NotDog)
 
-class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
+class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers with StatsAssertions {
 
   def setContext(f: Request => Path) =
     Filter.mk[Request, Response, Request, Response] { (req, service) =>
@@ -41,9 +41,6 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
   test("module installs a per-path StreamStatsFilter") {
     val stats = new InMemoryStatsReceiver
 
-    def assertCounter(stat: Seq[String], value: Option[Int]) =
-      withClue(s"stat ${stat.mkString("/")}: ") { assert(stats.counters.get(stat) == value) }
-
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val ctxFilter = setContext({ r => Path.Utf8("req", r.path) })
     val factory = ctxFilter.andThen(stack.make(params))
@@ -57,14 +54,14 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     val catPfx = pfx :+ "req/cat"
     val dogPfx = pfx :+ "req/dog"
 
-    assertCounter(catPfx :+ "requests", Some(1))
-    assertCounter(catPfx :+ "failures", Some(1))
+    assertCounter(catPfx :+ "requests") is 1
+    assertCounter(catPfx :+ "failures") is 1
 
-    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat", Some(1))
-    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat" :+ "io.buoyant.router.h2.NotDog", Some(1))
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat") is 1
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat" :+ "io.buoyant.router.h2.NotDog") is 1
 
-    assertCounter(dogPfx :+ "requests", Some(2))
-    assertCounter(dogPfx :+ "success", Some(2))
+    assertCounter(dogPfx :+ "requests") is 2
+    assertCounter(dogPfx :+ "success") is 2
 
     assert(stats.histogramDetails.keys == Set(
       "pfx/service/req/cat/request_latency_ms",
