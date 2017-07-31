@@ -97,8 +97,8 @@ object GrpcStatus {
 
   private def toTrailers(status: GrpcStatus): h2.Frame.Trailers =
     h2.Frame.Trailers(
-      "grpc-status" -> status.code.toString,
-      "grpc-message" -> status.message
+      StatusKey -> status.code.toString,
+      MessageKey -> status.message
     )
 
 }
