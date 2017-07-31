@@ -3,7 +3,7 @@ package io.buoyant.grpc.runtime
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.Return
-import io.buoyant.grpc.runtime.GrpcStatus.{Internal, Ok, Unavailable}
+import io.buoyant.grpc.runtime.GrpcStatus.Ok
 
 
 trait GrpcClassifier extends H2Classifier {
