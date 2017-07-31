@@ -1,7 +1,5 @@
 package com.twitter.finagle.stats.buoyant
 
-import com.twitter.finagle.stats.{BucketedHistogram => MetricsBucketedHistogram}
-
 class BucketedHistogram(limits: Array[Int])
   extends MetricsBucketedHistogram(limits)
 
