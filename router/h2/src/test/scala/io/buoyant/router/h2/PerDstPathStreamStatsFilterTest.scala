@@ -3,7 +3,7 @@ package io.buoyant.router.h2
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.stack.{Endpoint, nilStack}
-import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
 import com.twitter.util.{Future, Local}
@@ -40,6 +40,10 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
   val catReq = Request("http", Method.Get, "foo", "cat", Stream.empty())
   test("module installs a per-path StreamStatsFilter") {
     val stats = new InMemoryStatsReceiver
+
+    def assertCounter(stat: Seq[String], value: Option[Int]) =
+      withClue(s"stat ${stat.mkString("/")}: ") { assert(stats.counters.get(stat) == value) }
+
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val ctxFilter = setContext({ r => Path.Utf8("req", r.path) })
     val factory = ctxFilter.andThen(stack.make(params))
@@ -52,28 +56,16 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     val pfx = Seq("pfx", "service")
     val catPfx = pfx :+ "req/cat"
     val dogPfx = pfx :+ "req/dog"
-    assert(
-      stats.counters.get(catPfx :+ "requests").contains(1),
-      s"actually got: ${stats.counters}"
-    )
-    assert(
-      stats.counters.get(catPfx :+ "failures").contains(1),
-      s"actually got: ${stats.counters}"
-    )
-    //    assert(
-    //      stats.counters.get(catPfx :+ "requests" :+ "io.buoyant.router.DangCat").contains(1),
-    //      s"actually got: ${stats.counters}"
-    //    )
-    //    assert(stats.counters.get(catPfx :+ "failures" :+ "io.buoyant.router.DangCat").contains(1))
-    //    assert(stats.counters.get(catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog").contains(1))
 
-    assert(stats.counters.get(dogPfx :+ "requests").contains(2))
-    assert(stats.counters.get(dogPfx :+ "success").contains(2))
+    assertCounter(catPfx :+ "requests", Some(1))
+    assertCounter(catPfx :+ "failures", Some(1))
 
-    //    assert(stats.gauges.keys == Set(
-    //      (catPfx :+ "pending"),
-    //      (dogPfx :+ "pending")
-    //    ))
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat", Some(1))
+    assertCounter(catPfx :+ "failures" :+ "io.buoyant.router.h2.DangCat" :+ "io.buoyant.router.h2.NotDog", Some(1))
+
+    assertCounter(dogPfx :+ "requests", Some(2))
+    assertCounter(dogPfx :+ "success", Some(2))
+
     assert(stats.histogramDetails.keys == Set(
       "pfx/service/req/cat/request_latency_ms",
       "pfx/service/req/dog/request_latency_ms",
