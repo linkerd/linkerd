@@ -35,24 +35,20 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   private[this] val allStats = latencyStats :+ rspFrameSizeStat :+ reqFrameSizeStat
   private[this] val reqStats = allStats.withFilter(_.head != "response")
 
-  private[this] def setup(response: Request => Future[Response]): (InMemoryStatsReceiver, Service[Request, Response]) = {
+  private[this] def setup(response: Request => Future[Response])(implicit stats: InMemoryStatsReceiver) = {
 
-    val stats = new InMemoryStatsReceiver()
     val svc = Service.mk[Request, Response] { response(_) }
     val stk = StreamStatsFilter.module.toStack(
       Stack.Leaf(StreamStatsFilter.role, ServiceFactory.const(svc))
     )
-    val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
-
-    (stats, service)
+    await(stk.make(Stack.Params.empty + param.Stats(stats))())
   }
 
   test("increments success counters on success") {
-
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const("aaaaaaaaaaaa")))
     }
-    implicit val stats = _stats
 
     // all counters should be empty before firing request
     withClue("before request:") {
@@ -79,13 +75,10 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   }
 
   test("increments success counters on success with empty stream") {
-
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.value(Response(Status.Ok, Stream.empty()))
     }
-
-    implicit val stats = _stats
-
 
     // all counters should be empty before firing request
     withClue("before request:") {
@@ -110,12 +103,11 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   }
 
   test("does not increment failure counters after successes") {
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       val stream = Stream.const("aaaaaaaaa")
       Future.value(Response(Status.Ok, stream))
     }
-
-    implicit val stats = _stats
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     var rsp = await(service(req))
@@ -138,11 +130,11 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   object Thrown extends Throwable
 
   test("increments correct failure counters after failure") {
-    val (_stats, service) = setup { _ =>
+
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.exception(Thrown)
     }
-
-    implicit val stats = _stats
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val expectedCounters = Seq(
@@ -173,11 +165,10 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   }
 
   test("stats are defined after success") {
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const("aaaaaaaaa")))
     }
-
-    implicit val stats = _stats
 
     withClue("before request:") {
       // stats undefined before request
@@ -199,11 +190,12 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
 
   test("frame size stat for a single frame") {
     val data = "aaaaaaaa"
-    val (_stats, service) = setup { _ =>
+
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const(data)))
     }
 
-    implicit val stats = _stats
 
     withClue("before request:") {
       // stats undefined before request
@@ -224,11 +216,10 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   }
 
   test("frame size stat for an empty stream") {
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.value(Response(Status.Ok, Stream.empty()))
     }
-
-    implicit val stats = _stats
 
     withClue("before request:") {
       // stats undefined before request
@@ -250,15 +241,15 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
     val data1 = "aaaaaaaa"
     val data2 = "bbbbbbbbbb"
     val streamBytes: Float = data1.length + data2.length
-    val (_stats, service) = setup { _ =>
+
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       val q = new AsyncQueue[Frame]()
       val stream = Stream(q)
       q.offer(Frame.Data(data1, eos = false))
       q.offer(Frame.Data(data2, eos = true))
       Future.value(Response(Status.Ok, stream))
     }
-
-    implicit val stats = _stats
 
     withClue("before request:") {
       // stats undefined before request
@@ -289,12 +280,10 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertion
   }
 
   test("stats are defined after failure") {
-    val (_stats, service) = setup { _ =>
+    implicit val stats = new InMemoryStatsReceiver()
+    val service = setup { _ =>
       Future.exception(Thrown)
     }
-
-    implicit val stats = _stats
-
     withClue("before request:") {
       // stats undefined before request
       for { stat <- allStats }

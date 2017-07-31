@@ -39,7 +39,7 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers with StatsA
   val dogReq = Request("http", Method.Get, "foo", "dog", Stream.empty())
   val catReq = Request("http", Method.Get, "foo", "cat", Stream.empty())
   test("module installs a per-path StreamStatsFilter") {
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
 
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val ctxFilter = setContext({ r => Path.Utf8("req", r.path) })
@@ -81,7 +81,7 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers with StatsA
   }
 
   test("module does nothing when DstPath context not set") {
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val factory = stack.make(params)
     val service = await(factory())
@@ -98,7 +98,7 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers with StatsA
   }
 
   test("module does nothing when DstPath context isEmpty") {
-    val stats = new InMemoryStatsReceiver
+    implicit val stats = new InMemoryStatsReceiver
     val params = Stack.Params.empty + param.Stats(stats.scope("pfx"))
     val ctxFilter = setContext(_ => Path.empty)
     val factory = ctxFilter.andThen(stack.make(params))
