@@ -1,5 +1,6 @@
 package io.buoyant.grpc.runtime
 
+import com.twitter.finagle.buoyant.h2.service.H2Classifiers.NonRetryableServerFailures
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.Return
@@ -51,6 +52,23 @@ object GrpcClassifier {
         ResponseClass.NonRetryableFailure
     }
 
+  }
+
+  /**
+    * a [[GrpcClassifier]] that marks any error in a specified list of codes
+    * as [[ResponseClass.RetryableFailure]], and the rest as [[ResponseClass.NonRetryableFailure]]
+    * @param retryableCodes a set of status codes which should be marked retryable
+    */
+  class RetryableStatusCodes(val retryableCodes: Set[Int]) extends GrpcClassifier {
+    override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
+      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) =>
+        ResponseClass.Success
+      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status))))))
+        if retryableCodes.contains(status.code) =>
+          ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(_)))))) =>
+        ResponseClass.NonRetryableFailure
+    }
   }
 
 
