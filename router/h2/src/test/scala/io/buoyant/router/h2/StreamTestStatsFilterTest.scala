@@ -5,10 +5,10 @@ import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.buoyant.h2.{Frame, Method, Request, Response, Status, Stream}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.util.Future
-import io.buoyant.test.{Awaits, FunSuite}
+import io.buoyant.test.{Awaits, FunSuite, StatsAssertions}
 import io.buoyant.test.h2.StreamTestUtils._
 
-class StreamTestStatsFilterTest extends FunSuite with Awaits {
+class StreamTestStatsFilterTest extends FunSuite with Awaits with StatsAssertions {
   private[this] val successCounters = Seq(
     Seq("response", "stream", "stream_success"),
     Seq("request", "stream", "stream_success"),
@@ -35,7 +35,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
   private[this] val allStats = latencyStats :+ rspFrameSizeStat :+ reqFrameSizeStat
   private[this] val reqStats = allStats.withFilter(_.head != "response")
 
-  private[this] def setup(response: Request => Future[Response]) = {
+  private[this] def setup(response: Request => Future[Response]): (InMemoryStatsReceiver, Service[Request, Response]) = {
 
     val stats = new InMemoryStatsReceiver()
     val svc = Service.mk[Request, Response] { response(_) }
@@ -49,14 +49,15 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
   test("increments success counters on success") {
 
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const("aaaaaaaaaaaa")))
     }
+    implicit val stats = _stats
 
     // all counters should be empty before firing request
     withClue("before request:") {
       for { counter <- allCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        assertCounter(counter).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -65,7 +66,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after first response") {
       for { counter <- successCounters :+ requestCounter }
-        withClue(s"stat: $counter") { assert(stats.counters(counter) == 1) }
+        assertCounter(counter) is 1
     }
 
     rsp = await(service(req))
@@ -73,20 +74,23 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after second response") {
       for { counter <- successCounters :+ requestCounter }
-        withClue(s"stat: $counter") { assert(stats.counters(counter) == 2) }
+        assertCounter(counter) is 2
     }
   }
 
   test("increments success counters on success with empty stream") {
 
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.value(Response(Status.Ok, Stream.empty()))
     }
+
+    implicit val stats = _stats
+
 
     // all counters should be empty before firing request
     withClue("before request:") {
       for { counter <- allCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        assertCounter(counter).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -94,22 +98,24 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after first response") {
       for { counter <- successCounters :+ requestCounter }
-        withClue(s"stat: $counter") { assert(stats.counters(counter) == 1) }
+        assertCounter(counter) is 1
     }
 
     rsp = await(service(req))
 
     withClue("after second response") {
       for { counter <- successCounters :+ requestCounter }
-        withClue(s"stat: $counter") { assert(stats.counters(counter) == 2) }
+        assertCounter(counter) is 2
     }
   }
 
   test("does not increment failure counters after successes") {
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       val stream = Stream.const("aaaaaaaaa")
       Future.value(Response(Status.Ok, stream))
     }
+
+    implicit val stats = _stats
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     var rsp = await(service(req))
@@ -117,7 +123,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after first response") {
       for { counter <- failureCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        assertCounter(counter).isEmpty
     }
 
     rsp = await(service(req))
@@ -125,16 +131,19 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after second response") {
       for { counter <- failureCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        assertCounter(counter).isEmpty
     }
   }
 
   object Thrown extends Throwable
 
   test("increments correct failure counters after failure") {
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.exception(Thrown)
     }
+
+    implicit val stats = _stats
+
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val expectedCounters = Seq(
       requestCounter,
@@ -145,32 +154,35 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     assertThrows[Throwable] { await(service(req)) }
     withClue("after first failure") {
       for { counter <- expectedCounters }
-        assert(stats.counters(counter) == 1)
+        assertCounter(counter) is 1
       // counters that should not be incremented on this failure
       for { counter <- failureCounters if !expectedCounters.contains(counter) }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+       assertCounter(counter).isEmpty
 
     }
 
     assertThrows[Throwable] { await(service(req)) }
     withClue("after second failure") {
       for { counter <- expectedCounters }
-        withClue(s"stat: $counter") { assert(stats.counters(counter) == 2) }
+        withClue(s"stat: $counter") { assertCounter(counter) is 2 }
 
       // counters that should not be incremented on this failure
       for { counter <- failureCounters if !expectedCounters.contains(counter) }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assertCounter(counter).isEmpty }
     }
   }
 
   test("stats are defined after success") {
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const("aaaaaaaaa")))
     }
+
+    implicit val stats = _stats
+
     withClue("before request:") {
       // stats undefined before request
       for { stat <- allStats }
-        withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
+        withClue(s"stat: $stat") { assertStat(stat).isEmpty }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -178,22 +190,24 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after success:") {
-      for { stat <- allStats }
-        withClue(s"stat: $stat") {
-          assert(stats.stats.isDefinedAt(stat))
-          assert(stats.stats(stat).length == 1)
+      for { stat <- allStats } {
+          assertStat(stat).isDefined
+          assertStat(stat) hasLength 1
         }
     }
   }
 
   test("frame size stat for a single frame") {
     val data = "aaaaaaaa"
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.value(Response(Status.Ok, Stream.const(data)))
     }
+
+    implicit val stats = _stats
+
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assertStat(rspFrameSizeStat).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -201,30 +215,33 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after success:") {
-      assert(stats.stats(reqFrameSizeStat).contains(0))
-      assert(stats.stats(reqFrameSizeStat).length == 1)
-      assert(stats.stats(rspFrameSizeStat).contains(data.length))
-      assert(stats.stats(rspFrameSizeStat).length == 1)
+      assertStat(reqFrameSizeStat) contains 0
+      assertStat(reqFrameSizeStat) hasLength 1
+      assertStat(rspFrameSizeStat) contains data.length
+      assertStat(rspFrameSizeStat) hasLength 1
 
     }
   }
 
   test("frame size stat for an empty stream") {
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.value(Response(Status.Ok, Stream.empty()))
     }
+
+    implicit val stats = _stats
+
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assertStat(rspFrameSizeStat).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val rsp = await(service(req))
     withClue("after success:") {
-      assert(stats.stats(reqFrameSizeStat).contains(0))
-      assert(stats.stats(reqFrameSizeStat).length == 1)
-      assert(stats.stats(rspFrameSizeStat).contains(0))
-      assert(stats.stats(rspFrameSizeStat).length == 1)
+      assertStat(reqFrameSizeStat).contains(0)
+      assertStat(reqFrameSizeStat).hasLength(1)
+      assertStat(rspFrameSizeStat).contains(0)
+      assertStat(rspFrameSizeStat).hasLength(1)
 
     }
   }
@@ -233,7 +250,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     val data1 = "aaaaaaaa"
     val data2 = "bbbbbbbbbb"
     val streamBytes: Float = data1.length + data2.length
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       val q = new AsyncQueue[Frame]()
       val stream = Stream(q)
       q.offer(Frame.Data(data1, eos = false))
@@ -241,9 +258,11 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
       Future.value(Response(Status.Ok, stream))
     }
 
+    implicit val stats = _stats
+
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assertStat(rspFrameSizeStat).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -251,32 +270,35 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after success:") {
-      assert(stats.stats(reqFrameSizeStat).contains(0))
-      assert(stats.stats(reqFrameSizeStat).length == 1)
-      assert(stats.stats(rspFrameSizeStat).contains(streamBytes))
-      assert(stats.stats(rspFrameSizeStat).length == 1)
+      assertStat(reqFrameSizeStat).contains(0)
+      assertStat(reqFrameSizeStat).hasLength(1)
+      assertStat(rspFrameSizeStat).contains(streamBytes)
+      assertStat(rspFrameSizeStat).hasLength(1)
 
     }
     rsp = await(service(req))
     await(rsp.stream.readToEnd)
 
     withClue("after second success:") {
-      assert(stats.stats(reqFrameSizeStat).contains(0))
-      assert(stats.stats(reqFrameSizeStat).length == 2)
-      assert(stats.stats(rspFrameSizeStat).forall(_ == streamBytes))
-      assert(stats.stats(rspFrameSizeStat).length == 2)
+      assertStat(reqFrameSizeStat).contains(0)
+      assertStat(reqFrameSizeStat).hasLength(2)
+      assertStat(rspFrameSizeStat).forall(_ == streamBytes)
+      assertStat(rspFrameSizeStat).hasLength(2)
 
     }
   }
 
   test("stats are defined after failure") {
-    val (stats, service) = setup { _ =>
+    val (_stats, service) = setup { _ =>
       Future.exception(Thrown)
     }
+
+    implicit val stats = _stats
+
     withClue("before request:") {
       // stats undefined before request
       for { stat <- allStats }
-        withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
+        assertStat(stat).isEmpty
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -284,7 +306,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after failure:") {
       for { stat <- reqStats }
-        withClue(s"stat: $stat") { assert(stats.stats.isDefinedAt(stat)) }
+        assertStat(stat).isDefined
     }
   }
 }

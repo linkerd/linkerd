@@ -474,7 +474,9 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, k8s, Finagle.h2 % "test->test;e2e->test")
+        .dependsOn(core, Router.h2, k8s,
+          Finagle.h2 % "test->test;e2e->test",
+          Finagle.buoyantCore % "test->test;e2e->test")
         .withTests().withE2e()
         .withTwitterLibs(Deps.finagle("netty4"))
 

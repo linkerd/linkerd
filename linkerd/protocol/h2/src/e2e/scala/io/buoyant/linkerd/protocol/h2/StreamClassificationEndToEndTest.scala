@@ -8,10 +8,14 @@ import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Future, Var}
 import io.buoyant.linkerd.Linker
-import io.buoyant.test.{Awaits, FunSuite}
+import io.buoyant.test.{Awaits, FunSuite, StatsAssertions}
 import io.buoyant.test.h2.StreamTestUtils._
 
-class StreamClassificationEndToEndTest extends FunSuite with Awaits {
+class StreamClassificationEndToEndTest
+  extends FunSuite
+    with Awaits
+    with StatsAssertions {
+
   case class Downstream(name: String, service: Service[Request, Response]) {
     val stack = H2.server.stack.remove(LinkerdHeaders.Ctx.serverModule.role)
     val server = H2.server.withStack(stack)
@@ -53,22 +57,23 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     Seq("response", "stream", "stream_success"),
     Seq("failures")
   )
-
+  
+  val serverNs = Seq("rt", "h2", "server", "127.0.0.1/0")
 
   def requestSuccessCounters(port: Int, svc: String): Seq[Seq[String]] =
-    for { counter <- successReqCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}
+    for { counter <- successReqCounters } yield { serverNs ++ counter}
 
   def responseSuccessCounters(port: Int, svc: String): Seq[Seq[String]] =
     requestSuccessCounters(port, svc) ++
-    (for { counter <- successRspCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}) :+
+    (for { counter <- successRspCounters } yield { serverNs ++ counter}) :+
       Seq("rt", "h2", "client", s"$$/inet/127.1/$port", "service", s"svc/$svc", "success")
 
 
   def requestFailureCounters(port: Int, svc: String): Seq[Seq[String]] =
-    for { counter <- failureReqCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}
+    for { counter <- failureReqCounters } yield { serverNs ++ counter}
 
   def responseFailureCounters(port: Int, svc: String): Seq[Seq[String]] =
-      (for { counter <- failureRspCounters } yield { Seq("rt", "h2", "server", "127.0.0.1/0") ++ counter}) :+
+      (for { counter <- failureRspCounters } yield { serverNs ++ counter}) :+
       Seq("rt", "h2", "client", s"$$/inet/127.1/$port", "service", s"svc/$svc", "failures")
 
   test("success") {
@@ -99,7 +104,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     withClue("after request, before response:") {
       for { counter <- requestSuccessCounters(downstream.port, "foo") } {
-        assert(stats.counters(counter) == 1)
+        assertCounter(counter) is 1
       }
     }
 
@@ -107,7 +112,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     withClue("after response:") {
       for { counter <- responseSuccessCounters(downstream.port, "foo") } {
-        assert(stats.counters(counter) == 1)
+        assertCounter(counter) is 1
       }
     }
 
@@ -140,7 +145,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     withClue("after request, before response:") {
       for { counter <- requestSuccessCounters(downstream.port, "foo") } {
-        assert(stats.counters(counter) == 1)
+        assertCounter(counter) is 1
       }
     }
 
@@ -148,7 +153,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     withClue("after response:") {
       for { counter <- responseFailureCounters(downstream.port, "foo") } {
-        assert(stats.counters(counter) == 1)
+        assertCounter(counter) is 1
       }
     }
   }
@@ -189,12 +194,12 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val rsp = await(client(req))
     await(rsp.stream.readToEnd)
 
-    assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
-    assert(stats.counters(Seq("rt", "h2", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
-    assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
+    assertCounter(serverNs :+ "success") is 1
+    assertCounter(serverNs :+ "failures").isEmpty
+    assertCounter(Seq("rt", "h2", "service", "svc/foo", "success")) is 1
+    assertCounter(Seq("rt", "h2", "service", "svc/foo", "failures")).isEmpty
+    assertCounter(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) is 1
+    assertCounter(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) is 1
   }
 
   ignore("per service classification") {
@@ -238,13 +243,21 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     var rsp = await(client(req))
     await(rsp.stream.readToEnd)
 
+    val svcANs = Seq("rt", "h2", "service", "svc/a")
+    val svcBNs = Seq("rt", "h2", "service", "svc/b")
+    val clientNs = Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}")
+    val clientSvcANs = clientNs ++ Seq("service", "svc/a")
+    val clientSvcBNs = clientNs ++ Seq("service", "svc/b")
+
     withClue("after first response: ") {
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == Some(1), s", did get ${stats.counters}")
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
-      assert(stats.counters(Seq("rt", "h2", "service", "svc/a", "success")) == 1)
-      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/a", "failures")) == None)
-      assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
-      assert(stats.counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "failures")) == 1)
+      assertCounter(serverNs :+ "success") is 1
+      assertCounter(serverNs :+ "failures") is 1
+      assertCounter(svcANs :+ "success") is 1
+      assertCounter(svcANs :+ "failures").isEmpty
+      assertCounter(clientSvcANs :+ "success") is 1
+      assertCounter(clientSvcANs :+ "failures") is 1
+      assertCounter(clientSvcBNs :+ "success").isEmpty
+      assertCounter(clientSvcBNs :+ "failures").isEmpty
     }
 
     // Request to "b" is non-retryable
@@ -255,20 +268,20 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     withClue("after second response: ") {
-      assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
-      assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == 1)
-      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/b", "success")) == None)
-      assert(stats.counters(Seq("rt", "h2", "service", "svc/b", "failures")) == 1)
-      assert(stats.counters
-        .get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")) == None)
-      assert(stats
-        .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "failures")) == 1)
+      assertCounter(serverNs :+ "success") is 1
+      assertCounter(serverNs :+ "failures") is 1
+      assertCounter(svcBNs :+ "success") is 1
+      assertCounter(svcBNs :+ "failures") is 1
+      assertCounter(clientSvcBNs :+ "success").isEmpty
+      assertCounter(clientSvcBNs :+ "failures") is 1
+      assertCounter(clientSvcANs :+ "success") is 1
+      assertCounter(clientSvcANs :+ "failures") is 1
     }
   }
 
   test("client stats use service response classifier") {
     val downstream = Downstream("ds", Service.mk { req =>
-      val rsp = Response(Status.InternalServerError, Stream.empty)
+      val rsp = Response(Status.InternalServerError, Stream.empty())
       Future.value(rsp)
     })
     val config =
@@ -289,13 +302,15 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val server = router.servers.head.serve()
     val client = upstream(server)
 
-    val req = Request("http", Method.Post, "foo", "/", Stream.empty)
+    val req = Request("http", Method.Post, "foo", "/", Stream.empty())
     val rsp = await(client(req))
     await(rsp.stream.readToEnd)
+    val svcNs = Seq("rt", "h2", "service", "svc/foo")
+    val clientSvcNs = Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo")
 
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
-    assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+    assertCounter(svcNs :+ "success") is 1
+    assertCounter(svcNs :+ "failures").isEmpty
+    assertCounter(clientSvcNs :+ "success") is 1
+    assertCounter(clientSvcNs :+ "failures") is 1
   }
 }
