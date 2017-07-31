@@ -6,8 +6,9 @@ import com.twitter.finagle.buoyant.h2.{Frame, Method, Request, Response, Status,
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.util.Future
 import io.buoyant.test.{Awaits, FunSuite}
+import io.buoyant.test.h2.StreamTestUtils._
 
-class StreamStatsFilterTest extends FunSuite with Awaits {
+class StreamTestStatsFilterTest extends FunSuite with Awaits {
   private[this] val successCounters = Seq(
     Seq("response", "stream", "stream_success"),
     Seq("request", "stream", "stream_success"),
@@ -46,14 +47,6 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     (stats, service)
   }
 
-  private[this] def readAll(stream: Stream): Future[Unit] =
-    stream.read().flatMap { frame =>
-      val end = frame.isEnd
-      frame.release().before {
-        if (end) Future.Done else readAll(stream)
-      }
-    }
-
   test("increments success counters on success") {
 
     val (stats, service) = setup { _ =>
@@ -68,7 +61,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     var rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after first response") {
       for { counter <- successCounters :+ requestCounter }
@@ -76,7 +69,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
 
     rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after second response") {
       for { counter <- successCounters :+ requestCounter }
@@ -120,7 +113,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     var rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after first response") {
       for { counter <- failureCounters }
@@ -128,7 +121,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
     }
 
     rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after second response") {
       for { counter <- failureCounters }
@@ -182,7 +175,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after success:") {
       for { stat <- allStats }
@@ -205,7 +198,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after success:") {
       assert(stats.stats(reqFrameSizeStat).contains(0))
@@ -255,7 +248,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     var rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after success:") {
       assert(stats.stats(reqFrameSizeStat).contains(0))
@@ -265,7 +258,7 @@ class StreamStatsFilterTest extends FunSuite with Awaits {
 
     }
     rsp = await(service(req))
-    await(readAll(rsp.stream))
+    await(rsp.stream.readToEnd)
 
     withClue("after second success:") {
       assert(stats.stats(reqFrameSizeStat).contains(0))

@@ -10,19 +10,18 @@ import com.twitter.finagle.Path
  */
 private object HostColonPort {
   /**
-    * regex for capturing strings that conform to the definition
-    * of a "label" in RFCs 1035 and 1123, used for the `port` part
-    * of a [[HostColonPort]].
-    *
-    * this is based on the `DNS_LABEL` regex in Kubernetes:
-    * https://github.com/kubernetes/kubernetes/blob/master/pkg/api/types.go#L40-L43
-    */
-  private[this] val DnsLabel  = """([a-z0-9][-a-z0-9]*[a-z0-9]?)""".r
+   * regex for capturing strings that conform to the definition
+   * of a "label" in RFCs 1035 and 1123, used for the `port` part
+   * of a [[HostColonPort]].
+   *
+   * this is based on the `DNS_LABEL` regex in Kubernetes:
+   * https://github.com/kubernetes/kubernetes/blob/master/pkg/api/types.go#L40-L43
+   */
+  private[this] val DnsLabel = """([a-z0-9][-a-z0-9]*[a-z0-9]?)""".r
 
   def unapply(s: String): Option[(String, String)] = s.split(":") match {
-    case Array(host, DnsLabel(port))
-      // DNS labels may not exceed 63 characters in length
-      if port.length <= 63 => Some((host, port))
+    case Array(host, DnsLabel(port)) // DNS labels may not exceed 63 characters in length
+    if port.length <= 63 => Some((host, port))
     case _ => None
   }
 }
