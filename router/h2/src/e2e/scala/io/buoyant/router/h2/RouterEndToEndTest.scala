@@ -154,7 +154,6 @@ class RouterEndToEndTest
       val reqReadF = reqStream.read()
       val rspReadF = rsp.stream.read()
 
-      rspReadF.raise(new ChannelClosedException())
       clientLocalQ.fail(new ChannelClosedException())
       assert(await(reqReadF.liftToTry) == Throw(Reset.Cancel))
 
