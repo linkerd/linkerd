@@ -10,9 +10,9 @@ import com.twitter.util._
 import scala.{Stream => SStream}
 
 /**
- * The ClassifiedRetyFilter uses BufferedStreams to implement retries.  The request stream is
+ * The ClassifiedRetryFilter uses BufferedStreams to implement retries.  The request stream is
  * buffered and a child stream is sent to the service.  This is done so that if it becomes
- * necessary to retry, a new child of a the request stream can be created.
+ * necessary to retry, a new child of the request stream can be created.
  *
  * The response stream is also buffered and held until either the response stream completes
  * or the response buffer becomes full.  If the response stream completes, we use the provided
@@ -51,7 +51,7 @@ class ClassifiedRetryFilter(
 
     budget.deposit()
 
-    // Buffer the request stream so that we can fork another child stream if we need to retry
+    // Buffer the request stream so that we can fork another child stream if we need to retry.
     val requestBuffer = new BufferedStream(request.stream, requestBufferSize)
     val fork = Future.const(requestBuffer.fork())
 
@@ -72,7 +72,7 @@ class ClassifiedRetryFilter(
                   totalRetries.incr()
                   schedule(pause)(dispatch(s, rest, count + 1))
                 } else {
-                  // Not enough retry budget to retry
+                  // Not enough retry budget to retry.
                   budgetExhausted.incr()
                   orElse
                 }
@@ -82,7 +82,7 @@ class ClassifiedRetryFilter(
                 orElse
             }
           case Throw(e) =>
-            // We could not create a new child request stream so just return the response stream
+            // We could not create a new child request stream so just return the response stream.
             requestStreamTooLong.incr()
             orElse
         }
@@ -90,13 +90,13 @@ class ClassifiedRetryFilter(
 
       service(req).flatMap { rsp =>
         // Buffer the response stream so that we can attempt to classify it before returning
-        // or discarding it
+        // or discarding it.
         val responseBuffer = new BufferedStream(rsp.stream, responseBufferSize)
         // We eagerly create a child response stream since we need something to return in case we
         // don't want to (or can't) retry.
         val responseStream = responseBuffer.fork()
 
-        // Discard the buffers and return the current response stream
+        // Discard the buffers and return the current response stream.
         @inline def discardAndReturn(): Future[Response] = {
           retriesStat.add(count)
           requestBuffer.discardBuffer()
@@ -104,7 +104,7 @@ class ClassifiedRetryFilter(
           Future.const(responseStream).map(Response(rsp.headers, _))
         }
 
-        // We will retry so discard the current response stream and response stream buffer
+        // We will retry so discard the current response stream and response stream buffer.
         @inline def discardResponse(): Unit = {
           responseBuffer.discardBuffer()
           responseStream.foreach { rs => consumeAll(rs); () }
@@ -115,23 +115,23 @@ class ClassifiedRetryFilter(
           case Some(ResponseClass.Successful(_) | ResponseClass.Failed(false)) =>
             discardAndReturn()
           case Some(ResponseClass.Failed(true)) =>
-            // Request is retryable, attempt to create a new child request stream
+            // Request is retryable, attempt to create a new child request stream.
             retry(orElse = discardAndReturn(), onRetry = discardResponse())
           case None =>
             // Unable to classify at this time.  Next try to classify based on the stream.
             retryable(req, rsp, responseBuffer).flatMap { retryable =>
               if (retryable) {
-                // Request is retryable, attempt to create a new child request stream
+                // Request is retryable, attempt to create a new child request stream.
                 retry(orElse = discardAndReturn(), onRetry = discardResponse())
               } else {
-                // Request is not retryable so just return the response stream
+                // Request is not retryable so just return the response stream.
                 discardAndReturn()
               }
             }
         }
       }.rescue {
         case e if responseClassifier(H2ReqRep(req, Throw(e))).contains(ResponseClass.RetryableFailure) =>
-          // Request is retryable, attempt to create a new child request stream
+          // Request is retryable, attempt to create a new child request stream.
           retry(orElse = { retriesStat.add(count); Future.exception(e) })
       }
     }

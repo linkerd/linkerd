@@ -114,7 +114,6 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
         }
         case Return(f: Frame.Trailers) => synchronized {
           val refCounted = new RefCountedTrailersFrame(f)
-          // TODO: Determine size of Trailers Frame to count against buffer capacity
           handleFrame(refCounted, 0)
           if (f.isEnd) _onEnd.setDone()
           Future.Unit
