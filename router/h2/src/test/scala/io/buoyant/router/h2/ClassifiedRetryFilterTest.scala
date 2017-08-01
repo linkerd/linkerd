@@ -3,25 +3,33 @@ package io.buoyant.router.h2
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.time._
 import com.twitter.finagle.Service
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Response, Status, Stream}
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Return}
+import com.twitter.util.{Future, Return, Throw}
 import io.buoyant.test.FunSuite
 import scala.{Stream => SStream}
 
 class ClassifiedRetryFilterTest extends FunSuite {
 
-  val classifier: H2StreamClassifier = {
-    case H2ReqRep(req, Return((rsp, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("true") =>
-      ResponseClass.RetryableFailure
-    case H2ReqRep(req, Return((rsp, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("false") =>
-      ResponseClass.NonRetryableFailure
-    case _ =>
-      ResponseClass.Success
+  val classifier: H2Classifier = new H2Classifier {
+    override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
+      case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return(rsp)) if rsp.headers.get("retry") == Some("true") => ResponseClass.RetryableFailure
+      case H2ReqRep(_, Return(rsp)) if rsp.headers.get("retry") == Some("false") => ResponseClass.NonRetryableFailure
+    }
+
+    override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
+      case H2ReqRepFrame(_, Return((_, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("true") =>
+        ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Return(f: Frame.Trailers))))) if f.get("retry") == Some("false") =>
+        ResponseClass.NonRetryableFailure
+      case _ =>
+        ResponseClass.Success
+    }
   }
   implicit val timer = DefaultTimer
 
@@ -174,5 +182,35 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters(Seq("retries", "response_stream_too_long")) == 1)
+  }
+
+  test("early classification") {
+
+    val rspQ = new AsyncQueue[Frame]()
+
+    val stats = new InMemoryStatsReceiver
+
+    val svc = new ClassifiedRetryFilter(
+      stats,
+      classifier,
+      SStream.continually(0.millis),
+      RetryBudget.Infinite,
+      responseBufferSize = 4
+    ).andThen(Service.mk { req: Request =>
+      Future.value(Response(Headers("retry" -> "false", ":status" -> "200"), Stream(rspQ)))
+    })
+
+    // if early classification is possible, the response should not be buffered
+    val rsp = await(svc(Request(Headers.empty, Stream.empty())))
+
+    rspQ.offer(Frame.Data("foo", eos = true))
+    val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
+    assert(frame.buf == Buf.Utf8("foo"))
+    await(frame.release())
+
+    assert(stats.counters.get(Seq("retries", "total")) == None)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
+    assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
   }
 }

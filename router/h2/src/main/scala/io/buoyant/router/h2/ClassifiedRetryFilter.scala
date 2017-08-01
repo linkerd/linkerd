@@ -1,7 +1,7 @@
 package io.buoyant.router.h2
 
 import com.twitter.conversions.time._
-import com.twitter.finagle.buoyant.h2.service.{H2ReqRep, H2StreamClassifier}
+import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
@@ -22,7 +22,7 @@ import scala.{Stream => SStream}
  */
 class ClassifiedRetryFilter(
   stats: StatsReceiver,
-  classifier: H2StreamClassifier,
+  classifier: H2Classifier,
   backoffs: SStream[Duration],
   budget: RetryBudget,
   requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
@@ -40,6 +40,8 @@ class ClassifiedRetryFilter(
   private[h2] val responseStreamTooLong =
     stats.scope("retries").counter("response_stream_too_long")
   private[h2] val budgetGauge = stats.scope("retries").addGauge("budget") { budget.balance }
+
+  private[this] val responseClassifier = classifier.responseClassifier.lift
 
   override def apply(
     request: Request,
@@ -71,19 +73,16 @@ class ClassifiedRetryFilter(
                 } else {
                   // Not enough retry budget to retry
                   budgetExhausted.incr()
-                  retriesStat.add(count)
                   orElse
                 }
               case _ =>
                 // We ran out of retries.
                 backoffsExhausted.incr()
-                retriesStat.add(count)
                 orElse
             }
           case Throw(e) =>
             // We could not create a new child request stream so just return the response stream
             requestStreamTooLong.incr()
-            retriesStat.add(count)
             orElse
         }
       }
@@ -98,6 +97,7 @@ class ClassifiedRetryFilter(
 
         // Discard the buffers and return the current response stream
         @inline def discardAndReturn(): Future[Response] = {
+          retriesStat.add(count)
           requestBuffer.discardBuffer()
           responseBuffer.discardBuffer()
           Future.const(responseStream).map(Response(rsp.headers, _))
@@ -109,20 +109,29 @@ class ClassifiedRetryFilter(
           responseStream.foreach { rs => consumeAll(rs); () }
         }
 
-        retryable(req, rsp, responseBuffer).flatMap { retryable =>
-          if (retryable) {
+        // Attempt early classification before the stream is complete.
+        responseClassifier(H2ReqRep(req, Return(rsp))) match {
+          case Some(ResponseClass.Successful(_) | ResponseClass.Failed(false)) =>
+            discardAndReturn()
+          case Some(ResponseClass.Failed(true)) =>
             // Request is retryable, attempt to create a new child request stream
             retry(orElse = discardAndReturn(), onRetry = discardResponse())
-          } else {
-            // Request is not retryable so just return the response stream
-            retriesStat.add(count)
-            discardAndReturn()
-          }
+          case None =>
+            // Unable to classify at this time.  Next try to classify based on the stream.
+            retryable(req, rsp, responseBuffer).flatMap { retryable =>
+              if (retryable) {
+                // Request is retryable, attempt to create a new child request stream
+                retry(orElse = discardAndReturn(), onRetry = discardResponse())
+              } else {
+                // Request is not retryable so just return the response stream
+                discardAndReturn()
+              }
+            }
         }
       }.rescue {
-        case e if classifier(H2ReqRep(req, Throw(e))) == ResponseClass.RetryableFailure =>
+        case e if responseClassifier(H2ReqRep(req, Throw(e))).contains(ResponseClass.RetryableFailure) =>
           // Request is retryable, attempt to create a new child request stream
-          retry(orElse = Future.exception(e))
+          retry(orElse = { retriesStat.add(count); Future.exception(e) })
       }
     }
 
@@ -172,14 +181,17 @@ class ClassifiedRetryFilter(
   private[this] def retryable(req: Request, rsp: Response, responseStream: Stream): Future[Boolean] = {
     consumeAllButLast(responseStream).transform {
       case Return(Some(f)) =>
-        val canRetry = classifier(H2ReqRep(req, Return(rsp, Some(Return(f))))) == ResponseClass.RetryableFailure
+        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
+        val canRetry = rc == ResponseClass.RetryableFailure
         f.release()
         Future.value(canRetry)
       case Return(None) =>
-        val canRetry = classifier(H2ReqRep(req, Return(rsp, None))) == ResponseClass.RetryableFailure
+        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
+        val canRetry = rc == ResponseClass.RetryableFailure
         Future.value(canRetry)
       case Throw(e) =>
-        val canRetry = classifier(H2ReqRep(req, Return(rsp, Some(Throw(e))))) == ResponseClass.RetryableFailure
+        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
+        val canRetry = rc == ResponseClass.RetryableFailure
         Future.value(canRetry)
     }
   }
