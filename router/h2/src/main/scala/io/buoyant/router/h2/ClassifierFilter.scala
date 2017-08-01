@@ -29,7 +29,7 @@ object ClassifierFilter {
   private[this] object ResponseSuccessClass {
     @inline def unapply(headers: Headers): Option[ResponseClass] =
       headers.get(SuccessClassHeader).map { value =>
-        val success = Try(value.toDouble).toOption.getOrElse(0.0)
+        val success = value.toDouble
         if (success > 0.0) ResponseClass.Successful(success)
         else ResponseClass.Failed(false)
       }
@@ -41,37 +41,40 @@ object ClassifierFilter {
     }
 
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
-      case H2ReqRep(_, Return(ResponseSuccessClass(c))) => c
+      case H2ReqRep(_, Return(rsp)) if rsp.headers.contains(SuccessClassHeader) =>
+        rsp.headers.get(SuccessClassHeader).map { value =>
+          val success = value.toDouble
+          if (success > 0.0) ResponseClass.Successful(success)
+          else ResponseClass.Failed(false)
+        }.get
     }
   }
 }
 
 class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, Response] {
   import ClassifierFilter.SuccessClassHeader
-
-  private[this] def successClass[T](f: PartialFunction[T, ResponseClass])(r: T) =
-    f.lift(r).map(_.fractionalSuccess).getOrElse(0.0).toString
-
-  private[this] val responseSuccessClass =
-    successClass(classifier.responseClassifier)(_)
-
-  private[this] val streamSuccessClass =
-    successClass(classifier.streamClassifier)(_)
-
+  private[this] val successHeader: ResponseClass => String =
+    _.fractionalSuccess.toString
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     svc(req).map { rep: Response =>
       if (rep.stream.isEmpty) {
         // classify early - response class goes in headers
-        val success = responseSuccessClass(H2ReqRep(req, Return(rep)))
-        rep.headers.set(SuccessClassHeader, success)
+        val success =
+          classifier.responseClassifier
+            .lift(H2ReqRep(req, Return(rep)))
+            // the responseClassifier is non-total, it won't classify successes
+            .getOrElse(ResponseClass.Success)
+        rep.headers.set(SuccessClassHeader, successHeader(success))
         rep
       } else {
         // if the early classification attempt is not defined, attempt
         // late classification on the last frame in the response stream
         val stream = rep.stream.onFrame {
           case Return(frame: Trailers) =>
-            val success = streamSuccessClass(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-            frame.set(SuccessClassHeader, success.toString)
+            val success =
+              classifier
+                .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+            frame.set(SuccessClassHeader, successHeader(success))
           case _ =>
         }
         Response(rep.headers, stream)
