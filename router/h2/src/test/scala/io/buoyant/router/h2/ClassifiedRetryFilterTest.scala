@@ -9,7 +9,7 @@ import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Return, Throw}
+import com.twitter.util._
 import io.buoyant.test.FunSuite
 import scala.{Stream => SStream}
 
@@ -190,13 +190,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
 
     val stats = new InMemoryStatsReceiver
 
-    val svc = new ClassifiedRetryFilter(
-      stats,
-      classifier,
-      SStream.continually(0.millis),
-      RetryBudget.Infinite,
-      responseBufferSize = 4
-    ).andThen(Service.mk { req: Request =>
+    val svc = filter(stats).andThen(Service.mk { req: Request =>
       Future.value(Response(Headers("retry" -> "false", ":status" -> "200"), Stream(rspQ)))
     })
 
@@ -207,6 +201,45 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
     assert(frame.buf == Buf.Utf8("foo"))
     await(frame.release())
+
+    assert(stats.counters.get(Seq("retries", "total")) == None)
+    assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
+    assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+  }
+
+  test("classification timeout") {
+
+    val rspQ = new AsyncQueue[Frame]()
+
+    val stats = new InMemoryStatsReceiver
+    val timer = new MockTimer
+
+    val svc = new ClassifiedRetryFilter(
+      stats,
+      classifier,
+      SStream.continually(0.millis),
+      RetryBudget.Infinite,
+      classificationTimeout = 1.second
+    )(timer).andThen(Service.mk { req: Request =>
+      Future.value(Response(Status.Ok, Stream(rspQ)))
+    })
+
+    Time.withCurrentTimeFrozen { tc =>
+
+      val rspF = svc(Request(Headers.empty, Stream.empty()))
+
+      assert(!rspF.isDefined)
+
+      tc.advance(1.second)
+      timer.tick()
+
+      val rsp = await(rspF)
+      rspQ.offer(Frame.Data("foo", eos = true))
+      val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
+      assert(frame.buf == Buf.Utf8("foo"))
+      frame.release()
+    }
 
     assert(stats.counters.get(Seq("retries", "total")) == None)
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))

@@ -3,6 +3,7 @@ package io.buoyant.router.h2
 import com.twitter.finagle.buoyant.h2.{Request, Response, param => h2Param}
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{ServiceFactory, Stack, Stackable, param}
+import com.twitter.util.Duration
 import io.buoyant.router
 import io.buoyant.router.ClassifiedRetries.Backoffs
 
@@ -15,37 +16,45 @@ object ClassifiedRetries {
       BufferSize(ClassifiedRetryFilter.DefaultBufferSize, ClassifiedRetryFilter.DefaultBufferSize)
   }
 
+  case class ClassificationTimeout(timeout: Duration)
+  implicit object ClassificationTimeout extends Stack.Param[ClassificationTimeout] {
+    override def default = ClassificationTimeout(Duration.Top)
+  }
+
   /**
    * A stack module that installs a RetryFilter that uses the stack's
    * ResponseClassifier.
    */
   def module: Stackable[ServiceFactory[Request, Response]] = {
-    new Stack.Module6[Backoffs, h2Param.H2Classifier, Retries.Budget, BufferSize, param.HighResTimer, param.Stats, ServiceFactory[Request, Response]] {
+    new Stack.Module[ServiceFactory[Request, Response]] {
       val role = ClassifiedRetries.role
       val description = "Retries requests that are classified to be retryable"
+
+      override def parameters: Seq[Stack.Param[_]] = Seq(
+        implicitly[Stack.Param[Backoffs]],
+        implicitly[Stack.Param[h2Param.H2Classifier]],
+        implicitly[Stack.Param[Retries.Budget]],
+        implicitly[Stack.Param[ClassificationTimeout]],
+        implicitly[Stack.Param[BufferSize]],
+        implicitly[Stack.Param[param.HighResTimer]],
+        implicitly[Stack.Param[param.Stats]]
+      )
+
       def make(
-        _backoffs: Backoffs,
-        _classifier: h2Param.H2Classifier,
-        _budget: Retries.Budget,
-        _bufferSize: BufferSize,
-        _timer: param.HighResTimer,
-        _stats: param.Stats,
-        next: ServiceFactory[Request, Response]
-      ): ServiceFactory[Request, Response] = {
-        val Backoffs(backoff) = _backoffs
-        val h2Param.H2Classifier(classifier) = _classifier
-        val Retries.Budget(budget, _) = _budget
-        implicit val param.HighResTimer(timer) = _timer
-        val param.Stats(stats) = _stats
+        params: Stack.Params,
+        next: Stack[ServiceFactory[Request, Response]]
+      ): Stack[ServiceFactory[Request, Response]] = {
+
         val filter = new ClassifiedRetryFilter(
-          stats,
-          classifier,
-          backoff,
-          budget,
-          _bufferSize.requestBufferSize,
-          _bufferSize.responseBufferSize
-        )
-        filter andThen next
+          params[param.Stats].statsReceiver,
+          params[h2Param.H2Classifier].classifier,
+          params[Backoffs].backoff,
+          params[Retries.Budget].retryBudget,
+          params[ClassificationTimeout].timeout,
+          params[BufferSize].requestBufferSize,
+          params[BufferSize].responseBufferSize
+        )(params[param.HighResTimer].timer)
+        Stack.Leaf(role, filter.andThen(next.make(params)))
       }
     }
   }

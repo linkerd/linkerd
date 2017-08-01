@@ -25,6 +25,7 @@ class ClassifiedRetryFilter(
   classifier: H2Classifier,
   backoffs: SStream[Duration],
   budget: RetryBudget,
+  classificationTimeout: Duration = Duration.Top,
   requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
   responseBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize
 )(implicit timer: Timer) extends SimpleFilter[Request, Response] {
@@ -157,6 +158,8 @@ class ClassifiedRetryFilter(
         // Attempt to determine retryability based on the final frame.  Completes when the stream is
         // fully buffered.
         val fullyBuffered = retryable(req, rsp, s)
+          .raiseWithin(classificationTimeout)
+          .handle { case _: TimeoutException => false }
         // If the buffer is discarded before reading the final frame, we cannot retry.
         val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
 
