@@ -11,7 +11,7 @@ import com.twitter.finagle.buoyant.h2.service.H2Classifiers
 import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
-import io.buoyant.router.h2.{LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
+import io.buoyant.router.h2.{ClassifierFilter, LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -90,12 +90,12 @@ object H2 extends Router[Request, Response]
 
     private val serverResponseClassifier =
       // TODO: insert H2 classified retries here?
-      ClassifierFilter.successClassClassifier.orElse(
+      ClassifierFilter.SuccessClassClassifier.orElse(
         H2Classifiers.Default
       )
 
-      H2Classifiers.Default
-    val defaultParams = StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
+    val defaultParams: Stack.Params =
+      StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)

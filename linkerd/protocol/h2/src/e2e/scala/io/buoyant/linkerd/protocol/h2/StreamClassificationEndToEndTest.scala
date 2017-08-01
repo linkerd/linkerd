@@ -342,7 +342,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val testClassifier = mkTestClassifier(downstream) _
 
     testClassifier("io.l5d.h2.allSuccessful") { stats =>
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).contains(1))
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).contains(1), s"did get ${stats.counters}")
       assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).isEmpty)
       succeed
     }
