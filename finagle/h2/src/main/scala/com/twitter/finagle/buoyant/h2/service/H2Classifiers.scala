@@ -84,6 +84,7 @@ object H2Classifiers {
       case H2ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
       case H2ReqRep(_, Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return(rep)) if rep.stream.isEmpty => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(Requests.Idempotent(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
@@ -108,6 +109,7 @@ object H2Classifiers {
       case H2ReqRep(Requests.ReadOnly(), RetryableResult()) => ResponseClass.RetryableFailure
       case H2ReqRep(_, Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return(rep)) if rep.stream.isEmpty => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(Requests.ReadOnly(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
@@ -130,6 +132,7 @@ object H2Classifiers {
   case object NonRetryableServerFailures extends H2Classifier {
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
       case H2ReqRep(_, Throw(_) | Return((Responses.Failure()))) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return(rep)) if rep.stream.isEmpty => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(_,
@@ -144,6 +147,7 @@ object H2Classifiers {
   case object AllSuccessful extends H2Classifier {
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Return(rep)) if rep.stream.isEmpty => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(_, Throw(_)) => ResponseClass.NonRetryableFailure
