@@ -86,15 +86,15 @@ maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new str
 
 Key                     | Default Value | Description
 ----------------------- | ------------- | -----------
-classificationTimeoutMs | None          | The amount of time to wait for a response stream to complete before determining if it should be retried.
+classificationTimeoutMs | 100ms         | The amount of time to wait for a response stream to complete before determining if it should be retried.
 retryBufferSize         | see below     | A RetryBufferSize object describing the size of the buffers for request and response streams used for retries.
 
 #### RetryBufferSize
 
 Key           | Default Value   | Description
 ------------- | --------------- | -----------
-requestBytes  | `65535`         | If the request stream exceeds this value, the request cannot be retried.
-responseBytes | `65535`         | If the response stream exceeds this value, the request cannot be retried.
+requestBytes  | `65535`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
+responseBytes | `65535`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
 
 ## HTTP/2 Client Parameters
 

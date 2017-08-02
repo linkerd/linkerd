@@ -1,5 +1,6 @@
 package io.buoyant.router.h2
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2.{Request, Response, param => h2Param}
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.{ServiceFactory, Stack, Stackable, param}
@@ -18,7 +19,7 @@ object ClassifiedRetries {
 
   case class ClassificationTimeout(timeout: Duration)
   implicit object ClassificationTimeout extends Stack.Param[ClassificationTimeout] {
-    override def default = ClassificationTimeout(Duration.Top)
+    override def default = ClassificationTimeout(100.millis)
   }
 
   /**
