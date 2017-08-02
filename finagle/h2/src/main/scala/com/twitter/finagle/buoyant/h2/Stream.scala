@@ -68,7 +68,7 @@ object Stream {
     def close(): Unit
   }
 
-  private trait AsyncQueueReader extends Stream {
+  private[h2] trait AsyncQueueReader extends Stream {
     protected[this] val frameQ: AsyncQueue[Frame]
 
     override def isEmpty = false

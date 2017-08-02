@@ -206,10 +206,11 @@ class H2EndToEndTest extends FunSuite {
     val stream = Stream(q)
 
     rsps(0).setValue(Response(Status.Ok, stream))
-    val rsp = await(fRsp)
 
     q.offer(Frame.Data("bow", eos = false))
     q.offer(Frame.Data("wow", eos = true))
+
+    val rsp = await(fRsp)
 
     assert(await(readDataString(rsp.stream)) == "bowwow")
 

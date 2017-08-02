@@ -54,17 +54,19 @@ class H2InitializerTest extends FunSuite {
     assert(!rspf.isDefined)
 
     responseP.setDone()
+
+    // When the response body is written, it must be fully read from
+    // response before the service will be closed.
+    bodyP.setDone()
+
+    // ClassifiedRetryFilter will buffer the response and it will not be available until the buffer
+    // is full or the last response frame has been read.
     eventually { assert(rspf.isDefined) }
 
     // Once the response is returned, FactoryToService tries to close
     // the service factory. Ensure that the service is not closed
     // until the response body is completely sent.
     val rsp = await(rspf)
-    assert(!closedP.isDefined)
-
-    // When the response body is written, it must be fully read from
-    // response before the service will be closed.
-    bodyP.setDone()
     assert(!closedP.isDefined)
 
     val frame = await(rsp.stream.read())

@@ -11,7 +11,7 @@ import com.twitter.finagle.buoyant.h2.service.H2Classifiers
 import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
-import io.buoyant.router.h2.{LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
+import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -36,7 +36,7 @@ object H2 extends Router[Request, Response]
       stk.replace(
         ResponseClassifierCtx.Setter.role,
         H2ClassifierCtx.Setter.module[Request, Response]
-      )
+      ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =

@@ -21,7 +21,7 @@ addSbtPlugin("se.marcuslonnberg" % "sbt-docker"    % "1.4.1")
 addSbtPlugin("com.twitter" %% "scrooge-sbt-plugin" % "4.18.0")
 
 // microbenchmarking for tests.
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.6")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.27")
 
 // pgp signing for publishing to sonatype
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
