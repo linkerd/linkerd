@@ -41,6 +41,8 @@ trait Stream {
    */
   def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamOnFrame(this, onFrame)
 
+  def flatMap(f: Try[Frame] => Seq[Frame]): Stream = new StreamFlatMap(this, f)
+
 }
 
 /**

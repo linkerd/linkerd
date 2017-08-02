@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepF
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.{param => _, _}
 import com.twitter.logging.Logger
-import com.twitter.util.{Future, Return, Try}
+import com.twitter.util.{Future, Return, Throw, Try}
 
 object ClassifierFilter {
   val role = Stack.Role("Classifier")
@@ -67,13 +67,25 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
         .getOrElse {
           // if the early classification attempt is not defined, attempt
           // late classification on the last frame in the response stream
-          val stream = rep.stream.onFrame {
+          val stream = rep.stream.flatMap {
             case Return(frame: Trailers) =>
               val success =
                 classifier
                   .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
               frame.set(SuccessClassHeader, successHeader(success))
-            case _ =>
+              Seq(frame)
+            case Return(frame) =>
+              val success =
+                classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+              Seq(frame,
+                Frame.Trailers(SuccessClassHeader -> successHeader(success))
+              )
+            case Throw(e) =>
+              val success =
+                classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Throw(e))))
+              Seq(Frame.Trailers(SuccessClassHeader -> successHeader(success)))
           }
           Response(rep.headers, stream)
         }

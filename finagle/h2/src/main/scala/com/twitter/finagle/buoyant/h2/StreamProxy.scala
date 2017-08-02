@@ -26,12 +26,12 @@ class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit) extends Str
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
 
-class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame]) extends StreamProxy(underlying) {
+class StreamFlatMap(underlying: Stream, f: Try[Frame] => Seq[Frame]) extends StreamProxy(underlying) {
   private[this] val q = new mutable.Queue[Frame]()
 
   override def read(): Future[Frame] = {
     if (q.nonEmpty) Future.value(q.dequeue())
-    else underlying.read().map(f).map { fs =>
+    else underlying.read().transform(a => Future.value(f(a))).map { fs =>
       q.enqueue(fs:_*)
       q.dequeue()
     }
