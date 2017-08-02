@@ -48,7 +48,7 @@ class AdminMetricsExportTelemeter(
           response.withOutputStream(writeFlatJson(_, st, pretty))
       case None =>
         response.status = Status.NotFound
-        response.contentString = s""""No such subtree: $q""""
+        response.contentString = s"""{"error": "No such subtree: $q"}"""
     }
     Future.value(response)
   }
