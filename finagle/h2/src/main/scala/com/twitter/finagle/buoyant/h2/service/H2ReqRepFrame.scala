@@ -5,14 +5,8 @@ import com.twitter.finagle.buoyant.h2.service.H2ReqRepFrame.{FinalFrame, RepAndF
 import com.twitter.util.{Return, Throw, Try}
 
 case class H2ReqRep(request: Request, response: Try[Response])
-
 object H2ReqRep {
-  def unapply(rrf: H2ReqRepFrame): Option[H2ReqRep] =
-    rrf match {
-      case H2ReqRepFrame(req, Throw(e)) => Some(H2ReqRep(req, Throw(e)))
-      case H2ReqRepFrame(req, Return((rep, None))) => Some(H2ReqRep(req, Return(rep)))
-      case _ => None
-    }
+  @inline def apply(req: Request, rep: Response): H2ReqRep = H2ReqRep(req, Return(rep))
 }
 
 /**

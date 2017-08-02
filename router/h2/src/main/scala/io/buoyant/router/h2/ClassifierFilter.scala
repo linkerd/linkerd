@@ -57,28 +57,26 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
 
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     svc(req).map { rep: Response =>
-      if (rep.stream.isEmpty) {
-        // classify early - response class goes in headers
-        val success =
-          classifier.responseClassifier
-            .lift(H2ReqRep(req, Return(rep)))
-            // the responseClassifier is non-total, it won't classify successes
-            .getOrElse(ResponseClass.Success)
-        rep.headers.set(SuccessClassHeader, successHeader(success))
-        rep
-      } else {
-        // if the early classification attempt is not defined, attempt
-        // late classification on the last frame in the response stream
-        val stream = rep.stream.onFrame {
-          case Return(frame: Trailers) =>
-            val success =
-              classifier
-                .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-            frame.set(SuccessClassHeader, successHeader(success))
-          case _ =>
+      classifier.responseClassifier
+        .lift(H2ReqRep(req, rep))
+        .map { success =>
+          // classify early - response class goes in headers
+          rep.headers.set(SuccessClassHeader, successHeader(success))
+          rep
         }
-        Response(rep.headers, stream)
-      }
+        .getOrElse {
+          // if the early classification attempt is not defined, attempt
+          // late classification on the last frame in the response stream
+          val stream = rep.stream.onFrame {
+            case Return(frame: Trailers) =>
+              val success =
+                classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+              frame.set(SuccessClassHeader, successHeader(success))
+            case _ =>
+          }
+          Response(rep.headers, stream)
+        }
     }
   }
 }
