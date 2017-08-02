@@ -3,9 +3,9 @@ package io.buoyant.router.h2
 import com.twitter.finagle.param
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Request, Response}
-import com.twitter.finagle.buoyant.h2.param.H2StreamClassifier
+import com.twitter.finagle.buoyant.h2.param.H2Classifier
 import io.buoyant.router.{PerDstPathFilter, PerDstPathStatsFilter}
-import io.buoyant.router.context.h2.StreamClassifierCtx
+import io.buoyant.router.context.h2.H2ClassifierCtx
 
 /**
  * Like [[io.buoyant.router.PerDstPathStatsFilter]],
@@ -13,27 +13,29 @@ import io.buoyant.router.context.h2.StreamClassifierCtx
  */
 object PerDstPathStreamStatsFilter {
 
-  def module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module2[param.Stats, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
+  val module: Stackable[ServiceFactory[Request, Response]] =
+    new Stack.Module3[param.Stats, param.ExceptionStatsHandler, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
       val role: Stack.Role = PerDstPathStatsFilter.role
       val description =
         s"${PerDstPathStatsFilter.role}, using H2 stream classification"
 
       override def make(
         statsP: param.Stats,
+        exHandlerP: param.ExceptionStatsHandler,
         statsFilterP: StreamStatsFilter.Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
         statsP match {
           case param.Stats(stats) if !stats.isNull =>
             val StreamStatsFilter.Param(timeUnit) = statsFilterP
-            val H2StreamClassifier(classifier) =
-              StreamClassifierCtx.current.getOrElse(H2StreamClassifier.param.default)
+            val H2Classifier(classifier) =
+              H2ClassifierCtx.current.getOrElse(H2Classifier.param.default)
+            val param.ExceptionStatsHandler(exHandler) = exHandlerP
 
-            def mkScopedStatsFilter(path: Path): Filter[Request, Response, Request, Response] = {
+            def mkScopedStatsFilter(path: Path): SimpleFilter[Request, Response] = {
               val name = path.show.stripPrefix("/")
               val scopedStats = stats.scope("service", name)
-              new StreamStatsFilter(scopedStats, classifier, timeUnit)
+              new StreamStatsFilter(scopedStats, classifier, exHandler, timeUnit)
             }
 
             val filter = new PerDstPathFilter(mkScopedStatsFilter)

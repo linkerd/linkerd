@@ -6,10 +6,11 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
-import com.twitter.finagle.buoyant.h2._
+import com.twitter.conversions.time._
+import com.twitter.finagle.buoyant.h2.{param => h2Param, _}
 import com.twitter.finagle.buoyant.h2.param._
-import com.twitter.finagle.buoyant.h2.service.{H2StreamClassifier, H2StreamClassifiers}
+import com.twitter.finagle.buoyant.h2.service.H2Classifier
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
@@ -17,10 +18,9 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.linkerd.ResponseClassifierConfig
-import io.buoyant.linkerd.protocol.h2.H2StreamClassifierConfig
-import io.buoyant.linkerd.protocol.h2.H2LoggerConfig
-import io.buoyant.router.h2.DupRequest
+import io.buoyant.linkerd.protocol.h2.{H2ClassifierConfig, H2LoggerConfig}
+import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
+import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest}
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
@@ -181,8 +181,9 @@ class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) wit
 trait H2SvcConfig extends SvcConfig {
   /**
    * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
-   * so that we can set `JsonIgnore` on it (and rewire [[_h2ResponseClassifier]]
+   * so that we can set `JsonIgnore` on it (and rewire [[_h2Classifier]]
    * to the `"responseClassifier"` JSON property).
+   *
    * @param r a HTTP [[ResponseClassifierConfig]]. Not used.
    */
   @JsonIgnore
@@ -198,27 +199,33 @@ trait H2SvcConfig extends SvcConfig {
     )
 
   @JsonProperty("responseClassifier")
-  var _h2ResponseClassifier: Option[H2StreamClassifierConfig] = None
+  var _h2Classifier: Option[H2ClassifierConfig] = None
 
   @JsonIgnore
-  def h2BaseResponseClassifier = H2StreamClassifiers.Default
+  def h2Classifier: Option[H2Classifier] =
+    _h2Classifier.map(_.mk)
 
-  // TODO: gRPC (trailers-aware)
-  @JsonIgnore
-  def h2ResponseClassifier: Option[H2StreamClassifier] =
-    _h2ResponseClassifier
-      .map { classifier =>
-        // TODO: insert classified retries here?
-        H2StreamClassifiers.NonRetryableStream(
-          classifier.mk.orElse(h2BaseResponseClassifier)
-        )
-      }
+  @JsonDeserialize(contentAs = classOf[java.lang.Long])
+  var classificationTimeoutMs: Option[Long] = None
+
+  var retryBufferSize: Option[RetryBufferSize] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
     super.params(vars)
-      .maybeWith(h2ResponseClassifier.map(H2StreamClassifier(_)))
+      .maybeWith(h2Classifier.map(h2Param.H2Classifier(_)))
+      .maybeWith(classificationTimeoutMs.map { t => ClassificationTimeout(t.millis) })
+      .maybeWith(retryBufferSize.map(_.param))
+}
 
+case class RetryBufferSize(
+  @JsonDeserialize(contentAs = classOf[java.lang.Long]) requestBytes: Option[Long] = None,
+  @JsonDeserialize(contentAs = classOf[java.lang.Long]) responseBytes: Option[Long] = None
+) {
+  def param = BufferSize(
+    requestBytes.getOrElse(ClassifiedRetryFilter.DefaultBufferSize),
+    responseBytes.getOrElse(ClassifiedRetryFilter.DefaultBufferSize)
+  )
 }
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {

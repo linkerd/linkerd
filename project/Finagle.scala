@@ -1,3 +1,5 @@
+import pl.project13.scala.sbt.JmhPlugin
+import sbt.Keys.publishArtifact
 import sbt._
 
 /** Finagle protocol extensions. */
@@ -15,5 +17,11 @@ object Finagle extends Base {
     .withTests()
     .withE2e()
 
-  val all = aggregateDir("finagle", buoyantCore, h2)
+  val benchmark = projectDir("finagle/benchmark")
+    .dependsOn(h2, buoyantCore, testUtil)
+    .enablePlugins(JmhPlugin)
+    .settings(publishArtifact := false)
+    .withTwitterLib(Deps.twitterUtil("benchmark"))
+
+  val all = aggregateDir("finagle", buoyantCore, h2, benchmark)
 }
