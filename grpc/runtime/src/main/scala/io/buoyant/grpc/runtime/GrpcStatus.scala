@@ -75,7 +75,7 @@ object GrpcStatus {
     case code => Other(code, msg)
   }
   private[this] val StatusKey = "grpc-status"
-  private[this] val MessageKey = "grpc-status"
+  private[this] val MessageKey = "grpc-message"
 
   def unapply(s: GrpcStatus): Option[(Int, String)] = Some((s.code, s.message))
 
