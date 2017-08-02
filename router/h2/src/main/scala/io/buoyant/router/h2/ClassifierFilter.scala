@@ -67,25 +67,26 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
         .getOrElse {
           // if the early classification attempt is not defined, attempt
           // late classification on the last frame in the response stream
-          val stream = rep.stream.flatMap {
-            case Return(frame: Trailers) =>
-              val success =
-                classifier
-                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-              frame.set(SuccessClassHeader, successHeader(success))
-              Seq(frame)
-            case Return(frame) =>
-              val success =
-                classifier
-                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-              Seq(frame,
-                Frame.Trailers(SuccessClassHeader -> successHeader(success))
+          val stream = rep.stream.flatMap { end: Try[Frame] =>
+            val success =
+              successHeader( classifier
+                .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(end)))
               )
-            case Throw(e) =>
-              val success =
-                classifier
-                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Throw(e))))
-              Seq(Frame.Trailers(SuccessClassHeader -> successHeader(success)))
+            end match {
+              case Return(frame: Trailers) =>
+                // if the final frame is a Trailers frame, just add the
+                // success class header to it
+                frame.set(SuccessClassHeader, success)
+                Seq(frame)
+              case Return(frame) =>
+                // if the final frame is a Return, but not a Trailers,
+                // then we need to send the final frame followed by a new
+                // Trailers frame
+                Seq(frame, Trailers(SuccessClassHeader -> success))
+              case _ =>
+                // if the final frame was a Throw, we just need to send a new Trailers
+                Seq(Trailers(SuccessClassHeader -> success))
+            }
           }
           Response(rep.headers, stream)
         }
