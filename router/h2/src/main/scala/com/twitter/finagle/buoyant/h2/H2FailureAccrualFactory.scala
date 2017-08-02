@@ -18,7 +18,7 @@ object H2FailureAccrualFactory {
 
   def module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.ModuleParams[ServiceFactory[Request, Response]] {
-      val role: Role = FailureAccrualFactory.role
+      val role: Role = H2FailureAccrualFactory.role
       val description: String = "Backoff from hosts that we cannot successfully make requests to"
       override def parameters: Seq[Stack.Param[_]] = Seq(
         implicitly[Stack.Param[fParam.Stats]],
@@ -64,28 +64,6 @@ object H2FailureAccrualFactory {
         }
       }
     }
-
-  // The FailureAccrualFactory transitions between Alive, Dead, ProbeOpen,
-  // and ProbeClosed. The factory starts in the Alive state. After numFailures
-  // failures, the factory transitions to Dead. When it is revived,
-  // it transitions to ProbeOpen. After a request is received,
-  // it transitions to ProbeClosed and cannot accept any further requests until
-  // the initial request is satisfied. If the request is successful, it
-  // transitions back to Alive, otherwise Dead.
-  //
-  // The transitions can be visualized using the state diagram:
-  //
-  // ,<-----------.
-  // Alive        |
-  // |  ,---ProbeClosed
-  // ∨  ∨         ^
-  // Dead         |
-  //  `---> ProbeOpen
-  protected[finagle] sealed trait State
-  protected[finagle] object Alive extends State
-  protected[finagle] object Dead extends State
-  protected[finagle] object ProbeOpen extends State
-  protected[finagle] object ProbeClosed extends State
 }
 
 /**
