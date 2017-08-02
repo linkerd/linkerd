@@ -6,7 +6,7 @@ import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.util.LoadService
 import com.twitter.util.Return
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.protocol.h2.grpc.GrpcClassifiers.{AlwaysRetryable, NeverRetryable}
+import io.buoyant.linkerd.protocol.h2.grpc.GrpcClassifiers.{AlwaysRetryable, NeverRetryable, RetryableStatusCodes}
 import io.buoyant.grpc.runtime.GrpcStatus
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.h2.H2ClassifierInitializer
@@ -59,6 +59,29 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     }
   }
 
+  test("RetryableStatusCodes classifies specific codes as retryable") {
+    forAll("status", "retryable statuses") { (status: GrpcStatus, codes: Set[Int]) =>
+      val trailers = status.toTrailers
+      val reqrep = H2ReqRepFrame(
+        Request(Headers.empty, FStream.empty()),
+        Return((
+          Response(Headers.empty, FStream.empty()),
+          Some(Return(trailers))
+        ))
+      )
+      val classifier = new RetryableStatusCodes(codes)
+      assert(classifier.streamClassifier.isDefinedAt(reqrep))
+      if (status.code == 0) {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
+     } else if (codes.contains(status.code)) {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+      } else {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+      }
+    }
+  }
+
+
 
   for { init <- Seq(
           AlwaysRetryableInitializer,
@@ -88,11 +111,11 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     }
   }
 
-  test(s"loads io.l5d.h2.grpc.retryableStatusCodes") {
+  test("loads io.l5d.h2.grpc.retryableStatusCodes") {
     assert(LoadService[H2ClassifierInitializer]().exists(_.configId == "io.l5d.h2.grpc.retryableStatusCodes"))
   }
 
-  test(s"parse router with io.l5d.h2.grpc.retryableStatusCodes") {
+  test("parse router with io.l5d.h2.grpc.retryableStatusCodes") {
     val yaml =
       s"""|protocol: h2
           |service:
