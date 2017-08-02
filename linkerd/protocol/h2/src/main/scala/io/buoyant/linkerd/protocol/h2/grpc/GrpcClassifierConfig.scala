@@ -16,6 +16,10 @@ import io.buoyant.linkerd.protocol.h2._
   new Type(
     value = classOf[DefaultConfig],
     name = "io.l5d.h2.grpc.default"
+  ),
+  new Type(
+    value = classOf[RetryableStatusCodesConfig],
+    name = "io.l5d.h2.grpc.retryableStatusCodes"
   )
 ))
 abstract class GrpcClassifierConfig extends H2ClassifierConfig {
@@ -54,3 +58,15 @@ class DefaultInitializer extends H2ClassifierInitializer {
 }
 
 object DefaultInitializer extends DefaultInitializer
+
+// TODO: support parsing the status codes by name rather than by number?
+class RetryableStatusCodesConfig(val retryableStatusCodes: Set[Int]) extends GrpcClassifierConfig {
+  override def mk: GrpcClassifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes)
+}
+
+class RetryableStatusCodesInitializer extends H2ClassifierInitializer {
+  val configClass = classOf[RetryableStatusCodesConfig]
+  override val configId = "io.l5d.h2.grpc.retryableStatusCodes"
+}
+
+object RetryableStatusCodesInitializer extends RetryableStatusCodesInitializer
