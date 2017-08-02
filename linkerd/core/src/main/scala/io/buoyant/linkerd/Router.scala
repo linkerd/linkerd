@@ -152,18 +152,25 @@ trait RouterConfig {
   def disabled = protocol.experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
-  def routerParams = (Stack.Params.empty +
-    param.ResponseClassifier(defaultResponseClassifier) +
-    FailureAccrualConfig.default)
-    .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
-    .maybeWith(originator.map(Originator.Param(_)))
-    .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
-    .maybeWith(bindingCache.map(_.capacity))
-    .maybeWith(client.map(_.clientParams))
-    .maybeWith(service.map(_.pathParams))
-    .maybeWith(bindingCache.flatMap(_.idleTtl)) +
-    param.Label(label) +
-    DstBindingFactory.BindingTimeout(bindingTimeout)
+  def routerParams = {
+    //
+    //    val timeoutParam: TimeoutParam(act: Activity[Timeout]) = pathParams.map( ... extract timeout ... )
+    //
+    //    val rest = pathParams.sample()
+
+    (Stack.Params.empty +
+      param.ResponseClassifier(defaultResponseClassifier) +
+      FailureAccrualConfig.default)
+      .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
+      .maybeWith(originator.map(Originator.Param(_)))
+      .maybeWith(dstPrefix.map(pfx => RoutingFactory.DstPrefix(Path.read(pfx))))
+      .maybeWith(bindingCache.map(_.capacity))
+      .maybeWith(client.map(_.clientParams))
+      .maybeWith(service.map(_.pathParams))
+      .maybeWith(bindingCache.flatMap(_.idleTtl)) +
+      param.Label(label) +
+      DstBindingFactory.BindingTimeout(bindingTimeout)
+  }
 
   @JsonIgnore
   def router(params: Stack.Params): Router = {

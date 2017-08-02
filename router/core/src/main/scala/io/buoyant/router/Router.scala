@@ -8,8 +8,9 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
-import com.twitter.util.{Future, Time}
+import com.twitter.util._
 import io.buoyant.router.context._
+import scala.util.Random
 
 /**
  * A `Router` is a lot like a `com.twitter.finagle.Client`, except
@@ -211,8 +212,22 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
+
+          import com.twitter.conversions.time._
+          val timeoutVar = Var.async(10.millis) { up =>
+            FuturePool.unboundedPool {
+              while (true) { up.update(Random.nextInt(10).millis) }
+            }
+            Closable.nop
+          }
+          val timeoutAct = Activity(timeoutVar.map(Activity.Ok(_)))
+
+          val dynamicParams = timeoutAct.map { to =>
+            Stack.Params.empty + TotalTimeout.Param(to)
+          }
+
           stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
-            RouterLabel.Param(label))
+            RouterLabel.Param(label) + DynamicServiceFactory.Param(dynamicParams))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -355,6 +370,7 @@ object StackRouter {
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
+    stk.push(DynamicServiceFactory.module)
     stk.push(PathRegistry.module)
     stk.result
   }
