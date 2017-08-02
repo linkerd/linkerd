@@ -1,8 +1,9 @@
-package io.buoyant.grpc.runtime
+package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.Return
+import io.buoyant.grpc.runtime.GrpcStatus
 import io.buoyant.grpc.runtime.GrpcStatus.{Ok, Unavailable}
 
 

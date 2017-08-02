@@ -1,15 +1,16 @@
-package io.buoyant.grpc.runtime
+package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Stream => FStream}
 import com.twitter.finagle.buoyant.h2.service.H2ReqRepFrame
+import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Stream => FStream}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.Return
-import io.buoyant.grpc.runtime.GrpcClassifier.{AlwaysRetryable, NeverRetryable}
+import io.buoyant.linkerd.protocol.h2.GrpcClassifier.{AlwaysRetryable, NeverRetryable}
+import io.buoyant.grpc.runtime.GrpcStatus
 import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
-class ClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
+class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
   implicit val arbitraryStatus: Arbitrary[GrpcStatus] = Arbitrary(for {
     code <- Arbitrary.arbitrary[Int]
     msg <- Arbitrary.arbitrary[String]
