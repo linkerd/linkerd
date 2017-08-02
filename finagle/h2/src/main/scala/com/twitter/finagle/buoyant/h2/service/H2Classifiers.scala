@@ -110,9 +110,6 @@ object H2Classifiers {
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
-
-      case H2ReqRep(reqRep: H2ReqRep) if responseClassifier.isDefinedAt(reqRep) =>
-        responseClassifier(reqRep)
       case H2ReqRepFrame(Requests.ReadOnly(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
         ResponseClass.RetryableFailure
       case H2ReqRepFrame(Requests.ReadOnly(), Return((_, Some(Throw(e))))) if RetryableResult.retryableThrow(Throw(e)) =>
@@ -135,8 +132,6 @@ object H2Classifiers {
       case H2ReqRep(_, Throw(_) | Return((Responses.Failure()))) => ResponseClass.NonRetryableFailure
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
-      case H2ReqRep(reqRep: H2ReqRep) if responseClassifier.isDefinedAt(reqRep) =>
-        responseClassifier(reqRep)
       case H2ReqRepFrame(_,
         Throw(_)
         | Return((Responses.Failure(), _))
@@ -149,11 +144,8 @@ object H2Classifiers {
   case object AllSuccessful extends H2Classifier {
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
-      case H2ReqRep(_, Return(_)) => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
-      case H2ReqRep(reqRep: H2ReqRep) if responseClassifier.isDefinedAt(reqRep) =>
-        responseClassifier(reqRep)
       case H2ReqRepFrame(_, Throw(_)) => ResponseClass.NonRetryableFailure
       case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) => ResponseClass.NonRetryableFailure
       case _ => ResponseClass.Success
