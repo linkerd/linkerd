@@ -4,7 +4,7 @@ import com.twitter.finagle.buoyant.h2.service.H2ReqRepFrame
 import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Stream => FStream}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.Return
-import io.buoyant.linkerd.protocol.h2.GrpcClassifier.{AlwaysRetryable, NeverRetryable}
+import io.buoyant.linkerd.protocol.h2.grpc.GrpcClassifiers.{AlwaysRetryable, NeverRetryable}
 import io.buoyant.grpc.runtime.GrpcStatus
 import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite

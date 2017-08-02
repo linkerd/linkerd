@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.linkerd.protocol.h2.grpc
 
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
@@ -22,7 +22,7 @@ trait GrpcClassifier extends H2Classifier {
 /**
   * [[H2Classifier]]s for gRPC
   */
-object GrpcClassifier {
+object GrpcClassifiers {
 
   /**
     * [[H2Classifier]] that classifies all error status
