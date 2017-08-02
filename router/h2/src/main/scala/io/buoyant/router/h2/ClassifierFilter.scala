@@ -1,17 +1,18 @@
 package io.buoyant.router.h2
 
 import com.twitter.finagle.buoyant.h2.Frame.Trailers
-import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, param}
-import com.twitter.finagle.buoyant.h2.service.H2ReqRepFrame.FinalFrame
+import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
+import com.twitter.finagle.{param => _, _}
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Return, Try}
 
 object ClassifierFilter {
   val role = Stack.Role("Classifier")
 
   val SuccessClassHeader = "l5d-success-class"
+  val log = Logger.get("H2ClassifierFilter")
 
   def module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module1[param.H2Classifier, ServiceFactory[Request, Response]] {
@@ -27,9 +28,12 @@ object ClassifierFilter {
     }
 
   private[this] object ResponseSuccessClass {
-    @inline def unapply(headers: Headers): Option[ResponseClass] =
-      headers.get(SuccessClassHeader).map { value =>
-        val success = value.toDouble
+    @inline def unapply(message: Message): Option[ResponseClass] =
+      message.headers.get(SuccessClassHeader).map { value =>
+        val success = Try { value.toDouble } getOrElse {
+          log.warning(s"spurious `l5d-success-class` value $value, assumed failure")
+          0.0
+        }
         if (success > 0.0) ResponseClass.Successful(success)
         else ResponseClass.Failed(false)
       }
@@ -41,12 +45,7 @@ object ClassifierFilter {
     }
 
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
-      case H2ReqRep(_, Return(rsp)) if rsp.headers.contains(SuccessClassHeader) =>
-        rsp.headers.get(SuccessClassHeader).map { value =>
-          val success = value.toDouble
-          if (success > 0.0) ResponseClass.Successful(success)
-          else ResponseClass.Failed(false)
-        }.get
+      case H2ReqRep(_, Return(ResponseSuccessClass(c))) => c
     }
   }
 }
@@ -55,6 +54,7 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
   import ClassifierFilter.SuccessClassHeader
   private[this] val successHeader: ResponseClass => String =
     _.fractionalSuccess.toString
+
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     svc(req).map { rep: Response =>
       if (rep.stream.isEmpty) {
