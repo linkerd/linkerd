@@ -67,26 +67,30 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
         .getOrElse {
           // if the early classification attempt is not defined, attempt
           // late classification on the last frame in the response stream
-          val stream = rep.stream.flatMap { end: Try[Frame] =>
-            val success =
-              successHeader( classifier
-                .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(end)))
-              )
-            end match {
-              case Return(frame: Trailers) =>
-                // if the final frame is a Trailers frame, just add the
-                // success class header to it
-                frame.set(SuccessClassHeader, success)
-                Seq(frame)
-              case Return(frame) =>
-                // if the final frame is a Return, but not a Trailers,
-                // then we need to send the final frame followed by a new
-                // Trailers frame
-                Seq(frame, Trailers(SuccessClassHeader -> success))
-              case _ =>
-                // if the final frame was a Throw, we just need to send a new Trailers
-                Seq(Trailers(SuccessClassHeader -> success))
-            }
+          val stream = rep.stream.flatMap {
+            case Throw(e) =>
+              // if the stream Throws an error, we send a new Trailers
+              val success =
+                successHeader(classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Throw(e)))))
+              Seq(Trailers(SuccessClassHeader -> success))
+            case Return(frame: Trailers) =>
+              // if the final frame is a Trailers frame, just add the
+              // success class header to it
+              val success =
+                successHeader(classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame)))))
+              frame.set(SuccessClassHeader, success)
+              Seq(frame)
+            case Return(frame) if frame.isEnd =>
+              // if the final frame is a Return, but not a Trailers,
+              // then we need to send the final frame followed by a new
+              // Trailers frame
+              val success =
+                successHeader(classifier
+                  .streamClassifier(H2ReqRepFrame(req, Return(rep), Some(Return(frame)))))
+              Seq(frame, Trailers(SuccessClassHeader -> success))
+            case Return(frame) => Seq(frame)
           }
           Response(rep.headers, stream)
         }

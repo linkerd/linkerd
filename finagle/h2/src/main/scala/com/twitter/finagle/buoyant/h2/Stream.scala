@@ -35,7 +35,7 @@ trait Stream {
 
   /**
    * Wraps this [[Stream]] with a [[StreamOnFrame]] that calls the provided function on each frame after [[read()]]
- *
+   *
    * @param onFrame the function to call on each frame.
    * @return a [[StreamOnFrame]] wrapping this [[Stream]]
    */

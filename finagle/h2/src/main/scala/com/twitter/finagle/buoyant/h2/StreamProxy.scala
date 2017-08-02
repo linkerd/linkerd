@@ -5,11 +5,11 @@ import scala.collection.mutable
 abstract class StreamProxy(underlying: Stream) extends Stream {
   override def isEmpty: Boolean = underlying.isEmpty
   /**
-    * Satisfied when an end-of-stream frame has been read from this
-    * stream.
-    *
-    * If the stream is reset prematurely, onEnd fails with a [[Reset]].
-    */
+   * Satisfied when an end-of-stream frame has been read from this
+   * stream.
+   *
+   * If the stream is reset prematurely, onEnd fails with a [[Reset]].
+   */
   override def onEnd: Future[Unit] = underlying.onEnd
 }
 
@@ -32,7 +32,7 @@ class StreamFlatMap(underlying: Stream, f: Try[Frame] => Seq[Frame]) extends Str
   override def read(): Future[Frame] = {
     if (q.nonEmpty) Future.value(q.dequeue())
     else underlying.read().transform(a => Future.value(f(a))).map { fs =>
-      q.enqueue(fs:_*)
+      q.enqueue(fs: _*)
       q.dequeue()
     }
   }
