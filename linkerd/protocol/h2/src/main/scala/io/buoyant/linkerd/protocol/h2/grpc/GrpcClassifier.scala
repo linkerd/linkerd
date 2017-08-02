@@ -84,7 +84,7 @@ object GrpcClassifiers {
         ResponseClass.Success
       case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status))))))
         if retryableCodes.contains(status.code) =>
-          ResponseClass.NonRetryableFailure
+          ResponseClass.RetryableFailure
       case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(_)))))) =>
         ResponseClass.NonRetryableFailure
     }
