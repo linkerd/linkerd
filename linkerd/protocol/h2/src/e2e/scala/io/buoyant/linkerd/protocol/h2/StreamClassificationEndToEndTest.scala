@@ -5,7 +5,7 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.buoyant.h2.Frame.Trailers
-import com.twitter.finagle.buoyant.h2.{Frame, LinkerdHeaders, Method, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{Frame, LinkerdHeaders, Method, Request, Response, Status, Stream, StreamError}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Future, Return, Var}
@@ -428,26 +428,13 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     assert(trailersFound,", meaning we never received stream trailers!")
   }
 
-  ignore("classifier filter does not set l5d-success-class headers on failures") {
-    // since we classify HTTP error codes early, the only way to test
-    // for this behaviour is to mock a frame that will pass a `Throw` to
-    // the stream classifier. because the `Frame` trait is sealed, i can't
-    // just extend `Frame` with a class that always throws, so the only
-    // easy way to test this that I can think of is to use a mocking
-    // framework (i'd rather not use reflection...).
-    //
-    // therefore, for now, this test is marked as `ignore`.
+  test("classifier filter does not set l5d-success-class headers on failures") {
     val q = new AsyncQueue[Frame]()
     val downstream =
       Downstream("ds", Service.mk { req =>
         q.offer(Frame.Data("aaaaaaaa", eos =
           false))
-        q.offer(
-          // mock a frame that throws here
-          Frame.Data("bbbbb", eos = false))
-        q.offer(
-          Frame.Trailers()
-        )
+        q.fail(StreamError.Local(new Exception))
         val rsp = Response(Status.Ok, Stream(q))
 
 
