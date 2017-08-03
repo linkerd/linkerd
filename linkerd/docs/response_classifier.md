@@ -60,3 +60,48 @@ kind:  `io.l5d.http.allSuccessful`
 kind:  `io.l5d.h2.allSuccessful`
 
 All responses are considered to be successful, regardless of status code.
+
+# gRPC Response Classifiers
+
+For HTTP/2 routers that handle gRPC traffic, four additional response classifiers are available to categorize responses based on [gRPC status codes](https://github.com/grpc/grpc/blob/master/doc/statuscodes.md) in the stream's trailers frame. Status code 0 (`OK`) is always considered successful, while all other gRPC status codes are considered failures.
+
+<aside class="notice">
+Since H2 routing is experimental, all gRPC response classifiers are also marked as experimental and require `experimental: true` in the router configuration.
+</aside>
+
+## gRPC Default
+
+kind:  `io.l5d.h2.grpc.default`
+
+Status code 14 (`Unavailable`) is considered retryable, all other errors are non-retryable.
+
+## gRPC Always Retryable
+
+kind:  `io.l5d.h2.grpc.alwaysRetryable`
+
+All gRPC error codes are considered retryable.
+
+## gRPC Never Retryable
+
+kind:  `io.l5d.h2.grpc.neverRetryable`
+
+No gRPC error codes are considered retryable.
+
+## gRPC User-Defined Retryable Status Codes
+> Example config
+
+```yaml
+routers:
+- protocol: h2
+  experimental: true
+  service:
+    responseClassifier:
+      kind: io.l5d.h2.grpc.retryableStatusCodes
+      retryableStatusCodes:
+      - 2
+      - 5
+      - 14
+      - 100
+```
+
+This classifier accepts a user-defined list of error status codes to mark as retryable. Failures with status codes in the provided list will be classified as retryable, while all other failures will be non-retryable.
