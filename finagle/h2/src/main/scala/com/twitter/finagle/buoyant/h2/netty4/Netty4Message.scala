@@ -70,7 +70,11 @@ private[h2] object Netty4Message {
       case orig: Headers => orig.underlying
       case orig =>
         val headers = new DefaultHttp2Headers
-        for ((k, v) <- orig.toSeq) headers.add(k, v)
+        for ((k, v) <- orig.toSeq) {
+          if (k != null && v != null) {
+            headers.add(k, v)
+          }
+        }
         headers
     }
   }

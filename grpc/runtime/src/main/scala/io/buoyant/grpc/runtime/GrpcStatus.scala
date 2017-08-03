@@ -82,10 +82,13 @@ object GrpcStatus {
     }
   }
 
-  private def toTrailers(status: GrpcStatus): h2.Frame.Trailers =
-    h2.Frame.Trailers(
-      "grpc-status" -> status.code.toString,
-      "grpc-message" -> status.message
-    )
-
+  private def toTrailers(status: GrpcStatus): h2.Frame.Trailers = {
+    var pairs = Seq("grpc-status" -> status.code.toString)
+    for (msg <- Option(status.message)) {
+      if (msg.nonEmpty) {
+        pairs = pairs :+ ("grpc-message" -> msg)
+      }
+    }
+    h2.Frame.Trailers(pairs)
+  }
 }
