@@ -8,7 +8,7 @@ import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
-import com.twitter.util.{Future, Time}
+import com.twitter.util.{Activity, Future, Time}
 import io.buoyant.router.context._
 
 /**
@@ -211,8 +211,13 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
-          stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
-            RouterLabel.Param(label))
+          val dynamicParams = params[StackRouter.Client.PerPathParams].dynamicParamsFor(dst.path)
+          val additionalParams = pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
+            RouterLabel.Param(label)
+          dynamicParams match {
+            case Some(p) => stk.make(params ++ additionalParams + DynamicServiceFactory.Param(p))
+            case None => stk.make(params ++ additionalParams)
+          }
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -286,7 +291,7 @@ object StackRouter {
 
     case class PathParams(prefix: PathMatcher, mk: Map[String, String] => Stack.Params)
 
-    case class PerPathParams(params: Seq[PathParams]) {
+    case class PerPathParams(params: Seq[PathParams], dynamicParams: Option[Activity[Seq[PathParams]]]) {
       def paramsFor(name: Path): Stack.Params = {
         params.foldLeft(Stack.Params.empty) {
           case (params, PathParams(prefix, mk)) =>
@@ -296,9 +301,23 @@ object StackRouter {
             }
         }
       }
+
+      def dynamicParamsFor(name: Path): Option[Activity[Stack.Params]] = {
+        dynamicParams.map {
+          _.map {
+            _.foldLeft(Stack.Params.empty) {
+              case (params, PathParams(prefix, mk)) =>
+                prefix.extract(name) match {
+                  case Some(vars) => params ++ mk(vars)
+                  case None => params
+                }
+            }
+          }
+        }
+      }
     }
     implicit object PerPathParams extends Stack.Param[PerPathParams] {
-      val default: PerPathParams = PerPathParams(Seq.empty)
+      val default: PerPathParams = PerPathParams(Seq.empty, None)
     }
 
     /**
@@ -355,6 +374,7 @@ object StackRouter {
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
+    stk.push(DynamicServiceFactory.module)
     stk.push(PathRegistry.module)
     stk.result
   }

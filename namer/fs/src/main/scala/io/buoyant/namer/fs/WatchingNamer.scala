@@ -5,6 +5,7 @@ import com.twitter.finagle.addr.WeightedAddress
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.config.Watcher
 import io.buoyant.namer.EnumeratingNamer
 import java.nio.file.{Path => NioPath}
 
