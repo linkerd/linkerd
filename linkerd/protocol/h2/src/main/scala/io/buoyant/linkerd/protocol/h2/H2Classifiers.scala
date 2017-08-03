@@ -1,6 +1,9 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle.buoyant.h2.service.{H2Classifiers, H2Classifier}
+import com.twitter.finagle.buoyant.h2.Frame
+import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2Classifiers, H2ReqRep, H2ReqRepFrame}
+import com.twitter.finagle.service.ResponseClass
+import com.twitter.util.Return
 import io.buoyant.router.ClassifiedRetries
 
 class RetryableIdempotent5XXConfig extends H2ClassifierConfig {
