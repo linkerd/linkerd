@@ -9,6 +9,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 private[h2] object Netty4Message {
+  private[this] val log = com.twitter.logging.Logger.get("h2")
 
   trait Headers extends h2.Headers {
     def underlying: Http2Headers
@@ -70,7 +71,13 @@ private[h2] object Netty4Message {
       case orig: Headers => orig.underlying
       case orig =>
         val headers = new DefaultHttp2Headers
-        for ((k, v) <- orig.toSeq) headers.add(k, v)
+        for ((k, v) <- orig.toSeq) {
+          if (k != null && v != null) {
+            headers.add(k, v)
+          } else {
+            log.warning("ignoring invalid header: %s %s", k, v)
+          }
+        }
         headers
     }
   }

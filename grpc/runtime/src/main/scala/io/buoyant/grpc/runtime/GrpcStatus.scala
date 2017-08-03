@@ -117,10 +117,14 @@ object GrpcStatus {
     }
   }
 
-  private def toTrailers(status: GrpcStatus): h2.Frame.Trailers =
-    h2.Frame.Trailers(
-      StatusKey -> status.code.toString,
-      MessageKey -> status.message
-    )
-
+  private def toTrailers(s: GrpcStatus): h2.Frame.Trailers = {
+    if (s.message == null || s.message.isEmpty) {
+      h2.Frame.Trailers(StatusKey -> s.code.toString)
+    } else {
+      h2.Frame.Trailers(
+        StatusKey -> s.code.toString,
+        MessageKey -> s.message
+      )
+    }
+  }
 }

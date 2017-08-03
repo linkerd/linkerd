@@ -79,7 +79,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 }
 
 private[netty4] object Netty4H2Writer {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
 
   private val wrapWriteException: PartialFunction[Throwable, Future[Nothing]] = {
     case exc: Throwable => Future.exception(WriteException(exc))

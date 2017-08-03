@@ -8,7 +8,7 @@ import io.netty.handler.codec.http2._
 private[h2] class DebugHandler(prefix: String)
   extends ChannelDuplexHandler {
 
-  private[this] val log = Logger.get(getClass.getName)
+  private[this] val log = Logger.get("h2")
 
   override def handlerAdded(ctx: ChannelHandlerContext): Unit = {
     log.debug(s"$prefix.handlerAdded ${ctx.channel}")

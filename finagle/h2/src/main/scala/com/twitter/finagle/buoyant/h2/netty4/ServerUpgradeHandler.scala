@@ -9,7 +9,7 @@ import io.netty.handler.codec.http2._
 import io.netty.util.AsciiString
 
 object ServerUpgradeHandler {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
 
   private val PrefaceBuf = Http2CodecUtil.connectionPrefaceBuf
   private val PrefaceLen = PrefaceBuf.readableBytes
