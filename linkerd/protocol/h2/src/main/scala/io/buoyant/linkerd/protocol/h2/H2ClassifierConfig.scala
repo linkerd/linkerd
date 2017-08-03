@@ -23,6 +23,22 @@ abstract class H2ClassifierInitializer extends ConfigInitializer
   new Type(
     value = classOf[AllSuccessfulConfig],
     name = "io.l5d.h2.allSuccessful"
+  ),
+  new Type(
+    value = classOf[grpc.NeverRetryableConfig],
+    name = "io.l5d.h2.grpc.neverRetryable"
+  ),
+  new Type(
+    value = classOf[grpc.AlwaysRetryableConfig],
+    name = "io.l5d.h2.grpc.alwaysRetryable"
+  ),
+  new Type(
+    value = classOf[grpc.DefaultConfig],
+    name = "io.l5d.h2.grpc.default"
+  ),
+  new Type(
+    value = classOf[grpc.RetryableStatusCodesConfig],
+    name = "io.l5d.h2.grpc.retryableStatusCodes"
   )
 ))
 abstract class H2ClassifierConfig extends PolymorphicConfig {
