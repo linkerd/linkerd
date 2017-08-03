@@ -73,7 +73,7 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
       assert(classifier.streamClassifier.isDefinedAt(reqrep))
       if (status.code == 0) {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
-     } else if (codes.contains(status.code)) {
+      } else if (codes.contains(status.code)) {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
       } else {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
@@ -81,13 +81,14 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     }
   }
 
-
-
-  for { init <- Seq(
-          AlwaysRetryableInitializer,
-          NeverRetryableInitializer,
-          DefaultInitializer)
-        kind = init.configId }  {
+  for {
+    init <- Seq(
+      AlwaysRetryableInitializer,
+      NeverRetryableInitializer,
+      DefaultInitializer
+    )
+    kind = init.configId
+  } {
 
     test(s"loads $kind") {
       assert(LoadService[H2ClassifierInitializer]().exists(_.configId == kind))

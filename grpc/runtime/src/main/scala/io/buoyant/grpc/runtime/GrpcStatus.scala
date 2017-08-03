@@ -82,10 +82,11 @@ object GrpcStatus {
   def unapply(frame: h2.Frame): Option[GrpcStatus] =
     frame match {
       case trailers: h2.Frame.Trailers =>
-        for { headerValue <- trailers.get(StatusKey)
-              code <- Try(headerValue.toInt).toOption
-              status = GrpcStatus(code, trailers.get(MessageKey).getOrElse("")) }
-          yield status
+        for {
+          headerValue <- trailers.get(StatusKey)
+          code <- Try(headerValue.toInt).toOption
+          status = GrpcStatus(code, trailers.get(MessageKey).getOrElse(""))
+        } yield status
       case _ => None
     }
 
