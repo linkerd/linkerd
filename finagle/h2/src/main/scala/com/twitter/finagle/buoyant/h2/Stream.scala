@@ -35,7 +35,7 @@ trait Stream {
 
   /**
    * Wraps this [[Stream]] with a [[StreamOnFrame]] that calls the
-   * provided function on each frame after [[read()]]
+   * provided function on each frame after [[Stream.read read()]]
    *
    * @param onFrame the function to call on each frame.
    * @return a [[StreamOnFrame]] [[StreamProxy]] wrapping this [[Stream]]
@@ -43,14 +43,13 @@ trait Stream {
   def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamOnFrame(this, onFrame)
 
   /**
-   * Wraps this [[Stream]]  with a function [[StreamFlatMap.f f]] that
-   * is called on each frame in the stream. The sequence of [[Frame]]s yielded
-   * by [[StreamFlatMap.f f]] will be inserted into the stream in order at the
-   * current position.
+   * Wraps this [[Stream]]  with a function `f` that is called on each frame in
+   * the stream. The sequence of [[Frame]]s yielded by `f` will be inserted into
+   * the stream in order at the current position.
    *
-   * @note that in order to avoid violating flow control, [[StreamFlatMap.f f]]
-   *       must either take ownership over the frame and release it, or return
-   *       it in the returned sequence of frames.
+   * @note that in order to avoid violating flow control, `f` must either take
+   *       ownership over the frame and release it, or return it in the returned
+   *       sequence of frames.
    * @see [[StreamFlatMap]]
    * @param f the function called on each [[Stream]]
    * @return a [[StreamFlatMap]] [[StreamProxy]] wrapping this [[Stream]]

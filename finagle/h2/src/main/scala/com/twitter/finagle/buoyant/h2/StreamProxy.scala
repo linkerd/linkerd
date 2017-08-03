@@ -3,6 +3,9 @@ import com.twitter.util.{Future, Try}
 import scala.collection.mutable
 
 abstract class StreamProxy(underlying: Stream) extends Stream {
+  /**
+   * @return true if the underlying stream is empty
+   */
   override def isEmpty: Boolean = underlying.isEmpty
   /**
    * Satisfied when an end-of-stream frame has been read from this
@@ -22,19 +25,17 @@ abstract class StreamProxy(underlying: Stream) extends Stream {
  */
 // TODO: consider renaming `onFrame` to `foreach`?
 class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
-extends StreamProxy(underlying) {
   override def read(): Future[Frame] = underlying.read().respond(onFrame)
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
 
 /**
- * Wraps an underlying [[Stream]] with a function [[StreamFlatMap.f f]] that
- * is called on each frame in the stream. The sequence of [[Frame]]s yielded
- * by [[StreamFlatMap.f f]] will be inserted into the stream in order at the
- * current position.
+ * Wraps an underlying [[Stream]] with a function `f` that is called on each
+ * frame in the stream. The sequence of [[Frame]]s yielded by `f` will be
+ * inserted into the stream in order at the current position.
  *
  * @note This is essentially the same as the
- *       [[scala.collection.TraversableLike.flatMap flatMap]] function on
+ *       [[scala.collection.TraversableLike.flatMap() flatMap]] function on
  *       Scala collections, but with the limitation that the `flatMap`ped
  *       function may not change the type of the mapped element (since H2
  *       [[Stream]]s always consist of [[Frame]]s). To be properly monadic,
@@ -44,7 +45,7 @@ extends StreamProxy(underlying) {
  *       [[com.twitter.concurrent.AsyncQueue AsyncQueue]] and offer frames
  *       to it one by one...), so we cheat a little by having the
  *       `flatMap`pped function yield a [[Seq]] of frames instead.
- * @note that in order to avoid violating flow control, [[f]] must either
+ * @note that in order to avoid violating flow control, `f` must either
  *       take ownership over the frame and release it, or return it in
  *       the returned sequence of frames.
  * @param underlying the [[Stream]] wrapped by this proxy.
@@ -52,25 +53,23 @@ extends StreamProxy(underlying) {
  *
  */
 class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame])
-extends StreamProxy(underlying) {
+  extends StreamProxy(underlying) {
   private[this] var q = new mutable.Queue[Frame]()
 
   /**
-   * @inheritdoc
-   * @note that this stream is only empty if both the [[underlying]]
-   *       stream is empty, and the [[StreamFlatMap]] proxy's internal
+   * @note that this stream is only empty if both the underlying stream
+   *       is empty, and the [[StreamFlatMap]] proxy's internal
    *       queue of [[Frame]]s is empty.
    */
   override def isEmpty: Boolean = underlying.isEmpty && q.isEmpty
 
   /**
-   * @inheritdoc
    * @note that if the [[StreamFlatMap]] proxy's internal queue of [[Frame]]s
    *       is non-empty, a frame will be dequeued from it, rather than read
-   *       from the [[underlying]] stream. if the queue is empty, [[f]] will
-   *       be called on a frame read from the [[underlying]] stream before
-   *       returning it, and  additional frames may be enqueued to be read
-   *       before that frame.
+   *       from the underlying stream. if the queue is empty, `f` will be
+   *       called on a frame read from the underlying stream before returning
+   *       it, and  additional frames may be enqueued to be read before that
+   *       frame.
    */
   override def read(): Future[Frame] = synchronized {
     if (q.nonEmpty) Future.value(q.dequeue())
