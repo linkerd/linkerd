@@ -25,6 +25,7 @@ abstract class StreamProxy(underlying: Stream) extends Stream {
  */
 // TODO: consider renaming `onFrame` to `foreach`?
 class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
+  extends StreamProxy(underlying) {
   override def read(): Future[Frame] = underlying.read().respond(onFrame)
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
