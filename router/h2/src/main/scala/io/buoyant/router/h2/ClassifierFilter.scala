@@ -27,13 +27,14 @@ object ClassifierFilter {
       }
     }
 
+
+
   private[this] object ResponseSuccessClass {
-    @inline def unapply(message: Message): Option[ResponseClass] =
-      HeadersSuccessClass.unapply(message.headers)
+
   }
 
-  private[this] object HeadersSuccessClass {
-    @inline def unapply(headers: Headers): Option[ResponseClass] =
+  private[this] object GetSuccessClass {
+    @inline def getSuccessClass(headers: Headers): Option[ResponseClass] =
       headers.get(SuccessClassHeader).map { value =>
         val success = Try { value.toDouble }.getOrElse {
           log.warning(s"invalid `l5d-success-class` value $value, assumed failure")
@@ -43,15 +44,24 @@ object ClassifierFilter {
         else ResponseClass.Failed(false)
       }
 
+    @inline def unapply(frame: Frame): Option[ResponseClass] =
+      frame match {
+        case trailers: Trailers => getSuccessClass(trailers)
+        case _ => None
+      }
+
+    @inline def unapply(message: Message): Option[ResponseClass] =
+      getSuccessClass(message.headers)
   }
 
   object SuccessClassClassifier extends H2Classifier {
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
-      case H2ReqRepFrame(_, Return((_, Some(Return(HeadersSuccessClass(c)))))) => c
+      case H2ReqRepFrame(_, Return((_, Some(Return(GetSuccessClass(c)))))) => c
+      case H2ReqRepFrame(_, Return((GetSuccessClass(c), Some(Return(_))))) => c
     }
 
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
-      case H2ReqRep(_, Return(ResponseSuccessClass(c))) => c
+      case H2ReqRep(_, Return(GetSuccessClass(c))) => c
     }
   }
 }
@@ -90,12 +100,19 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 frame.set(SuccessClassHeader, success)
                 frame.set("te", "trailers")
                 Seq(frame)
-              case frame if frame.isEnd =>
+              case frame: Frame.Data if frame.isEnd =>
                 // if the final frame is a Return, but not a Trailers,
                 // then we need to send the final frame followed by a new
                 // Trailers frame
                 val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-                Seq(frame, Trailers(SuccessClassHeader -> success))
+                // since this frame has the end of stream flag, we need to
+                // replace it with a new data frame without that flag.
+                // otherwise, the trailers we add to the stream will never
+                // be reached.
+                val frame2 = Frame.Data(frame.buf, eos = false)
+                // release the old data frame, since it will be replaced.
+                frame.release()
+                Seq(frame2, Trailers(SuccessClassHeader -> success))
               case frame => Seq(frame)
             }
             Response(rep.headers, stream)
