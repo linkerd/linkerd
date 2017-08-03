@@ -90,9 +90,7 @@ object H2 extends Router[Request, Response]
 
     private val serverResponseClassifier =
       // TODO: insert H2 classified retries here?
-      ClassifierFilter.SuccessClassClassifier.orElse(
-        H2Classifiers.Default
-      )
+      ClassifierFilter.SuccessClassClassifier
 
     val defaultParams: Stack.Params =
       StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)

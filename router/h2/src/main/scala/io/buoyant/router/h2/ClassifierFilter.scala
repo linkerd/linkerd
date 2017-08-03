@@ -29,7 +29,12 @@ object ClassifierFilter {
 
   private[this] object ResponseSuccessClass {
     @inline def unapply(message: Message): Option[ResponseClass] =
-      message.headers.get(SuccessClassHeader).map { value =>
+      HeadersSuccessClass.unapply(message.headers)
+  }
+
+  private[this] object HeadersSuccessClass {
+    @inline def unapply(headers: Headers): Option[ResponseClass] =
+      headers.get(SuccessClassHeader).map { value =>
         val success = Try { value.toDouble }.getOrElse {
           log.warning(s"invalid `l5d-success-class` value $value, assumed failure")
           0.0
@@ -37,11 +42,12 @@ object ClassifierFilter {
         if (success > 0.0) ResponseClass.Successful(success)
         else ResponseClass.Failed(false)
       }
+
   }
 
   object SuccessClassClassifier extends H2Classifier {
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
-      case H2ReqRepFrame(_, Return((_, Some(Return(ResponseSuccessClass(c)))))) => c
+      case H2ReqRepFrame(_, Return((_, Some(Return(HeadersSuccessClass(c)))))) => c
     }
 
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
