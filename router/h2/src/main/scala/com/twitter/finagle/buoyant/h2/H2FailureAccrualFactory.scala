@@ -168,70 +168,76 @@ class H2FailureAccrualFactory(
     }
   }
 
-  private[this] def classifyResponse(classifier: H2Classifier, h2ReqRep: H2ReqRep): Try[Response] =
-    classifier.responseClassifier.lift(h2ReqRep) match {
-      case Some(ResponseClass.Successful(_)) =>
-        didSucceed()
-        h2ReqRep.response
-      case Some(ResponseClass.Failed(_)) =>
-        didFail()
-        h2ReqRep.response
-      case None =>
-        h2ReqRep.response match {
-          case Return(rep) =>
-            if (rep.stream.isEmpty) {
-              classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, None))))
-              Return(rep)
-            } else {
-              val stream = rep.stream.onFrame {
-                case Return(f) if f.isEnd =>
-                  classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, Some(Return(f))))))
-                case Throw(e) =>
-                  classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, Some(Throw(e))))))
-                case _ => ()
-              }
-              Return(Response(rep.headers, stream))
-            }
-          case Throw(e) =>
-            classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Throw(e)))
-            Throw(e)
-        }
-    }
-
-  private[this] def classifyStream(classifier: H2Classifier, h2ReqRepFrame: H2ReqRepFrame): Unit =
-    classifier.streamClassifier(h2ReqRepFrame) match {
-      case ResponseClass.Successful(_) => didSucceed()
-      case ResponseClass.Failed(_) => didFail()
-    }
-
-  def apply(conn: ClientConnection) = {
+  def apply(conn: ClientConnection): Future[Service[Request, Response]] = {
     underlying(conn).map { service =>
       // N.B. the reason we can't simply filter the service factory is so that
       // we can override the session status to reflect the broader endpoint status.
-      new Service[Request, Response] {
-        def apply(request: Request): Future[Response] = {
-          val param.H2Classifier(classifier) =
-            H2ClassifierCtx.current.getOrElse(param.H2Classifier.param.default)
-          // If service has just been revived, accept no further requests.
-          // Note: Another request may have come in before state transitions to
-          // ProbeClosed, so > 1 requests may be processing while in the
-          // ProbeClosed state. The result of first to complete will determine
-          // whether the factory transitions to Alive (successful) or Dead
-          // (unsuccessful).
-          stopProbing()
-
-          service(request).transform { rep =>
-            Future.const(classifyResponse(classifier, H2ReqRep(request, rep)))
-          }
-        }
-
-        override def close(deadline: Time): Future[Unit] = service.close(deadline)
-        override def status: FStatus = FStatus.worst(
-          service.status,
-          H2FailureAccrualFactory.this.status
-        )
-      }
+      new FailureAccrualService(service)
     }.onFailure(onServiceAcquisitionFailure)
+  }
+
+  private[this] class FailureAccrualService(
+    underlying: Service[Request, Response]
+  ) extends Service[Request, Response] {
+    def apply(request: Request): Future[Response] = {
+      // We want to use the H2Classifier configured on the path stack so we load the classifier
+      // from the request local context.
+      val param.H2Classifier(classifier) =
+        H2ClassifierCtx.current.getOrElse(param.H2Classifier.param.default)
+      // If service has just been revived, accept no further requests.
+      // Note: Another request may have come in before state transitions to
+      // ProbeClosed, so > 1 requests may be processing while in the
+      // ProbeClosed state. The result of first to complete will determine
+      // whether the factory transitions to Alive (successful) or Dead
+      // (unsuccessful).
+      stopProbing()
+
+      underlying(request).transform { rep =>
+        Future.const(classifyResponse(classifier, H2ReqRep(request, rep)))
+      }
+    }
+
+    override def close(deadline: Time): Future[Unit] = underlying.close(deadline)
+    override def status: FStatus = FStatus.worst(
+      underlying.status,
+      H2FailureAccrualFactory.this.status
+    )
+
+    private[this] def classifyResponse(classifier: H2Classifier, h2ReqRep: H2ReqRep): Try[Response] =
+      classifier.responseClassifier.lift(h2ReqRep) match {
+        case Some(ResponseClass.Successful(_)) =>
+          didSucceed()
+          h2ReqRep.response
+        case Some(ResponseClass.Failed(_)) =>
+          didFail()
+          h2ReqRep.response
+        case None =>
+          h2ReqRep.response match {
+            case Return(rep) =>
+              if (rep.stream.isEmpty) {
+                classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, None))))
+                Return(rep)
+              } else {
+                val stream = rep.stream.onFrame {
+                  case Return(f) if f.isEnd =>
+                    classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, Some(Return(f))))))
+                  case Throw(e) =>
+                    classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Return((rep, Some(Throw(e))))))
+                  case _ => ()
+                }
+                Return(Response(rep.headers, stream))
+              }
+            case Throw(e) =>
+              classifyStream(classifier, H2ReqRepFrame(h2ReqRep.request, Throw(e)))
+              Throw(e)
+          }
+      }
+
+    private[this] def classifyStream(classifier: H2Classifier, h2ReqRepFrame: H2ReqRepFrame): Unit =
+      classifier.streamClassifier(h2ReqRepFrame) match {
+        case ResponseClass.Successful(_) => didSucceed()
+        case ResponseClass.Failed(_) => didFail()
+      }
   }
 
   override def status: FStatus = state match {
