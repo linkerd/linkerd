@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.{JsonFactory, JsonGenerator}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.twitter.app.GlobalFlag
 import com.twitter.conversions.time._
-import com.twitter.finagle.http.{MediaType, Request, Response}
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.Service
@@ -33,17 +33,23 @@ class AdminMetricsExportTelemeter(
     val tree = request.getBooleanParam("tree", false)
     val q = request.getParam("q")
     val subtree = if (q != null) {
-      metrics.resolve(q.split("/").toSeq)
+      metrics.tryResolve(q.split("/").toSeq)
     } else {
-      metrics
+      Some(metrics)
     }
     val response = Response()
     response.version = request.version
     response.mediaType = MediaType.Json
-    if (tree)
-      response.withOutputStream(writeJsonTree(_, subtree))
-    else
-      response.withOutputStream(writeFlatJson(_, subtree, pretty))
+    subtree match {
+      case Some(st) =>
+        if (tree)
+          response.withOutputStream(writeJsonTree(_, st))
+        else
+          response.withOutputStream(writeFlatJson(_, st, pretty))
+      case None =>
+        response.status = Status.NotFound
+        response.contentString = s"""{"error": "No such subtree: $q"}"""
+    }
     Future.value(response)
   }
 
