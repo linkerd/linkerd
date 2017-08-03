@@ -1,3 +1,11 @@
+## 1.1.2 2017-07-12
+
+* Marathon Namer TLS support, for DC/OS strict mode.
+* We fixed an issue where requests that time out were not being retried.
+* HTTP 1.1 protocol fixes for chunked transfer encoding and `Content-Length`.
+* Improved memory allocation in InfluxDb and Prometheus telemeters.
+* Documentation fixes.
+
 ## 1.1.1 2017-07-10
 
 This is a big release with lots of fun stuff inside.

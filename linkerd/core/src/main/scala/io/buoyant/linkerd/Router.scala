@@ -6,6 +6,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service._
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import com.twitter.util.Closable
 import io.buoyant.namer.{DefaultInterpreterConfig, InterpreterConfig}
 import io.buoyant.router.{ClassifiedRetries, Originator, RoutingFactory}
@@ -85,7 +86,6 @@ object Router {
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "protocol")
 trait RouterConfig {
-
   // RouterConfig subtypes are required to implement these so that they may
   // refine to more specific config types.
   def servers: Seq[ServerConfig]

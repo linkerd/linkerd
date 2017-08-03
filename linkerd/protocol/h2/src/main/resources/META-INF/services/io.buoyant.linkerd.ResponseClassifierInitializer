@@ -1,4 +1,0 @@
-io.buoyant.linkerd.protocol.h2.NonRetryable5XXInitializer
-io.buoyant.linkerd.protocol.h2.RetryableIdempotent5XXInitializer
-io.buoyant.linkerd.protocol.h2.RetryableRead5XXInitializer
-io.buoyant.linkerd.protocol.h2.AllSuccessfulInitializer

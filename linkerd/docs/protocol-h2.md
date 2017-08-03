@@ -75,12 +75,26 @@ prior-knowledge requests.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+windowUpdateRatio | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
 headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
 initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
 maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
+## HTTP/2 Service Parameters
+
+Key                     | Default Value | Description
+----------------------- | ------------- | -----------
+classificationTimeoutMs | 100ms         | The amount of time to wait for a response stream to complete before determining if it should be retried.
+retryBufferSize         | see below     | A RetryBufferSize object describing the size of the buffers for request and response streams used for retries.
+
+#### RetryBufferSize
+
+Key           | Default Value   | Description
+------------- | --------------- | -----------
+requestBytes  | `65535`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
+responseBytes | `65535`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
 
 ## HTTP/2 Client Parameters
 
@@ -158,7 +172,7 @@ pseudo-header is used.
 #### Namer Configuration:
 
 > With this configuration, a request to
-`:5000/true/love/waits.php?thing=1` will be mapped to `/h2/true/love`
+`:5000/true/love/waits.php?thing=1` will be mapped to `/svc/true/love`
 and will be routed based on this name by the corresponding Dtab.
 
 ```yaml
@@ -267,8 +281,7 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
-<a href="istio-identifier"></a>
-### Istio Identifier
+### HTTP/2 Istio Identifier
 
 kind: `io.l5d.k8s.istio`
 
@@ -276,7 +289,7 @@ This identifier compares H2 requests to
 [istio route-rules](https://istio.io/docs/concepts/traffic-management/rules-configuration.html) and assigns a name based
 on those rules.
 
- #### Identifier Configuration:
+#### Identifier Configuration:
 
 ```yaml
 routers:
@@ -321,6 +334,39 @@ routeRule | N/A | The name of the route-rule that matches the incoming request.
 host | N/A | The host to send the request to.
 cluster | N/A | The cluster to send the request to.
 port | N/A | The port to send the request to.
+
+## HTTP/2 Loggers
+
+Loggers allow recording of arbitrary information about requests. Destination of
+information is specific to each logger. All HTTP/2 loggers have a `kind`. If a
+list of loggers is provided, they each log in the order they are defined.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
+
+### HTTP/2 Istio Logger
+
+kind: `io.l5d.k8s.istio`.
+
+With this logger, all H2 requests are sent to an Istio Mixer for telemetry
+recording and aggregation.
+
+#### Logger Configuration:
+
+> Configuration example
+
+```yaml
+loggers:
+- kind: io.l5d.k8s.istio
+  mixerHost: istio-mixer
+  mixerPort: 9091
+```
+
+Key | Default Value | Description
+--- | ------------- | -----------
+mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
+mixerPort | `9091` | Port of the Mixer server.
 
 ## HTTP/2 Headers
 

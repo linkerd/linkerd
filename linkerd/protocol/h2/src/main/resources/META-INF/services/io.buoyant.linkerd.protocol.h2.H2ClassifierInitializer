@@ -1,0 +1,8 @@
+io.buoyant.linkerd.protocol.h2.NonRetryable5XXInitializer
+io.buoyant.linkerd.protocol.h2.RetryableIdempotent5XXInitializer
+io.buoyant.linkerd.protocol.h2.RetryableRead5XXInitializer
+io.buoyant.linkerd.protocol.h2.AllSuccessfulInitializer
+io.buoyant.linkerd.protocol.h2.grpc.AlwaysRetryableInitializer
+io.buoyant.linkerd.protocol.h2.grpc.DefaultInitializer
+io.buoyant.linkerd.protocol.h2.grpc.NeverRetryableInitializer
+io.buoyant.linkerd.protocol.h2.grpc.RetryableStatusCodesInitializer

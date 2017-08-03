@@ -1,10 +1,13 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.{Request, Response, Reset, LinkerdHeaders}
-import com.twitter.logging.Logger
+import com.twitter.finagle.buoyant.h2.{Request, Reset, Response}
+import com.twitter.logging.{Level, Logger}
 import com.twitter.util.Future
+import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory
+import io.buoyant.router.RoutingFactory.ResponseException
+import scala.util.control.NoStackTrace
 
 /**
  * Coerces routing failures to the appropriate HTTP/2 error code
@@ -25,6 +28,8 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
     case e: NoBrokersAvailableException =>
       log.info(e, "no available endpoints")
       RefusedF
+    case H2ResponseException(rsp) =>
+      Future.value(rsp)
   }
 }
 
@@ -42,4 +47,8 @@ object ErrorReseter {
       val description = "Lifts router errors to stream resets"
       def make(factory: ServiceFactory[Request, Response]) = filter.andThen(factory)
     }
+
+  case class H2ResponseException(rsp: Response) extends ResponseException {
+    val logLevel = Level.TRACE
+  }
 }

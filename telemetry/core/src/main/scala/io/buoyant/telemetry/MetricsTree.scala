@@ -9,6 +9,7 @@ import scala.collection.JavaConverters._
 trait MetricsTree {
   def children: Map[String, MetricsTree]
   def resolve(scope: Seq[String]): MetricsTree
+  def tryResolve(scope: Seq[String]): Option[MetricsTree]
 
   def metric: Metric
 
@@ -53,6 +54,12 @@ object MetricsTree {
       case Nil => this
       case Seq(name) => getOrMk(name)
       case Seq(child, rest@_*) => getOrMk(child).resolve(rest)
+    }
+
+    def tryResolve(scope: Seq[String]): Option[MetricsTree] = scope match {
+      case Nil => Some(this)
+      case Seq(name) => trees.get(name)
+      case Seq(child, rest@_*) => trees.get(child).flatMap(_.tryResolve(rest))
     }
 
     /*

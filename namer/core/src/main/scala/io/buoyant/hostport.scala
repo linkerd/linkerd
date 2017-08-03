@@ -9,15 +9,19 @@ import com.twitter.finagle.Path
  * work in Paths as-is, due to bracket characters).
  */
 private object HostColonPort {
-  object PortStr {
-    def unapply(s: String): Option[Int] = {
-      val port = try s.toInt catch { case _: java.lang.NumberFormatException => -1 }
-      if (0 < port && port < math.pow(2, 16)) Some(port) else None
-    }
-  }
+  /**
+   * regex for capturing strings that conform to the definition
+   * of a "label" in RFCs 1035 and 1123, used for the `port` part
+   * of a [[HostColonPort]].
+   *
+   * this is based on the `DNS_LABEL` regex in Kubernetes:
+   * https://github.com/kubernetes/kubernetes/blob/master/pkg/api/types.go#L40-L43
+   */
+  private[this] val DnsLabel = """([a-z0-9][-a-z0-9]*[a-z0-9]?)""".r
 
-  def unapply(s: String): Option[(String, Int)] = s.split(":") match {
-    case Array(host, PortStr(port)) => Some((host, port))
+  def unapply(s: String): Option[(String, String)] = s.split(":") match {
+    case Array(host, DnsLabel(port)) // DNS labels may not exceed 63 characters in length
+    if port.length <= 63 => Some((host, port))
     case _ => None
   }
 }
@@ -34,7 +38,7 @@ private object HostColonPort {
 class hostportPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, HostColonPort(host, port)) =>
-      Some(Path.Utf8(pfx, host, port.toString) ++ path.drop(2))
+      Some(Path.Utf8(pfx, host, port) ++ path.drop(2))
     case _ => None
   }
 }
@@ -51,7 +55,7 @@ class hostportPfx extends RewritingNamer {
 class porthostPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, HostColonPort(host, port)) =>
-      Some(Path.Utf8(pfx, port.toString, host) ++ path.drop(2))
+      Some(Path.Utf8(pfx, port, host) ++ path.drop(2))
     case _ => None
   }
 }

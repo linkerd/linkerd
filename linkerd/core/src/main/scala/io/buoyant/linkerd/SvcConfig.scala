@@ -5,6 +5,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.buoyant.TotalTimeout
 import com.twitter.finagle.service._
+import com.twitter.finagle.buoyant.ParamsMaybeWith
 import com.twitter.util.Duration
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.{ClassifiedRetries, RetryBudgetConfig}
@@ -28,12 +29,30 @@ trait SvcConfig {
     .maybeWith(retries.flatMap(_.budget))
     .maybeWith(responseClassifier.map(param.ResponseClassifier(_)))
 
-  /*
+  /**
    * responseClassifier categorizes responses to determine whether
    * they are failures and if they are retryable.
+   *
+   * @note that unlike the other properties in this class, this `var`
+   *       has a getter and setter. this is because the `H2SvcConfig`
+   *       will use a distinct type for its response classifier, and
+   *       we want to reuse the JSON property `"responseClassifier"`.
+   *       Scala doesn't permit child classes to override mutable fields,
+   *       but it does permit them to override `def`s, so `H2SvcConfig`
+   *       *can* override the getter and setter for this field with
+   *       `JsonIgnore` and reuse the `"responseClassifier"` JSON property.
+   *
    */
+  private[this] var _responseClassifierConfig: Option[ResponseClassifierConfig] =
+    None
+
   @JsonProperty("responseClassifier")
-  var _responseClassifier: Option[ResponseClassifierConfig] = None
+  def responseClassifierConfig_=(r: Option[ResponseClassifierConfig]): Unit =
+    _responseClassifierConfig = r
+
+  @JsonProperty("responseClassifier")
+  def responseClassifierConfig: Option[ResponseClassifierConfig] =
+    _responseClassifierConfig
 
   @JsonIgnore
   def baseResponseClassifier: ResponseClassifier =
@@ -41,7 +60,7 @@ trait SvcConfig {
 
   @JsonIgnore
   def responseClassifier: Option[ResponseClassifier] =
-    _responseClassifier.map { classifier =>
+    _responseClassifierConfig.map { classifier =>
       ClassifiedRetries.orElse(classifier.mk, baseResponseClassifier)
     }
 }

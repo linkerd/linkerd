@@ -1,12 +1,18 @@
 package io.buoyant.router
 
-import com.twitter.finagle.buoyant.h2.{Request, Response, ResponseClassifiers}
+import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Request, Response, param => h2param}
 import com.twitter.finagle.buoyant.{H2 => FinagleH2}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.StackServer
 import com.twitter.util.Future
 import java.net.SocketAddress
+import com.twitter.finagle.buoyant.h2.service.H2Classifiers
+import com.twitter.finagle.liveness.FailureAccrualFactory
+import com.twitter.finagle.service.StatsFilter
+import io.buoyant.router.context.ResponseClassifierCtx
+import io.buoyant.router.context.h2.H2ClassifierCtx
+import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -26,15 +32,24 @@ object H2 extends Router[Request, Response]
 
   object Router {
     val pathStack: Stack[ServiceFactory[Request, Response]] = {
-      val stk = StackRouter.newPathStack[Request, Response]
-      h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +: stk
+      val stk = h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +:
+        StackRouter.newPathStack[Request, Response]
+      stk.replace(
+        ResponseClassifierCtx.Setter.role,
+        H2ClassifierCtx.Setter.module[Request, Response]
+      ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
       StackRouter.newBoundStack
 
-    val clientStack: Stack[ServiceFactory[Request, Response]] =
-      StackRouter.Client.mkStack(FinagleH2.Client.newStack)
+    val clientStack: Stack[ServiceFactory[Request, Response]] = {
+      val stk = FinagleH2.Client.newStack
+      StackRouter.Client.mkStack(stk)
+        .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
+        .replace(LocalClassifierStatsFilter.role, LocalClassifierStreamStatsFilter.module)
+        .replace(FailureAccrualFactory.role, H2FailureAccrualFactory.module)
+    }
 
     val defaultParams = StackRouter.defaultParams +
       param.ProtocolLibrary("h2")
@@ -73,12 +88,12 @@ object H2 extends Router[Request, Response]
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
+      .replace(StatsFilter.role, StreamStatsFilter.module)
 
-    private val serverResponseClassifier = ClassifiedRetries.orElse(
-      h2.ClassifierFilter.successClassClassifier,
-      ResponseClassifiers.NonRetryableServerFailures
-    )
-    val defaultParams = StackServer.defaultParams + param.ResponseClassifier(serverResponseClassifier)
+    private val serverResponseClassifier =
+      // TODO: insert H2 classified retries here?
+      H2Classifiers.Default
+    val defaultParams = StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)

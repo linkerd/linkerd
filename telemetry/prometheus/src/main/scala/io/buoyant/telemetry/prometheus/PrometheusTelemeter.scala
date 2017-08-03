@@ -20,7 +20,7 @@ class PrometheusTelemeter(metrics: MetricsTree) extends Telemeter with Admin.Wit
     val response = Response()
     response.version = request.version
     response.mediaType = MediaType.Txt
-    val sb = new StringBuilder()
+    val sb = new StringBuilder(Telemeter.DefaultBufferSize)
     writeMetrics(metrics, sb)
     response.contentString = sb.toString
     Future.value(response)

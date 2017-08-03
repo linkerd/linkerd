@@ -17,7 +17,7 @@ object Main extends App {
         val namerd = config.mk()
 
         val admin = namerd.admin.serve(this, NamerdAdmin(config, namerd))
-        log.info(s"serving http admin on ${admin.boundAddress}")
+        log.info(s"serving ${namerd.admin.scheme} on ${admin.boundAddress}")
 
         val servers = namerd.interfaces.map { iface =>
           val server = iface.serve()

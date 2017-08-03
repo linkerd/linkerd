@@ -32,6 +32,14 @@ trait Stream {
    * If the stream is reset prematurely, onEnd fails with a [[Reset]].
    */
   def onEnd: Future[Unit]
+
+  /**
+   * Wraps this [[Stream]] with a [[StreamProxy]] that calls the provided function on each frame after [[read()]]
+   * @param onFrame the function to call on each frame.
+   * @return a [[StreamProxy]] wrapping this [[Stream]]
+   */
+  def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamProxy(this, onFrame)
+
 }
 
 /**
@@ -60,7 +68,7 @@ object Stream {
     def close(): Unit
   }
 
-  private trait AsyncQueueReader extends Stream {
+  private[h2] trait AsyncQueueReader extends Stream {
     protected[this] val frameQ: AsyncQueue[Frame]
 
     override def isEmpty = false

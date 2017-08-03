@@ -2,11 +2,10 @@ package io.buoyant.namer.marathon
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
-import com.twitter.finagle.param.Label
-import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
-import com.twitter.logging.Logger
 import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
@@ -110,7 +109,8 @@ case class MarathonConfig(
   uriPrefix: Option[String],
   ttlMs: Option[Int],
   jitterMs: Option[Int],
-  useHealthCheck: Option[Boolean]
+  useHealthCheck: Option[Boolean],
+  tls: Option[TlsClientConfig]
 ) extends NamerConfig {
   import MarathonConfig._
 
@@ -137,8 +137,10 @@ case class MarathonConfig(
     val port0 = port.map(_.port).getOrElse(80)
     val dst0 = dst.getOrElse(s"/$$/inet/$host0/$port0")
 
+    val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+
     val client = Http.client
-      .withParams(params)
+      .withParams(params ++ tlsParams)
       .withLabel("client")
       .withTracer(NullTracer)
       .filtered(SetHost(host0))

@@ -1,6 +1,6 @@
 # Telemetry
 
-A telemeter may receive stats and trace annotations, i.e. to send to a collector
+A telemeter may receive stats and trace annotations, e.g., to send to a collector
 or export. Telemetry data can be collected and exported from a linkerd process by
 configuring telemeters via a top-level `telemetry` section.
 
@@ -83,7 +83,7 @@ prefix | `linkerd` | String to prefix all exported metric names with.
 hostname | `127.0.0.1` | Hostname of the StatsD server.
 port | `8125` | Port of the StatsD server.
 gaugeIntervalMs | `10000` | Interval to export Gauges, in milliseconds.
-sampleRate | `0.01` | Sample rate to export counter and timing/histogram events. Higher values will result in higher linkerd latency.
+sampleRate | `0.01` | A value between 0.0 and 1.0 indicating what proportion of counter and timing/histogram events to export. Higher values will result in higher linkerd latency.
 
 ## TraceLog
 
@@ -103,8 +103,8 @@ Log all tracing data, given a log-level and sample rate.
 Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | Host to send trace data to.
-sampleRate | `1.0` | What percentage of traces to log.
-level | `INFO` | Log-level, one of: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [com.twitter.logging.Level](http://twitter.github.io/util/docs/#com.twitter.logging.Level).
+sampleRate | `1.0` | A value between 0.0 and 1.0 indicating what proportion of traces to log.
+level | `INFO` | Log-level used to log traces. It should be equal (or greater) to the linkerd log level, set by the `-log.level` flag or at runtime in the logging tab of the admin dashboard (defaults to `INFO`). Field can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [TwitterServer's Logging documentation](https://twitter.github.io/twitter-server/Features.html#logging).
 
 ## Recent Requests
 
@@ -121,12 +121,12 @@ kind: `io.l5d.recentRequests`
 
 The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
 the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the
-admin port.  Recording requests can have an impact on linkerd performance so make sure to set a
+admin port.  Recording requests can have an impact on linkerd performance, so make sure to set a
 sample rate that is appropriate for your level of traffic.
 
 Key        | Default Value | Description
 ---------- | ------------- | -----------
-sampleRate | _required_    | What percentage of traces to record.
+sampleRate | _required_    | A value between 0.0 and 1.0 indicating what proportion of traces to record.
 capacity   | 10            | The maximum number of recent traces to store
 
 ## Zipkin telemeter
@@ -160,4 +160,4 @@ Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | Host to send trace data to.
 port | `9410` | Port to send trace data to (must be the Scribe collector port).
-sampleRate | `0.001` | What percentage of requests to trace.
+sampleRate | `0.001` | A value between 0.0 and 1.0 indicating what proportion of requests to trace.

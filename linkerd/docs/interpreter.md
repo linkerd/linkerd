@@ -35,7 +35,7 @@ kind: `io.l5d.namerd`
 
 The namerd thrift interpreter offloads the responsibilities of name resolution
 to the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter users namerd's long-poll thrift interface
+interpreter uses namerd's long-poll thrift interface
 (`io.l5d.thriftNameInterpreter`). Note that the protocol that the interpreter
 uses to talk to namerd is unrelated to the protocols of linkerd's routers.
 

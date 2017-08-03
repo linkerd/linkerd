@@ -4,7 +4,7 @@ package h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Dtab, Path, Stack}
-import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.buoyant.{Dst, ParamsMaybeWith}
 import com.twitter.finagle.buoyant.h2.{Request, Headers => H2Headers}
 import com.twitter.util.Future
 import io.buoyant.router.H2

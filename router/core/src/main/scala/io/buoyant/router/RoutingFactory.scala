@@ -4,6 +4,7 @@ import com.twitter.finagle.{param => _, _}
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.tracing.Trace
+import com.twitter.logging.HasLogLevel
 import com.twitter.util.{Future, Return, Throw, Time}
 import scala.util.control.NoStackTrace
 
@@ -52,6 +53,8 @@ object RoutingFactory {
       }
 
   }
+
+  abstract class ResponseException extends NoStackTrace with HasLogLevel
 
   /** The result of attempting to identify a request. */
   sealed trait RequestIdentification[Req]
@@ -165,7 +168,11 @@ class RoutingFactory[Req, Rsp](
             Future.exception(UnknownDst(req0, unidentified.reason))
           case Throw(e) =>
             Annotations.Failure.Identification.record(e.getMessage)
-            Future.exception(UnknownDst(req0, e.getMessage))
+            e match {
+              case e: ResponseException => Future.exception(e)
+              case _ => Future.exception(UnknownDst(req0, e.getMessage))
+            }
+
         }
 
         // Client acquisition failures are recorded within the

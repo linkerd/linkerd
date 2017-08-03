@@ -7,6 +7,10 @@
 
 admin:
   port: 9991
+  tls:
+    certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
+    keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
+    caCertPath: finagle/h2/src/e2e/resources/cacert.pem
 storage:
   kind: io.l5d.inMemory
   namespaces:
