@@ -13,10 +13,13 @@ import io.buoyant.router.context.h2.H2ClassifierCtx
  */
 object LocalClassifierStreamStatsFilter {
 
+  val role: Stack.Role = LocalClassifierStatsFilter.role
+  val description = "Report request statistics using local H2 stream classifier"
+
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module3[param.Stats, param.ExceptionStatsHandler, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
-      val role: Stack.Role = LocalClassifierStatsFilter.role
-      val description = "Report request statistics using local H2 stream classifier"
+      val role: Stack.Role = LocalClassifierStreamStatsFilter.role
+      val description = LocalClassifierStreamStatsFilter.description
 
       override def make(
         statsP: param.Stats,
