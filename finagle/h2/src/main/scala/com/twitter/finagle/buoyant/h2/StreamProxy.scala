@@ -26,12 +26,19 @@ class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit) extends Str
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
 
-class StreamFlatMap(underlying: Stream, f: Try[Frame] => Seq[Frame]) extends StreamProxy(underlying) {
+/**
+ * Wraps an underlying [[Stream]] with a function[[StreamFlatMap.f]] that is called for
+ * each frame in the stream.
+ *
+ * @note that in order to avoid violating flow control, `f` must either release the frame or
+ *       return it in the returned sequence of frames
+ */
+class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame]) extends StreamProxy(underlying) {
   private[this] val q = new mutable.Queue[Frame]()
 
   override def read(): Future[Frame] = {
     if (q.nonEmpty) Future.value(q.dequeue())
-    else underlying.read().transform(a => Future.value(f(a))).map { fs =>
+    else underlying.read().map(f).map { fs =>
       q.enqueue(fs: _*)
       q.dequeue()
     }
@@ -39,15 +46,3 @@ class StreamFlatMap(underlying: Stream, f: Try[Frame] => Seq[Frame]) extends Str
 
   override def toString: String = s"StreamProxy($underlying, flatMap=$f)"
 }
-
-//class StreamFold[T](underlying: Stream, f: (T, Try[Frame]) => T) extends StreamProxy(underlying) {
-//  override def read(): Future[Frame] = {
-//    if (q.nonEmpty) Future.value(q.dequeue())
-//    else underlying.read().map(f).map { fs =>
-//      q.enqueue(fs:_*)
-//      q.dequeue()
-//    }
-//  }
-//
-//  override def toString: String = s"StreamProxy($underlying, fold=$f)"
-//}
