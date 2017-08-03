@@ -101,9 +101,9 @@ class Base extends Build {
           <url>https://buoyant.io/</url>
         </developer>
       </developers>,
-    publishTo <<= version { (v: String) =>
+    publishTo := {
       val nexus = "https://oss.sonatype.org/"
-      if (v.trim.endsWith("SNAPSHOT"))
+      if (version.value.trim.endsWith("SNAPSHOT"))
         Some("snapshots" at nexus + "content/repositories/snapshots")
       else
         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
@@ -153,9 +153,9 @@ class Base extends Build {
 
   val appPackagingSettings = baseDockerSettings ++ appAssemblySettings ++ Seq(
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
-    docker <<= docker dependsOn (assembly in configuration),
+    docker := (docker dependsOn (assembly in configuration)).value,
     dockerEnvPrefix := "",
-    dockerJavaImage <<= (dockerJavaImage in Global).?(_.getOrElse("openjdk:8u131-jre")),
+    dockerJavaImage := (dockerJavaImage in Global).?(_.getOrElse("openjdk:8u131-jre")).value,
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"
