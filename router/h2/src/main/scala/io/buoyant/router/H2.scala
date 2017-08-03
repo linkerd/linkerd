@@ -12,7 +12,6 @@ import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
-import io.buoyant.router.h2.{LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
