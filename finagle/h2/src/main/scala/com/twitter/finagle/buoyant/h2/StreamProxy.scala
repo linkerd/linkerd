@@ -12,30 +12,66 @@ abstract class StreamProxy(underlying: Stream) extends Stream {
    */
   override def onEnd: Future[Unit] = underlying.onEnd
 }
-
 /**
- * Wraps an underlying [[Stream]] with an [[StreamOnFrame.onFrame onFrame]] function.
+ * Wraps an underlying [[Stream]] with an [[StreamOnFrame.onFrame onFrame]]
+ * function.
  * The `onFrame` function is called for each frame in the stream.
  *
- * @param underlying the [[Stream]] wrapped by this proxy
- * @param onFrame function called for each [[Frame]] in the underlying [[Stream]]
+ * @param underlying the [[Stream]] wrapped by this proxy.
+ * @param onFrame function called for each [[Frame]] in the underlying [[Stream]].
  */
 // TODO: consider renaming `onFrame` to `foreach`?
-class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit) extends StreamProxy(underlying) {
+class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
+extends StreamProxy(underlying) {
   override def read(): Future[Frame] = underlying.read().respond(onFrame)
   override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
 
 /**
- * Wraps an underlying [[Stream]] with a function[[StreamFlatMap.f]] that is called for
- * each frame in the stream.
+ * Wraps an underlying [[Stream]] with a function [[StreamFlatMap.f f]] that
+ * is called on each frame in the stream. The sequence of [[Frame]]s yielded
+ * by [[StreamFlatMap.f f]] will be inserted into the stream in order at the
+ * current position.
  *
- * @note that in order to avoid violating flow control, `f` must either release the frame or
- *       return it in the returned sequence of frames
+ * @note This is essentially the same as the
+ *       [[scala.collection.TraversableLike.flatMap flatMap]] function on
+ *       Scala collections, but with the limitation that the `flatMap`ped
+ *       function may not change the type of the mapped element (since H2
+ *       [[Stream]]s always consist of [[Frame]]s). To be properly monadic,
+ *       we would have the `flatMap`ped function return a new [[Stream]]
+ *       which would be spliced into this stream, but constructing streams
+ *       is much more complex (you have to make an
+ *       [[com.twitter.concurrent.AsyncQueue AsyncQueue]] and offer frames
+ *       to it one by one...), so we cheat a little by having the
+ *       `flatMap`pped function yield a [[Seq]] of frames instead.
+ * @note that in order to avoid violating flow control, [[f]] must either
+ *       take ownership over the frame and release it, or return it in
+ *       the returned sequence of frames.
+ * @param underlying the [[Stream]] wrapped by this proxy.
+ * @param f function called on each [[Frame]] in the underlying [[Stream]].
+ *
  */
-class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame]) extends StreamProxy(underlying) {
+class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame])
+extends StreamProxy(underlying) {
   private[this] var q = new mutable.Queue[Frame]()
 
+  /**
+   * @inheritdoc
+   * @note that this stream is only empty if both the [[underlying]]
+   *       stream is empty, and the [[StreamFlatMap]] proxy's internal
+   *       queue of [[Frame]]s is empty.
+   */
+  override def isEmpty: Boolean = underlying.isEmpty && q.isEmpty
+
+  /**
+   * @inheritdoc
+   * @note that if the [[StreamFlatMap]] proxy's internal queue of [[Frame]]s
+   *       is non-empty, a frame will be dequeued from it, rather than read
+   *       from the [[underlying]] stream. if the queue is empty, [[f]] will
+   *       be called on a frame read from the [[underlying]] stream before
+   *       returning it, and  additional frames may be enqueued to be read
+   *       before that frame.
+   */
   override def read(): Future[Frame] = synchronized {
     if (q.nonEmpty) Future.value(q.dequeue())
     else underlying.read().map(f).map { fs =>
