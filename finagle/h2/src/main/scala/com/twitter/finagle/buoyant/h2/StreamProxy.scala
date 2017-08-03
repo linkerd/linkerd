@@ -34,9 +34,9 @@ class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit) extends Str
  *       return it in the returned sequence of frames
  */
 class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame]) extends StreamProxy(underlying) {
-  private[this] val q = new mutable.Queue[Frame]()
+  private[this] var q = new mutable.Queue[Frame]()
 
-  override def read(): Future[Frame] = {
+  override def read(): Future[Frame] = synchronized {
     if (q.nonEmpty) Future.value(q.dequeue())
     else underlying.read().map(f).map { fs =>
       q.enqueue(fs: _*)
