@@ -119,7 +119,12 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 val frame2 = Frame.Data(frame.buf, eos = false)
                 // release the old data frame, since it will be replaced.
                 frame.release()
-                Seq(frame2, Trailers(SuccessClassHeader -> success))
+                val trailers = Trailers(
+                  SuccessClassHeader -> success,
+                  "te" -> "trailers"
+                )
+                Seq(frame2, trailers)
+
               case frame => Seq(frame)
             }
             Response(rep.headers, stream)
