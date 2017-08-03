@@ -590,7 +590,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 }
 
 object Netty4StreamTransport {
-  private lazy val log = Logger.get(getClass.getName)
+  private lazy val log = Logger.get("h2")
 
   /** Helper: a state that supports Reset.  (All but Closed) */
   private trait ResettableState {

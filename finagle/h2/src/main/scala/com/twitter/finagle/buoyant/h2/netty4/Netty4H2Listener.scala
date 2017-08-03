@@ -13,7 +13,7 @@ import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegoti
  * Based on com.twitter.finagle.http2.Http2Listener
  */
 object Netty4H2Listener {
-  private val log = com.twitter.logging.Logger.get(getClass.getName)
+  private val log = com.twitter.logging.Logger.get("h2")
 
   def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
     params[Transport.ClientSsl] match {
