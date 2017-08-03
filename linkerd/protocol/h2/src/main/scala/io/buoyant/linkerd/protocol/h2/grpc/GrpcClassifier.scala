@@ -18,10 +18,13 @@ trait GrpcClassifier extends H2Classifier {
     case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
   }
 
-  override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] =
-    retryableClassifier.orElse {
-      case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) =>
-        ResponseClass.Success
+  private[this] val successClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
+    case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) =>
+      ResponseClass.Success
+  }
+
+  override def streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] =
+    successClassifier.orElse(retryableClassifier).orElse {
       case _ => ResponseClass.NonRetryableFailure
     }
 
