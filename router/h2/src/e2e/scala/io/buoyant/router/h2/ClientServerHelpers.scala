@@ -9,6 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import io.buoyant.test.h2.StreamTestUtils._
 import java.net.InetSocketAddress
 import org.scalatest.BeforeAndAfter
 import scala.collection.JavaConverters._
@@ -81,18 +82,17 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
 
     def apply(req: Request): Future[Response] = service(req)
 
-    def get(host: String, path: String = "/")(check: Option[String] => Boolean): Unit = {
+    def get(host: String, path: String = "/")(check: Option[String] => Boolean): Future[Unit] = {
       val req = Request("http", Method.Get, host, path, Stream.empty())
       val rsp = await(service(req))
       assert(rsp.status == Status.Ok)
-      await(rsp.stream.read()) match {
-        case f: Frame.Data if f.isEnd =>
+      val stream = rsp.stream.onFrame {
+        case f: Frame.Data  =>
           val Buf.Utf8(data) = f.buf
-          assert(check(Some(data)))
-          await(f.release())
-
-        case f => fail(s"unexpected frame: $f")
+          val _ = assert(check(Some(data)))
+        case f =>
       }
+      stream.readToEnd
     }
 
     def close(d: Time) = service.close(d)
