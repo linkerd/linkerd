@@ -144,7 +144,6 @@ object H2Classifiers {
   case object AllSuccessful extends H2Classifier {
     override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
       case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
-      case H2ReqRep(_, Return(rep)) if rep.stream.isEmpty => ResponseClass.Success
     }
     override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
       case H2ReqRepFrame(_, Throw(_)) => ResponseClass.NonRetryableFailure

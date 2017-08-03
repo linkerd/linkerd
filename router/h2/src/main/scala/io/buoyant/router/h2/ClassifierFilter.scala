@@ -77,23 +77,29 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
         .getOrElse {
           // if the early classification attempt is not defined, attempt
           // late classification on the last frame in the response stream
-          val stream = rep.stream.flatMap {
-            case frame: Trailers =>
-              // if the final frame is a Trailers frame, just add the
-              // success class header to it
-              val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-              frame.set(SuccessClassHeader, success)
-              frame.set("te", "trailers")
-              Seq(frame)
-            case frame if frame.isEnd =>
-              // if the final frame is a Return, but not a Trailers,
-              // then we need to send the final frame followed by a new
-              // Trailers frame
-              val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
-              Seq(frame, Trailers(SuccessClassHeader -> success))
-            case frame => Seq(frame)
+          if (rep.stream.isEmpty) {
+            val success = classifyStream(H2ReqRepFrame(req, Return(rep), None))
+            rep.headers.set(SuccessClassHeader, success)
+            rep
+          } else {
+            val stream = rep.stream.flatMap {
+              case frame: Trailers =>
+                // if the final frame is a Trailers frame, just add the
+                // success class header to it
+                val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+                frame.set(SuccessClassHeader, success)
+                frame.set("te", "trailers")
+                Seq(frame)
+              case frame if frame.isEnd =>
+                // if the final frame is a Return, but not a Trailers,
+                // then we need to send the final frame followed by a new
+                // Trailers frame
+                val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+                Seq(frame, Trailers(SuccessClassHeader -> success))
+              case frame => Seq(frame)
+            }
+            Response(rep.headers, stream)
           }
-          Response(rep.headers, stream)
         }
     }
   }
