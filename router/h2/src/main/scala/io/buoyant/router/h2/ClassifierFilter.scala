@@ -27,8 +27,6 @@ object ClassifierFilter {
       }
     }
 
-
-
   private[this] object ResponseSuccessClass {
 
   }
@@ -71,10 +69,19 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
 
   private[this] val successHeader: ResponseClass => String =
     _.fractionalSuccess.toString
+
   private[this] val classifyEarly: H2ReqRep => Option[String] =
     classifier.responseClassifier.lift(_).map(successHeader)
-  private[this] val classifyStream: H2ReqRepFrame => String =
-    successHeader.compose(classifier.streamClassifier(_))
+
+  @inline private[this] def classifyStream(
+    req: Request,
+    rep: Response,
+    frame: Option[Frame] = None
+  ): String = {
+    val rr = H2ReqRepFrame(req, Return((rep, frame.map(Return(_)))))
+    val respClass = classifier.streamClassifier(rr)
+    successHeader(respClass)
+  }
 
   def apply(req: Request, svc: Service[Request, Response]): Future[Response] = {
     svc(req).map { rep: Response =>
@@ -88,7 +95,7 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
           // if the early classification attempt is not defined, attempt
           // late classification on the last frame in the response stream
           if (rep.stream.isEmpty) {
-            val success = classifyStream(H2ReqRepFrame(req, Return(rep), None))
+            val success = classifyStream(req, rep)
             rep.headers.set(SuccessClassHeader, success)
             rep
           } else {
@@ -96,7 +103,7 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
               case frame: Trailers =>
                 // if the final frame is a Trailers frame, just add the
                 // success class header to it
-                val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+                val success = classifyStream(req, rep, Some(frame))
                 frame.set(SuccessClassHeader, success)
                 frame.set("te", "trailers")
                 Seq(frame)
@@ -104,7 +111,7 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 // if the final frame is a Return, but not a Trailers,
                 // then we need to send the final frame followed by a new
                 // Trailers frame
-                val success = classifyStream(H2ReqRepFrame(req, Return(rep), Some(Return(frame))))
+                val success = classifyStream(req, rep, Some(frame))
                 // since this frame has the end of stream flag, we need to
                 // replace it with a new data frame without that flag.
                 // otherwise, the trailers we add to the stream will never
