@@ -29,13 +29,7 @@ object StreamStatsFilter {
    * Creates a [[com.twitter.finagle.Stackable]] [[StreamStatsFilter]].
    */
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module4[
-      param.Stats,
-      h2param.H2Classifier,
-      param.ExceptionStatsHandler,
-      Param,
-      ServiceFactory[Request, Response]
-    ] {
+    new Stack.Module4[param.Stats, h2param.H2Classifier, param.ExceptionStatsHandler, Param, ServiceFactory[Request, Response]] {
       override val role: Stack.Role = StreamStatsFilter.role
       override val description = "Record stats on h2 streams"
       override def make(
