@@ -7,6 +7,7 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Throw}
+import io.buoyant.router.h2.ClassifiedRetries.BufferSize
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
 
@@ -135,6 +136,7 @@ class RouterEndToEndTest
     }
     val router = H2.serve(new InetSocketAddress(0), H2.router
       .configured(identifierParam)
+      .configured(BufferSize(0L, 0L))
       .factory())
     val client = upstream(router)
     try {
@@ -147,11 +149,11 @@ class RouterEndToEndTest
       assert(!rspF.isDefined)
 
       dogRspP.setValue(serverLocalStream)
+      serverLocalQ.offer(Frame.Data("boop", eos = false))
       val rsp = await(rspF)
       val reqReadF = reqStream.read()
       val rspReadF = rsp.stream.read()
 
-      rspReadF.raise(new ChannelClosedException())
       clientLocalQ.fail(new ChannelClosedException())
       assert(await(reqReadF.liftToTry) == Throw(Reset.Cancel))
 

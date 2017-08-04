@@ -75,12 +75,26 @@ prior-knowledge requests.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-windowUpdateRatio: | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
+windowUpdateRatio | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
 headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
 initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
 maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
+## HTTP/2 Service Parameters
+
+Key                     | Default Value | Description
+----------------------- | ------------- | -----------
+classificationTimeoutMs | 100ms         | The amount of time to wait for a response stream to complete before determining if it should be retried.
+retryBufferSize         | see below     | A RetryBufferSize object describing the size of the buffers for request and response streams used for retries.
+
+#### RetryBufferSize
+
+Key           | Default Value   | Description
+------------- | --------------- | -----------
+requestBytes  | `65535`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
+responseBytes | `65535`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
 
 ## HTTP/2 Client Parameters
 

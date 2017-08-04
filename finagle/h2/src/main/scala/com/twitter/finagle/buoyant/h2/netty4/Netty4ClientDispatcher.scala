@@ -10,7 +10,7 @@ import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicInteger
 
 object Netty4ClientDispatcher {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
   private val MaxStreamId = (math.pow(2, 31) - 1).toInt
 }

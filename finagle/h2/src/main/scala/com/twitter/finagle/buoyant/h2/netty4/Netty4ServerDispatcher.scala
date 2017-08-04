@@ -10,7 +10,7 @@ import io.netty.handler.codec.http2._
 import scala.util.control.NoStackTrace
 
 object Netty4ServerDispatcher {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
 
   /**
    * Indicates a failure on the downstream service (i.e. before a
