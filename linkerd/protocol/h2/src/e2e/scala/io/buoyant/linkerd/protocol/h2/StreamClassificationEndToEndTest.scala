@@ -374,7 +374,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers .head.initialize()
-    val server =router.servers.head.serve()
+    val server = router.servers.head.serve()
     val client = upstream(server)
     val req = Request("http", Method.Get, "foo", "/", Stream.empty)
     val rsp = await(client(req))
@@ -409,7 +409,7 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver
     val linker = Linker.load(config).configured(param.Stats(stats))
     val router = linker.routers.head.initialize()
-    val server = router.servers.head. serve()
+    val server = router.servers.head.serve()
     val client = upstream(server)
     val req = Request("http", Method.Get, "foo", "/", Stream.empty)
     val rsp = await(client(req))

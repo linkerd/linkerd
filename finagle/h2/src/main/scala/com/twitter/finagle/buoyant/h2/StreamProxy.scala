@@ -75,8 +75,8 @@ class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame])
    */
   override def read(): Future[Frame] = synchronized {
     if (q.nonEmpty) Future.value(q.dequeue())
-    else underlying.read().map(f).map { fs =>
-      q.enqueue(fs: _*)
+    else underlying.read().map { frame =>
+      q.enqueue(f(frame): _*)
       q.dequeue()
     }
   }
