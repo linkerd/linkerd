@@ -3,6 +3,7 @@ package io.buoyant.router
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
+import com.twitter.finagle.liveness.{FailureAccrualFactory => FFailureAccrualFactory}
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
@@ -314,6 +315,7 @@ object StackRouter {
         .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
+        .replace(FFailureAccrualFactory.role, FailureAccrualFactory.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
