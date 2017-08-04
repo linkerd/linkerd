@@ -57,11 +57,13 @@ class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame])
   private[this] var q = new mutable.Queue[Frame]()
 
   /**
-   * @note that this stream is only empty if both the underlying stream
-   *       is empty, and the [[StreamFlatMap]] proxy's internal
-   *       queue of [[Frame]]s is empty.
+   * @return true if the underlying [[Stream]] [[Stream.isEmpty is empty]]
+   * @note that a [[StreamFlatMap]] proxy may continue to return [[Frame]]s
+   *       on calls to [[Stream.read() read()]] after this function returns
+   *       true, if the underlying stream is empty but  there are frames
+   *       remaining in the `StreamFlatMap` proxy's internal queue.
    */
-  override def isEmpty: Boolean = underlying.isEmpty && q.isEmpty
+  @inline override def isEmpty: Boolean = underlying.isEmpty
 
   /**
    * @note that if the [[StreamFlatMap]] proxy's internal queue of [[Frame]]s
