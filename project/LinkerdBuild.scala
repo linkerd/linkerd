@@ -395,10 +395,10 @@ object LinkerdBuild extends Base {
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
       .settings(
-        assembly <<= assembly in Bundle,
-        docker <<= docker in Bundle,
-        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
-        dockerPush <<= dockerPush in Bundle
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -598,10 +598,10 @@ object LinkerdBuild extends Base {
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
       .settings(
-        assembly <<= assembly in Bundle,
-        docker <<= docker in Bundle,
-        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
-        dockerPush <<= dockerPush in Bundle
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
       )
 
     // Find example configurations by searching the examples directory for config files.
