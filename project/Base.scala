@@ -171,11 +171,11 @@ class Base extends Build {
     dockerTag += (dockerTag in Global).or( initialize[String] { _ =>
       s"$version-$configuration"
     }).value,
-    imageName in docker := ImageName(
+    imageNames in docker := Seq(ImageName(
       namespace = Some("buoyantio"),
       repository = name.value,
       tag = Some(dockerTag.value)
-    )
+    ))
   )
 
   // Examples are named by a .yaml config file
