@@ -159,15 +159,22 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     rsp.reader.discard()
   }
 
-  for (ct <- Seq("application/dtab", MediaType.Txt))
-    test(s"GET /api/1/dtabs/ns exists; accept $ct") {
+  val acceptsAndMediaTypes = List(
+    ("application/dtab", "application/dtab"),
+    ("application/dtab;q=0.9", "application/dtab"),
+    (MediaType.Txt, MediaType.Txt),
+    (MediaType.Txt + ";q=0.9", MediaType.Txt)
+  )
+
+  for ((a, mt) <- acceptsAndMediaTypes)
+    test(s"GET /api/1/dtabs/ns exists; accept $a") {
       val req = Request()
       req.uri = "/api/1/dtabs/yeezus"
-      req.accept = Seq(ct, MediaType.Json)
+      req.accept = Seq(a, MediaType.Json)
       val service = newService()
       val rsp = Await.result(service(req), 1.second)
       assert(rsp.status == Status.Ok)
-      assert(rsp.contentType == Some(ct))
+      assert(rsp.contentType == Some(mt))
       assert(rsp.headerMap("ETag") == v1Stamp)
       assert(rsp.contentString == defaultDtabs("yeezus").show + "\n")
     }
@@ -204,6 +211,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
   val data = Map(
     MediaType.Json -> """[{"prefix":"/yeezy","dst":"/kanye"}]""",
+    MediaType.Json + ";charset=UTF-8" -> """[{"prefix":"/yeezy","dst":"/kanye"}]""",
     MediaType.Txt -> "/yeezy => /kanye",
     "application/dtab" -> "/yeezy => /kanye"
   )
