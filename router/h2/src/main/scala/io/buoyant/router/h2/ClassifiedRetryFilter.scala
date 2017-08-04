@@ -40,6 +40,8 @@ class ClassifiedRetryFilter(
     stats.scope("retries").counter("request_stream_too_long")
   private[h2] val responseStreamTooLong =
     stats.scope("retries").counter("response_stream_too_long")
+  private[h2] val classificationTimeoutCounter =
+    stats.scope("retries").counter("classification_timeout")
   private[h2] val budgetGauge = stats.scope("retries").addGauge("budget") { budget.balance }
 
   private[this] val responseClassifier = classifier.responseClassifier.lift
@@ -159,7 +161,11 @@ class ClassifiedRetryFilter(
         // fully buffered.
         val fullyBuffered = retryable(req, rsp, s)
           .raiseWithin(classificationTimeout)
-          .handle { case _: TimeoutException => false }
+          .handle {
+            case _: TimeoutException =>
+              classificationTimeoutCounter.incr()
+              false
+          }
         // If the buffer is discarded before reading the final frame, we cannot retry.
         val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
 

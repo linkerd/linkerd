@@ -98,6 +98,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(2f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "classification_timeout")) == None)
   }
 
   test("response not retryable") {
@@ -122,6 +123,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "classification_timeout")) == None)
   }
 
   test("request stream too long to retry") {
@@ -152,6 +154,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters(Seq("retries", "request_stream_too_long")) == 1)
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "classification_timeout")) == None)
   }
 
   test("response stream too long to retry") {
@@ -182,6 +185,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters(Seq("retries", "response_stream_too_long")) == 1)
+    assert(stats.counters.get(Seq("retries", "classification_timeout")) == None)
   }
 
   test("early classification") {
@@ -206,6 +210,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+    assert(stats.counters.get(Seq("retries", "classification_timeout")) == None)
   }
 
   test("classification timeout") {
@@ -245,5 +250,6 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.stats(Seq("retries", "per_request")) == Seq(0f))
     assert(stats.counters.get(Seq("retries", "request_stream_too_long")) == None)
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")) == None)
+    assert(stats.counters(Seq("retries", "classification_timeout")) == 1)
   }
 }
