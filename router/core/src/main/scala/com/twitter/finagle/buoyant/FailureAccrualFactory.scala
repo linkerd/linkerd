@@ -11,6 +11,10 @@ import com.twitter.logging.Level
 import com.twitter.util.Timer
 import io.buoyant.router.context.ResponseClassifierCtx
 
+/**
+ * A replacement for Finagle's FailureAccrualFactory that reads the respones classifier from the
+ * request local context.
+ */
 object FailureAccrualFactory {
 
   def module[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
