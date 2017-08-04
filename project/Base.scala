@@ -279,11 +279,11 @@ class Base extends Build {
 
     /** Writes build metadata into the projects resources */
     def withBuildProperties(path: String): Project = project
-      .settings((resourceGenerators in Compile) <+=
-        (resourceManaged in Compile, name, version).map { (dir, name, ver) =>
+      .settings((resourceGenerators in Compile) += task[Seq[File]] {
+          val dir = (resourceManaged in Compile).value
           val rev = Git.revision
           val build = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date)
-          val contents = s"name=$name\nversion=$ver\nbuild_revision=$rev\nbuild_name=$build"
+          val contents = s"name=${name.value}\nversion=${version.value}\nbuild_revision=$rev\nbuild_name=$build"
           val file = dir / path / "build.properties"
           IO.write(file, contents)
           Seq(file)
