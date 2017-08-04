@@ -89,7 +89,6 @@ object H2 extends Router[Request, Response]
       .replace(StatsFilter.role, StreamStatsFilter.module)
 
     private val serverResponseClassifier =
-      // TODO: insert H2 classified retries here?
       ClassifierFilter.SuccessClassClassifier
 
     val defaultParams: Stack.Params =

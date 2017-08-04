@@ -31,9 +31,8 @@ class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
 }
 
 /**
- * Wraps an underlying [[Stream]] with a function `f` that is called on each
- * frame in the stream. The sequence of [[Frame]]s yielded by `f` will be
- * inserted into the stream in order at the current position.
+ * Wraps an underlying [[Stream]] with a function `f` constructing a new
+ * [[Stream]] backed by the original stream with `f` applied to each frame.
  *
  * @note This is essentially the same as the
  *       [[scala.collection.TraversableLike.flatMap() flatMap]] function on
@@ -45,10 +44,10 @@ class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
  *       is much more complex (you have to make an
  *       [[com.twitter.concurrent.AsyncQueue AsyncQueue]] and offer frames
  *       to it one by one...), so we cheat a little by having the
- *       `flatMap`pped function yield a [[Seq]] of frames instead.
+ *       `flatMap`ped function yield a [[Seq]] of frames instead.
  * @note that in order to avoid violating flow control, `f` must either
- *       take ownership over the frame and release it, or return it in
- *       the returned sequence of frames.
+ *       take ownership over the frame and eventually release it, or return
+ *       it in the returned sequence of frames.
  * @param underlying the [[Stream]] wrapped by this proxy.
  * @param f function called on each [[Frame]] in the underlying [[Stream]].
  *
