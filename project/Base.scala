@@ -168,7 +168,9 @@ class Base extends Build {
       copy((assemblyOutputPath in assembly).value, exec)
       entryPoint(exec)
     },
-    dockerTag <<= (dockerTag in Global).or((version, configuration) { (v, c) => s"${v}-${c}" }),
+    dockerTag += (dockerTag in Global).or( initialize[String] { _ =>
+      s"$version-$configuration"
+    }).value,
     imageName in docker := ImageName(
       namespace = Some("buoyantio"),
       repository = name.value,
