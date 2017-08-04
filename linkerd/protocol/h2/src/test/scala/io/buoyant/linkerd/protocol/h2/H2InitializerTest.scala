@@ -74,6 +74,7 @@ class H2InitializerTest extends FunSuite {
     // response before the service will be closed.
     bodyP.setDone()
     assert(!closedP.isDefined)
+    await(rsp.stream.readToEnd)
 
     eventually { assert(closedP.isDefined) }
   }
