@@ -6,6 +6,7 @@ import com.twitter.finagle.{Service, ServiceFactory, Stack}
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.linkerd.protocol.H2Initializer
 import io.buoyant.test.FunSuite
+import io.buoyant.test.h2.StreamTestUtils._
 import scala.language.reflectiveCalls
 
 class H2InitializerTest extends FunSuite {
@@ -69,9 +70,12 @@ class H2InitializerTest extends FunSuite {
     val rsp = await(rspf)
     assert(!closedP.isDefined)
 
-    val frame = await(rsp.stream.read())
-    assert(frame.isEnd)
-    await(frame.release())
+    // When the response body is written, it must be fully read from
+    // response before the service will be closed.
+    bodyP.setDone()
+    assert(!closedP.isDefined)
+    await(rsp.stream.readToEnd)
+
     eventually { assert(closedP.isDefined) }
   }
 }

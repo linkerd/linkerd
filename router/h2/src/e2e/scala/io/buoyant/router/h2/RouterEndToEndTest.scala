@@ -36,8 +36,8 @@ class RouterEndToEndTest
       .factory())
     val client = upstream(router)
     try {
-      client.get("felix")(_ == Some("meow"))
-      client.get("clifford", "/the/big/red/dog")(_ == Some("woof"))
+      await(client.get("felix")(_ == Some("meow")))
+      await(client.get("clifford", "/the/big/red/dog")(_ == Some("woof")))
     } finally {
       setLogLevel(Level.OFF)
       await(client.close())

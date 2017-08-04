@@ -2,9 +2,12 @@ package com.twitter.finagle.buoyant.h2
 package service
 
 import com.twitter.finagle.buoyant.h2.service.H2ReqRepFrame.{FinalFrame, RepAndFrame}
-import com.twitter.util.Try
+import com.twitter.util.{Return, Throw, Try}
 
 case class H2ReqRep(request: Request, response: Try[Response])
+object H2ReqRep {
+  @inline def apply(req: Request, rep: Response): H2ReqRep = H2ReqRep(req, Return(rep))
+}
 
 /**
  * Like a [[com.twitter.finagle.service.ReqRep]], but for H2

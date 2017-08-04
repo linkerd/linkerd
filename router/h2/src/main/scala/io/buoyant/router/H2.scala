@@ -91,9 +91,10 @@ object H2 extends Router[Request, Response]
       .replace(StatsFilter.role, StreamStatsFilter.module)
 
     private val serverResponseClassifier =
-      // TODO: insert H2 classified retries here?
-      H2Classifiers.Default
-    val defaultParams = StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
+      ClassifierFilter.SuccessClassClassifier
+
+    val defaultParams: Stack.Params =
+      StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)
