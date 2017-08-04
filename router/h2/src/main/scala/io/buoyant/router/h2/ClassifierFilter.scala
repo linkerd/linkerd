@@ -124,7 +124,6 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 // to it.
                 val success = classifyStream(req, rep, Some(frame))
                 frame.set(SuccessClassHeader, success)
-                frame.set("te", "trailers")
                 Seq(frame)
               case frame: Frame.Data if frame.isEnd =>
                 // if the current frame is a data frame with the end of stream
@@ -138,15 +137,12 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 val frame2 = Frame.Data(frame.buf, eos = false)
                 // release the old data frame, since it will be replaced.
                 frame.release()
-                val trailers = Trailers(
-                  SuccessClassHeader -> success,
-                  "te" -> "trailers"
-                )
-                Seq(frame2, trailers)
+                Seq(frame2, Trailers(SuccessClassHeader -> success))
               case frame =>
                 // if the current frame is not an end frame, just keep going...
                 Seq(frame)
             }
+            rep.headers.set("te", "trailers")
             Response(rep.headers, stream)
           }
         }
