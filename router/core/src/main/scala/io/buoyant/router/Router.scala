@@ -211,13 +211,8 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
-          val dynamicParams = params[StackRouter.Client.PerPathParams].dynamicParamsFor(dst.path)
-          val additionalParams = pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
-            RouterLabel.Param(label)
-          dynamicParams match {
-            case Some(p) => stk.make(params ++ additionalParams + DynamicServiceFactory.Param(p))
-            case None => stk.make(params ++ additionalParams)
-          }
+          stk.make(params + dst + param.Stats(sr) + param.Label(dst.path.show) +
+            RouterLabel.Param(label) + DynamicServiceFactory.Param(pathParams))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -291,33 +286,21 @@ object StackRouter {
 
     case class PathParams(prefix: PathMatcher, mk: Map[String, String] => Stack.Params)
 
-    case class PerPathParams(params: Seq[PathParams], dynamicParams: Option[Activity[Seq[PathParams]]]) {
-      def paramsFor(name: Path): Stack.Params = {
-        params.foldLeft(Stack.Params.empty) {
-          case (params, PathParams(prefix, mk)) =>
-            prefix.extract(name) match {
-              case Some(vars) => params ++ mk(vars)
-              case None => params
-            }
-        }
-      }
-
-      def dynamicParamsFor(name: Path): Option[Activity[Stack.Params]] = {
-        dynamicParams.map {
-          _.map {
-            _.foldLeft(Stack.Params.empty) {
-              case (params, PathParams(prefix, mk)) =>
-                prefix.extract(name) match {
-                  case Some(vars) => params ++ mk(vars)
-                  case None => params
-                }
-            }
+    case class PerPathParams(params: Activity[Seq[PathParams]]) {
+      def paramsFor(name: Path): Activity[Stack.Params] =
+        params.map {
+          _.foldLeft(Stack.Params.empty) {
+            case (params, PathParams(prefix, mk)) =>
+              prefix.extract(name) match {
+                case Some(vars) => params ++ mk(vars)
+                case None => params
+              }
           }
         }
-      }
+
     }
     implicit object PerPathParams extends Stack.Param[PerPathParams] {
-      val default: PerPathParams = PerPathParams(Seq.empty, None)
+      val default: PerPathParams = PerPathParams(Activity.value(Seq.empty))
     }
 
     /**

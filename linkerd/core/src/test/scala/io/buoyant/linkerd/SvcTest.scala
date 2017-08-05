@@ -16,9 +16,9 @@ class SvcTest extends FunSuite with Awaits {
   test("default applies to all services") {
     val svc = parse("totalTimeoutMs: 500")
 
-    val fooParams = svc.pathParams.paramsFor(Path.read("/svc/foo"))
+    val fooParams = await(svc.pathParams.paramsFor(Path.read("/svc/foo")).toFuture)
     assert(fooParams[TotalTimeout.Param].timeout == 500.millis)
-    val barParams = svc.pathParams.paramsFor(Path.read("/svc/bar"))
+    val barParams = await(svc.pathParams.paramsFor(Path.read("/svc/bar")).toFuture)
     assert(barParams[TotalTimeout.Param].timeout == 500.millis)
   }
 
@@ -30,14 +30,14 @@ class SvcTest extends FunSuite with Awaits {
                        |- prefix: "/svc/bar"
                        |  totalTimeoutMs: 200""".stripMargin)
 
-    val fooParams = svc.pathParams.paramsFor(Path.read("/svc/foo"))
+    val fooParams = await(svc.pathParams.paramsFor(Path.read("/svc/foo")).toFuture)
     assert(fooParams[TotalTimeout.Param].timeout == 100.millis)
 
-    val barParams = svc.pathParams.paramsFor(Path.read("/svc/bar"))
+    val barParams = await(svc.pathParams.paramsFor(Path.read("/svc/bar")).toFuture)
     assert(barParams[TotalTimeout.Param].timeout == 200.millis)
 
     // bas, not configured, gets default values
-    val basParams = svc.pathParams.paramsFor(Path.read("/svc/bas"))
+    val basParams = await(svc.pathParams.paramsFor(Path.read("/svc/bas")).toFuture)
     assert(basParams[TotalTimeout.Param].timeout == Duration.Top)
   }
 
@@ -45,10 +45,10 @@ class SvcTest extends FunSuite with Awaits {
     val svc = parse("""|kind: io.l5d.fs
                        |serviceFile: linkerd/examples/io.l5d.fs/service.yaml""".stripMargin)
 
-    val fooParams = await(svc.pathParams.dynamicParamsFor(Path.read("/svc/foo")).get.toFuture)
+    val fooParams = await(svc.pathParams.paramsFor(Path.read("/svc/foo")).toFuture)
     assert(fooParams[TotalTimeout.Param].timeout == 1000.millis)
 
-    val barParams = await(svc.pathParams.dynamicParamsFor(Path.read("/svc/bar")).get.toFuture)
+    val barParams = await(svc.pathParams.paramsFor(Path.read("/svc/bar")).toFuture)
     assert(barParams[TotalTimeout.Param].timeout == 500.millis)
   }
 
@@ -60,10 +60,10 @@ class SvcTest extends FunSuite with Awaits {
                        |- prefix: "/svc/foo"
                        |  totalTimeoutMs: 200""".stripMargin)
 
-    val fooParams = svc.pathParams.paramsFor(Path.read("/svc/foo"))
+    val fooParams = await(svc.pathParams.paramsFor(Path.read("/svc/foo")).toFuture)
     assert(fooParams[TotalTimeout.Param].timeout == 200.millis)
 
-    val barParams = svc.pathParams.paramsFor(Path.read("/svc/bar"))
+    val barParams = await(svc.pathParams.paramsFor(Path.read("/svc/bar")).toFuture)
     assert(barParams[TotalTimeout.Param].timeout == 100.millis)
   }
 }

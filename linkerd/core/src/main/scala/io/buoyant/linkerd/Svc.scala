@@ -47,7 +47,7 @@ trait DefaultSvc extends SvcConfig { self: Svc =>
   }
 
   @JsonIgnore
-  def pathParams = PerPathParams(Seq(PathParams(matchAll, mk)), None)
+  def pathParams = PerPathParams(Activity.value(Seq(PathParams(matchAll, mk))))
 }
 
 class DefaultSvcImpl extends Svc with DefaultSvc
@@ -60,9 +60,9 @@ trait StaticSvc { self: Svc =>
   val configs: Seq[SvcPrefixConfig]
 
   @JsonIgnore
-  def pathParams = PerPathParams(configs.map { config =>
+  def pathParams = PerPathParams(Activity.value(configs.map { config =>
     PathParams(config.prefix, config.params)
-  }, None)
+  }))
 }
 
 class StaticSvcImpl(val configs: Seq[SvcPrefixConfig]) extends Svc with StaticSvc
@@ -83,21 +83,22 @@ trait FileSvc { self: Svc =>
     watcher.children.flatMap { children =>
       children.get(path.getFileName.toString) match {
         case Some(file: Watcher.File.Reg) => file.data
-        case _ => Activity.pending
+        case _ => Activity.exception(new IllegalStateException(s"unable to find file ${path.getFileName.toString}"))
       }
     }.map {
-      case Buf.Utf8(dtab) =>
-        val mapper = Parser.objectMapper(dtab, Seq())
-        mapper.readValue[Seq[SvcPrefixConfig]](dtab)
+      case Buf.Utf8(svcPrefixConfigs) =>
+        val mapper = Parser.objectMapper(svcPrefixConfigs, Seq())
+        mapper.readValue[Seq[SvcPrefixConfig]](svcPrefixConfigs)
+      case _ => throw new IllegalStateException(s"unable to read file ${path.getFileName.toString}")
     }
   }
 
   @JsonIgnore
-  def pathParams = PerPathParams(Seq.empty, Some(configsAct.map {
+  def pathParams = PerPathParams(configsAct.map {
     _.map { config =>
       PathParams(config.prefix, config.params)
     }
-  }))
+  })
 }
 
 class FileSvcImpl(val serviceFile: File) extends Svc with FileSvc
