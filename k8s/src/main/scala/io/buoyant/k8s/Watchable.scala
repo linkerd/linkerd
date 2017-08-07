@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.{Failure, http}
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
@@ -11,29 +11,17 @@ import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{NonFatal => _, _}
 import java.util.concurrent.atomic.AtomicReference
+import io.buoyant.k8s.Watch.{Added, Modified}
 import scala.util.control.NonFatal
 
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference]
-  extends Resource {
+private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, G <: KubeMetadata: TypeReference] extends Resource {
   import Watchable._
 
   protected def backoffs: Stream[Duration]
-  protected def path: String
   protected def stats: StatsReceiver
-
-  /**
-   * implementing classes should define this method to retrieve the current state
-   * of the resource to pass as Modified results to any watchers.
-   *
-   * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
-   */
-  protected def restartWatches(
-    labelSelector: Option[String] = None,
-    fieldSelector: Option[String] = None
-  ): Future[(Seq[W], Option[String])]
 
   protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
@@ -49,6 +37,37 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     stats,
     RetryBudget.Infinite
   )
+
+  def get(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None,
+    resourceVersion: Option[String] = None,
+    retryIndefinitely: Boolean = false,
+    watch: Boolean = false
+  ): Future[G] = {
+    val req = Api.mkreq(
+      http.Method.Get,
+      if (watch) watchPath else path,
+      None,
+      "labelSelector" -> labelSelector,
+      "fieldSelector" -> fieldSelector,
+      "resourceVersion" -> resourceVersion
+    )
+    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+    val retryingClient = retry andThen client
+    Trace.letClear(retryingClient(req)).flatMap(Api.parse[G])
+  }
+
+  /**
+   * implementing classes should define this method to retrieve the current state
+   * of the resource to pass as Modified results to any watchers.
+   *
+   * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
+   */
+  protected def restartWatches(
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None
+  ): Future[(Seq[W], Option[String])]
 
   /**
    * Watch this resource for changes, using a chunked HTTP request.
@@ -68,8 +87,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
     // Internal method used to recursively retry watches as needed on failures.
     def _watch(resourceVersion: Option[String] = None): AsyncStream[W] = {
-      val req = Api.mkreq(http.Method.Get, path, None,
-        "watch" -> Some("true"),
+      val req = Api.mkreq(http.Method.Get, watchPath, None,
         "labelSelector" -> labelSelector,
         "fieldSelector" -> fieldSelector,
         "resourceVersion" -> resourceVersion)
@@ -129,7 +147,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           case status =>
             close.set(Closable.nop)
-            log.debug(s"k8s failed to watch resource $path: ${status.code} ${status.reason}")
+            log.debug(s"k8s failed to watch resource $watchPath: ${status.code} ${status.reason}")
             val f = Future.exception(Api.UnexpectedResponse(rsp))
             AsyncStream.fromFuture(f)
         }
@@ -138,10 +156,64 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
     (_watch(resourceVersion), Closable.ref(close))
   }
+
+  /**
+   * Convert this Watchable into an [[Activity]]
+   * @param resourceVersion whether or not to send the initial resource
+   *                        version of the watched resource. this is a
+   *                        special case due to errors with the
+   *                        ConfigMap interpreter
+   * @param onEvent function called on each [[Watch]] event
+   * TODO: i wish this returned a [[Activity.State]] so that the caller
+   *       of this function could turn a [[Watch.Error]] into an
+   *       [[Activity.Failed]] if they wanted watch errors to fail this
+   *       [[Activity]], although none of our current code exhibits this
+   *       use-case...
+   *         - eliza, 7/18/2017
+   * @return
+   */
+  def activity[T](convert: G => T, resourceVersion: Boolean = true)(onEvent: (T, W) => T): Activity[T] =
+    Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
+      val closeRef = new AtomicReference[Closable](Closable.nop)
+      val pending = get(retryIndefinitely = true)
+        // if the initial GET failed, then the activity is a failure
+        .onFailure { e =>
+          log.warning(s"k8s failed to get resource at $path: $e")
+          state.update(Activity.Failed(e))
+        }
+        // otherwise, update the activity with the initial state, and
+        // apply the onEvent function to each successive watch event in
+        // the stream
+        .onSuccess { initial =>
+          val initialState = convert(initial)
+          state.update(Activity.Ok(initialState))
+
+          val version = if (resourceVersion) {
+            initial.metadata.flatMap(_.resourceVersion)
+          } else None
+
+          val (stream, close) = watch(None, None, version)
+
+          closeRef.set(close)
+          val _ = stream.foldLeft(initialState) { (state0, event) =>
+            val state1 = onEvent(state0, event)
+            state.update(Activity.Ok(state1))
+            state1
+          }
+        }
+
+      Closable.make { t =>
+        pending.raise(Closed)
+        Closable.ref(closeRef).close(t)
+      }
+
+    })
 }
 
 object Watchable {
   def DefaultBackoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds)
+  private object Closed extends Throwable
+
   implicit class RichAsyncStream[T](as: AsyncStream[T]) {
     /**
      * Note: forces the stream. For infinite streams, the future never resolves.

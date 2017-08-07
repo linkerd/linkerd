@@ -97,10 +97,22 @@ trait ObjectDescriptor[O <: KubeObject, W <: Watch[O]] {
  * Describes an Object in the Kubernetes API (i.e.
  * http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpoints)
  */
-trait KubeObject {
+trait KubeObject extends KubeMetadata {
   def apiVersion: Option[String]
-  def metadata: Option[ObjectMeta]
   def kind: Option[String]
+}
+
+/**
+ * A Kubernetes API response with a `metadata` field.
+ *
+ * This is factored out from [[KubeObject]] and [[KubeList]] so that
+ * the `G` type param on [[Watchable]] can be constrained based on it,
+ * while still allowing both [[KubeObject]]s and [[KubeList]]s to be
+ * [[Watchable]], *and* maintaining the distinction between objects
+ * and lists.
+ */
+trait KubeMetadata {
+  def metadata: Option[ObjectMeta]
 }
 
 /**
@@ -109,11 +121,8 @@ trait KubeObject {
  *
  * @tparam O the type of object contained in the list
  */
-trait KubeList[O <: KubeObject] {
+trait KubeList[O <: KubeObject] extends KubeMetadata {
   def items: Seq[O]
-  def apiVersion: Option[String]
-  def metadata: Option[ObjectMeta]
-  def kind: Option[String]
 }
 
 /**
