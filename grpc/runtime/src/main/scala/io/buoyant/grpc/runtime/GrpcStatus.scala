@@ -90,6 +90,8 @@ object GrpcStatus {
       case _ => None
     }
 
+  def unapply(message: h2.Message): Option[GrpcStatus] = tryFromHeaders(message.headers)
+
   def fromReset(rst: h2.Reset): GrpcStatus = rst match {
     case h2.Reset.NoError |
       h2.Reset.ProtocolError |
@@ -107,14 +109,17 @@ object GrpcStatus {
     case _ => h2.Reset.Cancel
   }
 
-  def fromTrailers(tlrs: h2.Frame.Trailers): GrpcStatus = {
-    val msg = tlrs.get(MessageKey).getOrElse("")
-    tlrs.get(StatusKey) match {
-      case Some(code) =>
-        try GrpcStatus(code.toInt, msg)
-        catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
-      case _ => GrpcStatus.Unknown(msg)
+  def tryFromHeaders(headers: h2.Headers): Option[GrpcStatus] = {
+    val msg = headers.get(MessageKey).getOrElse("")
+    headers.get(StatusKey).map { code =>
+      try GrpcStatus(code.toInt, msg)
+      catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
     }
+  }
+
+  def fromHeaders(headers: h2.Headers): GrpcStatus = {
+    val msg = headers.get(MessageKey).getOrElse("")
+    tryFromHeaders(headers).getOrElse(GrpcStatus.Unknown(msg))
   }
 
   private def toTrailers(s: GrpcStatus): h2.Frame.Trailers = {

@@ -109,7 +109,7 @@ object DecodingStream {
   ): Stream[T] = new DecodingStream[T] {
     protected[this] val frames: h2.Stream = rsp.stream
     protected[this] def decoder: ByteBuffer => T = decodeF
-    protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromTrailers(_)
+    protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromHeaders(_)
   }
 
   private sealed trait RecvState
