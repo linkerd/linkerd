@@ -1,7 +1,5 @@
 package io.buoyant.linkerd.protocol.h2.grpc
 
-import com.fasterxml.jackson.annotation.JsonSubTypes
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.twitter.finagle.buoyant.h2.service.H2Classifier
 import io.buoyant.linkerd.protocol.h2._
 
@@ -17,7 +15,7 @@ class NeverRetryableInitializer extends H2ClassifierInitializer {
 object NeverRetryableInitializer extends NeverRetryableInitializer
 
 class AlwaysRetryableConfig extends H2ClassifierConfig {
-  override def mk: H2Classifier = GrpcClassifiers.NeverRetryable
+  override def mk: H2Classifier = GrpcClassifiers.AlwaysRetryable
 }
 
 class AlwaysRetryableInitializer extends H2ClassifierInitializer {
