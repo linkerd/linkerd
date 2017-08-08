@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.PathMatcher
+import com.twitter.finagle.util.LoadService
 import com.twitter.io.Buf
 import com.twitter.util.Activity
 import io.buoyant.config.types.File
@@ -78,6 +79,10 @@ trait FileSvc { self: Svc =>
   @JsonIgnore
   private[this] lazy val watcher = Watcher(path.getParent)
 
+  private[linkerd] lazy val LoadedInitializers = Seq(
+    LoadService[ResponseClassifierInitializer]
+  )
+
   @JsonIgnore
   private[this] def configsAct: Activity[Seq[SvcPrefixConfig]] = {
     watcher.children.flatMap { children =>
@@ -87,7 +92,7 @@ trait FileSvc { self: Svc =>
       }
     }.map {
       case Buf.Utf8(svcPrefixConfigs) =>
-        val mapper = Parser.objectMapper(svcPrefixConfigs, Seq())
+        val mapper = Parser.objectMapper(svcPrefixConfigs, LoadedInitializers)
         mapper.readValue[Seq[SvcPrefixConfig]](svcPrefixConfigs)
       case _ => throw new IllegalStateException(s"unable to read file ${path.getFileName.toString}")
     }
