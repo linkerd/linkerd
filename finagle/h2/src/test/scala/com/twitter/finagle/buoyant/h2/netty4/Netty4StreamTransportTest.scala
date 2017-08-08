@@ -261,7 +261,8 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val reqStream = Stream.empty()
+    val q = new AsyncQueue[Frame]()
+    val reqStream = Stream(q)
     await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
     assert(!rspF.isDefined)
 
@@ -272,7 +273,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val readF = rsp.stream.read()
     assert(!readF.isDefined)
 
-    reqStream.reset(Reset.Cancel)
+    q.fail(Reset.Cancel, discard = true)
     eventually { assert(readF.isDefined) }
     assert(await(readF.liftToTry) == Throw(Reset.Cancel))
     assert(!closed.get)
@@ -583,12 +584,13 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val req = assertRecvRequest(eos = false)
 
-    val rspStream = Stream.empty()
+    val q = new AsyncQueue[Frame]()
+    val rspStream = Stream(q)
     await(transport.send(Response(Status.Ok, rspStream)))
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    rspStream.reset(Reset.Refused)
+    q.fail(Reset.Refused, discard = true)
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
     assert(transport.isClosed)
@@ -601,7 +603,8 @@ class Netty4StreamTransportTest extends FunSuite {
 
     val req = assertRecvRequest(eos = true)
 
-    val rspStream = Stream.empty()
+    val q = new AsyncQueue[Frame]()
+    val rspStream = Stream(q)
     await(transport.send(Response(Status.Ok, rspStream)))
     ctx.synchronized {
       assert(written.length == 1)
@@ -619,12 +622,13 @@ class Netty4StreamTransportTest extends FunSuite {
     import ctx._
 
     val req = assertRecvRequest(eos = false)
-    val rspStream = Stream.empty()
+    val q = new AsyncQueue[Frame]()
+    val rspStream = Stream(q)
     await(transport.send(Response(Status.Ok, rspStream)))
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    rspStream.reset(Reset.Refused)
+    q.fail(Reset.Refused, discard = true)
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Refused)))
     assert(transport.isClosed)

@@ -36,8 +36,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val tstats = new Netty4StreamTransport.StatsReceiver(stats)
-    val dispatcher = new Netty4ClientDispatcher(transport, tstats)
+    val dispatcher = new Netty4ClientDispatcher(transport, stats)
     assert(dispatcher.status == SvcStatus.Open)
 
     var released = 0

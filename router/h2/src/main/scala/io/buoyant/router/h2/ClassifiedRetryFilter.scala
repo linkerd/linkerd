@@ -76,11 +76,13 @@ class ClassifiedRetryFilter(
                 } else {
                   // Not enough retry budget to retry.
                   budgetExhausted.incr()
+                  consumeAll(s)
                   orElse
                 }
               case _ =>
                 // We ran out of retries.
                 backoffsExhausted.incr()
+                consumeAll(s)
                 orElse
             }
           case Throw(e) =>
