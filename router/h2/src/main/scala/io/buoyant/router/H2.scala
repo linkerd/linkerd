@@ -7,7 +7,6 @@ import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.StackServer
 import com.twitter.util.Future
 import java.net.SocketAddress
-import com.twitter.finagle.buoyant.h2.service.H2Classifiers
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
@@ -38,6 +37,7 @@ object H2 extends Router[Request, Response]
         ResponseClassifierCtx.Setter.role,
         H2ClassifierCtx.Setter.module[Request, Response]
       ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
+        .replace(StatsFilter.role, StreamStatsFilter.module)
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
