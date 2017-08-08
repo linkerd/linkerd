@@ -542,7 +542,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         localReset(Reset.InternalError)
     }
 
-    streamFF
+    localResetOnCancel(streamFF)
   }
 
   private[this] val writeHeaders: (Headers, Boolean) => Future[Unit] = { (hdrs, eos) =>
