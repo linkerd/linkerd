@@ -53,11 +53,9 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     ): Client = copy(stack, params)
 
     private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
-    private[this] lazy val streamStats =
-      new Netty4StreamTransport.StatsReceiver(statsReceiver.scope("stream"))
 
     protected def newDispatcher(trans: Http2FrameTransport): Service[Request, Response] =
-      new Netty4ClientDispatcher(trans, streamStats)
+      new Netty4ClientDispatcher(trans, statsReceiver.scope("stream"))
   }
 
   val client = Client()
@@ -96,15 +94,13 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       Netty4H2Listener.mk(params)
 
     private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
-    private[this] lazy val streamStats =
-      new Netty4StreamTransport.StatsReceiver(statsReceiver.scope("stream"))
 
     /** A dispatcher is created for each inbound HTTP/2 connection. */
     protected def newDispatcher(
       trans: Http2FrameTransport,
       service: Service[Request, Response]
     ): Closable = {
-      new Netty4ServerDispatcher(trans, service, streamStats)
+      new Netty4ServerDispatcher(trans, service, statsReceiver.scope("stream"))
     }
   }
 

@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -15,6 +16,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def log: Logger
   protected[this] def prefix: String
+  protected[this] def stats: StatsReceiver
 
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
@@ -36,6 +38,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
   private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
   protected[this] def isClosed = closed.get
+
+  protected[this] val streamsGauge = stats.addGauge("open_streams") {
+    streams.size()
+  }
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
   @tailrec private[this] def addClosedId(id: Int): Unit = {
