@@ -2,8 +2,7 @@
 
 The 1.1.3 release of Linkerd is mostly focused on improving our HTTP/2 support,
 including better support for gRPC.  Linkerd now supports automatic retries in
-HTTP/2 for retryable requests, even when there are (small) request or response
-bodies.
+HTTP/2 for retryable requests.
 
 * HTTP/2
   * Cleaned up spurious errors messages in the Linkerd log output.
