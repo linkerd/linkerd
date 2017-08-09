@@ -10,13 +10,13 @@ object H2ReqRep {
 }
 
 /**
- * Like a [[com.twitter.finagle.service.ReqRep]], but for H2
+ * Like a com.twitter.finagle.service.ReqRep, but for H2
  *
- * @param request  a H2 [[Request]]
- * @param response a [[Try]] containing either the H2 [[Response]] and the
- *                 final [[Frame]], or an error. the final frame is contained in
- *                 both an [[Option]], so that empty streams can pass [[None]], and
- *                 in a [[Try]], in case the [[Stream]] [[com.twitter.util.Throw Throw]]s.
+ * @param request  a H2 Request
+ * @param response a Try containing either the H2 Response and the
+ *                 final Frame, or an error. the final frame is contained in
+ *                 both an Option, so that empty streams can pass None, and
+ *                 in a Try, in case the Stream Throws.
  */
 case class H2ReqRepFrame(request: Request, response: Try[RepAndFrame]) {
 

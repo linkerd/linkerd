@@ -180,11 +180,11 @@ class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) wit
 
 trait H2SvcConfig extends SvcConfig {
   /**
-   * Override the setter for [[SvcConfig]]'s `_responseClassifier` field
-   * so that we can set `JsonIgnore` on it (and rewire [[_h2Classifier]]
+   * Override the setter for SvcConfig's `_responseClassifier` field
+   * so that we can set `JsonIgnore` on it (and rewire _h2Classifier
    * to the `"responseClassifier"` JSON property).
    *
-   * @param r a HTTP [[ResponseClassifierConfig]]. Not used.
+   * @param r Not used.
    */
   @JsonIgnore
   final override def responseClassifierConfig_=(r: Option[ResponseClassifierConfig]): Unit =

@@ -11,10 +11,8 @@ trait GrpcClassifier extends H2Classifier {
   def retryable(status: GrpcStatus): Boolean
 
   /**
-   * @inheritdoc
    * Since GRPC sends status codes in the
-   * [[com.twitter.finagle.buoyant.h2.Frame.Trailers Trailers]] frame of an H2
-   * stream, we can never attempt early classification, unless an error was
+   * Trailers frame of an H2 stream, we can never attempt early classification, unless an error was
    * Thrown.
    */
   override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
@@ -35,30 +33,30 @@ trait GrpcClassifier extends H2Classifier {
 }
 
 /**
- * [[H2Classifier]]s for gRPC
+ * H2Classifiers for gRPC
  */
 object GrpcClassifiers {
 
   /**
-   * [[H2Classifier]] that classifies all error status
-   * codes as [[ResponseClass.RetryableFailure]]
+   * H2Classifier that classifies all error status
+   * codes as ResponseClass.RetryableFailure
    */
   object AlwaysRetryable extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = true
   }
 
   /**
-   * [[H2Classifier]] that classifies all error status
-   * codes as [[ResponseClass.NonRetryableFailure]]
+   * H2Classifier that classifies all error status
+   * codes as ResponseClass.NonRetryableFailure
    */
   object NeverRetryable extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = false
   }
 
   /**
-   * The default [[H2Classifier]] for gRPC.
+   * The default H2Classifier for gRPC.
    *
-   * [[Unavailable]] is marked as retryable, and all other
+   * Unavailable is marked as retryable, and all other
    * failures are marked as non-retryable.
    */
   object Default extends GrpcClassifier {
@@ -69,8 +67,8 @@ object GrpcClassifiers {
   }
 
   /**
-   * a [[GrpcClassifier]] that marks any error in a specified list of codes
-   * as [[ResponseClass.RetryableFailure]], and the rest as [[ResponseClass.NonRetryableFailure]]
+   * a GrpcClassifier that marks any error in a specified list of codes
+   * as ResponseClass.RetryableFailure, and the rest as ResponseClass.NonRetryableFailure
    * @param retryableCodes a set of status codes which should be marked retryable
    */
   class RetryableStatusCodes(val retryableCodes: Set[Int]) extends GrpcClassifier {

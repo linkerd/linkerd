@@ -40,9 +40,9 @@ package object buoyant {
   }
 
   /**
-   * Reexport [[ResponseClassificationSyntheticException]]
+   * Reexport ResponseClassificationSyntheticException
    * publicly so it can be used in H2 `StreamStatsFilter`.
-   * @return a [[ResponseClassificationSyntheticException]]
+   * @return a ResponseClassificationSyntheticException
    */
   def syntheticException: ResponseClassificationSyntheticException = new ResponseClassificationSyntheticException()
 }

@@ -67,7 +67,7 @@ object H2FailureAccrualFactory {
 }
 
 /**
- * A modified version of [[com.twitter.finagle.liveness.FailureAccrualFactory]] for H2.
+ * A modified version of com.twitter.finagle.liveness.FailureAccrualFactory for H2.
  * This uses a H2Classifier to inform failure accrual at either response time, or when the stream
  * is complete.
  */

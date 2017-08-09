@@ -8,7 +8,7 @@ import io.buoyant.router.{PerDstPathFilter, PerDstPathStatsFilter}
 import io.buoyant.router.context.h2.H2ClassifierCtx
 
 /**
- * Like [[io.buoyant.router.PerDstPathStatsFilter]],
+ * Like io.buoyant.router.PerDstPathStatsFilter,
  * but specialized for H2 streams.
  */
 object PerDstPathStreamStatsFilter {
