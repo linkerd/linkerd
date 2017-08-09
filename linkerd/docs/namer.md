@@ -251,7 +251,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s Path Parameters
@@ -304,7 +304,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s External Path Parameters
@@ -421,7 +421,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s Namespaced Path Parameters
