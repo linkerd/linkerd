@@ -1,7 +1,7 @@
 ## 1.1.3 2017-08-09
 
 The 1.1.3 release of Linkerd is mostly focused on improving our HTTP/2 support,
-including better support for gRPC.  Linkerd now supports automatic retires in
+including better support for gRPC.  Linkerd now supports automatic retries in
 HTTP/2 for retryable requests, even when there are (small) request or response
 bodies.
 
@@ -9,8 +9,7 @@ bodies.
   * Cleaned up spurious errors messages in the Linkerd log output.
   * Added a number of gRPC response classifiers that use the `grpc-status` code
     to determine if the response was successful and if it should be retried.
-    See [the docs](https://linkerd.io/config/1.1.3/linkerd/index.html#grpc-response-classifiers)
-    for details.
+    See [the docs](https://linkerd.io/config/1.1.3/linkerd/index.html#grpc-response-classifiers) for details.
   * Added support for failure accrual and automatic retries to HTTP/2.
   * Fixed a memory leak related to messages with only a headers frame.
 * Istio
