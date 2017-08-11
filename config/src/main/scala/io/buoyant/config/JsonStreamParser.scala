@@ -8,6 +8,7 @@ import com.twitter.concurrent.AsyncStream
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Return, Throw, Try}
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -29,6 +30,7 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
 
   private[this] object Incomplete {
     val unexpectedEOI = "Unexpected end-of-input"
+
     def unapply(jpe: JsonProcessingException): Boolean =
       jpe.getMessage match {
         case null => false
@@ -93,31 +95,29 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     (objs, rest)
   }
 
+  private def fromReaderJson(r: Reader, chunkSize: Int = Int.MaxValue): AsyncStream[Buf] = {
+    log.trace("json reading chunk of %d bytes", chunkSize)
+    val read = r.read(chunkSize).respond {
+      case Return(Some(Buf.Utf8(chunk))) =>
+        log.trace("json read chunk: %s", chunk)
+      case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
+        log.trace("json read eoc")
+      case Throw(e) =>
+        log.warning(e, "json read error")
+    }.handle {
+      case NonFatal(e) => None
+    }
+
+    AsyncStream.fromFuture(read).flatMap {
+      case Some(buf) => buf +:: fromReaderJson(r, chunkSize)
+      case None => AsyncStream.empty[Buf]
+    }
+  }
+
   def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
-    def chunks(init: Buf): AsyncStream[T] =
-      for {
-        chunk <- {
-          log.trace("json reading chunk of %d bytes", bufsize)
-          val read = reader.read(bufsize).respond {
-            case Return(Some(Buf.Utf8(chunk))) =>
-              log.trace("json read chunk: %s", chunk)
-            case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
-              log.trace("json read eoc")
-            case Throw(e) =>
-              log.warning(e, "json read error")
-          }.handle {
-            case NonFatal(e) => None
-          }
-          AsyncStream.fromFuture(read).flatMap(AsyncStream.fromOption)
-        }
-
-        item <- {
-          val (items, tail) = readChunked[T](init.concat(chunk))
-          AsyncStream.fromSeq(items).concat(chunks(tail))
-        }
-      } yield item
-
-    chunks(Buf.Empty)
+    fromReaderJson(reader, bufsize)
+      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty))((init, buf) => readChunked[T](init._2.concat(buf)))
+      .flatMap(s => AsyncStream.fromSeq(s._1))
   }
 
 }
