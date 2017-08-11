@@ -95,7 +95,7 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     (objs, rest)
   }
 
-  private def fromReaderJson(r: Reader, chunkSize: Int = Int.MaxValue): AsyncStream[Buf] = {
+  private def fromReaderJson(r: Reader, chunkSize: Int = Int.MaxValue): AsyncStream[Option[Buf]] = {
     log.trace("json reading chunk of %d bytes", chunkSize)
     val read = r.read(chunkSize).respond {
       case Return(Some(Buf.Utf8(chunk))) =>
@@ -109,14 +109,22 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     }
 
     AsyncStream.fromFuture(read).flatMap {
-      case Some(buf) => buf +:: fromReaderJson(r, chunkSize)
-      case None => AsyncStream.empty[Buf]
+      //Fake None element to get around scanLeft being one behind
+      case Some(buf) => Some(buf) +:: None +:: fromReaderJson(r, chunkSize)
+      case None => AsyncStream.empty[Option[Buf]]
     }
   }
 
   def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
     fromReaderJson(reader, bufsize)
-      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty))((init, buf) => readChunked[T](init._2.concat(buf)))
+      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty))(
+        (init, buf) => {
+          buf match {
+            case Some(b) => readChunked[T](init._2.concat(b))
+            case None => (Nil, init._2)
+          }
+        }
+      )
       .flatMap(s => AsyncStream.fromSeq(s._1))
   }
 
