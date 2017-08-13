@@ -220,6 +220,7 @@ class Base extends Build {
         }
       } else deps
     })
+    .settings(libraryDependencies ++= Deps.jackson)
 
   /**
    * Extends Project with helpers to reduce boilerplate in project definitions.

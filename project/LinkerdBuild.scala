@@ -525,7 +525,7 @@ object LinkerdBuild extends Base {
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
       .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
-      .dependsOn(Protocol.thrift % "test")
+      .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")
       .dependsOn(admin, configCore, core)
