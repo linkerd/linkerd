@@ -23,11 +23,11 @@ interfaces:
 - kind: io.l5d.thriftNameInterpreter
   tls:
     certPath: namerd/examples/certs/namerd-cert.pem
-    keyPath: namerd/examples/certs/namerd-key.pem
+    keyPath: namerd/examples/certs/namerd-key.pk8
 - kind: io.l5d.httpController
   tls:
     certPath: namerd/examples/certs/namerd-cert.pem
-    keyPath: namerd/examples/certs/namerd-key.pem
+    keyPath: namerd/examples/certs/namerd-key.pk8
 - kind: io.l5d.httpController
   port: 4181
   tls:
