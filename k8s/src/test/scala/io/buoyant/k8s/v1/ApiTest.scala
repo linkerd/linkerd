@@ -233,6 +233,7 @@ class ApiTest extends FunSuite
             Future.value(rsp)
           case 3 =>
             assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=17575669") // this is the top-level resource version
+
             Future.never
 
           case _ =>
@@ -353,6 +354,7 @@ class ApiTest extends FunSuite
             Future.value(rsp)
           case 3 =>
             assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=17575669") // this is the top-level resource version
+
             Future.never
 
           case _ => // ignore

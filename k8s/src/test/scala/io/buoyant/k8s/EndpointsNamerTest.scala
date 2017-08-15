@@ -651,7 +651,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints/sessions?resourceVersion=5319582" =>
         val rsp = Response()
-
+      
         rsp.setChunked(true)
         doScaleDown before rsp.writer.write(Rsps.ScaleDown)
 
@@ -885,6 +885,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         Future.value(rsp)
       case r if r.path.startsWith(s"$WatchPath$ServicesPath") =>
         req = r
+
         val rsp = Response()
         Future.value(rsp)
       case r =>
@@ -910,7 +911,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       doScaleUp.setDone()
 
       await(activity.toFuture)
-//      assertHas(4)
+      assertHas(4)
       assert(stateUpdates == 2)
 
       doScaleDown.setDone()
