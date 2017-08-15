@@ -1,4 +1,17 @@
 <div class="svc-container" data-service="{{service}}">
   <div class="metric-large">{{service}}</div>
-  <div class="svc-metrics"></div>
+
+  <div class="combined-client-graph">
+    <div class="router-graph-header">Requests per client</div>
+    <canvas class="router-graph" height="181"></canvas>
+  </div>
+
+  <div class="router-row-container clearfix">
+    <div class="svc-metrics metrics-container col-md-6"></div>
+    <div class="svc-success-graph col-md-6">
+      <div class="router-graph-header">Service success rate</div>
+    </div>
+  </div>
+
+  <div class="svc-client-metrics"></div>
 </div>
