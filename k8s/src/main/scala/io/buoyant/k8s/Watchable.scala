@@ -31,6 +31,9 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
       case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      case (_, Return(rep)) if rep.status.code == 404 =>
+        log.warning("k8s retrying request to %s: the requested entity does not currently exist", path)
+        true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
