@@ -96,7 +96,7 @@ abstract class Ns[O <: KubeObject : Manifest, W <: Watch[O] : Manifest, L <: Kub
 
 object Ns {
 
-  trait CacheLike[O <: KubeObject, W <: Watch[O], I] extends Stabilize {
+  trait CacheLike[O <: KubeObject, W <: Watch[O], I] {
     def update(event: W): Unit
     def initialize(init: I): Unit
   }

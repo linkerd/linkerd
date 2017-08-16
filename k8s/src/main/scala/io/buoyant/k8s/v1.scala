@@ -122,7 +122,6 @@ package object v1 {
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
     def endpoints(name: String): NsObjectResource[v1.Endpoints, v1.EndpointsWatch] = endpoints.named(name)
     def services = listResource[Service, ServiceWatch, ServiceList]()
-
     def service(name: String): NsObjectResource[Service, ServiceWatch] = services.named(name)
     def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
   }
