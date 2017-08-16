@@ -7,7 +7,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.namer.Metadata
-import scala.collection.{mutable, breakOut}
+import scala.collection.breakOut
 import scala.language.implicitConversions
 
 class MultiNsNamer(
@@ -120,11 +120,41 @@ abstract class EndpointsNamer(
 
   // memoize port remapping watch activities so that we don't have to
   // create multiple watches on the same `Services` API object.
-  private[this] val portRemappings =
-    mutable.HashMap[(String, String, Option[String]), Activity[NumberedPortMap]]()
-
-  private[this] val serviceEndpoints =
-    mutable.HashMap[(String, String, Option[String]), Activity[ServiceEndpoints]]()
+  private[this] val portRemappingsMemo =
+    Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
+      case (nsName, serviceName, labelSelector) =>
+        mkApi(nsName)
+          .service(serviceName)
+          .activity(_.portMappings, labelSelector = labelSelector) {
+            case (oldMap, v1.ServiceAdded(service)) =>
+              val newMap = service.portMappings
+              newMap.foreach {
+                case (port, name) if oldMap.contains(port) =>
+                  log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
+                case (port, name) =>
+                  log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
+              }
+              oldMap ++ newMap
+            case (oldMap, v1.ServiceModified(service)) =>
+              val newMap = service.portMappings
+              newMap.foreach {
+                case (port, name) if oldMap.contains(port) =>
+                  log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
+                case (port, name) =>
+                  log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
+              }
+              oldMap ++ newMap
+            case (oldMap, v1.ServiceDeleted(service)) =>
+              val newMap = service.portMappings
+              // log deleted ports
+              for { deletedPort <- oldMap.keySet &~ newMap.keySet }
+                log.debug(s"k8s ns $nsName service $serviceName deleted port mapping for $deletedPort")
+              newMap
+            case (oldMap, v1.ServiceError(error)) =>
+              log.error(s"k8s ns $nsName service $serviceName watch error $error")
+              oldMap
+        }
+  }
 
   /**
    * Watch the numbered-port remappings for the service named `serviceName`
@@ -139,61 +169,29 @@ abstract class EndpointsNamer(
    *       pair multiple times, you will always get back the same `Activity`,
    *       which is created the first time that pair is looked up.
    */
-  private[k8s] def numberedPortRemappings(
+  private[this] def numberedPortRemappings(
     nsName: String,
     serviceName: String,
     labelSelector: Option[String]
-  ) : Activity[NumberedPortMap] = synchronized {
-    def _getPortMap() =
-      mkApi(nsName)
-        .service(serviceName)
-        .activity(_.portMappings, labelSelector = labelSelector) {
-          case (oldMap, v1.ServiceAdded(service)) =>
-            val newMap = service.portMappings
-            newMap.foreach {
-              case (port, name) if oldMap.contains(port) =>
-                log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
-              case (port, name) =>
-                log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
-              }
-            oldMap ++ newMap
-          case (oldMap, v1.ServiceModified(service)) =>
-            val newMap = service.portMappings
-            newMap.foreach {
-              case (port, name) if oldMap.contains(port) =>
-                log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
-              case (port, name) =>
-                log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
-            }
-            oldMap ++ newMap
-          case (oldMap, v1.ServiceDeleted(service)) =>
-            val newMap = service.portMappings
-              // log deleted ports
-            for { deletedPort <- oldMap.keySet &~ newMap.keySet }
-              log.debug(s"k8s ns $nsName service $serviceName deleted port mapping for $deletedPort")
-            newMap
-          case (oldMap, v1.ServiceError(error)) =>
-            log.error(s"k8s ns $nsName service $serviceName watch error $error")
-            oldMap
-        }
-    portRemappings.getOrElseUpdate((nsName, serviceName, labelSelector), _getPortMap())
-  }
+  ) = portRemappingsMemo((nsName, serviceName, labelSelector))
 
-  private[k8s] def serviceEndpoints(
+  private[this] val serviceEndpointsMemo =
+    Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]]  {
+      case (nsName, serviceName, labelSelector) =>
+        mkApi(nsName)
+          .endpoints(serviceName)
+          .activity(
+            ServiceEndpoints.fromEndpoints(serviceName, nsName),
+            labelSelector = labelSelector
+          ) { case (cache, event) => cache.update(event) }
+    }
+
+  private[this] def serviceEndpoints(
     nsName: String,
     serviceName: String,
     labelSelector: Option[String]
-  ): Activity[ServiceEndpoints] = synchronized {
-    def mkCache() =
-      mkApi(nsName)
-      .endpoints(serviceName)
-      .activity(
-        ServiceEndpoints.fromEndpoints(serviceName, nsName),
-        labelSelector = labelSelector
-      ) { case (cache, event) => cache.update(event) }
-
-    serviceEndpoints.getOrElseUpdate((nsName, serviceName, labelSelector), mkCache())
-  }
+  ): Activity[ServiceEndpoints] =
+    serviceEndpointsMemo((nsName, serviceName, labelSelector))
 
   @inline private[this] def mkNameTree(
     id: Path,
