@@ -18,7 +18,7 @@ class MultiNsNamer(
 )(implicit timer: Timer = DefaultTimer)
   extends EndpointsNamer(idPrefix, mkApi, labelName, backoff)(timer) {
 
-  protected[this] override val variablePrefixLength: Int =
+  private[this] val variablePrefixLength: Int =
     MultiNsNamer.PrefixLen + labelName.size
 
   /**
@@ -67,7 +67,7 @@ class SingleNsNamer(
 )(implicit timer: Timer = DefaultTimer)
   extends EndpointsNamer(idPrefix, mkApi, labelName, backoff)(timer) {
 
-  protected[this] override val variablePrefixLength: Int =
+  private[this] val variablePrefixLength: Int =
     SingleNsNamer.PrefixLen + labelName.size
 
   /**
@@ -119,7 +119,6 @@ abstract class EndpointsNamer(
   extends Namer {
 
   import EndpointsNamer._
-  protected[this] val variablePrefixLength: Int
 
   // memoize port remapping watch activities so that we don't have to
   // create multiple watches on the same `Services` API object.
