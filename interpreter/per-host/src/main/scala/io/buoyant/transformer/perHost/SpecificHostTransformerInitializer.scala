@@ -11,7 +11,7 @@ class SpecificHostTransformerInitializer extends TransformerInitializer {
   override val configId = "io.l5d.specificHost"
 }
 
-class SpecificHostTransformerConfig(host: String) extends TransformerConfig {
+case class SpecificHostTransformerConfig(host: String) extends TransformerConfig {
   assert(host != null, "io.l5d.specificHost: host property is required")
 
   @JsonIgnore
