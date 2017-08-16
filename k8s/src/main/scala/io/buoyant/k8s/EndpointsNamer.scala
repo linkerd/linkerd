@@ -150,7 +150,7 @@ abstract class EndpointsNamer(
               logEvent.deletion(oldMap -- newMap.keySet)
               newMap
             case (oldMap, v1.ServiceError(error)) =>
-              log.error(
+              log.warning(
                 "k8s ns %s service %s watch error %s",
                 nsName, serviceName, error
               )
@@ -308,7 +308,6 @@ object EndpointsNamer {
 
     private[this] val logEvent = EventLogger(serviceName, nsName)
     def update(event: v1.EndpointsWatch): ServiceEndpoints =
-      // TODO: i wish this logging code was less ugly...
       event match {
         case v1.EndpointsAdded(update) =>
           val (newEndpoints, newPorts: Map[String, Int]) =
@@ -346,7 +345,10 @@ object EndpointsNamer {
             ports = ports -- deletedPorts.keySet
           )
         case v1.EndpointsError(error) =>
-          log.debug("k8s ns %s service %s endpoints watch error %s", nsName, serviceName, error)
+          log.warning(
+            "k8s ns %s service %s endpoints watch error %s",
+            nsName, serviceName, error
+          )
           this
       }
   }
