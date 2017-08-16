@@ -7,7 +7,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.namer.Metadata
-import scala.collection.breakOut
+import scala.collection.{breakOut, mutable}
 import scala.language.implicitConversions
 
 class MultiNsNamer(
@@ -123,35 +123,34 @@ abstract class EndpointsNamer(
   private[this] val portRemappingsMemo =
     Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
       case (nsName, serviceName, labelSelector) =>
+        val logEvent = EventLogger(nsName, serviceName)
         mkApi(nsName)
           .service(serviceName)
           .activity(_.portMappings, labelSelector = labelSelector) {
             case (oldMap, v1.ServiceAdded(service)) =>
               val newMap = service.portMappings
-              newMap.foreach {
-                case (port, name) if oldMap.contains(port) =>
-                  log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
-                case (port, name) =>
-                  log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
-              }
+              logEvent.addition(newMap -- oldMap.keySet)
               oldMap ++ newMap
             case (oldMap, v1.ServiceModified(service)) =>
               val newMap = service.portMappings
-              newMap.foreach {
-                case (port, name) if oldMap.contains(port) =>
-                  log.debug(s"k8s ns $nsName service $serviceName remapped port $port -> $name")
-                case (port, name) =>
-                  log.debug(s"k8s ns $nsName service $serviceName added port mapping $port -> $name")
-              }
+              logEvent.addition(newMap -- oldMap.keySet)
+              logEvent.deletion(oldMap -- newMap.keySet)
+              val keptPorts = newMap.keySet &~ oldMap.keySet
+              val remappedPorts =
+                oldMap.filterKeys(keptPorts.contains)
+                  .zip(newMap.filterKeys(keptPorts.contains))
+                  .filter{ case ((_, a), (_, b)) => a != b }
+              logEvent.modification(remappedPorts)
               oldMap ++ newMap
             case (oldMap, v1.ServiceDeleted(service)) =>
               val newMap = service.portMappings
-              // log deleted ports
-              for { deletedPort <- oldMap.keySet &~ newMap.keySet }
-                log.debug(s"k8s ns $nsName service $serviceName deleted port mapping for $deletedPort")
+              logEvent.deletion(oldMap -- newMap.keySet)
               newMap
             case (oldMap, v1.ServiceError(error)) =>
-              log.error(s"k8s ns $nsName service $serviceName watch error $error")
+              log.error(
+                "k8s ns %s service %s watch error %s",
+                nsName, serviceName, error
+              )
               oldMap
         }
   }
@@ -238,9 +237,29 @@ object EndpointsNamer {
   protected type PortMap = Map[String, Int]
   protected type NumberedPortMap = Map[Int, String]
 
-  protected case class Endpoint(ip: InetAddress, nodeName: Option[String])
+  private trait Loggable {
+    def logAction(verb: String)(nsName: String, serviceName: String): Unit
+    val logAddition: (String, String) => Unit
+    = logAction("added")
+    val logDeletion: (String, String) => Unit
+    = logAction("deleted")
+  }
 
-  protected object Endpoint {
+  private case class Endpoint(ip: InetAddress, nodeName: Option[String])
+  extends Loggable {
+    override def logAction(
+      verb: String
+    )(
+      nsName: String,
+      serviceName: String
+    ): Unit =
+      log.debug(
+        "k8s ns %s service %s %s endpoint %s",
+        nsName, serviceName, verb, this
+      )
+  }
+
+  private object Endpoint {
     def apply(addr: v1.EndpointAddress): Endpoint =
       Endpoint(InetAddress.getByName(addr.ip), addr.nodeName)
   }
@@ -284,57 +303,41 @@ object EndpointsNamer {
         isa = new InetSocketAddress(ip, portNumber)
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap)
         .asInstanceOf[Address]
-
+    private[this] val logEvent = EventLogger(serviceName, nsName)
     def update(event: v1.EndpointsWatch): ServiceEndpoints =
       // TODO: i wish this logging code was less ugly...
       event match {
         case v1.EndpointsAdded(update) =>
-          val (newEndpoints, newPorts) = update.subsets.toEndpointsAndPorts
-          for {endpoint <- newEndpoints if !endpoints.contains(endpoint) }
-            log.debug(s"k8s ns $nsName service $serviceName added endpoint $endpoint")
-          for { (name, port) <- newPorts if !ports.contains(name) }
-            log.debug(s"k8s ns $nsName service $serviceName added port mapping '$name' to port $port")
+          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          logEvent.addition(newEndpoints -- endpoints)
+          logEvent.addition(newPorts -- ports.keySet)
           this.copy(endpoints = endpoints ++ newEndpoints, ports = ports ++ newPorts)
         case v1.EndpointsModified(update) =>
-          val (newEndpoints, newPorts) = update.subsets.toEndpointsAndPorts
-          for { endpoint <- endpoints if !newEndpoints.contains(endpoint) } yield {
-            log.debug(s"k8s ns $nsName service $serviceName deleted endpoint $endpoint")
-            endpoint
-          }
-          for { name <- ports.keySet if !newPorts.contains(name) } yield {
-            log.debug(s"k8s ns $nsName service $serviceName deleted port $name")
-            name
-          }
-          for {endpoint <- newEndpoints }
-            if (!endpoints.contains(endpoint))
-              log.debug(s"k8s ns $nsName service $serviceName added endpoint $endpoint")
-            else
-              log.debug(s"k8s ns $nsName service $serviceName modified endpoint $endpoint")
-          for { (name, port) <- newPorts }
-            if (!ports.contains(name))
-              log.debug(s"k8s ns $nsName service $serviceName added port mapping '$name' to port $port")
-            else
-              log.debug(s"k8s ns $nsName service $serviceName remapped '$name' to port $port")
+          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          logEvent.addition(newEndpoints -- endpoints)
+          logEvent.deletion(endpoints -- endpoints)
+          logEvent.addition(newPorts -- ports.keySet)
+          logEvent.deletion(ports -- newPorts.keySet)
+          val keptPorts = newPorts.keySet &~ ports.keySet
+          val remappedPorts =
+            ports.filterKeys(keptPorts.contains)
+              .zip(newPorts.filterKeys(keptPorts.contains))
+              .filter{ case ((_, a), (_, b)) => a != b }
+          logEvent.modification(remappedPorts)
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
         case v1.EndpointsDeleted(update) =>
-          val (newEndpoints, newPorts) = update.subsets.toEndpointsAndPorts
-          val deletedEndpoints =
-            for { endpoint <- endpoints if !newEndpoints.contains(endpoint) } yield {
-              log.debug(s"k8s ns $nsName service $serviceName deleted endpoint $endpoint")
-              endpoint
-            }
-          val deletedPorts =
-            for { name <- ports.keySet if !newPorts.contains(name) } yield {
-              log.debug(s"k8s ns $nsName service $serviceName deleted port $name")
-              name
-            }
+          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          val deletedEndpoints = endpoints.diff(newEndpoints)
+          val deletedPorts = ports.filterKeys(!newPorts.contains(_))
+          logEvent.deletion(deletedEndpoints)
+          logEvent.deletion(deletedPorts)
           this.copy(
             endpoints = endpoints -- deletedEndpoints,
-            ports = ports -- deletedPorts
+            ports = ports -- deletedPorts.keySet
           )
         case v1.EndpointsError(error) =>
-          log.debug(s"k8s ns $nsName service $serviceName endpoints watch error $error")
+          log.debug("k8s ns %s service %s endpoints watch error %s", nsName, serviceName, error)
           this
       }
   }
@@ -372,6 +375,43 @@ object EndpointsNamer {
       val (endpoints, ports) = result.unzip
       (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
     }
+  }
+
+  private[EndpointsNamer] implicit class LoggableMapping[A, B](val mapping: (A, B))
+  extends Loggable {
+    override def logAction(verb: String)(nsName: String, serviceName: String): Unit =
+      log.debug(
+        "k8s ns %s service %s %s port mapping %s to %s",
+        nsName, serviceName, verb, mapping._1, mapping._2
+      )
+  }
+
+  private case class EventLogger(nsName: String, serviceName: String) {
+    def addition(additions: Iterable[Loggable]): Unit =
+      additions.foreach(_.logAddition(nsName, serviceName))
+
+    def deletion(deletions: Iterable[Loggable]): Unit =
+      deletions.foreach(_.logDeletion(nsName, serviceName))
+
+    def modification[T <: Loggable](mods: Iterable[(T, T)]): Unit =
+      for { (old, replacement) <- mods }
+        log.debug(
+          "k8s ns %s service %s replaced %s with %s",
+          nsName, serviceName, old, replacement
+        )
+
+    def addition(additions: Map[_, _]): Unit =
+      additions.foreach(_.logAddition(nsName, serviceName))
+
+    def deletion(deletions: Map[_, _]): Unit =
+      deletions.foreach(_.logDeletion(nsName, serviceName))
+
+    def modification[A, B](mods: Map[(A, B), (A, B)]): Unit =
+      for { (old, replacement) <- mods }
+        log.debug(
+          "k8s ns %s service %s %s remapped port %s from %s to %s",
+          nsName, serviceName, old._1, old._2, replacement._2
+        )
   }
 
 }
