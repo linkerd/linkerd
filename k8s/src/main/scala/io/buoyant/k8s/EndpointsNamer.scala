@@ -7,7 +7,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.namer.Metadata
-import scala.collection.{breakOut, mutable}
+import scala.collection.breakOut
 import scala.language.implicitConversions
 
 class MultiNsNamer(
@@ -94,7 +94,10 @@ class SingleNsNamer(
         lookupServices(nsName, portName, serviceName, id, residual, labelSelector)
 
       case (id@Path.Utf8(portName, serviceName), Some(label)) =>
-        log.debug("k8s lookup: ns %s service %s label value segment missing for label %s", nsName, serviceName, portName, label)
+        log.debug(
+          "k8s lookup: ns %s service %s label value segment missing for label %s",
+          nsName, serviceName, portName, label
+        )
         Activity.value(NameTree.Neg)
 
       case _ =>
@@ -224,7 +227,7 @@ abstract class EndpointsNamer(
       case None =>
         // otherwise, we are dealing with a named port, so we can
         // just look up the service from the endpoints activity
-        endpointsAct.map { endpoints => endpoints.port(portName) }
+        endpointsAct.map { endpoints => endpoints.lookupNamedPort(portName) }
     }
     stabilize(unstable).map { mkNameTree(id, residual) }
   }
@@ -284,11 +287,11 @@ object EndpointsNamer {
               Some(port(targetPortNumber))
             case None =>
               // target port is a name and may or may not exist
-              port(targetPort)
+              lookupNamedPort(targetPort)
           }
         }
 
-    def port(portName: String): Option[Set[Address]] =
+    def lookupNamedPort(portName: String): Option[Set[Address]] =
         ports.get(portName).map { portNumber =>
           for {
             Endpoint(ip, nodeName) <- endpoints
@@ -301,19 +304,24 @@ object EndpointsNamer {
       for {
         Endpoint(ip, nodeName) <- endpoints
         isa = new InetSocketAddress(ip, portNumber)
-      } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap)
-        .asInstanceOf[Address]
+      } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
+
     private[this] val logEvent = EventLogger(serviceName, nsName)
     def update(event: v1.EndpointsWatch): ServiceEndpoints =
       // TODO: i wish this logging code was less ugly...
       event match {
         case v1.EndpointsAdded(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          val (newEndpoints, newPorts: Map[String, Int]) =
+              update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keySet)
-          this.copy(endpoints = endpoints ++ newEndpoints, ports = ports ++ newPorts)
+          this.copy(
+            endpoints = endpoints ++ newEndpoints,
+            ports = ports ++ newPorts
+          )
         case v1.EndpointsModified(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          val (newEndpoints, newPorts: Map[String, Int]) =
+            update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.deletion(endpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keySet)
@@ -327,7 +335,8 @@ object EndpointsNamer {
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
         case v1.EndpointsDeleted(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) = update.subsets.toEndpointsAndPorts
+          val (newEndpoints, newPorts: Map[String, Int]) =
+            update.subsets.toEndpointsAndPorts
           val deletedEndpoints = endpoints.diff(newEndpoints)
           val deletedPorts = ports.filterKeys(!newPorts.contains(_))
           logEvent.deletion(deletedEndpoints)
@@ -352,7 +361,9 @@ object EndpointsNamer {
     }
   }
 
-  private implicit class RichSubsetsSeq(val subsets: Option[Seq[v1.EndpointSubset]]) extends AnyVal {
+  private implicit class RichSubsetsSeq(
+    val subsets: Option[Seq[v1.EndpointSubset]]
+  ) extends AnyVal {
 
     private[this] def toPortMap(subset: v1.EndpointSubset): PortMap =
       (for {
