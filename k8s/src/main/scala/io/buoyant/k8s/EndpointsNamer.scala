@@ -113,7 +113,7 @@ abstract class EndpointsNamer(
   labelName: Option[String] = None,
   backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
-  extends Namer with Stabilize {
+  extends Namer {
 
   import EndpointsNamer._
   protected[this] val variablePrefixLength: Int
