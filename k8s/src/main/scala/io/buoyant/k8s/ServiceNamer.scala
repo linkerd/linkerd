@@ -1,11 +1,13 @@
 package io.buoyant.k8s
 
+import java.net.InetSocketAddress
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
+import scala.collection.{breakOut, mutable}
 
 /**
  * Accepts names in the form:
@@ -21,25 +23,102 @@ class ServiceNamer(
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer) extends Namer {
 
+  private[this] case class Svc(ports: Map[String, Address], portMappings: Map[Int, String]) {
+    def lookup(portName: String): Option[Address] =
+      Try(portName.toInt).toOption match {
+        case Some(portNumber) => lookupNumberedPort(portNumber)
+        case None => lookupNamedPort(portName)
+      }
+
+    def lookupNamedPort(portName: String): Option[Address] =
+      ports.get(portName)
+
+    def lookupNumberedPort(portNumber: Int): Option[Address] =
+      for {
+        portName <- portMappings.get(portNumber)
+        address <- ports.get(portName)
+      } yield address
+
+    def update(event: v1.ServiceWatch): Svc = ???
+  }
+
+  private[this] object Svc {
+    def apply(service: v1.Service): Svc = {
+      val ports = mutable.Map.empty[String, Address]
+      val portMap = mutable.Map.empty[Int, String]
+
+      for {
+        meta <- service.metadata.toSeq
+        name <- meta.name.toSeq
+        status <- service.status.toSeq
+        lb <- status.loadBalancer.toSeq
+        spec <- service.spec.toSeq
+        port <- spec.ports
+      } {
+        for {
+          ingress <- lb.ingress.toSeq.flatten
+          hostname <- ingress.hostname.orElse(ingress.ip)
+        } ports += port.name -> Address(new InetSocketAddress(hostname, port.port))
+
+        portMap += (port.targetPort match {
+          case Some(targetPort) => port.port -> targetPort
+          case None => port.port -> port.port.toString
+        })
+      }
+      Svc(ports.toMap, portMap.toMap)
+    }
+  }
+
   private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
-  def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
-    case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-      val nameTree = serviceNs.get(nsName.toLowerCase, None).get(serviceName.toLowerCase, portName.toLowerCase).map(toNameTree(path, _))
-      Activity(nameTree.map(Activity.Ok(_)))
+  private[this] val servicesMemo =
+    Memoize[(String, String, Option[String]), Activity[Svc]]  {
+      case (nsName, serviceName, labelSelector) =>
+        mkApi(nsName)
+          .service(serviceName)
+          .activity(
+            Svc(_),
+            labelSelector = labelSelector
+          ) { case (svc, event) => svc.update(event) }
+    }
 
-    case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
-      val nameTree = serviceNs
-        .get(nsName.toLowerCase, Some(s"$label=$labelValue"))
-        .get(serviceName.toLowerCase, portName.toLowerCase)
-        .map(toNameTree(path, _))
+  private[this] def service(
+    nsName: String,
+    serviceName: String,
+    labelSelector: Option[String] = None
+  ): Activity[Svc] =
+    servicesMemo((nsName, serviceName, labelSelector))
 
-      Activity(nameTree.map(Activity.Ok(_)))
-
-    case _ =>
-      Activity.value(NameTree.Neg)
+  @inline private[this] def mkNameTree(
+    id: Path,
+    residual: Path
+  )(lookup: Option[Var[Set[Address]]]): NameTree[Name] = lookup match {
+    case Some(addresses) =>
+      val addrs = addresses.map {
+        Addr.Bound(_)
+      }
+      NameTree.Leaf(Name.Bound(addrs, idPrefix ++ id, residual))
+    case None => NameTree.Neg
   }
+
+  def lookup(path: Path): Activity[NameTree[Name]] =
+    (path.take(variablePrefixLength), labelName) match {
+      case (id@Path.Utf8(nsName, portName, serviceName), None) =>
+        val unstable = service(nsName.toLowerCase, serviceName.toLowerCase)
+          .map { _.lookup(portName.toLowerCase) }
+        stabilize(unstable).map(addr => toNameTree(path, addr))
+      case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
+        val labelSelector = Some(s"$label=$labelValue")
+        val unstable = service(
+          nsName.toLowerCase,
+          serviceName.toLowerCase,
+          labelSelector
+        ).map { _.lookup(portName.toLowerCase) }
+        stabilize(unstable).map(addr => toNameTree(path, addr))
+      case _ =>
+        Activity.value(NameTree.Neg)
+    }
 
   private[this] def toNameTree(path: Path, svcAddress: Option[Var[Address]]): NameTree[Name.Bound] = svcAddress match {
     case Some(address) =>
@@ -57,10 +136,6 @@ class ServiceNamer(
       port <- spec.ports.find(_.name == portName)
     } yield port.port
 
-  private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
-    override protected def mkResource(name: String) = mkApi(name).services
-    override protected def mkCache(name: String) = new ServiceCache(name)
-  }
 }
 
 
