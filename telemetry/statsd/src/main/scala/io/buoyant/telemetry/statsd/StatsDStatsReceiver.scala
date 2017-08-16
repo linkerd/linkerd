@@ -24,25 +24,36 @@ private[telemetry] class StatsDStatsReceiver(
   val repr: AnyRef = this
 
   private[statsd] def flush(): Unit = {
-    gauges.values.foreach(_.send)
+    gauges.values.asScala.foreach(_.send)
   }
   private[statsd] def close(): Unit = statsDClient.stop()
 
-  private[this] val gauges = new ConcurrentHashMap[String, Metric.Gauge].asScala
+  private[this] val counters = new ConcurrentHashMap[String, Metric.Counter]
+  private[this] val gauges = new ConcurrentHashMap[String, Metric.Gauge]
+  private[this] val stats = new ConcurrentHashMap[String, Metric.Stat]
 
   protected[this] def registerGauge(name: Seq[String], f: => Float): Unit = {
+    deregisterGauge(name)
+
     val statsDName = mkName(name)
-    gauges(statsDName) = new Metric.Gauge(statsDClient, statsDName, f)
+    val _ = gauges.put(statsDName, new Metric.Gauge(statsDClient, statsDName, f))
   }
 
   protected[this] def deregisterGauge(name: Seq[String]): Unit = {
     val _ = gauges.remove(mkName(name))
   }
 
-  def counter(name: String*): Counter =
-    new Metric.Counter(statsDClient, mkName(name), sampleRate)
+  def counter(name: String*): Counter = {
+    val statsDName = mkName(name)
+    val newCounter = new Metric.Counter(statsDClient, statsDName, sampleRate)
+    val counter = counters.putIfAbsent(statsDName, newCounter)
+    if (counter != null) counter else newCounter
+  }
 
-  def stat(name: String*): Stat =
-    new Metric.Stat(statsDClient, mkName(name), sampleRate)
-
+  def stat(name: String*): Stat = {
+    val statsDName = mkName(name)
+    val newStat = new Metric.Stat(statsDClient, statsDName, sampleRate)
+    val stat = stats.putIfAbsent(statsDName, newStat)
+    if (stat != null) stat else newStat
+  }
 }
