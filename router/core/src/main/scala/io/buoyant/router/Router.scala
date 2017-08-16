@@ -212,7 +212,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
           stk.make(params + dst + param.Stats(sr) + param.Label(dst.path.show) +
-            RouterLabel.Param(label) + DynamicServiceFactory.Param(pathParams))
+            RouterLabel.Param(label) + DynParamsFactory.Param(pathParams))
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
@@ -357,7 +357,7 @@ object StackRouter {
     stk.push(StatsFilter.module)
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
-    stk.push(DynamicServiceFactory.module)
+    stk.push(DynParamsFactory.module)
     stk.push(PathRegistry.module)
     stk.result
   }
