@@ -42,22 +42,41 @@ class ServiceNamer(
         address <- ports.get(portName)
       } yield address
 
-    def update(
-      nsName: String,
-      serviceName: String
-    )(
-      event: v1.ServiceWatch
-    ): Svc = event match {
-      case v1.ServiceAdded(service) => Svc(service)
-      case v1.ServiceModified(service) => Svc(service)
+    def update(logEvent: EventLogger, event: v1.ServiceWatch): Svc = event match {
+      case v1.ServiceAdded(service) =>
+        val svc = Svc(service)
+        logEvent.addition(svc.portMappings -- portMappings.keys)
+        logEvent.addition(svc.ports -- ports.keys)
+        svc
+      case v1.ServiceModified(service) =>
+        val svc = Svc(service)
+        logEvent.addition(svc.portMappings -- portMappings.keys)
+        logEvent.addition(svc.ports -- ports.keys)
+        logEvent.deletion(portMappings -- svc.portMappings.keys)
+        logEvent.deletion(ports -- svc.ports.keys)
+        val keptMappings = portMappings.keySet.intersect(svc.portMappings.keySet)
+        val keptPorts =  ports.keySet.intersect(svc.ports.keySet)
+        val modifiedMappings =
+          portMappings.filterKeys(keptMappings.contains)
+                      .zip(svc.portMappings.filterKeys(keptMappings.contains))
+                      .filter{ case ((_, a), (_, b)) => a != b }
+        val modifiedPorts =
+          ports.filterKeys(keptPorts.contains)
+            .zip(svc.ports.filterKeys(keptPorts.contains))
+            .filter{ case ((_, a), (_, b)) => a != b }
+        logEvent.modification(modifiedMappings)
+        logEvent.modification(modifiedPorts)
+        svc
       case v1.ServiceDeleted(deleted) =>
         val Svc(deletedPorts, deletedMappings) = Svc(deleted)
+        logEvent.deletion(deletedPorts)
+        logEvent.deletion(deletedMappings)
         this.copy(
           ports = ports -- deletedPorts.keys,
           portMappings = portMappings -- deletedMappings.keys
         )
       case v1.ServiceError(error) =>
-        log.warning("k8s ns %s service %s error %s", nsName, serviceName, error)
+        log.warning("k8s ns %s service %s error %s", logEvent.nsName, logEvent.serviceName, error)
         this
     }
   }
@@ -97,12 +116,13 @@ class ServiceNamer(
   private[this] val servicesMemo =
     Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
+        val eventLogger = EventLogger(nsName, serviceName)
         mkApi(nsName)
           .service(serviceName)
           .activity(
             Svc.fromResponse(_),
             labelSelector = labelSelector
-          ) { case (svc, event) => svc.update(nsName, serviceName)(event) }
+          ) { case (svc, event) => svc.update(eventLogger, event) }
     }
 
   private[this] def service(
@@ -159,4 +179,3 @@ class ServiceNamer(
     } yield port.port
 
 }
-
