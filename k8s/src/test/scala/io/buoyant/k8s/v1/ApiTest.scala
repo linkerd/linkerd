@@ -50,7 +50,7 @@ class ApiTest extends FunSuite
     }
 
     val ns = Api(service).withNamespace("srv")
-    val endpoints = await(ns.endpoints.named("accounts").get())
+    val endpoints = await(ns.endpoints.named("accounts").get()).value
     assert(endpoints == Endpoints(
       subsets = Some(Seq(
         EndpointSubset(
