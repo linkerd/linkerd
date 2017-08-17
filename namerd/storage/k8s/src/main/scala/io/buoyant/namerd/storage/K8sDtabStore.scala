@@ -63,7 +63,6 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
       throw new IllegalStateException("k8s API request for Dtab list returned 404!")
   }
 
-
   // Set up a watch on the Kubernetes API to update our internal state
   // NOTE: this currently relies on our watch connection to update the internal state, rather than
   // doing any kind of "write-through caching", so there are currently no "read-your-write"

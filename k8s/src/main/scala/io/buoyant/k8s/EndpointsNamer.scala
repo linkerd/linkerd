@@ -45,8 +45,10 @@ class MultiNsNamer(
         lookupServices(nsName, portName, serviceName, id, residual, labelSelector)
 
       case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
-        log.debug("k8s lookup: ns %s service %s label value segment missing for label %s",
-                  nsName, serviceName, portName, label)
+        log.debug(
+          "k8s lookup: ns %s service %s label value segment missing for label %s",
+          nsName, serviceName, portName, label
+        )
         Activity.value(NameTree.Neg)
       case _ =>
         Activity.value(NameTree.Neg)
@@ -132,33 +134,33 @@ abstract class EndpointsNamer(
             _.map(_.portMappings).getOrElse(Map.empty),
             labelSelector = labelSelector
           ) {
-            case (oldMap, v1.ServiceAdded(service)) =>
-              val newMap = service.portMappings
-              logEvent.addition(newMap -- oldMap.keySet)
-              oldMap ++ newMap
-            case (oldMap, v1.ServiceModified(service)) =>
-              val newMap = service.portMappings
-              logEvent.addition(newMap -- oldMap.keySet)
-              logEvent.deletion(oldMap -- newMap.keySet)
-              val keptPorts = newMap.keySet &~ oldMap.keySet
-              val remappedPorts =
-                oldMap.filterKeys(keptPorts.contains)
-                  .zip(newMap.filterKeys(keptPorts.contains))
-                  .filter{ case ((_, a), (_, b)) => a != b }
-              logEvent.modification(remappedPorts)
-              oldMap ++ newMap
-            case (oldMap, v1.ServiceDeleted(service)) =>
-              val newMap = service.portMappings
-              logEvent.deletion(oldMap -- newMap.keySet)
-              newMap
-            case (oldMap, v1.ServiceError(error)) =>
-              log.warning(
-                "k8s ns %s service %s watch error %s",
-                nsName, serviceName, error
-              )
-              oldMap
-        }
-  }
+              case (oldMap, v1.ServiceAdded(service)) =>
+                val newMap = service.portMappings
+                logEvent.addition(newMap -- oldMap.keySet)
+                oldMap ++ newMap
+              case (oldMap, v1.ServiceModified(service)) =>
+                val newMap = service.portMappings
+                logEvent.addition(newMap -- oldMap.keySet)
+                logEvent.deletion(oldMap -- newMap.keySet)
+                val keptPorts = newMap.keySet &~ oldMap.keySet
+                val remappedPorts =
+                  oldMap.filterKeys(keptPorts.contains)
+                    .zip(newMap.filterKeys(keptPorts.contains))
+                    .filter { case ((_, a), (_, b)) => a != b }
+                logEvent.modification(remappedPorts)
+                oldMap ++ newMap
+              case (oldMap, v1.ServiceDeleted(service)) =>
+                val newMap = service.portMappings
+                logEvent.deletion(oldMap -- newMap.keySet)
+                newMap
+              case (oldMap, v1.ServiceError(error)) =>
+                log.warning(
+                  "k8s ns %s service %s watch error %s",
+                  nsName, serviceName, error
+                )
+                oldMap
+            }
+    }
 
   /**
    * Watch the numbered-port remappings for the service named `serviceName`
@@ -180,7 +182,7 @@ abstract class EndpointsNamer(
   ) = portRemappingsMemo((nsName, serviceName, labelSelector))
 
   private[this] val serviceEndpointsMemo =
-    Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]]  {
+    Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
       case (nsName, serviceName, labelSelector) =>
         mkApi(nsName)
           .endpoints(serviceName)
@@ -223,8 +225,9 @@ abstract class EndpointsNamer(
         // need the port mappings from the `Service` API response,
         // so join its activity with the endpoints activity.
         endpointsAct.join(numberedPortRemappings(nsName, serviceName, labelSelector))
-          .map { case (endpoints, ports) =>
-            endpoints.lookupNumberedPort(ports, portNumber)
+          .map {
+            case (endpoints, ports) =>
+              endpoints.lookupNumberedPort(ports, portNumber)
           }
       case None =>
         // otherwise, we are dealing with a named port, so we can
@@ -244,14 +247,12 @@ object EndpointsNamer {
 
   private trait Loggable {
     def logAction(verb: String)(nsName: String, serviceName: String): Unit
-    val logAddition: (String, String) => Unit
-    = logAction("added")
-    val logDeletion: (String, String) => Unit
-    = logAction("deleted")
+    val logAddition: (String, String) => Unit = logAction("added")
+    val logDeletion: (String, String) => Unit = logAction("deleted")
   }
 
   private case class Endpoint(ip: InetAddress, nodeName: Option[String])
-  extends Loggable {
+    extends Loggable {
     override def logAction(
       verb: String
     )(
@@ -294,13 +295,13 @@ object EndpointsNamer {
         }
 
     def lookupNamedPort(portName: String): Option[Set[Address]] =
-        ports.get(portName).map { portNumber =>
-          for {
-            Endpoint(ip, nodeName) <- endpoints
-            isa = new InetSocketAddress(ip, portNumber)
-          } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap)
-            .asInstanceOf[Address]
-        }
+      ports.get(portName).map { portNumber =>
+        for {
+          Endpoint(ip, nodeName) <- endpoints
+          isa = new InetSocketAddress(ip, portNumber)
+        } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap)
+          .asInstanceOf[Address]
+      }
 
     def port(portNumber: Int): Set[Address] =
       for {
@@ -313,7 +314,7 @@ object EndpointsNamer {
       event match {
         case v1.EndpointsAdded(update) =>
           val (newEndpoints, newPorts: Map[String, Int]) =
-              update.subsets.toEndpointsAndPorts
+            update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keySet)
           this.copy(
@@ -331,7 +332,7 @@ object EndpointsNamer {
           val remappedPorts =
             ports.filterKeys(keptPorts.contains)
               .zip(newPorts.filterKeys(keptPorts.contains))
-              .filter{ case ((_, a), (_, b)) => a != b }
+              .filter { case ((_, a), (_, b)) => a != b }
           logEvent.modification(remappedPorts)
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
@@ -372,14 +373,14 @@ object EndpointsNamer {
       resp: Option[v1.Endpoints]
     ): ServiceEndpoints =
       resp.map { fromEndpoints(nsName, serviceName) }
-          .getOrElse {
-              log.warning(
-                "k8s ns %s service %s endpoints resource does not exist, " +
-                  "assuming it has yet to be created",
-                nsName, serviceName
-              )
-              ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
-            }
+        .getOrElse {
+          log.warning(
+            "k8s ns %s service %s endpoints resource does not exist, " +
+              "assuming it has yet to be created",
+            nsName, serviceName
+          )
+          ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
+        }
   }
 
   private implicit class RichSubsetsSeq(
@@ -393,7 +394,7 @@ object EndpointsNamer {
       } yield name -> port)(breakOut)
 
     private[this] def toEndpointSet(subset: v1.EndpointSubset): Set[Endpoint] =
-      for {address: v1.EndpointAddress <- subset.addressesSeq.toSet} yield {
+      for { address: v1.EndpointAddress <- subset.addressesSeq.toSet } yield {
         Endpoint(address)
       }
 
@@ -410,7 +411,7 @@ object EndpointsNamer {
   }
 
   private[EndpointsNamer] implicit class LoggableMapping[A, B](val mapping: (A, B))
-  extends Loggable {
+    extends Loggable {
     override def logAction(verb: String)(nsName: String, serviceName: String): Unit =
       log.debug(
         "k8s ns %s service %s %s port mapping %s to %s",

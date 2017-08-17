@@ -139,20 +139,22 @@ package object v1 {
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None
   ) extends Object {
-    /** @return the subsets list on this `Endpoints` object,
+    /**
+     * @return the subsets list on this `Endpoints` object,
      *          or an empty [[Seq]] if it is empty.
      */
     @JsonIgnore
     @inline
     def subsetsSeq: Seq[EndpointSubset] =
-    subsets.getOrElse(Seq.empty)
+      subsets.getOrElse(Seq.empty)
 
     @JsonIgnore
     @inline
     def getName: Option[String] =
-      for {meta <- metadata
-           name <- meta.name}
-        yield name
+      for {
+        meta <- metadata
+        name <- meta.name
+      } yield name
   }
 
   case class EndpointSubset(
@@ -223,8 +225,7 @@ package object v1 {
   ) {
     @JsonIgnore
     @inline
-    def ingressSeq: Seq[LoadBalancerIngress]
-    = ingress.getOrElse(Seq.empty)
+    def ingressSeq: Seq[LoadBalancerIngress] = ingress.getOrElse(Seq.empty)
   }
 
   case class LoadBalancerIngress(

@@ -104,12 +104,11 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
     act
   }
-  private[this] def unpackIngressList(response: Option[v1beta1.IngressList]): Seq[IngressSpec]
-    = for {
-        ingressList <- response.toSeq
-        item <- ingressList.items
-        ingress <- mkIngress(item)
-      } yield ingress
+  private[this] def unpackIngressList(response: Option[v1beta1.IngressList]): Seq[IngressSpec] = for {
+    ingressList <- response.toSeq
+    item <- ingressList.items
+    ingress <- mkIngress(item)
+  } yield ingress
   private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean = x.name == y.name && x.namespace == y.namespace
   private[this] def mkIngress(ingress: v1beta1.Ingress): Option[IngressSpec] = {
     //make sure that this ingress resource is not specified for someone else

@@ -95,7 +95,7 @@ class ServiceNamer(
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
   private[this] val servicesMemo =
-    Memoize[(String, String, Option[String]), Activity[Svc]]  {
+    Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
         mkApi(nsName)
           .service(serviceName)
@@ -159,7 +159,4 @@ class ServiceNamer(
     } yield port.port
 
 }
-
-
-
 

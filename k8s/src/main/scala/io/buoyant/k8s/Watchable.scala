@@ -217,7 +217,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             state.update(Activity.Ok(state1))
             state1
           }
-      }
+        }
 
       Closable.make { t =>
         pending.raise(Closed)
