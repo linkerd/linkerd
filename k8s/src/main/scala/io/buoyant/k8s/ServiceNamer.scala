@@ -23,7 +23,10 @@ class ServiceNamer(
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer) extends Namer {
 
-  private[this] case class Svc(ports: Map[String, Address], portMappings: Map[Int, String]) {
+  private[this] case class Svc(
+    ports: Map[String, Address],
+    portMappings: Map[Int, String]
+  ) {
     def lookup(portName: String): Option[Address] =
       Try(portName.toInt).toOption match {
         case Some(portNumber) => lookupNumberedPort(portNumber)
@@ -39,7 +42,24 @@ class ServiceNamer(
         address <- ports.get(portName)
       } yield address
 
-    def update(event: v1.ServiceWatch): Svc = ???
+    def update(
+      nsName: String,
+      serviceName: String
+    )(
+      event: v1.ServiceWatch
+    ): Svc = event match {
+      case v1.ServiceAdded(service) => Svc(service)
+      case v1.ServiceModified(service) => Svc(service)
+      case v1.ServiceDeleted(deleted) =>
+        val Svc(deletedPorts, deletedMappings) = Svc(deleted)
+        this.copy(
+          ports = ports -- deletedPorts.keys,
+          portMappings = portMappings -- deletedMappings.keys
+        )
+      case v1.ServiceError(error) =>
+        log.warning("k8s ns %s service %s error %s", nsName, serviceName, error)
+        this
+    }
   }
 
   private[this] object Svc {
@@ -80,7 +100,7 @@ class ServiceNamer(
           .activity(
             Svc(_),
             labelSelector = labelSelector
-          ) { case (svc, event) => svc.update(event) }
+          ) { case (svc, event) => svc.update(nsName, serviceName)(event) }
     }
 
   private[this] def service(

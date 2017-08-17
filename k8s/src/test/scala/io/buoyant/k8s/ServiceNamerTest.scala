@@ -3,12 +3,13 @@ package io.buoyant.k8s
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.io.{Writer, Buf}
+import com.twitter.io.{Buf, Writer}
 import com.twitter.util._
 import io.buoyant.namer.RichActivity
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import org.scalatest.FunSuite
+import org.scalatest.exceptions.TestFailedException
 
 class ServiceNamerTest extends FunSuite with Awaits {
 
@@ -105,7 +106,16 @@ class ServiceNamerTest extends FunSuite with Awaits {
 
         Future.value(rsp)
       case req =>
-        fail(s"unexpected request: $req")
+        // As a workaround for an issue where some tests would enter an
+        // infinite retry loop rather than failing, manually throw a
+        // `TestFailedException` rather than calling `fail()`.
+        //
+        // `fail()` may provide slightly more useful information about
+        // the failure location, but there was a concurrency issue where
+        // the namer would keep retrying infinitely even after `fail()` was
+        // called, causing SBT to hang. curiously, this issue doesn't seem
+        // to apply when tests are run from IntelliJ?
+        throw new TestFailedException(s"unexpected request: $req", 1)
     }
     val api = v1.Api(service)
     val timer = new MockTimer
