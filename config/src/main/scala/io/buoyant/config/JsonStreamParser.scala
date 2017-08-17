@@ -111,6 +111,7 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     AsyncStream.fromFuture(read).flatMap {
       //Fake None element to get around scanLeft being one behind bug
       //Tracked in https://github.com/twitter/util/issues/195
+      //Can be removed once 195 is fixed
       case Some(buf) => Some(buf) +:: None +:: fromReaderJson(r, chunkSize)
       case None => AsyncStream.empty[Option[Buf]]
     }
