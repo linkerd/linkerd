@@ -97,7 +97,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
         rsp.content = Rsps.Init
         Future.value(rsp)
 
-      case req if req.uri == "/api/v1/watch/namespaces/pythonsky/services/l5d?resourceVersion=11600623" =>
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/pythonsky/services/l5d") =>
         val rsp = Response()
         rsp.setChunked(true)
 
