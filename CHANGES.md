@@ -3,6 +3,7 @@
 * **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
   admin, and namerd admin now serve on 127.0.0.1 by default (instead of
   0.0.0.0).
+* **Breaking Change**: Removed support for PKCS#1 keys.
 
 ## 1.1.3 2017-08-09
 

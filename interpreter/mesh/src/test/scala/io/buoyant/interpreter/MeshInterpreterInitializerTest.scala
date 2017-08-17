@@ -29,7 +29,7 @@ class MeshInterpreterInitializerTest extends FunSuite {
                    |  - /foo/caCert.pem
                    |  clientAuth:
                    |    certPath: /namerd-cert.pem
-                   |    keyPath: /namerd-key.pem
+                   |    keyPath: /namerd-key.pk8
                    |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MeshInterpreterInitializer)))
@@ -44,7 +44,7 @@ class MeshInterpreterInitializerTest extends FunSuite {
     assert(tls.commonName == Some("{service}"))
     assert(tls.trustCerts == Some(List("/foo/caCert.pem")))
     assert(tls.clientAuth.get.certPath == "/namerd-cert.pem")
-    assert(tls.clientAuth.get.keyPath == "/namerd-key.pem")
+    assert(tls.clientAuth.get.keyPath == "/namerd-key.pk8")
   }
 
   test("without experimental") {
@@ -58,7 +58,7 @@ class MeshInterpreterInitializerTest extends FunSuite {
                    |  - /foo/caCert.pem
                    |  clientAuth:
                    |    certPath: /namerd-cert.pem
-                   |    keyPath: /namerd-key.pem
+                   |    keyPath: /namerd-key.pk8
                    |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MeshInterpreterInitializer)))
