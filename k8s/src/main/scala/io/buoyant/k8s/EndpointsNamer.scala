@@ -246,23 +246,16 @@ object EndpointsNamer {
   protected type NumberedPortMap = Map[Int, String]
 
   private case class Endpoint(ip: InetAddress, nodeName: Option[String])
-    extends Loggable {
-    override def logAction(
-      verb: String
-    )(
-      nsName: String,
-      serviceName: String
-    ): Unit =
-      log.debug(
-        "k8s ns %s service %s %s endpoint %s",
-        nsName, serviceName, verb, this
-      )
-  }
 
   private object Endpoint {
     def apply(addr: v1.EndpointAddress): Endpoint =
       Endpoint(InetAddress.getByName(addr.ip), addr.nodeName)
   }
+
+  private implicit val LoggableEndpoint: EventLogger.Loggable[Endpoint] =
+    new EventLogger.Loggable[Endpoint] {
+      override val descriptor: String = "endpoint"
+    }
 
   private[EndpointsNamer] case class ServiceEndpoints(
     nsName: String,
