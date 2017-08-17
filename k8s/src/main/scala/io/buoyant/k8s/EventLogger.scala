@@ -32,6 +32,21 @@ private[k8s] case class EventLogger(nsName: String, serviceName: String) {
       mods.foreach(implicitly[Loggable[A]].logModification(nsName, serviceName).tupled)
     }
 
+  def modification[A, B](old: Map[A, B], replacement: Map[A, B])(implicit ev1: Loggable[(A, B)]): Unit =
+    if (old.nonEmpty && replacement.nonEmpty) {
+      log.debug(
+        "k8s ns %s service %s modified %ss",
+        nsName, serviceName,
+        ev1.descriptor
+      )
+      for {
+        key <- old.keySet.intersect(replacement.keySet)
+        oldValue <- old.get(key)
+        newValue <- replacement.get(key)
+        if oldValue != newValue
+      } ev1.logModification(nsName, serviceName)(key -> oldValue, key -> newValue)
+    }
+
 }
 
 private[k8s] object EventLogger {

@@ -54,18 +54,8 @@ class ServiceNamer(
         logEvent.addition(svc.ports -- ports.keys)
         logEvent.deletion(portMappings -- svc.portMappings.keys)
         logEvent.deletion(ports -- svc.ports.keys)
-        val keptMappings = portMappings.keySet.intersect(svc.portMappings.keySet)
-        val keptPorts =  ports.keySet.intersect(svc.ports.keySet)
-        val modifiedMappings =
-          portMappings.filterKeys(keptMappings.contains)
-                      .zip(svc.portMappings.filterKeys(keptMappings.contains))
-                      .filter{ case ((_, a), (_, b)) => a != b }
-        val modifiedPorts =
-          ports.filterKeys(keptPorts.contains)
-            .zip(svc.ports.filterKeys(keptPorts.contains))
-            .filter{ case ((_, a), (_, b)) => a != b }
-        logEvent.modification(modifiedMappings)
-        logEvent.modification(modifiedPorts)
+        logEvent.modification(portMappings, svc.portMappings)
+        logEvent.modification(ports, svc.ports)
         svc
       case v1.ServiceDeleted(deleted) =>
         val Svc(deletedPorts, deletedMappings) = Svc(deleted)

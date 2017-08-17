@@ -142,12 +142,7 @@ abstract class EndpointsNamer(
                 val newMap = service.portMappings
                 logEvent.addition(newMap -- oldMap.keySet)
                 logEvent.deletion(oldMap -- newMap.keySet)
-                val keptPorts = newMap.keySet &~ oldMap.keySet
-                val remappedPorts =
-                  oldMap.filterKeys(keptPorts.contains)
-                    .zip(newMap.filterKeys(keptPorts.contains))
-                    .filter { case ((_, a), (_, b)) => a != b }
-                logEvent.modification(remappedPorts)
+                logEvent.modification(oldMap, newMap)
                 oldMap ++ newMap
               case (oldMap, v1.ServiceDeleted(service)) =>
                 val newMap = service.portMappings
@@ -315,12 +310,7 @@ object EndpointsNamer {
           logEvent.deletion(endpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keySet)
           logEvent.deletion(ports -- newPorts.keySet)
-          val keptPorts = newPorts.keySet &~ ports.keySet
-          val remappedPorts =
-            ports.filterKeys(keptPorts.contains)
-              .zip(newPorts.filterKeys(keptPorts.contains))
-              .filter { case ((_, a), (_, b)) => a != b }
-          logEvent.modification(remappedPorts)
+          logEvent.modification(ports, newPorts)
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
         case v1.EndpointsDeleted(update) =>
