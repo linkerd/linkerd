@@ -39,23 +39,19 @@ private[k8s] object EventLogger {
     def format(value: A): String = value.toString
     def descriptor: String
     def logAction(verb: String)(nsName: String, serviceName: String)(value: A): Unit =
-      log.ifTrace(
-        "k8s ns %s service %s %s %s %s",
-        nsName,
-        serviceName,
-        verb,
-        descriptor,
-        format(value)
-      )
+      log.ifTrace(s"k8s ns $nsName service $serviceName $verb $descriptor ${format(value)}")
     val logAddition: (String, String) => A => Unit = logAction("added")
     val logDeletion: (String, String) => A => Unit = logAction("deleted")
     val logModification:  (String, String) => (A, A) => Unit =
       (nsName, serviceName) => (old, replacement) =>
-        logAction(s"replaced $descriptor $old with ")(nsName, serviceName)(replacement)
-
+        logAction(s"replaced $descriptor ${format(old)} with")(nsName, serviceName)(replacement)
   }
-  implicit def LoggableMapping[A, B]: Loggable[(A, B)] = new Loggable[(A, B)] {
+  implicit def LoggableNamedPortMapping[B]: Loggable[(String, B)] = new Loggable[(String, B)] {
+    override val descriptor: String = "named port mapping"
+    override def format(value: (String, B)): String = s"'${value._1}' to ${value._2}"
+  }
+  implicit def LoggableNumberedPortMapping[B]: Loggable[(Int, B)] = new Loggable[(Int, B)] {
     override val descriptor: String = "port mapping"
-    override def format(value: (A, B)): String = s"${value._1} to ${value._2}"
+    override def format(value: (Int, B)): String = s"${value._1} to ${value._2}"
   }
 }
