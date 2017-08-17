@@ -664,10 +664,6 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         val rsp = Response()
         rsp.content = Rsps.Services.Responses(req.uri)
         Future.value(rsp).onSuccess { _ => val _ = didServices.setDone() }
-      //      case req if req.uri.startsWith(s"$NonWatchPath$ServicesPath") =>
-      //        val rsp = Response()
-      //        rsp.content = Rsps.Services.All
-      //        Future.value(rsp).onSuccess { _ => val _ = didServices.setDone() }
       case req if req.uri.startsWith(s"$WatchPath$ServicesPath") =>
         val rsp = Response()
         Future.value(rsp)
