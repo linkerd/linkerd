@@ -56,6 +56,13 @@ package object k8s {
     }
   }
 
+  // NOTE: we may want to consider naming this function, since there is also
+  //       a method `Activity.stabilize()` on `Activity` which has completely
+  //       different behaviour. This seems confusing.
+  //
+  //       N.B. that if we renamed this function, we probably would want to
+  //       also rename the corresponding `stabilize(Var)` function that was
+  //       the source of this name in the first place...
   def stabilize[T](unstable: Activity[Option[T]]): Activity[Option[Var[T]]] = {
     val inner = Var.async[Activity.State[Option[VarUp[T]]]](Activity.Pending) { update =>
       // the current inner Var, null if the outer Var is None
