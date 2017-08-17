@@ -53,7 +53,16 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   }
 
   private[this]type NsMap = Map[String, VersionedDtab]
-  private[this] val dtabListToNsMap: DtabList => NsMap = _.items.map(toDtabMap)(breakOut)
+  private[this] val dtabListToNsMap: Option[DtabList] => NsMap = {
+    case Some(dtabs) => dtabs.items.map(toDtabMap)(breakOut)
+    case None =>
+      // NOTE: i'm not 100% sure this is the right behaviour here, but i'm assuming
+      //       based on the exceptions in `toDtabMap` and `name` that we want to fail
+      //       fast here rather than wait for a dtab list that doesn't currently exist
+      //       to be created?
+      throw new IllegalStateException("k8s API request for Dtab list returned 404!")
+  }
+
 
   // Set up a watch on the Kubernetes API to update our internal state
   // NOTE: this currently relies on our watch connection to update the internal state, rather than
