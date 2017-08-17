@@ -87,6 +87,8 @@ class ServiceNamer(
       }
       Svc(ports.toMap, portMap.toMap)
     }
+    def fromResponse(response: Option[v1.Service]): Svc =
+      response.map(Svc(_)).getOrElse(Svc(Map.empty, Map.empty))
   }
 
   private[this] val PrefixLen = 3
@@ -98,7 +100,7 @@ class ServiceNamer(
         mkApi(nsName)
           .service(serviceName)
           .activity(
-            Svc(_),
+            Svc.fromResponse(_),
             labelSelector = labelSelector
           ) { case (svc, event) => svc.update(nsName, serviceName)(event) }
     }

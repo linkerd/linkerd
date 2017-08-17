@@ -471,7 +471,7 @@ class ApiTest extends FunSuite
 
     val ns = Api(service).withNamespace("test")
     val configMap0Result = await(ns.configMap("test-config").get())
-    inside(configMap0Result) {
+    inside(configMap0Result.value) {
       case ConfigMap(data, kind, metadata, apiVersion) =>
         assert(apiVersion.contains("v1"))
         assert(kind.contains("ConfigMap"))
@@ -509,7 +509,7 @@ class ApiTest extends FunSuite
     }
 
     val ns = Api(service).withNamespace("test")
-    val configMap1Result = await(ns.configMap("another-test-config").get())
+    val configMap1Result = await(ns.configMap("another-test-config").get()).value
     inside(configMap1Result) {
       case ConfigMap(data, kind, metadata, apiVersion) =>
         assert(apiVersion.contains("v1"))

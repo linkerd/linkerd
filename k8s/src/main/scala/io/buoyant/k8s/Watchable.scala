@@ -29,9 +29,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
-      case (_, Return(rep)) if rep.status.code == 404 =>
-        log.warning("k8s retrying request to %s: the requested entity does not currently exist", path)
-        true
       // We will assume 5xx are retryable, everything else is not for now
       case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
       // Don't retry on interruption
@@ -51,7 +48,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     resourceVersion: Option[String] = None,
     retryIndefinitely: Boolean = false,
     watch: Boolean = false
-  ): Future[G] = {
+  ): Future[Option[G]] = {
     val req = Api.mkreq(
       http.Method.Get,
       if (watch) watchPath else path,
@@ -62,7 +59,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     )
     val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
     val retryingClient = retry andThen client
-    Trace.letClear(retryingClient(req)).flatMap(Api.parse[G])
+    Trace.letClear(retryingClient(req)).flatMap {
+      case rep if rep.status.code == 404 => Future.value(None)
+      case rep => Api.parse[G](rep).map(Some(_))
+    }
   }
 
   /**
@@ -171,7 +171,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    *         where `T` is the return type of the `onEvent` function
    */
   def activity[T](
-    convert: G => T,
+    convert: Option[G] => T,
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None
   )(onEvent: (T, W) => T): Activity[T] =
@@ -196,7 +196,11 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           state.update(Activity.Ok(initialState))
 
           val version = if (watchResourceVersion) {
-            initial.metadata.flatMap(_.resourceVersion)
+            for {
+              initialValue <- initial
+              metadata <- initialValue.metadata
+              resourceVersion <- metadata.resourceVersion
+            } yield resourceVersion
           } else {
             None
           }

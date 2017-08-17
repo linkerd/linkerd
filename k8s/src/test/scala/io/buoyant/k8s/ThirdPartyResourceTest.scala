@@ -8,13 +8,13 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.k8s.{KubeObject => BaseObject}
 import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, OptionValues}
 
 /**
  * This test both exercises the versioning functionality in `io.buoyant.k8s`, and provides
  * an example implementation. (See `namerd` for the current usage in the Buoyant suite of projects).
  */
-class ThirdPartyResourceTest extends FunSuite with Awaits {
+class ThirdPartyResourceTest extends FunSuite with Awaits with OptionValues {
   import ThirdPartyResourceTest._
 
   object Fixtures {
@@ -34,7 +34,7 @@ class ThirdPartyResourceTest extends FunSuite with Awaits {
     }
 
     val ns = Api(service).withNamespace("test")
-    val books = await(ns.books.get())
+    val books = await(ns.books.get()).value
     assert(books.items.length == 1)
     val book = books.items.head
     assert(book.title == "Programming in Scala")

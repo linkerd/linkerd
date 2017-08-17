@@ -128,7 +128,10 @@ abstract class EndpointsNamer(
         val logEvent = EventLogger(nsName, serviceName)
         mkApi(nsName)
           .service(serviceName)
-          .activity(_.portMappings, labelSelector = labelSelector) {
+          .activity(
+            _.map(_.portMappings).getOrElse(Map.empty),
+            labelSelector = labelSelector
+          ) {
             case (oldMap, v1.ServiceAdded(service)) =>
               val newMap = service.portMappings
               logEvent.addition(newMap -- oldMap.keySet)
@@ -182,7 +185,7 @@ abstract class EndpointsNamer(
         mkApi(nsName)
           .endpoints(serviceName)
           .activity(
-            ServiceEndpoints.fromEndpoints(serviceName, nsName),
+            ServiceEndpoints.fromResponse(serviceName, nsName),
             labelSelector = labelSelector
           ) { case (cache, event) => cache.update(event) }
     }
@@ -356,10 +359,27 @@ object EndpointsNamer {
     def fromEndpoints(
       nsName: String,
       serviceName: String
-    )(endpointsResponse: v1.Endpoints): ServiceEndpoints = {
-      val (endpoints, ports) = endpointsResponse.subsets.toEndpointsAndPorts
-      ServiceEndpoints(nsName, serviceName, endpoints, ports)
+    )(
+      endpoints: v1.Endpoints
+    ): ServiceEndpoints = {
+      val (endpointsSet, ports) = endpoints.subsets.toEndpointsAndPorts
+      ServiceEndpoints(nsName, serviceName, endpointsSet, ports)
     }
+    @inline def fromResponse(
+      nsName: String,
+      serviceName: String
+    )(
+      resp: Option[v1.Endpoints]
+    ): ServiceEndpoints =
+      resp.map { fromEndpoints(nsName, serviceName) }
+          .getOrElse {
+              log.warning(
+                "k8s ns %s service %s endpoints resource does not exist, " +
+                  "assuming it has yet to be created",
+                nsName, serviceName
+              )
+              ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
+            }
   }
 
   private implicit class RichSubsetsSeq(

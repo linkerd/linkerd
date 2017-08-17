@@ -155,7 +155,8 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
       None,
       retryIndefinitely = true,
       watch = true
-    ).map { list =>
+    ).map { maybeList =>
+      val list = maybeList.get // list resources should always exist
       (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
     }
 }
@@ -230,7 +231,12 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       None,
       retryIndefinitely = true,
       watch = true
-    ).map { obj =>
-      (Seq(od.toWatch(obj)), obj.metadata.flatMap(_.resourceVersion))
+    ).map { maybeObj =>
+      (maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) },
+        for {
+          obj <- maybeObj
+          meta <- obj.metadata
+          version <- meta.resourceVersion
+        } yield version)
     }
 }
