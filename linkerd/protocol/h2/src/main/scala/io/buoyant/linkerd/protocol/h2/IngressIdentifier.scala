@@ -41,7 +41,9 @@ class IngressIdentifier(
 case class IngressIdentifierConfig(
   host: Option[String],
   port: Option[Port],
-  namespace: Option[String]
+  namespace: Option[String],
+  ingressClassAnnotation: Option[String]
+
 ) extends H2IdentifierConfig with ClientConfig {
   override def portNum: Option[Int] = port.map(_.port)
 
@@ -50,7 +52,7 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), "linkerd")
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"))
   }
 }
 
