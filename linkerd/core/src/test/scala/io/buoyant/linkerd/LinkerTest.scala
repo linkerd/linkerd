@@ -231,7 +231,7 @@ class LinkerTest extends FunSuite with Exceptions {
   test("with admin") {
     val yaml =
       """|admin:
-         |  ip: 127.0.0.1
+         |  ip: 0.0.0.0
          |  port: 42000
          |routers:
          |- protocol: plain
@@ -239,7 +239,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  - port: 1
          |""".stripMargin
     val linker = parse(yaml)
-    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "127.0.0.1")
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "0.0.0.0")
     assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 42000)
   }
 
@@ -251,7 +251,7 @@ class LinkerTest extends FunSuite with Exceptions {
         |  - port: 1
         |""".stripMargin
     val linker = parse(yaml)
-    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "0.0.0.0")
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "localhost")
     assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9990)
   }
 

@@ -1,3 +1,9 @@
+## In the next release...
+
+* **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
+  admin, and namerd admin now serve on 127.0.0.1 by default (instead of
+  0.0.0.0).
+
 ## 1.1.3 2017-08-09
 
 The 1.1.3 release of Linkerd is mostly focused on improving our HTTP/2 support,

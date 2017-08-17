@@ -16,7 +16,7 @@ import io.buoyant.namer.Param.Namers
 import io.buoyant.namer._
 import io.buoyant.telemetry._
 import io.buoyant.telemetry.admin.{AdminMetricsExportTelemeter, histogramSnapshotInterval}
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import scala.util.control.NoStackTrace
 
 /**
@@ -34,7 +34,7 @@ trait Linker {
 object Linker {
   private[this] val log = Logger()
 
-  private[this] val DefaultAdminAddress = new InetSocketAddress(9990)
+  private[this] val DefaultAdminAddress = new InetSocketAddress(InetAddress.getLoopbackAddress, 9990)
   private[this] val DefaultAdminConfig = AdminConfig()
 
   private[linkerd] case class Initializers(

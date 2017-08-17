@@ -11,7 +11,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import io.buoyant.grpc.runtime.ServerDispatcher
 import io.netty.handler.ssl.ApplicationProtocolNames
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 
 class MeshIfaceConfig extends InterfaceConfig {
   @JsonIgnore
@@ -51,7 +51,7 @@ class MeshIfaceConfig extends InterfaceConfig {
 
 object MeshIfaceInitializer {
   val kind = "io.l5d.mesh"
-  val defaultAddr = new InetSocketAddress(4321)
+  val defaultAddr = new InetSocketAddress(InetAddress.getLoopbackAddress, 4321)
 }
 
 class MeshIfaceInitializer extends InterfaceInitializer {
