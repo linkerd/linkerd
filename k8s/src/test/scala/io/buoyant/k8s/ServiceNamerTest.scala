@@ -14,6 +14,23 @@ import org.scalatest.exceptions.TestFailedException
 class ServiceNamerTest extends FunSuite with Awaits {
 
   object Rsps {
+    val NotFound = Buf.Utf8(
+      """
+        |{
+        |  "kind": "Status",
+        |  "apiVersion": "v1",
+        |  "metadata": {},
+        |  "status": "Failure",
+        |  "message": "services \"foo\" not found",
+        |  "reason": "NotFound",
+        |  "details": {
+        |    "name": "foo",
+        |    "kind": "services"
+        |  },
+        |  "code": 404
+        |}
+      """.stripMargin
+    )
     val Init = Buf.Utf8(
       """
         |{
@@ -99,6 +116,19 @@ class ServiceNamerTest extends FunSuite with Awaits {
         Future.value(rsp)
 
       case req if req.uri.startsWith("/api/v1/watch/namespaces/pythonsky/services/l5d") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+
+        writer = rsp.writer
+
+        Future.value(rsp)
+
+      case req if req.uri == "/api/v1/namespaces/pythonsky/services/foo" =>
+        val rsp = Response()
+        rsp.content = Rsps.NotFound
+        Future.value(rsp)
+
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/pythonsky/services/foo") =>
         val rsp = Response()
         rsp.setChunked(true)
 
