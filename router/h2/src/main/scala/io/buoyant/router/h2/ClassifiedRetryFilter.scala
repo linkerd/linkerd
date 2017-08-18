@@ -7,6 +7,7 @@ import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
+import scala.util.control.NoStackTrace
 import scala.{Stream => SStream}
 
 /**
@@ -163,11 +164,6 @@ class ClassifiedRetryFilter(
         // fully buffered.  Will always consume all of s, even if the classification deadline is
         // exceeded.
         val fullyBuffered = retryable(req, rsp, s, Time.now + classificationTimeout)
-          .handle {
-            case _: TimeoutException =>
-              classificationTimeoutCounter.incr()
-              false
-          }
         // If the buffer is discarded before reading the final frame, we cannot retry.
         val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
 
@@ -192,76 +188,62 @@ class ClassifiedRetryFilter(
    * to be read and consumed.
    */
   private[this] def retryable(req: Request, rsp: Response, responseStream: Stream, deadline: Time): Future[Boolean] = {
-    consumeAllButLast(responseStream, Some(deadline)).transform {
-      case Return(Some(f)) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        f.release()
-        Future.value(canRetry)
-      case Return(None) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        Future.value(canRetry)
-      case Throw(e) if e == classificationTimeoutException =>
-        Future.exception(classificationTimeoutException)
-      case Throw(e) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        Future.value(canRetry)
+
+    val now = Time.now
+    val frameF = consumeAllButLast(responseStream)
+
+    // This is a sort of "safe" timeout.  If the classification deadline passes, we want to
+    // return false but we _don't_ want to cancel the frameF Future.  Cancelling the frameF future
+    // or discarding the result could result in reading a frame but never releasing it.  If we
+    // initiate a read, we must always capture the resulting frame and ensure it is released.
+    Future.selectIndex(IndexedSeq(Future.sleep(deadline - now), frameF)).flatMap {
+      case 0 =>
+        // Classification timeout.  Immediately return a classificationTimeoutException but
+        // ensure the final frame is eventually released.
+        classificationTimeoutCounter.incr()
+        frameF.onSuccess { f => f.foreach(_.release()); () }
+        Future.False
+      case 1 =>
+        // Classification completed within deadline.
+        frameF.transform {
+          case Return(Some(f)) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            f.release()
+            Future.value(canRetry)
+          case Return(None) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            Future.value(canRetry)
+          case Throw(e) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            Future.value(canRetry)
+        }
     }
   }
 
   /** Read and release all frames from the Stream */
-  private[this] def consumeAll(stream: Stream, deadline: Option[Time] = None): Future[Unit] = {
-    consumeAllButLast(stream, deadline).map {
+  private[this] def consumeAll(stream: Stream): Future[Unit] = {
+    consumeAllButLast(stream).map {
       case Some(frame) =>
         frame.release(); ()
       case None => ()
     }
   }
 
-  private[this] val classificationTimeoutException = new TimeoutException("Classification timeout")
-
   /** Read and release all but the last frame from a Stream.  Then return the last frame */
-  private[this] def consumeAllButLast(stream: Stream, deadline: Option[Time]): Future[Option[Frame]] =
+  private[this] def consumeAllButLast(stream: Stream): Future[Option[Frame]] =
     if (stream.isEmpty) {
       Future.None
     } else {
-
-      val now = Time.now
-      // This future chain will march to completion even if the frameF future is discarded.  This
-      // guarantees that the entire stream will be consumed.
-      val frameF = stream.read().flatMap { frame =>
+      stream.read().flatMap { frame =>
         if (frame.isEnd) {
           Future.value(Some(frame))
         } else {
           frame.release()
-          consumeAllButLast(stream, deadline)
+          consumeAllButLast(stream)
         }
-      }
-
-      deadline match {
-        case Some(deadline) if deadline > now =>
-          // This is a sort of "safe" timeout.  If the classification deadline passes, we want to
-          // return a classificationTimeoutException but we _don't_ want to cancel the read Future.
-          // Cancelling the read or discarding the result of the read could result in reading a frame
-          // but never releasing it.  If we initiate a read, we must always capture the resulting
-          // frame and ensure it is released.
-          Future.selectIndex(IndexedSeq(Future.sleep(deadline - now), frameF)).flatMap {
-            case 0 =>
-              // Classification timeout.  Immediately return a classificationTimeoutException but
-              // ensure the final frame is eventually released.
-              frameF.onSuccess { f => f.foreach(_.release()); () }
-              Future.exception(classificationTimeoutException)
-            case 1 =>
-              // Read completed within deadline.
-              frameF
-          }
-        case Some(_) =>
-          frameF.onSuccess { f => f.foreach(_.release()); () }
-          Future.exception(classificationTimeoutException)
-        case None =>
-          frameF
       }
     }
 }
