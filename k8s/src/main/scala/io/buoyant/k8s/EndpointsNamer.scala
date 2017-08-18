@@ -9,6 +9,7 @@ import com.twitter.util._
 import io.buoyant.namer.Metadata
 import scala.collection.breakOut
 import scala.language.implicitConversions
+import scala.Function.untupled
 
 class MultiNsNamer(
   idPrefix: Path,
@@ -122,10 +123,23 @@ abstract class EndpointsNamer(
 
   import EndpointsNamer._
 
-  // memoize port remapping watch activities so that we don't have to
-  // create multiple watches on the same `Services` API object.
-  private[this] val portRemappingsMemo =
-    Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
+  /**
+   * Watch the numbered-port remappings for the service named `serviceName`
+   * in the namespace named `nsName`.
+   * @param nsName the name of the Kubernetes namespace.
+   * @param serviceName the name of the Kubernetes service.
+   * @return an `Activity` containing a `Map[Int, String]` representing the
+   *         port number to port name mappings
+   * @note that the corresponding `Activity` instances are cached so we don't
+   *       create multiple watches on the same Kubernetes objects – meaning,
+   *       if you look up the port remappings in a given (nsName, serviceName)
+   *       pair multiple times, you will always get back the same `Activity`,
+   *       which is created the first time that pair is looked up.
+   */
+  private[this] val numberedPortRemappings =
+    untupled(Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
+      // memoize port remapping watch activities so that we don't have to
+      // create multiple watches on the same `Services` API object.
       case (nsName, serviceName, labelSelector) =>
         val logEvent = EventLogger(nsName, serviceName)
         mkApi(nsName)
@@ -155,29 +169,10 @@ abstract class EndpointsNamer(
                 )
                 oldMap
             }
-    }
+    })
 
-  /**
-   * Watch the numbered-port remappings for the service named `serviceName`
-   * in the namespace named `nsName`.
-   * @param nsName the name of the Kubernetes namespace.
-   * @param serviceName the name of the Kubernetes service.
-   * @return an `Activity` containing a `Map[Int, String]` representing the
-   *         port number to port name mappings
-   * @note that the corresponding `Activity` instances are cached so we don't
-   *       create multiple watches on the same Kubernetes objects – meaning,
-   *       if you look up the port remappings in a given (nsName, serviceName)
-   *       pair multiple times, you will always get back the same `Activity`,
-   *       which is created the first time that pair is looked up.
-   */
-  private[this] def numberedPortRemappings(
-    nsName: String,
-    serviceName: String,
-    labelSelector: Option[String]
-  ) = portRemappingsMemo((nsName, serviceName, labelSelector))
-
-  private[this] val serviceEndpointsMemo =
-    Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
+  private[this] val serviceEndpoints =
+    untupled(Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
       case (nsName, serviceName, labelSelector) =>
         mkApi(nsName)
           .endpoints(serviceName)
@@ -185,14 +180,7 @@ abstract class EndpointsNamer(
             ServiceEndpoints.fromResponse(serviceName, nsName),
             labelSelector = labelSelector
           ) { case (cache, event) => cache.update(event) }
-    }
-
-  private[this] def serviceEndpoints(
-    nsName: String,
-    serviceName: String,
-    labelSelector: Option[String]
-  ): Activity[ServiceEndpoints] =
-    serviceEndpointsMemo((nsName, serviceName, labelSelector))
+    })
 
   @inline private[this] def mkNameTree(
     id: Path,

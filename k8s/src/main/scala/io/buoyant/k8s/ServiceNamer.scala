@@ -7,7 +7,8 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
 import io.buoyant.k8s.v1._
-import scala.collection.{breakOut, mutable}
+import scala.collection.mutable
+import scala.Function.untupled
 
 /**
  * Accepts names in the form:
@@ -103,8 +104,8 @@ class ServiceNamer(
   private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
-  private[this] val servicesMemo =
-    Memoize[(String, String, Option[String]), Activity[Svc]] {
+  private[this] val service =
+    untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
         val eventLogger = EventLogger(nsName, serviceName)
         mkApi(nsName)
@@ -113,14 +114,7 @@ class ServiceNamer(
             Svc.fromResponse(_),
             labelSelector = labelSelector
           ) { case (svc, event) => svc.update(eventLogger, event) }
-    }
-
-  private[this] def service(
-    nsName: String,
-    serviceName: String,
-    labelSelector: Option[String] = None
-  ): Activity[Svc] =
-    servicesMemo((nsName, serviceName, labelSelector))
+    })
 
   @inline private[this] def mkNameTree(
     id: Path,
@@ -137,7 +131,7 @@ class ServiceNamer(
   def lookup(path: Path): Activity[NameTree[Name]] =
     (path.take(variablePrefixLength), labelName) match {
       case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-        val unstable = service(nsName.toLowerCase, serviceName.toLowerCase)
+        val unstable = service(nsName.toLowerCase, serviceName.toLowerCase, None)
           .map { _.lookup(portName.toLowerCase) }
         stabilize(unstable).map(addr => toNameTree(path, addr))
       case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
