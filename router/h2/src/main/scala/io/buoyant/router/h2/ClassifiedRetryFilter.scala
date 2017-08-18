@@ -25,7 +25,7 @@ class ClassifiedRetryFilter(
   classifier: H2Classifier,
   backoffs: SStream[Duration],
   budget: RetryBudget,
-  classificationTimeout: Duration = Duration.Top,
+  classificationTimeout: Duration = 100.millis,
   requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
   responseBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize
 )(implicit timer: Timer) extends SimpleFilter[Request, Response] {
@@ -160,9 +160,9 @@ class ClassifiedRetryFilter(
     responseBuffer.fork() match {
       case Return(s) =>
         // Attempt to determine retryability based on the final frame.  Completes when the stream is
-        // fully buffered.
-        val fullyBuffered = retryable(req, rsp, s)
-          .raiseWithin(classificationTimeout)
+        // fully buffered.  Will always consume all of s, even if the classification deadline is
+        // exceeded.
+        val fullyBuffered = retryable(req, rsp, s, Time.now + classificationTimeout)
           .handle {
             case _: TimeoutException =>
               classificationTimeoutCounter.incr()
@@ -187,10 +187,12 @@ class ClassifiedRetryFilter(
 
   /**
    * Determine if the request is retryable.  Will read and release the entire response stream
-   * as a side effect.
+   * as a side effect.  If the stream cannot be classified by the deadline, a
+   * classificationTimeoutException will be returned but the remainder of the stream will continue
+   * to be read and consumed.
    */
-  private[this] def retryable(req: Request, rsp: Response, responseStream: Stream): Future[Boolean] = {
-    consumeAllButLast(responseStream).transform {
+  private[this] def retryable(req: Request, rsp: Response, responseStream: Stream, deadline: Time): Future[Boolean] = {
+    consumeAllButLast(responseStream, Some(deadline)).transform {
       case Return(Some(f)) =>
         val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
         val canRetry = rc == ResponseClass.RetryableFailure
@@ -200,6 +202,8 @@ class ClassifiedRetryFilter(
         val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
         val canRetry = rc == ResponseClass.RetryableFailure
         Future.value(canRetry)
+      case Throw(e) if e == classificationTimeoutException =>
+        Future.exception(classificationTimeoutException)
       case Throw(e) =>
         val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
         val canRetry = rc == ResponseClass.RetryableFailure
@@ -208,26 +212,56 @@ class ClassifiedRetryFilter(
   }
 
   /** Read and release all frames from the Stream */
-  private[this] def consumeAll(stream: Stream): Future[Unit] = {
-    consumeAllButLast(stream).map {
+  private[this] def consumeAll(stream: Stream, deadline: Option[Time] = None): Future[Unit] = {
+    consumeAllButLast(stream, deadline).map {
       case Some(frame) =>
         frame.release(); ()
       case None => ()
     }
   }
 
+  private[this] val classificationTimeoutException = new TimeoutException("Classification timeout")
+
   /** Read and release all but the last frame from a Stream.  Then return the last frame */
-  private[this] def consumeAllButLast(stream: Stream): Future[Option[Frame]] =
+  private[this] def consumeAllButLast(stream: Stream, deadline: Option[Time]): Future[Option[Frame]] =
     if (stream.isEmpty) {
       Future.None
     } else {
-      stream.read().flatMap { frame =>
+
+      val now = Time.now
+      // This future chain will march to completion even if the frameF future is discarded.  This
+      // guarantees that the entire stream will be consumed.
+      val frameF = stream.read().flatMap { frame =>
         if (frame.isEnd) {
           Future.value(Some(frame))
         } else {
           frame.release()
-          consumeAllButLast(stream)
+          consumeAllButLast(stream, deadline)
         }
+      }
+
+      deadline match {
+        case Some(deadline) if deadline > now =>
+          // This is a sort of "safe" timeout.  If the classification deadline passes, we want to
+          // return a classificationTimeoutException but we _don't_ want to cancel the read Future.
+          // Cancelling the read or discarding the result of the read could result in reading a frame
+          // but never releasing it.  If we initiate a read, we must always capture the resulting
+          // frame and ensure it is released.
+          Future.selectIndex(IndexedSeq(Future.sleep(deadline - now), frameF)).flatMap {
+            case 0 =>
+              // Classification timeout.  Immediately return a classificationTimeoutException but
+              // ensure the final frame is eventually released.
+              frameF.onSuccess { f => f.foreach(_.release()); () }
+              Future.exception(classificationTimeoutException)
+            case 1 =>
+              // Read completed within deadline.
+              frameF
+          }
+        case Some(_) =>
+          frameF.onSuccess { f => f.foreach(_.release()); () }
+          Future.exception(classificationTimeoutException)
+        case None =>
+          frameF
       }
     }
 }
