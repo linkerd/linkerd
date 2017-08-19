@@ -1,6 +1,7 @@
 package io.buoyant.telemetry
 
 import com.twitter.finagle.Stack
+import com.twitter.finagle.stats.Verbosity
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
@@ -13,10 +14,10 @@ trait MetricsTree {
 
   def metric: Metric
 
-  def mkCounter(): Metric.Counter
-  def mkStat(): Metric.Stat
+  def mkCounter(verbosity: Verbosity): Metric.Counter
+  def mkStat(verbosity: Verbosity): Metric.Stat
 
-  def registerGauge(f: => Float): Unit
+  def registerGauge(verbosity: Verbosity, f: => Float): Unit
   def deregisterGauge(): Unit
 
   /**
@@ -72,32 +73,32 @@ object MetricsTree {
 
     def metric: Metric = metricRef.get
 
-    @tailrec final def mkCounter(): Metric.Counter = metricRef.get match {
+    @tailrec final def mkCounter(verbosity: Verbosity): Metric.Counter = metricRef.get match {
       case c: Metric.Counter => c
       case Metric.None =>
         val c = new Metric.Counter
         if (metricRef.compareAndSet(Metric.None, c)) c
-        else mkCounter()
+        else mkCounter(verbosity)
       case _ =>
         throw new IllegalArgumentException("non-counter metric already exists")
     }
 
-    @tailrec final def mkStat(): Metric.Stat = metricRef.get match {
+    @tailrec final def mkStat(verbosity: Verbosity): Metric.Stat = metricRef.get match {
       case s: Metric.Stat => s
       case Metric.None =>
         val s = new Metric.Stat
         if (metricRef.compareAndSet(Metric.None, s)) s
-        else mkStat()
+        else mkStat(verbosity)
       case _ =>
         throw new IllegalArgumentException("non-stat metric already exists")
     }
 
-    @tailrec final def registerGauge(f: => Float): Unit = {
+    @tailrec final def registerGauge(verbosity: Verbosity, f: => Float): Unit = {
       val orig = metricRef.get
       orig match {
         case Metric.None | (_: Metric.Gauge) =>
           val g = new Metric.Gauge(f)
-          if (!metricRef.compareAndSet(orig, g)) registerGauge(f)
+          if (!metricRef.compareAndSet(orig, g)) registerGauge(verbosity, f)
         case _ =>
           throw new IllegalArgumentException("non-gauge metric already exists")
       }

@@ -5,6 +5,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.Address.Inet
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.stats.Verbosity
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
 import com.twitter.util.{Future, MockTimer, Promise, Time}
@@ -70,7 +71,7 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     val config = mapper.readValue[LinkerConfig](yaml)
     val metrics = MetricsTree()
 
-    val requests = metrics.resolve(Seq("rt", "foo", "server", "bar", "requests")).mkCounter()
+    val requests = metrics.resolve(Seq("rt", "foo", "server", "bar", "requests")).mkCounter(Verbosity.Default)
     requests.incr()
     requests.incr()
 

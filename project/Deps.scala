@@ -8,18 +8,18 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.30.0")
+    ("com.twitter" %% "twitter-server" % "1.31.0")
       .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "6.45.0"
+    "com.twitter" %% s"util-$mod" % "7.0.0"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.45.0"
+    "com.twitter" %% s"finagle-$mod" % "7.0.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.10.Final"
+    "io.netty" % s"netty-$mod" % "4.1.12.Final"
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.1.Final"
 

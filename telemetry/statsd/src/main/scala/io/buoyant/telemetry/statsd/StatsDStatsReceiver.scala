@@ -2,7 +2,7 @@ package io.buoyant.telemetry.statsd
 
 import java.util.concurrent.ConcurrentHashMap
 import com.timgroup.statsd.StatsDClient
-import com.twitter.finagle.stats.{Counter, Stat, StatsReceiverWithCumulativeGauges}
+import com.twitter.finagle.stats.{Counter, Stat, StatsReceiverWithCumulativeGauges, Verbosity}
 import scala.collection.JavaConverters._
 
 private[telemetry] object StatsDStatsReceiver {
@@ -32,7 +32,7 @@ private[telemetry] class StatsDStatsReceiver(
   private[this] val gauges = new ConcurrentHashMap[String, Metric.Gauge]
   private[this] val stats = new ConcurrentHashMap[String, Metric.Stat]
 
-  protected[this] def registerGauge(name: Seq[String], f: => Float): Unit = {
+  protected[this] def registerGauge(verbosity: Verbosity, name: Seq[String], f: => Float): Unit = {
     deregisterGauge(name)
 
     val statsDName = mkName(name)
@@ -43,14 +43,14 @@ private[telemetry] class StatsDStatsReceiver(
     val _ = gauges.remove(mkName(name))
   }
 
-  def counter(name: String*): Counter = {
+  def counter(verbosity: Verbosity, name: String*): Counter = {
     val statsDName = mkName(name)
     val newCounter = new Metric.Counter(statsDClient, statsDName, sampleRate)
     val counter = counters.putIfAbsent(statsDName, newCounter)
     if (counter != null) counter else newCounter
   }
 
-  def stat(name: String*): Stat = {
+  def stat(verbosity: Verbosity, name: String*): Stat = {
     val statsDName = mkName(name)
     val newStat = new Metric.Stat(statsDClient, statsDName, sampleRate)
     val stat = stats.putIfAbsent(statsDName, newStat)

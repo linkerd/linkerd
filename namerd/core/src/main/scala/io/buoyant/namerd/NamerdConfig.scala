@@ -5,7 +5,7 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param}
 import com.twitter.logging.Logger
-import com.twitter.server.util.JvmStats
+import com.twitter.jvm.JvmStats
 import io.buoyant.admin.AdminConfig
 import io.buoyant.config.{ConfigError, ConfigInitializer, Parser}
 import io.buoyant.namer.{NamerConfig, NamerInitializer, TransformerInitializer}

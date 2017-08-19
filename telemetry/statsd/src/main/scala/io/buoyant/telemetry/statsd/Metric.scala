@@ -7,7 +7,7 @@ private[statsd] object Metric {
 
   // stats (timing/histograms) only send when Math.random() <= sampleRate
   class Counter(statsDClient: StatsDClient, name: String, sampleRate: Double) extends FCounter {
-    def incr(delta: Int): Unit = statsDClient.count(name, delta, sampleRate)
+    def incr(delta: Long): Unit = statsDClient.count(name, delta, sampleRate)
   }
 
   // gauges simply evaluate on send

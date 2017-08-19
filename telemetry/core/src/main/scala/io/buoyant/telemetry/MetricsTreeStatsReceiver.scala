@@ -8,17 +8,17 @@ class MetricsTreeStatsReceiver(
 
   val repr: AnyRef = this
 
-  protected[this] def registerGauge(name: Seq[String], f: => Float): Unit =
-    tree.resolve(name).registerGauge(f)
+  protected[this] def registerGauge(verbosity: Verbosity, name: Seq[String], f: => Float): Unit =
+    tree.resolve(name).registerGauge(verbosity, f)
 
   protected[this] def deregisterGauge(name: Seq[String]): Unit =
     tree.resolve(name).deregisterGauge()
 
-  def counter(name: String*): Counter =
-    tree.resolve(name).mkCounter()
+  override def counter(verbosity: Verbosity, name: String*): Counter =
+    tree.resolve(name).mkCounter(verbosity)
 
-  def stat(name: String*): Stat =
-    tree.resolve(name).mkStat()
+  override def stat(verbosity: Verbosity, name: String*): Stat =
+    tree.resolve(name).mkStat(verbosity)
 
   def prune(name: String*): Unit =
     tree.resolve(name).prune()
