@@ -49,7 +49,7 @@ case class ConfigMapInterpreterConfig(
 
   @JsonIgnore
   val act = api.configMap(name)
-    .activity(getDtab) {
+    .activity(extractDtab) {
       (dtab, event) =>
         event match {
           case ConfigMapAdded(a) => getDtab(a)
@@ -64,10 +64,18 @@ case class ConfigMapInterpreterConfig(
     }
 
   @JsonIgnore
+  @inline
+  private[this] def extractDtab(response: Option[ConfigMap]): Dtab =
+    response.map(getDtab).getOrElse {
+      log.warning(s"K8s ConfigMap %s doesn't exist, assuming it will be created", name)
+      Dtab.empty
+    }
+
+  @JsonIgnore
   def getDtab(configMap: ConfigMap): Dtab =
     configMap.data.get(filename) match {
       case None =>
-        log.warning(s"dtab at $filename in k8s ConfigMap $name did not exist!")
+        log.warning(s"dtab at %s in k8s ConfigMap %s did not exist!", filename, name)
         Dtab.empty
       case Some(data) => Dtab.read(data)
     }

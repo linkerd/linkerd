@@ -1,17 +1,16 @@
 package io.buoyant.k8s
 
+import java.util.concurrent.atomic.AtomicReference
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{NonFatal => _, _}
-import java.util.concurrent.atomic.AtomicReference
-import io.buoyant.k8s.Watch.{Added, Modified}
 import scala.util.control.NonFatal
 
 /**
@@ -48,7 +47,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     resourceVersion: Option[String] = None,
     retryIndefinitely: Boolean = false,
     watch: Boolean = false
-  ): Future[G] = {
+  ): Future[Option[G]] = {
     val req = Api.mkreq(
       http.Method.Get,
       if (watch) watchPath else path,
@@ -57,9 +56,18 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       FieldSelectorKey -> fieldSelector,
       ResourceVersionKey -> resourceVersion
     )
-    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+
+    val retry =
+      if (retryIndefinitely)
+        infiniteRetryFilter
+      else
+        Filter.identity[http.Request, http.Response]
+
     val retryingClient = retry andThen client
-    Trace.letClear(retryingClient(req)).flatMap(Api.parse[G])
+    Trace.letClear(retryingClient(req)).flatMap {
+      case rep if rep.status == http.Status.NotFound => Future.value(None)
+      case rep => Api.parse[G](rep).map(Some(_))
+    }
   }
 
   /**
@@ -167,10 +175,18 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
    *         where `T` is the return type of the `onEvent` function
    */
-  def activity[T](convert: G => T)(onEvent: (T, W) => T): Activity[T] =
+  def activity[T](
+    convert: Option[G] => T,
+    labelSelector: Option[String] = None,
+    fieldSelector: Option[String] = None
+  )(onEvent: (T, W) => T): Activity[T] =
     Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
-      val pending = get(retryIndefinitely = true)
+      val pending = get(
+        labelSelector = labelSelector,
+        fieldSelector = fieldSelector,
+        retryIndefinitely = true
+      )
         // since we're retrying the GET request forever, this `onFailure`
         // should probably never fire. but who knows?
         .onFailure { e =>
@@ -185,10 +201,20 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           state.update(Activity.Ok(initialState))
 
           val version = if (watchResourceVersion) {
-            initial.metadata.flatMap(_.resourceVersion)
-          } else None
+            for {
+              initialValue <- initial
+              metadata <- initialValue.metadata
+              resourceVersion <- metadata.resourceVersion
+            } yield resourceVersion
+          } else {
+            None
+          }
 
-          val (stream, close) = watch(None, None, version)
+          val (stream, close) = watch(
+            labelSelector = labelSelector,
+            fieldSelector = fieldSelector,
+            resourceVersion = version
+          )
 
           closeRef.set(close)
           val _ = stream.foldLeft(initialState) { (state0, event) =>
