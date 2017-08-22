@@ -43,7 +43,7 @@ class ServiceNamer(
         address <- ports.get(portName)
       } yield address
 
-    def update(logEvent: EventLogger, event: v1.ServiceWatch): Svc = event match {
+    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc = event match {
       case v1.ServiceAdded(service) =>
         val svc = Svc(service)
         logEvent.addition(svc.portMappings -- portMappings.keys)
@@ -67,7 +67,7 @@ class ServiceNamer(
           portMappings = portMappings -- deletedMappings.keys
         )
       case v1.ServiceError(error) =>
-        log.warning("k8s ns %s service %s error %s", logEvent.nsName, logEvent.serviceName, error)
+        log.warning("k8s ns %s service %s error %s", logEvent.ns, logEvent.srv, error)
         this
     }
   }
@@ -161,5 +161,17 @@ class ServiceNamer(
       spec <- service.spec
       port <- spec.ports.find(_.name == portName)
     } yield port.port
+
+  private[ServiceNamer] case class EventLogger(ns: String, srv: String)
+  extends EventLogging {
+    def addition(svcs: Iterable[Svc]): Unit =
+      logActions[Svc]("added", "service", _.toString)(svcs)
+
+    def deletion(svcs: Iterable[Svc]): Unit =
+      logActions[Svc]("deleted", "service", _.toString)(svcs)
+
+    def modification(svcs: Iterable[(Svc, Svc)]): Unit =
+      logModification("service")(svcs)
+  }
 
 }

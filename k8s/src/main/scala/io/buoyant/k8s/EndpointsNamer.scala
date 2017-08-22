@@ -235,11 +235,6 @@ object EndpointsNamer {
       Endpoint(InetAddress.getByName(addr.ip), addr.nodeName)
   }
 
-  private implicit val LoggableEndpoint: EventLogger.Loggable[Endpoint] =
-    new EventLogger.Loggable[Endpoint] {
-      override val descriptor: String = "endpoint"
-    }
-
   private[EndpointsNamer] case class ServiceEndpoints(
     nsName: String,
     serviceName: String,
@@ -373,6 +368,18 @@ object EndpointsNamer {
       val (endpoints, ports) = result.unzip
       (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
     }
+  }
+
+  private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
+  extends EventLogging {
+    def addition(endpoints: Iterable[Endpoint]): Unit =
+      logActions[Endpoint]("added", "endpoint", _.toString)(endpoints)
+
+    def deletion(endpoints: Iterable[Endpoint]): Unit =
+      logActions[Endpoint]("deleted", "endpoint", _.toString)(endpoints)
+
+    def modification(endpoints: Iterable[(Endpoint, Endpoint)]): Unit =
+      logModification("endpoint")(endpoints)
   }
 
 }
