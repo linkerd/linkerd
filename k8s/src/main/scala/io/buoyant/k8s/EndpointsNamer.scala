@@ -2,14 +2,14 @@ package io.buoyant.k8s
 
 import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Service => _, _}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
 import io.buoyant.namer.Metadata
+import scala.Function.untupled
 import scala.collection.breakOut
 import scala.language.implicitConversions
-import scala.Function.untupled
 
 class MultiNsNamer(
   idPrefix: Path,
@@ -48,7 +48,7 @@ class MultiNsNamer(
       case (id@Path.Utf8(nsName, portName, serviceName), Some(label)) =>
         log.debug(
           "k8s lookup: ns %s service %s label value segment missing for label %s",
-          nsName, serviceName, portName, label
+          nsName, serviceName, label
         )
         Activity.value(NameTree.Neg)
       case _ =>
@@ -99,7 +99,7 @@ class SingleNsNamer(
       case (id@Path.Utf8(portName, serviceName), Some(label)) =>
         log.debug(
           "k8s lookup: ns %s service %s label value segment missing for label %s",
-          nsName, serviceName, portName, label
+          nsName, serviceName, label
         )
         Activity.value(NameTree.Neg)
 
@@ -150,17 +150,17 @@ abstract class EndpointsNamer(
           ) {
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keySet)
+                logEvent.addition(newMap -- oldMap.keys)
                 oldMap ++ newMap
               case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keySet)
-                logEvent.deletion(oldMap -- newMap.keySet)
+                logEvent.addition(newMap -- oldMap.keys)
+                logEvent.deletion(oldMap -- newMap.keys)
                 logEvent.modification(oldMap, newMap)
                 oldMap ++ newMap
               case (oldMap, v1.ServiceDeleted(service)) =>
                 val newMap = service.portMappings
-                logEvent.deletion(oldMap -- newMap.keySet)
+                logEvent.deletion(oldMap -- newMap.keys)
                 newMap
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
@@ -281,7 +281,7 @@ object EndpointsNamer {
           val (newEndpoints, newPorts: Map[String, Int]) =
             update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
-          logEvent.addition(newPorts -- ports.keySet)
+          logEvent.addition(newPorts -- ports.keys)
           this.copy(
             endpoints = endpoints ++ newEndpoints,
             ports = ports ++ newPorts
@@ -291,8 +291,8 @@ object EndpointsNamer {
             update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.deletion(endpoints -- newEndpoints)
-          logEvent.addition(newPorts -- ports.keySet)
-          logEvent.deletion(ports -- newPorts.keySet)
+          logEvent.addition(newPorts -- ports.keys)
+          logEvent.deletion(ports -- newPorts.keys)
           logEvent.modification(ports, newPorts)
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
@@ -305,7 +305,7 @@ object EndpointsNamer {
           logEvent.deletion(deletedPorts)
           this.copy(
             endpoints = endpoints -- deletedEndpoints,
-            ports = ports -- deletedPorts.keySet
+            ports = ports -- deletedPorts.keys
           )
         case v1.EndpointsError(error) =>
           log.warning(
