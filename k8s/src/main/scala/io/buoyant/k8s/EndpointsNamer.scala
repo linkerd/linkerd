@@ -295,7 +295,7 @@ object EndpointsNamer {
           val (newEndpoints, newPorts: Map[String, Int]) =
             update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
-          logEvent.deletion(endpoints -- endpoints)
+          logEvent.deletion(endpoints -- newEndpoints)
           logEvent.addition(newPorts -- ports.keySet)
           logEvent.deletion(ports -- newPorts.keySet)
           logEvent.modification(ports, newPorts)
