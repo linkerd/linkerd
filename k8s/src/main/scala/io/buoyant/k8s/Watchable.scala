@@ -1,17 +1,16 @@
 package io.buoyant.k8s
 
+import java.util.concurrent.atomic.AtomicReference
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{NonFatal => _, _}
-import java.util.concurrent.atomic.AtomicReference
-import io.buoyant.k8s.Watch.{Added, Modified}
 import scala.util.control.NonFatal
 
 /**
@@ -57,10 +56,16 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       FieldSelectorKey -> fieldSelector,
       ResourceVersionKey -> resourceVersion
     )
-    val retry = if (retryIndefinitely) infiniteRetryFilter else Filter.identity[http.Request, http.Response]
+
+    val retry =
+      if (retryIndefinitely)
+        infiniteRetryFilter
+      else
+        Filter.identity[http.Request, http.Response]
+
     val retryingClient = retry andThen client
     Trace.letClear(retryingClient(req)).flatMap {
-      case rep if rep.status.code == 404 => Future.value(None)
+      case rep if rep.status == http.Status.NotFound => Future.value(None)
       case rep => Api.parse[G](rep).map(Some(_))
     }
   }
