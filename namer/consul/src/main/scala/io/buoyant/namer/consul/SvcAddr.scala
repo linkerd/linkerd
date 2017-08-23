@@ -60,6 +60,7 @@ private[consul] object SvcAddr {
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            log.warning("consul connection failed, retrying: %s", err)
             // Drop the index, in case it's been reset by a consul restart
             loop(None)
           case Throw(e) =>
@@ -70,7 +71,7 @@ private[consul] object SvcAddr {
                 // try again.
                 state() = addr
                 log.warning("consul service observation error %s, falling back to last good state", e)
-                loop(None)
+                loop(index0)
               case None =>
                 // if no previous good state was seen, treat the exception
                 // as effectively fatal to the service observation.
