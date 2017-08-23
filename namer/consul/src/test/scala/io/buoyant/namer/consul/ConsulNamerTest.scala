@@ -633,4 +633,87 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
 
   }
+  test("Namer falls back to most recent observed good state on serviceNodes failure") {
+    val scaleUp = new Promise[Unit]
+    val doFail = new Promise[Unit]
+    val scaleToEmpty = new Promise[Unit]
+    @volatile var didFail = false
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case Some("1") =>
+          scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
+        case Some("2") =>
+          doFail before (
+            if (didFail)
+              scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
+            else {
+              didFail = true
+              Future.exception(new Exception("something bad happened"))
+            })
+        case _ => Future.never
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    val interpreter = ConfiguredDtabNamer(Activity.value(Dtab.empty), Seq(Path.read("/#/io.l5d.consul") -> namer))
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    @volatile var nameTreeUpdates: Int = 0
+    interpreter.bind(Dtab.empty, Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
+      nameTreeUpdates += 1
+      state = s
+    }
+
+    withClue("before failure") {
+      assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 1); () }
+
+      scaleUp.setDone()
+      assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
+    }
+
+    withClue ("after failure") {
+      doFail.setDone()
+      assertOnAddrs(state) { (addrs, _) =>
+        assert(addrs.size == 2, "namer fell back to wrong state")
+        ()
+      }
+
+      scaleToEmpty.setDone()
+      assert(
+        state == Activity.Ok(NameTree.Neg),
+        "namer did not update after falling back"
+      )
+    }
+
+
+
+
+  }
 }
