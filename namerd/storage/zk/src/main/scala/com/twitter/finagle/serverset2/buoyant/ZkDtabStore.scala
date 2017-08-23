@@ -54,7 +54,7 @@ class ZkDtabStore(
 
   def create(ns: String, dtab: Dtab): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to create dtab at $path")
+    log.info("Attempting to create dtab at %s", path)
 
     zkSession.zk.create(
       path,
@@ -71,7 +71,7 @@ class ZkDtabStore(
 
   def delete(ns: String): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to delete dtab at $path")
+    log.info("Attempting to delete dtab at %s", path)
 
     zkSession.zk.delete(path, None).rescue {
       case KeeperException.NoNode(_) =>
@@ -83,7 +83,7 @@ class ZkDtabStore(
 
   override def update(ns: String, dtab: Dtab, version: Buf): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to update dtab at $path")
+    log.info("Attempting to update dtab at %s", path)
 
     zkSession.zk.setData(
       path,
@@ -98,7 +98,7 @@ class ZkDtabStore(
 
   def observe(ns: String): Activity[Option[VersionedDtab]] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to observe $path")
+    log.info("Attempting to observe %s", path)
 
     actOf(_.getDataWatch(path)).flatMap { data =>
       data.data match {
@@ -116,7 +116,7 @@ class ZkDtabStore(
 
   override def put(ns: String, dtab: Dtab): Future[Unit] = {
     val path = s"$zkPrefix/$ns"
-    log.info(s"Attempting to put dtab at $path")
+    log.info("Attempting to put dtab at %s", path)
 
     // Send a create and a setData at the same time in hopes that one of them will succeed.
     // If both fail, the user can always retry the put.

@@ -125,7 +125,7 @@ case class MixerClient(service: Service[h2.Request, h2.Response]) {
           nanos = Some((duration.inNanoseconds - duration.inLongSeconds * 1000000000L).toInt)
         )
       )
-    log.trace(s"MixerClient.report: $reportRequest")
+    log.trace("MixerClient.report: %s", reportRequest)
     client.report(Stream.value(reportRequest))
   }
 }

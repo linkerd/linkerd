@@ -77,7 +77,7 @@ class CuratorNamer(zkConnect: String, basePath: String, idPrefix: Path) extends 
     val serviceCache = serviceDiscovery.map { disco =>
       val cache = disco.serviceCacheBuilder().name(serviceName).build()
       cache.start()
-      log.info(s"Curator service cache started for $serviceName")
+      log.info("Curator service cache started for %s", serviceName)
       cache
     }
 

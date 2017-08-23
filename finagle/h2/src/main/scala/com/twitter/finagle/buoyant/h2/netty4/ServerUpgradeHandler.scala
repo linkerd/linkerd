@@ -62,7 +62,7 @@ class ServerUpgradeHandler(h2Framer: H2FrameCodec) extends ChannelDuplexHandler 
 
     // Stop trying to upgrade the protocol.
     ctx.pipeline.remove(this)
-    log.debug(s"h2 server pipeline: installing framer: ${ctx.pipeline}")
+    log.debug("h2 server pipeline: installing framer: %s", ctx.pipeline)
 
     // Pass it on.
     ctx.fireChannelRead(obj); ()

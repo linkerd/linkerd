@@ -30,7 +30,7 @@ object Validator extends TwitterServer {
 
   def assertEq[T](a: T, bs: T*): Unit = if (!bs.contains(a)) {
     val e = new AssertionFailed(a, bs)
-    log.error(e, s"$a is not in $bs")
+    log.error(e, "%s is not in %s", a, bs)
     throw e
   }
 
@@ -288,7 +288,7 @@ object Validator extends TwitterServer {
     var killed = false
     def kill() = mu.synchronized {
       if (!killed) {
-        log.info(s"killing $name")
+        log.info("killing %s", name)
         val req = http.Request(Method.Post, "/admin/shutdown")
         await(admin(req).liftToTry)
         admin.close() // don't bother awaiting

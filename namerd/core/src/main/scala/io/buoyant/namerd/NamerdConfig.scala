@@ -46,7 +46,7 @@ private[namerd] case class NamerdConfig(
         telem.tracer match {
           case s: NullTracer =>
           case _ =>
-            log.warning(s"Telemeter ${t.getClass.getCanonicalName} defines a tracer but namerd doesn't support tracing")
+            log.warning("Telemeter %s defines a tracer but namerd doesn't support tracing", t.getClass.getCanonicalName)
         }
         telem
     } :+ adminTelemeter

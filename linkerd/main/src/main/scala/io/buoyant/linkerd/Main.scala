@@ -66,12 +66,12 @@ object Main extends App {
     linker: Linker
   ): Seq[Closable with Awaitable[Unit]] = {
     val server = linker.admin.serve(this, LinkerdAdmin(config, linker))
-    log.info(s"serving ${linker.admin.scheme} admin on ${server.boundAddress}")
+    log.info("serving %s admin on %s", linker.admin.scheme, server.boundAddress)
 
     config.admin.flatMap(_.httpIdentifierPort) match {
       case Some(p) =>
         val idServer = linker.admin.serveHandler(p.port, LinkerdAdmin.identifierHandler(config, linker))
-        log.info(s"serving http identifier on ${idServer.boundAddress}")
+        log.info("serving http identifier on %s", idServer.boundAddress)
         Seq(server, idServer)
       case None => Seq(server)
     }
