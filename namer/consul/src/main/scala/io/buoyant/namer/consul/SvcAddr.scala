@@ -52,27 +52,55 @@ private[consul] object SvcAddr {
     // for service updates.
     Var.async[Addr](Addr.Pending) { state =>
       stats.opens.incr()
-
+      // last good state - if an error occurs, fall back to this if
+      // a good state was seen.
+      @volatile var lastGood: Option[Addr] = None
       @volatile var stopped: Boolean = false
       def loop(index0: Option[String]): Future[Unit] = {
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            log.warning(
+              "consul datacenter '%s' service '%s' retrying on connection" +
+                " failure: %s",
+              datacenter, key.name, err
+            )
             // Drop the index, in case it's been reset by a consul restart
             loop(None)
           case Throw(e) =>
-            // If an exception escaped getAddresses's retries, we
-            // treat it as effectively fatal to the service
-            // observation. In the future, we may consider retrying
-            // certain failures (with backoff).
-            state() = Addr.Failed(e)
             stats.errors.incr()
-            Future.exception(e)
+            lastGood match {
+              case Some(addr) =>
+                // if we've already seen a good state, fall back to that and
+                // try again.
+                state() = addr
+                log.warning(
+                  "consul datacenter '%s' service '%s' observation error %s," +
+                    " falling back to last good state",
+                  datacenter, key.name, e
+                )
+                loop(index0)
+              case None =>
+                // if no previous good state was seen, treat the exception
+                // as effectively fatal to the service observation.
+                state() = Addr.Failed(e)
+                log.error(
+                  "consul datacenter '%s' service '%s' observation error %s," +
+                    " no previous good state to fall back to!",
+                  datacenter, key.name, e
+                )
+                Future.exception(e)
+            }
 
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
+            // TODO: do we want to revert to the last good state here, as well?
             state() = Addr.Failed(NoIndexException)
             stats.errors.incr()
+            log.error(
+              "consul datacenter '%s' service '%s' didn't return an index!",
+              datacenter, key.name
+            )
             Future.exception(NoIndexException)
 
           case Return(v1.Indexed(addrs, index1)) =>
@@ -81,6 +109,7 @@ private[consul] object SvcAddr {
               case addrs if addrs.isEmpty => Addr.Neg
               case addrs => Addr.Bound(addrs, meta)
             }
+            lastGood = Some(addr)
             state() = addr
 
             loop(index1)
