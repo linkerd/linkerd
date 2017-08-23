@@ -581,4 +581,56 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Seq("lookups") -> 1
     ))
   }
+
+  test("Namer falls back to last observed good state on serviceNodes failure") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      @volatile var alreadyFailed = false
+
+      override def serviceMap(
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        case Some("0") | None =>
+          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
+          Future.value(Indexed(rsp, Some("1")))
+        case _ => Future.never
+      }
+
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case _ if alreadyFailed  => Future.never
+        case _ =>
+          alreadyFailed = true
+          Future.exception(new Exception("something is wrong"))
+
+      }
+    }
+
+      val stats = new InMemoryStatsReceiver
+      val namer = ConsulNamer.untagged(
+        Path.read("/test"),
+        new TestApi(),
+        new TestAgentApi("consul.acme.co"),
+        setHost = true,
+        stats = stats
+      )
+      @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+      namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+
+      assertOnAddrs(state) { (_, metadata) =>
+        assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+        ()
+      }
+
+  }
 }
