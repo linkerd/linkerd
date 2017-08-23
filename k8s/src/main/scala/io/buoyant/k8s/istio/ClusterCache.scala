@@ -14,7 +14,7 @@ class ClusterCache(client: DiscoveryClient) extends Closable {
         case Array(dest, port) =>
           vHost.domains.map(_ -> Cluster(dest, port))
         case _ => // vHost name is invalid
-          log.error(s"Invalid virtual_host name: ${vHost.name}")
+          log.error("Invalid virtual_host name: %s", vHost.name)
           Nil
       }
     }.toMap

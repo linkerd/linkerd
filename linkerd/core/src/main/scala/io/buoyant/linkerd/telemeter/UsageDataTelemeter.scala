@@ -201,7 +201,7 @@ class UsageDataTelemeter(
   private[this] val metricsService = httpClient.newService(metricsDst, "usageData")
   private[this] val started = new AtomicBoolean(false)
   private[this] val pid = java.util.UUID.randomUUID().toString
-  log.info(s"connecting to usageData proxy at $metricsDst")
+  log.info("connecting to usageData proxy at %s", metricsDst)
   val client = Client(metricsService, config, pid, orgId)
 
   val adminHandlers = Seq(

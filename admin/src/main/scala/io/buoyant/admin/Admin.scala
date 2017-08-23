@@ -128,7 +128,7 @@ class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig]) {
     val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
       case (muxer, Handler(url, service, _)) =>
-        log.debug(s"admin: $url => ${service.getClass.getName}")
+        log.debug("admin: %s => %s", url, service.getClass.getName)
         muxer.withHandler(url, service)
     }
     HeadFilter andThen notFoundView andThen muxer
