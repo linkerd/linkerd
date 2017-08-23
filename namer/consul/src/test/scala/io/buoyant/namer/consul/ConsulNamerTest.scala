@@ -711,9 +711,5 @@ class ConsulNamerTest extends FunSuite with Awaits {
         "namer did not update after falling back"
       )
     }
-
-
-
-
   }
 }
