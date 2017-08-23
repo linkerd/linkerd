@@ -60,7 +60,11 @@ private[consul] object SvcAddr {
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(Failure(Some(err: ConnectionFailedException))) =>
-            log.warning("consul connection failed, retrying: %s", err)
+            log.warning(
+              "consul datacenter '%s' service '%s' retrying on connection" +
+                " failure: %s",
+              datacenter, key.name, err
+            )
             // Drop the index, in case it's been reset by a consul restart
             loop(None)
           case Throw(e) =>
@@ -70,13 +74,21 @@ private[consul] object SvcAddr {
                 // if we've already seen a good state, fall back to that and
                 // try again.
                 state() = addr
-                log.warning("consul service observation error %s, falling back to last good state", e)
+                log.warning(
+                  "consul datacenter '%s' service '%s' observation error %s," +
+                    " falling back to last good state",
+                  datacenter, key.name, e
+                )
                 loop(index0)
               case None =>
                 // if no previous good state was seen, treat the exception
                 // as effectively fatal to the service observation.
                 state() = Addr.Failed(e)
-                log.error("consul service observation error %s, no previous good state!", e)
+                log.error(
+                  "consul datacenter '%s' service '%s' observation error %s," +
+                    " no previous good state to fall back to!",
+                  datacenter, key.name, e
+                )
                 Future.exception(e)
             }
 
@@ -85,6 +97,10 @@ private[consul] object SvcAddr {
             // TODO: do we want to revert to the last good state here, as well?
             state() = Addr.Failed(NoIndexException)
             stats.errors.incr()
+            log.error(
+              "consul datacenter '%s' service '%s' didn't return an index!",
+              datacenter, key.name
+            )
             Future.exception(NoIndexException)
 
           case Return(v1.Indexed(addrs, index1)) =>
