@@ -82,11 +82,12 @@ class CatalogApi(
 }
 
 object HealthApi {
-  def apply(c: Client): HealthApi = new HealthApi(c, s"/$versionString")
+  def apply(c: Client, statuses: Option[Set[HealthStatus.Value]]): HealthApi = new HealthApi(c, statuses, s"/$versionString")
 }
 
 class HealthApi(
   override val client: Client,
+  val statuses: Option[Set[HealthStatus.Value]],
   override val uriPrefix: String,
   override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
   override val stats: StatsReceiver = DefaultStatsReceiver
@@ -115,12 +116,14 @@ class HealthApi(
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag,
-      "passing" -> Some("true")
+      "passing" -> Some("false")
     )
     executeJson[Seq[ServiceHealth]](req, retry).map { indexed =>
       val result = indexed.value.map { health =>
         val service = health.Service
+        val checks = health.Checks.getOrElse(List()).flatMap(_.Status).map(HealthStatus.withNameSafe(_))
         val node = health.Node
+
         ServiceNode(
           node.flatMap(_.Node),
           node.flatMap(_.Address),
@@ -128,10 +131,16 @@ class HealthApi(
           service.flatMap(_.Service),
           service.flatMap(_.Tags),
           service.flatMap(_.Address),
-          service.flatMap(_.Port)
+          service.flatMap(_.Port),
+          checks.reduceOption(HealthStatus.worstCase)
         )
       }
-      Indexed[Seq[ServiceNode]](result, indexed.index)
+      val nodes = statuses match {
+        case None => result
+        case Some(x) if x contains HealthStatus.Any => result
+        case Some(x) => result.filter(x contains _.Status.getOrElse(HealthStatus.Passing))
+      }
+      Indexed[Seq[ServiceNode]](nodes, indexed.index)
     }
   }
 }
@@ -151,7 +160,12 @@ case class Service_(
 
 case class ServiceHealth(
   Node: Option[Node],
-  Service: Option[Service_]
+  Service: Option[Service_],
+  Checks: Option[Seq[Check]]
+)
+
+case class Check(
+  Status: Option[String]
 )
 
 case class ServiceNode(
@@ -161,5 +175,6 @@ case class ServiceNode(
   ServiceName: Option[String],
   ServiceTags: Option[Seq[String]],
   ServiceAddress: Option[String],
-  ServicePort: Option[Int]
+  ServicePort: Option[Int],
+  Status: Option[HealthStatus.Value]
 )

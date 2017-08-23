@@ -8,6 +8,7 @@ import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1
 import io.buoyant.consul.v1.ConsistencyMode
+import io.buoyant.consul.v1.HealthStatus
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
@@ -20,6 +21,8 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   port: 8600
  *   includeTag: true
  *   useHealthCheck: false
+ *   healthStatuses:
+ *   - any
  *   setHost: true
  *   token: some-consul-acl-token
  *   consistencyMode: default
@@ -39,6 +42,7 @@ case class ConsulConfig(
   port: Option[Port],
   includeTag: Option[Boolean],
   useHealthCheck: Option[Boolean],
+  healthStatuses: Option[Set[HealthStatus.Value]] = None,
   token: Option[String] = None,
   setHost: Option[Boolean] = None,
   consistencyMode: Option[ConsistencyMode] = None,
@@ -73,8 +77,9 @@ case class ConsulConfig(
       .withTracer(NullTracer)
       .newService(s"/$$/inet/$getHost/$getPort")
 
-    val consul = useHealthCheck match {
-      case Some(true) => v1.HealthApi(service)
+    val consul = (useHealthCheck, healthStatuses) match {
+      case (Some(true), _) => v1.HealthApi(service, Some(Set(HealthStatus.Passing)))
+      case (_, Some(status)) => v1.HealthApi(service, Some(status))
       case _ => v1.CatalogApi(service)
     }
     val agent = v1.AgentApi(service)

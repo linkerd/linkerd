@@ -22,8 +22,9 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("serviceNodes endpoint returns a seq of ServiceNodes") {
     val service = stubService(nodesBuf)
+    val statuses = Some(Set(HealthStatus.Any))
 
-    val response = await(HealthApi(service).serviceNodes("hosted_web")).value
+    val response = await(HealthApi(service, statuses).serviceNodes("hosted_web")).value
     assert(response.size == 1)
     assert(response.head.ServiceName == Some("hosted_web"))
     assert(response.head.Node == Some("Sarahs-MBP-2"))
@@ -33,7 +34,8 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("serviceNodes endpoint supports consistency parameter") {
     val service = stubService(nodesBuf)
-    val api = HealthApi(service)
+    val statuses = Some(Set(HealthStatus.Any))
+    val api = HealthApi(service, statuses)
 
     await(api.serviceNodes("foo"))
     assert(!lastUri.contains("consistent"))

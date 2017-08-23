@@ -1,1 +1,2 @@
 io.buoyant.consul.v1.ConsistencyModeSerializer
+io.buoyant.consul.v1.HealthStatusSerializer
