@@ -329,6 +329,12 @@ class IngressCacheTest extends FunSuite with Awaits {
     assert(await(cache.matchPath(host, "/non-existing-path")).isEmpty)
   }
 
+  test("ignores port in a request's hostname") {
+    val service = mkIngressApiServiceReturning(ingressResourceListWithOneIngress)
+    val cache = new IngressCache(None, service, annotationClass)
+    assert(await(cache.matchPath(Some("myhost:80"), "/some-path")).get.svc == "echo")
+  }
+
   test("on multiple path matches, return first match") {
     val paths = Seq(
       IngressPath(host, Some("/path"), ns.get, "primary-svc", "80"),
@@ -344,6 +350,30 @@ class IngressCacheTest extends FunSuite with Awaits {
     val resource2 = IngressSpec(Some("polar-bear2"), ns, None, Seq(IngressPath(host, None, ns.get, "svc2", "80")))
     val matchingPath = IngressCache.getMatchingPath(host, "/path", Seq(resource1, resource2))
     assert(matchingPath.get.svc == "svc1")
+  }
+
+  test("don't return default backend before checking all resources for matches") {
+    val resource1 = IngressSpec(
+      Some("polar-bear1"),
+      ns,
+      Some(IngressPath(None, None, ns.get, "fallback", "80")),
+      Seq(IngressPath(Some("other host"), None, ns.get, "svc1", "80"))
+    )
+    val resource2 = IngressSpec(Some("polar-bear2"), ns, None, Seq(IngressPath(host, None, ns.get, "svc2", "80")))
+    val matchingPath = IngressCache.getMatchingPath(host, "/path", Seq(resource1, resource2))
+    assert(matchingPath.get.svc == "svc2")
+  }
+
+  test("on no host/path matches, return first default backend") {
+    val resource1 = IngressSpec(Some("polar-bear1"), ns, None, Seq(IngressPath(host, None, ns.get, "svc1", "80")))
+    val resource2 = IngressSpec(
+      Some("polar-bear2"),
+      ns,
+      Some(IngressPath(None, None, ns.get, "fallback", "80")),
+      Seq(IngressPath(host, None, ns.get, "svc2", "80"))
+    )
+    val matchingPath = IngressCache.getMatchingPath(Some("unknown host"), "/path", Seq(resource1, resource2))
+    assert(matchingPath.get.svc == "fallback")
   }
 
   test("match on path regex") {
