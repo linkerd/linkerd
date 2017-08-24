@@ -58,10 +58,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     )
 
     val retry =
-      if (retryIndefinitely)
-        infiniteRetryFilter
-      else
-        Filter.identity[http.Request, http.Response]
+      if (retryIndefinitely) infiniteRetryFilter
+      else Filter.identity[http.Request, http.Response]
 
     val retryingClient = retry andThen client
     Trace.letClear(retryingClient(req)).flatMap {
@@ -170,8 +168,16 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
   }
 
   /**
-   * Convert this Watchable into an [[Activity]]
-   * @param onEvent function called on each [[Watch]] event
+   * Convert this Watchable into an [[Activity]] with a function called on
+   * each watch event to update the state of the [[Activity]].
+   * @param convert function called to convert the response of a GET request on
+   *                this resource initial state of the [[Activity]]. this takes an
+   *                [[Option]] in case the GET request returns 404.
+   * @param labelSelector an optional label selector field for the Kubernetes API
+   *                      request.
+   * @param fieldSelector an optional field selector field for the Kubernetes API
+   *                      request.
+   * @param onEvent function called on each [[Watch]] event.
    * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
    *         where `T` is the return type of the `onEvent` function
    */

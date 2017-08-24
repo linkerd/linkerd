@@ -2,13 +2,13 @@ package io.buoyant.k8s
 
 import java.net.InetSocketAddress
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Service => _, _}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
 import io.buoyant.k8s.v1._
-import scala.collection.mutable
 import scala.Function.untupled
+import scala.collection.mutable
 
 /**
  * Accepts names in the form:
@@ -43,33 +43,37 @@ class ServiceNamer(
         address <- ports.get(portName)
       } yield address
 
-    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc = event match {
-      case v1.ServiceAdded(service) =>
-        val svc = Svc(service)
-        logEvent.addition(svc.portMappings -- portMappings.keys)
-        logEvent.addition(svc.ports -- ports.keys)
-        svc
-      case v1.ServiceModified(service) =>
-        val svc = Svc(service)
-        logEvent.addition(svc.portMappings -- portMappings.keys)
-        logEvent.addition(svc.ports -- ports.keys)
-        logEvent.deletion(portMappings -- svc.portMappings.keys)
-        logEvent.deletion(ports -- svc.ports.keys)
-        logEvent.modification(portMappings, svc.portMappings)
-        logEvent.modification(ports, svc.ports)
-        svc
-      case v1.ServiceDeleted(deleted) =>
-        val Svc(deletedPorts, deletedMappings) = Svc(deleted)
-        logEvent.deletion(deletedPorts)
-        logEvent.deletion(deletedMappings)
-        this.copy(
-          ports = ports -- deletedPorts.keys,
-          portMappings = portMappings -- deletedMappings.keys
-        )
-      case v1.ServiceError(error) =>
-        log.warning("k8s ns %s service %s error %s", logEvent.ns, logEvent.srv, error)
-        this
-    }
+    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc =
+      event match {
+        case v1.ServiceAdded(service) =>
+          val svc = Svc(service)
+          logEvent.addition(svc.portMappings -- portMappings.keys)
+          logEvent.addition(svc.ports -- ports.keys)
+          svc
+        case v1.ServiceModified(service) =>
+          val svc = Svc(service)
+          logEvent.addition(svc.portMappings -- portMappings.keys)
+          logEvent.addition(svc.ports -- ports.keys)
+          logEvent.deletion(portMappings -- svc.portMappings.keys)
+          logEvent.deletion(ports -- svc.ports.keys)
+          logEvent.modification(portMappings, svc.portMappings)
+          logEvent.modification(ports, svc.ports)
+          svc
+        case v1.ServiceDeleted(deleted) =>
+          val Svc(deletedPorts, deletedMappings) = Svc(deleted)
+          logEvent.deletion(deletedPorts)
+          logEvent.deletion(deletedMappings)
+          this.copy(
+            ports = ports -- deletedPorts.keys,
+            portMappings = portMappings -- deletedMappings.keys
+          )
+        case v1.ServiceError(error) =>
+          log.warning(
+            "k8s ns %s service %s error %s",
+            logEvent.ns,logEvent.srv, error
+          )
+          this
+      }
   }
 
   private[this] object Svc {
@@ -83,16 +87,16 @@ class ServiceNamer(
         status <- service.status.toSeq
         lb <- status.loadBalancer.toSeq
         spec <- service.spec.toSeq
-        port <- spec.ports
+        v1.ServicePort(port, targetPort, name) <- spec.ports
       } {
         for {
           ingress <- lb.ingress.toSeq.flatten
           hostname <- ingress.hostname.orElse(ingress.ip)
-        } ports += port.name -> Address(new InetSocketAddress(hostname, port.port))
+        } ports += name -> Address(new InetSocketAddress(hostname, port))
 
-        portMap += (port.targetPort match {
-          case Some(targetPort) => port.port -> targetPort
-          case None => port.port -> port.port.toString
+        portMap += (targetPort match {
+          case Some(target) => port -> target
+          case None => port -> port.toString
         })
       }
       Svc(ports.toMap, portMap.toMap)
@@ -104,7 +108,8 @@ class ServiceNamer(
   private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
-  private[this] val service =
+  private[this] val service
+    : (String, String, Option[String]) => Activity[Svc] =
     untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
         val eventLogger = EventLogger(nsName, serviceName)
@@ -146,7 +151,10 @@ class ServiceNamer(
         Activity.value(NameTree.Neg)
     }
 
-  private[this] def toNameTree(path: Path, svcAddress: Option[Var[Address]]): NameTree[Name.Bound] = svcAddress match {
+  private[this] def toNameTree(
+    path: Path, svcAddress:
+    Option[Var[Address]]
+  ): NameTree[Name.Bound] = svcAddress match {
     case Some(address) =>
       val residual = path.drop(variablePrefixLength)
       val id = path.take(variablePrefixLength)

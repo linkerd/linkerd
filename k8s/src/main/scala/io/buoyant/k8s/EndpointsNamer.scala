@@ -136,8 +136,12 @@ abstract class EndpointsNamer(
    *       pair multiple times, you will always get back the same `Activity`,
    *       which is created the first time that pair is looked up.
    */
-  private[this] val numberedPortRemappings =
-    untupled(Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
+  private[this] val numberedPortRemappings
+    : (String, String, Option[String]) => Activity[NumberedPortMap] =
+    untupled(Memoize[
+      (String, String, Option[String]),
+      Activity[NumberedPortMap]
+    ] {
       // memoize port remapping watch activities so that we don't have to
       // create multiple watches on the same `Services` API object.
       case (nsName, serviceName, labelSelector) =>
@@ -171,8 +175,12 @@ abstract class EndpointsNamer(
             }
     })
 
-  private[this] val serviceEndpoints =
-    untupled(Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
+  private[this] val serviceEndpoints
+    : (String, String, Option[String]) => Activity[ServiceEndpoints] =
+    untupled(Memoize[
+      (String, String, Option[String]),
+      Activity[ServiceEndpoints]
+    ] {
       case (nsName, serviceName, labelSelector) =>
         mkApi(nsName)
           .endpoints(serviceName)

@@ -1,10 +1,10 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
+import com.twitter.finagle.http
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{Filter, http}
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{Closable, _}
 
@@ -232,11 +232,13 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       retryIndefinitely = true,
       watch = true
     ).map { maybeObj =>
-      (maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) },
+      val watch = maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) }
+      val version =
         for {
           obj <- maybeObj
           meta <- obj.metadata
           version <- meta.resourceVersion
-        } yield version)
+        } yield version
+      (watch, version)
     }
 }
