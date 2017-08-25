@@ -376,6 +376,13 @@ class IngressCacheTest extends FunSuite with Awaits {
     assert(matchingPath.get.svc == "fallback")
   }
 
+  test("no matches") {
+    val resource1 = IngressSpec(Some("polar-bear1"), ns, None, Seq(IngressPath(host, None, ns.get, "svc1", "80")))
+    val resource2 = IngressSpec(Some("polar-bear2"), ns, None, Seq(IngressPath(host, None, ns.get, "svc2", "80")))
+    val matchingPath = IngressCache.getMatchingPath(Some("unknown host"), "/path", Seq(resource1, resource2))
+    assert(matchingPath == None)
+  }
+
   test("match on path regex") {
     val path = IngressPath(host, Some("/prefix/.*"), ns.get, "svc1", "80")
     assert(path.matches(host, "/prefix/and-other-stuff"))
