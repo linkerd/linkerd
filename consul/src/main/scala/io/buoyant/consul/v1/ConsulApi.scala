@@ -87,7 +87,7 @@ object HealthApi {
 
 class HealthApi(
   override val client: Client,
-  val statuses: Option[Set[HealthStatus.Value]],
+  val statuses: Option[Set[HealthStatus.Value]] = None,
   override val uriPrefix: String,
   override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
   override val stats: StatsReceiver = DefaultStatsReceiver

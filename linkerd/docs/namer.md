@@ -166,7 +166,10 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
-  useHealthCheck: true
+  useHealthCheck: false
+  healthStatuses:
+    - "passing"
+    - "warning"
   setHost: true
   consistencyMode: stale
 ```
@@ -187,6 +190,7 @@ host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
 useHealthCheck | `false` | If `true`, exclude app instances that are failing Consul health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
+healthStatuses | `any` | Exclude app instances which do not match one of the provided Consul health check statuses. Possible values are `passing`, `warning`, `critical`, `maintenance` and the wildcard status `any`. Note that if a service defines more than one health check per app instance then the most representative statuses is used (`maintenance` > `critical` > `warning` > `passing`). If `useHealthCheck` is `true` this parameter is overridden with `passing` and any values provided are ignored. Regardless of the statuses used to filter, linkerd's built-in resiliency algorithms will still apply.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.

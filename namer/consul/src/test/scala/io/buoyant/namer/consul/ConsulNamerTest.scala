@@ -19,7 +19,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     Some("servicename"),
     Some(Seq.empty),
     Some(""),
-    Some(8080)
+    Some(8080),
+    Some(HealthStatus.Passing)
   )
   val testServiceNode2 = ServiceNode(
     Some("node2"),
@@ -28,7 +29,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     Some("servicename"),
     Some(Seq.empty),
     Some(""),
-    Some(8080)
+    Some(8080),
+    Some(HealthStatus.Passing)
   )
 
   def assertOnAddrs(
@@ -191,7 +193,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
-          val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888))
+          val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None)
           Future.value(Indexed(Seq(node), Some("1")))
         case _ => Future.never //don't respond to blocking index calls
       }

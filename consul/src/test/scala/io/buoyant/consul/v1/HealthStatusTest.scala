@@ -13,9 +13,14 @@ class HealthStatusTest extends FunSuite with Awaits {
     assert(modes == Seq(HealthStatus.Passing, HealthStatus.Warning, HealthStatus.Critical, HealthStatus.Maintenance, HealthStatus.Any))
   }
 
-  test("health statuses can be aggregated by worst case") {
-    val statuses = Seq(HealthStatus.Passing, HealthStatus.Warning, HealthStatus.Critical)
-    assert(statuses.reduce(HealthStatus.worstCase) == HealthStatus.Critical)
+  test("health statuses can be compared by worst case") {
+    // HealthStatus order should be maintenance > critical > warning > passing
+    assert(HealthStatus.worstCase(HealthStatus.Maintenance, HealthStatus.Critical) == HealthStatus.Maintenance)
+    assert(HealthStatus.worstCase(HealthStatus.Critical, HealthStatus.Warning) == HealthStatus.Critical)
+    assert(HealthStatus.worstCase(HealthStatus.Warning, HealthStatus.Passing) == HealthStatus.Warning)
+
+    val statuses = Seq(HealthStatus.Passing, HealthStatus.Warning, HealthStatus.Critical, HealthStatus.Maintenance)
+    assert(statuses.reduce(HealthStatus.worstCase) == HealthStatus.Maintenance)
   }
 
 }
