@@ -44,7 +44,7 @@ object ClassifierFilter {
     @inline def getSuccessClass(headers: Headers): Option[ResponseClass] =
       headers.get(SuccessClassHeader).map { value =>
         val success = Try { value.toDouble }.getOrElse {
-          log.warning(s"invalid `l5d-success-class` value $value, assumed failure")
+          log.warning("invalid `l5d-success-class` value %s, assumed failure", value)
           0.0
         }
         if (success > 0.0) ResponseClass.Successful(success)

@@ -33,7 +33,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
-        log.error(s"retrying k8s request to $path on error $ex")
+        log.error("retrying k8s request to %s on error %s", path, ex)
         true
     },
     HighResTimer.Default,
@@ -157,7 +157,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           case status =>
             close.set(Closable.nop)
-            log.debug(s"k8s failed to watch resource $watchPath: ${status.code} ${status.reason}")
+            log.debug("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
             val f = Future.exception(Api.UnexpectedResponse(rsp))
             AsyncStream.fromFuture(f)
         }

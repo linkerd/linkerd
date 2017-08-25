@@ -46,7 +46,7 @@ case class StatsDConfig(
   @JsonIgnore
   def mk(params: Stack.Params): StatsDTelemeter = {
     // initiate a UDP connection at startup time
-    log.info(s"connecting to StatsD at $statsDHost:$statsDPort as $statsDPrefix")
+    log.info("connecting to StatsD at %s:%d as %s", statsDHost, statsDPort, statsDPrefix)
     val statsDClient = new NonBlockingStatsDClient(
       statsDPrefix,
       statsDHost,

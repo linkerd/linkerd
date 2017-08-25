@@ -36,7 +36,7 @@ abstract class PollingApiClient(client: Service[Request, Response]) {
       def doUpdate() = get[T](url).respond {
         case Return(rsp) => update.update(Activity.Ok(rsp))
         case Throw(e) =>
-          log.error(e, s"failed to watch resource: $url")
+          log.error(e, "failed to watch resource: %s", url)
           update.update(Activity.Failed(e))
       }
 
