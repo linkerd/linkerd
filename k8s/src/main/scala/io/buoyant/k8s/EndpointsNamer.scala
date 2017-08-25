@@ -209,23 +209,32 @@ abstract class EndpointsNamer(
     labelSelector: Option[String] = None
   ): Activity[NameTree[Name]] = {
     val endpointsAct = serviceEndpoints(nsName, serviceName, labelSelector)
+    // create an "unstable" activity - this will update if the existence
+    // of the set of `Address`es changes *or* the values of the `Address`es
+    // change.
     val unstable = Try(portName.toInt).toOption match {
       case Some(portNumber) =>
         // if `portName` was successfully parsed as an `int`, then
         // we are dealing with a numbered port. we will thus also
         // need the port mappings from the `Service` API response,
         // so join its activity with the endpoints activity.
-        endpointsAct.join(numberedPortRemappings(nsName, serviceName, labelSelector))
-          .map {
-            case (endpoints, ports) =>
-              endpoints.lookupNumberedPort(ports, portNumber)
+        endpointsAct
+          .join(numberedPortRemappings(nsName, serviceName, labelSelector))
+          .map { case (endpoints, ports) =>
+            endpoints.lookupNumberedPort(ports, portNumber)
           }
       case None =>
         // otherwise, we are dealing with a named port, so we can
         // just look up the service from the endpoints activity
         endpointsAct.map { endpoints => endpoints.lookupNamedPort(portName) }
     }
-    stabilize(unstable).map { mkNameTree(id, residual) }
+    // stabilize the activity by converting it into an
+    // `Activity[Option[Var[Set[Address]]]]`, where the outer `Activity` will
+    // update if the `Option` changes, and the inner `Var` will update on
+    // changes to the value of the set of `Address`es.
+    stabilize(unstable)
+    // convert the contents of the stable activity to a `NameTree`.
+      .map { mkNameTree(id, residual) }
   }
 }
 
