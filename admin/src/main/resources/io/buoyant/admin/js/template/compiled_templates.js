@@ -4,10 +4,10 @@ templates['barchart'] = template({"1":function(container,depth0,helpers,partials
     var helper;
 
   return "    <div class=\"bar-chart-label metric-header warning pull-left\">\n    "
-    + container.escapeExpression(((helper = (helper = helpers.warningLabel || (depth0 != null ? depth0.warningLabel : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"warningLabel","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.warningLabel || (depth0 != null ? depth0.warningLabel : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"warningLabel","hash":{},"data":data}) : helper)))
     + "\n    </div>\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=container.lambda, alias2=container.escapeExpression, alias3=depth0 != null ? depth0 : {}, alias4=helpers.helperMissing, alias5="function";
+    var stack1, helper, alias1=container.lambda, alias2=container.escapeExpression, alias3=depth0 != null ? depth0 : (container.nullContext || {}), alias4=helpers.helperMissing, alias5="function";
 
   return "<div class=\"metrics-bar-chart-container\">\n  <div class=\"bar-chart-label metric-header pull-left\">\n    "
     + alias2(alias1(((stack1 = (depth0 != null ? depth0.label : depth0)) != null ? stack1.description : stack1), depth0))
@@ -26,7 +26,7 @@ templates['barchart'] = template({"1":function(container,depth0,helpers,partials
     + "px;\"></div>\n</div>\n";
 },"useData":true});
 templates['delegatenode'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function";
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function";
 
   return "  <div class='panel panel-default'>\n    <div class='panel-heading\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.isPrimary : depth0),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
@@ -46,14 +46,14 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 },"2":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isSuccess : depth0),{"name":"if","hash":{},"fn":container.program(3, data, 0),"inverse":container.program(5, data, 0),"data":data})) != null ? stack1 : "")
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isSuccess : depth0),{"name":"if","hash":{},"fn":container.program(3, data, 0),"inverse":container.program(5, data, 0),"data":data})) != null ? stack1 : "")
     + "    ";
 },"3":function(container,depth0,helpers,partials,data) {
     return "        panel-heading-success\n";
 },"5":function(container,depth0,helpers,partials,data) {
     return "        panel-heading-danger\n";
 },"7":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "\n      data-dentry-prefix='"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -65,35 +65,35 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 },"11":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isAlt : depth0),{"name":"if","hash":{},"fn":container.program(12, data, 0),"inverse":container.program(14, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isAlt : depth0),{"name":"if","hash":{},"fn":container.program(12, data, 0),"inverse":container.program(14, data, 0),"data":data})) != null ? stack1 : "");
 },"12":function(container,depth0,helpers,partials,data) {
     return "          Several Possible Resolution Paths\n";
 },"14":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isUnion : depth0),{"name":"if","hash":{},"fn":container.program(15, data, 0),"inverse":container.program(17, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isUnion : depth0),{"name":"if","hash":{},"fn":container.program(15, data, 0),"inverse":container.program(17, data, 0),"data":data})) != null ? stack1 : "");
 },"15":function(container,depth0,helpers,partials,data) {
     return "          Several Simultaneous Resolution Paths\n";
 },"17":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isTransformation : depth0),{"name":"if","hash":{},"fn":container.program(18, data, 0),"inverse":container.program(20, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isTransformation : depth0),{"name":"if","hash":{},"fn":container.program(18, data, 0),"inverse":container.program(20, data, 0),"data":data})) != null ? stack1 : "");
 },"18":function(container,depth0,helpers,partials,data) {
     return "          Transformation\n";
 },"20":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isLeaf : depth0),{"name":"if","hash":{},"fn":container.program(21, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isLeaf : depth0),{"name":"if","hash":{},"fn":container.program(21, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
 },"21":function(container,depth0,helpers,partials,data) {
     return "          Namer Match\n        ";
 },"23":function(container,depth0,helpers,partials,data) {
     var helper;
 
   return "          (weight: "
-    + container.escapeExpression(((helper = (helper = helpers.weight || (depth0 != null ? depth0.weight : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"weight","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.weight || (depth0 != null ? depth0.weight : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"weight","hash":{},"data":data}) : helper)))
     + ")\n";
 },"25":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "        <span class='node-dentry'>"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -104,10 +104,10 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     var helper;
 
   return "        <span class='node-dentry'>"
-    + container.escapeExpression(((helper = (helper = helpers.transformation || (depth0 != null ? depth0.transformation : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"transformation","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.transformation || (depth0 != null ? depth0.transformation : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"transformation","hash":{},"data":data}) : helper)))
     + "</span>\n";
 },"29":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "  <li class='list-group-item\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.isPrimary : depth0),{"name":"if","hash":{},"fn":container.program(30, data, 0),"inverse":container.program(35, data, 0),"data":data})) != null ? stack1 : "")
@@ -129,7 +129,7 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 },"30":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isSuccess : depth0),{"name":"if","hash":{},"fn":container.program(31, data, 0),"inverse":container.program(33, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isSuccess : depth0),{"name":"if","hash":{},"fn":container.program(31, data, 0),"inverse":container.program(33, data, 0),"data":data})) != null ? stack1 : "");
 },"31":function(container,depth0,helpers,partials,data) {
     return "        list-group-item-success\n";
 },"33":function(container,depth0,helpers,partials,data) {
@@ -137,7 +137,7 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 },"35":function(container,depth0,helpers,partials,data) {
     return "      list-group-item-plain\n    ";
 },"37":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "      data-dentry-prefix='"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -149,22 +149,22 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
 },"41":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isFail : depth0),{"name":"if","hash":{},"fn":container.program(42, data, 0),"inverse":container.program(44, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isFail : depth0),{"name":"if","hash":{},"fn":container.program(42, data, 0),"inverse":container.program(44, data, 0),"data":data})) != null ? stack1 : "");
 },"42":function(container,depth0,helpers,partials,data) {
     return "        Explicit Failure\n";
 },"44":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isException : depth0),{"name":"if","hash":{},"fn":container.program(45, data, 0),"inverse":container.program(50, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isException : depth0),{"name":"if","hash":{},"fn":container.program(45, data, 0),"inverse":container.program(50, data, 0),"data":data})) != null ? stack1 : "");
 },"45":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.message : depth0),{"name":"if","hash":{},"fn":container.program(46, data, 0),"inverse":container.program(48, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.message : depth0),{"name":"if","hash":{},"fn":container.program(46, data, 0),"inverse":container.program(48, data, 0),"data":data})) != null ? stack1 : "");
 },"46":function(container,depth0,helpers,partials,data) {
     var helper;
 
   return "          Exception: "
-    + container.escapeExpression(((helper = (helper = helpers.message || (depth0 != null ? depth0.message : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"message","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.message || (depth0 != null ? depth0.message : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"message","hash":{},"data":data}) : helper)))
     + "\n";
 },"48":function(container,depth0,helpers,partials,data) {
     return "          Unknown Exception\n";
@@ -174,14 +174,14 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     var helper;
 
   return "        (weight: "
-    + container.escapeExpression(((helper = (helper = helpers.weight || (depth0 != null ? depth0.weight : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"weight","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.weight || (depth0 != null ? depth0.weight : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"weight","hash":{},"data":data}) : helper)))
     + ")\n";
 },"54":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.addrs : depth0),{"name":"each","hash":{},"fn":container.program(55, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.addrs : depth0),{"name":"each","hash":{},"fn":container.program(55, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
 },"55":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "        "
     + alias4(((helper = (helper = helpers.ip || (depth0 != null ? depth0.ip : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"ip","hash":{},"data":data}) : helper)))
@@ -192,10 +192,10 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     var helper;
 
   return "["
-    + container.escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"id","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"id","hash":{},"data":data}) : helper)))
     + "]";
 },"59":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "      <span class='node-dentry'>"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -206,18 +206,18 @@ templates['delegatenode'] = template({"1":function(container,depth0,helpers,part
     var stack1, helper;
 
   return "  <ul class='list-group'>"
-    + ((stack1 = ((helper = (helper = helpers.transformed || (depth0 != null ? depth0.transformed : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"transformed","hash":{},"data":data}) : helper))) != null ? stack1 : "")
+    + ((stack1 = ((helper = (helper = helpers.transformed || (depth0 != null ? depth0.transformed : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"transformed","hash":{},"data":data}) : helper))) != null ? stack1 : "")
     + "</ul>\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.child : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(29, data, 0),"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.child : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(29, data, 0),"data":data})) != null ? stack1 : "");
 },"useData":true});
 templates['delegator'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    return "<div class=\"row\">\n  <div class=\"col-lg-6\">\n    <div class=\"input-group path\">\n      <span class=\"input-group-addon\" id=\"basic-addon1\">Path</span>\n      <input type=\"text\" class=\"form-control\" id=\"path-input\" placeholder=\"/path/to/resource\" aria-describedby=\"basic-addon1\">\n      <span class=\"input-group-btn\">\n        <button class=\"btn btn-default go\" type=\"button\">Go!</button>\n      </span>\n    </div>\n  </div>\n</div>\n\n<div class=\"dtab\">\n  <h4 class=\"header\">\n    Dtab\n  </h4>\n  <div id=\"dtab\"></div>\n  <div class=\"namerd-dtab-warning hide\">Note: the above Dentries are from namerd and can't be edited.</div>\n  <div id=\"dtab-base\"></div>\n\n  <div id=\"dtab-edit\" class=\"hide\">\n    <textarea type=\"text\" class=\"form-control\" id=\"dtab-input\" placeholder=\"\"></textarea>\n  </div>\n\n  <button id=\"edit-dtab-btn\" class=\"btn btn-info btn-sm\">Edit</button>\n  <button id=\"save-dtab-btn\" class=\"btn btn-success btn-sm hide disabled\">Apply*</button>\n  <a target=\"_blank\" id=\"reset-dtab-link\" class=\"hide\">Reset</a>\n  <div class=\"save-warning\">*Applies dtab for playground testing only!</div>\n</div>\n\n<div class=\"result\"></div>\n\n<div class=\"modal fade error-modal\" tabindex=\"-1\" role=\"dialog\"></div>\n\n<div class=\"modal fade confirm-modal\" tabindex=\"-1\" role=\"dialog\">\n  <div class=\"modal-dialog modal-sm\">\n    <div class=\"modal-content\">\n      <div class=\"modal-body\">Reset Dtab to initial state?</div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Cancel</button>\n        <button type=\"button\" class=\"btn btn-warning confirm\" data-dismiss=\"modal\">Reset</button>\n      </div>\n    </div>\n  </div>\n</div>\n";
+    return "<div class=\"row\">\n  <div class=\"col-lg-6\">\n    <div class=\"input-group path\">\n      <span class=\"input-group-addon\" id=\"basic-addon1\">Path</span>\n      <input type=\"text\" class=\"form-control\" id=\"path-input\" placeholder=\"/path/to/resource\" aria-describedby=\"basic-addon1\">\n      <span class=\"input-group-btn\">\n        <button class=\"btn btn-default go\" type=\"button\">Go!</button>\n      </span>\n    </div>\n  </div>\n</div>\n\n<div class=\"dtab\">\n  <h4 class=\"header\">\n    Dtab\n  </h4>\n  <div id=\"dtab\"></div>\n  <div class=\"namerd-dtab-warning hide\">Note: the above Dentries are from an external source and can't be edited.</div>\n  <div id=\"dtab-base\"></div>\n\n  <div id=\"dtab-edit\" class=\"hide\">\n    <textarea type=\"text\" class=\"form-control\" id=\"dtab-input\" placeholder=\"\"></textarea>\n  </div>\n\n  <button id=\"edit-dtab-btn\" class=\"btn btn-info btn-sm\">Edit</button>\n  <button id=\"save-dtab-btn\" class=\"btn btn-success btn-sm hide disabled\">Apply*</button>\n  <a target=\"_blank\" id=\"reset-dtab-link\" class=\"hide\">Reset</a>\n  <div class=\"save-warning\">*Applies dtab for playground testing only!</div>\n</div>\n\n<div class=\"result\"></div>\n\n<div class=\"modal fade error-modal\" tabindex=\"-1\" role=\"dialog\"></div>\n\n<div class=\"modal fade confirm-modal\" tabindex=\"-1\" role=\"dialog\">\n  <div class=\"modal-dialog modal-sm\">\n    <div class=\"modal-content\">\n      <div class=\"modal-body\">Reset Dtab to initial state?</div>\n      <div class=\"modal-footer\">\n        <button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Cancel</button>\n        <button type=\"button\" class=\"btn btn-warning confirm\" data-dismiss=\"modal\">Reset</button>\n      </div>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
 templates['dentry'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class='dentry'>\n  <div class='dentry-part dentry-prefix' data-dentry-prefix='"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -235,7 +235,7 @@ templates['error_modal'] = template({"compiler":[7,">= 4.0.0"],"main":function(c
     + "</pre>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
 templates['latencies.partial'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "      <div>\n        <span class=\"latency-label\">\n          <span class=\"latency-legend\" style=\"background-color:"
     + alias4(((helper = (helper = helpers.latencyColor || (depth0 != null ? depth0.latencyColor : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"latencyColor","hash":{},"data":data}) : helper)))
@@ -248,14 +248,14 @@ templates['latencies.partial'] = template({"1":function(container,depth0,helpers
     var stack1;
 
   return "<div class=\"col-md-2 router-latencies-container\">\n  <div class=\"metric-header\">Latencies</div>\n  <div class=\"router-latencies\">\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},depth0,{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),depth0,{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "  </div>\n</div>\n";
 },"useData":true});
 templates['logging_row'] = template({"1":function(container,depth0,helpers,partials,data) {
     var stack1, alias1=container.lambda, alias2=container.escapeExpression;
 
   return "        <a class=\"btn btn-sm\n"
-    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.isActive : depth0),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.program(4, data, 0),"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.isActive : depth0),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.program(4, data, 0),"data":data})) != null ? stack1 : "")
     + "\n          data-level="
     + alias2(alias1((depth0 != null ? depth0.level : depth0), depth0))
     + " data-logger="
@@ -268,7 +268,7 @@ templates['logging_row'] = template({"1":function(container,depth0,helpers,parti
 },"4":function(container,depth0,helpers,partials,data) {
     return " btn-default\" ";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "<tr>\n  <td><h5>"
     + container.escapeExpression(((helper = (helper = helpers.logger || (depth0 != null ? depth0.logger : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"logger","hash":{},"data":data}) : helper)))
@@ -280,7 +280,7 @@ templates['metric.partial'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "      "
-    + container.escapeExpression(((helper = (helper = helpers.description || (depth0 != null ? depth0.description : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"description","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.description || (depth0 != null ? depth0.description : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"description","hash":{},"data":data}) : helper)))
     + "\n";
 },"3":function(container,depth0,helpers,partials,data) {
     return "      metric\n";
@@ -288,12 +288,12 @@ templates['metric.partial'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "      "
-    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"value","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"value","hash":{},"data":data}) : helper)))
     + "\n";
 },"7":function(container,depth0,helpers,partials,data) {
     return "      0\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class=\""
     + alias4(((helper = (helper = helpers.containerClass || (depth0 != null ? depth0.containerClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"containerClass","hash":{},"data":data}) : helper)))
@@ -316,7 +316,7 @@ templates['namerd_namespace'] = template({"1":function(container,depth0,helpers,
     + alias2(alias1(depth0, depth0))
     + "</a>\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "<div class='namespace-container container-fluid'>\n  <h3>"
     + container.escapeExpression(((helper = (helper = helpers.namespace || (depth0 != null ? depth0.namespace : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"namespace","hash":{},"data":data}) : helper)))
@@ -334,7 +334,7 @@ templates['namerd_stats'] = template({"compiler":[7,">= 4.0.0"],"main":function(
     + "</div>\n";
 },"usePartial":true,"useData":true});
 templates['process_info'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "      <li class=\"col-md-2\" data-key=\""
     + alias4(((helper = (helper = helpers.dataKey || (depth0 != null ? depth0.dataKey : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"dataKey","hash":{},"data":data}) : helper)))
@@ -349,14 +349,14 @@ templates['process_info'] = template({"1":function(container,depth0,helpers,part
     var stack1;
 
   return "<div id=\"process-info\">\n  <ul class=\"list-inline topline-stats\">\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.stats : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.stats : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "  </ul>\n</div>\n";
 },"useData":true});
 templates['rate_metric.partial'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;
 
   return "        "
-    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"value","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"value","hash":{},"data":data}) : helper)))
     + "\n";
 },"3":function(container,depth0,helpers,partials,data) {
     return "        0\n";
@@ -364,10 +364,10 @@ templates['rate_metric.partial'] = template({"1":function(container,depth0,helpe
     var helper;
 
   return "        "
-    + container.escapeExpression(((helper = (helper = helpers.rate || (depth0 != null ? depth0.rate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"rate","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.rate || (depth0 != null ? depth0.rate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"rate","hash":{},"data":data}) : helper)))
     + "\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class=\""
     + alias4(((helper = (helper = helpers.containerClass || (depth0 != null ? depth0.containerClass : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"containerClass","hash":{},"data":data}) : helper)))
@@ -392,10 +392,10 @@ templates['request_stats'] = template({"1":function(container,depth0,helpers,par
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.keys : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.keys : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
 },"useData":true});
 templates['request_totals'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "    <div class=\"col-md-2\">\n      <div class=\"metric-header\">\n        "
     + container.escapeExpression(((helper = (helper = helpers.description || (depth0 != null ? depth0.description : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"description","hash":{},"data":data}) : helper)))
@@ -406,7 +406,7 @@ templates['request_totals'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "          "
-    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"value","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.value || (depth0 != null ? depth0.value : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"value","hash":{},"data":data}) : helper)))
     + "\n";
 },"4":function(container,depth0,helpers,partials,data) {
     return "          0\n";
@@ -414,7 +414,7 @@ templates['request_totals'] = template({"1":function(container,depth0,helpers,pa
     var stack1;
 
   return "<div class=\"row\">\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.metrics : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.metrics : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "</div>\n";
 },"useData":true});
 templates['router_client'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
@@ -431,7 +431,7 @@ templates['router_client'] = template({"compiler":[7,">= 4.0.0"],"main":function
     + "</div>\n";
 },"usePartial":true,"useData":true});
 templates['router_client_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class=\"client-container clearfix\">\n  <div class=\"header-line\">&nbsp;</div>\n  <div class=\"router-header-large\">\n    <div class=\"client-id\">\n      <div class=\"pull-left transformer-prefix\" style=\"display: none\">"
     + alias4(((helper = (helper = helpers.prefix || (depth0 != null ? depth0.prefix : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"prefix","hash":{},"data":data}) : helper)))
@@ -450,21 +450,21 @@ templates['router_container'] = template({"1":function(container,depth0,helpers,
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
-  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.routers : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
+  return ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.routers : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "");
 },"useData":true});
 templates['router_option'] = template({"1":function(container,depth0,helpers,partials,data) {
     var helper;
 
-  return container.escapeExpression(((helper = (helper = helpers.label || (depth0 != null ? depth0.label : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"label","hash":{},"data":data}) : helper)));
+  return container.escapeExpression(((helper = (helper = helpers.label || (depth0 != null ? depth0.label : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"label","hash":{},"data":data}) : helper)));
 },"3":function(container,depth0,helpers,partials,data) {
     var helper;
 
-  return container.escapeExpression(((helper = (helper = helpers.protocol || (depth0 != null ? depth0.protocol : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"protocol","hash":{},"data":data}) : helper)));
+  return container.escapeExpression(((helper = (helper = helpers.protocol || (depth0 != null ? depth0.protocol : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"protocol","hash":{},"data":data}) : helper)));
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1;
 
   return "<li><a href='#' class='router-menu-option'>"
-    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.label : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers["if"].call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.label : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data})) != null ? stack1 : "")
     + "</a></li>\n";
 },"useData":true});
 templates['router_server'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
@@ -484,11 +484,11 @@ templates['router_server_container'] = template({"compiler":[7,">= 4.0.0"],"main
     var helper;
 
   return "<div class=\"server-header router-header-large\">\n  "
-    + container.escapeExpression(((helper = (helper = helpers.server || (depth0 != null ? depth0.server : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"server","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.server || (depth0 != null ? depth0.server : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"server","hash":{},"data":data}) : helper)))
     + "\n</div>\n\n<div class=\"router-server clearfix\">\n  <div class=\"server-metrics metrics-container col-md-6\"></div>\n  <div class=\"server-success-chart col-md-6\">\n    <div class=\"router-graph-header\">Server success rate</div>\n  </div>\n</div>\n";
 },"useData":true});
 templates['router_service_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class=\"svc-container\" data-service=\""
     + alias4(((helper = (helper = helpers.service || (depth0 != null ? depth0.service : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"service","hash":{},"data":data}) : helper)))
@@ -497,7 +497,7 @@ templates['router_service_container'] = template({"compiler":[7,">= 4.0.0"],"mai
     + "</div>\n  <div class=\"svc-metrics\"></div>\n</div>\n";
 },"useData":true});
 templates['router_service_metrics'] = template({"1":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "  <div class=\"client-metrics row\">\n    <div class=\"col-md-1 trail-in\">\n"
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.requests : depth0),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.program(4, data, 0),"data":data})) != null ? stack1 : "")
@@ -508,7 +508,7 @@ templates['router_service_metrics'] = template({"1":function(container,depth0,he
     var helper;
 
   return "        "
-    + container.escapeExpression(((helper = (helper = helpers.requests || (depth0 != null ? depth0.requests : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"requests","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.requests || (depth0 != null ? depth0.requests : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"requests","hash":{},"data":data}) : helper)))
     + "\n";
 },"4":function(container,depth0,helpers,partials,data) {
     return "        0\n";
@@ -516,11 +516,11 @@ templates['router_service_metrics'] = template({"1":function(container,depth0,he
     var stack1;
 
   return "<div class=\"service-client-metrics row\">\n  <div class=\"service-subsection-header\">Requests per client</div>\n"
-    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : {},(depth0 != null ? depth0.clients : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
+    + ((stack1 = helpers.each.call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? depth0.clients : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "</div>\n";
 },"useData":true});
 templates['router_services_container'] = template({"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var helper, alias1=depth0 != null ? depth0 : {}, alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=helpers.helperMissing, alias3="function", alias4=container.escapeExpression;
 
   return "<div class=\"router row\" data-router=\""
     + alias4(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))
@@ -532,7 +532,7 @@ templates['router_summary'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "        "
-    + container.escapeExpression(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"router","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"router","hash":{},"data":data}) : helper)))
     + "\n";
 },"3":function(container,depth0,helpers,partials,data) {
     return "        inactive...\n";
@@ -540,7 +540,7 @@ templates['router_summary'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "            "
-    + container.escapeExpression(((helper = (helper = helpers.load || (depth0 != null ? depth0.load : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"load","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.load || (depth0 != null ? depth0.load : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"load","hash":{},"data":data}) : helper)))
     + "\n";
 },"7":function(container,depth0,helpers,partials,data) {
     return "            0\n";
@@ -548,19 +548,19 @@ templates['router_summary'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "            "
-    + container.escapeExpression(((helper = (helper = helpers.requests || (depth0 != null ? depth0.requests : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"requests","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.requests || (depth0 != null ? depth0.requests : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"requests","hash":{},"data":data}) : helper)))
     + "\n";
 },"11":function(container,depth0,helpers,partials,data) {
     var helper;
 
   return "            "
-    + container.escapeExpression(((helper = (helper = helpers.retries || (depth0 != null ? depth0.retries : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"retries","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.retries || (depth0 != null ? depth0.retries : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"retries","hash":{},"data":data}) : helper)))
     + "\n";
 },"13":function(container,depth0,helpers,partials,data) {
     var helper;
 
   return "            "
-    + container.escapeExpression(((helper = (helper = helpers.successRate || (depth0 != null ? depth0.successRate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"successRate","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.successRate || (depth0 != null ? depth0.successRate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"successRate","hash":{},"data":data}) : helper)))
     + "\n";
 },"15":function(container,depth0,helpers,partials,data) {
     return "            N/A\n";
@@ -568,10 +568,10 @@ templates['router_summary'] = template({"1":function(container,depth0,helpers,pa
     var helper;
 
   return "            "
-    + container.escapeExpression(((helper = (helper = helpers.failureRate || (depth0 != null ? depth0.failureRate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : {},{"name":"failureRate","hash":{},"data":data}) : helper)))
+    + container.escapeExpression(((helper = (helper = helpers.failureRate || (depth0 != null ? depth0.failureRate : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"failureRate","hash":{},"data":data}) : helper)))
     + "\n";
 },"compiler":[7,">= 4.0.0"],"main":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : {};
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {});
 
   return "\n<div class=\"router-summary router-"
     + container.escapeExpression(((helper = (helper = helpers.router || (depth0 != null ? depth0.router : depth0)) != null ? helper : helpers.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"router","hash":{},"data":data}) : helper)))

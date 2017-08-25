@@ -1,9 +1,10 @@
 package io.buoyant.k8s
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonIgnore}
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.{http, Service => FService}
 import io.buoyant.k8s.{KubeObject => BaseObject}
+import scala.collection.breakOut
 
 package object v1 {
 
@@ -72,25 +73,57 @@ package object v1 {
     def toWatch(e: Service) = ServiceModified(e)
   }
 
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+  @JsonSubTypes(Array(
+    new JsonSubTypes.Type(value = classOf[ConfigMapAdded], name = "ADDED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapModified], name = "MODIFIED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapDeleted], name = "DELETED"),
+    new JsonSubTypes.Type(value = classOf[ConfigMapError], name = "ERROR")
+  ))
+  sealed trait ConfigMapWatch extends Watch[ConfigMap]
+  case class ConfigMapAdded(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Added[ConfigMap]
+
+  case class ConfigMapModified(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Modified[ConfigMap]
+
+  case class ConfigMapDeleted(
+    `object`: ConfigMap
+  ) extends ConfigMapWatch with Watch.Deleted[ConfigMap]
+
+  case class ConfigMapError(
+    @JsonProperty(value = "object") status: Status
+  ) extends ConfigMapWatch with Watch.Error[ConfigMap]
+
+  implicit object ConfigMapDescriptor extends ObjectDescriptor[ConfigMap, ConfigMapWatch] {
+    def listName = "configmaps"
+    def toWatch(e: ConfigMap) = ConfigMapModified(e)
+  }
+
   implicit private val endpointsListType = new TypeReference[EndpointsList] {}
   implicit private val serviceListType = new TypeReference[ServiceList] {}
   implicit private val endpointsType = new TypeReference[Endpoints] {}
   implicit private val serviceType = new TypeReference[Service] {}
+  implicit private val configMapType = new TypeReference[ConfigMap] {}
   implicit private val endpointsWatch = new TypeReference[EndpointsWatch] {}
   implicit private val serviceWatch = new TypeReference[ServiceWatch] {}
+  implicit private val configMapWatch = new TypeReference[ConfigMapWatch] {}
 
   case class Api(client: Client) extends Version[Object] {
     def group = v1.group
     def version = v1.version
     override def withNamespace(ns: String) = new NsApi(client, ns)
-    def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
-    def services = listResource[Service, ServiceWatch, ServiceList]()
   }
 
   class NsApi(client: Client, ns: String)
     extends NsVersion[Object](client, v1.group, v1.version, ns) {
     def endpoints = listResource[Endpoints, EndpointsWatch, EndpointsList]()
+    def endpoints(name: String): NsObjectResource[v1.Endpoints, v1.EndpointsWatch] = endpoints.named(name)
     def services = listResource[Service, ServiceWatch, ServiceList]()
+    def service(name: String): NsObjectResource[Service, ServiceWatch] = services.named(name)
+    def configMap(name: String) = objectResource[ConfigMap, ConfigMapWatch](name)
   }
 
   case class EndpointsList(
@@ -105,13 +138,40 @@ package object v1 {
     kind: Option[String] = None,
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None
-  ) extends Object
+  ) extends Object {
+    /**
+     * @return the subsets list on this `Endpoints` object,
+     *          or an empty [[Seq]] if it is empty.
+     */
+    @JsonIgnore
+    @inline
+    def subsetsSeq: Seq[EndpointSubset] =
+      subsets.getOrElse(Seq.empty)
+
+    @JsonIgnore
+    @inline
+    def getName: Option[String] =
+      for {
+        meta <- metadata
+        name <- meta.name
+      } yield name
+  }
 
   case class EndpointSubset(
     notReadyAddresses: Option[Seq[EndpointAddress]] = None,
     addresses: Option[Seq[EndpointAddress]] = None,
     ports: Option[Seq[EndpointPort]] = None
-  )
+  ) {
+    @JsonIgnore
+    @inline
+    def addressesSeq: Seq[EndpointAddress] =
+      addresses.getOrElse(Seq.empty)
+
+    @JsonIgnore
+    @inline
+    def portsSeq: Seq[EndpointPort] =
+      ports.getOrElse(Seq.empty)
+  }
 
   case class EndpointAddress(
     ip: String,
@@ -138,7 +198,23 @@ package object v1 {
     kind: Option[String] = None,
     metadata: Option[ObjectMeta] = None,
     apiVersion: Option[String] = None
-  ) extends Object
+  ) extends Object {
+    /**
+     * @return a `Map[Int, String]` containing all the port to target port
+     *         mappings in this `Service` object.
+     */
+    @JsonIgnore
+    def portMappings: Map[Int, String] =
+      (for {
+        meta <- metadata.toSeq
+        status <- status.toSeq
+        spec <- spec.toSeq
+        v1.ServicePort(port, targetPort, _) <- spec.ports
+      } yield {
+        port -> targetPort.getOrElse(port.toString)
+      })(breakOut)
+
+  }
 
   case class ServiceStatus(
     loadBalancer: Option[LoadBalancerStatus] = None
@@ -146,7 +222,11 @@ package object v1 {
 
   case class LoadBalancerStatus(
     ingress: Option[Seq[LoadBalancerIngress]]
-  )
+  ) {
+    @JsonIgnore
+    @inline
+    def ingressSeq: Seq[LoadBalancerIngress] = ingress.getOrElse(Seq.empty)
+  }
 
   case class LoadBalancerIngress(
     ip: Option[String] = None,
@@ -162,4 +242,11 @@ package object v1 {
     targetPort: Option[String],
     name: String
   )
+
+  case class ConfigMap(
+    data: Map[String, String],
+    kind: Option[String] = None,
+    metadata: Option[ObjectMeta] = None,
+    apiVersion: Option[String] = None
+  ) extends Object
 }
