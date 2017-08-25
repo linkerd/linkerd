@@ -1,0 +1,35 @@
+package io.buoyant.namer.dnssrv
+
+import java.util.Collections
+
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.conversions.time._
+import com.twitter.finagle.Stack.Params
+import com.twitter.finagle._
+import io.buoyant.namer.{NamerConfig, NamerInitializer}
+
+class DnsSrvNamerInitializer extends NamerInitializer {
+  override val configClass = classOf[DnsSrvNamerConfig]
+  override def configId: String = "io.l5d.dnssrv"
+}
+object DnsSrvNamerInitializer extends DnsSrvNamerInitializer
+
+case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Option[Seq[String]]) extends NamerConfig {
+
+  @JsonIgnore
+  override def defaultPrefix: Path = Path.read("/io.l5d.dnssrv")
+
+  @JsonIgnore
+  override def newNamer(params: Params): Namer = {
+    import org.xbill.DNS
+    val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
+    val resolver = dnsHosts match {
+      case Some(hosts) => new DNS.ExtendedResolver(hosts.toArray)
+      case None => new DNS.ExtendedResolver()
+    }
+    resolver.setEDNS(0, 2048, 0, Collections.EMPTY_LIST)
+    val timer = params[param.Timer].timer
+    val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
+    new DnsSrvNamer(prefix, resolver, timer, refreshInterval, stats)
+  }
+}
