@@ -125,7 +125,7 @@ object LinkerdBuild extends Base {
     val dnssrv = projectDir("namer/dnssrv")
       .dependsOn(core)
       .withLibs(Deps.dnsJava)
-      .withTests()
+      .withTests().withIntegration()
 
     val fs = projectDir("namer/fs")
       .dependsOn(core % "compile->compile;test->test")
