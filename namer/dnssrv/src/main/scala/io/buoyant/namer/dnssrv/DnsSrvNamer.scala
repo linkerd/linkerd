@@ -73,7 +73,7 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
           NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id))
         }
       case code =>
-        log.trace("unexpected RCODE: %d for %s", code, address)
+        log.warning("unexpected RCODE: %s for %s", DNS.Rcode.string(code), address)
         NameTree.Fail
     }
   }
