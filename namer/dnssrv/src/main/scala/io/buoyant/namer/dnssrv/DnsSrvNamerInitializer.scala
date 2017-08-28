@@ -22,14 +22,29 @@ case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Opti
   @JsonIgnore
   override def newNamer(params: Params): Namer = {
     import org.xbill.DNS
+    import DnsSrvNamerConfig.Edns
+
     val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
     val resolver = dnsHosts match {
       case Some(hosts) => new DNS.ExtendedResolver(hosts.toArray)
       case None => new DNS.ExtendedResolver()
     }
-    resolver.setEDNS(0, 2048, 0, Collections.EMPTY_LIST)
+    resolver.setEDNS(
+      Edns.Level,
+      Edns.MaxPayloadSize,
+      Edns.Flags,
+      Edns.Options
+    )
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
     new DnsSrvNamer(prefix, resolver, timer, refreshInterval, stats)
+  }
+}
+object DnsSrvNamerConfig {
+  object Edns {
+    val Level = 0
+    val MaxPayloadSize = 2048
+    val Flags = 0
+    val Options = Collections.EMPTY_LIST
   }
 }
