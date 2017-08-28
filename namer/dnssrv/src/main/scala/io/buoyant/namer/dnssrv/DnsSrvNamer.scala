@@ -9,36 +9,28 @@ import com.twitter.util.Activity.State
 import com.twitter.util._
 import org.xbill.DNS
 
-import scala.collection.concurrent.TrieMap
-
 class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInterval: Duration, stats: StatsReceiver)
   extends Namer {
 
-  private val log = Logger.get("dnssrv")
-  private val cache = TrieMap.empty[Path, Var[State[NameTree[Name]]]]
+  override def lookup(path: Path): Activity[NameTree[Name]] = memoizedLookup(path)
 
-  override def lookup(path: Path): Activity[NameTree[Name]] = path.take(1) match {
-    case id@Path.Utf8(address) =>
-      log.trace("lookup %s", id)
-      val states = cache.getOrElseUpdate(
-        id,
-        // TrieMap may evaluate this unnecessarily in case of concurrent calls.
-        // This is ok, since the body is only run when something subscribes to the Var.
-        Var.async[State[NameTree[Name]]](Activity.Pending) { state =>
-          timer.schedule(refreshInterval) {
-            val next = lookupSrv(address, prefix ++ id, path.drop(1)) match {
-              case Return(nameTree) => Activity.Ok(nameTree)
-              case Throw(e) => Activity.Failed(e)
-            }
-            state.update(next)
+  private val log = Logger.get("dnssrv")
+  private val memoizedLookup: (Path) => Activity[NameTree[Name]] = Memoize {
+    case path@Path.Utf8(address, _) =>
+      val id = path.take(1)
+      Activity(Var.async[State[NameTree[Name]]](Activity.Pending) { state =>
+        timer.schedule(refreshInterval) {
+          val next = lookupSrv(address, prefix ++ id) match {
+            case Return(nameTree) => Activity.Ok(nameTree)
+            case Throw(e) => Activity.Failed(e)
           }
+          state.update(next)
         }
-      )
-      Activity(states)
+      })
     case _ => Activity.value(NameTree.Neg)
   }
 
-  private[dnssrv] def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = Try {
+  private[dnssrv] def lookupSrv(address: String, id: Path): Try[NameTree[Name]] = Try {
     val question = DNS.Record.newRecord(
       DNS.Name.fromString(address),
       DNS.Type.SRV,

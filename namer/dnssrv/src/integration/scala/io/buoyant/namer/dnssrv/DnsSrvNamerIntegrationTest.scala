@@ -10,7 +10,7 @@ import org.xbill.DNS
 class DnsSrvNamerIntegrationTest extends FunSuite with Matchers {
   test("can resolve some public SRV revord") {
     val namer = new DnsSrvNamer(Path.empty, new DNS.ExtendedResolver, new NullTimer, Duration.Zero, new NullStatsReceiver)
-    val result = namer.lookupSrv("_http._tcp.mxtoolbox.com.", Path.read("/foo"), null)
+    val result = namer.lookupSrv("_http._tcp.mxtoolbox.com.", Path.read("/foo"))
     result.get().simplified match {
       case NameTree.Leaf(Name.Bound(varAddr)) => varAddr.sample() match {
         case Addr.Bound(addrs, _) => addrs should not be empty
