@@ -608,7 +608,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
           Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case _ if alreadyFailed  => Future.never
+        case _ if alreadyFailed => Future.never
         case _ =>
           alreadyFailed = true
           Future.exception(new Exception("something is wrong"))
@@ -616,21 +616,21 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
     }
 
-      val stats = new InMemoryStatsReceiver
-      val namer = ConsulNamer.untagged(
-        Path.read("/test"),
-        new TestApi(),
-        new TestAgentApi("consul.acme.co"),
-        setHost = true,
-        stats = stats
-      )
-      @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-      namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = true,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-      assertOnAddrs(state) { (_, metadata) =>
-        assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
-        ()
-      }
+    assertOnAddrs(state) { (_, metadata) =>
+      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      ()
+    }
 
   }
   test("Namer falls back to most recent observed good state on serviceNodes failure") {
@@ -670,7 +670,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
             else {
               didFail = true
               Future.exception(new Exception("something bad happened"))
-            })
+            }
+          )
         case _ => Future.never
       }
     }
@@ -698,7 +699,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
     }
 
-    withClue ("after failure") {
+    withClue("after failure") {
       doFail.setDone()
       assertOnAddrs(state) { (addrs, _) =>
         assert(addrs.size == 2, "namer fell back to wrong state")

@@ -94,7 +94,7 @@ class ServiceNamer(
         case v1.ServiceError(error) =>
           log.warning(
             "k8s ns %s service %s error %s",
-            logEvent.ns,logEvent.srv, error
+            logEvent.ns, logEvent.srv, error
           )
           this
       }
@@ -144,8 +144,7 @@ class ServiceNamer(
   // retrieves a memoized activity representing a watch for a
   // (namespace name, service name, label selector), or establishes
   // a new watch activity if one does not yet exist.
-  private[this] val service
-    : (String, String, Option[String]) => Activity[Svc] =
+  private[this] val service: (String, String, Option[String]) => Activity[Svc] =
     untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
         val eventLogger = EventLogger(nsName, serviceName)
@@ -169,7 +168,7 @@ class ServiceNamer(
         // update if the `Option` changes, and the inner `Var` will update on
         // changes to the value of the `Address`.
         stabilize(unstable)
-        // convert the contents of the stable activity to a `NameTree`.
+          // convert the contents of the stable activity to a `NameTree`.
           .map(toNameTree(path, _))
       case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
         val labelSelector = Some(s"$label=$labelValue")
@@ -199,7 +198,7 @@ class ServiceNamer(
   }
 
   private[ServiceNamer] case class EventLogger(ns: String, srv: String)
-  extends EventLogging {
+    extends EventLogging {
     def addition(svcs: Iterable[Svc]): Unit =
       logActions[Svc]("added", "service", _.toString)(svcs)
 
