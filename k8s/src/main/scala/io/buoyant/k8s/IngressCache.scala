@@ -14,17 +14,11 @@ case class IngressSpec(
 ) {
   def getMatchingPath(hostHeader: Option[String], requestPath: String): Option[IngressPath] = {
     val matchingPath = rules.find(_.matches(hostHeader, requestPath))
-    (matchingPath, fallbackBackend) match {
-      case (Some(path), _) =>
-        log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
-        Some(path)
-      case (None, Some(default)) =>
-        log.info("k8s using default service %s for request %s %s", default, hostHeader.getOrElse(""), requestPath)
-        Some(default)
-      case _ =>
-        log.info("k8s no suitable rule found in %s for request %s %s", name.getOrElse(""), hostHeader.getOrElse(""), requestPath)
-        None
+    matchingPath match {
+      case Some(path) => log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
+      case None => log.info("no ingress rule found for request %s %s", hostHeader.getOrElse(""), requestPath)
     }
+    matchingPath
   }
 }
 
@@ -59,12 +53,16 @@ object IngressCache {
   type IngressState = Activity.State[Seq[IngressSpec]]
   val annotationKey = "kubernetes.io/ingress.class"
 
-  private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ingresses: Seq[IngressSpec]): Option[IngressPath] =
+  private[k8s] def iterateForMatch(ingresses: Seq[IngressSpec], fn: (IngressSpec) => Option[IngressPath]) =
     ingresses
       .toIterator // stop after we find a match
-      .flatMap(_.getMatchingPath(hostHeader, requestPath))
+      .flatMap(fn(_))
       .take(1)
       .toSeq.headOption
+
+  private[k8s] def getMatchingPath(hostHeader: Option[String], requestPath: String, ingresses: Seq[IngressSpec]): Option[IngressPath] =
+    iterateForMatch(ingresses, _.getMatchingPath(hostHeader, requestPath))
+      .orElse(iterateForMatch(ingresses, _.fallbackBackend))
 
 }
 
@@ -135,8 +133,16 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     }
   }
 
-  def matchPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] =
+  def matchPath(hostHeader: Option[String], requestPath: String): Future[Option[IngressPath]] = {
+    val hostHeaderSansPort = hostHeader.map {
+      _.split(":") match {
+        case Array(h: String, _) => h
+        case Array(h: String) => h
+        case _ => throw new IllegalArgumentException("unable to parse host for request")
+      }
+    }
     ingresses.map { cache: Seq[IngressSpec] =>
-      getMatchingPath(hostHeader, requestPath, cache)
+      getMatchingPath(hostHeaderSansPort, requestPath, cache)
     }.toFuture
+  }
 }
