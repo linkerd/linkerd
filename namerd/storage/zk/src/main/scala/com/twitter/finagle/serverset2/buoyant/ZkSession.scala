@@ -166,8 +166,10 @@ class ZkSession(
               // Disconnected, NoSyncConnected
               case WatchState.SessionState(sessionState) if sessionState == SessionState.Disconnected |
                 sessionState == SessionState.NoSyncConnected =>
-                logger.warning("Intermediate Failure session state: %s. Session: %s. Data is now unavailable.",
-                  sessionState, sessionId)
+                logger.warning(
+                  "Intermediate Failure session state: %s. Session: %s. Data is now unavailable.",
+                  sessionState, sessionId
+                )
                 u() = Activity.Failed(new Exception("" + sessionState))
               // Do NOT keep retrying, wait to be reconnected automatically by the underlying session
 

@@ -136,12 +136,8 @@ abstract class EndpointsNamer(
    *       pair multiple times, you will always get back the same `Activity`,
    *       which is created the first time that pair is looked up.
    */
-  private[this] val numberedPortRemappings
-    : (String, String, Option[String]) => Activity[NumberedPortMap] =
-    untupled(Memoize[
-      (String, String, Option[String]),
-      Activity[NumberedPortMap]
-    ] {
+  private[this] val numberedPortRemappings: (String, String, Option[String]) => Activity[NumberedPortMap] =
+    untupled(Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
       // memoize port remapping watch activities so that we don't have to
       // create multiple watches on the same `Services` API object.
       case (nsName, serviceName, labelSelector) =>
@@ -175,12 +171,8 @@ abstract class EndpointsNamer(
             }
     })
 
-  private[this] val serviceEndpoints
-    : (String, String, Option[String]) => Activity[ServiceEndpoints] =
-    untupled(Memoize[
-      (String, String, Option[String]),
-      Activity[ServiceEndpoints]
-    ] {
+  private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
+    untupled(Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
       case (nsName, serviceName, labelSelector) =>
         mkApi(nsName)
           .endpoints(serviceName)
@@ -220,8 +212,9 @@ abstract class EndpointsNamer(
         // so join its activity with the endpoints activity.
         endpointsAct
           .join(numberedPortRemappings(nsName, serviceName, labelSelector))
-          .map { case (endpoints, ports) =>
-            endpoints.lookupNumberedPort(ports, portNumber)
+          .map {
+            case (endpoints, ports) =>
+              endpoints.lookupNumberedPort(ports, portNumber)
           }
       case None =>
         // otherwise, we are dealing with a named port, so we can
@@ -233,7 +226,7 @@ abstract class EndpointsNamer(
     // update if the `Option` changes, and the inner `Var` will update on
     // changes to the value of the set of `Address`es.
     stabilize(unstable)
-    // convert the contents of the stable activity to a `NameTree`.
+      // convert the contents of the stable activity to a `NameTree`.
       .map { mkNameTree(id, residual) }
   }
 }
@@ -388,7 +381,7 @@ object EndpointsNamer {
   }
 
   private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
-  extends EventLogging {
+    extends EventLogging {
     def addition(endpoints: Iterable[Endpoint]): Unit =
       logActions[Endpoint]("added", "endpoint", _.toString)(endpoints)
 

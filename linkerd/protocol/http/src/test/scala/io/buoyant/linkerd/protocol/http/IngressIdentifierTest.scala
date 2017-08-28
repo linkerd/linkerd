@@ -44,7 +44,8 @@ class IngressIdentifierTest extends FunSuite with Awaits {
         }]
       }
     }]
-  }""")
+  }"""
+  )
 
   val service = Service.mk[Request, Response] {
     case req if req.uri.contains("/apis/extensions/v1beta1/ingresses") =>

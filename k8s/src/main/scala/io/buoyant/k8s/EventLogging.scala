@@ -39,7 +39,7 @@ private[k8s] trait EventLogging {
       } logAction[A](s"replaced $old with", descriptor, _.toString)(replacement)
     }
 
-  def modification[A,B](old: Map[A, B], replacement: Map[A, B]): Unit =
+  def modification[A, B](old: Map[A, B], replacement: Map[A, B]): Unit =
     if (old.nonEmpty && replacement.nonEmpty) {
       log.debug(
         "k8s ns %s service %s modified port mappings",
@@ -50,6 +50,6 @@ private[k8s] trait EventLogging {
         oldValue <- old.get(key)
         newValue <- replacement.get(key)
         if oldValue != newValue
-      } log.ifTrace (s"k8s ns $ns service $srv remapped port '$key' from $oldValue to $newValue")
+      } log.ifTrace(s"k8s ns $ns service $srv remapped port '$key' from $oldValue to $newValue")
     }
 }
