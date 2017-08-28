@@ -26,7 +26,7 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
         // This is ok, since the body is only run when something subscribes to the Var.
         Var.async[State[NameTree[Name]]](Activity.Pending) { state =>
           timer.schedule(refreshInterval) {
-            val next = lookupSrv(address, prefix ++ id, path.drop(2)) match {
+            val next = lookupSrv(address, prefix ++ id, path.drop(1)) match {
               case Return(nameTree) => Activity.Ok(nameTree)
               case Throw(e) => Activity.Failed(e)
             }
