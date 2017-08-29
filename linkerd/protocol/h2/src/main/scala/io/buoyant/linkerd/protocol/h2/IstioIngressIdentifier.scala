@@ -81,8 +81,7 @@ class IstioIngressIdentifier(
     req.headers.set(Headers.Authority, authority.getOrElse(""))
   }
 
-  def reqToMeta(req: Request): IstioRequestMeta =
-    IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
+  def reqToMeta(req: Request): IstioRequest = H2IstioRequest(req)
 
 }
 

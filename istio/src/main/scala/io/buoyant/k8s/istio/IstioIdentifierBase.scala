@@ -8,25 +8,13 @@ import istio.proxy.v1.config._
 
 trait IstioIdentifierBase[Req] {
 
-  /**
-   * Defines a request's metadata for istio rules to match against
-   * (normalizes fields between http and h2)
-   */
-  case class IstioRequestMeta(
-    uri: String,
-    scheme: String,
-    method: String,
-    authority: String,
-    getHeader: (String) => Option[String]
-  )
-
   def clusterCache: ClusterCache
   def routeCache: RouteCache
   def pfx: Path
 
   def redirectRequest(redir: HTTPRedirect, req: Req): Future[Nothing]
   def rewriteRequest(uri: String, authority: Option[String], req: Req): Unit
-  def reqToMeta(req: Req): IstioRequestMeta
+  def reqToMeta(req: Req): IstioRequest
 
   def headerMatches(headerValue: String, stringMatch: StringMatch): Boolean = {
     stringMatch.`matchType` match {
@@ -45,7 +33,7 @@ trait IstioIdentifierBase[Req] {
     }
   }
 
-  def matchesAllConditions(req: IstioRequestMeta, matchCondition: MatchCondition): Boolean = {
+  def matchesAllConditions(req: IstioRequest, matchCondition: MatchCondition): Boolean = {
     val matchesHeaders = matchCondition.`httpHeaders`.forall {
       case ("uri", m) => headerMatches(req.uri, m)
       case ("scheme", m) => headerMatches(req.scheme, m)
@@ -92,7 +80,7 @@ trait IstioIdentifierBase[Req] {
    * @param meta
    * @return Tuple of uri and authority to used to rewrite headers on the request
    */
-  def httpRewrite(rule: RouteRule, meta: IstioRequestMeta): (String, Option[String]) = {
+  def httpRewrite(rule: RouteRule, meta: IstioRequest): (String, Option[String]) = {
     rule.`rewrite` match {
       case Some(HTTPRewrite(url, updatedAuth)) =>
         val updatedUri = url.map { replacement =>
@@ -109,7 +97,7 @@ trait IstioIdentifierBase[Req] {
     }
   }
 
-  def filterRules(rules: Map[String, RouteRule], dest: String, req: IstioRequestMeta): Seq[(String, RouteRule)] = rules.filter {
+  def filterRules(rules: Map[String, RouteRule], dest: String, req: IstioRequest): Seq[(String, RouteRule)] = rules.filter {
     case (_, r) if r.`destination`.contains(dest) =>
       // return true if no match conditions were defined on the route-rule
       r.`match`.forall(matchesAllConditions(req, _))

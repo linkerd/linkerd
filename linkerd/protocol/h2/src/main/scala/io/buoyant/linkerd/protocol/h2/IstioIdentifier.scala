@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, RouteCache}
+import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, IstioRequest, RouteCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
@@ -35,8 +35,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: Route
     req.headers.set(Headers.Authority, authority.getOrElse(""))
   }
 
-  def reqToMeta(req: Request): IstioRequestMeta =
-    IstioRequestMeta(req.path, req.scheme, req.method.toString, req.authority, req.headers.get)
+  def reqToMeta(req: Request): IstioRequest = H2IstioRequest(req)
 }
 
 case class IstioIdentifierConfig(

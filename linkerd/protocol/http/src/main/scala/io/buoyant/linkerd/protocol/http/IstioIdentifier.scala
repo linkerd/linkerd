@@ -5,7 +5,7 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, RouteCache}
+import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, RouteCache, IstioRequest}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
@@ -26,9 +26,7 @@ class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: Route
     }
   }
 
-  def reqToMeta(req: Request): IstioRequestMeta =
-    //TODO: match on request scheme
-    IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+  def reqToMeta(req: Request): IstioRequest = HttpIstioRequest(req)
 
   def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
     val redirect = Response(Status.Found)
