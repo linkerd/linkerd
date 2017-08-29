@@ -1,5 +1,6 @@
 package io.buoyant.namer.dnssrv
 
+import java.io.IOException
 import java.net.InetSocketAddress
 
 import com.twitter.finagle._
@@ -31,7 +32,7 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
     }
   }
 
-  private[dnssrv] def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = Try {
+  private[dnssrv] def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = {
     val question = DNS.Record.newRecord(
       DNS.Name.fromString(address),
       DNS.Type.SRV,
@@ -39,35 +40,37 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
     )
     val query = DNS.Message.newQuery(question)
     log.debug("looking up %s", address)
-    val m = resolver.send(query)
-    log.debug("got response %s", address)
-    m.getRcode match {
-      case DNS.Rcode.NXDOMAIN =>
-        log.trace("no results for %s", address)
-        NameTree.Neg
-      case DNS.Rcode.NOERROR =>
-        val hosts = m.getSectionArray(DNS.Section.ADDITIONAL).collect {
-          case a: DNS.ARecord => a.getName -> a.getAddress
-        }.toMap
-        val srvRecords = m.getSectionArray(DNS.Section.ANSWER).collect {
-          case srv: DNS.SRVRecord =>
-            hosts.get(srv.getTarget) match {
-              case Some(inetAddress) => Address(new InetSocketAddress(inetAddress, srv.getPort))
-              case None => Address(srv.getTarget.toString, srv.getPort)
-            }
-        }
-        if (srvRecords.isEmpty) {
-          // valid DNS entry, but no instances.
-          // for some reason, NameTree.Empty doesn't work right
-          log.trace("empty response for %s", address)
-          NameTree.Neg
-        } else {
-          log.trace("got %d results for %s", srvRecords.length, address)
-          NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id, residual))
-        }
-      case code =>
-        log.warning("unexpected RCODE: %s for %s", DNS.Rcode.string(code), address)
-        NameTree.Fail
+    Try(resolver.send(query)) flatMap { message =>
+      log.debug("got response %s", address)
+      message.getRcode match {
+        case DNS.Rcode.NXDOMAIN =>
+          log.trace("no results for %s", address)
+          Return(NameTree.Neg)
+        case DNS.Rcode.NOERROR =>
+          val hosts = message.getSectionArray(DNS.Section.ADDITIONAL).collect {
+            case a: DNS.ARecord => a.getName -> a.getAddress
+          }.toMap
+          val srvRecords = message.getSectionArray(DNS.Section.ANSWER).collect {
+            case srv: DNS.SRVRecord =>
+              hosts.get(srv.getTarget) match {
+                case Some(inetAddress) => Address(new InetSocketAddress(inetAddress, srv.getPort))
+                case None => Address(srv.getTarget.toString, srv.getPort)
+              }
+          }
+          if (srvRecords.isEmpty) {
+            // valid DNS entry, but no instances.
+            // for some reason, NameTree.Empty doesn't work right
+            log.trace("empty response for %s", address)
+            Return(NameTree.Neg)
+          } else {
+            log.trace("got %d results for %s", srvRecords.length, address)
+            Return(NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id, residual)))
+          }
+        case code =>
+          val msg = s"unexpected RCODE: ${DNS.Rcode.string(code)} for $address"
+          log.warning(msg)
+          Throw(new IOException(msg))
+      }
     }
   }
 }
