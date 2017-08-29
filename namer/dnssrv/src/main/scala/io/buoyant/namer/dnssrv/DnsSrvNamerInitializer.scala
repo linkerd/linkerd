@@ -7,6 +7,8 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
+import org.xbill.DNS
+import DnsSrvNamerConfig.Edns
 
 class DnsSrvNamerInitializer extends NamerInitializer {
   override val configClass = classOf[DnsSrvNamerConfig]
@@ -21,8 +23,6 @@ case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Opti
 
   @JsonIgnore
   override def newNamer(params: Params): Namer = {
-    import org.xbill.DNS
-    import DnsSrvNamerConfig.Edns
 
     val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
     val resolver = dnsHosts match {
