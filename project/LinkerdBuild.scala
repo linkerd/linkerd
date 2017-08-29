@@ -32,13 +32,13 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  lazy val istio = projectDir("istio")
+  lazy val istioProto = projectDir("istio-proto")
     .withLibs(Deps.jackson)
     .withGrpc
     .withTests()
 
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core, istio)
+    .dependsOn(Namer.core, istioProto)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -490,7 +490,7 @@ object LinkerdBuild extends Base {
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
           k8s,
-          istio,
+          istioProto,
           failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",
@@ -728,7 +728,7 @@ object LinkerdBuild extends Base {
       consul,
       etcd,
       k8s,
-      istio,
+      istioProto,
       marathon,
       testUtil,
       Finagle.all,
