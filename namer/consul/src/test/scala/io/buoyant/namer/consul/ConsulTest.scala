@@ -39,7 +39,7 @@ class ConsulTest extends FunSuite {
                     |port: 8600
                     |token: some-token
                     |includeTag: true
-                    |useHealthCheck: false
+                    |useHealthCheck: true
                     |healthStatuses:
                     | - warning
                     |setHost: true
@@ -53,7 +53,7 @@ class ConsulTest extends FunSuite {
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))
     assert(consul.token == Some("some-token"))
-    assert(consul.useHealthCheck == Some(false))
+    assert(consul.useHealthCheck == Some(true))
     assert(consul.healthStatuses == Some(Set(HealthStatus.Warning)))
     assert(consul.setHost == Some(true))
     assert(consul.includeTag == Some(true))

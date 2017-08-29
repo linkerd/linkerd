@@ -82,12 +82,12 @@ class CatalogApi(
 }
 
 object HealthApi {
-  def apply(c: Client, statuses: Option[Set[HealthStatus.Value]]): HealthApi = new HealthApi(c, statuses, s"/$versionString")
+  def apply(c: Client, statuses: Set[HealthStatus.Value]): HealthApi = new HealthApi(c, statuses, s"/$versionString")
 }
 
 class HealthApi(
   override val client: Client,
-  val statuses: Option[Set[HealthStatus.Value]] = None,
+  val statuses: Set[HealthStatus.Value],
   override val uriPrefix: String,
   override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
   override val stats: StatsReceiver = DefaultStatsReceiver
@@ -116,7 +116,7 @@ class HealthApi(
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag,
-      "passing" -> Some("false")
+      "passing" -> Some((statuses == Set(HealthStatus.Passing)).toString)
     )
     executeJson[Seq[ServiceHealth]](req, retry).map { indexed =>
       val result = indexed.value.map { health =>
@@ -135,10 +135,10 @@ class HealthApi(
           checks.reduceOption(HealthStatus.worstCase)
         )
       }
-      val nodes = statuses match {
-        case None => result
-        case Some(x) if x contains HealthStatus.Any => result
-        case Some(x) => result.filter(x contains _.Status.getOrElse(HealthStatus.Passing))
+      val nodes = if (statuses == Set(HealthStatus.Passing)) {
+        result
+      } else {
+        result.filter(statuses contains _.Status.getOrElse(HealthStatus.Passing))
       }
       Indexed[Seq[ServiceNode]](nodes, indexed.index)
     }

@@ -6,10 +6,10 @@ import io.buoyant.config.{ConfigDeserializer, ConfigSerializer}
 
 object HealthStatus extends Enumeration {
   type HealthStatus = Value
-  val Any, Passing, Warning, Critical, Maintenance = Value
+  val Passing, Warning, Critical, Maintenance = Value
   def withNameSafe(name: String): Value =
     values.find(_.toString.toLowerCase == name.toLowerCase()).getOrElse(Passing)
-  /* 
+  /*
    * worstCase returns the "worst" status of two health checks. Because a given
    * entry may have many service and node-level health checks attached, this
    * function can be used to determine the most representative status as a
@@ -29,7 +29,6 @@ class HealthStatusDeserializer extends ConfigDeserializer[HealthStatus.Value] {
         case "warning" => HealthStatus.Warning
         case "critical" => HealthStatus.Critical
         case "maintenance" => HealthStatus.Maintenance
-        case "any" => HealthStatus.Any
         case unknown =>
           throw new IllegalArgumentException(s"Illegal Consul health status: $unknown")
       }

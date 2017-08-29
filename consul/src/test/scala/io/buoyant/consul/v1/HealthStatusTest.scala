@@ -7,10 +7,10 @@ import org.scalatest.FunSuite
 class HealthStatusTest extends FunSuite with Awaits {
 
   test("health statuses can be deserialized from lowercase names") {
-    val yaml = "[passing, warning, critical, maintenance, any]"
+    val yaml = "[passing, warning, critical, maintenance]"
     val mapper = Parser.objectMapper(yaml, Iterable.empty)
     val modes = mapper.readValue[Seq[HealthStatus.Value]](yaml)
-    assert(modes == Seq(HealthStatus.Passing, HealthStatus.Warning, HealthStatus.Critical, HealthStatus.Maintenance, HealthStatus.Any))
+    assert(modes == Seq(HealthStatus.Passing, HealthStatus.Warning, HealthStatus.Critical, HealthStatus.Maintenance))
   }
 
   test("health statuses can be compared by worst case") {

@@ -28,9 +28,8 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("serviceNodes endpoint returns a seq of ServiceNodes") {
     val service = stubService(nodesBuf)
-    val statuses = Some(Set(HealthStatus.Any))
 
-    val response = await(HealthApi(service, statuses).serviceNodes("hosted_web")).value
+    val response = await(HealthApi(service, Set(HealthStatus.Passing)).serviceNodes("hosted_web")).value
     assert(response.size == 1)
     assert(response.head.ServiceName == Some("hosted_web"))
     assert(response.head.Node == Some("Sarahs-MBP-2"))
@@ -40,8 +39,7 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("serviceNodes endpoint supports consistency parameter") {
     val service = stubService(nodesBuf)
-    val statuses = Some(Set(HealthStatus.Any))
-    val api = HealthApi(service, statuses)
+    val api = HealthApi(service, Set(HealthStatus.Passing))
 
     await(api.serviceNodes("foo"))
     assert(!lastUri.contains("consistent"))
@@ -60,46 +58,23 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("Nodes without status are filtered as if `passing`") {
     val service = stubService(nodesBuf)
-    val statuses = Some(Set(HealthStatus.Passing))
 
-    val apiPassing = HealthApi(service, statuses)
+    val apiPassing = HealthApi(service, Set(HealthStatus.Passing))
     val responsePassing = await(apiPassing.serviceNodes("hosted_web")).value
 
     assert(responsePassing.size == 1)
     assert(responsePassing.head.ServiceName == Some("hosted_web"))
     assert(responsePassing.head.Node == Some("Sarahs-MBP-2"))
 
-    val apiCritical = HealthApi(service, Some(Set(HealthStatus.Critical)))
+    val apiCritical = HealthApi(service, Set(HealthStatus.Critical))
     val responseCritical = await(apiCritical.serviceNodes("hosted_web")).value
 
     assert(responseCritical.size == 0)
   }
 
-  test("HealthApi supports filtering by health status `any`") {
-    val service = stubService(nodesWithChecksBuf)
-    val statuses = Some(Set(HealthStatus.Any))
-    val api = HealthApi(service, statuses)
-
-    val response = await(api.serviceNodes("hosted_web")).value
-    assert(response.size == 4)
-  }
-
-  test("HealthApi supports filtering by health status `passing`") {
-    val service = stubService(nodesWithChecksBuf)
-    val statuses = Some(Set(HealthStatus.Passing))
-    val api = HealthApi(service, statuses)
-
-    val response = await(api.serviceNodes("hosted_web")).value
-    assert(response.size == 1)
-    assert(response.head.ServiceName == Some("hosted_web"))
-    assert(response.head.Node == Some("node-passing"))
-    assert(response.head.Status == Some(HealthStatus.Passing))
-  }
-
   test("HealthApi supports filtering by health status `warning`") {
     val service = stubService(nodesWithChecksBuf)
-    val statuses = Some(Set(HealthStatus.Warning))
-    val api = HealthApi(service, statuses)
+    val api = HealthApi(service, Set(HealthStatus.Warning))
 
     val response = await(api.serviceNodes("hosted_web")).value
     assert(response.size == 1)
@@ -110,8 +85,7 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("HealthApi supports filtering by health status `critical`") {
     val service = stubService(nodesWithChecksBuf)
-    val statuses = Some(Set(HealthStatus.Critical))
-    val api = HealthApi(service, statuses)
+    val api = HealthApi(service, Set(HealthStatus.Critical))
 
     val response = await(api.serviceNodes("hosted_web")).value
     assert(response.size == 1)
@@ -122,8 +96,7 @@ class HealthApiTest extends FunSuite with Awaits {
 
   test("HealthApi supports filtering by health status `maintenance`") {
     val service = stubService(nodesWithChecksBuf)
-    val statuses = Some(Set(HealthStatus.Maintenance))
-    val api = HealthApi(service, statuses)
+    val api = HealthApi(service, Set(HealthStatus.Maintenance))
 
     val response = await(api.serviceNodes("hosted_web")).value
     assert(response.size == 1)
