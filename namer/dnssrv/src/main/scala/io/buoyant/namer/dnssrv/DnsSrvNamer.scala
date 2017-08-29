@@ -32,7 +32,7 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
     }
   }
 
-  private[dnssrv] def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = {
+  private def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = {
     val question = DNS.Record.newRecord(
       DNS.Name.fromString(address),
       DNS.Type.SRV,
