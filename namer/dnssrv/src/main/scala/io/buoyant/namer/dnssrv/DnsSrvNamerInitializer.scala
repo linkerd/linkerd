@@ -19,6 +19,9 @@ object DnsSrvNamerInitializer extends DnsSrvNamerInitializer
 case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Option[Seq[String]]) extends NamerConfig {
 
   @JsonIgnore
+  override def experimentalRequired = true
+
+  @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.dnssrv")
 
   @JsonIgnore

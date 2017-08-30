@@ -34,5 +34,6 @@ class DnsSrvNamerTest extends FunSuite with Matchers {
     val config = mapper.readValue[NamerConfig](yaml).asInstanceOf[DnsSrvNamerConfig]
     assert(config.refreshIntervalSeconds === Some(60))
     assert(config.dnsHosts === Some(Seq("localhost")))
+    assert(config.disabled === false)
   }
 }
