@@ -37,6 +37,12 @@ object LinkerdBuild extends Base {
     .withGrpc
     .withTests()
 
+  lazy val istio = projectDir("istio")
+    .dependsOn(k8s, Namer.core, istioProto)
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
   lazy val k8s = projectDir("k8s")
     .dependsOn(Namer.core, istioProto)
     .withTwitterLib(Deps.finagle("http"))
@@ -132,7 +138,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val k8s = projectDir("namer/k8s")
-      .dependsOn(LinkerdBuild.k8s, core)
+      .dependsOn(LinkerdBuild.k8s, LinkerdBuild.istio, core)
       .withTests()
 
     val marathon = projectDir("namer/marathon")
@@ -445,7 +451,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val k8s = projectDir("interpreter/k8s")
-        .dependsOn(Namer.core, LinkerdBuild.k8s, perHost, subnet)
+        .dependsOn(Namer.core, LinkerdBuild.k8s, LinkerdBuild.istio, perHost, subnet)
         .withTests()
 
     val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
@@ -479,7 +485,7 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, k8s, Finagle.h2 % "test->test;e2e->test")
+        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test")
         .withTests().withE2e()
         .withGrpc
         .withTwitterLibs(Deps.finagle("netty4"))
@@ -489,7 +495,7 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
-          k8s,
+          istio,
           istioProto,
           failureAccrual % "e2e",
           tls % "integration",
@@ -728,6 +734,7 @@ object LinkerdBuild extends Base {
       consul,
       etcd,
       k8s,
+      istio,
       istioProto,
       marathon,
       testUtil,
