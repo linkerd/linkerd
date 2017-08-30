@@ -19,7 +19,7 @@ class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Fi
 
     svc(req).respond { ret =>
       val duration = elapsed()
-      val responseCode = ret.toOption.map(_.statusCode).getOrElse(Status.InternalServerError.code)
+      val responseCode = ret.toOption.map(_.status).getOrElse(Status.InternalServerError)
 
       // check for valid istio path
       val istioPath = DstBoundCtx.current.flatMap { bound =>
@@ -29,7 +29,7 @@ class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Fi
         }
       }
 
-      val _ = report(istioPath, responseCode, req.path, duration)
+      val _ = report(istioPath, responseCode.code, req.path, duration)
     }
   }
 }
