@@ -1,12 +1,12 @@
-package io.buoyant.interpreter.k8s
+package io.buoyant.interpreter.k8s.istio
 
-import com.twitter.finagle.{Dtab, Path, Service}
+import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.{Dtab, Path, Service}
 import com.twitter.util.Future
+import io.buoyant.k8s.SingleNsNamer
 import io.buoyant.k8s.istio._
 import io.buoyant.namer.Paths
-import com.twitter.conversions.time._
-import io.buoyant.k8s.SingleNsNamer
 import io.buoyant.test.{Awaits, FunSuite}
 
 class IstioInterpreterTest extends FunSuite with Awaits {

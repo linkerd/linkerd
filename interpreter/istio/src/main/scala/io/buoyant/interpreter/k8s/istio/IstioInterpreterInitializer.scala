@@ -1,4 +1,4 @@
-package io.buoyant.interpreter.k8s
+package io.buoyant.interpreter.k8s.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.naming.NameInterpreter
@@ -26,6 +26,7 @@ case class IstioInterpreterConfig(
   apiserverHost: Option[String],
   apiserverPort: Option[Port]
 ) extends InterpreterConfig {
+
   import io.buoyant.k8s.istio._
 
   @JsonIgnore
