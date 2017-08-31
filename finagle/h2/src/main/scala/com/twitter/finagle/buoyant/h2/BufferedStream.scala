@@ -74,7 +74,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
                 // otherwise we could build up an unbounded list of pollers.  If N forks all call
                 // read, a single pull of the underlying Stream is sufficient to satisfy all of
                 // the forks because the pulled Frame is fanned out.
-                pullState.pullFrame(super, child)
+                pullState.pullFrame(bufferedStream, child)
               } else {
                 super.read()
               }
