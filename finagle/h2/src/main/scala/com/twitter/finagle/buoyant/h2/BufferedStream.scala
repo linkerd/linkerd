@@ -1,13 +1,13 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.conversions.storage._
+import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
+import com.twitter.conversions.storage._
+import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
 import com.twitter.util._
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
@@ -42,6 +42,41 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   else
     _onEnd
 
+  sealed trait PullState
+  case object Idle extends PullState
+  case class Pulling(f: Future[Unit]) extends PullState
+
+  @volatile private[this] var pullState: PullState = Idle
+
+  private[this] class Fork(
+    override protected[this] val frameQ: AsyncQueue[Frame]
+  ) extends AsyncQueueReader {
+
+    override def read(): Future[Frame] = bufferedStream.synchronized {
+      // If the queue is empty, pull a Frame from the underlying Stream (which will be
+      // offered to all child Streams) before polling the queue.
+      if (frameQ.size == 0) {
+        // We must be careful to only have one pull of the underlying Stream at a time,
+        // otherwise we could build up an unbounded list of pollers.  If N forks all call
+        // read, a single pull of the underlying Stream is sufficient to satisfy all of
+        // the forks because the pulled Frame is fanned out.
+        pullState match {
+          case Idle =>
+            val f = pull()
+            pullState = Pulling(f)
+            f.ensure { pullState = Idle }
+            super.read()
+          case Pulling(f) =>
+            // Pull is in progress.  Try again once the pull is complete.
+            f.before(read())
+        }
+      } else {
+        super.read()
+      }
+    }
+
+  }
+
   /**
    * Attempt to create a child Stream.  If the buffer has not yet been discarded, returns a
    * Stream and offers the Frames in the buffer to that Stream.  All further Frames that are read
@@ -61,66 +96,27 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
           q.offer(f.asInstanceOf[Frame])
         }
         forks += q
-        val stream = if (underlying.isEmpty) {
-          Stream.empty(q)
-        } else {
-          new AsyncQueueReader { child =>
-            override protected[this] val frameQ = q
-            override def read(): Future[Frame] = bufferedStream.synchronized {
-              // If the queue is empty, pull a Frame from the underlying Stream (which will be
-              // offered to all child Streams) before polling the queue.
-              if (q.size == 0) {
-                // We must be careful to only have one pull of the underlying Stream at a time,
-                // otherwise we could build up an unbounded list of pollers.  If N forks all call
-                // read, a single pull of the underlying Stream is sufficient to satisfy all of
-                // the forks because the pulled Frame is fanned out.
-                pullState match {
-                  case Idle =>
-                    val f = bufferedStream.pull()
-                    pullState = Pulling(f)
-                    f.ensure { pullState = Idle }
-                    super.read()
-                  case Pulling(f) =>
-                    // Pull is in progress.  Try again once the pull is complete.
-                    f.before(read())
-                }
-              } else {
-                super.read()
-              }
-            }
-          }
-        }
+        val stream =
+          if (underlying.isEmpty) Stream.empty(q)
+          else new Fork(q)
         Return(stream)
       }
       case e: Exception => Throw(e)
     }
   }
 
-  private[this] sealed trait PullState
-  private[this] case object Idle extends PullState
-  private[this] case class Pulling(f: Future[Unit]) extends PullState
-
-  @volatile private[this] var pullState: PullState = Idle
-
   /**
-    * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
-    * Streams.
-    */
+   * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
+   * Streams.
+   */
   private[this] def pull(): Future[Unit] = {
     if (underlying.isEmpty) {
       Future.Unit
     } else {
       underlying.read().transform {
-        case Return(f: Frame.Data) => synchronized {
-          val refCounted = new RefCountedDataFrame(f)
-          handleFrame(refCounted, f.buf.length)
-          if (f.isEnd) _onEnd.setDone()
-          Future.Unit
-        }
-        case Return(f: Frame.Trailers) => synchronized {
-          val refCounted = new RefCountedTrailersFrame(f)
-          handleFrame(refCounted, 0)
-          if (f.isEnd) _onEnd.setDone()
+        case Return(frame: Frame) => synchronized {
+          val refCounted = RefCountedFrame(frame)
+          handleFrame(refCounted)
           Future.Unit
         }
         case Throw(e) => synchronized {
@@ -155,13 +151,14 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   /**
    * Offer the Frame to all child Streams and add it to the buffer if there's enough room.
    */
-  private[this] def handleFrame(frame: RefCountedFrame, size: Int): Unit = {
+  private[this] def handleFrame(frame: RefCountedFrame): Unit = {
     // Offer the frame to all child Streams
     for (fork <- forks) {
       frame.open()
       fork.offer(frame.asInstanceOf[Frame])
     }
     if (state == State.Buffering) {
+      val size = frame.length
       // Attempt to add the Frame to the buffer
       if (_bufferSize + size <= bufferCapacity) {
         buffer += frame
@@ -211,11 +208,21 @@ object BufferedStream {
       latch.decr()
       Future.Unit
     }
+    def length: Int
+  }
+
+  object RefCountedFrame {
+    def apply(f: Frame): RefCountedFrame =
+      f match {
+        case data: Frame.Data => new RefCountedDataFrame(data)
+        case trailers: Frame.Trailers => new RefCountedTrailersFrame(trailers)
+      }
   }
 
   class RefCountedDataFrame(val underlying: Frame.Data) extends Frame.Data with RefCountedFrame {
     override def isEnd: Boolean = underlying.isEnd
     override def buf: Buf = underlying.buf
+    override def length: Int = buf.length
   }
 
   class RefCountedTrailersFrame(val underlying: Frame.Trailers) extends Frame.Trailers with RefCountedFrame {
@@ -228,6 +235,7 @@ object BufferedStream {
     override def remove(key: String): Seq[String] = underlying.remove(key)
     /** Create a deep copy. */
     override def dup(): Headers = underlying.dup()
+    override val length: Int = 0
   }
 
 }
