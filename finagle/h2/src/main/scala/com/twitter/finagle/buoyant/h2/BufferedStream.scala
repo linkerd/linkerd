@@ -66,11 +66,27 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
         } else {
           new AsyncQueueReader { child =>
             override protected[this] val frameQ = q
-            override def read(): Future[Frame] = child.synchronized {
+            override def read(): Future[Frame] = bufferedStream.synchronized {
               // If the queue is empty, pull a Frame from the underlying Stream (which will be
               // offered to all child Streams) before polling the queue.
-              if (q.size == 0) bufferedStream.pull()
-              super.read()
+              if (q.size == 0) {
+                // We must be careful to only have one pull of the underlying Stream at a time,
+                // otherwise we could build up an unbounded list of pollers.  If N forks all call
+                // read, a single pull of the underlying Stream is sufficient to satisfy all of
+                // the forks because the pulled Frame is fanned out.
+                pullState match {
+                  case Idle =>
+                    val f = bufferedStream.pull()
+                    pullState = Pulling(f)
+                    f.ensure { pullState = Idle }
+                    super.read()
+                  case Pulling(f) =>
+                    // Pull is in progress.  Try again once the pull is complete.
+                    f.before(read())
+                }
+              } else {
+                super.read()
+              }
             }
           }
         }
@@ -80,27 +96,16 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
     }
   }
 
-  private[this] val bufferDiscardedP = new Promise[Unit]
-  val onBufferDiscarded: Future[Unit] = bufferDiscardedP
+  private[this] sealed trait PullState
+  private[this] case object Idle extends PullState
+  private[this] case class Pulling(f: Future[Unit]) extends PullState
+
+  @volatile private[this] var pullState: PullState = Idle
 
   /**
-   * Clear the buffer and release all the Frames.  Note that the Frames are reference counted so
-   * each underlying Frame will not be released until all child Streams have released the Frame as
-   * well.  After this is called, it will no longer be possible to create child Streams.
-   */
-  def discardBuffer(): Unit = synchronized {
-    if (state == State.Buffering) {
-      state = State.BufferDiscarded
-      for (bufferFrame <- buffer) bufferFrame.release()
-      buffer.clear()
-      val _ = bufferDiscardedP.setDone()
-    }
-  }
-
-  /**
-   * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
-   * Streams.
-   */
+    * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
+    * Streams.
+    */
   private[this] def pull(): Future[Unit] = {
     if (underlying.isEmpty) {
       Future.Unit
@@ -127,6 +132,23 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
           Future.exception(e)
         }
       }
+    }
+  }
+
+  private[this] val bufferDiscardedP = new Promise[Unit]
+  val onBufferDiscarded: Future[Unit] = bufferDiscardedP
+
+  /**
+   * Clear the buffer and release all the Frames.  Note that the Frames are reference counted so
+   * each underlying Frame will not be released until all child Streams have released the Frame as
+   * well.  After this is called, it will no longer be possible to create child Streams.
+   */
+  def discardBuffer(): Unit = synchronized {
+    if (state == State.Buffering) {
+      state = State.BufferDiscarded
+      for (bufferFrame <- buffer) bufferFrame.release()
+      buffer.clear()
+      val _ = bufferDiscardedP.setDone()
     }
   }
 
