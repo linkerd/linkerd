@@ -1,13 +1,13 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.conversions.storage._
+import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
 import com.twitter.util._
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
@@ -42,11 +42,15 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   else
     _onEnd
 
+  sealed trait PullState
+  case object Idle extends PullState
+  case class Pulling(f: Future[Unit]) extends PullState
+
+  @volatile private[this] var pullState: PullState = Idle
+
   private[this] class Fork(
     override protected[this] val frameQ: AsyncQueue[Frame]
-  ) extends AsyncQueueReader { child =>
-
-    @inline def readFromQueue(): Future[Frame] = super.read()
+  ) extends AsyncQueueReader {
 
     override def read(): Future[Frame] = bufferedStream.synchronized {
       // If the queue is empty, pull a Frame from the underlying Stream (which will be
@@ -56,11 +60,21 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
         // otherwise we could build up an unbounded list of pollers.  If N forks all call
         // read, a single pull of the underlying Stream is sufficient to satisfy all of
         // the forks because the pulled Frame is fanned out.
-        pullState.pullFrame(child)
+        pullState match {
+          case Idle =>
+            val f = pull()
+            pullState = Pulling(f)
+            f.ensure { pullState = Idle }
+            super.read()
+          case Pulling(f) =>
+            // Pull is in progress.  Try again once the pull is complete.
+            f.before(read())
+        }
       } else {
-        readFromQueue()
+        super.read()
       }
     }
+
   }
 
   /**
@@ -90,33 +104,6 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
       case e: Exception => Throw(e)
     }
   }
-
-  private[this] sealed trait PullState {
-    /**
-     * @return a `Future[Frame]` corresponding to the current pull attempt.
-     * @note that this is *not* thread-safe and must be synchronized on the
-     *       `BufferedStream` at the call site (as it is in the `read()`
-     *       method of forks.
-     */
-    def pullFrame(child: Fork): Future[Frame]
-  }
-
-  private[this] case object Idle extends PullState {
-    override def pullFrame(child: Fork): Future[Frame] = {
-      val f = bufferedStream.pull()
-      pullState = Pulling(f)
-      f.ensure { pullState = Idle }
-      child.readFromQueue()
-    }
-  }
-
-  private[this] case class Pulling(f: Future[Unit]) extends PullState {
-    override def pullFrame(child: Fork): Future[Frame] =
-      // Pull is in progress.  Try again once the pull is complete.
-      f.before(child.read())
-  }
-
-  @volatile private[this] var pullState: PullState = Idle
 
   /**
    * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
