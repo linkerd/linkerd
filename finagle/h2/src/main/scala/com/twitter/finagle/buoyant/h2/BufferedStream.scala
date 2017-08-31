@@ -88,6 +88,12 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   }
 
   private[this] sealed trait PullState {
+    /**
+     * @return a `Future[Frame]` corresponding to the current pull attempt.
+     * @note that this is *not* thread-safe and must be synchronized on the
+     *       `BufferedStream` at the call site (as it is in the `read()` 
+     *       method of forks.
+     */ 
     def pullFrame(): Future[Frame]
   }
   private[this] case object Idle extends PullState {
