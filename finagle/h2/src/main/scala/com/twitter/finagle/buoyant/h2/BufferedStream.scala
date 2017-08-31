@@ -74,7 +74,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
                 // otherwise we could build up an unbounded list of pollers.  If N forks all call
                 // read, a single pull of the underlying Stream is sufficient to satisfy all of
                 // the forks because the pulled Frame is fanned out.
-                pullState.pullFrame()
+                pullState.pullFrame(super, child)
               } else {
                 super.read()
               }
@@ -94,20 +94,20 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
      *       `BufferedStream` at the call site (as it is in the `read()` 
      *       method of forks.
      */ 
-    def pullFrame(): Future[Frame]
+    def pullFrame(parent: Stream, child: Stream): Future[Frame]
   }
   private[this] case object Idle extends PullState {
-    override def pullFrame(): Future[Frame] = {
+    override def pullFrame(parent: Stream, child: Stream): Future[Frame] = {
       val f = bufferedStream.pull()
       pullState = Pulling(f)
       f.ensure { pullState = Idle }
-      super.read()
+      parent.read()
     }
   }
   private[this] case class Pulling(f: Future[Unit]) extends PullState {
-    override def pullFrame(): Future[Frame] = 
+    override def pullFrame(parent: Stream, child: Stream): Future[Frame] = 
       // Pull is in progress.  Try again once the pull is complete.
-      f.before(read())
+      f.before(child.read())
   }
 
   @volatile private[this] var pullState: PullState = Idle
