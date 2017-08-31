@@ -7,6 +7,7 @@ import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
+import scala.util.control.NoStackTrace
 import scala.{Stream => SStream}
 
 /**
@@ -25,7 +26,7 @@ class ClassifiedRetryFilter(
   classifier: H2Classifier,
   backoffs: SStream[Duration],
   budget: RetryBudget,
-  classificationTimeout: Duration = Duration.Top,
+  classificationTimeout: Duration = 100.millis,
   requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
   responseBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize
 )(implicit timer: Timer) extends SimpleFilter[Request, Response] {
@@ -160,14 +161,9 @@ class ClassifiedRetryFilter(
     responseBuffer.fork() match {
       case Return(s) =>
         // Attempt to determine retryability based on the final frame.  Completes when the stream is
-        // fully buffered.
-        val fullyBuffered = retryable(req, rsp, s)
-          .raiseWithin(classificationTimeout)
-          .handle {
-            case _: TimeoutException =>
-              classificationTimeoutCounter.incr()
-              false
-          }
+        // fully buffered.  Will always consume all of s, even if the classification deadline is
+        // exceeded.
+        val fullyBuffered = retryable(req, rsp, s, Time.now + classificationTimeout)
         // If the buffer is discarded before reading the final frame, we cannot retry.
         val bufferDiscarded = responseBuffer.onBufferDiscarded.map(_ => false)
 
@@ -187,23 +183,43 @@ class ClassifiedRetryFilter(
 
   /**
    * Determine if the request is retryable.  Will read and release the entire response stream
-   * as a side effect.
+   * as a side effect.  If the stream cannot be classified by the deadline, a
+   * classificationTimeoutException will be returned but the remainder of the stream will continue
+   * to be read and consumed.
    */
-  private[this] def retryable(req: Request, rsp: Response, responseStream: Stream): Future[Boolean] = {
-    consumeAllButLast(responseStream).transform {
-      case Return(Some(f)) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        f.release()
-        Future.value(canRetry)
-      case Return(None) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        Future.value(canRetry)
-      case Throw(e) =>
-        val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
-        val canRetry = rc == ResponseClass.RetryableFailure
-        Future.value(canRetry)
+  private[this] def retryable(req: Request, rsp: Response, responseStream: Stream, deadline: Time): Future[Boolean] = {
+
+    val now = Time.now
+    val frameF = consumeAllButLast(responseStream)
+
+    // This is a sort of "safe" timeout.  If the classification deadline passes, we want to
+    // return false but we _don't_ want to cancel the frameF Future.  Cancelling the frameF future
+    // or discarding the result could result in reading a frame but never releasing it.  If we
+    // initiate a read, we must always capture the resulting frame and ensure it is released.
+    Future.selectIndex(IndexedSeq(Future.sleep(deadline - now), frameF)).flatMap {
+      case 0 =>
+        // Classification timeout.  Immediately return a classificationTimeoutException but
+        // ensure the final frame is eventually released.
+        classificationTimeoutCounter.incr()
+        frameF.onSuccess { f => f.foreach(_.release()); () }
+        Future.False
+      case 1 =>
+        // Classification completed within deadline.
+        frameF.transform {
+          case Return(Some(f)) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Return(f)))))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            f.release()
+            Future.value(canRetry)
+          case Return(None) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, None)))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            Future.value(canRetry)
+          case Throw(e) =>
+            val rc = classifier.streamClassifier(H2ReqRepFrame(req, Return(rsp, Some(Throw(e)))))
+            val canRetry = rc == ResponseClass.RetryableFailure
+            Future.value(canRetry)
+        }
     }
   }
 
