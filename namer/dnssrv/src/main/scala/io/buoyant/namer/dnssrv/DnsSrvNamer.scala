@@ -41,7 +41,6 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
     val query = DNS.Message.newQuery(question)
     log.debug("looking up %s", address)
     Try(resolver.send(query)) flatMap { message =>
-      log.debug("got response %s", address)
       message.getRcode match {
         case DNS.Rcode.NXDOMAIN =>
           log.trace("no results for %s", address)
@@ -59,7 +58,8 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer, refreshInt
           }
           if (srvRecords.isEmpty) {
             // valid DNS entry, but no instances.
-            // for some reason, NameTree.Empty doesn't work right
+            // return NameTree.Neg because NameTree.Empty causes requests to fail,
+            // even in the presence of load-balancing (NameTree.Union) and fail-over (NameTree.Alt)
             log.trace("empty response for %s", address)
             Return(NameTree.Neg)
           } else {
