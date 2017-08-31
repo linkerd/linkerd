@@ -19,13 +19,12 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     val mixerClient = new MixerClient(service)
     assert(calls == 0)
     val rsp = mixerClient.report(
-      200,
-      "requestPath",
-      "targetService",
-      "sourceLabelApp",
-      "targetLabelApp",
-      "targetLabelVersion",
-      Duration.Zero
+      ResponseCodeIstioAttribute(200),
+      RequestPathIstioAttribute("requestPath"),
+      TargetServiceIstioAttribute("targetService"),
+      SourceLabelIstioAttribute(Map.empty),
+      TargetLabelsIstioAttribute(Map.empty),
+      ResponseDurationIstioAttribute(Duration.Zero)
     )
     assert(calls == 1)
   }

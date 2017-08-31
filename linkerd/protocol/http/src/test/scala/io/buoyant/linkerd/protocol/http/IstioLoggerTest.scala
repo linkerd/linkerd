@@ -4,10 +4,10 @@ import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Service, Stack}
-import com.twitter.util.{Duration, Future}
+import com.twitter.util.Future
 import io.buoyant.config.Parser
 import io.buoyant.grpc.runtime.Stream
-import io.buoyant.k8s.istio.{DefaultMixerHost, DefaultMixerPort, MixerClient}
+import io.buoyant.k8s.istio._
 import io.buoyant.linkerd.LoggerInitializer
 import io.buoyant.linkerd.protocol.HttpLoggerConfig
 import io.buoyant.test.Awaits
@@ -18,13 +18,12 @@ class MockMixerClient extends MixerClient(H2.client.newService("example.com:80")
   var reports = 0
 
   override def report(
-    responseCode: Int,
-    requestPath: String,
-    targetService: String,
-    sourceLabelApp: String,
-    targetLabelApp: String,
-    targetLabelVersion: String,
-    duration: Duration
+    responseCode: ResponseCodeIstioAttribute,
+    requestPath: RequestPathIstioAttribute,
+    targetService: TargetServiceIstioAttribute,
+    sourceLabel: SourceLabelIstioAttribute,
+    targetLabel: TargetLabelsIstioAttribute,
+    duration: ResponseDurationIstioAttribute
   ): Stream[ReportResponse] = {
     reports += 1
     Stream.value(ReportResponse())

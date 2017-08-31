@@ -10,4 +10,7 @@ case class IstioRequest(
   method: String,
   authority: String,
   getHeader: (String) => Option[String]
-)
+) extends IstioDataFlow {
+
+  def requestedPath: RequestPathIstioAttribute = RequestPathIstioAttribute(uri)
+}

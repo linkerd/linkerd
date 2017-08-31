@@ -69,9 +69,9 @@ class IstioIngressIdentifier(
     }
   }
 
-  def reqToMeta(req: Request): IstioRequestMeta =
+  def reqToMeta(req: Request): IstioRequest =
     //TODO: match on request scheme
-    IstioRequestMeta(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+    IstioRequest(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
 
   def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
     val redirect = Response(Status.Found)

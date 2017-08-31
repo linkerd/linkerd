@@ -1,34 +1,29 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.buoyant.H2
-import com.twitter.finagle.buoyant.h2.{Request, Response, Status}
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.H2
+import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.logging.Logger
 import com.twitter.util.Stopwatch
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.{DefaultMixerHost, DefaultMixerPort, IstioLoggerBase, MixerClient}
 import io.buoyant.linkerd.LoggerInitializer
-import io.buoyant.router.context.DstBoundCtx
+import io.buoyant.linkerd.protocol.h2.istio.{H2IstioRequest, H2IstioResponse}
 
 class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Filter[Request, Response, Request, Response] with IstioLoggerBase {
 
   def apply(req: Request, svc: Service[Request, Response]) = {
+    val istioRequest = H2IstioRequest(req)
+
     val elapsed = Stopwatch.start()
 
     svc(req).respond { ret =>
+
       val duration = elapsed()
-      val responseCode = ret.toOption.map(_.status).getOrElse(Status.InternalServerError)
+      val istioResponse = H2IstioResponse(ret, duration)
 
-      // check for valid istio path
-      val istioPath = DstBoundCtx.current.flatMap { bound =>
-        bound.id match {
-          case path: Path if (path.elems.length == pathLength) => Some(path)
-          case _ => None
-        }
-      }
-
-      val _ = report(istioPath, responseCode.code, req.path, duration)
+      val _ = report(istioRequest, istioResponse, duration)
     }
   }
 }
