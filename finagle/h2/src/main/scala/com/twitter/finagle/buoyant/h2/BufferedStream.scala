@@ -35,6 +35,39 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   private[this] var state: State = State.Buffering
   private[this] val _onEnd = new Promise[Unit]
 
+  private[this] var currentRead = read()
+
+  private[this] def read(): Future[Unit] = {
+    underlying.read().transform {
+      case Return(f: Frame.Data) => synchronized {
+        val refCounted = new RefCountedDataFrame(f)
+        refCounted.onRelease.onSuccess { _ =>
+          currentRead = read()
+        }
+        handleFrame(refCounted, f.buf.length)
+        if (f.isEnd) _onEnd.setDone()
+        Future.Unit
+      }
+      case Return(f: Frame.Trailers) => synchronized {
+        val refCounted = new RefCountedTrailersFrame(f)
+        refCounted.onRelease.onSuccess { _ =>
+          currentRead = read()
+        }
+        handleFrame(refCounted, 0)
+        if (f.isEnd) _onEnd.setDone()
+        Future.Unit
+      }
+      case Throw(e) => synchronized {
+        // If we fail to read from the underlying stream, discard the buffer and fail the children
+        // (Throw the babies out with the buffer)
+        discardBuffer()
+        for (fork <- forks) fork.fail(e, discard = false)
+        state = State.Failed(e)
+        Future.exception(e)
+      }
+    }
+  }
+
   def bufferSize: Long = _bufferSize
 
   def onEnd: Future[Unit] = if (underlying.isEmpty)
@@ -102,43 +135,23 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
    * Streams.
    */
   private[this] def pull(): Future[Unit] = {
-    if (underlying.isEmpty) {
-      Future.Unit
-    } else {
-      underlying.read().transform {
-        case Return(f: Frame.Data) => synchronized {
-          val refCounted = new RefCountedDataFrame(f)
-          handleFrame(refCounted, f.buf.length)
-          if (f.isEnd) _onEnd.setDone()
-          Future.Unit
-        }
-        case Return(f: Frame.Trailers) => synchronized {
-          val refCounted = new RefCountedTrailersFrame(f)
-          handleFrame(refCounted, 0)
-          if (f.isEnd) _onEnd.setDone()
-          Future.Unit
-        }
-        case Throw(e) => synchronized {
-          // If we fail to read from the underlying stream, discard the buffer and fail the children
-          // (Throw the babies out with the buffer)
-          discardBuffer()
-          for (fork <- forks) fork.fail(e, discard = false)
-          state = State.Failed(e)
-          Future.exception(e)
-        }
-      }
+    if (currentRead.isDone) {
+      currentRead = read()
     }
+    currentRead
   }
 
   /**
    * Offer the Frame to all child Streams and add it to the buffer if there's enough room.
    */
   private[this] def handleFrame(frame: RefCountedFrame, size: Int): Unit = {
+
     // Offer the frame to all child Streams
     for (fork <- forks) {
       frame.open()
       fork.offer(frame.asInstanceOf[Frame])
     }
+
     if (state == State.Buffering) {
       // Attempt to add the Frame to the buffer
       if (_bufferSize + size <= bufferCapacity) {
