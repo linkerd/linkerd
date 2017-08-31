@@ -91,7 +91,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
     def pullFrame(): Future[Frame]
   }
   private[this] case object Idle extends PullState {
-    override def pullFrame(): Future[Frame] {
+    override def pullFrame(): Future[Frame] = {
       val f = bufferedStream.pull()
       pullState = Pulling(f)
       f.ensure { pullState = Idle }
