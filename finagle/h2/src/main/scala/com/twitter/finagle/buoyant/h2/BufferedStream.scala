@@ -3,7 +3,7 @@ package com.twitter.finagle.buoyant.h2
 import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
+import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
@@ -114,16 +114,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
       Future.Unit
     } else {
       underlying.read().transform {
-        case Return(f: Frame.Data) => synchronized {
-          val refCounted = new RefCountedDataFrame(f)
-          handleFrame(refCounted, f.buf.length)
-          if (f.isEnd) _onEnd.setDone()
-          Future.Unit
-        }
-        case Return(f: Frame.Trailers) => synchronized {
-          val refCounted = new RefCountedTrailersFrame(f)
-          handleFrame(refCounted, 0)
-          if (f.isEnd) _onEnd.setDone()
+        case Return(frame: Frame) => synchronized {
+          val refCounted = RefCountedFrame(frame)
+          handleFrame(refCounted)
           Future.Unit
         }
         case Throw(e) => synchronized {
@@ -158,13 +151,14 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   /**
    * Offer the Frame to all child Streams and add it to the buffer if there's enough room.
    */
-  private[this] def handleFrame(frame: RefCountedFrame, size: Int): Unit = {
+  private[this] def handleFrame(frame: RefCountedFrame): Unit = {
     // Offer the frame to all child Streams
     for (fork <- forks) {
       frame.open()
       fork.offer(frame.asInstanceOf[Frame])
     }
     if (state == State.Buffering) {
+      val size = frame.length
       // Attempt to add the Frame to the buffer
       if (_bufferSize + size <= bufferCapacity) {
         buffer += frame
@@ -214,11 +208,21 @@ object BufferedStream {
       latch.decr()
       Future.Unit
     }
+    def length: Int
+  }
+
+  object RefCountedFrame {
+    def apply(f: Frame): RefCountedFrame =
+      f match {
+        case data: Frame.Data => new RefCountedDataFrame(data)
+        case trailers: Frame.Trailers => new RefCountedTrailersFrame(trailers)
+      }
   }
 
   class RefCountedDataFrame(val underlying: Frame.Data) extends Frame.Data with RefCountedFrame {
     override def isEnd: Boolean = underlying.isEnd
     override def buf: Buf = underlying.buf
+    override def length: Int = buf.length
   }
 
   class RefCountedTrailersFrame(val underlying: Frame.Trailers) extends Frame.Trailers with RefCountedFrame {
@@ -231,6 +235,7 @@ object BufferedStream {
     override def remove(key: String): Seq[String] = underlying.remove(key)
     /** Create a deep copy. */
     override def dup(): Headers = underlying.dup()
+    override val length: Int = 0
   }
 
 }
