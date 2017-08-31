@@ -42,6 +42,27 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   else
     _onEnd
 
+  private[this] class Fork(
+    override protected[this] val frameQ: AsyncQueue[Frame]
+  ) extends AsyncQueueReader { child =>
+
+    @inline def readFromQueue(): Future[Frame] = super.read()
+
+    override def read(): Future[Frame] = bufferedStream.synchronized {
+      // If the queue is empty, pull a Frame from the underlying Stream (which will be
+      // offered to all child Streams) before polling the queue.
+      if (frameQ.size == 0) {
+        // We must be careful to only have one pull of the underlying Stream at a time,
+        // otherwise we could build up an unbounded list of pollers.  If N forks all call
+        // read, a single pull of the underlying Stream is sufficient to satisfy all of
+        // the forks because the pulled Frame is fanned out.
+        pullState.pullFrame(child)
+      } else {
+        readFromQueue()
+      }
+    }
+  }
+
   /**
    * Attempt to create a child Stream.  If the buffer has not yet been discarded, returns a
    * Stream and offers the Frames in the buffer to that Stream.  All further Frames that are read
@@ -61,26 +82,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
           q.offer(f.asInstanceOf[Frame])
         }
         forks += q
-        val stream = if (underlying.isEmpty) {
-          Stream.empty(q)
-        } else {
-          new AsyncQueueReader { child =>
-            override protected[this] val frameQ = q
-            override def read(): Future[Frame] = bufferedStream.synchronized {
-              // If the queue is empty, pull a Frame from the underlying Stream (which will be
-              // offered to all child Streams) before polling the queue.
-              if (q.size == 0) {
-                // We must be careful to only have one pull of the underlying Stream at a time,
-                // otherwise we could build up an unbounded list of pollers.  If N forks all call
-                // read, a single pull of the underlying Stream is sufficient to satisfy all of
-                // the forks because the pulled Frame is fanned out.
-                pullState.pullFrame(bufferedStream, child)
-              } else {
-                super.read()
-              }
-            }
-          }
-        }
+        val stream =
+          if (underlying.isEmpty) Stream.empty(q)
+          else new Fork(q)
         Return(stream)
       }
       case e: Exception => Throw(e)
@@ -91,21 +95,23 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
     /**
      * @return a `Future[Frame]` corresponding to the current pull attempt.
      * @note that this is *not* thread-safe and must be synchronized on the
-     *       `BufferedStream` at the call site (as it is in the `read()` 
+     *       `BufferedStream` at the call site (as it is in the `read()`
      *       method of forks.
-     */ 
-    def pullFrame(parent: Stream, child: Stream): Future[Frame]
+     */
+    def pullFrame(child: Fork): Future[Frame]
   }
+
   private[this] case object Idle extends PullState {
-    override def pullFrame(parent: Stream, child: Stream): Future[Frame] = {
+    override def pullFrame(child: Fork): Future[Frame] = {
       val f = bufferedStream.pull()
       pullState = Pulling(f)
       f.ensure { pullState = Idle }
-      parent.read()
+      child.readFromQueue()
     }
   }
+
   private[this] case class Pulling(f: Future[Unit]) extends PullState {
-    override def pullFrame(parent: Stream, child: Stream): Future[Frame] = 
+    override def pullFrame(child: Fork): Future[Frame] =
       // Pull is in progress.  Try again once the pull is complete.
       f.before(child.read())
   }
@@ -113,9 +119,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   @volatile private[this] var pullState: PullState = Idle
 
   /**
-    * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
-    * Streams.
-    */
+   * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
+   * Streams.
+   */
   private[this] def pull(): Future[Unit] = {
     if (underlying.isEmpty) {
       Future.Unit
