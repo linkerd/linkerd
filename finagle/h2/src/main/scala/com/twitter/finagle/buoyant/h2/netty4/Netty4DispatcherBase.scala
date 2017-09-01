@@ -1,19 +1,18 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2.{Http2Frame, Http2GoAwayFrame, Http2StreamFrame}
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
-  import Netty4DispatcherBase._
 
   protected[this] def log: Logger
   protected[this] def prefix: String
@@ -113,8 +112,8 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         Future.exception(e)
       // if we attempted to cast a Http2Frame as a H1 frame, log a message & kill the
       // connection.
-      case Throw(e: ClassCastException) if e.getMessage == H1RequestError =>
-        log.warning("[%s] HTTP/2 router could not handle HTTP/1 request!", prefix)
+      case Throw(e: ClassCastException) if e.getMessage.contains("Transport.cast failed") =>
+        log.warning("[%s] HTTP/2 router could not handle non-HTTP/2 request!", prefix)
         Future.Unit
       // if all streams have already been closed, then this just means that
       // the client failed to send a GOAWAY frame...
@@ -201,10 +200,4 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     log.debug("[%s] transport closed: %s", prefix, e)
     resetStreams(Reset.Cancel); ()
   }
-}
-
-private object Netty4DispatcherBase {
-  val H1RequestError: String =
-    """|Transport.cast failed. Expected type io.netty.handler.codec.http2.Http2Frame
-       |but found io.netty.handler.codec.http.DefaultHttpRequest""".stripMargin
 }
