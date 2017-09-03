@@ -72,36 +72,22 @@ class HealthApiTest extends FunSuite with Awaits {
     assert(responseCritical.size == 0)
   }
 
-  test("HealthApi supports filtering by health status `warning`") {
-    val service = stubService(nodesWithChecksBuf)
-    val api = HealthApi(service, Set(HealthStatus.Warning))
+  def filterTest(status: HealthStatus.Value, name: String) =
+    test(s"HealthApi supports filtering by health status `$name`") {
+      val service = stubService(nodesWithChecksBuf)
+      val api = HealthApi(service, Set(status))
 
-    val response = await(api.serviceNodes("hosted_web")).value
-    assert(response.size == 1)
-    assert(response.head.ServiceName == Some("hosted_web"))
-    assert(response.head.Node == Some("node-warning"))
-    assert(response.head.Status == Some(HealthStatus.Warning))
-  }
+      val response = await(api.serviceNodes("hosted_web")).value
+      assert(response.size == 1)
+      assert(response.head.ServiceName == Some("hosted_web"))
+      assert(response.head.Node == Some(s"node-$name"))
+      assert(response.head.Status == Some(status))
+    }
 
-  test("HealthApi supports filtering by health status `critical`") {
-    val service = stubService(nodesWithChecksBuf)
-    val api = HealthApi(service, Set(HealthStatus.Critical))
-
-    val response = await(api.serviceNodes("hosted_web")).value
-    assert(response.size == 1)
-    assert(response.head.ServiceName == Some("hosted_web"))
-    assert(response.head.Node == Some("node-critical"))
-    assert(response.head.Status == Some(HealthStatus.Critical))
-  }
-
-  test("HealthApi supports filtering by health status `maintenance`") {
-    val service = stubService(nodesWithChecksBuf)
-    val api = HealthApi(service, Set(HealthStatus.Maintenance))
-
-    val response = await(api.serviceNodes("hosted_web")).value
-    assert(response.size == 1)
-    assert(response.head.ServiceName == Some("hosted_web"))
-    assert(response.head.Node == Some("node-maintenance"))
-    assert(response.head.Status == Some(HealthStatus.Maintenance))
-  }
+  // No filterTest for health status `passing` as HealthApi is optmized to use
+  // consul API parameter `passing=true` to perform server side filtering when
+  // only passing nodes are required.
+  filterTest(HealthStatus.Warning, "warning")
+  filterTest(HealthStatus.Critical, "critical")
+  filterTest(HealthStatus.Maintenance, "maintenance")
 }

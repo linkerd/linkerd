@@ -116,12 +116,19 @@ class HealthApi(
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag,
+      // if passing=true only nodes with all health statuses in passing state are returned,
+      // if passing=false no server side filtering is performed.
       "passing" -> Some((statuses == Set(HealthStatus.Passing)).toString)
     )
     executeJson[Seq[ServiceHealth]](req, retry).map { indexed =>
       val result = indexed.value.map { health =>
         val service = health.Service
-        val checks = health.Checks.getOrElse(List()).flatMap(_.Status).map(HealthStatus.withNameSafe(_))
+        val checks =
+          for {
+            checks <- health.Checks.toSeq
+            check <- checks
+            status <- check.Status
+          } yield HealthStatus.withNameSafe(status)
         val node = health.Node
 
         ServiceNode(
@@ -138,7 +145,7 @@ class HealthApi(
       val nodes = if (statuses == Set(HealthStatus.Passing)) {
         result
       } else {
-        result.filter(statuses contains _.Status.getOrElse(HealthStatus.Passing))
+        result.filter(x => statuses.contains(x.Status.getOrElse(HealthStatus.Passing)))
       }
       Indexed[Seq[ServiceNode]](nodes, indexed.index)
     }

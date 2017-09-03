@@ -8,7 +8,7 @@ object HealthStatus extends Enumeration {
   type HealthStatus = Value
   val Passing, Warning, Critical, Maintenance = Value
   def withNameSafe(name: String): Value =
-    values.find(_.toString.toLowerCase == name.toLowerCase()).getOrElse(Passing)
+    values.find(_.toString.toLowerCase == name.toLowerCase).getOrElse(Passing)
   /*
    * worstCase returns the "worst" status of two health checks. Because a given
    * entry may have many service and node-level health checks attached, this
