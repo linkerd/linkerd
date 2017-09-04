@@ -2,6 +2,7 @@ package io.buoyant.namer.dnssrv
 
 import java.io.IOException
 import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeUnit
 
 import com.twitter.finagle._
@@ -11,7 +12,8 @@ import com.twitter.util.Activity.State
 import com.twitter.util._
 import org.xbill.DNS
 
-class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer,refreshInterval: Duration, stats: StatsReceiver)
+class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver,  refreshInterval: Duration, stats: StatsReceiver, pool: FuturePool)
+                 (implicit val timer: Timer)
   extends Namer {
 
   override def lookup(path: Path): Activity[NameTree[Name]] = memoizedLookup(path)
@@ -26,19 +28,34 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer,refreshInte
     path.take(1) match {
       case id@Path.Utf8(address) =>
         Activity(Var.async[State[NameTree[Name]]](Activity.Pending) { state =>
-          timer.schedule(refreshInterval) {
-            val next = lookupSrv(address, prefix ++ id, path.drop(1)) match {
-              case Return(nameTree) => Activity.Ok(nameTree)
-              case Throw(e) => Activity.Failed(e)
+
+          val done = new AtomicBoolean(false)
+
+          Future.whileDo(!done.get) {
+            lookupSrv(address, prefix ++ id, path.drop(1)).transform { result =>
+              result match {
+                case Return(nameTree) =>
+                  state.update(Activity.Ok(nameTree))
+                case Throw(e) =>
+                  failure.incr()
+                  log.error(e, "resolution error: %s", address)
+                  state.update(Activity.Failed(e))
+              }
+              Future.sleep(refreshInterval)
             }
-            state.update(next)
           }
+
+          Closable.make { _ =>
+            done.set(true)
+            Future.Unit
+          }
+
         })
       case _ => Activity.value(NameTree.Neg)
     }
   }
 
-  private def lookupSrv(address: String, id: Path, residual: Path): Try[NameTree[Name]] = {
+  private def lookupSrv(address: String, id: Path, residual: Path): Future[NameTree[Name]] = {
     val question = DNS.Record.newRecord(
       DNS.Name.fromString(address),
       DNS.Type.SRV,
@@ -46,12 +63,13 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer,refreshInte
     )
     val query = DNS.Message.newQuery(question)
     log.debug("looking up %s", address)
-    Try(Stat.time(latency, TimeUnit.SECONDS)(resolver.send(query))) flatMap { message =>
+    pool {
+      val message = Stat.time(latency, TimeUnit.SECONDS)(resolver.send(query))
       message.getRcode match {
         case DNS.Rcode.NXDOMAIN =>
           log.trace("no results for %s", address)
           failure.incr()
-          Return(NameTree.Neg)
+          NameTree.Neg
         case DNS.Rcode.NOERROR =>
           val hosts = message.getSectionArray(DNS.Section.ADDITIONAL).collect {
             case a: DNS.ARecord => a.getName -> a.getAddress
@@ -69,17 +87,15 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, timer: Timer,refreshInte
             // even in the presence of load-balancing (NameTree.Union) and fail-over (NameTree.Alt)
             log.trace("empty response for %s", address)
             zeroResults.incr()
-            Return(NameTree.Neg)
+            NameTree.Neg
           } else {
             log.trace("got %d results for %s", srvRecords.length, address)
             success.incr()
-            Return(NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id, residual)))
+            NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id, residual))
           }
         case code =>
           val msg = s"unexpected RCODE: ${DNS.Rcode.string(code)} for $address"
-          log.warning(msg)
-          failure.incr()
-          Throw(new IOException(msg))
+          throw new IOException(msg)
       }
     }
   }

@@ -9,6 +9,7 @@ import com.twitter.finagle._
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import org.xbill.DNS
 import DnsSrvNamerConfig.Edns
+import com.twitter.util.FuturePool
 
 class DnsSrvNamerInitializer extends NamerInitializer {
   override val configClass = classOf[DnsSrvNamerConfig]
@@ -40,7 +41,8 @@ case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Opti
     )
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
-    new DnsSrvNamer(prefix, resolver, timer, refreshInterval, stats.scope("dnssrv"))
+    val pool = FuturePool.unboundedPool
+    new DnsSrvNamer(prefix, resolver, refreshInterval, stats.scope("dnssrv"), pool)(timer)
   }
 }
 object DnsSrvNamerConfig {
