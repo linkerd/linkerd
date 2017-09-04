@@ -12,8 +12,7 @@ import com.twitter.util.Activity.State
 import com.twitter.util._
 import org.xbill.DNS
 
-class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver,  refreshInterval: Duration, stats: StatsReceiver, pool: FuturePool)
-                 (implicit val timer: Timer)
+class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, refreshInterval: Duration, stats: StatsReceiver, pool: FuturePool)(implicit val timer: Timer)
   extends Namer {
 
   override def lookup(path: Path): Activity[NameTree[Name]] = memoizedLookup(path)
@@ -30,16 +29,20 @@ class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver,  refreshInterval: Durati
         Activity(Var.async[State[NameTree[Name]]](Activity.Pending) { state =>
 
           val done = new AtomicBoolean(false)
+          val initialized = new AtomicBoolean(false)
 
           Future.whileDo(!done.get) {
             lookupSrv(address, prefix ++ id, path.drop(1)).transform { result =>
               result match {
                 case Return(nameTree) =>
+                  initialized.set(true)
                   state.update(Activity.Ok(nameTree))
                 case Throw(e) =>
                   failure.incr()
                   log.error(e, "resolution error: %s", address)
-                  state.update(Activity.Failed(e))
+                  if (!initialized.get) {
+                    state.update(Activity.Failed(e))
+                  }
               }
               Future.sleep(refreshInterval)
             }
