@@ -40,7 +40,7 @@ case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Opti
     )
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
-    new DnsSrvNamer(prefix, resolver, timer, refreshInterval, stats)
+    new DnsSrvNamer(prefix, resolver, timer, refreshInterval, stats.scope("dnssrv"))
   }
 }
 object DnsSrvNamerConfig {
