@@ -24,9 +24,9 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
   private val log = Logger(getClass)
 
-  val serviceDiscoveryInfo:ServiceDiscoveryInfo = CuratorSDCommon.createServiceDiscovery(zkConnectStr)
+  val serviceDiscoveryInfo: ServiceDiscoveryInfo = CuratorSDCommon.createServiceDiscovery(zkConnectStr)
 
-  private def validProtocol(protocol: String):Boolean = protocol == "http" || protocol == "https"
+  private def validProtocol(protocol: String): Boolean = protocol == "http" || protocol == "https"
 
   private def announce(protocol: String, serviceId: String, tenant: Option[String], address: InetSocketAddress): Future[Announcement] = {
     val tenantStr = tenant.getOrElse("(multi-tenant)")
