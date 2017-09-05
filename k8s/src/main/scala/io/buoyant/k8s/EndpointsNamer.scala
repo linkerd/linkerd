@@ -158,10 +158,9 @@ abstract class EndpointsNamer(
                 logEvent.deletion(oldMap -- newMap.keys)
                 logEvent.modification(oldMap, newMap)
                 oldMap ++ newMap
-              case (oldMap, v1.ServiceDeleted(service)) =>
-                val newMap = service.portMappings
-                logEvent.deletion(oldMap -- newMap.keys)
-                newMap
+              case (oldMap, v1.ServiceDeleted(_)) =>
+                logEvent.deletion(oldMap)
+                Map.empty
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
                   "k8s ns %s service %s watch error %s",
@@ -306,16 +305,12 @@ object EndpointsNamer {
           logEvent.modification(ports, newPorts)
           this.copy(endpoints = newEndpoints, ports = newPorts)
 
-        case v1.EndpointsDeleted(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) =
-            update.subsets.toEndpointsAndPorts
-          val deletedEndpoints = endpoints.diff(newEndpoints)
-          val deletedPorts = ports.filterKeys(!newPorts.contains(_))
-          logEvent.deletion(deletedEndpoints)
-          logEvent.deletion(deletedPorts)
+        case v1.EndpointsDeleted(_) =>
+          logEvent.deletion(endpoints)
+          logEvent.deletion(ports)
           this.copy(
-            endpoints = endpoints -- deletedEndpoints,
-            ports = ports -- deletedPorts.keys
+            endpoints = Set.empty,
+            ports = Map.empty
           )
         case v1.EndpointsError(error) =>
           log.warning(
