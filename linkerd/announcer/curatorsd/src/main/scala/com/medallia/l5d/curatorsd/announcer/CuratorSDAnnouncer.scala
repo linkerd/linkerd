@@ -26,9 +26,14 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
   val serviceDiscoveryInfo:ServiceDiscoveryInfo = CuratorSDCommon.createServiceDiscovery(zkConnectStr)
 
+  private def validProtocol(protocol: String):Boolean = protocol == "http" || protocol == "https"
+
   private def announce(protocol: String, serviceId: String, tenant: Option[String], address: InetSocketAddress): Future[Announcement] = {
     val tenantStr = tenant.getOrElse("(multi-tenant)")
     log.info("Announcing %s, protocol: %s, tenant: %s, address: %s, ZK cluster: %s", serviceId, protocol, tenantStr, address, zkConnectStr)
+
+    if (!validProtocol(protocol))
+      throw new IllegalArgumentException(s"Unsupported protocol $protocol")
 
     val serviceFullPath = CuratorSDCommon.getServiceFullPath(serviceId, tenant)
     val addressHostString = address.getHostString
@@ -64,7 +69,7 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
   override def announceAsync(addr: InetSocketAddress, name: Path): Future[Announcement] = {
     name.take(3) match {
-      // TODO (future) full semantic version could be a third element in the future
+      // TODO (future) full semantic version could be an extra element in the future
       case id@Path.Utf8(protocol, tenant, serviceName) =>
         announce(protocol, serviceName, cleanupTenant(tenant), addr)
       case _ =>
