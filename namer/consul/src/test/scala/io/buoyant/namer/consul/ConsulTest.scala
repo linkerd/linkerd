@@ -5,6 +5,7 @@ import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.consul.v1.ConsistencyMode
+import io.buoyant.consul.v1.HealthStatus
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 import org.scalatest.FunSuite
 
@@ -12,7 +13,7 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -38,6 +39,9 @@ class ConsulTest extends FunSuite {
                     |port: 8600
                     |token: some-token
                     |includeTag: true
+                    |useHealthCheck: true
+                    |healthStatuses:
+                    | - warning
                     |setHost: true
                     |consistencyMode: stale
                     |failFast: true
@@ -49,6 +53,8 @@ class ConsulTest extends FunSuite {
     assert(consul.host == Some("consul.site.biz"))
     assert(consul.port == Some(Port(8600)))
     assert(consul.token == Some("some-token"))
+    assert(consul.useHealthCheck == Some(true))
+    assert(consul.healthStatuses == Some(Set(HealthStatus.Warning)))
     assert(consul.setHost == Some(true))
     assert(consul.includeTag == Some(true))
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
