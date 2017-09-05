@@ -2,7 +2,7 @@ package com.medallia.l5d.curatorsd.announcer
 
 import java.net.InetSocketAddress
 
-import com.medallia.l5d.curatorsd.common.CuratorSDCommon
+import com.medallia.l5d.curatorsd.common.{CuratorSDCommon, ServiceDiscoveryInfo}
 import com.medallia.servicediscovery.ServiceInstanceInfo
 import com.twitter.finagle.{Announcement, Path}
 import com.twitter.logging.Logger
@@ -13,8 +13,10 @@ import org.apache.curator.x.discovery._
 /**
  * Announcer that uses the curator service discovery format.
  * <p>
- * Format used for the service name Path: /#/com.medallia.curatorsd/{full service name}[#{tenant}]
- * tenant is optional. If it's empty or the last part is missing, it will be registered as a multi-tenant service.
+ * Format used for the service name Path:
+ * /#/com.medallia.curatorsd/protocol/[tenant]/service_name
+ *
+ * tenant is optional, "_" represents multitenant services
  */
 class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
@@ -22,24 +24,32 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
   private val log = Logger(getClass)
 
-  val serviceDiscoveryInfo = CuratorSDCommon.createServiceDiscovery(zkConnectStr)
+  val serviceDiscoveryInfo:ServiceDiscoveryInfo = CuratorSDCommon.createServiceDiscovery(zkConnectStr)
 
-  private def announce(serviceId: String, tenant: Option[String], address: InetSocketAddress): Future[Announcement] = {
+  private def validProtocol(protocol: String):Boolean = protocol == "http" || protocol == "https"
+
+  private def announce(protocol: String, serviceId: String, tenant: Option[String], address: InetSocketAddress): Future[Announcement] = {
     val tenantStr = tenant.getOrElse("(multi-tenant)")
-    log.info("Announcing %s, tenant: %s address: %s, ZK cluster: %s", serviceId, tenantStr, address, zkConnectStr)
+    log.info("Announcing %s, protocol: %s, tenant: %s, address: %s, ZK cluster: %s", serviceId, protocol, tenantStr, address, zkConnectStr)
+
+    if (!validProtocol(protocol))
+      throw new IllegalArgumentException(s"Unsupported protocol $protocol")
 
     val serviceFullPath = CuratorSDCommon.getServiceFullPath(serviceId, tenant)
-
-    // TODO (future) how to specify https? Handle this when we work on the Namer.
     val addressHostString = address.getHostString
     val addressPort = address.getPort
     val builder = ServiceInstance.builder[ServiceInstanceInfo]
       .name(serviceFullPath)
-      .uriSpec(new UriSpec(s"http://$addressHostString:$addressPort"))
-      .port(addressPort)
+      .uriSpec(new UriSpec(s"$protocol://$addressHostString:$addressPort"))
       .address(addressHostString)
       .payload(ServiceInstanceInfo(s"serviceId: $serviceId, tenant: $tenantStr"))
       .serviceType(ServiceType.DYNAMIC)
+
+    if (protocol == "https") {
+      builder.sslPort(addressPort)
+    } else {
+      builder.port(addressPort)
+    }
 
     val serviceInstance = builder.build
 
@@ -49,7 +59,7 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
 
     Future.value(new Announcement {
       def unannounce() = {
-        log.info("Unannouncing %s %s", serviceFullPath, address)
+        log.info("Unannouncing %s %s %s %s", protocol, tenantStr, serviceId, address)
         Future {
           serviceDiscoveryInfo.serviceDiscovery.unregisterService(serviceInstance)
         }
@@ -58,18 +68,19 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
   }
 
   override def announceAsync(addr: InetSocketAddress, name: Path): Future[Announcement] = {
-    name.take(2) match {
-      case id@Path.Utf8(serviceDef) =>
-        // TODO (future) full semantic version could be a third element in the future
-        serviceDef.split("#") match {
-          case Array(serviceId) => announce(serviceId, None, addr)
-          case Array(serviceId, tenant) => announce(serviceId, Some(tenant).filter(_.trim.nonEmpty), addr)
-          case _ => throw new IllegalArgumentException(s"Incorrect number of parts in announcer name (it should be serviceId[#tenant]) $serviceDef")
-        }
-      case _ => throw new IllegalArgumentException(s"Tenant information is missing in path: $name")
+    name.take(3) match {
+      // TODO (future) full semantic version could be an extra element in the future
+      case id@Path.Utf8(protocol, tenant, serviceName) =>
+        announce(protocol, serviceName, cleanupTenant(tenant), addr)
+      case _ =>
+        throw new IllegalArgumentException(s"Incorrect number of parts in announcer name (it should be protocol/tenant/serviceName), got $name")
     }
-
   }
+
+  /** Unfortunately, Path doesn't allow empty elements. "_" means multi-tenant */
+  private def cleanupTenant(tenant: String): Option[String] =
+    Some(tenant)
+      .filter(_ != "_")
 
   override def close(deadline: Time) =
     Future {
