@@ -83,13 +83,12 @@ class ServiceNamer(
           logEvent.modification(portMappings, svc.portMappings)
           logEvent.modification(ports, svc.ports)
           svc
-        case v1.ServiceDeleted(deleted) =>
-          val Svc(deletedPorts, deletedMappings) = Svc(deleted)
-          logEvent.deletion(deletedPorts)
-          logEvent.deletion(deletedMappings)
+        case v1.ServiceDeleted(_) =>
+          logEvent.deletion(ports)
+          logEvent.deletion(portMappings)
           this.copy(
-            ports = ports -- deletedPorts.keys,
-            portMappings = portMappings -- deletedMappings.keys
+            ports = Map.empty,
+            portMappings = Map.empty
           )
         case v1.ServiceError(error) =>
           log.warning(
