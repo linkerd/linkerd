@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.linkerd.protocol.h2.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.buoyant.Dst

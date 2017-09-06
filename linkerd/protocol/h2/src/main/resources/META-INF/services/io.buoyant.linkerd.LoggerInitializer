@@ -1,1 +1,1 @@
-io.buoyant.linkerd.protocol.h2.IstioLoggerInitializer
+io.buoyant.linkerd.protocol.h2.istio.IstioLoggerInitializer

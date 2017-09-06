@@ -20,21 +20,38 @@ trait IstioDataFlow {
   private val pathServiceIndex = 7
   private val pathLabelsIndex = 8
 
+  val targetService: TargetServiceIstioAttribute = TargetServiceIstioAttribute(findTargetService.getOrElse(unknown))
+
+  val sourceLabel: SourceLabelIstioAttribute = SourceLabelIstioAttribute(Map(
+    "app" -> unknown,
+    "version" -> unknown
+  ))
+
+  val targetLabel: TargetLabelsIstioAttribute = TargetLabelsIstioAttribute((Map(
+    "app" -> findTargetLabelApp.getOrElse(unknown),
+    "version" -> findTargetVersion.getOrElse(unknown)
+  )))
+
   /*
     * Returns the Istio path that returned this response, if any.
     *
-    * Checks the current [[com.twitter.finagle.context.Context]] _at instantiation time_ to verify
-    * if the Istio path was resolved or nor
+    * Checks the current [[com.twitter.finagle.context.Context]] to verify if the Istio path was resolved or nor
     */
-  protected val istioPath = DstBoundCtx.current.flatMap { bound =>
-    bound.id match {
-      case path: Path if (path.elems.length == pathLength) => Some(path)
-      case _ => None
+  protected def istioPath = {
+    Option(DstBoundCtx).flatMap { dstBoundCtx =>
+      dstBoundCtx.current.flatMap { bound =>
+        bound.id match {
+          case path: Path if (path.elems.length == pathLength) => Some(path)
+          case _ => None
+        }
+      }
     }
   }
 
-  private def findTargetService: Option[String] = istioPath.map { path =>
-    path.showElems(pathServiceIndex)
+  private def findTargetService: Option[String] = {
+    istioPath.map { path =>
+      path.showElems(pathServiceIndex)
+    }
   }
 
   private def findTargetVersion: Option[String] = istioPath match {
@@ -51,15 +68,4 @@ trait IstioDataFlow {
    */
   private def findTargetLabelApp: Option[String] = findTargetService.flatMap(_.split('.').headOption)
 
-  def targetService: TargetServiceIstioAttribute = TargetServiceIstioAttribute(findTargetService.getOrElse(unknown))
-
-  def sourceLabel: SourceLabelIstioAttribute = SourceLabelIstioAttribute(Map(
-    "app" -> unknown,
-    "version" -> unknown
-  ))
-
-  def targetLabel: TargetLabelsIstioAttribute = TargetLabelsIstioAttribute((Map(
-    "app" -> findTargetLabelApp.getOrElse(unknown),
-    "version" -> findTargetVersion.getOrElse(unknown)
-  )))
 }

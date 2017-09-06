@@ -1,6 +1,5 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.linkerd.protocol.h2.istio
 
-import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port

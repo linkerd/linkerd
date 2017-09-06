@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd.protocol.http.istio
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.Dst

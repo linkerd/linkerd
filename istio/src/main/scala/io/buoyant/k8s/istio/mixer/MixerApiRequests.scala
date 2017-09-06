@@ -7,7 +7,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.google.local.DurationProto.{Duration => GDuration}
 import com.twitter.util.Duration
 import io.buoyant.k8s.istio._
-import istio.mixer.v1.{Attributes, ReportRequest, StringMap}
+import istio.mixer.v1._
 
 import scala.io.Source
 
@@ -34,6 +34,26 @@ object MixerApiRequests {
     duration: ResponseDurationIstioAttribute
   ): ReportRequest = {
 
+    val dictionary = mkDictionary(requestPath, targetService, sourceLabel, targetLabel)
+
+    val updated = mkAttributesUpdate(dictionary, Seq(responseCode, requestPath, targetService, sourceLabel, targetLabel, duration))
+    ReportRequest(attributeUpdate = Some(updated))
+  }
+
+  def mkCheckRequest(istioREquest: IstioRequest) = {
+    val TODO = Some(1L)
+    val dictionary = mkDictionary(istioREquest.requestedPath, istioREquest.targetService, istioREquest.sourceLabel, istioREquest.targetLabel)
+    val requestAttributes = Seq(istioREquest.requestedPath, istioREquest.sourceLabel, istioREquest.targetLabel, istioREquest.targetService)
+    val attributesUpdate = mkAttributesUpdate(dictionary, requestAttributes)
+    CheckRequest(TODO, Some(attributesUpdate))
+  }
+
+  private def mkDictionary(
+    requestPath: RequestPathIstioAttribute,
+    targetService: TargetServiceIstioAttribute,
+    sourceLabel: SourceLabelIstioAttribute,
+    targetLabel: TargetLabelsIstioAttribute
+  ) = {
     val targetLabelApp = targetLabel.value.getOrElse("app", "")
     val targetLabelVersion = targetLabel.value.getOrElse("version", "")
     val sourceLabelApp = sourceLabel.value.getOrElse("app", "")
@@ -50,9 +70,7 @@ object MixerApiRequests {
       sourceLabelApp,
       sourceLabelVersion
     ) ++ sourceLabel.value.keySet ++ targetLabel.value.keySet
-
-    val updated = mkAttributesUpdate(customWords, Seq(responseCode, requestPath, targetService, sourceLabel, targetLabel, duration))
-    ReportRequest(attributeUpdate = Some(updated))
+    customWords
   }
 
   private def mkAttributesUpdate(customAttributeNames: Seq[String], attributes: Seq[IstioAttribute[_]]) = {

@@ -1,27 +1,28 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.linkerd.protocol.http.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.H2
-import com.twitter.finagle.buoyant.h2.{Request, Response}
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.logging.Logger
-import com.twitter.util.Stopwatch
+import com.twitter.util._
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{DefaultMixerHost, DefaultMixerPort, IstioLoggerBase, MixerClient}
+import io.buoyant.k8s.istio.mixer.MixerClient
+import io.buoyant.k8s.istio.{DefaultMixerHost, DefaultMixerPort, IstioLoggerBase}
 import io.buoyant.linkerd.LoggerInitializer
-import io.buoyant.linkerd.protocol.h2.istio.{H2IstioRequest, H2IstioResponse}
+import io.buoyant.linkerd.protocol.HttpLoggerConfig
 
 class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Filter[Request, Response, Request, Response] with IstioLoggerBase {
 
   def apply(req: Request, svc: Service[Request, Response]) = {
-    val istioRequest = H2IstioRequest(req)
+    val istioRequest = HttpIstioRequest(req)
 
     val elapsed = Stopwatch.start()
 
     svc(req).respond { ret =>
 
       val duration = elapsed()
-      val istioResponse = H2IstioResponse(ret, duration)
+      val istioResponse = HttpIstioResponse(ret, duration)
 
       val _ = report(istioRequest, istioResponse, duration)
     }
@@ -31,7 +32,7 @@ class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Fi
 case class IstioLoggerConfig(
   mixerHost: Option[String],
   mixerPort: Option[Port]
-) extends H2LoggerConfig {
+) extends HttpLoggerConfig {
 
   @JsonIgnore
   override def role = Stack.Role("IstioLogger")
@@ -44,9 +45,9 @@ case class IstioLoggerConfig(
   private[this] val log = Logger.get("IstioLoggerConfig")
 
   @JsonIgnore
-  private[h2] val host = mixerHost.getOrElse(DefaultMixerHost)
+  private[http] val host = mixerHost.getOrElse(DefaultMixerHost)
   @JsonIgnore
-  private[h2] val port = mixerPort.map(_.port).getOrElse(DefaultMixerPort)
+  private[http] val port = mixerPort.map(_.port).getOrElse(DefaultMixerPort)
   log.info("connecting to Istio Mixer at %s:%d", host, port)
 
   @JsonIgnore
@@ -58,7 +59,7 @@ case class IstioLoggerConfig(
     .newService(mixerDst, "istioLogger")
 
   @JsonIgnore
-  private[h2] val client = new MixerClient(mixerService)
+  private[http] val client = MixerClient(mixerService)
 
   @JsonIgnore
   def mk(params: Stack.Params): Filter[Request, Response, Request, Response] = {

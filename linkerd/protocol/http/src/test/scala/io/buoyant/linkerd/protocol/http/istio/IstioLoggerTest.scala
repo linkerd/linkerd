@@ -1,4 +1,4 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd.protocol.http.istio
 
 import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.http.{Request, Response}
@@ -8,13 +8,14 @@ import com.twitter.util.Future
 import io.buoyant.config.Parser
 import io.buoyant.grpc.runtime.Stream
 import io.buoyant.k8s.istio._
+import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.linkerd.LoggerInitializer
 import io.buoyant.linkerd.protocol.HttpLoggerConfig
 import io.buoyant.test.Awaits
-import istio.mixer.v1.ReportResponse
+import istio.mixer.v1.{Mixer, ReportResponse}
 import org.scalatest.FunSuite
 
-class MockMixerClient extends MixerClient(H2.client.newService("example.com:80")) {
+class MockMixerClient extends MixerClient(new Mixer.Client(H2.client.newService("example.com:80"))) {
   var reports = 0
 
   override def report(

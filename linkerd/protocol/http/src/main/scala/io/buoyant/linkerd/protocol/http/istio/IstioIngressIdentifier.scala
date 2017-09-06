@@ -1,20 +1,20 @@
-package io.buoyant.linkerd.protocol.h2
+package io.buoyant.linkerd.protocol.http.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Status, Stream}
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.param.Label
-import com.twitter.finagle._
+import com.twitter.finagle.{Dtab, Path, Service, http}
 import com.twitter.util.{Future, Try}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio._
 import io.buoyant.k8s.{ClientConfig, IngressCache}
 import io.buoyant.linkerd.IdentifierInitializer
-import io.buoyant.linkerd.protocol.H2IdentifierConfig
-import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
-import io.buoyant.router.RoutingFactory.{BaseDtab, DstPrefix, IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
+import io.buoyant.linkerd.protocol.HttpIdentifierConfig
+import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier, RequestIdentification, UnidentifiedRequest}
 import istio.proxy.v1.config.HTTPRedirect
 
 class IstioIngressIdentifier(
@@ -30,10 +30,10 @@ class IstioIngressIdentifier(
   private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
-    val matchingPath = ingressCache.matchPath(Some(req.authority), req.path)
+    val matchingPath = ingressCache.matchPath(req.host, req.path)
     matchingPath.flatMap {
       case None =>
-        Future.value(new UnidentifiedRequest(s"no ingress rule matches ${req.authority}:${req.path}"))
+        Future.value(new UnidentifiedRequest(s"no ingress rule matches ${req.host}:${req.path}"))
       case Some(ingressPath) =>
         val clusterName = s"${ingressPath.svc}.${ingressPath.namespace}.svc.cluster.local"
 
@@ -69,19 +69,21 @@ class IstioIngressIdentifier(
     }
   }
 
+  def reqToMeta(req: Request): IstioRequest =
+    //TODO: match on request scheme
+    IstioRequest(req.path, "", req.method.toString, req.host.getOrElse(""), req.headerMap.get)
+
   def redirectRequest(redir: HTTPRedirect, req: Request): Future[Nothing] = {
-    val resp = Response(Status.Found, Stream.empty())
-    resp.headers.set(Headers.Path, redir.`uri`.getOrElse(req.path))
-    resp.headers.set(Headers.Authority, redir.`authority`.getOrElse(req.authority))
-    Future.exception(H2ResponseException(resp))
+    val redirect = Response(Status.Found)
+    redirect.location = redir.`uri`.getOrElse(req.uri)
+    redirect.host = redir.`authority`.orElse(req.host).getOrElse("")
+    Future.exception(HttpResponseException(redirect))
   }
 
   def rewriteRequest(uri: String, authority: Option[String], req: Request): Unit = {
-    req.headers.set(Headers.Path, uri)
-    req.headers.set(Headers.Authority, authority.getOrElse(""))
+    req.uri = uri
+    req.host = authority.getOrElse("")
   }
-
-  def reqToMeta(req: Request): IstioRequest = H2IstioRequest(req)
 
 }
 
@@ -93,15 +95,14 @@ case class IstioIngressIdentifierConfig(
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
   apiserverPort: Option[Port]
-) extends H2IdentifierConfig with ClientConfig {
+) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
 
-  override def newIdentifier(params: Stack.Params) = {
-    import io.buoyant.k8s.istio._
-
-    val DstPrefix(prefix) = params[DstPrefix]
-    val BaseDtab(baseDtab) = params[BaseDtab]
+  override def newIdentifier(
+    prefix: Path,
+    baseDtab: () => Dtab = () => Dtab.base
+  ): Identifier[Request] = {
     val k8sApiserverClient = mkClient(Params.empty).configured(Label("ingress-identifier"))
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)

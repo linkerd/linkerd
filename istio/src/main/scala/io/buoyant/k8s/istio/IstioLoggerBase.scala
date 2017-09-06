@@ -1,6 +1,7 @@
 package io.buoyant.k8s.istio
 
 import com.twitter.util.Duration
+import io.buoyant.k8s.istio.mixer.MixerClient
 
 trait IstioLoggerBase {
 

@@ -6,7 +6,7 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
 import io.buoyant.k8s.istio.ApiserverClient.RouteRuleConfig
 import io.buoyant.test.{Awaits, Exceptions}
-import istio.proxy.v1.config.{DestinationWeight, RouteRule}
+import _root_.istio.proxy.v1.config.{DestinationWeight, RouteRule}
 import org.scalatest.FunSuite
 
 class ApiserverClientTest extends FunSuite with Awaits with Exceptions {
