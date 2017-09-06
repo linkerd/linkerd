@@ -1,4 +1,4 @@
-FROM williamyeh/scala:latest
+FROM buoyantio/linkerd:1.2.0-rc2
 MAINTAINER wjwinner@139.com
 WORKDIR /code
 COPY . /code
