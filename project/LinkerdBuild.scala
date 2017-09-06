@@ -122,6 +122,11 @@ object LinkerdBuild extends Base {
       .withLibs(Deps.curatorFramework, Deps.curatorClient, Deps.curatorDiscovery)
       .withTests()
 
+    val dnssrv = projectDir("namer/dnssrv")
+      .dependsOn(core)
+      .withLibs(Deps.dnsJava)
+      .withTests().withIntegration()
+
     val fs = projectDir("namer/fs")
       .dependsOn(core % "compile->compile;test->test")
       .withTests()
@@ -145,7 +150,7 @@ object LinkerdBuild extends Base {
       .withLib(Deps.zkCandidate)
       .withTests()
 
-    val all = aggregateDir("namer", core, consul, curator, fs, k8s, marathon, serversets, zkLeader)
+    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, marathon, serversets, zkLeader)
   }
 
   val admin = projectDir("admin")
@@ -327,7 +332,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
       Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
@@ -573,7 +578,7 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv,
       Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
@@ -664,6 +669,7 @@ object LinkerdBuild extends Base {
   val namerCore = Namer.core
   val namerConsul = Namer.consul
   val namerCurator = Namer.curator
+  val namerDnsSrv = Namer.dnssrv
   val namerFs = Namer.fs
   val namerK8s = Namer.k8s
   val namerMarathon = Namer.marathon

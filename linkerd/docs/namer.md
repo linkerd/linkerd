@@ -181,7 +181,7 @@ dtab: |
   /svc => /#/io.l5d.consul/dc1/prod;
 ```
 
-linker provides support for service discovery via [Consul](https://www.consul.io/).
+linkerd provides support for service discovery via [Consul](https://www.consul.io/).
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -483,7 +483,7 @@ port | `8080` | The port of the Istio-Manager.
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the Istio namer.
-port-name | yes | The port name.
+
 cluster | yes | The fully qualified name of the service.
 labels | yes | A `::` delimited list of `label:value` pairs.  Only endpoints that match all of these label selectors will be returned.
 
@@ -571,6 +571,58 @@ Further reading:
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>
+
+## DNS SRV Records
+
+kind: `io.l5d.dnssrv`
+
+### DNS-SRV Configuration
+
+> Configure a DNS-SRV namer
+
+```yaml
+namers:
+- kind: io.l5d.dnssrv
+  experimental: true
+  refreshIntervalSeconds: 5
+  dnsHosts:
+  - ns0.example.org
+  - ns1.example.org
+```
+
+> Then reference the namer in the dtab to use it:
+```
+dtab: |
+  /dnssrv => /#/io.l5d.dnssrv
+  /svc/myservice =>
+    /dnssrv/myservice.srv.example.org &
+    /dnssrv/myservice2.srv.example.org;
+  /svc/other => 
+    /dnssrv/other.srv.example.org;
+
+```
+
+linkerd provides support for service discovery via DNS SRV records.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.dnssrv` | Resolves names with `/#/<prefix>`.
+experimental | `false` | Since the DNS-SRV namer is still considered experimental, this must be set to `true`.
+refreshIntervalSeconds | `5` | linkerd will perform a SRV lookup for each host every `refreshIntervalSeconds`.
+dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to perform SRV lookups. If not specified, linkerd will use the default system resolver.
+ 
+### DNS-SRV Path Parameters
+
+> Dtab Path Format
+
+```
+/#/<prefix>/<address>
+```
+
+Key     | Required | Description
+prefix  | yes      | Tells linkerd to resolve the request path using the DNS-SRV namer.
+address |          | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup 
+
 ## ZooKeeper Leader
 
 kind: `io.l5d.zkLeader`

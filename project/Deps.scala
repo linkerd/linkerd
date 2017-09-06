@@ -68,4 +68,7 @@ object Deps {
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
+
+  // dnsjava
+  val dnsJava = "dnsjava" % "dnsjava" % "2.1.8"
 }
