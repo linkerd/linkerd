@@ -483,7 +483,7 @@ port | `8080` | The port of the Istio-Manager.
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the Istio namer.
-
+port-name | yes | The port name.
 cluster | yes | The fully qualified name of the service.
 labels | yes | A `::` delimited list of `label:value` pairs.  Only endpoints that match all of these label selectors will be returned.
 
