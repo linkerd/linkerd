@@ -12,7 +12,13 @@ import com.twitter.util.Activity.State
 import com.twitter.util._
 import org.xbill.DNS
 
-class DnsSrvNamer(prefix: Path, resolver: DNS.Resolver, refreshInterval: Duration, stats: StatsReceiver, pool: FuturePool)(implicit val timer: Timer)
+class DnsSrvNamer(
+  prefix: Path,
+  resolver: DNS.Resolver,
+  refreshInterval: Duration,
+  stats: StatsReceiver,
+  pool: FuturePool
+)(implicit val timer: Timer)
   extends Namer {
 
   override def lookup(path: Path): Activity[NameTree[Name]] = memoizedLookup(path)
