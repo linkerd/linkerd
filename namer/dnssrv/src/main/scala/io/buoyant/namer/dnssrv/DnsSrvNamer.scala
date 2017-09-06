@@ -3,7 +3,6 @@ package io.buoyant.namer.dnssrv
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.TimeUnit
 
 import com.twitter.finagle._
 import com.twitter.finagle.stats.{Stat, StatsReceiver}
@@ -23,11 +22,11 @@ class DnsSrvNamer(
 
   override def lookup(path: Path): Activity[NameTree[Name]] = memoizedLookup(path)
 
-  private val success = stats.counter("lookup_successes_total")
-  private val failure = stats.counter("lookup_failures_total")
-  private val zeroResults = stats.counter("lookup_zero_results_total")
-  private val latency = stats.stat("request_duration_seconds")
-  private val log = Logger.get("dnssrv")
+  private[this] val success = stats.counter("lookup_successes_total")
+  private[this] val failure = stats.counter("lookup_failures_total")
+  private[this] val zeroResults = stats.counter("lookup_zero_results_total")
+  private[this] val latency = stats.stat("request_duration_ms")
+  private[this] val log = Logger.get("dnssrv")
 
   private val memoizedLookup: (Path) => Activity[NameTree[Name]] = Memoize { path =>
     path.take(1) match {
@@ -73,7 +72,7 @@ class DnsSrvNamer(
     val query = DNS.Message.newQuery(question)
     log.debug("looking up %s", address)
     pool {
-      val message = Stat.time(latency, TimeUnit.SECONDS)(resolver.send(query))
+      val message = Stat.time(latency)(resolver.send(query))
       message.getRcode match {
         case DNS.Rcode.NXDOMAIN =>
           log.trace("no results for %s", address)
