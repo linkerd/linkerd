@@ -41,7 +41,7 @@ case class TlsClientConfig(
   trustCerts: Option[Seq[String]] = None,
   clientAuth: Option[ClientAuth] = None
 ) {
-  require (
+  require(
     !disableValidation.getOrElse(false) || clientAuth.isEmpty,
     "disableValidation: true is incompatible with clientAuth"
   )

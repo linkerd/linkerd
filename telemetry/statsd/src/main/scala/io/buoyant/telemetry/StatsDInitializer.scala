@@ -33,9 +33,16 @@ case class StatsDConfig(
 ) extends TelemeterConfig {
   import StatsDConfig._
 
-  @JsonIgnore override val experimentalRequired = true
-
   @JsonIgnore private[this] val log = Logger.get("io.l5d.statsd")
+
+  log.warning(
+    "Warning, you're using the `io.l5d.statsd` telemeter, which is unsupported " +
+      "and probably won't do what you expect. Use of this telemeter may lead to" +
+      " poor performance or decreased data quality.\n" +
+      "Please see https://discourse.linkerd.io/t/deprecating-the-statsd-telemeter for more information."
+  )
+
+  @JsonIgnore override val experimentalRequired = true
 
   @JsonIgnore private[this] val statsDPrefix = prefix.getOrElse(DefaultPrefix)
   @JsonIgnore private[this] val statsDHost = hostname.getOrElse(DefaultHostname)
