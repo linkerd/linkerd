@@ -1,13 +1,13 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.conversions.storage._
+import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
 import com.twitter.util._
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
@@ -103,9 +103,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.byte
   @volatile private[this] var pullState: PullState = Idle
 
   /**
-    * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
-    * Streams.
-    */
+   * Read a Frame from the underlying Stream and write it into the buffer and offer it to the child
+   * Streams.
+   */
   private[this] def pull(): Future[Unit] = {
     if (underlying.isEmpty) {
       Future.Unit
