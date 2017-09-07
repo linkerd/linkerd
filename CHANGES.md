@@ -1,9 +1,35 @@
-## In the next release...
+## 1.2.0 2017-09-07
 
 * **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
   admin, and namerd admin now serve on 127.0.0.1 by default (instead of
   0.0.0.0).
 * **Breaking Change**: Removed support for PKCS#1 keys.
+
+* Added namer for DNS SRV records (#1611)
+* Kubernetes
+  * Added an experimental interpreter for reading dtabs from a Kubernetes ConfigMap (#1603)
+  * Added configurability to Kubernetes ingress class (#1584)
+  * Fixed incorrect handling of Kubernetes watch API `Delete` events (#1622)
+  * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603)
+  * Updated default backend behavior and stripped host ports (#1607)
+* HTTP/2
+  * Fixed an issue where frames were not discarded on classification timeout, causing the flow control window to fill up (#1598)
+  * Fixed a memory leak on long-running H2 streams (#1598)
+  * Added a user-friendly error message when a HTTP/2 router receives a HTTP/1 request (#1618)
+* HTTP/1
+  * Fixed spurious `ReaderDiscarded` exception logged on HTTP/1 retries (#1609)
+* Consul
+  * Added support for querying Consul by specific service health states (#1601)
+  * Consul namers and Dtab store now fall back to a last known good state on Consul observation errors (#1597)
+  * Improved log messages for Consul observation errors (#1597)
+* TLS
+  * Removed support for PKCS#1 keys (#1590)
+  * Added validation to prevent incompatible `disableValidation: true` and `clientAuth` settings in TLS client configurations (#1621)
+* Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
+  admin, and namerd admin to serve on 127.0.0.1 by default (instead of
+  0.0.0.0) (#1366)
+* Fixed a memory leak in `JsonStreamParser` (#1579)
+
 
 ## 1.1.3 2017-08-09
 
