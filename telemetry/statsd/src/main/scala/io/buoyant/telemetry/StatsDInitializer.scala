@@ -32,15 +32,16 @@ case class StatsDConfig(
   @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double]
 ) extends TelemeterConfig {
   import StatsDConfig._
+
+  @JsonIgnore private[this] val log = Logger.get("io.l5d.statsd")
+
   log.warning(
-    """|Warning, you're using the `io.l5d.statsd` telemeter, which is unsupported and probably
-       | won't do what you expect. Use of this telemeter may lead to poor performance or decreased
-       | quality of data.""".stripMargin
+    "Warning, you're using the `io.l5d.statsd` telemeter, which is unsupported " +
+      "and probably won't do what you expect. Use of this telemeter may lead to" +
+      " poor performance or decreased data quality."
   )
 
   @JsonIgnore override val experimentalRequired = true
-
-  @JsonIgnore private[this] val log = Logger.get("io.l5d.statsd")
 
   @JsonIgnore private[this] val statsDPrefix = prefix.getOrElse(DefaultPrefix)
   @JsonIgnore private[this] val statsDHost = hostname.getOrElse(DefaultHostname)
