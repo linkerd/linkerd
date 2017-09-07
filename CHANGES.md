@@ -4,7 +4,6 @@
   admin, and namerd admin now serve on 127.0.0.1 by default (instead of
   0.0.0.0).
 * **Breaking Change**: Removed support for PKCS#1-formatted keys. PKCS#1 formatted keys must be converted to PKCS#8 format.
-
 * Added experimental `io.l5d.dnssrv` namer for DNS SRV records (#1611)
 * Kubernetes
   * Added an experimental `io.l5d.k8s.configMap` interpreter for reading dtabs from a Kubernetes ConfigMap (#1603). This interpreter will respond to changes in the ConfigMap, allowing for dynamic dtab updates without the need to run Namerd.
