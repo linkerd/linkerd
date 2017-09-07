@@ -3,21 +3,21 @@
 * **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
   admin, and namerd admin now serve on 127.0.0.1 by default (instead of
   0.0.0.0).
-* **Breaking Change**: Removed support for PKCS#1 keys.
+* **Breaking Change**: Removed support for PKCS#1-formatted keys. PKCS#1 formatted keys must be converted to PKCS#8 format.
 
-* Added namer for DNS SRV records (#1611)
+* Added experimental `io.l5d.dnssrv` namer for DNS SRV records (#1611)
 * Kubernetes
-  * Added an experimental interpreter for reading dtabs from a Kubernetes ConfigMap (#1603)
-  * Added configurability to Kubernetes ingress class (#1584)
-  * Fixed incorrect handling of Kubernetes watch API `Delete` events (#1622)
-  * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603)
-  * Updated default backend behavior and stripped host ports (#1607)
+  * Added an experimental `io.l5d.k8s.configMap` interpreter for reading dtabs from a Kubernetes ConfigMap (#1603). This interpreter will respond to changes in the ConfigMap, allowing for dynamic dtab updates without the need to run Namerd.
+  * Added configurability to Kubernetes ingress class (#1584).
+  * Fixed an issue where Linkerd would continue routing traffic to endpoints of a service after that service was removed (#1622).
+  * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603).
+  * Updated default backend behavior and stripped host ports (#1607).
 * HTTP/2
-  * Fixed an issue where frames were not discarded on classification timeout, causing the flow control window to fill up (#1598)
+  * Fixed an issue where long-running H2 streams would eventually stop accepting new messages (#1598).
   * Fixed a memory leak on long-running H2 streams (#1598)
   * Added a user-friendly error message when a HTTP/2 router receives a HTTP/1 request (#1618)
 * HTTP/1
-  * Fixed spurious `ReaderDiscarded` exception logged on HTTP/1 retries (#1609)
+  * Removed spurious `ReaderDiscarded` exception logged on HTTP/1 retries (#1609)
 * Consul
   * Added support for querying Consul by specific service health states (#1601)
   * Consul namers and Dtab store now fall back to a last known good state on Consul observation errors (#1597)
@@ -28,7 +28,6 @@
 * Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
   admin, and namerd admin to serve on 127.0.0.1 by default (instead of
   0.0.0.0) (#1366)
-* Fixed a memory leak in `JsonStreamParser` (#1579)
 
 
 ## 1.1.3 2017-08-09
