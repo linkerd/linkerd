@@ -11,7 +11,8 @@
   * Added configurability to Kubernetes ingress class (#1584).
   * Fixed an issue where Linkerd would continue routing traffic to endpoints of a service after that service was removed (#1622).
   * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603).
-  * Updated default backend behavior and stripped host ports (#1607).
+  * Ingress controller now checks all available ingress resources before using a default backend (#1607).
+  * Ingress controller now correctly routes requests with host headers that contain ports (#1607).
 * HTTP/2
   * Fixed an issue where long-running H2 streams would eventually stop accepting new messages (#1598).
   * Fixed a memory leak on long-running H2 streams (#1598)
