@@ -111,6 +111,8 @@ class ClientTest extends FunSuite {
       .failureAccrualPolicy()
     assert(policy.toString == "FooFailureAccrual")
   }
+
+
 }
 
 class FooFailureAccrual extends FailureAccrualInitializer {
