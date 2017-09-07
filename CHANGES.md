@@ -29,6 +29,7 @@
 * Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
   admin, and namerd admin to serve on 127.0.0.1 by default (instead of
   0.0.0.0) (#1366)
+* Deprecated `io.l5d.statsd` telemeter.
 
 
 ## 1.1.3 2017-08-09
