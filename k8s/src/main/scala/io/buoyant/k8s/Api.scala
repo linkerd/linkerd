@@ -76,7 +76,7 @@ object Api {
 /**
  * Generally required as an implicit for list resources. Provides the kubernetes-designated
  * name for the resource, as well as a means of transforming an individual instance into a
- * type-specialized [[Watch]].
+ * type-specialized Watch.
  */
 trait ObjectDescriptor[O <: KubeObject, W <: Watch[O]] {
   /**
@@ -105,10 +105,10 @@ trait KubeObject extends KubeMetadata {
 /**
  * A Kubernetes API response with a `metadata` field.
  *
- * This is factored out from [[KubeObject]] and [[KubeList]] so that
- * the `G` type param on [[Watchable]] can be constrained based on it,
- * while still allowing both [[KubeObject]]s and [[KubeList]]s to be
- * [[Watchable]], *and* maintaining the distinction between objects
+ * This is factored out from KubeObject and KubeList so that
+ * the `G` type param on Watchable can be constrained based on it,
+ * while still allowing both KubeObjects and KubeLists to be
+ * Watchable, *and* maintaining the distinction between objects
  * and lists.
  */
 trait KubeMetadata {
@@ -116,8 +116,7 @@ trait KubeMetadata {
 }
 
 /**
- * Describes a List of Objects in the Kubernetes API (i.e.
- * [[http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpointslist EndpointsList]])
+ * Describes a List of Objects in the Kubernetes API (i.e. EndpointsList)
  *
  * @tparam O the type of object contained in the list
  */

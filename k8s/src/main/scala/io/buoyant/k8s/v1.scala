@@ -141,7 +141,7 @@ package object v1 {
   ) extends Object {
     /**
      * @return the subsets list on this `Endpoints` object,
-     *          or an empty [[Seq]] if it is empty.
+     *          or an empty Seq if it is empty.
      */
     @JsonIgnore
     @inline
