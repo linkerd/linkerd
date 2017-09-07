@@ -8,7 +8,7 @@
 * Added experimental `io.l5d.dnssrv` namer for DNS SRV records (#1611)
 * Kubernetes
   * Added an experimental `io.l5d.k8s.configMap` interpreter for reading dtabs from a Kubernetes ConfigMap (#1603). This interpreter will respond to changes in the ConfigMap, allowing for dynamic dtab updates without the need to run Namerd.
-  * Added configurability to Kubernetes ingress class (#1584).
+  * Made ingress controller's ingress class annotation configurable (#1584).
   * Fixed an issue where Linkerd would continue routing traffic to endpoints of a service after that service was removed (#1622).
   * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603).
   * Ingress controller now checks all available ingress resources before using a default backend (#1607).
