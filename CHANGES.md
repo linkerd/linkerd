@@ -13,7 +13,7 @@
   * Ingress controller now checks all available ingress resources before using a default backend (#1607).
   * Ingress controller now correctly routes requests with host headers that contain ports (#1607).
 * HTTP/2
-  * Fixed an issue where long-running H2 streams would eventually stop accepting new messages (#1598).
+  * Fixed an issue where long-running H2 streams would eventually hang (#1598).
   * Fixed a memory leak on long-running H2 streams (#1598)
   * Added a user-friendly error message when a HTTP/2 router receives a HTTP/1 request (#1618)
 * HTTP/1
