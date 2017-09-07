@@ -76,6 +76,10 @@ connects to a given StatsD server via UDP. Counters and timers/histograms are
 exported immediately, based on sample rate. Gauge export interval is
 configurable.
 
+<aside class="warning">
+The StatsD telemeter is unsupported. Due to how StatsD samples counter increments, this telemeter may cause loss of data for important events (such as failures). While the `sampleRate` property can be increased to decrease data loss, doing so will lead to higher Linkerd latency.
+</aside>
+
 Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because this telemeter is still considered experimental, you must set this to `true` to use it.
