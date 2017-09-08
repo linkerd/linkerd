@@ -1,16 +1,14 @@
 package io.buoyant.linkerd.protocol.http.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Stack.Params
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Request, Response, Status}
-import com.twitter.finagle.param.Label
-import com.twitter.finagle.{Dtab, Path, Service, http}
 import com.twitter.util.{Future, Try}
 import io.buoyant.config.types.Port
+import io.buoyant.k8s.IngressCache
 import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio._
-import io.buoyant.k8s.{ClientConfig, IngressCache}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
@@ -95,7 +93,7 @@ case class IstioIngressIdentifierConfig(
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
   apiserverPort: Option[Port]
-) extends HttpIdentifierConfig with ClientConfig {
+) extends HttpIdentifierConfig with IstioIngressConfigurator {
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
 
@@ -103,17 +101,12 @@ case class IstioIngressIdentifierConfig(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
-    val k8sApiserverClient = mkClient(Params.empty).configured(Label("ingress-identifier"))
-    val host = apiserverHost.getOrElse(DefaultApiserverHost)
-    val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val routeCache = RouteCache.getManagerFor(host, port)
-    val discoveryClient = DiscoveryClient(
-      discoveryHost.getOrElse(DefaultDiscoveryHost),
-      discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
-    )
-    val clusterCache = new ClusterCache(discoveryClient)
-    new IstioIngressIdentifier(prefix, baseDtab, namespace, k8sApiserverClient.newService(dst), "istio", routeCache, clusterCache)
+
+    val k8sApiserverClient: Http.Client = mkK8sApiClient()
+
+    new IstioIngressIdentifier(prefix, baseDtab, namespace, k8sApiserverClient.newService(dst), IngressAnnotationClass, mkRouteCache(host, port), mkClusterCache(discoveryHost, discoveryPort))
   }
+
 }
 
 object IstioIngressIdentifierConfig {

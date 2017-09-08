@@ -2,14 +2,13 @@ package io.buoyant.linkerd.protocol.http.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.mixer.MixerClient
-import io.buoyant.k8s.istio.{DefaultMixerHost, DefaultMixerPort, IstioLoggerBase}
+import io.buoyant.k8s.istio.{IstioConfigurator, IstioLoggerBase}
 import io.buoyant.linkerd.LoggerInitializer
+import io.buoyant.k8s.istio._
 import io.buoyant.linkerd.protocol.HttpLoggerConfig
 
 class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Filter[Request, Response, Request, Response] with IstioLoggerBase {
@@ -30,9 +29,9 @@ class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Fi
 }
 
 case class IstioLoggerConfig(
-  mixerHost: Option[String],
-  mixerPort: Option[Port]
-) extends HttpLoggerConfig {
+  mixerHost: Option[String] = Some(DefaultMixerHost),
+  mixerPort: Option[Port] = Some(Port(DefaultMixerPort))
+) extends HttpLoggerConfig with IstioConfigurator {
 
   @JsonIgnore
   override def role = Stack.Role("IstioLogger")
@@ -42,28 +41,8 @@ case class IstioLoggerConfig(
   override def parameters = Seq()
 
   @JsonIgnore
-  private[this] val log = Logger.get("IstioLoggerConfig")
-
-  @JsonIgnore
-  private[http] val host = mixerHost.getOrElse(DefaultMixerHost)
-  @JsonIgnore
-  private[http] val port = mixerPort.map(_.port).getOrElse(DefaultMixerPort)
-  log.info("connecting to Istio Mixer at %s:%d", host, port)
-
-  @JsonIgnore
-  private[this] val mixerDst = Name.bound(Address(host, port))
-
-  @JsonIgnore
-  private[this] val mixerService = H2.client
-    .withParams(H2.client.params)
-    .newService(mixerDst, "istioLogger")
-
-  @JsonIgnore
-  private[http] val client = MixerClient(mixerService)
-
-  @JsonIgnore
   def mk(params: Stack.Params): Filter[Request, Response, Request, Response] = {
-    new IstioLogger(client, params)
+    new IstioLogger(mkMixerClient(mixerHost, mixerPort), params)
   }
 }
 

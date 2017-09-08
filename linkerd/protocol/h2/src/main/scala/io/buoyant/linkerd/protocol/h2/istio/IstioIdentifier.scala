@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio.{ClusterCache, IstioIdentifierBase, IstioRequest, RouteCache}
+import io.buoyant.k8s.istio._
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
@@ -43,23 +43,15 @@ case class IstioIdentifierConfig(
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
   apiserverPort: Option[Port]
-) extends H2IdentifierConfig {
+) extends H2IdentifierConfig with IstioConfigurator {
 
   @JsonIgnore
   override def newIdentifier(params: Stack.Params) = {
-    import io.buoyant.k8s.istio._
 
     val DstPrefix(prefix) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
-    val host = apiserverHost.getOrElse(DefaultApiserverHost)
-    val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
-    val routeCache = RouteCache.getManagerFor(host, port)
-    val discoveryClient = DiscoveryClient(
-      discoveryHost.getOrElse(DefaultDiscoveryHost),
-      discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
-    )
-    val clusterCache = new ClusterCache(discoveryClient)
-    new IstioIdentifier(prefix, baseDtab, routeCache, clusterCache)
+
+    new IstioIdentifier(prefix, baseDtab, mkRouteCache(apiserverHost, apiserverPort), mkClusterCache(discoveryHost, discoveryPort))
   }
 }
 

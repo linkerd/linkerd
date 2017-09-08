@@ -17,9 +17,10 @@ case class MixerCheckStatus(grpcStatus: GrpcStatus) {
 }
 
 class MixerClient(client: Mixer) {
-  private[this] val log = Logger()
+  private[this] val log = Logger(this.getClass.getSimpleName)
   private[this] val codeUsedWhenUnknownStatus = Unknown("")
 
+  //TODO: doc
   // minimum set of attributes to generate the following metrics in mixer/prometheus:
   // - request_count
   // - request_duration_bucket
@@ -51,14 +52,7 @@ class MixerClient(client: Mixer) {
     client.report(Stream.value(reportRequest))
   }
 
-  private[this] def mkStatus(stream: Stream.Releasable[CheckResponse]) = {
-    val result = stream.value.`result`.get
-    val message = result.`message`.getOrElse("")
-    val code = result.`code`.getOrElse(codeUsedWhenUnknownStatus.code)
-    val statusCode = GrpcStatus(code, message)
-    Future.value(MixerCheckStatus(statusCode))
-  }
-
+  //TODO: doc
   def checkPrecodnitions(istioRequest: IstioRequest): Future[MixerCheckStatus] = {
     val checkRequest = MixerApiRequests.mkCheckRequest(istioRequest)
     log.trace("MixerClient.check: %s", checkRequest)
@@ -67,6 +61,14 @@ class MixerClient(client: Mixer) {
       case Return(stream) => mkStatus(stream)
       case Throw(e) => log.error(e, "Error checking Mixer pre-conditions"); Future.value(MixerCheckStatus(codeUsedWhenUnknownStatus))
     }
+  }
+
+  private[this] def mkStatus(stream: Stream.Releasable[CheckResponse]) = {
+    val result = stream.value.`result`.get
+    val message = result.`message`.getOrElse("")
+    val code = result.`code`.getOrElse(codeUsedWhenUnknownStatus.code)
+    val statusCode = GrpcStatus(code, message)
+    Future.value(MixerCheckStatus(statusCode))
   }
 }
 

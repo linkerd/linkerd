@@ -8,7 +8,7 @@ import io.buoyant.linkerd.protocol.H2IdentifierConfig
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
-class IstioIdentifierConfigTest extends FunSuite with Awaits {
+class IstioIdentifierTest extends FunSuite with Awaits {
   test("service registration") {
     assert(LoadService[IdentifierInitializer].exists(_.isInstanceOf[IstioIdentifierInitializer]))
   }
@@ -27,3 +27,4 @@ class IstioIdentifierConfigTest extends FunSuite with Awaits {
     assert(config.discoveryPort == Some(Port(9999)))
   }
 }
+

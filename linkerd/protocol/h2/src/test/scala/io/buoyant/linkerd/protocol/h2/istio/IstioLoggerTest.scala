@@ -1,7 +1,7 @@
-package io.buoyant.linkerd.protocol.http.istio
+package io.buoyant.linkerd.protocol.h2.istio
 
 import com.twitter.finagle.buoyant.H2
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.buoyant.h2.{Headers, Request, Response, Status, Stream => H2Stream}
 import com.twitter.finagle.{Service, Stack}
 import com.twitter.util.Future
 import io.buoyant.grpc.runtime.Stream
@@ -28,6 +28,7 @@ class IstioLoggerTest extends FunSuite with Awaits {
       Stream.value(ReportResponse())
     }
   }
+
   val mixerClient = new MockMixerClient()
 
   test("creates a logger") {
@@ -38,11 +39,11 @@ class IstioLoggerTest extends FunSuite with Awaits {
   test("apply triggers a mixer report") {
     val logger = new IstioLogger(mixerClient, Stack.Params.empty)
     val svc = Service.mk[Request, Response] { req =>
-      Future.value(Response())
+      Future.value(Response(Status.Ok, H2Stream.const("")))
     }
 
     assert(mixerClient.reports == 0)
-    logger(Request(), svc)
+    logger(Request(Headers(Headers.Method -> "GET"), H2Stream.const("")), svc)
     assert(mixerClient.reports == 1)
   }
 }
