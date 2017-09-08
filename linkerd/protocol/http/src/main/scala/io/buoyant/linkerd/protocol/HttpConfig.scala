@@ -20,7 +20,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
-import io.buoyant.router.http.{AddForwardedHeader, TimestampHeaderFilter}
+import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -113,7 +113,15 @@ class HttpStaticClient(val configs: Seq[HttpPrefixConfig]) extends HttpClient wi
 
 class HttpPrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with HttpClientConfig
 
-trait HttpClientConfig extends ClientConfig
+trait HttpClientConfig extends ClientConfig {
+  var forwardClientCert: Option[Boolean] = None
+
+  @JsonIgnore
+  override def params(vars: Map[String, String]): Stack.Params = {
+    super.params(vars)
+      .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
+  }
+}
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
