@@ -23,9 +23,9 @@ class IstioLoggerTest extends FunSuite with Awaits {
       sourceLabel: SourceLabelIstioAttribute,
       targetLabel: TargetLabelsIstioAttribute,
       duration: ResponseDurationIstioAttribute
-    ): Stream[ReportResponse] = {
+    ): Future[Unit] = {
       reports += 1
-      Stream.value(ReportResponse())
+      Future.Done
     }
   }
 

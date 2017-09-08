@@ -8,6 +8,7 @@ import com.twitter.util.{Future, Try}
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.IngressCache
 import io.buoyant.k8s.istio.ClusterCache.Cluster
+import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.k8s.istio.{IstioIngressConfigurator, _}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
@@ -22,7 +23,8 @@ class IstioIngressIdentifier(
   apiClient: Service[http.Request, http.Response],
   annotationClass: String,
   val routeCache: RouteCache,
-  val clusterCache: ClusterCache
+  val clusterCache: ClusterCache,
+  val mixerClient: MixerClient
 ) extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
@@ -90,7 +92,9 @@ case class IstioIngressIdentifierConfig(
   discoveryHost: Option[String],
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
-  apiserverPort: Option[Port]
+  apiserverPort: Option[Port],
+  mixerHost: Option[String],
+  mixerPort: Option[Port]
 ) extends H2IdentifierConfig with IstioIngressConfigurator {
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
@@ -102,7 +106,16 @@ case class IstioIngressIdentifierConfig(
 
     val k8sApiserverClient = mkK8sApiClient()
 
-    new IstioIngressIdentifier(prefix, baseDtab, namespace, k8sApiserverClient.newService(dst), IngressAnnotationClass, mkRouteCache(apiserverHost, apiserverPort), mkClusterCache(discoveryHost, discoveryPort))
+    new IstioIngressIdentifier(
+      prefix,
+      baseDtab,
+      namespace,
+      k8sApiserverClient.newService(dst),
+      IngressAnnotationClass,
+      mkRouteCache(apiserverHost, apiserverPort),
+      mkClusterCache(discoveryHost, discoveryPort),
+      mkMixerClient(mixerHost, mixerPort)
+    )
   }
 }
 

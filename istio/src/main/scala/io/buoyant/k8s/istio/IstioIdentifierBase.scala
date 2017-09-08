@@ -3,6 +3,7 @@ package io.buoyant.k8s.istio
 import com.twitter.finagle.Path
 import com.twitter.util.Future
 import io.buoyant.k8s.istio.ClusterCache.Cluster
+import io.buoyant.k8s.istio.mixer.MixerClient
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 import istio.proxy.v1.config._
 
@@ -10,6 +11,7 @@ trait IstioIdentifierBase[Req] {
 
   def clusterCache: ClusterCache
   def routeCache: RouteCache
+  def mixerClient: MixerClient
   def pfx: Path
 
   def redirectRequest(redir: HTTPRedirect, req: Req): Future[Nothing]

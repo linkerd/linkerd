@@ -9,6 +9,7 @@ import io.buoyant.config.types.Port
 import io.buoyant.k8s.IngressCache
 import io.buoyant.k8s.istio.ClusterCache.Cluster
 import io.buoyant.k8s.istio._
+import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.linkerd.protocol.http.ErrorResponder.HttpResponseException
@@ -22,7 +23,8 @@ class IstioIngressIdentifier(
   apiClient: Service[http.Request, http.Response],
   annotationClass: String,
   val routeCache: RouteCache,
-  val clusterCache: ClusterCache
+  val clusterCache: ClusterCache,
+  val mixerClient: MixerClient
 ) extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
@@ -92,7 +94,9 @@ case class IstioIngressIdentifierConfig(
   discoveryHost: Option[String],
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
-  apiserverPort: Option[Port]
+  apiserverPort: Option[Port],
+  mixerHost: Option[String],
+  mixerPort: Option[Port]
 ) extends HttpIdentifierConfig with IstioIngressConfigurator {
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
@@ -104,7 +108,16 @@ case class IstioIngressIdentifierConfig(
 
     val k8sApiserverClient: Http.Client = mkK8sApiClient()
 
-    new IstioIngressIdentifier(prefix, baseDtab, namespace, k8sApiserverClient.newService(dst), IngressAnnotationClass, mkRouteCache(host, port), mkClusterCache(discoveryHost, discoveryPort))
+    new IstioIngressIdentifier(
+      prefix,
+      baseDtab,
+      namespace,
+      k8sApiserverClient.newService(dst),
+      IngressAnnotationClass,
+      mkRouteCache(host, port),
+      mkClusterCache(discoveryHost, discoveryPort),
+      mkMixerClient(mixerHost, mixerPort)
+    )
   }
 
 }

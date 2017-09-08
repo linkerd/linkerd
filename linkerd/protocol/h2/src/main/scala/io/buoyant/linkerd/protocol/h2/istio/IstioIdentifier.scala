@@ -7,13 +7,17 @@ import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio._
+import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.H2IdentifierConfig
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory.{BaseDtab, DstPrefix, IdentifiedRequest, Identifier, RequestIdentification}
 import istio.proxy.v1.config.HTTPRedirect
 
-class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab, val routeCache: RouteCache, val clusterCache: ClusterCache)
+class IstioIdentifier(val pfx: Path, baseDtab: () => Dtab,
+  val routeCache: RouteCache,
+  val clusterCache: ClusterCache,
+  val mixerClient: MixerClient)
   extends Identifier[Request] with IstioIdentifierBase[Request] {
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
@@ -42,7 +46,9 @@ case class IstioIdentifierConfig(
   discoveryHost: Option[String],
   discoveryPort: Option[Port],
   apiserverHost: Option[String],
-  apiserverPort: Option[Port]
+  apiserverPort: Option[Port],
+  mixerHost: Option[String],
+  mixerPort: Option[Port]
 ) extends H2IdentifierConfig with IstioConfigurator {
 
   @JsonIgnore
@@ -51,7 +57,13 @@ case class IstioIdentifierConfig(
     val DstPrefix(prefix) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
 
-    new IstioIdentifier(prefix, baseDtab, mkRouteCache(apiserverHost, apiserverPort), mkClusterCache(discoveryHost, discoveryPort))
+    new IstioIdentifier(
+      prefix,
+      baseDtab,
+      mkRouteCache(apiserverHost, apiserverPort),
+      mkClusterCache(discoveryHost, discoveryPort),
+      mkMixerClient(mixerHost, mixerPort)
+    )
   }
 }
 

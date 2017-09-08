@@ -18,6 +18,8 @@ class IstioIdentifierTest extends FunSuite with Awaits {
       s"""|kind: io.l5d.k8s.istio
           |discoveryHost: myHost
           |discoveryPort: 9999
+          |mixerPort: 8080
+          |mixerHost: mixer-2
           |""".stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(IstioIdentifierInitializer)))
@@ -25,6 +27,8 @@ class IstioIdentifierTest extends FunSuite with Awaits {
 
     assert(config.discoveryHost == Some("myHost"))
     assert(config.discoveryPort == Some(Port(9999)))
+    assert(config.mixerHost == Some("mixer-2"))
+    assert(config.mixerPort == Some(Port(8080)))
   }
 }
 

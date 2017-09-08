@@ -37,8 +37,7 @@ class MixerClient(client: Mixer) {
     sourceLabel: SourceLabelIstioAttribute,
     targetLabel: TargetLabelsIstioAttribute,
     duration: ResponseDurationIstioAttribute
-  ): Stream[ReportResponse] = {
-    //TODO: return type should be Future[Unit]?
+  ): Future[Unit] = {
 
     val reportRequest = MixerApiRequests.mkReportRequest(
       responseCode,
@@ -50,10 +49,11 @@ class MixerClient(client: Mixer) {
     )
     log.trace("MixerClient.report: %s", reportRequest)
     client.report(Stream.value(reportRequest))
+    Future.Done
   }
 
   //TODO: doc
-  def checkPrecodnitions(istioRequest: IstioRequest): Future[MixerCheckStatus] = {
+  def checkPreconditions(istioRequest: IstioRequest): Future[MixerCheckStatus] = {
     val checkRequest = MixerApiRequests.mkCheckRequest(istioRequest)
     log.trace("MixerClient.check: %s", checkRequest)
 

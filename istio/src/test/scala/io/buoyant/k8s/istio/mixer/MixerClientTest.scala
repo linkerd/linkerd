@@ -56,7 +56,7 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     val mixerClient = new MixerClient(service)
     assert(calls == 0)
 
-    val rsp = await(mixerClient.checkPrecodnitions(
+    val rsp = await(mixerClient.checkPreconditions(
       IstioRequest(
         "/users/23",
         "http",
@@ -88,7 +88,7 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     val mixerClient = new MixerClient(service)
     assert(calls == 0)
 
-    val rsp = await(mixerClient.checkPrecodnitions(
+    val rsp = await(mixerClient.checkPreconditions(
       IstioRequest(
         "/users/23",
         "http",
@@ -118,7 +118,7 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     val mixerClient = new MixerClient(service)
     assert(calls == 0)
 
-    val rsp = await(mixerClient.checkPrecodnitions(
+    val rsp = await(mixerClient.checkPreconditions(
       IstioRequest(
         "/users/23",
         "http",

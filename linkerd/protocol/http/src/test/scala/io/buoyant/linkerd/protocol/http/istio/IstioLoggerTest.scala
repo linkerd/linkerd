@@ -4,11 +4,10 @@ import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Service, Stack}
 import com.twitter.util.Future
-import io.buoyant.grpc.runtime.Stream
 import io.buoyant.k8s.istio._
 import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.test.Awaits
-import istio.mixer.v1.{Mixer, ReportResponse}
+import istio.mixer.v1.Mixer
 import org.scalatest.FunSuite
 
 class IstioLoggerTest extends FunSuite with Awaits {
@@ -23,9 +22,9 @@ class IstioLoggerTest extends FunSuite with Awaits {
       sourceLabel: SourceLabelIstioAttribute,
       targetLabel: TargetLabelsIstioAttribute,
       duration: ResponseDurationIstioAttribute
-    ): Stream[ReportResponse] = {
+    ): Future[Unit] = {
       reports += 1
-      Stream.value(ReportResponse())
+      Future.Done
     }
   }
   val mixerClient = new MockMixerClient()
