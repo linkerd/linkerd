@@ -6,9 +6,8 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util._
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.mixer.MixerClient
-import io.buoyant.k8s.istio.{IstioConfigurator, IstioLoggerBase}
+import io.buoyant.k8s.istio.{IstioConfigurator, IstioLoggerBase, _}
 import io.buoyant.linkerd.LoggerInitializer
-import io.buoyant.k8s.istio._
 import io.buoyant.linkerd.protocol.HttpLoggerConfig
 
 class IstioLogger(val mixerClient: MixerClient, params: Stack.Params) extends Filter[Request, Response, Request, Response] with IstioLoggerBase {

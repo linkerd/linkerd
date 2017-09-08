@@ -9,6 +9,7 @@ import io.buoyant.test.{Awaits, Exceptions}
 import istio.mixer.v1._
 import org.scalatest.FunSuite
 import com.google.rpc.StatusProto
+import com.twitter.finagle.http.Request
 
 class MixerClientTest extends FunSuite with Awaits with Exceptions {
 
@@ -56,13 +57,15 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     val mixerClient = new MixerClient(service)
     assert(calls == 0)
 
+    val req = Request()
     val rsp = await(mixerClient.checkPreconditions(
-      IstioRequest(
+      IstioRequest[Request](
         "/users/23",
         "http",
         "POST",
         "localhost",
-        (_) => None
+        (_) => None,
+        req
       )
     ))
 
@@ -94,7 +97,8 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
         "http",
         "POST",
         "localhost",
-        (_) => None
+        (_) => None,
+        Request()
       )
     ))
 
@@ -124,7 +128,8 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
         "http",
         "POST",
         "localhost",
-        (_) => None
+        (_) => None,
+        Request()
       )
     ))
 

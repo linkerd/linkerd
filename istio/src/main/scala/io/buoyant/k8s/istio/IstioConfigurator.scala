@@ -1,10 +1,10 @@
 package io.buoyant.k8s.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Address, Name}
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.param.Label
+import com.twitter.finagle.{Address, Name}
 import com.twitter.logging.Logger
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.ClientConfig

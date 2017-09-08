@@ -8,7 +8,7 @@ trait IstioLoggerBase {
   def mixerClient: MixerClient
 
   //def report(istioPath: Option[Path], responseCode: Int, path: String, duration: Duration) = {
-  def report(request: IstioRequest, response: IstioResponse, duration: Duration) = {
+  def report(request: IstioRequest[_], response: IstioResponse, duration: Duration) = {
 
     mixerClient.report(
       response.responseCode,

@@ -4,7 +4,6 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.util.LoadService
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.istio._
 import io.buoyant.linkerd.LoggerInitializer
 import io.buoyant.linkerd.protocol.HttpLoggerConfig
 import io.buoyant.test.Awaits

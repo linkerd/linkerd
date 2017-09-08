@@ -3,6 +3,7 @@ package io.buoyant.k8s.istio.mixer
 import java.util.concurrent.TimeUnit
 
 import com.google.local.DurationProto.{Duration => GDuration}
+import com.twitter.finagle.http.Request
 import com.twitter.util.Duration
 import io.buoyant.k8s.istio._
 import istio.mixer.v1._
@@ -64,7 +65,8 @@ class MixerApiRequestsTest extends FunSuite {
       "http",
       "POST",
       "clientsvc",
-      (_) => None
+      (_) => None,
+      Request()
     )
     val checkRequest = MixerApiRequests.mkCheckRequest(istioRequest)
 
@@ -77,7 +79,8 @@ class MixerApiRequestsTest extends FunSuite {
       "http",
       "POST",
       "clientsvc",
-      (_) => None
+      (_) => None,
+      Request()
     )
     val reportRequest = MixerApiRequests.mkCheckRequest(istioRequest)
 

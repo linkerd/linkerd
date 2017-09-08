@@ -7,7 +7,7 @@ import com.twitter.util.{Future, Return, Throw}
 import io.buoyant.grpc.runtime.GrpcStatus.Unknown
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
 import io.buoyant.k8s.istio._
-import istio.mixer.v1.{CheckResponse, Mixer, ReportResponse}
+import istio.mixer.v1.{CheckResponse, Mixer}
 
 case class MixerCheckStatus(grpcStatus: GrpcStatus) {
   def success = grpcStatus match {
@@ -53,7 +53,7 @@ class MixerClient(client: Mixer) {
   }
 
   //TODO: doc
-  def checkPreconditions(istioRequest: IstioRequest): Future[MixerCheckStatus] = {
+  def checkPreconditions(istioRequest: IstioRequest[_]): Future[MixerCheckStatus] = {
     val checkRequest = MixerApiRequests.mkCheckRequest(istioRequest)
     log.trace("MixerClient.check: %s", checkRequest)
 

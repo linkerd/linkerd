@@ -8,7 +8,6 @@ import io.buoyant.linkerd.LoggerInitializer
 import io.buoyant.linkerd.protocol.h2.H2LoggerConfig
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
-import io.buoyant.k8s.istio._
 
 class IstioLoggerConfigTest extends FunSuite with Awaits {
   test("sanity") {
