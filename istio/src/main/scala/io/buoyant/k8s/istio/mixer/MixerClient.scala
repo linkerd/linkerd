@@ -59,8 +59,14 @@ class MixerClient(client: Mixer) {
 
     client.check(Stream.value(checkRequest)).recv().transform {
       case Return(stream) => mkStatus(stream)
-      case Throw(e) => log.error(e, "Error checking Mixer pre-conditions"); Future.value(MixerCheckStatus(codeUsedWhenUnknownStatus))
+      case Throw(e) => handleExceptionInPreconditionCheck(e)
     }
+  }
+
+  private def handleExceptionInPreconditionCheck(e: Throwable) = {
+    //TODO: Consider making this behaviour configurable, as per https://github.com/istio/mixerclient/blob/13460a96b4b3aa792ad47817d4fbf529b63c25e2/src/check_cache.cc#L163
+    log.error(e, "Error checking Mixer pre-conditions");
+    Future.value(MixerCheckStatus(codeUsedWhenUnknownStatus))
   }
 
   private[this] def mkStatus(stream: Stream.Releasable[CheckResponse]) = {
