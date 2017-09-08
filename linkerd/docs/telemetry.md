@@ -11,7 +11,7 @@ regardless of kind. Telemeters may also have kind-specific parameters.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), or [`io.l5d.zipkin`](#zipkin-telemeter).
+kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.influxdb`](#influxdb), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), or [`io.l5d.zipkin`](#zipkin-telemeter).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## Prometheus
