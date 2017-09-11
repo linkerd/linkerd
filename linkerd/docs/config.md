@@ -81,7 +81,7 @@ via a top-level `admin` section.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | `0.0.0.0` | IP for the admin interface.
+ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configures admin to listen on all local IPv4 interfaces.
 port | `9990` | Port for the admin interface.
 httpIdentifierPort | none | Port for the http identifier debug endpoint.
 tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
