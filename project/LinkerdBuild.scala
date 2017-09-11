@@ -32,13 +32,19 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  lazy val istio = projectDir("istio")
+  lazy val istioProto = projectDir("istio-proto")
     .withLibs(Deps.jackson)
     .withGrpc
     .withTests()
 
+  lazy val istio = projectDir("istio")
+    .dependsOn(k8s, Namer.core, istioProto)
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core, istio)
+    .dependsOn(Namer.core, istioProto)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -135,6 +141,10 @@ object LinkerdBuild extends Base {
       .dependsOn(LinkerdBuild.k8s, core)
       .withTests()
 
+    val istio = projectDir("namer/istio")
+      .dependsOn(LinkerdBuild.istio, core)
+      .withTests()
+
     val marathon = projectDir("namer/marathon")
       .dependsOn(LinkerdBuild.marathon, core)
       .withLib(Deps.jwt)
@@ -150,7 +160,8 @@ object LinkerdBuild extends Base {
       .withLib(Deps.zkCandidate)
       .withTests()
 
-    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, marathon, serversets, zkLeader)
+    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader)
+
   }
 
   val admin = projectDir("admin")
@@ -448,6 +459,10 @@ object LinkerdBuild extends Base {
         .dependsOn(Namer.core, LinkerdBuild.k8s, perHost, subnet)
         .withTests()
 
+    val istio = projectDir("interpreter/istio")
+      .dependsOn(Namer.core, LinkerdBuild.istio, perHost, subnet)
+      .withTests()
+
     val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
   }
 
@@ -479,7 +494,7 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, k8s, Finagle.h2 % "test->test;e2e->test")
+        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test")
         .withTests().withE2e()
         .withGrpc
         .withTwitterLibs(Deps.finagle("netty4"))
@@ -489,8 +504,8 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
-          k8s,
           istio,
+          istioProto,
           failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",
@@ -578,8 +593,8 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv,
-      Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
@@ -672,6 +687,7 @@ object LinkerdBuild extends Base {
   val namerDnsSrv = Namer.dnssrv
   val namerFs = Namer.fs
   val namerK8s = Namer.k8s
+  val namerIstio = Namer.istio
   val namerMarathon = Namer.marathon
   val namerServersets = Namer.serversets
   val namerZkLeader = Namer.zkLeader
@@ -696,6 +712,7 @@ object LinkerdBuild extends Base {
   val interpreter = Interpreter.all
   val interpreterFs = Interpreter.fs
   val interpreterK8s = Interpreter.k8s
+  val interpreterIstio = Interpreter.istio
   val interpreterMesh = Interpreter.mesh
   val interpreterNamerd = Interpreter.namerd
   val interpreterPerHost = Interpreter.perHost
@@ -729,6 +746,7 @@ object LinkerdBuild extends Base {
       etcd,
       k8s,
       istio,
+      istioProto,
       marathon,
       testUtil,
       Finagle.all,

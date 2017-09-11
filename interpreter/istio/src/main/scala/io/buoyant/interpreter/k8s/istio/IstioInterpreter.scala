@@ -1,4 +1,4 @@
-package io.buoyant.interpreter.k8s
+package io.buoyant.interpreter.k8s.istio
 
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
