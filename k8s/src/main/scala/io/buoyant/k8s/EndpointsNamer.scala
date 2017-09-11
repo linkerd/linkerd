@@ -151,13 +151,13 @@ abstract class EndpointsNamer(
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
                 logEvent.addition(newMap -- oldMap.keys)
-                oldMap ++ newMap
+                newMap
               case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
                 logEvent.addition(newMap -- oldMap.keys)
                 logEvent.deletion(oldMap -- newMap.keys)
                 logEvent.modification(oldMap, newMap)
-                oldMap ++ newMap
+                newMap
               case (oldMap, v1.ServiceDeleted(_)) =>
                 logEvent.deletion(oldMap)
                 Map.empty
@@ -291,10 +291,7 @@ object EndpointsNamer {
             update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keys)
-          this.copy(
-            endpoints = endpoints ++ newEndpoints,
-            ports = ports ++ newPorts
-          )
+          this.copy(endpoints = newEndpoints, ports = newPorts)
         case v1.EndpointsModified(update) =>
           val (newEndpoints, newPorts: Map[String, Int]) =
             update.subsets.toEndpointsAndPorts
