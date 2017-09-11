@@ -3,8 +3,13 @@ package io.buoyant.k8s.istio
 import com.twitter.logging.Logger
 import com.twitter.util.{Closable, Future, Time}
 
-class ClusterCache(client: DiscoveryClient) extends Closable {
-  import ClusterCache._
+case class Cluster(dest: String, port: String)
+
+trait ClusterCache extends Closable {
+  def get(domain: String): Future[Option[Cluster]]
+}
+
+class ClusterCacheBackedByApi(client: DiscoveryClient) extends ClusterCache {
 
   private[this] val log = Logger()
 
@@ -30,8 +35,4 @@ class ClusterCache(client: DiscoveryClient) extends Closable {
   private[this] val closable = clusters.states.respond(_ => ())
 
   override def close(deadline: Time): Future[Unit] = closable.close(deadline)
-}
-
-object ClusterCache {
-  case class Cluster(dest: String, port: String)
 }

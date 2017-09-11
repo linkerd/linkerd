@@ -1,11 +1,14 @@
 package io.buoyant.k8s.istio.identifiers
 
+import com.twitter.logging.Logger
 import io.buoyant.k8s.istio.IstioRequest
 import istio.proxy.v1.config.StringMatch.OneofMatchType
 import istio.proxy.v1.config.{HTTPRewrite, MatchCondition, RouteRule, StringMatch}
 
 trait IstioIdentifierBase[Req] {
+  protected val log = Logger(getClass.getName)
 
+  //TODO: extract these to routescache (make it RoutesRepository?) and test these combinations there
   def maxPrecedenceRule(rules: Seq[(String, RouteRule)]): Option[(String, RouteRule)] = {
     if (rules.isEmpty) {
       None

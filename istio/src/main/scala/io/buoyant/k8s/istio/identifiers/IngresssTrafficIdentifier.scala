@@ -4,7 +4,7 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.{Future, Try}
 import io.buoyant.k8s.IngressPath
-import io.buoyant.k8s.istio.ClusterCache.Cluster
+import io.buoyant.k8s.istio.Cluster
 import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.k8s.istio.{ClusterCache, IstioRequest, RouteCache}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
@@ -26,11 +26,14 @@ class IngresssTrafficIdentifier[Req](
         val clusterName = s"${ingressPath.svc}.${ingressPath.namespace}.svc.cluster.local"
 
         // use clusterCache to transform any port Int into a port name
+        //TODO: make this not use exceptions for conditional logic
         val portName = Try(ingressPath.port.toInt).toOption match {
-          case Some(portNumber) => clusterCache.get(s"$clusterName:$portNumber").map {
-            case Some(Cluster(_, p)) => Some(p)
-            case None => None
-          }
+          case Some(portNumber) =>
+            clusterCache.
+              get(s"$clusterName:$portNumber").map {
+                case Some(Cluster(_, p)) => Some(p)
+                case None => None
+              }
           case None => Future.value(Some(ingressPath.port))
         }
 

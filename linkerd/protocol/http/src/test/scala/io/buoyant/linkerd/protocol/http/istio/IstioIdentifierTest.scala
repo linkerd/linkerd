@@ -176,9 +176,9 @@ class IstioIdentifierTest extends FunSuite with Awaits {
   }
 
   val client = new ApiserverClient(pilotService, 5.seconds)
-  val routeCache = new RouteCache(client)
+  val routeCache = new RouteCacheBackedByApi(client)
   val discoveryClient = new DiscoveryClient(clusterService, 5.seconds)
-  val clusterCache = new ClusterCache(discoveryClient)
+  val clusterCache = new ClusterCacheBackedByApi(discoveryClient)
 
   val noOpMixerClient = new MixerClient(null) {
     override def report(

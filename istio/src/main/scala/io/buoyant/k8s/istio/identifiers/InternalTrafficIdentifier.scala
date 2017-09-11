@@ -3,7 +3,7 @@ package io.buoyant.k8s.istio.identifiers
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
-import io.buoyant.k8s.istio.ClusterCache.Cluster
+import io.buoyant.k8s.istio.Cluster
 import io.buoyant.k8s.istio.mixer.MixerClient
 import io.buoyant.k8s.istio.{ClusterCache, IstioRequest, RouteCache}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification}

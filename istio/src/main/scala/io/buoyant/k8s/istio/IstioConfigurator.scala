@@ -43,7 +43,7 @@ trait IstioConfigurator {
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
     )
 
-    new ClusterCache(discoveryClient)
+    new ClusterCacheBackedByApi(discoveryClient)
   }
 }
 
