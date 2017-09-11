@@ -58,23 +58,18 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
    * Connection errors
    */
 
-  // private[this] def goAwayFrame(err: GoAway): Http2GoAwayFrame = {
-  //   val code = err match {
-  //     case GoAway.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
-  //     case GoAway.InternalError => Http2Error.INTERNAL_ERROR
-  //     case GoAway.NoError => Http2Error.NO_ERROR
-  //     case GoAway.ProtocolError => Http2Error.PROTOCOL_ERROR
-  //   }
-  //   new DefaultHttp2GoAwayFrame(code)
-  // }
+  private[this] def goAwayFrame(err: GoAway): Http2GoAwayFrame = {
+    val code = err match {
+      case GoAway.EnhanceYourCalm => Http2Error.ENHANCE_YOUR_CALM
+      case GoAway.InternalError => Http2Error.INTERNAL_ERROR
+      case GoAway.NoError => Http2Error.NO_ERROR
+      case GoAway.ProtocolError => Http2Error.PROTOCOL_ERROR
+    }
+    new DefaultHttp2GoAwayFrame(code)
+  }
 
   override def goAway(err: GoAway, deadline: Time): Future[Unit] = {
-    // XXX Our version of netty has a bug that prevents us from
-    // sending AWAYs, so just close until that's fixed.
-    // See: https://github.com/netty/netty/issues/5307
-    //write(goAwayFrame(err))
-
-    close(deadline)
+    write(goAwayFrame(err)).flatMap { _ => close(deadline) }
   }
 }
 
