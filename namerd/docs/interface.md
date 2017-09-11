@@ -30,7 +30,7 @@ destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
 port | `4100` | The port number on which to serve the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
@@ -56,7 +56,7 @@ this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | `0.0.0.0` | The local IP address on which to serve the namer interface.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
 port | `4321` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
@@ -73,7 +73,7 @@ destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | loopback | The local IP address on which to serve the namer interface.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
 port | `4180` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
