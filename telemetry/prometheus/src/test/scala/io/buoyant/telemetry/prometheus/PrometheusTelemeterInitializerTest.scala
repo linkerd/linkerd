@@ -11,6 +11,7 @@ class PrometheusTelemeterInitializerTest extends FunSuite {
   test("io.l5d.prometheus telemeter loads") {
     val yaml =
       """|kind: io.l5d.prometheus
+         |path: /metrics
          |""".stripMargin
 
     val config = Parser.objectMapper(yaml, Seq(LoadService[TelemeterInitializer]))
