@@ -68,7 +68,7 @@ package object k8s {
       // the current inner Var, null if the outer Var is None
       @volatile var current: VarUp[T] = null
 
-      unstable.run.changes.respond {
+      unstable.states.respond {
         case Activity.Ok(Some(t)) if current == null =>
           // T created
           current = Var(t)
