@@ -646,11 +646,12 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   // reproduction for Linkerd issue #1626
   object Rsps1626 {
-    val Init = Buf.Utf8 (
+    val Init = Buf.Utf8(
       """{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"world-v1","namespace":"liza1626","selfLink":"/api/v1/namespaces/liza1626/endpoints/world-v1","uid":"38358c99-97c7-11e7-9078-42010af00004","resourceVersion":"61412986","creationTimestamp":"2017-09-12T14:32:35Z"},"subsets":[{"addresses":[{"ip":"10.196.5.84","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-1mkr7","uid":"0d893850-9806-11e7-9078-42010af00004","resourceVersion":"61412979"}},{"ip":"10.196.5.85","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-vd6dg","uid":"0d89460f-9806-11e7-9078-42010af00004","resourceVersion":"61412980"}},{"ip":"10.196.5.86","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-z86bg","uid":"0d894db8-9806-11e7-9078-42010af00004","resourceVersion":"61412983"}}],"ports":[{"name":"http","port":7778,"protocol":"TCP"}]}]}"""
     )
     val InitWatch = Buf.Utf8(
-      """{"type":"ADDED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"world-v1","namespace":"liza1626","selfLink":"/api/v1/namespaces/liza1626/endpoints/world-v1","uid":"38358c99-97c7-11e7-9078-42010af00004","resourceVersion":"61412986","creationTimestamp":"2017-09-12T14:32:35Z"},"subsets":[{"addresses":[{"ip":"10.196.5.84","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-1mkr7","uid":"0d893850-9806-11e7-9078-42010af00004","resourceVersion":"61412979"}},{"ip":"10.196.5.85","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-vd6dg","uid":"0d89460f-9806-11e7-9078-42010af00004","resourceVersion":"61412980"}},{"ip":"10.196.5.86","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-z86bg","uid":"0d894db8-9806-11e7-9078-42010af00004","resourceVersion":"61412983"}}],"ports":[{"name":"http","port":7778,"protocol":"TCP"}]}]}}""")
+      """{"type":"ADDED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"world-v1","namespace":"liza1626","selfLink":"/api/v1/namespaces/liza1626/endpoints/world-v1","uid":"38358c99-97c7-11e7-9078-42010af00004","resourceVersion":"61412986","creationTimestamp":"2017-09-12T14:32:35Z"},"subsets":[{"addresses":[{"ip":"10.196.5.84","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-1mkr7","uid":"0d893850-9806-11e7-9078-42010af00004","resourceVersion":"61412979"}},{"ip":"10.196.5.85","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-vd6dg","uid":"0d89460f-9806-11e7-9078-42010af00004","resourceVersion":"61412980"}},{"ip":"10.196.5.86","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-z86bg","uid":"0d894db8-9806-11e7-9078-42010af00004","resourceVersion":"61412983"}}],"ports":[{"name":"http","port":7778,"protocol":"TCP"}]}]}}"""
+    )
     val BeforeScaleDown = Buf.Utf8(
       """{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"world-v1","namespace":"liza1626","selfLink":"/api/v1/namespaces/liza1626/endpoints/world-v1","uid":"38358c99-97c7-11e7-9078-42010af00004","resourceVersion":"61492813","creationTimestamp":"2017-09-12T14:32:35Z"},"subsets":[{"addresses":[{"ip":"10.196.5.84","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-1mkr7","uid":"0d893850-9806-11e7-9078-42010af00004","resourceVersion":"61412979"}},{"ip":"10.196.5.85","nodeName":"gke-hosted-n1-standard-32-pool-3-c58b8cde-jpvz","targetRef":{"kind":"Pod","namespace":"liza1626","name":"world-v1-vd6dg","uid":"0d89460f-9806-11e7-9078-42010af00004","resourceVersion":"61412980"}}],"ports":[{"name":"http","port":7778,"protocol":"TCP"}]}]}}"""
     )
@@ -1057,22 +1058,6 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         rsp.setChunked(true)
 
         writer = rsp.writer
-//        val init = writer.write(Rsps1626.InitWatch)
-//        init.onSuccess{ _ => val _ = didInit.setDone() }
-
-//        init before {
-//          doScaleDown before {
-//            val scaleDown = writer.write(Rsps1626.BeforeScaleDown) before
-//              writer.write(Rsps1626.ScaleDown)
-//            scaleDown onSuccess { _ => val _ = didScaleDown.setDone() }
-//            scaleDown before {
-//              doScaleUp before
-//                writer.write(Rsps1626.ScaleUp1) before
-//                writer.write(Rsps1626.ScaleUp2) before
-//                writer.write(Rsps1626.ScaleUp3)
-//            }
-//          }
-//        }
 
         Future.value(rsp)
     }
@@ -1118,6 +1103,68 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     await(writer.write(Rsps1626.ScaleUp3))
     withClue("after scale up") {
       assert(addrs == Set(Address("10.196.5.87", 7778), Address("10.196.5.88", 7778), Address("10.196.5.89", 7778)))
+    }
+  }
+
+  test("existing Vars are updated when a service goes away and comes back") {
+    // linkerd #1626 reproduction
+    @volatile var writer: Writer = null
+
+    val service = Service.mk[Request, Response] {
+      case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
+        val rsp = Response()
+        rsp.content = Rsps1626.Init
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/liza1626/endpoints/world-v1") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+
+        writer = rsp.writer
+
+        Future.value(rsp)
+    }
+    val api = v1.Api(service)
+    val timer = new MockTimer
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+
+    val activity = namer.lookup(Path.read("/liza1626/http/world-v1"))
+
+    val _ = activity.states respond { s =>
+      state = s
+    }
+
+    def addrs(s: Activity.State[NameTree[Name]]) = s match {
+      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
+        bound.addr.sample() match {
+          case Addr.Bound(addrs, _) =>
+            addrs.map {
+              // discard metadata
+              case Address.Inet(inet, _) => Address(inet)
+              case a => a
+            }
+          case addr =>
+            throw new TestFailedException(
+              s"expected bound addr, got $addr", 1
+            )
+        }
+      case v =>
+        throw new TestFailedException(s"unexpected state: $v", 1)
+    }
+    await(writer.write(Rsps1626.InitWatch))
+    assert(addrs(state) == Set(Address("10.196.5.84", 7778), Address("10.196.5.85", 7778), Address("10.196.5.86", 7778)))
+    val theVar = state
+    await(writer.write(Rsps1626.BeforeScaleDown))
+    await(activity.toFuture)
+    await(writer.write(Rsps1626.ScaleDown))
+    withClue("after scale down") { assert(state == Activity.Ok(NameTree.Neg)) }
+
+    await(writer.write(Rsps1626.ScaleUp1))
+    await(writer.write(Rsps1626.ScaleUp2))
+    await(writer.write(Rsps1626.ScaleUp3))
+    withClue("after scale up") {
+      assert(addrs(theVar) == Set(Address("10.196.5.87", 7778), Address("10.196.5.88", 7778), Address("10.196.5.89", 7778)))
     }
   }
 }
