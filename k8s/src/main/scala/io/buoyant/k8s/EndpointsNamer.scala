@@ -233,7 +233,8 @@ abstract class EndpointsNamer(
         nsName,
         serviceName,
         state.toString,
-        state.hashCode)
+        state.hashCode
+      )
     }
     act
   }
