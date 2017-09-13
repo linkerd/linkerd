@@ -711,6 +711,17 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       case req if req.uri.startsWith(WatchPath) && !req.uri.contains("sessions") =>
         val rsp = Response()
         Future.value(rsp)
+      case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
+        val rsp = Response()
+        rsp.content = Rsps1626.Init
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/liza1626/endpoints/world-v1") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+
+        writer = rsp.writer
+
+        Future.value(rsp)
       case req =>
         // As a workaround for an issue where some tests would enter an
         // infinite retry loop rather than failing, manually throw a
@@ -1045,79 +1056,28 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   test("routes to new endpoints after scale down followed by scale up") {
     // linkerd #1626 reproduction
-    @volatile var writer: Writer = null
+    val _ = new Fixtures {
 
-    val service = Service.mk[Request, Response] {
-      case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
-        val rsp = Response()
-        rsp.content = Rsps1626.Init
-        Future.value(rsp)
-      case req if req.uri.startsWith("/api/v1/watch/namespaces/liza1626/endpoints/world-v1") =>
-        val rsp = Response()
-        rsp.setChunked(true)
+      override val name = "/liza1626/http/world-v1"
 
-        writer = rsp.writer
-//        val init = writer.write(Rsps1626.InitWatch)
-//        init.onSuccess{ _ => val _ = didInit.setDone() }
+      await(writer.write(Rsps1626.InitWatch))
+      assert(addrs == Set(Address("10.196.5.84", 7778), Address("10.196.5.85", 7778), Address("10.196.5.86", 7778)))
 
-//        init before {
-//          doScaleDown before {
-//            val scaleDown = writer.write(Rsps1626.BeforeScaleDown) before
-//              writer.write(Rsps1626.ScaleDown)
-//            scaleDown onSuccess { _ => val _ = didScaleDown.setDone() }
-//            scaleDown before {
-//              doScaleUp before
-//                writer.write(Rsps1626.ScaleUp1) before
-//                writer.write(Rsps1626.ScaleUp2) before
-//                writer.write(Rsps1626.ScaleUp3)
-//            }
-//          }
-//        }
+      await(writer.write(Rsps1626.BeforeScaleDown))
+      await(activity.toFuture)
+      await(writer.write(Rsps1626.ScaleDown))
 
-        Future.value(rsp)
-    }
-    val api = v1.Api(service)
-    val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+      withClue("after scale down") {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
 
-    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+      await(writer.write(Rsps1626.ScaleUp1))
+      await(writer.write(Rsps1626.ScaleUp2))
+      await(writer.write(Rsps1626.ScaleUp3))
 
-    val activity = namer.lookup(Path.read("/liza1626/http/world-v1"))
-
-    val _ = activity.states respond { s =>
-      state = s
-    }
-
-    def addrs = state match {
-      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
-        bound.addr.sample() match {
-          case Addr.Bound(addrs, _) =>
-            addrs.map {
-              // discard metadata
-              case Address.Inet(inet, _) => Address(inet)
-              case a => a
-            }
-          case addr =>
-            throw new TestFailedException(
-              s"expected bound addr, got $addr", 1
-            )
-        }
-      case v =>
-        throw new TestFailedException(s"unexpected state: $v", 1)
-    }
-    await(writer.write(Rsps1626.InitWatch))
-    assert(addrs == Set(Address("10.196.5.84", 7778), Address("10.196.5.85", 7778), Address("10.196.5.86", 7778)))
-
-    await(writer.write(Rsps1626.BeforeScaleDown))
-    await(activity.toFuture)
-    await(writer.write(Rsps1626.ScaleDown))
-    withClue("after scale down") { assert(state == Activity.Ok(NameTree.Neg)) }
-
-    await(writer.write(Rsps1626.ScaleUp1))
-    await(writer.write(Rsps1626.ScaleUp2))
-    await(writer.write(Rsps1626.ScaleUp3))
-    withClue("after scale up") {
-      assert(addrs == Set(Address("10.196.5.87", 7778), Address("10.196.5.88", 7778), Address("10.196.5.89", 7778)))
+      withClue("after scale up") {
+        assert(addrs == Set(Address("10.196.5.87", 7778), Address("10.196.5.88", 7778), Address("10.196.5.89", 7778)))
+      }
     }
   }
 }
