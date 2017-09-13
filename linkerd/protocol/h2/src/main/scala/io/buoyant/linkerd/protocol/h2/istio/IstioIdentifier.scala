@@ -23,7 +23,7 @@ class IstioIdentifier(
   val istioIdentifier = new InternalTrafficIdentifier[Request](pfx, baseDtab, routeCache, clusterCache, mixerClient, new H2IstioRequestHandler)
 
   override def apply(originalRequest: Request): Future[RequestIdentification[Request]] = {
-    val req = H2IstioRequest(originalRequest)
+    val req = H2IstioRequest(originalRequest, None)
     istioIdentifier.identify(req)
   }
 
@@ -36,7 +36,8 @@ case class IstioIdentifierConfig(
   apiserverPort: Option[Port],
   mixerHost: Option[String],
   mixerPort: Option[Port]
-) extends H2IdentifierConfig with IstioConfigurator {
+) extends H2IdentifierConfig {
+  import IstioServices._
 
   @JsonIgnore
   override def newIdentifier(params: Stack.Params) = {

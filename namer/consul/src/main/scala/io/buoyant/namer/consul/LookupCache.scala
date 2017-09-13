@@ -25,7 +25,6 @@ private[consul] class LookupCache(
   private[this] val lookupCounter = stats.counter("lookups")
   private[this] val serviceStats = SvcAddr.Stats(stats.scope("service"))
 
-
   private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
     untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
       case (dc, key, id, residual) =>

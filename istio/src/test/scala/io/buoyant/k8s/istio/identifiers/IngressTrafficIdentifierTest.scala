@@ -93,7 +93,8 @@ class IngressTrafficIdentifierTest extends FunSuite {
       "GET",
       "external-server-svc",
       (_) => None,
-      new StubRequest()
+      new StubRequest(),
+      None
     )
 
     await(ingressTrafficIdentifier.identify(istioRequestWithNoMatchingIngressRules, Future.value(None))) match {
@@ -109,7 +110,8 @@ class IngressTrafficIdentifierTest extends FunSuite {
       "GET",
       "unknown-server-svc",
       (_) => None,
-      new StubRequest()
+      new StubRequest(),
+      None
     )
 
     val ingressPathWithUnknownVhost = IngressPath(
@@ -133,7 +135,8 @@ class IngressTrafficIdentifierTest extends FunSuite {
       "GET",
       knownHost,
       (_) => None,
-      new StubRequest()
+      new StubRequest(),
+      None
     )
 
     val identificationDefaultPort = await(ingressTrafficIdentifier.identify(istioRequestWithNoMatchingRules, Future.value(Some(ingressPathWithKnownVhost)))) match {
@@ -151,7 +154,8 @@ class IngressTrafficIdentifierTest extends FunSuite {
       "GET",
       hostThatTriggersRules,
       (_) => None,
-      requestToBeRewritten
+      requestToBeRewritten,
+      None
     )
 
     val ingressPathWithRules = IngressPath(

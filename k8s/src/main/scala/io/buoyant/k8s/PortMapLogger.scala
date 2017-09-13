@@ -3,7 +3,7 @@ package io.buoyant.k8s
 import com.twitter.logging.Logger
 
 private[k8s] case class PortMapLogger(nsName: String, serviceName: String) {
-  def logDiff[A,B](oldPorts: Map[A, B], newPorts: Map[A, B]): Unit =
+  def logDiff[A, B](oldPorts: Map[A, B], newPorts: Map[A, B]): Unit =
     if (log.isLoggable(Logger.TRACE)) {
       for {
         port <- oldPorts.keySet
@@ -23,11 +23,12 @@ private[k8s] case class PortMapLogger(nsName: String, serviceName: String) {
             nsName, serviceName, port, oldValue
           )
       }
-      (newPorts -- oldPorts.keys).foreach { case (from, to) =>
-        log.trace(
-          "k8s ns %s service %s mapped port %s to %s",
-          nsName, serviceName, from, to
-        )
+      (newPorts -- oldPorts.keys).foreach {
+        case (from, to) =>
+          log.trace(
+            "k8s ns %s service %s mapped port %s to %s",
+            nsName, serviceName, from, to
+          )
       }
     }
 }

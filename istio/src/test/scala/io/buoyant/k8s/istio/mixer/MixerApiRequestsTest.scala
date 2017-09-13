@@ -66,7 +66,8 @@ class MixerApiRequestsTest extends FunSuite {
       "POST",
       "clientsvc",
       (_) => None,
-      Request()
+      Request(),
+      None
     )
     val checkRequest = MixerApiRequests.mkCheckRequest(istioRequest)
 
@@ -80,7 +81,8 @@ class MixerApiRequestsTest extends FunSuite {
       "POST",
       "clientsvc",
       (_) => None,
-      Request()
+      Request(),
+      None
     )
     val reportRequest = MixerApiRequests.mkCheckRequest(istioRequest)
 
@@ -102,7 +104,6 @@ class MixerApiRequestsTest extends FunSuite {
       reverseDictionary("version").head -> "unknown"
     ))
     assert(allAttributesSent(reverseDictionary("target.labels").head).asInstanceOf[StringMap].`map` == expectedTargetLabels.`map`)
-    pending // ("all these unknbowns?")
   }
 
   private def assertCanResolveAllAttributesInDictionary(updateBody: Option[Attributes]) = {
@@ -110,7 +111,7 @@ class MixerApiRequestsTest extends FunSuite {
     val attributes = updateBody.get
     val allAttributesSent = allUpdatedAttributesIn(attributes)
     val dictionarySent = attributes.`dictionary`
-    assert(allAttributesSent.keySet.subsetOf(dictionarySent.keySet))
+    assert(allAttributesSent.keySet.subsetOf(dictionarySent.keySet), s"All Attributes Sent: $allAttributesSent\nDictionary Sent: $dictionarySent")
   }
 
   private def allUpdatedAttributesIn(updateBody: Attributes) = {

@@ -31,7 +31,6 @@ case class ConfigMapInterpreterConfig(
   require(name != null, "ConfigMap name is required!")
   require(filename != null, "ConfigMap dtab filename is required!")
 
-
   @JsonIgnore
   override def experimentalRequired = true
 

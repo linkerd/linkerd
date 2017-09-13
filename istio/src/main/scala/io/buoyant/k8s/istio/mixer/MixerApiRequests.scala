@@ -6,12 +6,12 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.google.local.DurationProto.{Duration => GDuration}
 import com.twitter.util.Duration
-import io.buoyant.k8s.istio._
+import io.buoyant.k8s.istio.{StringAttribute, _}
 import istio.mixer.v1._
-
 import scala.io.Source
 
 object MixerApiRequests {
+  val requestIndexIsIrrelevant = Some(210283L)
 
   private[this] lazy val istioGlobalDict: Seq[String] = {
     val yaml = Source.fromInputStream(
@@ -37,15 +37,14 @@ object MixerApiRequests {
     val dictionary = mkDictionary(requestPath, targetService, sourceLabel, targetLabel)
 
     val updated = mkAttributesUpdate(dictionary, Seq(responseCode, requestPath, targetService, sourceLabel, targetLabel, duration))
-    ReportRequest(attributeUpdate = Some(updated))
+    ReportRequest(requestIndexIsIrrelevant, Some(updated))
   }
 
-  def mkCheckRequest(istioREquest: IstioRequest[_]) = {
-    val TODO = Some(1L)
-    val dictionary = mkDictionary(istioREquest.requestedPath, istioREquest.targetService, istioREquest.sourceLabel, istioREquest.targetLabel)
-    val requestAttributes = Seq(istioREquest.requestedPath, istioREquest.sourceLabel, istioREquest.targetLabel, istioREquest.targetService)
+  def mkCheckRequest(istioRequest: IstioRequest[_]) = {
+    val dictionary = mkDictionary(istioRequest.requestedPath, istioRequest.targetService, istioRequest.sourceLabel, istioRequest.targetLabel)
+    val requestAttributes = Seq(istioRequest.requestedPath, istioRequest.sourceLabel, istioRequest.targetLabel, istioRequest.targetService)
     val attributesUpdate = mkAttributesUpdate(dictionary, requestAttributes)
-    CheckRequest(TODO, Some(attributesUpdate))
+    CheckRequest(requestIndexIsIrrelevant, Some(attributesUpdate))
   }
 
   private def mkDictionary(
@@ -79,10 +78,10 @@ object MixerApiRequests {
     // and instead use positive index integers
     val dictionaryToUse = (istioGlobalDict ++ customAttributeNames).toSet.toSeq
 
-    val allStringAttributes = attributes.filter(_.attributeType == StringAttribute).map(_.asInstanceOf[IstioAttribute[String]])
-    val allInt64Attributes = attributes.filter(_.attributeType == Int64Attribute).map(_.asInstanceOf[IstioAttribute[Long]])
-    val allStringMapAttributes = attributes.filter(_.attributeType == StringMapAttribute).map(_.asInstanceOf[IstioAttribute[Map[String, String]]])
-    val allDurationAttributes = attributes.filter(_.attributeType == DurationAttribute).map(_.asInstanceOf[IstioAttribute[Duration]])
+    val allStringAttributes = attributes.collect { case attr: StringAttribute => attr }
+    val allInt64Attributes = attributes.collect { case attr: Int64Attribute => attr }
+    val allStringMapAttributes = attributes.collect { case attr: StringMapAttribute => attr }
+    val allDurationAttributes = attributes.collect { case attr: DurationAttribute => attr }
 
     Attributes(
       dictionary = (dictionaryToUse.indices.zip(dictionaryToUse)).toMap,

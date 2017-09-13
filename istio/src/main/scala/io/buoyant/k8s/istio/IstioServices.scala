@@ -1,20 +1,15 @@
 package io.buoyant.k8s.istio
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.H2
-import com.twitter.finagle.param.Label
 import com.twitter.finagle.{Address, Name}
 import com.twitter.logging.Logger
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.ClientConfig
 import io.buoyant.k8s.istio.mixer.MixerClient
 
-trait IstioConfigurator {
-  @JsonIgnore
-  protected val log = Logger.get(this.getClass.getSimpleName)
+object IstioServices {
+  protected val log = Logger()
 
-  protected def mkMixerClient(mixerHost: Option[String], mixerPort: Option[Port]) = {
+  def mkMixerClient(mixerHost: Option[String], mixerPort: Option[Port]): MixerClient = {
 
     val host = mixerHost.getOrElse(DefaultMixerHost)
 
@@ -31,13 +26,13 @@ trait IstioConfigurator {
     MixerClient(mixerService)
   }
 
-  protected def mkRouteCache(apiserverHost: Option[String], apiserverPort: Option[Port]) = {
+  def mkRouteCache(apiserverHost: Option[String], apiserverPort: Option[Port]): RouteCache = {
     val host = apiserverHost.getOrElse(DefaultApiserverHost)
     val port = apiserverPort.map(_.port).getOrElse(DefaultApiserverPort)
     RouteCache.getManagerFor(host, port)
   }
 
-  protected def mkClusterCache(discoveryHost: Option[String], discoveryPort: Option[Port]) = {
+  def mkClusterCache(discoveryHost: Option[String], discoveryPort: Option[Port]): ClusterCacheBackedByApi = {
     val discoveryClient = DiscoveryClient(
       discoveryHost.getOrElse(DefaultDiscoveryHost),
       discoveryPort.map(_.port).getOrElse(DefaultDiscoveryPort)
@@ -45,8 +40,4 @@ trait IstioConfigurator {
 
     new ClusterCacheBackedByApi(discoveryClient)
   }
-}
-
-trait IstioIngressConfigurator extends IstioConfigurator with ClientConfig {
-  protected def mkK8sApiClient() = mkClient(Params.empty).configured(Label("ingress-identifier"))
 }

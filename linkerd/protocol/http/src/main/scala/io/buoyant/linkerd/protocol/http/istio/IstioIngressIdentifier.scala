@@ -1,11 +1,13 @@
 package io.buoyant.linkerd.protocol.http.istio
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.http.Request
+import com.twitter.finagle.param.Label
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.IngressCache
+import io.buoyant.k8s.{ClientConfig, IngressCache}
 import io.buoyant.k8s.istio._
 import io.buoyant.k8s.istio.identifiers.{IngresssTrafficIdentifier, IstioProtocolSpecificRequestHandler}
 import io.buoyant.k8s.istio.mixer.MixerClient
@@ -29,7 +31,7 @@ class IstioIngressIdentifier(
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val matchingPath = ingressCache.matchPath(req.host, req.path)
-    internalIstioIdentifier.identify(HttpIstioRequest(req), matchingPath)
+    internalIstioIdentifier.identify(HttpIstioRequest(req, None), matchingPath)
   }
 
 }
@@ -44,7 +46,11 @@ case class IstioIngressIdentifierConfig(
   apiserverPort: Option[Port],
   mixerHost: Option[String],
   mixerPort: Option[Port]
-) extends HttpIdentifierConfig with IstioIngressConfigurator {
+) extends HttpIdentifierConfig with ClientConfig {
+  import IstioServices._
+
+  protected def mkK8sApiClient() = mkClient(Params.empty).configured(Label("ingress-identifier"))
+
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
 

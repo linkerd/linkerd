@@ -279,7 +279,6 @@ object EndpointsNamer {
       Some(endpoints.subsets.toEndpointsAndPorts)
   }
 
-
   private[EndpointsNamer] case class ServiceEndpoints(
     nsName: String,
     serviceName: String,
@@ -362,7 +361,6 @@ object EndpointsNamer {
           )
           this
       }
-
 
   }
 

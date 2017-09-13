@@ -14,10 +14,6 @@ class H2IstioResponseTest extends FunSuite {
       val istioResponse = H2IstioResponse(response, duration)
 
       assert(istioResponse.statusCode == httpResponse.status.code)
-
-      assert(istioResponse.targetService == TargetServiceIstioAttribute("unknown"))
-      assert(istioResponse.sourceLabel.value == SourceLabelIstioAttribute(Map("app" -> "unknown", "version" -> "unknown")).value)
-      assert(istioResponse.targetLabel.value == TargetLabelsIstioAttribute(Map("app" -> "unknown", "version" -> "unknown")).value)
       assert(istioResponse.duration == ResponseDurationIstioAttribute(duration).value)
     }
 
@@ -27,10 +23,6 @@ class H2IstioResponseTest extends FunSuite {
       val istioResponse = H2IstioResponse(response, duration)
 
       assert(istioResponse.statusCode == Status.InternalServerError.code)
-
-      assert(istioResponse.targetService == TargetServiceIstioAttribute("unknown"))
-      assert(istioResponse.sourceLabel.value == SourceLabelIstioAttribute(Map("app" -> "unknown", "version" -> "unknown")).value)
-      assert(istioResponse.targetLabel.value == TargetLabelsIstioAttribute(Map("app" -> "unknown", "version" -> "unknown")).value)
       assert(istioResponse.duration == ResponseDurationIstioAttribute(duration).value)
     }
   }

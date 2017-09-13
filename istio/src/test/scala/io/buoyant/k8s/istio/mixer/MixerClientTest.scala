@@ -65,7 +65,8 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
         "POST",
         "localhost",
         (_) => None,
-        req
+        req,
+        None
       )
     ))
 
@@ -98,7 +99,8 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
         "POST",
         "localhost",
         (_) => None,
-        Request()
+        Request(),
+        None
       )
     ))
 
@@ -129,7 +131,8 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
         "POST",
         "localhost",
         (_) => None,
-        Request()
+        Request(),
+        None
       )
     ))
 

@@ -6,8 +6,8 @@ import com.twitter.util.{Duration, Try}
 import io.buoyant.k8s.istio.IstioResponse
 
 object H2IstioResponse {
-  def apply(resp: Try[Response], duration: Duration): IstioResponse = {
+  def apply(resp: Try[Response], duration: Duration): IstioResponse[Response] = {
     val maybeInt = resp.toOption.map(_.status.code)
-    new IstioResponse(maybeInt.getOrElse(Status.InternalServerError.code), duration)
+    new IstioResponse(maybeInt.getOrElse(Status.InternalServerError.code), duration, resp.toOption)
   }
 }

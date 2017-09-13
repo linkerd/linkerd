@@ -2,7 +2,7 @@ package io.buoyant.k8s.istio
 
 import com.twitter.util.Duration
 
-case class IstioResponse(statusCode: Int, duration: Duration) extends IstioDataFlow {
+case class IstioResponse[Resp](statusCode: Int, duration: Duration, resp: Option[Resp]) {
 
   def responseCode: ResponseCodeIstioAttribute = ResponseCodeIstioAttribute(statusCode)
 

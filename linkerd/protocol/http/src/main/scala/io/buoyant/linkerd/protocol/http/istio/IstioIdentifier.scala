@@ -23,7 +23,7 @@ class IstioIdentifier(
   val internalIstioIdentifier = new InternalTrafficIdentifier[Request](pfx, baseDtab, routeCache, clusterCache, mixerClient, new HttpIstioRequestHandler)
 
   override def apply(originalRequest: Request): Future[RequestIdentification[Request]] = {
-    val req = HttpIstioRequest(originalRequest)
+    val req = HttpIstioRequest(originalRequest, None)
     req.req.host match {
       case Some(host) => internalIstioIdentifier.identify(req)
       case None => throw new IllegalArgumentException("no host found for request")
@@ -38,7 +38,8 @@ case class IstioIdentifierConfig(
   apiserverPort: Option[Port],
   mixerHost: Option[String],
   mixerPort: Option[Port]
-) extends HttpIdentifierConfig with IstioConfigurator {
+) extends HttpIdentifierConfig {
+  import IstioServices._
 
   override def newIdentifier(
     prefix: Path,

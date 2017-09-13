@@ -81,7 +81,8 @@ class InternalTrafficIdentifierTest extends FunSuite {
       "GET",
       "external-server-svc",
       (_) => None,
-      new StubRequest()
+      new StubRequest(),
+      None
     )
 
     val istioRequestForUnknownAuthorityOnSpecificPort =
@@ -107,7 +108,8 @@ class InternalTrafficIdentifierTest extends FunSuite {
       "GET",
       "known-svc",
       (_) => None,
-      new StubRequest()
+      new StubRequest(),
+      None
     )
 
     val identificationDefaultPort = await(internalTrafficIdentifier.identify(istioRequestForUnknownAuthorityOnDefaultPort)) match {
@@ -125,7 +127,8 @@ class InternalTrafficIdentifierTest extends FunSuite {
       "GET",
       hostThatTriggersRules,
       (_) => None,
-      requestToBeRewritten
+      requestToBeRewritten,
+      None
     )
 
     val identificationDefaultPort = await(internalTrafficIdentifier.identify(istioRequestWithMatchingRules)) match {
