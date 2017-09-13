@@ -176,7 +176,7 @@ abstract class EndpointsNamer(
         mkApi(nsName)
           .endpoints(serviceName)
           .activity(
-            ServiceEndpoints.fromResponse(serviceName, nsName),
+            ServiceEndpoints.fromResponse(nsName, serviceName),
             labelSelector = labelSelector
           ) { case (cache, event) => cache.update(event) }
     })
@@ -224,9 +224,18 @@ abstract class EndpointsNamer(
     // `Activity[Option[Var[Set[Address]]]]`, where the outer `Activity` will
     // update if the `Option` changes, and the inner `Var` will update on
     // changes to the value of the set of `Address`es.
-    stabilize(unstable)
+    val act = stabilize(unstable)
       // convert the contents of the stable activity to a `NameTree`.
       .map { mkNameTree(id, residual) }
+    act.states.respond { state =>
+      log.trace(
+        "k8s ns %s svc %s activity updated to state %s (id: %s)",
+        nsName,
+        serviceName,
+        state.toString,
+        state.hashCode)
+    }
+    act
   }
 }
 
@@ -250,6 +259,7 @@ object EndpointsNamer {
     endpoints: Set[Endpoint],
     ports: PortMap
   ) {
+    log.debug("k8s ns %s svc %s constructed new ServiceEndpoints with:\n\tendpoints: %s\n\tports: %s", nsName, serviceName, endpoints, ports)
 
     def lookupNumberedPort(
       mappings: NumberedPortMap,
@@ -283,7 +293,7 @@ object EndpointsNamer {
         isa = new InetSocketAddress(ip, portNumber)
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
 
-    private[this] val logEvent = EventLogger(serviceName, nsName)
+    private[this] val logEvent = EventLogger(nsName, serviceName)
     def update(event: v1.EndpointsWatch): ServiceEndpoints =
       event match {
         case v1.EndpointsAdded(update) =>
@@ -291,7 +301,7 @@ object EndpointsNamer {
             update.subsets.toEndpointsAndPorts
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.addition(newPorts -- ports.keys)
-          this.copy(endpoints = newEndpoints, ports = newPorts)
+          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
         case v1.EndpointsModified(update) =>
           val (newEndpoints, newPorts: Map[String, Int]) =
             update.subsets.toEndpointsAndPorts
@@ -300,15 +310,12 @@ object EndpointsNamer {
           logEvent.addition(newPorts -- ports.keys)
           logEvent.deletion(ports -- newPorts.keys)
           logEvent.modification(ports, newPorts)
-          this.copy(endpoints = newEndpoints, ports = newPorts)
+          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
 
         case v1.EndpointsDeleted(_) =>
           logEvent.deletion(endpoints)
           logEvent.deletion(ports)
-          this.copy(
-            endpoints = Set.empty,
-            ports = Map.empty
-          )
+          ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
         case v1.EndpointsError(error) =>
           log.warning(
             "k8s ns %s service %s endpoints watch error %s",
