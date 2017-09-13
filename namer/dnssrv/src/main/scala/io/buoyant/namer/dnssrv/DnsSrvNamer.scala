@@ -65,7 +65,7 @@ class DnsSrvNamer(
 
   private def lookupSrv(address: String, id: Path, residual: Path): Future[NameTree[Name]] = {
     val question = DNS.Record.newRecord(
-      DNS.Name.fromString(address),
+      DNS.Name.fromString(address, DNS.Name.root),
       DNS.Type.SRV,
       DNS.DClass.IN
     )

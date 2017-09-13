@@ -623,7 +623,7 @@ dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to 
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
-address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup.
+address | yes | The absolute DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup.
 
 ## ZooKeeper Leader
 
