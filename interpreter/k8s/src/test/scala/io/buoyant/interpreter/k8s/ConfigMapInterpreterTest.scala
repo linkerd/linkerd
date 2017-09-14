@@ -247,4 +247,49 @@ class ConfigMapInterpreterTest extends FunSuite
     }
   }
 
+  test("modifying unrelated entry in ConfigMap doesn't change interpreter's dtab") {
+    val _ = new Fixtures {
+      await(activity.toFuture)
+      await(writer.write(Rsps.Added))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+      await(writer.write(Rsps.UnrelatedAdded))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+      await(writer.write(Rsps.UnrelatedRemoved))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+    }
+  }
+
+  test("writing a bad dtab causes interpreter to fall back to last dtab") {
+    val _ = new Fixtures {
+      await(activity.toFuture)
+      await(writer.write(Rsps.Added))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+      await(writer.write(Rsps.DtabModifiedBad))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+    }
+  }
+
+  test("dtab can still be updated after receiving a bad dtab update") {
+    // reproduction for issue where invalid Dtab updates prevented
+    // the interpreter from receiving future good updates (linkerd#1639)
+    val _ = new Fixtures {
+      await(activity.toFuture)
+      await(writer.write(Rsps.Added))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+      await(writer.write(Rsps.DtabModifiedBad))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+      await(writer.write(Rsps.DtabModified))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/ph=>/$/io.buoyant.rinet;/svc=>/ph/80;/svc=>/$/io.buoyant.porthostPfx/ph))")
+    }
+  }
+
+
 }
