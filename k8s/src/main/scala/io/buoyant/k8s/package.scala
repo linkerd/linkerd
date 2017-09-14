@@ -39,18 +39,24 @@ package object k8s {
     Var.async[Option[VarUp[T]]](init) { update =>
       // the current inner Var, null if the outer Var is None
       @volatile var current: VarUp[T] = null
-
+      @volatile var exists = false
       unstable.changes.respond {
         case Some(t) if current == null =>
           // T created
+          exists = true
           current = Var(t)
+          update() = Some(current)
+        case Some(t) if !exists =>
+          // T re-created
+          exists = true
+          current() = t
           update() = Some(current)
         case Some(t) =>
           // T modified
           current() = t
         case None =>
           // T deleted
-          current = null
+          exists = false
           update() = None
       }
     }
@@ -67,18 +73,24 @@ package object k8s {
     val inner = Var.async[Activity.State[Option[VarUp[T]]]](Activity.Pending) { update =>
       // the current inner Var, null if the outer Var is None
       @volatile var current: VarUp[T] = null
-
-      unstable.run.changes.respond {
+      @volatile var exists = false
+      unstable.states.respond {
         case Activity.Ok(Some(t)) if current == null =>
           // T created
           current = Var(t)
+          exists = true
+          update() = Activity.Ok(Some(current))
+        case Activity.Ok(Some(t)) if !exists =>
+          // T recreated
+          exists = true
+          current() = t
           update() = Activity.Ok(Some(current))
         case Activity.Ok(Some(t)) =>
           // T modified
           current() = t
         case Activity.Ok(None) =>
           // T deleted
-          current = null
+          exists = false
           update() = Activity.Ok(None)
         case Activity.Pending =>
           update() = Activity.Pending
