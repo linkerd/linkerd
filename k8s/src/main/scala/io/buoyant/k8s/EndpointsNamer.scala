@@ -224,19 +224,9 @@ abstract class EndpointsNamer(
     // `Activity[Option[Var[Set[Address]]]]`, where the outer `Activity` will
     // update if the `Option` changes, and the inner `Var` will update on
     // changes to the value of the set of `Address`es.
-    val act = stabilize(unstable)
+    stabilize(unstable)
       // convert the contents of the stable activity to a `NameTree`.
       .map { mkNameTree(id, residual) }
-    act.states.respond { state =>
-      log.trace(
-        "k8s ns %s svc %s activity updated to state %s (id: %s)",
-        nsName,
-        serviceName,
-        state.toString,
-        state.hashCode
-      )
-    }
-    act
   }
 }
 
