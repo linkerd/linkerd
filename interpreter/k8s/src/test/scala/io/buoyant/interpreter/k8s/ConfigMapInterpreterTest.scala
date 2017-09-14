@@ -1,30 +1,181 @@
 package io.buoyant.interpreter.k8s
 
+import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.{Dtab, Service}
+import com.twitter.finagle.{Dtab, Service, http}
 import com.twitter.finagle.util.LoadService
-import com.twitter.io.Writer
-import com.twitter.util.{Promise, Return}
+import com.twitter.io.{Buf, Writer}
+import com.twitter.util.{Activity, Future, Promise, Return}
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1
 import io.buoyant.k8s.v1.ConfigMap
-import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
-import io.buoyant.test.FunSuite
+import io.buoyant.namer.{ConfiguredDtabNamer, InterpreterConfig, InterpreterInitializer, RichActivity}
+import io.buoyant.test.{Awaits, FunSuite}
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.{Inside, OptionValues, TryValues}
 
 class ConfigMapInterpreterTest extends FunSuite
   with Inside
-  with TryValues {
+  with TryValues
+  with Awaits {
+
+  object Rsps {
+    val Get = Buf.Utf8(
+      """|{
+         |  "kind": "ConfigMap",
+         |  "apiVersion": "v1",
+         |  "metadata": {
+         |    "name": "test-config",
+         |    "namespace": "test",
+         |    "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |    "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |    "resourceVersion": "61622964",
+         |    "creationTimestamp": "2017-09-14T16:41:38Z"
+         |  },
+         |  "data": {
+         |    "test.dtab": "/svc =\u003e /$/inet/127.1/11111;\n"
+         |  }
+         |}
+         |""".stripMargin
+    )
+    val Added = Buf.Utf8(
+      """|{
+         |  "type": "ADDED",
+         |  "object": {
+         |    "kind": "ConfigMap",
+         |    "apiVersion": "v1",
+         |    "metadata": {
+         |      "name": "test-config",
+         |      "namespace": "test",
+         |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |      "resourceVersion": "61622964",
+         |      "creationTimestamp": "2017-09-14T16:41:38Z"
+         |    },
+         |    "data": {
+         |      "test.dtab": "/svc => /$/inet/127.1/11111;\n"
+         |    }
+         |  }
+         |}""".stripMargin
+    )
+    val UnrelatedAdded = Buf.Utf8(
+      """|{
+         |  "type": "MODIFIED",
+         |  "object": {
+         |    "kind": "ConfigMap",
+         |    "apiVersion": "v1",
+         |    "metadata": {
+         |      "name": "test-config",
+         |      "namespace": "test",
+         |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |      "resourceVersion": "61623524",
+         |      "creationTimestamp": "2017-09-14T16:41:38Z"
+         |    },
+         |    "data": {
+         |      "random.properties": "somethingUnrelated: true\n",
+         |      "test.dtab": "/svc => /$/inet/127.1/11111;\n"
+         |    }
+         |  }
+         |}""".stripMargin
+    )
+    val UnrelatedRemoved = Buf.Utf8(
+      """|{
+         |  "type": "MODIFIED",
+         |  "object": {
+         |    "kind": "ConfigMap",
+         |    "apiVersion": "v1",
+         |    "metadata": {
+         |      "name": "test-config",
+         |      "namespace": "test",
+         |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |      "resourceVersion": "61623643",
+         |      "creationTimestamp": "2017-09-14T16:41:38Z"
+         |    },
+         |    "data": {
+         |      "test.dtab": "/svc => /$/inet/127.1/11111;\n"
+         |    }
+         |  }
+         |}""".stripMargin
+    )
+
+    val DtabModified = Buf.Utf8(
+      """|{
+         |  "type": "MODIFIED",
+         |  "object": {
+         |    "kind": "ConfigMap",
+         |    "apiVersion": "v1",
+         |    "metadata": {
+         |      "name": "test-config",
+         |      "namespace": "test",
+         |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |      "resourceVersion": "61623848",
+         |      "creationTimestamp": "2017-09-14T16:41:38Z"
+         |    },
+         |    "data": {
+         |      "test.dtab": "/ph => /$/io.buoyant.rinet ;\n/svc => /ph/80 ;\n/svc => /$/io.buoyant.porthostPfx/ph\n"
+         |    }
+         |  }
+         |}""".stripMargin
+    )
+
+    val DtabModifiedBad = Buf.Utf8(
+      """|{
+         |  "type": "MODIFIED",
+         |  "object": {
+         |    "kind": "ConfigMap",
+         |    "apiVersion": "v1",
+         |    "metadata": {
+         |      "name": "test-config",
+         |      "namespace": "test",
+         |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
+         |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
+         |      "resourceVersion": "61623938",
+         |      "creationTimestamp": "2017-09-14T16:41:38Z"
+         |    },
+         |    "data": {
+         |      "test.dtab": "blargh im not a dtab!!!\n"
+         |    }
+         |  }
+         |}""".stripMargin
+    )
+  }
 
   trait Fixtures {
     @volatile var writer: Writer = null
-
     val service = Service.mk[Request, Response] {
-      ???
+      case req if req.uri.startsWith("/api/v1/namespaces/test/configmaps/test-config") =>
+        val rsp = Response()
+        rsp.content = Rsps.Get
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/test/configmaps/test-config") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+        writer = rsp.writer
+        Future.value(rsp)
+      case req =>
+        throw new TestFailedException(s"Unexpected request $req", 1)
     }
+    val api: () => v1.NsApi = { () => v1.Api(service).withNamespace("test") }
+    val cfg = ConfigMapInterpreterConfig(
+      None,
+      None,
+      Some("test"),
+      "test-config",
+      "test.dtab",
+      Some(api)
+    )
+    val interpreter = cfg.newInterpreter(Params.empty)
 
-    val api = v1.Api(service)
+    val activity = interpreter.asInstanceOf[ConfiguredDtabNamer].dtab
+    @volatile var state: Activity.State[Dtab] = Activity.Pending
+    activity.states.respond { s =>
+      log.info("%s", s)
+      state = s
+    }
   }
 
   test("interpreter registration") {
@@ -65,7 +216,7 @@ class ConfigMapInterpreterTest extends FunSuite
           |""".stripMargin
     val config = parse(yaml)
     val configMap = ConfigMap(Map[String, String]())
-    assert(config.getDtab(configMap).isEmpty)
+    assert(config.getDtab(configMap).asScala.success.value.isEmpty)
   }
 
   test("get non-empty dtab") {
@@ -83,5 +234,17 @@ class ConfigMapInterpreterTest extends FunSuite
     assert(config.getDtab(configMap) == Return(Dtab.read(dtab)))
   }
 
+  test("modifying dtab in ConfigMap changes interpreter's dtab") {
+    val _ = new Fixtures {
+      await(activity.toFuture)
+      await(writer.write(Rsps.Added))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/svc=>/$/inet/127.1/11111))")
+
+      await(writer.write(Rsps.DtabModified))
+      await(activity.toFuture)
+      assert(state.toString() == "Ok(Dtab(/ph=>/$/io.buoyant.rinet;/svc=>/ph/80;/svc=>/$/io.buoyant.porthostPfx/ph))")
+    }
+  }
 
 }
