@@ -55,39 +55,58 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   val act = api.configMap(name)
     .activity(extractDtab) {
-      (dtab, event) =>
+      (oldDtab, event) =>
         event match {
-          case ConfigMapAdded(a) => getDtab(a)
-          case ConfigMapModified(m) => getDtab(m)
+          // TODO: if the event doesn't update our dtab, don't update the activity?
+          case ConfigMapDtab(Return(newDtab)) => newDtab
+          case ConfigMapDtab(Throw(e)) =>
+            log.error("k8s ConfigMap %s error reading dtab '%s': %s", name, filename, e)
+            oldDtab
           case ConfigMapDeleted(_) =>
             log.warning(s"k8s ConfigMap $name was deleted!")
             Dtab.empty
           case ConfigMapError(e) =>
             log.error("k8s watch error: %s", e)
-            dtab
+            oldDtab
         }
     }
 
   @JsonIgnore
   @inline
   private[this] def extractDtab(response: Option[ConfigMap]): Dtab =
-    response.map(getDtab).getOrElse {
-      log.warning(s"K8s ConfigMap %s doesn't exist, assuming it will be created", name)
-      Dtab.empty
+    response.map(getDtab) match {
+      case Some(Return(dtab)) => dtab
+      case Some(Throw(e)) =>
+        log.error("k8s ConfigMap %s error reading dtab '%s': %s", name, filename, e)
+        Dtab.empty
+      case None =>
+        log.warning(s"K8s ConfigMap %s doesn't exist, assuming it will be created", name)
+        Dtab.empty
     }
 
   @JsonIgnore
-  def getDtab(configMap: ConfigMap): Dtab =
+  def getDtab(configMap: ConfigMap): Try[Dtab] =
     configMap.data.get(filename) match {
       case None =>
         log.warning(s"dtab at %s in k8s ConfigMap %s did not exist!", filename, name)
-        Dtab.empty
-      case Some(data) => Dtab.read(data)
+        Return(Dtab.empty)
+      case Some(data) => Try(Dtab.read(data))
     }
 
   @JsonIgnore
   override def newInterpreter(params: Params): NameInterpreter = {
     val Param.Namers(namers) = params[Param.Namers]
     ConfiguredDtabNamer(act, namers)
+  }
+
+  @JsonIgnore
+  private[this] object ConfigMapDtab {
+    @inline
+    def unapply(event: ConfigMapWatch): Option[Try[Dtab]] =
+      event match {
+        case ConfigMapAdded(a) => Some(getDtab(a))
+        case ConfigMapModified(m) => Some(getDtab(m))
+        case ConfigMapDeleted(_) | ConfigMapError(_) => None
+      }
   }
 }
