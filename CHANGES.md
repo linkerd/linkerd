@@ -1,6 +1,6 @@
 ## 1.2.1 2017-09-14
 
-Hotfix for an issue where Kubernetes namers would continue to route to old
+Fix for an issue where Kubernetes namers would continue to route to old
 endpoints after a service was deleted and re-created, or scaled down to 0 and
 then scaled back up.
 
