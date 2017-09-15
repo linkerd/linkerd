@@ -52,7 +52,7 @@ case class DnsSrvNamerConfig(
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
     val pool = FuturePool.unboundedPool
-    new DnsSrvNamer(prefix, resolver, origin, refreshInterval, stats.scope("dnssrv"), pool)(timer)
+    new DnsSrvNamer(prefix, resolver, origin, refreshInterval, stats, pool)(timer)
   }
 }
 
