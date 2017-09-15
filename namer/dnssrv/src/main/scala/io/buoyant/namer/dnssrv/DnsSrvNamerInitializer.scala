@@ -15,9 +15,14 @@ class DnsSrvNamerInitializer extends NamerInitializer {
   override val configClass = classOf[DnsSrvNamerConfig]
   override def configId: String = "io.l5d.dnssrv"
 }
+
 object DnsSrvNamerInitializer extends DnsSrvNamerInitializer
 
-case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Option[Seq[String]]) extends NamerConfig {
+case class DnsSrvNamerConfig(
+  refreshIntervalSeconds: Option[Int],
+  domain: Option[String],
+  dnsHosts: Option[Seq[String]]
+) extends NamerConfig {
 
   @JsonIgnore
   override def experimentalRequired = true
@@ -39,17 +44,25 @@ case class DnsSrvNamerConfig(refreshIntervalSeconds: Option[Int], dnsHosts: Opti
       Edns.Flags,
       Edns.Options
     )
+    val origin = domain match {
+      // always treat domain as absolute, even if trailing `.` is missing in config
+      case Some(str) => DNS.Name.fromString(str, DNS.Name.root)
+      case None => DNS.Name.root
+    }
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
     val pool = FuturePool.unboundedPool
-    new DnsSrvNamer(prefix, resolver, refreshInterval, stats.scope("dnssrv"), pool)(timer)
+    new DnsSrvNamer(prefix, resolver, origin, refreshInterval, stats, pool)(timer)
   }
 }
+
 object DnsSrvNamerConfig {
+
   object Edns {
     val Level = 0
     val MaxPayloadSize = 2048
     val Flags = 0
     val Options = Collections.EMPTY_LIST
   }
+
 }

@@ -14,6 +14,7 @@ import org.xbill.DNS
 class DnsSrvNamer(
   prefix: Path,
   resolver: DNS.Resolver,
+  origin: DNS.Name,
   refreshInterval: Duration,
   stats: StatsReceiver,
   pool: FuturePool
@@ -65,7 +66,7 @@ class DnsSrvNamer(
 
   private def lookupSrv(address: String, id: Path, residual: Path): Future[NameTree[Name]] = {
     val question = DNS.Record.newRecord(
-      DNS.Name.fromString(address),
+      DNS.Name.fromString(address, origin),
       DNS.Type.SRV,
       DNS.DClass.IN
     )
