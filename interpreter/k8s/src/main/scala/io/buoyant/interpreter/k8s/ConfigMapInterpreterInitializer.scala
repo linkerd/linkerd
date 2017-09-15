@@ -26,19 +26,11 @@ case class ConfigMapInterpreterConfig(
   port: Option[Port],
   namespace: Option[String],
   name: String,
-  filename: String,
-  mkApi: Option[() => NsApi] = None
+  filename: String
 ) extends InterpreterConfig with ClientConfig {
   require(name != null, "ConfigMap name is required!")
   require(filename != null, "ConfigMap dtab filename is required!")
 
-  @JsonIgnore
-  @inline
-  private[this] val mkDefaultApi: () => NsApi = { () =>
-    val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
-    val nsOrDefault = namespace.getOrElse(DefaultNamespace)
-    Api(client.newService(dst)).withNamespace(nsOrDefault)
-  }
 
   @JsonIgnore
   override def experimentalRequired = true
@@ -50,7 +42,11 @@ case class ConfigMapInterpreterConfig(
   private[this] val log = Logger()
 
   @JsonIgnore
-  val api = mkApi.getOrElse(mkDefaultApi)()
+  def api = {
+    val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
+    val nsOrDefault = namespace.getOrElse(DefaultNamespace)
+    Api(client.newService(dst)).withNamespace(nsOrDefault)
+  }
 
   @JsonIgnore
   val act = api.configMap(name)

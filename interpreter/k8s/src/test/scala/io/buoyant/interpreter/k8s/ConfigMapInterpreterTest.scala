@@ -159,19 +159,20 @@ class ConfigMapInterpreterTest extends FunSuite
       case req =>
         throw new TestFailedException(s"Unexpected request $req", 1)
     }
-    val api: () => v1.NsApi = { () => v1.Api(service).withNamespace("test") }
-    val cfg = ConfigMapInterpreterConfig(
-      None,
-      None,
-      Some("test"),
-      "test-config",
-      "test.dtab",
-      Some(api)
-    )
-    val interpreter = cfg.newInterpreter(Params.empty)
+
+    object TestConfigMapInterpreterConfig
+    extends ConfigMapInterpreterConfig(
+      None, None, Some("test"), "test-config", "test.dtab"
+    ) {
+      override def api = v1.Api(service).withNamespace("test")
+    }
+
+    val interpreter = TestConfigMapInterpreterConfig.newInterpreter(Params.empty)
 
     val activity = interpreter.asInstanceOf[ConfiguredDtabNamer].dtab
+
     @volatile var state: Activity.State[Dtab] = Activity.Pending
+
     activity.states.respond { s =>
       log.info("%s", s)
       state = s
@@ -199,7 +200,7 @@ class ConfigMapInterpreterTest extends FunSuite
           |""".stripMargin
     val config = parse(yaml)
     inside(config) {
-      case ConfigMapInterpreterConfig(host, port, namespace, name, filename, _) =>
+      case ConfigMapInterpreterConfig(host, port, namespace, name, filename) =>
         assert(host.contains("foo"))
         assert(port.contains(Port(8888)))
         assert(namespace.contains("my-great-namespace"))
