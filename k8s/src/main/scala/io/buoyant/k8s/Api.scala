@@ -171,6 +171,7 @@ object Watch {
     @JsonIgnore
     def resourceVersion = `object`.metadata.flatMap(_.resourceVersion)
   }
+
   trait Added[O <: KubeObject] extends WithObject[O]
   trait Modified[O <: KubeObject] extends WithObject[O]
   trait Deleted[O <: KubeObject] extends WithObject[O]
@@ -178,6 +179,20 @@ object Watch {
     def status: Status
     @JsonIgnore
     def resourceVersion = None
+  }
+
+
+  /**
+   * Extractor allowing `Added` and `Modified` events --- which contain a new
+   * state --- to be handled in one match arm.
+   */
+  object NewState {
+    def unapply[O <: KubeObject](event: Watch[O]): Option[O]
+    = event match {
+      case added: Added[O] => Some(added.`object`)
+      case modified: Modified[O] => Some(modified.`object`)
+      case _ => None
+    }
   }
 }
 

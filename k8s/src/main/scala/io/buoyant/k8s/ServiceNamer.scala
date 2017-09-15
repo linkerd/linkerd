@@ -6,6 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
+import io.buoyant.k8s.Watch.NewState
 import io.buoyant.k8s.v1._
 import scala.Function.untupled
 import scala.collection.mutable
@@ -69,13 +70,7 @@ class ServiceNamer(
      */
     def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc =
       event match {
-        case v1.ServiceAdded(service) =>
-          val svc = Svc(service)
-          logEvent.addition(svc.portMappings -- portMappings.keys)
-          logEvent.addition(svc.ports -- ports.keys)
-          svc
-        case v1.ServiceModified(service) =>
-          val svc = Svc(service)
+        case NewState(Svc(svc)) =>
           logEvent.addition(svc.portMappings -- portMappings.keys)
           logEvent.addition(svc.ports -- ports.keys)
           logEvent.deletion(portMappings -- svc.portMappings.keys)
@@ -121,6 +116,9 @@ class ServiceNamer(
       }
       Svc(ports.toMap, portMap.toMap)
     }
+
+    @inline
+    def unapply(service: v1.Service): Option[Svc] = Some(Svc(service))
 
     /**
      * Creates a new [[Svc]] from a services API response.

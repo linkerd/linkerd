@@ -6,6 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
+import io.buoyant.k8s.Watch.NewState
 import io.buoyant.namer.Metadata
 import scala.Function.untupled
 import scala.collection.breakOut
@@ -148,26 +149,22 @@ abstract class EndpointsNamer(
             _.map(_.portMappings).getOrElse(Map.empty),
             labelSelector = labelSelector
           ) {
-              case (oldMap, v1.ServiceAdded(service)) =>
-                val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keys)
-                newMap
-              case (oldMap, v1.ServiceModified(service)) =>
-                val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keys)
-                logEvent.deletion(oldMap -- newMap.keys)
-                logEvent.modification(oldMap, newMap)
-                newMap
-              case (oldMap, v1.ServiceDeleted(_)) =>
-                logEvent.deletion(oldMap)
-                Map.empty
-              case (oldMap, v1.ServiceError(error)) =>
-                log.warning(
-                  "k8s ns %s service %s watch error %s",
-                  nsName, serviceName, error
-                )
-                oldMap
-            }
+            case (oldMap, NewState(service)) =>
+              val newMap = service.portMappings
+              logEvent.addition(newMap -- oldMap.keys)
+              logEvent.deletion(oldMap -- newMap.keys)
+              logEvent.modification(oldMap, newMap)
+              newMap
+            case (oldMap, v1.ServiceDeleted(_)) =>
+              logEvent.deletion(oldMap)
+              Map.empty
+            case (oldMap, v1.ServiceError(error)) =>
+              log.warning(
+                "k8s ns %s service %s watch error %s",
+                nsName, serviceName, error
+              )
+              oldMap
+          }
     })
 
   private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
@@ -287,22 +284,13 @@ object EndpointsNamer {
     private[this] val logEvent = EventLogger(nsName, serviceName)
     def update(event: v1.EndpointsWatch): ServiceEndpoints =
       event match {
-        case v1.EndpointsAdded(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) =
-            update.subsets.toEndpointsAndPorts
-          logEvent.addition(newEndpoints -- endpoints)
-          logEvent.addition(newPorts -- ports.keys)
-          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
-        case v1.EndpointsModified(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) =
-            update.subsets.toEndpointsAndPorts
+        case NewState(Subsets(newEndpoints, newPorts)) =>
           logEvent.addition(newEndpoints -- endpoints)
           logEvent.deletion(endpoints -- newEndpoints)
           logEvent.addition(newPorts -- ports.keys)
           logEvent.deletion(ports -- newPorts.keys)
           logEvent.modification(ports, newPorts)
           ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
-
         case v1.EndpointsDeleted(_) =>
           logEvent.deletion(endpoints)
           logEvent.deletion(ports)
@@ -368,6 +356,11 @@ object EndpointsNamer {
       val (endpoints, ports) = result.unzip
       (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
     }
+  }
+
+  object Subsets {
+    def unapply(endpoints: v1.Endpoints): Option[(Set[Endpoint], PortMap)] =
+      Some(endpoints.subsets.toEndpointsAndPorts)
   }
 
   private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
