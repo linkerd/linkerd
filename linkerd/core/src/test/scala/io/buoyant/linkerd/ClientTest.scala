@@ -91,7 +91,7 @@ class ClientTest extends FunSuite {
     assert(barCn == "barbarbar")
 
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.wrong/bas"))
-    assert(basParams[Transport.ClientSsl].e.isEmpty)
+    assert(basParams[Transport.ClientSsl].sslClientConfiguration.isEmpty)
   }
 
   test("failure accrual") {

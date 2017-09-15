@@ -8,7 +8,7 @@ import com.twitter.finagle.tracing.{BroadcastTracer, DefaultTracer, Tracer}
 import com.twitter.finagle.util.{DefaultTimer, LoadService}
 import com.twitter.finagle.{Namer, Path, Stack, param => fparam}
 import com.twitter.logging.Logger
-import com.twitter.server.util.JvmStats
+import com.twitter.jvm.JvmStats
 import io.buoyant.admin.{Admin, AdminConfig}
 import io.buoyant.config._
 import io.buoyant.linkerd.telemeter.UsageDataTelemeterConfig

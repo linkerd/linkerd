@@ -87,7 +87,7 @@ fancyRouter: true
         |  certPath: /foo/cert
         |  keyPath: /foo/key
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].e.isDefined)
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].sslServerConfiguration.isDefined)
   }
 
   test("tls configuration absent") {
@@ -95,7 +95,7 @@ fancyRouter: true
       """
         |port: 1234
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].e.isEmpty)
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[Transport.ServerSsl].sslServerConfiguration.isEmpty)
   }
 
   test("maxConcurrentRequests") {
@@ -103,7 +103,7 @@ fancyRouter: true
       """
         |maxConcurrentRequests: 1000
       """.stripMargin
-    assert(parse(TestProtocol.Plain, yaml).get.params[RequestSemaphoreFilter.Param].sem.get.numInitialPermits == 1000)
+    assert(parse(TestProtocol.Plain, yaml).get.params.apply[RequestSemaphoreFilter.Param].sem.get.numInitialPermits == 1000)
   }
 
   test("announce") {

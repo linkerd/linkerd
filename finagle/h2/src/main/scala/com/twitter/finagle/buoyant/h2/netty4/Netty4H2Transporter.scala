@@ -33,7 +33,7 @@ object Netty4H2Transporter {
 
     val pipelineInit: ChannelPipeline => Unit =
 
-      if (params[Transport.ClientSsl].e.isDefined) {
+      if (params[Transport.ClientSsl].sslClientConfiguration.isDefined) {
         // secure
         p =>
           {

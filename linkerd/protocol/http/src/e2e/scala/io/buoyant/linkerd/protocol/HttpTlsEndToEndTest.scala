@@ -33,7 +33,7 @@ class HttpTlsEndToEndTest extends FunSuite {
   }
 
   val service = Service.mk[Request, Response] { req =>
-    Future.value(new Response.Ok)
+    Future.value(Response())
   }
 
   test("client/server works with TLS") {
