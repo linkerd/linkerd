@@ -160,12 +160,11 @@ class ConfigMapInterpreterTest extends FunSuite
         throw new TestFailedException(s"Unexpected request $req", 1)
     }
 
-    object TestConfigMapInterpreterConfig
-    extends ConfigMapInterpreterConfig(
+    object TestConfigMapInterpreterConfig extends {
+      override val api = v1.Api(service).withNamespace("test")
+    } with ConfigMapInterpreterConfig(
       None, None, Some("test"), "test-config", "test.dtab"
-    ) {
-      override def api = v1.Api(service).withNamespace("test")
-    }
+    )
 
     val interpreter = TestConfigMapInterpreterConfig.newInterpreter(Params.empty)
 

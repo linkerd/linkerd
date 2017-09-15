@@ -42,7 +42,7 @@ case class ConfigMapInterpreterConfig(
   private[this] val log = Logger()
 
   @JsonIgnore
-  def api = {
+  val api = {
     val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
     val nsOrDefault = namespace.getOrElse(DefaultNamespace)
     Api(client.newService(dst)).withNamespace(nsOrDefault)
