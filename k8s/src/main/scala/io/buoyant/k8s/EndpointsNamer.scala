@@ -149,22 +149,22 @@ abstract class EndpointsNamer(
             _.map(_.portMappings).getOrElse(Map.empty),
             labelSelector = labelSelector
           ) {
-            case (oldMap, NewState(service)) =>
-              val newMap = service.portMappings
-              logEvent.addition(newMap -- oldMap.keys)
-              logEvent.deletion(oldMap -- newMap.keys)
-              logEvent.modification(oldMap, newMap)
-              newMap
-            case (oldMap, v1.ServiceDeleted(_)) =>
-              logEvent.deletion(oldMap)
-              Map.empty
-            case (oldMap, v1.ServiceError(error)) =>
-              log.warning(
-                "k8s ns %s service %s watch error %s",
-                nsName, serviceName, error
-              )
-              oldMap
-          }
+              case (oldMap, NewState(service)) =>
+                val newMap = service.portMappings
+                logEvent.addition(newMap -- oldMap.keys)
+                logEvent.deletion(oldMap -- newMap.keys)
+                logEvent.modification(oldMap, newMap)
+                newMap
+              case (oldMap, v1.ServiceDeleted(_)) =>
+                logEvent.deletion(oldMap)
+                Map.empty
+              case (oldMap, v1.ServiceError(error)) =>
+                log.warning(
+                  "k8s ns %s service %s watch error %s",
+                  nsName, serviceName, error
+                )
+                oldMap
+            }
     })
 
   private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
@@ -358,7 +358,7 @@ object EndpointsNamer {
     }
   }
 
-  object Subsets {
+  private[EndpointsNamer] object Subsets {
     def unapply(endpoints: v1.Endpoints): Option[(Set[Endpoint], PortMap)] =
       Some(endpoints.subsets.toEndpointsAndPorts)
   }

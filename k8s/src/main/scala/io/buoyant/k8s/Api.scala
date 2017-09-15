@@ -181,14 +181,12 @@ object Watch {
     def resourceVersion = None
   }
 
-
   /**
    * Extractor allowing `Added` and `Modified` events --- which contain a new
    * state --- to be handled in one match arm.
    */
   object NewState {
-    def unapply[O <: KubeObject](event: Watch[O]): Option[O]
-    = event match {
+    def unapply[O <: KubeObject](event: Watch[O]): Option[O] = event match {
       case added: Added[O] => Some(added.`object`)
       case modified: Modified[O] => Some(modified.`object`)
       case _ => None
