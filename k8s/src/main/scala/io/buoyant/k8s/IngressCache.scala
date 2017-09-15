@@ -84,8 +84,11 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
 
   private[this] lazy val ingresses: Activity[Seq[IngressSpec]] = {
     val act = api.activity(unpackIngressList) {
-      case (oldIngresses, NewState(ingress: v1beta1.Ingress)) =>
-        mkIngress(ingress).getOrElse(oldIngresses)
+      case (oldIngresses, v1beta1.IngressAdded(a)) => oldIngresses ++ mkIngress(a)
+      case (oldIngresses, v1beta1.IngressModified(m)) =>
+        mkIngress(m)
+          .map { item => oldIngresses.filterNot(isNameEqual(_, item)) :+ item }
+          .getOrElse(oldIngresses)
       case (_, v1beta1.IngressDeleted(_)) =>
         Seq.empty
       case (oldIngresses, v1beta1.IngressError(e)) =>
@@ -100,7 +103,10 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     item <- ingressList.items
     ingress <- mkIngress(item)
   } yield ingress
-  private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean = x.name == y.name && x.namespace == y.namespace
+
+  private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean =
+    x.name == y.name && x.namespace == y.namespace
+
   private[this] def mkIngress(ingress: v1beta1.Ingress): Option[IngressSpec] = {
     //make sure that this ingress resource is not specified for someone else
     val annotations = ingress.metadata.flatMap(meta => meta.annotations).getOrElse(Map.empty)
