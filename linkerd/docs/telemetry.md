@@ -21,6 +21,7 @@ experimental | `false` | Set this to `true` to enable the telemeter if it is exp
 ```yaml
 telemetry:
 - kind: io.l5d.prometheus
+  path: /admin/metrics/prometheus
 ```
 
 kind: `io.l5d.prometheus`
@@ -29,7 +30,9 @@ Exposes admin endpoints:
 
 * `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io) format
 
-This telemeter has no additional parameters.
+Key | Default Value | Description
+--- | ------------- | -----------
+path | `/admin/metrics/prometheus` | HTTP path where linkerd exposes Prometheus metrics
 
 ## InfluxDB
 
