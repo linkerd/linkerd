@@ -4,7 +4,6 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
-import io.buoyant.k8s.Watch.NewState
 import io.buoyant.namer.RichActivity
 
 case class IngressSpec(

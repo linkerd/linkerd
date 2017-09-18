@@ -6,7 +6,6 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
-import io.buoyant.k8s.Watch.NewState
 import io.buoyant.k8s.v1._
 import scala.Function.untupled
 import scala.collection.mutable
@@ -61,6 +60,7 @@ class ServiceNamer(
         address <- ports.get(portName)
       } yield address
 
+
     /**
      * Update this `Svc` with a [[v1.ServiceWatch]] watch event
      * @param logEvent an event logger with which to log changes to this
@@ -68,16 +68,21 @@ class ServiceNamer(
      * @param event the [[v1.ServiceWatch]] watch event that occurred.
      * @return an updated `Svc` representing the watched service.
      */
-    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc =
+    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc = {
+      @inline def newState(svc: Svc): Svc = {
+        logEvent.addition(svc.portMappings -- portMappings.keys)
+        logEvent.addition(svc.ports -- ports.keys)
+        logEvent.deletion(portMappings -- svc.portMappings.keys)
+        logEvent.deletion(ports -- svc.ports.keys)
+        logEvent.modification(portMappings, svc.portMappings)
+        logEvent.modification(ports, svc.ports)
+        svc
+      }
       event match {
-        case NewState(Svc(svc)) =>
-          logEvent.addition(svc.portMappings -- portMappings.keys)
-          logEvent.addition(svc.ports -- ports.keys)
-          logEvent.deletion(portMappings -- svc.portMappings.keys)
-          logEvent.deletion(ports -- svc.ports.keys)
-          logEvent.modification(portMappings, svc.portMappings)
-          logEvent.modification(ports, svc.ports)
-          svc
+        case v1.ServiceAdded(Svc(svc)) =>
+          newState(svc)
+        case v1.ServiceModified(Svc(svc)) =>
+          newState(svc)
         case v1.ServiceDeleted(_) =>
           logEvent.deletion(ports)
           logEvent.deletion(portMappings)
@@ -89,6 +94,8 @@ class ServiceNamer(
           )
           this
       }
+    }
+
   }
 
   private[this] object Svc {

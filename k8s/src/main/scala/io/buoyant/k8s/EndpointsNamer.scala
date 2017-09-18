@@ -6,7 +6,6 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
-import io.buoyant.k8s.Watch.NewState
 import io.buoyant.namer.Metadata
 import scala.Function.untupled
 import scala.collection.breakOut
@@ -149,7 +148,13 @@ abstract class EndpointsNamer(
             _.map(_.portMappings).getOrElse(Map.empty),
             labelSelector = labelSelector
           ) {
-              case (oldMap, NewState(service)) =>
+              case (oldMap, v1.ServiceAdded(service)) =>
+                val newMap = service.portMappings
+                logEvent.addition(newMap -- oldMap.keys)
+                logEvent.deletion(oldMap -- newMap.keys)
+                logEvent.modification(oldMap, newMap)
+                newMap
+              case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
                 logEvent.addition(newMap -- oldMap.keys)
                 logEvent.deletion(oldMap -- newMap.keys)
@@ -282,15 +287,21 @@ object EndpointsNamer {
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
 
     private[this] val logEvent = EventLogger(nsName, serviceName)
-    def update(event: v1.EndpointsWatch): ServiceEndpoints =
+    def update(event: v1.EndpointsWatch): ServiceEndpoints = {
+      @inline
+      def newState(newEndpoints: Set[Endpoint], newPorts: PortMap): ServiceEndpoints = {
+        logEvent.addition(newEndpoints -- endpoints)
+        logEvent.deletion(endpoints -- newEndpoints)
+        logEvent.addition(newPorts -- ports.keys)
+        logEvent.deletion(ports -- newPorts.keys)
+        logEvent.modification(ports, newPorts)
+        ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
+      }
       event match {
-        case NewState(Subsets(newEndpoints, newPorts)) =>
-          logEvent.addition(newEndpoints -- endpoints)
-          logEvent.deletion(endpoints -- newEndpoints)
-          logEvent.addition(newPorts -- ports.keys)
-          logEvent.deletion(ports -- newPorts.keys)
-          logEvent.modification(ports, newPorts)
-          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
+        case v1.EndpointsAdded(Subsets(newEndpoints, newPorts)) =>
+          newState(newEndpoints, newPorts)
+        case v1.EndpointsModified(Subsets(newEndpoints, newPorts)) =>
+          newState(newEndpoints, newPorts)
         case v1.EndpointsDeleted(_) =>
           logEvent.deletion(endpoints)
           logEvent.deletion(ports)
@@ -302,6 +313,8 @@ object EndpointsNamer {
           )
           this
       }
+    }
+
   }
 
   private[EndpointsNamer] object ServiceEndpoints {
