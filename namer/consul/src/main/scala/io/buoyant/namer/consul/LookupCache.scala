@@ -4,6 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
+import scala.Function.untupled
 
 /**
  * A helper supporting service resolution in consul, caching
@@ -21,6 +22,29 @@ private[consul] class LookupCache(
   private[this] val localDcMoniker = ".local"
 
   private[this] val lookupCounter = stats.counter("lookups")
+  private[this] val serviceStats = SvcAddr.Stats(stats.scope("service"))
+
+  private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
+    untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
+      case (dc, key, id, residual) =>
+        resolveDc(dc).join(domain).flatMap { case ((dcName, domainOption)) =>
+          val addr = SvcAddr(
+            consulApi,
+            dcName,
+            key,
+            domainOption,
+            consistency = consistency,
+            preferServiceAddress = preferServiceAddress,
+            serviceStats
+          )
+          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+          val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
+            case Addr.Neg => Activity.Ok(NameTree.Neg)
+            case _ => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+          }
+          new Activity(stateVar)
+        }
+    })
 
   def apply(
     dc: String,
@@ -30,22 +54,7 @@ private[consul] class LookupCache(
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", dc, id.show)
     lookupCounter.incr()
-
-    resolveDc(dc).flatMap(Dc.watch).flatMap { services =>
-      services.get(key) match {
-        case None =>
-          log.debug("consul dc %s service %s missing", dc, key)
-          Activity.value(NameTree.Neg)
-
-        case Some(addr) =>
-          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
-          val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
-            case Addr.Neg => Activity.Ok(NameTree.Neg)
-            case _ => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
-          }
-          new Activity(stateVar)
-      }
-    }
+    cachedLookup(dc, key, id, residual)
   }
 
   private[this] def resolveDc(datacenter: String): Activity[String] =
