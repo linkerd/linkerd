@@ -2,6 +2,7 @@ package io.buoyant.k8s
 
 import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.conversions.time._
+import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
@@ -224,7 +225,7 @@ abstract class EndpointsNamer(
     // `Activity[Option[Var[Set[Address]]]]`, where the outer `Activity` will
     // update if the `Option` changes, and the inner `Var` will update on
     // changes to the value of the set of `Address`es.
-    stabilize(unstable)
+    unstable.stabilizeExistence
       // convert the contents of the stable activity to a `NameTree`.
       .map { mkNameTree(id, residual) }
   }
