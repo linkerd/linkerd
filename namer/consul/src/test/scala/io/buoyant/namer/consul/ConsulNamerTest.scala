@@ -53,12 +53,14 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
   test("Namer stays pending while looking up datacenter for the first time") {
     class TestCatalogApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
+      override def serviceNodes(
+        serviceName: String,
         datacenter: Option[String] = None,
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = Future.never
+      ): Future[Indexed[Seq[ServiceNode]]] = Future.never
     }
     val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
