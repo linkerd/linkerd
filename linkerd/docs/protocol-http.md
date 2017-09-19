@@ -485,31 +485,6 @@ Key | Default Value | Description
 mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
 mixerPort | `9091` | Port of the Mixer server.
 
-<a name="http-engines"></a>
-## HTTP Engines
-
-> This configures an HTTP router that uses the new
-netty4 implementation on both the client and server:
-
-```yaml
-- protocol: http
-  servers:
-  - port: 4141
-    ip: 0.0.0.0
-    engine:
-      kind: netty4
-  client:
-    engine:
-      kind: netty4
-```
-
-An _engine_ may be configured on HTTP clients and servers, causing an
-alternate HTTP implementation to be used.
-
-Key | Default Value | Description
---- | ------------- | -----------
-kind | `netty4` | Either `netty3` or `netty4`
-
 <a name="http-headers"></a>
 ## HTTP Headers
 
