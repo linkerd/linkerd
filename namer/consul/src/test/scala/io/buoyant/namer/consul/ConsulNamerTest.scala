@@ -75,7 +75,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
     assert(state == Activity.Pending)
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
+      Seq("service", "opens") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -124,7 +124,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assert(state == Activity.Pending)
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
+      Seq("service", "opens") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -162,9 +162,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assert(state == Activity.Ok(NameTree.Neg))
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 1,
+      Seq("service", "opens") -> 1,
+      Seq("service", "updates") -> 1,
+//      Seq("dc", "adds") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -213,9 +213,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
       NameTree.Leaf(Path(Buf.Utf8("test"), Buf.Utf8("dc1"), Buf.Utf8("servicename")))
     ))
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 2,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
@@ -268,9 +265,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
@@ -326,9 +320,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 3,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
@@ -402,9 +393,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Ok(NameTree.Neg))
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 3,
       Seq("lookups") -> 1
@@ -461,9 +449,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
@@ -515,9 +500,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
@@ -577,9 +559,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "updates") -> 1,
-      Seq("dc", "adds") -> 4,
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
       Seq("lookups") -> 1
