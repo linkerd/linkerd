@@ -19,9 +19,9 @@ object Deps {
     "com.twitter" %% s"finagle-$mod" % "7.1.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.12.Final"
+    "io.netty" % s"netty-$mod" % "4.1.14.Final"
 
-  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.1.Final"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.5.Final"
 
   def zkCandidate =
     ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
