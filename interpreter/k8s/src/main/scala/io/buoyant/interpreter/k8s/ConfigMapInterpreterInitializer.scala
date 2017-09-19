@@ -31,6 +31,7 @@ case class ConfigMapInterpreterConfig(
   require(name != null, "ConfigMap name is required!")
   require(filename != null, "ConfigMap dtab filename is required!")
 
+
   @JsonIgnore
   override def experimentalRequired = true
 
@@ -50,34 +51,49 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   val act = api.configMap(name)
     .activity(extractDtab) {
-      (dtab, event) =>
-        event match {
-          case ConfigMapAdded(a) => getDtab(a)
-          case ConfigMapModified(m) => getDtab(m)
-          case ConfigMapDeleted(_) =>
-            log.warning(s"k8s ConfigMap $name was deleted!")
-            Dtab.empty
-          case ConfigMapError(e) =>
-            log.error("k8s watch error: %s", e)
-            dtab
-        }
+      // TODO: if the event doesn't update our dtab, don't update the activity?
+      case (oldDtab, ConfigMapAdded(newDtab)) =>
+        getDtab(newDtab).getOrElse { oldDtab }
+      case (oldDtab, ConfigMapModified(newDtab)) =>
+        getDtab(newDtab).getOrElse { oldDtab }
+      case (_, ConfigMapDeleted(_)) =>
+        log.warning(s"k8s ConfigMap %s was deleted!", name)
+        Dtab.empty
+      case (oldDtab, ConfigMapError(status)) =>
+        log.error("k8s watch error: %s", status)
+        oldDtab
     }
 
   @JsonIgnore
   @inline
   private[this] def extractDtab(response: Option[ConfigMap]): Dtab =
-    response.map(getDtab).getOrElse {
-      log.warning(s"K8s ConfigMap %s doesn't exist, assuming it will be created", name)
-      Dtab.empty
+    response.map(getDtab) match {
+      case Some(dtab) => dtab.getOrElse { Dtab.empty }
+      case None =>
+        log.warning(s"K8s ConfigMap %s doesn't exist, assuming it will be created", name)
+        Dtab.empty
     }
 
   @JsonIgnore
-  def getDtab(configMap: ConfigMap): Dtab =
+  def getDtab(configMap: ConfigMap): Try[Dtab] =
     configMap.data.get(filename) match {
       case None =>
-        log.warning(s"dtab at %s in k8s ConfigMap %s did not exist!", filename, name)
-        Dtab.empty
-      case Some(data) => Dtab.read(data)
+        log.warning(
+          s"dtab at %s in k8s ConfigMap %s did not exist!",
+          filename,
+          name
+        )
+        Return(Dtab.empty)
+      case Some(data) =>
+        Try(Dtab.read(data)).onFailure {
+          case e: IllegalArgumentException =>
+            log.error(
+              "k8s ConfigMap %s error reading dtab '%s': %s",
+              name,
+              filename,
+              e
+            )
+        }
     }
 
   @JsonIgnore
@@ -85,4 +101,5 @@ case class ConfigMapInterpreterConfig(
     val Param.Namers(namers) = params[Param.Namers]
     ConfiguredDtabNamer(act, namers)
   }
+
 }
