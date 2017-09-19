@@ -156,7 +156,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assert(stats.counters == Map(
       Seq("service", "opens") -> 1,
       Seq("service", "updates") -> 1,
-//      Seq("dc", "adds") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -312,18 +311,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     val scaleToEmpty = new Promise[Unit]
 
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -382,18 +369,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
   test("Namer filters by tag (case-insensitive)") {
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("MASter", "STAging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never // don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -438,18 +413,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
   test("Namer returns authority in bound address metadata when setHost is true") {
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -489,18 +452,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
   test("Namer returns authority with tag in bound address metadata when setHost is true and tag is provided") {
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -549,19 +500,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
   test("Namer falls back to last observed good state on serviceNodes failure") {
     class TestApi extends CatalogApi(null, "/v1") {
       @volatile var alreadyFailed = false
-
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -603,18 +541,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     val scaleToEmpty = new Promise[Unit]
     @volatile var didFail = false
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
