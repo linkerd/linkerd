@@ -82,12 +82,14 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
   test("Namer fails if the consul api cannot be reached") {
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
+      override def serviceNodes(
+        serviceName: String,
         datacenter: Option[String] = None,
+        tag: Option[String] = None,
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = Future.exception(ChannelWriteException(None))
+      ): Future[Indexed[Seq[ServiceNode]]] = Future.exception(ChannelWriteException(None))
     }
     val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
@@ -97,8 +99,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assert(state == Activity.Failed(ChannelWriteException(None)))
     assert(stats.counters == Map(
-      Seq("dc", "opens") -> 1,
-      Seq("dc", "errors") -> 1,
+      Seq("service", "opens") -> 1,
+      Seq("service", "errors") -> 1,
       Seq("lookups") -> 1
     ))
   }

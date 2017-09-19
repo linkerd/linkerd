@@ -38,16 +38,6 @@ private[consul] object SvcAddr {
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
 
-    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
-      consulApi.serviceNodes(
-        key.name,
-        datacenter = Some(datacenter),
-        tag = key.tag,
-        blockingIndex = index,
-        consistency = consistency,
-        retry = true
-      ).map(indexedToAddresses(preferServiceAddress))
-
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
     Var.async[Addr](Addr.Pending) { state =>
@@ -56,7 +46,17 @@ private[consul] object SvcAddr {
       // a good state was seen.
       @volatile var lastGood: Option[Addr] = None
       @volatile var stopped: Boolean = false
-      def loop(index0: Option[String]): Future[Unit] = {
+      def loop(index0: Option[String], retry: Boolean = true): Future[Unit] = {
+        def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
+          consulApi.serviceNodes(
+            key.name,
+            datacenter = Some(datacenter),
+            tag = key.tag,
+            blockingIndex = index,
+            consistency = consistency,
+            retry = retry
+          ).map(indexedToAddresses(preferServiceAddress))
+
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(Failure(Some(err: ConnectionFailedException))) =>
@@ -116,7 +116,7 @@ private[consul] object SvcAddr {
         }
       }
 
-      val pending = loop(None)
+      val pending = loop(None, retry = false)
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
