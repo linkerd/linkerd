@@ -38,9 +38,12 @@ private[consul] class LookupCache(
             serviceStats
           )
           log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+
           val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
             case Addr.Neg => Activity.Ok(NameTree.Neg)
-            case _ => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+            case Addr.Pending => Activity.Pending
+            case _ =>
+              Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
           }
           new Activity(stateVar)
         }
