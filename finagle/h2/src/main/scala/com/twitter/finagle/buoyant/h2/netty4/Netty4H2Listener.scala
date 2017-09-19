@@ -4,7 +4,7 @@ package netty4
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
 import com.twitter.finagle.server.Listener
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{Transport, TransportContext}
 import io.netty.channel._
 import io.netty.handler.codec.http2._
 import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
@@ -15,14 +15,14 @@ import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegoti
 object Netty4H2Listener {
   private val log = com.twitter.logging.Logger.get("h2")
 
-  def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] =
+  def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame, TransportContext] =
     params[Transport.ClientSsl] match {
       case Transport.ClientSsl(None) => PlaintextListener.mk(params)
       case _ => TlsListener.mk(params)
     }
 
   private[this] trait ListenerMaker {
-    def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame] = {
+    def mk(params: Stack.Params): Listener[Http2Frame, Http2Frame, TransportContext] = {
       def codec = H2FrameCodec.server(
         settings = Netty4H2Settings.mk(params),
         windowUpdateRatio = params[param.FlowControl.WindowUpdateRatio].ratio,

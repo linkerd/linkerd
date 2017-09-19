@@ -150,7 +150,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
       .configured(maxChunkSize).configured(maxHeaderSize).configured(maxInitLineSize)
       .configured(maxReqSize).configured(maxRspSize)
       .configured(streaming).configured(compression)
-      .serving(HttpServerConfig(None, None).mk(HttpInitializer, "yolo"))
+      .serving(HttpServerConfig(None).mk(HttpInitializer, "yolo"))
       .initialize()
     assert(router.servers.size == 1)
     val sparams = router.servers.head.params

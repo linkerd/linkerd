@@ -7,7 +7,7 @@ import com.twitter.finagle.param.{WithDefaultLoadBalancer, WithSessionPool}
 import com.twitter.finagle.pool.SingletonPool
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
 import com.twitter.finagle.stack.nilStack
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{Transport, TransportContext}
 import com.twitter.finagle.{param, _}
 import com.twitter.util.Closable
 import io.netty.handler.codec.http2.Http2Frame
@@ -15,7 +15,7 @@ import java.net.SocketAddress
 
 object H2 extends Client[Request, Response] with Server[Request, Response] {
 
-  private[this]type Http2FrameTransporter = Transporter[Http2Frame, Http2Frame]
+  private[this]type Http2FrameTransporter = Transporter[Http2Frame, Http2Frame, TransportContext]
   private[this]type Http2FrameTransport = Transport[Http2Frame, Http2Frame]
 
   object Client {
@@ -39,10 +39,11 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     params: Stack.Params = Client.defaultParams
   ) extends StdStackClient[Request, Response, Client]
     with WithSessionPool[Client]
-    with WithDefaultLoadBalancer[Client] {
+    with WithDefaultLoadBalancer[Client] { self =>
 
     protected type In = Http2Frame
     protected type Out = Http2Frame
+    protected type Context = TransportContext
 
     protected def newTransporter(addr: SocketAddress): Http2FrameTransporter =
       Netty4H2Transporter.mk(addr, params)
@@ -54,7 +55,9 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
 
     private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
 
-    protected def newDispatcher(trans: Http2FrameTransport): Service[Request, Response] =
+    protected def newDispatcher(trans: Http2FrameTransport {
+      type Context <: self.Context
+    }): Service[Request, Response] =
       new Netty4ClientDispatcher(trans, statsReceiver.scope("stream"))
   }
 
@@ -76,10 +79,11 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
   case class Server(
     stack: Stack[ServiceFactory[Request, Response]] = Server.newStack,
     params: Stack.Params = Server.defaultParams
-  ) extends StdStackServer[Request, Response, Server] {
+  ) extends StdStackServer[Request, Response, Server] { self =>
 
     protected type In = Http2Frame
     protected type Out = Http2Frame
+    protected type Context = TransportContext
 
     protected def copy1(
       stack: Stack[ServiceFactory[Request, Response]] = this.stack,
@@ -90,14 +94,16 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
      * Creates a Listener that creates a new Transport for each
      * incoming HTTP/2 *stream*.
      */
-    protected def newListener(): Listener[Http2Frame, Http2Frame] =
+    protected def newListener(): Listener[Http2Frame, Http2Frame, TransportContext] =
       Netty4H2Listener.mk(params)
 
     private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
 
     /** A dispatcher is created for each inbound HTTP/2 connection. */
     protected def newDispatcher(
-      trans: Http2FrameTransport,
+      trans: Http2FrameTransport {
+        type Context <: self.Context
+      },
       service: Service[Request, Response]
     ): Closable = {
       new Netty4ServerDispatcher(trans, service, statsReceiver.scope("stream"))

@@ -5,7 +5,7 @@ import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.dispatch.{SerialClientDispatcher, SerialServerDispatcher}
 import com.twitter.finagle.netty4.{Netty4Listener, Netty4Transporter}
 import com.twitter.finagle.server.{StackServer, StdStackServer}
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{Transport, TransportContext}
 import com.twitter.io.Charsets
 import com.twitter.util.Future
 import java.net.SocketAddress
@@ -69,7 +69,7 @@ object Echo extends Client[String, String] with Server[String, String] {
     params: Stack.Params = Stack.Params.empty
   )
     extends StdStackClient[String, String, Client]
-    with StringRichClient {
+    with StringRichClient { self =>
     protected def copy1(
       stack: Stack[ServiceFactory[String, String]] = this.stack,
       params: Stack.Params = this.params
@@ -77,11 +77,14 @@ object Echo extends Client[String, String] with Server[String, String] {
 
     protected type In = String
     protected type Out = String
+    protected type Context = TransportContext
 
-    protected def newTransporter(addr: SocketAddress): Transporter[String, String] =
+    protected def newTransporter(addr: SocketAddress): Transporter[String, String, TransportContext] =
       Netty4Transporter.raw(StringClientPipeline, addr, params)
 
-    protected def newDispatcher(transport: Transport[In, Out]) =
+    protected def newDispatcher(transport: Transport[super.In, super.Out] {
+      type Context <: self.Context
+    }) =
       new SerialClientDispatcher(transport)
   }
 
@@ -104,7 +107,7 @@ object Echo extends Client[String, String] with Server[String, String] {
   case class Server(
     stack: Stack[ServiceFactory[String, String]] = StackServer.newStack,
     params: Stack.Params = StackServer.defaultParams
-  ) extends StdStackServer[String, String, Server] {
+  ) extends StdStackServer[String, String, Server] { self =>
     protected def copy1(
       stack: Stack[ServiceFactory[String, String]] = this.stack,
       params: Stack.Params = this.params
@@ -112,9 +115,12 @@ object Echo extends Client[String, String] with Server[String, String] {
 
     protected type In = String
     protected type Out = String
+    protected type Context = TransportContext
 
     protected def newListener() = Netty4Listener(StringServerPipeline, params)
-    protected def newDispatcher(transport: Transport[In, Out], service: Service[String, String]) =
+    protected def newDispatcher(transport: Transport[String, String] {
+      type Context <: self.Context
+    }, service: Service[String, String]) =
       new SerialServerDispatcher(transport, service)
   }
 

@@ -37,10 +37,10 @@ class Netty4ServerDispatcher(
 
   override protected[this] val log = Netty4ServerDispatcher.log
   override protected[this] val prefix =
-    s"S L:${transport.localAddress} R:${transport.remoteAddress}"
+    s"S L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
   private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
 
-  transport.onClose.onSuccess(onTransportClose)
+  transport.context.onClose.onSuccess(onTransportClose)
 
   override def close(deadline: Time): Future[Unit] = {
     streamsGauge.remove()
@@ -56,8 +56,8 @@ class Netty4ServerDispatcher(
   private[this] val serve: Request => Future[Response] = { req =>
     val save = Local.save()
     try {
-      Contexts.local.let(RemoteInfo.Upstream.AddressCtx, transport.remoteAddress) {
-        transport.peerCertificate match {
+      Contexts.local.let(RemoteInfo.Upstream.AddressCtx, transport.context.remoteAddress) {
+        transport.context.peerCertificate match {
           case None =>
             service(req).rescue(wrapServiceEx)
 

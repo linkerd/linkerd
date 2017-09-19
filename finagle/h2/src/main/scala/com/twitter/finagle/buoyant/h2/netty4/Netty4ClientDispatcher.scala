@@ -32,11 +32,11 @@ class Netty4ClientDispatcher(
   override protected[this] val log = Netty4ClientDispatcher.log
 
   override protected[this] val prefix =
-    s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+    s"C L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
 
   private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
 
-  transport.onClose.onSuccess(onTransportClose)
+  transport.context.onClose.onSuccess(onTransportClose)
 
   override def close(deadline: Time): Future[Unit] = {
     streamsGauge.remove()
