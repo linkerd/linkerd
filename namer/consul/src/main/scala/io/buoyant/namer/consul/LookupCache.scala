@@ -25,41 +25,31 @@ private[consul] class LookupCache(
   private[this] val lookupCounter = stats.counter("lookups")
   private[this] val serviceStats = SvcAddr.Stats(stats.scope("service"))
 
-  private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
-    domain match {
-      case None => Addr.Metadata.empty
-      case Some(domain) =>
-        val authority = key.tag match {
-          case Some(tag) => s"${tag}.${key.name}.service.${dc}.${domain}"
-          case None => s"${key.name}.service.${dc}.${domain}"
-        }
-        Addr.Metadata(Metadata.authority -> authority)
-    }
 
   private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
     untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
       case (dc, key, id, residual) =>
-        resolveDc(dc).join(domain).flatMap { case ((dcName, domainOption)) =>
-          val meta = mkMeta(key, dcName, domainOption)
-          val addr = SvcAddr(
-            consulApi,
-            dcName,
-            key,
-            domainOption,
-            consistency = consistency,
-            preferServiceAddress = preferServiceAddress,
-            serviceStats
-          )
-          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+        resolveDc(dc).join(domain).flatMap {
+          case ((dcName, domainOption)) =>
+            val addr = SvcAddr(
+              consulApi,
+              dcName,
+              key,
+              domainOption,
+              consistency = consistency,
+              preferServiceAddress = preferServiceAddress,
+              serviceStats
+            )
+            log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
 
-          val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
-            case Addr.Neg => Activity.Ok(NameTree.Neg)
-            case Addr.Pending => Activity.Pending
-            case Addr.Failed(why) => Activity.Failed(why)
-            case _ =>
-              Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
-          }
-          new Activity(stateVar)
+            val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
+              case Addr.Neg => Activity.Ok(NameTree.Neg)
+              case Addr.Pending => Activity.Pending
+              case Addr.Failed(why) => Activity.Failed(why)
+              case Addr.Bound(_, _) =>
+                Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+            }
+            new Activity(stateVar)
         }
     })
 
