@@ -169,23 +169,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer updates when serviceMap blocking calls return") {
+  test("Namer updates when serviceNodes blocking calls return") {
     val blockingCallResponder = new Promise[Unit]
 
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
-        case Some("1") =>
-          val rsp = Map("consul" -> Seq(), "servicename" -> Seq("master", "staging"))
-          blockingCallResponder before Future.value(Indexed(rsp, Some("2")))
-        case _ => Future.never
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -195,9 +182,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
         retry: Boolean = false
       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
+          Future.value(Indexed(Seq.empty, Some("1")))
+        case Some("1") =>
           val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None)
-          Future.value(Indexed(Seq(node), Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
+          blockingCallResponder before Future.value(Indexed(Seq(node), Some("2")))
+        case _ => Future.never
       }
     }
 
@@ -214,7 +203,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
     assert(stats.counters == Map(
       Seq("service", "opens") -> 1,
-      Seq("service", "updates") -> 1,
+      Seq("service", "updates") -> 2,
       Seq("lookups") -> 1
     ))
   }
