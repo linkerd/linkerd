@@ -83,16 +83,19 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
 
   private[this] lazy val ingresses: Activity[Seq[IngressSpec]] = {
     val act = api.activity(unpackIngressList) {
-      case (oldIngresses, v1beta1.IngressAdded(a)) => oldIngresses ++ mkIngress(a)
-      case (oldIngresses, v1beta1.IngressModified(m)) =>
-        mkIngress(m)
-          .map { item => oldIngresses.filterNot(isNameEqual(_, item)) :+ item }
-          .getOrElse(oldIngresses)
-      case (_, v1beta1.IngressDeleted(_)) =>
-        Seq.empty
-      case (oldIngresses, v1beta1.IngressError(e)) =>
-        log.error("k8s watch error: %s", e)
-        oldIngresses
+      (ingresses, watchEvent) =>
+        watchEvent match {
+          case v1beta1.IngressAdded(a) => ingresses ++ mkIngress(a)
+          case v1beta1.IngressModified(m) =>
+            mkIngress(m)
+              .map { item => ingresses.filterNot(isNameEqual(_, item)) :+ item }
+              .getOrElse(ingresses)
+          case v1beta1.IngressDeleted(_) =>
+            Seq.empty
+          case v1beta1.IngressError(e) =>
+            log.error("k8s watch error: %s", e)
+            ingresses
+        }
     }
     val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
     act
@@ -102,10 +105,7 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
     item <- ingressList.items
     ingress <- mkIngress(item)
   } yield ingress
-
-  private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean =
-    x.name == y.name && x.namespace == y.namespace
-
+  private[this] def isNameEqual(x: IngressSpec, y: IngressSpec): Boolean = x.name == y.name && x.namespace == y.namespace
   private[this] def mkIngress(ingress: v1beta1.Ingress): Option[IngressSpec] = {
     //make sure that this ingress resource is not specified for someone else
     val annotations = ingress.metadata.flatMap(meta => meta.annotations).getOrElse(Map.empty)
