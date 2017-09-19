@@ -131,18 +131,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer returns neg when servicename does not exist in serviceMap response") {
+  test("Namer returns neg when servicename does not exist") {
     class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None => Future.value(Indexed(Map("consul" -> Seq.empty), Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
-      }
-
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
