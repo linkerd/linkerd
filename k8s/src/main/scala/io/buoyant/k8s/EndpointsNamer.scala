@@ -151,6 +151,8 @@ abstract class EndpointsNamer(
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
                 logEvent.addition(newMap -- oldMap.keys)
+                logEvent.deletion(oldMap -- newMap.keys)
+                logEvent.modification(oldMap, newMap)
                 newMap
               case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
@@ -285,24 +287,21 @@ object EndpointsNamer {
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
 
     private[this] val logEvent = EventLogger(nsName, serviceName)
-    def update(event: v1.EndpointsWatch): ServiceEndpoints =
+    def update(event: v1.EndpointsWatch): ServiceEndpoints = {
+      @inline
+      def newState(newEndpoints: Set[Endpoint], newPorts: PortMap): ServiceEndpoints = {
+        logEvent.addition(newEndpoints -- endpoints)
+        logEvent.deletion(endpoints -- newEndpoints)
+        logEvent.addition(newPorts -- ports.keys)
+        logEvent.deletion(ports -- newPorts.keys)
+        logEvent.modification(ports, newPorts)
+        ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
+      }
       event match {
-        case v1.EndpointsAdded(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) =
-            update.subsets.toEndpointsAndPorts
-          logEvent.addition(newEndpoints -- endpoints)
-          logEvent.addition(newPorts -- ports.keys)
-          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
-        case v1.EndpointsModified(update) =>
-          val (newEndpoints, newPorts: Map[String, Int]) =
-            update.subsets.toEndpointsAndPorts
-          logEvent.addition(newEndpoints -- endpoints)
-          logEvent.deletion(endpoints -- newEndpoints)
-          logEvent.addition(newPorts -- ports.keys)
-          logEvent.deletion(ports -- newPorts.keys)
-          logEvent.modification(ports, newPorts)
-          ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
-
+        case v1.EndpointsAdded(Subsets(newEndpoints, newPorts)) =>
+          newState(newEndpoints, newPorts)
+        case v1.EndpointsModified(Subsets(newEndpoints, newPorts)) =>
+          newState(newEndpoints, newPorts)
         case v1.EndpointsDeleted(_) =>
           logEvent.deletion(endpoints)
           logEvent.deletion(ports)
@@ -314,6 +313,8 @@ object EndpointsNamer {
           )
           this
       }
+    }
+
   }
 
   private[EndpointsNamer] object ServiceEndpoints {
@@ -368,6 +369,11 @@ object EndpointsNamer {
       val (endpoints, ports) = result.unzip
       (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
     }
+  }
+
+  private[EndpointsNamer] object Subsets {
+    def unapply(endpoints: v1.Endpoints): Option[(Set[Endpoint], PortMap)] =
+      Some(endpoints.subsets.toEndpointsAndPorts)
   }
 
   private[EndpointsNamer] case class EventLogger(ns: String, srv: String)

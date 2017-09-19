@@ -171,6 +171,7 @@ object Watch {
     @JsonIgnore
     def resourceVersion = `object`.metadata.flatMap(_.resourceVersion)
   }
+
   trait Added[O <: KubeObject] extends WithObject[O]
   trait Modified[O <: KubeObject] extends WithObject[O]
   trait Deleted[O <: KubeObject] extends WithObject[O]
@@ -179,6 +180,7 @@ object Watch {
     @JsonIgnore
     def resourceVersion = None
   }
+
 }
 
 case class Status(
