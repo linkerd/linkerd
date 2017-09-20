@@ -338,7 +338,6 @@ class ApiTest extends FunSuite
             val rsp = Response()
             rsp.version = req.version
             rsp.status = Status.Gone
-            //            val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"401: The event in requested index is outdated and cleared (the requested history has been cleared [4770862/4659254]) [4771861]"}}""")
             val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"too old resource version: 62033480 (62353773)","reason":"Gone","code":410}}""")
             rsp.writer.write(msg).ensure {
               val _ = rsp.writer.close()
