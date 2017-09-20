@@ -1,15 +1,13 @@
 # Do service discovery lookups against the Consul service catalog.
 namers:
 - kind: io.l5d.consul
-  includeTag: false
+  includeTag: true
   useHealthCheck: false
-  host: 0.0.0.0
-  port: 8300
 
 routers:
 - protocol: http
   dtab: |
-    /svc     => /#/io.l5d.consul/.local/svc;
+    /svc     => /#/consul/dc1/prod;
   servers:
   - port: 4140
     ip: 0.0.0.0
