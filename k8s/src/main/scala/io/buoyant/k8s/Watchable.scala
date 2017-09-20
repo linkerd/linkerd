@@ -141,19 +141,19 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               }
             })
             val watchStream = Json.readStream[W](rsp.reader, Api.BufSize)
-              // it would be nice to not have to flat map over the watch stream, but this is
-              // necessary to handle the K8s bug where erorrs have the incorrect status code.
-              // hopefully this hack can eventually be removed...
+              // it would be nice to not have to flat map over the watch
+              // stream, but this is necessary to handle the K8s bug where
+              // erorrs have the incorrect status code.
               .flatMap {
-                // special case to handle Kubernetes bug where "too old resource version" errors
-                // are returned with status code 200 rather than status code 410.
-                // see https://github.com/kubernetes/kubernetes/issues/35068 for details.
-                case e: Watch.Error[O] if e.status.message.exists(_.startsWith("too old resource version")) =>
-                  log.warning(
-                    """k8s returned 'too old resource version' error with incorrect HTTP status code.
-                      |         everything is fine, but your Kubernetes version is probably outdated.
-                      |         see https://github.com/kubernetes/kubernetes/issues/35068 for more details.
-                      |""".stripMargin
+                // special case to handle Kubernetes bug where "too old
+                // resource version" errors are returned with status code 200
+                // rather than status code 410.
+                // see https://github.com/kubernetes/kubernetes/issues/35068
+                // for details.
+                case e: Watch.Error[O] if e.status.code.contains(410) =>
+                  log.debug(
+                    "k8s returned 'too old resource version' error with " +
+                      "incorrect HTTP status code, restarting watch"
                   )
                   _resourceVersionTooOld()
                 case event => AsyncStream.fromOption(Some(event))
