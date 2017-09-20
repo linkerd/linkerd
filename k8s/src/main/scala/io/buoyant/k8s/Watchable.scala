@@ -110,6 +110,24 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         Future.Unit
       })
 
+      @inline
+      def _resourceVersionTooOld() = {
+        // Gone is returned by k8s to indicate the requested resource version is too old to watch. A common scenario
+        // that exhibits this error is:
+        //
+        // 1. Kubernetes kills a connection or the connection is lost
+        // 2. We try to re-establish the watch from the last received version, but because we are only watching a
+        //    subset of resources, that version was a while ago
+        // 3. The watch fails
+        //
+        // We need to reload the initial information to ensure we are "caught up," and then watch again.
+        log.trace("k8s restarting watch on %s, resource version %s was too old", watchPath, resourceVersion)
+        AsyncStream.fromFuture {
+          restartWatches(labelSelector, fieldSelector).map {
+            case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
+          }
+        }.flatten
+      }
       AsyncStream.fromFuture(initialState).flatMap { rsp =>
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
@@ -123,6 +141,23 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               }
             })
             val watchStream = Json.readStream[W](rsp.reader, Api.BufSize)
+              // it would be nice to not have to flat map over the watch
+              // stream, but this is necessary to handle the K8s bug where
+              // erorrs have the incorrect status code.
+              .flatMap {
+                // special case to handle Kubernetes bug where "too old
+                // resource version" errors are returned with status code 200
+                // rather than status code 410.
+                // see https://github.com/kubernetes/kubernetes/issues/35068
+                // for details.
+                case e: Watch.Error[O] if e.status.code.contains(410) =>
+                  log.debug(
+                    "k8s returned 'too old resource version' error with " +
+                      "incorrect HTTP status code, restarting watch"
+                  )
+                  _resourceVersionTooOld()
+                case event => AsyncStream.fromOption(Some(event))
+              }
             watchStream ++ // if the stream ends (k8s will kill connections after ~30m), restart it)
               AsyncStream.fromFuture {
                 // It's safe to call lastOption here, because we're after the `++` operator, so
@@ -140,20 +175,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               }.flatten
 
           case http.Status.Gone =>
-            // Gone is returned by k8s to indicate the requested resource version is too old to watch. A common scenario
-            // that exhibits this error is:
-            //
-            // 1. Kubernetes kills a connection or the connection is lost
-            // 2. We try to re-establish the watch from the last received version, but because we are only watching a
-            //    subset of resources, that version was a while ago
-            // 3. The watch fails
-            //
-            // We need to reload the initial information to ensure we are "caught up," and then watch again.
-            AsyncStream.fromFuture {
-              restartWatches(labelSelector, fieldSelector).map {
-                case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
-              }
-            }.flatten
+            _resourceVersionTooOld()
 
           case status =>
             close.set(Closable.nop)
