@@ -149,6 +149,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             // 3. The watch fails
             //
             // We need to reload the initial information to ensure we are "caught up," and then watch again.
+            log.info("k8s restarting watch on %s, resource version %s was too old", watchPath, resourceVersion)
             AsyncStream.fromFuture {
               restartWatches(labelSelector, fieldSelector).map {
                 case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
