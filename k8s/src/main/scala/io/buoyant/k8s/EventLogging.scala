@@ -7,7 +7,7 @@ private[k8s] trait EventLogging {
   @inline private[this] def logAction[A](verb: String, descriptor: => String, format: A => String)(value: A): Unit =
     log.ifTrace(s"k8s ns $ns service $srv $verb $descriptor ${format(value)}")
 
-  protected def logActions[A](verb: String, descriptor: => String, format: A => String)(values: Iterable[A]): Unit =
+  protected def logActions[A](verb: String, descriptor: => String, format: A => String)(values: => Iterable[A]): Unit =
     if (values.nonEmpty) {
       log.debug(
         "k8s ns %s service %s %s %ss",
@@ -22,13 +22,13 @@ private[k8s] trait EventLogging {
     case (fromPort, to) => s"from $fromPort to $to"
   }
 
-  @inline def deletion[A, B](deleted: Map[A, B]): Unit =
+  @inline def deletion[A, B](deleted: => Map[A, B]): Unit =
     logActions("deleted", "port mapping", formatMapping)(deleted)
 
-  @inline def addition[A, B](added: Map[A, B]): Unit =
+  @inline def addition[A, B](added: => Map[A, B]): Unit =
     logActions("added", "port mapping", formatMapping)(added)
 
-  protected def logModification[A](descriptor: String)(mods: Iterable[(A, A)]): Unit =
+  protected def logModification[A](descriptor: String)(mods: => Iterable[(A, A)]): Unit =
     if (mods.nonEmpty) {
       log.debug(
         "k8s ns %s service %s modified %ss",
