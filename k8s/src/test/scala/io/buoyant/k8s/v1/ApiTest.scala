@@ -410,7 +410,7 @@ class ApiTest extends FunSuite
             val rsp = Response()
             rsp.version = req.version
             rsp.status = Status.Ok
-            val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"too old resource version: 62033480 (62353773)","reason":"Gone","code":200}}""")
+            val msg = Buf.Utf8("""{"type":"ERROR","object":{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"too old resource version: 62033480 (62353773)","reason":"Gone","code":410}}""")
             rsp.writer.write(msg).ensure {
               val _ = rsp.writer.close()
             }
