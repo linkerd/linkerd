@@ -1,5 +1,6 @@
 package io.buoyant.namer.consul
 
+import com.twitter.finagle.Address.Inet
 import com.twitter.finagle._
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
@@ -15,6 +16,7 @@ private[consul] class LookupCache(
   setHost: Boolean = false,
   consistency: Option[v1.ConsistencyMode] = None,
   preferServiceAddress: Option[Boolean] = None,
+  weights: Map[String, Double] = Map.empty,
   stats: StatsReceiver = NullStatsReceiver
 ) {
 
@@ -100,7 +102,7 @@ private[consul] class LookupCache(
       name: String,
       domain: Option[String]
     ): Activity[Map[SvcKey, Var[Addr]]] = {
-      val dc = DcServices(consulApi, name, domain, consistency, preferServiceAddress, dcStats)
+      val dc = DcServices(consulApi, name, domain, consistency, preferServiceAddress, weights, dcStats)
       activity() = Activity.Ok(cache + (name -> dc))
       dc
     }

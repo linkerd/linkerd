@@ -7,8 +7,7 @@ import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1
-import io.buoyant.consul.v1.ConsistencyMode
-import io.buoyant.consul.v1.HealthStatus
+import io.buoyant.consul.v1.{ConsistencyMode, HealthStatus}
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
 
 /**
@@ -28,6 +27,9 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   consistencyMode: default
  *   failFast: false
  *   preferServiceAddress: true
+ *   weights:
+ *   - tag: primary
+ *     weight: 100
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -36,6 +38,8 @@ class ConsulInitializer extends NamerInitializer {
 }
 
 object ConsulInitializer extends ConsulInitializer
+
+case class TagWeight(tag: String, weight: Double)
 
 case class ConsulConfig(
   host: Option[String],
@@ -47,7 +51,8 @@ case class ConsulConfig(
   setHost: Option[Boolean] = None,
   consistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None,
-  preferServiceAddress: Option[Boolean] = None
+  preferServiceAddress: Option[Boolean] = None,
+  weights: Option[Set[TagWeight]] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -84,16 +89,21 @@ case class ConsulConfig(
     }
     val agent = v1.AgentApi(service)
 
+    val tagWeights: Map[String, Double] = weights match {
+      case Some(ws) => ws.map(tw => tw.tag -> tw.weight).toMap
+      case None => Map.empty
+    }
+
     val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
 
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, stats
+          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
         )
     }
   }

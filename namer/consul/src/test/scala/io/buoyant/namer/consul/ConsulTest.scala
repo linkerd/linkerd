@@ -46,6 +46,9 @@ class ConsulTest extends FunSuite {
                     |consistencyMode: stale
                     |failFast: true
                     |preferServiceAddress: false
+                    |weights:
+                    | - tag: primary
+                    |   weight: 100
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -60,6 +63,7 @@ class ConsulTest extends FunSuite {
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.failFast == Some(true))
     assert(consul.preferServiceAddress == Some(false))
+    assert(consul.weights == Some(Set(TagWeight("primary", 100.0))))
     assert(!consul.disabled)
   }
 }

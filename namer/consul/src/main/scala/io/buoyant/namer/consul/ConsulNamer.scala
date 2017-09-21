@@ -14,9 +14,10 @@ object ConsulNamer {
     setHost: Boolean = false,
     consistency: Option[v1.ConsistencyMode] = None,
     preferServiceAddress: Option[Boolean] = None,
+    weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, stats)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
     new TaggedNamer(lookup, prefix)
   }
 
@@ -27,9 +28,10 @@ object ConsulNamer {
     setHost: Boolean = false,
     consistency: Option[v1.ConsistencyMode] = None,
     preferServiceAddress: Option[Boolean] = None,
+    weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, stats)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
     new UntaggedNamer(lookup, prefix)
   }
 

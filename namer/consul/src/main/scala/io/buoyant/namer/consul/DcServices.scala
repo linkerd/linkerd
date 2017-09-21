@@ -38,6 +38,7 @@ private[consul] object DcServices {
     domain: Option[String],
     consistency: Option[v1.ConsistencyMode],
     preferServiceAddress: Option[Boolean] = None,
+    tagWeights: Map[String, Double] = Map.empty,
     stats: Stats
   ): Activity[Map[SvcKey, Var[Addr]]] = {
 
@@ -92,7 +93,7 @@ private[consul] object DcServices {
                 case None =>
                   log.debug("consul added: %s", k)
                   stats.adds.incr()
-                  SvcAddr(consulApi, name, k, domain, consistency, preferServiceAddress, stats.service)
+                  SvcAddr(consulApi, name, k, domain, consistency, preferServiceAddress, tagWeights, stats.service)
               }
               k -> svc
             }.toMap
