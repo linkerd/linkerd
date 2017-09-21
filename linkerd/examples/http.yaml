@@ -19,22 +19,6 @@ routers:
   servers:
   - port: 4140
     ip: 0.0.0.0
-    engine: {kind: netty3}
     addForwardedHeader:
       by: {kind: "ip:port"}
       for: {kind: "ip"}
-  client:
-    engine: {kind: netty3}
-
-- protocol: http
-  label: netty4
-  identifier: {kind: io.l5d.header.token}
-  dtab: |
-    /svc => /#/io.l5d.fs;
-  servers:
-  - port: 4141
-    ip: 0.0.0.0
-    engine: {kind: netty4}
-    addForwardedHeader: {}
-  client:
-    engine: {kind: netty4}

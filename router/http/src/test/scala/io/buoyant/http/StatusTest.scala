@@ -1,7 +1,7 @@
 package io.buoyant.http
 
 import com.twitter.finagle.{Status => _, _}
-import com.twitter.finagle.http.{Http => _, _}
+import com.twitter.finagle.http._
 import io.buoyant.test.FunSuite
 
 class StatusTest extends FunSuite {

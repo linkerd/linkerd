@@ -639,7 +639,7 @@ object LinkerdBuild extends Base {
 
   val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
   val validator = projectDir("validator")
-    .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
+    .withTwitterLibs(Deps.twitterServer, Deps.finagle("http"))
     .settings(
       mainClass := Some("io.buoyant.namerd.Validator"),
       validateAssembled := (Def.taskDyn {

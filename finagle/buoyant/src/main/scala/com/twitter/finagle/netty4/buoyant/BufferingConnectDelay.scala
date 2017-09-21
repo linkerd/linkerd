@@ -52,7 +52,7 @@ private[finagle] class BufferingConnectDelay
         if (future.isSuccess) {
           val _ = ctx.pipeline.addLast(handleActiveTo(inp))
         } else if (inp.tryFailure(future.cause)) {
-          failPendingWrites(ctx, future.cause)
+          failPendingWrites(future.cause)
         }
     }
 
@@ -65,6 +65,6 @@ private[finagle] class BufferingConnectDelay
         }
 
       override def exceptionCaught(ctx: ChannelHandlerContext, exn: Throwable): Unit =
-        if (inp.tryFailure(exn)) failPendingWrites(ctx, exn)
+        if (inp.tryFailure(exn)) failPendingWrites(exn)
     }
 }
