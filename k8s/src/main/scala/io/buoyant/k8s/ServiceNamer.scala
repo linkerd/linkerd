@@ -71,19 +71,13 @@ class ServiceNamer(
      */
     def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc = {
       @inline def newState(svc: Svc): Svc = {
-        logEvent.addition(svc.portMappings -- portMappings.keys)
-        logEvent.addition(svc.ports -- ports.keys)
-        logEvent.deletion(portMappings -- svc.portMappings.keys)
-        logEvent.deletion(ports -- svc.ports.keys)
-        logEvent.modification(portMappings, svc.portMappings)
-        logEvent.modification(ports, svc.ports)
+        logEvent.newState(ports, svc.ports)
+        logEvent.newState(portMappings, svc.portMappings)
         svc
       }
       event match {
-        case v1.ServiceAdded(Svc(svc)) =>
-          newState(svc)
-        case v1.ServiceModified(Svc(svc)) =>
-          newState(svc)
+        case v1.ServiceAdded(Svc(svc)) => newState(svc)
+        case v1.ServiceModified(Svc(svc)) => newState(svc)
         case v1.ServiceDeleted(_) =>
           logEvent.deletion(ports)
           logEvent.deletion(portMappings)
@@ -199,14 +193,12 @@ class ServiceNamer(
 
   private[ServiceNamer] case class EventLogger(ns: String, srv: String)
     extends EventLogging {
-    def addition(svcs: Iterable[Svc]): Unit =
-      logActions[Svc]("added", "service", _.toString)(svcs)
+    def newState(old: Set[Svc], newState: Set[Svc]): Unit =
+      mkNewState[Svc]("service")(old, newState)
 
     def deletion(svcs: Iterable[Svc]): Unit =
-      logActions[Svc]("deleted", "service", _.toString)(svcs)
+      mkDeletion[Svc]("service")(svcs)
 
-    def modification(svcs: Iterable[(Svc, Svc)]): Unit =
-      logModification("service")(svcs)
   }
 
 }
