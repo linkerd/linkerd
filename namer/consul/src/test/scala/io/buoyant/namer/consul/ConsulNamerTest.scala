@@ -719,11 +719,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
   test("Namer returns weighted bound address metadata when service has configured weight tag") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceMap(
-                               datacenter: Option[String] = None,
-                               blockingIndex: Option[String] = None,
-                               consistency: Option[ConsistencyMode] = None,
-                               retry: Boolean = false
-                             ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
+        datacenter: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
         case Some("0") | None =>
           val rsp = Map("consul" -> Seq(), "servicename" -> Seq("production", "primary"))
           Future.value(Indexed(rsp, Some("1")))
@@ -731,13 +731,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
 
       override def serviceNodes(
-                                 serviceName: String,
-                                 datacenter: Option[String],
-                                 tag: Option[String] = None,
-                                 blockingIndex: Option[String] = None,
-                                 consistency: Option[ConsistencyMode] = None,
-                                 retry: Boolean = false
-                               ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
           val node = testServiceNode.copy(ServiceTags = Some(Seq("production", "primary")))
           Future.value(Indexed[Seq[ServiceNode]](Seq(node), Some("1")))

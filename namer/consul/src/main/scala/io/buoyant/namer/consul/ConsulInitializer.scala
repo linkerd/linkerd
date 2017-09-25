@@ -52,7 +52,7 @@ case class ConsulConfig(
   consistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None,
   preferServiceAddress: Option[Boolean] = None,
-  weights: Option[Set[TagWeight]] = None
+  weights: Option[Seq[TagWeight]] = None
 ) extends NamerConfig {
 
   @JsonIgnore

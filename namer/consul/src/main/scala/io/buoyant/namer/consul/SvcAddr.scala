@@ -1,12 +1,11 @@
 package io.buoyant.namer.consul
 
-import java.net.InetSocketAddress
-
 import com.twitter.finagle._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
+import java.net.InetSocketAddress
 
 import scala.util.control.NoStackTrace
 
