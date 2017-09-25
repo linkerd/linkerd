@@ -63,7 +63,7 @@ class ConsulTest extends FunSuite {
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.failFast == Some(true))
     assert(consul.preferServiceAddress == Some(false))
-    assert(consul.weights == Some(Set(TagWeight("primary", 100.0))))
+    assert(consul.weights == Some(Seq(TagWeight("primary", 100.0))))
     assert(!consul.disabled)
   }
 }
