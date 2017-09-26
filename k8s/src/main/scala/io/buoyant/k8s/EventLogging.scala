@@ -6,90 +6,86 @@ private[k8s] trait EventLogging {
   def ns: String
   def srv: String
   
-  @inline private[this] def logAction[A](verb: String, descriptor: String, format: A => String)(value: A): Unit =
-    log.ifTrace(s"k8s ns $ns service $srv $verb $descriptor ${format(value)}")
-
-  @inline private[this] def formatMapping[A, B](kv: (A, B)): String = kv match {
-    case (name: String, port: Int) => s"'$name' to port $port"
-    case (name: String, to) => s"'$name' to $to"
-    case (fromPort, to) => s"from $fromPort to $to"
-  }
-
-  @inline private[this] def defaultFormat[A](a: A): String = a.toString
-
-  protected def mkDeletion[A](
-    descriptor: String,
-    format: A => String = defaultFormat[A](_)
+  @inline 
+  private[this] def logAction[A](
+    noun: String,
+    format: A => String = (a: A) => a.toString
   )(
-    deleted: Iterable[A]
+    verb: String
+  )(
+    value: A
   ): Unit =
-    if (deleted.nonEmpty) {
-      log.debug(
-        "k8s ns %s service %s deleted %ss",
-        ns, srv, descriptor
-      )
-      if (log.isLoggable(Logger.TRACE)) {
-        deleted.foreach(logAction("deleted", descriptor, format))
-      }
+    log.trace(
+      s"k8s ns %s service %s %s %s %s",
+      ns, srv, 
+      verb, noun,
+      format(value)
+    )
+
+  @inline
+  private[this] def formatMapping(kv: (Any, Any)): String =
+    kv match {
+      case (name: String, port: Int) => s"'$name' to port $port"
+      case (name: String, (oldTo, newTo)) => s"'$name' from $oldTo to $newTo"
+      case (name: String, to) => s"'$name' to $to"
+      case (fromPort, (oldTo, newTo)) => s"$fromPort from $oldTo to $newTo"
+      case (fromPort, to) => s"from $fromPort to $to"
     }
 
-  def deletion[A, B](deleted: Map[A, B]): Unit =
-    mkDeletion("port mapping", formatMapping)(deleted)
-
-  protected def mkNewState[A](
-    descriptor: String,
-    format: A => String = defaultFormat[A](_)
-  )(
-    old: Set[A],
+  protected def newState[A](
+    noun: String,
+    oldState: Set[A],
     newState: Set[A]
   ): Unit =
-    if (old.nonEmpty && old != newState) {
+    if (oldState != newState) {
       log.debug(
         "k8s ns %s service %s modified %ss",
-        ns, srv, descriptor
+        ns, srv, noun
       )
       if (log.isLoggable(Logger.TRACE)) {
-        // added
-        (newState -- old).foreach {
-          logAction("added", descriptor, format)
-        }
-        // deleted
-        (old -- newState).foreach {
-          logAction("deleted", descriptor, format)
-        }
-
+        val was: String => A => Unit = logAction(noun)
+        (newState -- oldState).foreach { was("added") }
+        (oldState -- newState).foreach { was("deleted") }
       }
     }
 
-  def newState[A, B](old: Map[A, B], newState: Map[A, B]): Unit =
-    if (old.nonEmpty && old != newState) {
+  def deletion(noun: String = ""): Unit =
+    log.debug("k8s ns %s service %s deleted %s", ns, srv, noun)
+
+  def newState[A, B](oldState: Map[A, B], newState: Map[A, B]): Unit =
+    if (oldState != newState) {
       log.debug(
         "k8s ns %s service %s modified port mappings",
         ns, srv
       )
       if (log.isLoggable(Logger.TRACE)) {
+        val was: String => ((Any, Any)) => Unit =
+          logAction("port mapping", formatMapping)
+        val wasRemapped =
+          logAction("port", formatMapping)("remapped")(_)
 
-        val (remapped: Set[Option[String]], removed: Set[Option[String]]) = (for {
-          key <- old.keySet
-          oldValue <- old.get(key)
+        val (remapped, removed) = (for {
+          key <- oldState.keySet
+          oldValue <- oldState.get(key)
         } yield newState.get(key) match {
-          case None =>
-            (None, Some(s"k8s ns $ns service $srv removed port mapping '$key' to $oldValue"))
+          case Some(`oldValue`) =>
+            // the key exists in the new state, but has the same value in both
+            // the old and new states. skip it (yield None on both sides).
+            (None, None)
           case Some(newValue) =>
-            (Some(s"k8s ns $ns service $srv remapped port '$key' from $oldValue to $newValue"), None)
+            // the key exists in both states, but has a different value in the
+            // new state. yield Some on the right-hand (remapped) side.
+            (Some(key -> (oldValue, newValue)), None)
+          case None =>
+            // the mapping no longer exists in the new state, so yield None on
+            // the remapped (left) side and Some on the deleted (right) side.
+            (None, Some(key -> oldValue))
         }).unzip
-        val added = newState -- old.keys
+        val added = newState -- oldState.keys
 
-        added.foreach { case (key, value) =>
-            log.trace(
-              "k8s ns %s service %s added port mapping from '%s' to %s",
-              ns, srv,
-              key, value
-            )
-        }
-        remapped.flatten.foreach(log.trace(_))
-        removed.flatten.foreach(log.trace(_))
-
+        added.foreach { was("added") }
+        removed.foreach { _.foreach(was("deleted")) }
+        remapped.foreach { _.foreach { wasRemapped } }
       }
     }
 }

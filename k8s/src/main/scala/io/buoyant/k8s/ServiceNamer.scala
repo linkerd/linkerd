@@ -79,9 +79,8 @@ class ServiceNamer(
         case v1.ServiceAdded(Svc(svc)) => newState(svc)
         case v1.ServiceModified(Svc(svc)) => newState(svc)
         case v1.ServiceDeleted(_) =>
-          logEvent.deletion(ports)
-          logEvent.deletion(portMappings)
-          this.copy(ports = Map.empty, portMappings = Map.empty)
+          logEvent.deletion()
+          Svc(Map.empty, Map.empty)
         case v1.ServiceError(error) =>
           log.warning(
             "k8s ns %s service %s error %s",
@@ -194,10 +193,7 @@ class ServiceNamer(
   private[ServiceNamer] case class EventLogger(ns: String, srv: String)
     extends EventLogging {
     def newState(old: Set[Svc], newState: Set[Svc]): Unit =
-      mkNewState[Svc]("service")(old, newState)
-
-    def deletion(svcs: Iterable[Svc]): Unit =
-      mkDeletion[Svc]("service")(svcs)
+      super.newState[Svc]("service", old, newState)
 
   }
 

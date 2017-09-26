@@ -157,7 +157,7 @@ abstract class EndpointsNamer(
                 logEvent.newState(newMap, oldMap)
                 newMap
               case (oldMap, v1.ServiceDeleted(_)) =>
-                logEvent.deletion(oldMap)
+                logEvent.deletion()
                 Map.empty
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
@@ -282,7 +282,7 @@ object EndpointsNamer {
     endpoints: Set[Endpoint],
     ports: PortMap
   ) {
-    log.debug("k8s ns %s svc %s constructed new ServiceEndpoints with:\n\tendpoints: %s\n\tports: %s", nsName, serviceName, endpoints, ports)
+    private[this] val logEvent = EventLogger(nsName, serviceName)
 
     def lookupNumberedPort(
       mappings: NumberedPortMap,
@@ -316,23 +316,25 @@ object EndpointsNamer {
         isa = new InetSocketAddress(ip, portNumber)
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
 
-    private[this] val logEvent = EventLogger(nsName, serviceName)
-    def update(event: v1.EndpointsWatch): ServiceEndpoints = {
-      @inline
-      def newState(newEndpoints: Set[Endpoint], newPorts: PortMap): ServiceEndpoints = {
-        logEvent.newState(ports, newPorts)
-        logEvent.newState(endpoints, newEndpoints)
-        ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
-      }
+    @inline
+    private[this] def newState(
+      newEndpoints: Set[Endpoint],
+      newPorts: PortMap
+    ): ServiceEndpoints = {
+      logEvent.newState(ports, newPorts)
+      logEvent.newState(endpoints, newEndpoints)
+      this.copy(endpoints = newEndpoints, ports = newPorts)
+    }
+
+    def update(event: v1.EndpointsWatch): ServiceEndpoints =
       event match {
         case v1.EndpointsAdded(Subsets(newEndpoints, newPorts)) =>
-          newState(newEndpoints, newPorts)
+          this.newState(newEndpoints, newPorts)
         case v1.EndpointsModified(Subsets(newEndpoints, newPorts)) =>
-          newState(newEndpoints, newPorts)
+          this.newState(newEndpoints, newPorts)
         case v1.EndpointsDeleted(_) =>
-          logEvent.deletion(endpoints)
-          logEvent.deletion(ports)
-          ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
+          logEvent.deletion("endpoints")
+          this.copy(endpoints = Set.empty, ports = Map.empty)
         case v1.EndpointsError(error) =>
           log.warning(
             "k8s ns %s service %s endpoints watch error %s",
@@ -340,7 +342,7 @@ object EndpointsNamer {
           )
           this
       }
-    }
+
 
   }
 
@@ -374,11 +376,8 @@ object EndpointsNamer {
   private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
     extends EventLogging {
 
-    def deletion(endpoints: Iterable[Endpoint]): Unit =
-      mkDeletion[Endpoint]("endpoint", _.toString)(endpoints)
-
-    def newState(old: Set[Endpoint], newState: Set[Endpoint]): Unit =
-      mkNewState[Endpoint]("endpoint", _.toString)(old, newState)
+    @inline def newState(old: Set[Endpoint], newState: Set[Endpoint]): Unit =
+      super.newState[Endpoint]("endpoint", old, newState)
   }
 
 }
