@@ -42,7 +42,7 @@ class CuratorSDAnnouncer(zkConnectStr: String) extends FutureAnnouncer {
       .name(serviceFullPath)
       .uriSpec(new UriSpec(s"$protocol://$addressHostString:$addressPort"))
       .address(addressHostString)
-      .payload(ServiceInstanceInfo(s"serviceId: $serviceId, tenant: $tenantStr"))
+      .payload(new ServiceInstanceInfo(s"serviceId: $serviceId, tenant: $tenantStr"))
       .serviceType(ServiceType.DYNAMIC)
 
     if (protocol == "https") {

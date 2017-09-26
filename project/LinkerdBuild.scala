@@ -119,7 +119,7 @@ object LinkerdBuild extends Base {
 
     val curator = projectDir("namer/curator")
       .dependsOn(core)
-      .withLibs(Deps.curatorSD)
+      .withLibs(Deps.curatorSD, Deps.rpcLibrary)
       .withTests()
 
     val fs = projectDir("namer/fs")
@@ -141,7 +141,7 @@ object LinkerdBuild extends Base {
       .dependsOn(core % "compile->compile;test->test")
 
     val curatorSD = projectDir("namer/curatorsd")
-      .withLib(Deps.curatorSD)
+      .withLibs(Deps.curatorSD, Deps.rpcLibrary)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
 
