@@ -375,9 +375,11 @@ object EndpointsNamer {
 
   private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
     extends EventLogging {
-
-    @inline def newState(old: Set[Endpoint], newState: Set[Endpoint]): Unit =
-      super.newState[Endpoint]("endpoint", old, newState)
+    private val endpointWas = logAction[Endpoint]("endpoint", _.toString)(_)
+    private val endpointWasAdded = endpointWas("added")(_)
+    private val endpointWasDeleted = endpointWas("deleted")(_)
+    val newState: (Set[Endpoint], Set[Endpoint]) => Unit =
+      _newState[Endpoint]("endpoint", endpointWasAdded, endpointWasDeleted)
   }
 
 }

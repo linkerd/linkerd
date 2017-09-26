@@ -192,8 +192,12 @@ class ServiceNamer(
 
   private[ServiceNamer] case class EventLogger(ns: String, srv: String)
     extends EventLogging {
-    def newState(old: Set[Svc], newState: Set[Svc]): Unit =
-      super.newState[Svc]("service", old, newState)
+
+    private val svcWas = logAction[Svc]("service", _.toString)(_)
+    private val svcWasAdded = svcWas("added")(_)
+    private val svcWasDeleted = svcWas("deleted")(_)
+    val newState: (Set[Svc], Set[Svc]) => Unit =
+      _newState[Svc]("service", svcWasAdded, svcWasDeleted)
 
   }
 

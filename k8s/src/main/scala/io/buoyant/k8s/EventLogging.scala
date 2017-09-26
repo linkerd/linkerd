@@ -7,7 +7,7 @@ private[k8s] trait EventLogging {
   def srv: String
   
   @inline 
-  private[this] def logAction[A](
+  protected def logAction[A](
     noun: String,
     format: A => String = (a: A) => a.toString
   )(
@@ -32,8 +32,11 @@ private[k8s] trait EventLogging {
       case (fromPort, to) => s"from $fromPort to $to"
     }
 
-  protected def newState[A](
+  protected def _newState[A](
     noun: String,
+    wasAdded: A => Unit,
+    wasDeleted: A => Unit
+  )(
     oldState: Set[A],
     newState: Set[A]
   ): Unit =
@@ -43,14 +46,18 @@ private[k8s] trait EventLogging {
         ns, srv, noun
       )
       if (log.isLoggable(Logger.TRACE)) {
-        val was: String => A => Unit = logAction(noun)
-        (newState -- oldState).foreach { was("added") }
-        (oldState -- newState).foreach { was("deleted") }
+        (newState -- oldState).foreach { wasAdded }
+        (oldState -- newState).foreach { wasDeleted }
       }
     }
 
   def deletion(noun: String = ""): Unit =
     log.debug("k8s ns %s service %s deleted %s", ns, srv, noun)
+
+  private val mappingWas = logAction("port mapping", formatMapping)(_)
+  private val mappingWasAdded = mappingWas("added")
+  private val mappingWasDeleted = mappingWas("added")
+  private val wasRemapped = logAction("port", formatMapping)("remapped")(_)
 
   def newState[A, B](oldState: Map[A, B], newState: Map[A, B]): Unit =
     if (oldState != newState) {
@@ -59,10 +66,6 @@ private[k8s] trait EventLogging {
         ns, srv
       )
       if (log.isLoggable(Logger.TRACE)) {
-        val was: String => ((Any, Any)) => Unit =
-          logAction("port mapping", formatMapping)
-        val wasRemapped =
-          logAction("port", formatMapping)("remapped")(_)
 
         var remapped = Set[(A, (B, B))]()
         var removed = Set[(A, B)]()
@@ -84,8 +87,8 @@ private[k8s] trait EventLogging {
         }
         val added = newState -- oldState.keys
 
-        added.foreach { was("added") }
-        removed.foreach { was("deleted") }
+        added.foreach { mappingWasAdded }
+        removed.foreach { mappingWasDeleted }
         remapped.foreach { wasRemapped }
       }
     }
