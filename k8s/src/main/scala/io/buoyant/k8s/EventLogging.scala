@@ -64,28 +64,29 @@ private[k8s] trait EventLogging {
         val wasRemapped =
           logAction("port", formatMapping)("remapped")(_)
 
-        val (remapped, removed) = (for {
+        var remapped = Set[(A, (B, B))]()
+        var removed = Set[(A, B)]()
+        for {
           key <- oldState.keySet
           oldValue <- oldState.get(key)
-        } yield newState.get(key) match {
+        } newState.get(key) match {
           case Some(`oldValue`) =>
             // the key exists in the new state, but has the same value in both
-            // the old and new states. skip it (yield None on both sides).
-            (None, None)
+            // the old and new states. skip it.
           case Some(newValue) =>
             // the key exists in both states, but has a different value in the
-            // new state. yield Some on the right-hand (remapped) side.
-            (Some(key -> (oldValue, newValue)), None)
+            // new state. add to `remapped`.
+            remapped += key -> (oldValue, newValue)
           case None =>
-            // the mapping no longer exists in the new state, so yield None on
-            // the remapped (left) side and Some on the deleted (right) side.
-            (None, Some(key -> oldValue))
-        }).unzip
+            // the mapping no longer exists in the new state, so add it to
+            // `removed`.
+            removed += key -> oldValue
+        }
         val added = newState -- oldState.keys
 
         added.foreach { was("added") }
-        removed.foreach { _.foreach(was("deleted")) }
-        remapped.foreach { _.foreach { wasRemapped } }
+        removed.foreach { was("deleted") }
+        remapped.foreach { wasRemapped }
       }
     }
 }
