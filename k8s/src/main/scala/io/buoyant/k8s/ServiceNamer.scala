@@ -24,116 +24,8 @@ class ServiceNamer(
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer) extends Namer {
+  import ServiceNamer._
 
-  /**
-   * Internal representation of a Kubernetes service as a map of port names
-   * to `Address`es and a map of port numbers to port names.
-   * @param ports a map of `String`s representing port names to `Address`es.
-   * @param portMappings a map of port numbers to port names.
-   */
-  private[this] case class Svc(
-    ports: Map[String, Address],
-    portMappings: Map[Int, String]
-  ) {
-
-    /**
-     * Look up the port named `portName` and return the corresponding
-     * `Address`, if it exists.
-     * @param portName the port name to look up.
-     * @return `None` if no port named `portName` exists, `Some(Address)`
-     *        a port was found.
-     */
-    def lookup(portName: String): Option[Address] =
-      Try(portName.toInt).toOption match {
-        // if the port name could be parsed as an integer, look up a
-        // numbered port.
-        case Some(portNumber) => lookupNumberedPort(portNumber)
-        // otherwise, look up a named port.
-        case None => lookupNamedPort(portName)
-      }
-
-    private[this] def lookupNamedPort(portName: String): Option[Address] =
-      ports.get(portName)
-
-    private[this] def lookupNumberedPort(portNumber: Int): Option[Address] =
-      for {
-        portName <- portMappings.get(portNumber)
-        address <- ports.get(portName)
-      } yield address
-
-
-    /**
-     * Update this `Svc` with a [[v1.ServiceWatch]] watch event
-     * @param logEvent an event logger with which to log changes to this
-     *                 service.
-     * @param event the [[v1.ServiceWatch]] watch event that occurred.
-     * @return an updated `Svc` representing the watched service.
-     */
-    def update(logEvent: EventLogging, event: v1.ServiceWatch): Svc = {
-      @inline def newState(svc: Svc): Svc = {
-        logEvent.newState(ports, svc.ports)
-        logEvent.newState(portMappings, svc.portMappings)
-        svc
-      }
-      event match {
-        case v1.ServiceAdded(Svc(svc)) => newState(svc)
-        case v1.ServiceModified(Svc(svc)) => newState(svc)
-        case v1.ServiceDeleted(_) =>
-          logEvent.deletion()
-          Svc(Map.empty, Map.empty)
-        case v1.ServiceError(error) =>
-          log.warning(
-            "k8s ns %s service %s error %s",
-            logEvent.ns, logEvent.srv, error
-          )
-          this
-      }
-    }
-
-  }
-
-  private[this] object Svc {
-    def apply(service: v1.Service): Svc = {
-      val ports = mutable.Map.empty[String, Address]
-      val portMap = mutable.Map.empty[Int, String]
-
-      for {
-        meta <- service.metadata.toSeq
-        name <- meta.name.toSeq
-        status <- service.status.toSeq
-        lb <- status.loadBalancer.toSeq
-        spec <- service.spec.toSeq
-        v1.ServicePort(port, targetPort, name) <- spec.ports
-      } {
-        for {
-          ingress <- lb.ingress.toSeq.flatten
-          hostname <- ingress.hostname.orElse(ingress.ip)
-        } ports += name -> Address(new InetSocketAddress(hostname, port))
-
-        portMap += (targetPort match {
-          case Some(target) => port -> target
-          case None => port -> port.toString
-        })
-      }
-      Svc(ports.toMap, portMap.toMap)
-    }
-
-    @inline
-    def unapply(service: v1.Service): Option[Svc] = Some(Svc(service))
-
-    /**
-     * Creates a new [[Svc]] from a services API response.
-     * @param response an `Option` containing either a [[v1.Service]] API
-     *                 response, or `None` if the service does not exist.
-     * @return either a [[Svc]] populated by the service API response, if
-     *         the service exists, or a [[Svc]] with empty ports and port
-     *         mappings maps if the service does not exist.
-     */
-    def fromResponse(response: Option[v1.Service]): Svc =
-      response.map(Svc(_)).getOrElse(Svc(Map.empty, Map.empty))
-  }
-
-  private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
   // retrieves a memoized activity representing a watch for a
@@ -142,13 +34,12 @@ class ServiceNamer(
   private[this] val service: (String, String, Option[String]) => Activity[Svc] =
     untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
-        val eventLogger = EventLogger(nsName, serviceName)
         mkApi(nsName)
           .service(serviceName)
           .activity(
-            Svc.fromResponse(_),
+            Svc.fromResponse(nsName, serviceName),
             labelSelector = labelSelector
-          ) { case (svc, event) => svc.update(eventLogger, event) }
+          ) { case (svc, event) => svc.update(event) }
     })
 
   def lookup(path: Path): Activity[NameTree[Name]] =
@@ -190,15 +81,123 @@ class ServiceNamer(
       NameTree.Neg
   }
 
-  private[ServiceNamer] case class EventLogger(ns: String, srv: String)
-    extends EventLogging {
+}
+private[this] object ServiceNamer {
 
-    private val svcWas = logAction[Svc]("service", _.toString)(_)
-    private val svcWasAdded = svcWas("added")(_)
-    private val svcWasDeleted = svcWas("deleted")(_)
-    val newState: (Set[Svc], Set[Svc]) => Unit =
-      _newState[Svc]("service", svcWasAdded, svcWasDeleted)
+  val PrefixLen = 3
 
+  def unpackService(service: v1.Service): (Map[String, Address], Map[Int, String]) = {
+    val ports = mutable.Map.empty[String, Address]
+    val portMap = mutable.Map.empty[Int, String]
+
+    for {
+      meta <- service.metadata.toSeq
+      name <- meta.name.toSeq
+      status <- service.status.toSeq
+      lb <- status.loadBalancer.toSeq
+      spec <- service.spec.toSeq
+      v1.ServicePort(port, targetPort, name) <- spec.ports
+    } {
+      for {
+        ingress <- lb.ingress.toSeq.flatten
+        hostname <- ingress.hostname.orElse(ingress.ip)
+      } ports += name -> Address(new InetSocketAddress(hostname, port))
+
+      portMap += (targetPort match {
+        case Some(target) => port -> target
+        case None => port -> port.toString
+      })
+    }
+    (ports.toMap, portMap.toMap)
   }
 
+  /**
+   * Internal representation of a Kubernetes service as a map of port names
+   * to `Address`es and a map of port numbers to port names.
+   * @param ports a map of `String`s representing port names to `Address`es.
+   * @param portMappings a map of port numbers to port names.
+   */
+  case class Svc(
+    nsName: String,
+    serviceName: String,
+    ports: Map[String, Address],
+    portMappings: Map[Int, String]
+  ) extends PortMapLogging {
+
+    /**
+     * Look up the port named `portName` and return the corresponding
+     * `Address`, if it exists.
+     * @param portName the port name to look up.
+     * @return `None` if no port named `portName` exists, `Some(Address)`
+     *        a port was found.
+     */
+    def lookup(portName: String): Option[Address] =
+      Try(portName.toInt).toOption match {
+        // if the port name could be parsed as an integer, look up a
+        // numbered port.
+        case Some(portNumber) => lookupNumberedPort(portNumber)
+        // otherwise, look up a named port.
+        case None => lookupNamedPort(portName)
+      }
+
+    private[this] def lookupNamedPort(portName: String): Option[Address] =
+      ports.get(portName)
+
+    private[this] def lookupNumberedPort(portNumber: Int): Option[Address] =
+      for {
+        portName <- portMappings.get(portNumber)
+        address <- ports.get(portName)
+      } yield address
+
+    @inline
+    private[this] def newState(service: v1.Service): Svc = {
+      val (newPorts, newMappings) = unpackService(service)
+      logPortDiff(ports, newPorts)
+      logPortDiff(portMappings, newMappings)
+      this.copy(ports = newPorts, portMappings = newMappings)
+    }
+
+    /**
+     * Update this `Svc` with a [[v1.ServiceWatch]] watch event
+     * @param event the [[v1.ServiceWatch]] watch event that occurred.
+     * @return an updated `Svc` representing the watched service.
+     */
+    def update(event: v1.ServiceWatch): Svc =
+      event match {
+        case v1.ServiceAdded(s) =>
+          log.debug("k8s ns %s service %s added", nsName, serviceName)
+          newState(s)
+        case v1.ServiceModified(s) =>
+          log.debug("k8s ns %s service %s modified", nsName, serviceName)
+          newState(s)
+        case v1.ServiceDeleted(_) =>
+          log.debug("k8s ns %s service %s deleted", nsName, serviceName)
+          this.copy(ports = Map.empty, portMappings = Map.empty)
+        case v1.ServiceError(error) =>
+          log.warning(
+            "k8s ns %s service %s error %s",
+            nsName, serviceName, error
+          )
+          this
+      }
+  }
+
+  object Svc {
+    /**
+     * Creates a new [[Svc]] from a services API response.
+     * @param response an `Option` containing either a [[v1.Service]] API
+     *                 response, or `None` if the service does not exist.
+     * @return either a [[Svc]] populated by the service API response, if
+     *         the service exists, or a [[Svc]] with empty ports and port
+     *         mappings maps if the service does not exist.
+     */
+    def fromResponse(nsName: String, serviceName: String)(response: Option[v1.Service]): Svc =
+      response match {
+        case Some(service: v1.Service) =>
+          val (ports, mappings) = unpackService(service)
+          Svc(nsName, serviceName, ports, mappings)
+        case None =>
+          Svc(nsName, serviceName, Map.empty, Map.empty)
+      }
+  }
 }
