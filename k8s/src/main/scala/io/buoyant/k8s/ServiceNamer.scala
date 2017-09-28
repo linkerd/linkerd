@@ -2,6 +2,7 @@ package io.buoyant.k8s
 
 import java.net.InetSocketAddress
 import com.twitter.conversions.time._
+import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
@@ -162,25 +163,23 @@ class ServiceNamer(
       case (id@Path.Utf8(nsName, portName, serviceName), None) =>
         // "unstable" activity - the activity will update when the existence of
         // the address changes, *or* when the value of the address changes.
-        val unstable = service(nsName.toLowerCase, serviceName.toLowerCase, None)
+        service(nsName.toLowerCase, serviceName.toLowerCase, None)
           .map { _.lookup(portName.toLowerCase) }
-        // stabilize the activity by converting it into an
-        // `Activity[Option[Var[Address]]]`, where the outer `Activity` will
-        // update if the `Option` changes, and the inner `Var` will update on
-        // changes to the value of the `Address`.
-        stabilize(unstable)
+          // stabilize the activity by converting it into an
+          // `Activity[Option[Var[Address]]]`, where the outer `Activity` will
+          // update if the `Option` changes, and the inner `Var` will update on
+          // changes to the value of the `Address`.
+          .stabilizeExistence
           // convert the contents of the stable activity to a `NameTree`.
           .map(toNameTree(path, _))
       case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
         val labelSelector = Some(s"$label=$labelValue")
         // as above, create an unstable activity, stabilize it, and then
         // convert to a `NameTree`.
-        val unstable = service(
-          nsName.toLowerCase,
-          serviceName.toLowerCase,
-          labelSelector
-        ).map { _.lookup(portName.toLowerCase) }
-        stabilize(unstable).map(toNameTree(path, _))
+        service(nsName.toLowerCase, serviceName.toLowerCase, labelSelector)
+          .map { _.lookup(portName.toLowerCase) }
+          .stabilizeExistence
+          .map(toNameTree(path, _))
       case _ =>
         Activity.value(NameTree.Neg)
     }

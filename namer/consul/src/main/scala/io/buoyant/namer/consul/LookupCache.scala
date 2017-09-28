@@ -4,6 +4,8 @@ import com.twitter.finagle._
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
+import io.buoyant.namer.Metadata
+import scala.Function.untupled
 
 /**
  * A helper supporting service resolution in consul, caching
@@ -21,6 +23,35 @@ private[consul] class LookupCache(
   private[this] val localDcMoniker = ".local"
 
   private[this] val lookupCounter = stats.counter("lookups")
+  private[this] val serviceStats = SvcAddr.Stats(stats.scope("service"))
+
+
+  private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
+    untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
+      case (dc, key, id, residual) =>
+        resolveDc(dc).join(domain).flatMap {
+          case ((dcName, domainOption)) =>
+            val addr = SvcAddr(
+              consulApi,
+              dcName,
+              key,
+              domainOption,
+              consistency = consistency,
+              preferServiceAddress = preferServiceAddress,
+              serviceStats
+            )
+            log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
+
+            val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
+              case Addr.Neg => Activity.Ok(NameTree.Neg)
+              case Addr.Pending => Activity.Pending
+              case Addr.Failed(why) => Activity.Failed(why)
+              case Addr.Bound(_, _) =>
+                Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+            }
+            new Activity(stateVar)
+        }
+    })
 
   def apply(
     dc: String,
@@ -30,22 +61,7 @@ private[consul] class LookupCache(
   ): Activity[NameTree[Name]] = {
     log.debug("consul lookup: %s %s", dc, id.show)
     lookupCounter.incr()
-
-    resolveDc(dc).flatMap(Dc.watch).flatMap { services =>
-      services.get(key) match {
-        case None =>
-          log.debug("consul dc %s service %s missing", dc, key)
-          Activity.value(NameTree.Neg)
-
-        case Some(addr) =>
-          log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
-          val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
-            case Addr.Neg => Activity.Ok(NameTree.Neg)
-            case _ => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
-          }
-          new Activity(stateVar)
-      }
-    }
+    cachedLookup(dc, key, id, residual)
   }
 
   private[this] def resolveDc(datacenter: String): Activity[String] =
@@ -69,40 +85,4 @@ private[consul] class LookupCache(
 
   private[this] lazy val localDc = agentConfig.map(_.flatMap(_.Datacenter))
 
-  /**
-   * Contains all cached responses from the Consul API
-   */
-  private[this] object Dc {
-    // Access to `activity` needs to be synchronized to preserve
-    // ordering safety for read-writes (i.e. sample() and update()).
-    private[this] val activity: ActUp[Map[String, Activity[Map[SvcKey, Var[Addr]]]]] =
-      Var(Activity.Pending)
-
-    def watch(dc: String): Activity[Map[SvcKey, Var[Addr]]] =
-      domain.flatMap(get(dc, _))
-
-    /**
-     * Returns existing datacenter cache with that name
-     * or creates a new one
-     */
-    private[this] def get(name: String, domain: Option[String]): Activity[Map[SvcKey, Var[Addr]]] =
-      synchronized {
-        activity.sample() match {
-          case Activity.Ok(snap) => snap.getOrElse(name, mkAndUpdate(snap, name, domain))
-          case _ => mkAndUpdate(Map.empty, name, domain)
-        }
-      }
-
-    private[this] val dcStats = DcServices.Stats(stats)
-
-    private[this] def mkAndUpdate(
-      cache: Map[String, Activity[Map[SvcKey, Var[Addr]]]],
-      name: String,
-      domain: Option[String]
-    ): Activity[Map[SvcKey, Var[Addr]]] = {
-      val dc = DcServices(consulApi, name, domain, consistency, preferServiceAddress, dcStats)
-      activity() = Activity.Ok(cache + (name -> dc))
-      dc
-    }
-  }
 }

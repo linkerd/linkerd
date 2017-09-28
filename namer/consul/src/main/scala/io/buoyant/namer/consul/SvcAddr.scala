@@ -37,7 +37,6 @@ private[consul] object SvcAddr {
     stats: Stats
   ): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
-
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
       consulApi.serviceNodes(
         key.name,
@@ -57,6 +56,7 @@ private[consul] object SvcAddr {
       @volatile var lastGood: Option[Addr] = None
       @volatile var stopped: Boolean = false
       def loop(index0: Option[String]): Future[Unit] = {
+
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
           case Throw(Failure(Some(err: ConnectionFailedException))) =>
