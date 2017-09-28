@@ -25,7 +25,7 @@ private[k8s] trait PortMapLogging {
             nsName, serviceName, port, oldValue
           )
       }
-      (newPorts -- oldPorts.keys).foreach { case (to, from) =>
+      (newPorts -- oldPorts.keys).foreach { case (from, to) =>
         log.trace(
           "k8s ns %s service %s mapped port %s to %s",
           nsName, serviceName, to, from
