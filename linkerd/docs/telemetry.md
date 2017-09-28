@@ -34,7 +34,7 @@ Exposes admin endpoints:
 Key | Default Value | Description
 --- | ------------- | -----------
 path | `/admin/metrics/prometheus` | HTTP path where linkerd exposes Prometheus metrics
-path | No prefix | Prefix for exposed Prometheus metrics
+prefix | No prefix | Prefix for exposed Prometheus metrics
 
 ## InfluxDB
 
