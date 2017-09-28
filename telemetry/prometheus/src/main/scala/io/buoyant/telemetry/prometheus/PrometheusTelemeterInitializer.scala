@@ -12,10 +12,11 @@ class PrometheusTelemeterInitializer extends TelemeterInitializer {
 
 object PrometheusTelemeterInitializer extends PrometheusTelemeterInitializer
 
-class PrometheusConfig(path: Option[String]) extends TelemeterConfig {
+class PrometheusConfig(path: Option[String], prefix: Option[String]) extends TelemeterConfig {
   @JsonIgnore def mk(params: Stack.Params): Telemeter =
     new PrometheusTelemeter(
       params[MetricsTree],
-      path.getOrElse("/admin/metrics/prometheus")
+      path.getOrElse("/admin/metrics/prometheus"),
+      prefix.getOrElse("")
     )
 }
