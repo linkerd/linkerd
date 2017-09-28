@@ -22,6 +22,7 @@ experimental | `false` | Set this to `true` to enable the telemeter if it is exp
 telemetry:
 - kind: io.l5d.prometheus
   path: /admin/metrics/prometheus
+  prefix: linkerd_
 ```
 
 kind: `io.l5d.prometheus`
@@ -33,6 +34,7 @@ Exposes admin endpoints:
 Key | Default Value | Description
 --- | ------------- | -----------
 path | `/admin/metrics/prometheus` | HTTP path where linkerd exposes Prometheus metrics
+path | No prefix | Prefix for exposed Prometheus metrics
 
 ## InfluxDB
 
