@@ -7,11 +7,12 @@ import io.buoyant.test.FunSuite
 class PrometheusTelemeterTest extends FunSuite {
 
   private val prometheusPath = "/admin/metrics/prometheus"
+  private val prometheusPrefix = "linkerd_"
 
   def statsAndHandler = {
     val metrics = MetricsTree()
     val stats = new MetricsTreeStatsReceiver(metrics)
-    val telemeter = new PrometheusTelemeter(metrics, prometheusPath)
+    val telemeter = new PrometheusTelemeter(metrics, prometheusPath, prometheusPrefix)
     val handler = telemeter.handler
     (stats, handler)
   }
@@ -21,10 +22,10 @@ class PrometheusTelemeterTest extends FunSuite {
     val counter = stats.scope("foo", "bar").counter("bas")
     counter.incr()
     val rsp1 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp1 == "foo:bar:bas 1\n")
+    assert(rsp1 == "linkerd_foo:bar:bas 1\n")
     counter.incr()
     val rsp2 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp2 == "foo:bar:bas 2\n")
+    assert(rsp2 == "linkerd_foo:bar:bas 2\n")
   }
 
   test("gauge") {
@@ -32,10 +33,10 @@ class PrometheusTelemeterTest extends FunSuite {
     var v = 1.0f
     val gauge = stats.scope("foo", "bar").addGauge("bas")(v)
     val rsp1 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp1 == "foo:bar:bas 1.0\n")
+    assert(rsp1 == "linkerd_foo:bar:bas 1.0\n")
     v = 2.0f
     val rsp2 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp2 == "foo:bar:bas 2.0\n")
+    assert(rsp2 == "linkerd_foo:bar:bas 2.0\n")
   }
 
   test("stat") {
@@ -54,17 +55,17 @@ class PrometheusTelemeterTest extends FunSuite {
     metricsTreeStat.snapshot()
 
     val rsp1 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp1 == """foo:bar:bas_count 1
-                     |foo:bar:bas_sum 1
-                     |foo:bar:bas_avg 1.0
-                     |foo:bar:bas{quantile="0"} 1
-                     |foo:bar:bas{quantile="0.5"} 1
-                     |foo:bar:bas{quantile="0.9"} 1
-                     |foo:bar:bas{quantile="0.95"} 1
-                     |foo:bar:bas{quantile="0.99"} 1
-                     |foo:bar:bas{quantile="0.999"} 1
-                     |foo:bar:bas{quantile="0.9999"} 1
-                     |foo:bar:bas{quantile="1"} 1
+    assert(rsp1 == """linkerd_foo:bar:bas_count 1
+                     |linkerd_foo:bar:bas_sum 1
+                     |linkerd_foo:bar:bas_avg 1.0
+                     |linkerd_foo:bar:bas{quantile="0"} 1
+                     |linkerd_foo:bar:bas{quantile="0.5"} 1
+                     |linkerd_foo:bar:bas{quantile="0.9"} 1
+                     |linkerd_foo:bar:bas{quantile="0.95"} 1
+                     |linkerd_foo:bar:bas{quantile="0.99"} 1
+                     |linkerd_foo:bar:bas{quantile="0.999"} 1
+                     |linkerd_foo:bar:bas{quantile="0.9999"} 1
+                     |linkerd_foo:bar:bas{quantile="1"} 1
                      |""".stripMargin)
 
     // second data point
@@ -72,17 +73,17 @@ class PrometheusTelemeterTest extends FunSuite {
     metricsTreeStat.snapshot()
 
     val rsp2 = await(handler(Request(prometheusPath))).contentString
-    assert(rsp2 == """foo:bar:bas_count 2
-                     |foo:bar:bas_sum 3
-                     |foo:bar:bas_avg 1.5
-                     |foo:bar:bas{quantile="0"} 1
-                     |foo:bar:bas{quantile="0.5"} 1
-                     |foo:bar:bas{quantile="0.9"} 2
-                     |foo:bar:bas{quantile="0.95"} 2
-                     |foo:bar:bas{quantile="0.99"} 2
-                     |foo:bar:bas{quantile="0.999"} 2
-                     |foo:bar:bas{quantile="0.9999"} 2
-                     |foo:bar:bas{quantile="1"} 2
+    assert(rsp2 == """linkerd_foo:bar:bas_count 2
+                     |linkerd_foo:bar:bas_sum 3
+                     |linkerd_foo:bar:bas_avg 1.5
+                     |linkerd_foo:bar:bas{quantile="0"} 1
+                     |linkerd_foo:bar:bas{quantile="0.5"} 1
+                     |linkerd_foo:bar:bas{quantile="0.9"} 2
+                     |linkerd_foo:bar:bas{quantile="0.95"} 2
+                     |linkerd_foo:bar:bas{quantile="0.99"} 2
+                     |linkerd_foo:bar:bas{quantile="0.999"} 2
+                     |linkerd_foo:bar:bas{quantile="0.9999"} 2
+                     |linkerd_foo:bar:bas{quantile="1"} 2
                      |""".stripMargin)
   }
 
@@ -91,7 +92,7 @@ class PrometheusTelemeterTest extends FunSuite {
     val counter = stats.scope("rt", "incoming", "service", """\x5b\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x5dun"esc""").counter("requests")
     counter.incr()
     val rsp = await(handler(Request(prometheusPath))).contentString
-    assert(rsp == """rt:service:requests{rt="incoming", service="\\x5b\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x5dun\\esc"} 1
+    assert(rsp == """linkerd_rt:service:requests{rt="incoming", service="\\x5b\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x2e\\x31\\x32\\x33\\x5dun\\esc"} 1
 """)
   }
 
@@ -100,7 +101,7 @@ class PrometheusTelemeterTest extends FunSuite {
     val counter = stats.scope("rt", "incoming", "service", "/svc/foo").counter("requests")
     counter.incr()
     val rsp = await(handler(Request(prometheusPath))).contentString
-    assert(rsp == "rt:service:requests{rt=\"incoming\", service=\"/svc/foo\"} 1\n")
+    assert(rsp == "linkerd_rt:service:requests{rt=\"incoming\", service=\"/svc/foo\"} 1\n")
   }
 
   test("bound stats are labelled") {
@@ -108,7 +109,7 @@ class PrometheusTelemeterTest extends FunSuite {
     stats.scope("rt", "incoming", "client", "/#/bar").counter("requests").incr()
     val rsp = await(handler(Request(prometheusPath))).contentString
     assert(rsp ==
-      "rt:client:requests{rt=\"incoming\", client=\"/#/bar\"} 1\n")
+      "linkerd_rt:client:requests{rt=\"incoming\", client=\"/#/bar\"} 1\n")
   }
 
   test("bound stats with path scope are labelled") {
@@ -116,7 +117,7 @@ class PrometheusTelemeterTest extends FunSuite {
     stats.scope("rt", "incoming", "client", "/#/bar", "service", "/svc/foo").counter("requests").incr()
     val rsp = await(handler(Request(prometheusPath))).contentString
     assert(rsp ==
-      "rt:client:service:requests{rt=\"incoming\", client=\"/#/bar\", service=\"/svc/foo\"} 1\n")
+      "linkerd_rt:client:service:requests{rt=\"incoming\", client=\"/#/bar\", service=\"/svc/foo\"} 1\n")
   }
 
   test("server stats are labelled") {
@@ -124,6 +125,6 @@ class PrometheusTelemeterTest extends FunSuite {
     val counter = stats.scope("rt", "incoming", "server", "127.0.0.1/4141").counter("requests")
     counter.incr()
     val rsp = await(handler(Request(prometheusPath))).contentString
-    assert(rsp == "rt:server:requests{rt=\"incoming\", server=\"127.0.0.1/4141\"} 1\n")
+    assert(rsp == "linkerd_rt:server:requests{rt=\"incoming\", server=\"127.0.0.1/4141\"} 1\n")
   }
 }

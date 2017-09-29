@@ -14,7 +14,7 @@ import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
  * histogram summaries directly off of the MetricsTree and assumes that stats
  * are being snapshotted at some appropriate interval.
  */
-class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerPath: String) extends Telemeter with Admin.WithHandlers {
+class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerPath: String, private[prometheus] val handlerPrefix: String) extends Telemeter with Admin.WithHandlers {
 
   private[prometheus] val handler = Service.mk { request: Request =>
     val response = Response()
@@ -80,7 +80,7 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
       case _ => (prefix0, labels0)
     }
 
-    val key = escapeKey(prefix1.mkString(":"))
+    val key = escapeKey(handlerPrefix + prefix1.mkString(":"))
 
     tree.metric match {
       case c: Metric.Counter =>
