@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 trait MetricsTree {
   def children: Map[String, MetricsTree]
@@ -119,5 +120,20 @@ object MetricsTree {
       trees.clear()
       metricRef.set(Metric.None)
     }
+  }
+
+  def flatten(
+    tree: MetricsTree,
+    prefix: String = "",
+    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
+  ): Seq[(String, Metric)] = {
+    acc += (prefix -> tree.metric)
+    for ((name, child) <- tree.children) {
+      if (prefix.isEmpty)
+        flatten(child, name, acc)
+      else
+        flatten(child, s"$prefix/$name", acc)
+    }
+    acc
   }
 }
