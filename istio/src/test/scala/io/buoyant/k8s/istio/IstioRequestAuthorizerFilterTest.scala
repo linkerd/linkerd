@@ -44,7 +44,7 @@ class IstioRequestAuthorizerFilterTest extends FunSuite with Awaits {
     }
   }
 
-  test("reports request and result when success") {
+  test("reports request and result when pre-conditions pass") {
     val mixerClient = new NoOpMixerClient()
     val istioRequestAuthorizer = new TestIstioRequestAuthorizerFilter(mixerClient)
 
@@ -53,7 +53,18 @@ class IstioRequestAuthorizerFilterTest extends FunSuite with Awaits {
     assert(mixerClient.reports == 1)
   }
 
-  test("calls service if succeeds") {
+  test("doest report request and result when pre-conditions fail") {
+    val mixerClient = new NoOpMixerClient {
+      override def checkPreconditions(istioRequest: IstioRequest[_]) = Future.value(MixerCheckStatus(GrpcStatus.PermissionDenied()))
+    }
+    val istioRequestAuthorizer = new TestIstioRequestAuthorizerFilter(mixerClient)
+
+    assert(mixerClient.reports == 0)
+    istioRequestAuthorizer(Req(), noOpSvc)
+    assert(mixerClient.reports == 0)
+  }
+
+  test("calls service if pre-condition check succeeds") {
     var callCount = 0
 
     val mixerClient = new NoOpMixerClient {
@@ -70,5 +81,22 @@ class IstioRequestAuthorizerFilterTest extends FunSuite with Awaits {
     assert(await(istioRequestAuthorizer(Req(), noOpSvc)) == Resp(false))
     assert(callCount == 1)
   }
-}
 
+  test("doesnt call service if pre-condition check fails") {
+    var callCount = 0
+
+    val mixerClient = new NoOpMixerClient {
+      override def checkPreconditions(istioRequest: IstioRequest[_]) = Future.value(MixerCheckStatus(GrpcStatus.PermissionDenied()))
+    }
+    val istioRequestAuthorizer = new TestIstioRequestAuthorizerFilter(mixerClient)
+
+    val noOpSvc = Service.mk[Req, Resp] { req =>
+      callCount = callCount + 1
+      Future.value(Resp())
+    }
+
+    assert(callCount == 0)
+    assert(await(istioRequestAuthorizer(Req(), noOpSvc)) == Resp(true))
+    assert(callCount == 0)
+  }
+}
