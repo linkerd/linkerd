@@ -122,7 +122,8 @@ private[this] object ServiceNamer {
     serviceName: String,
     ports: Map[String, Address],
     portMappings: Map[Int, String]
-  ) extends PortMapLogging {
+  ) {
+    val portLogger = PortMapLogger(nsName, serviceName)
 
     /**
      * Look up the port named `portName` and return the corresponding
@@ -152,8 +153,8 @@ private[this] object ServiceNamer {
     @inline
     private[this] def newState(service: v1.Service): Svc = {
       val (newPorts, newMappings) = unpackService(service)
-      logPortDiff(ports, newPorts)
-      logPortDiff(portMappings, newMappings)
+      portLogger.logDiff(ports, newPorts)
+      portLogger.logDiff(portMappings, newMappings)
       this.copy(ports = newPorts, portMappings = newMappings)
     }
 

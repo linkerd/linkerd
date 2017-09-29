@@ -141,35 +141,32 @@ abstract class EndpointsNamer(
     untupled(Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
       // memoize port remapping watch activities so that we don't have to
       // create multiple watches on the same `Services` API object.
-      case (ns, srv, labelSelector) =>
-        val logEvent = new PortMapLogging {
-          val nsName: String = ns
-          val serviceName: String = srv
-        }
-        mkApi(ns)
-          .service(srv)
+      case (nsName, serviceName, labelSelector) =>
+        val portLogger = PortMapLogger(nsName, serviceName)
+        mkApi(nsName)
+          .service(serviceName)
           .activity(
             _.map(_.portMappings).getOrElse(Map.empty),
             labelSelector = labelSelector
           ) {
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
-                logEvent.logPortDiff(oldMap, newMap)
+                portLogger.logDiff(oldMap, newMap)
                 newMap
               case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
-                logEvent.logPortDiff(oldMap, newMap)
+                portLogger.logDiff(oldMap, newMap)
                 newMap
               case (oldMap, v1.ServiceDeleted(_)) =>
                 log.debug(
                   "k8s ns %s service %s deleted",
-                  ns, srv
+                  nsName, serviceName
                 )
                 Map.empty
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
                   "k8s ns %s service %s watch error %s",
-                  ns, srv, error
+                  nsName, serviceName, error
                 )
                 oldMap
             }
@@ -288,8 +285,8 @@ object EndpointsNamer {
     serviceName: String,
     endpoints: Set[Endpoint],
     ports: PortMap
-  ) extends PortMapLogging {
-
+  ) {
+    val portLogger = PortMapLogger(nsName, serviceName)
     def lookupNumberedPort(
       mappings: NumberedPortMap,
       portNumber: Int
@@ -343,7 +340,7 @@ object EndpointsNamer {
         }
       }
       // log new ports
-      logPortDiff(ports, newPorts)
+      portLogger.logDiff(ports, newPorts)
       this.copy(endpoints = newEndpoints, ports = newPorts)
     }
 

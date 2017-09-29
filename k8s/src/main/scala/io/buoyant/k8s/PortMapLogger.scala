@@ -2,10 +2,8 @@ package io.buoyant.k8s
 
 import com.twitter.logging.Logger
 
-private[k8s] trait PortMapLogging {
-  def nsName: String
-  def serviceName: String
-  def logPortDiff[A,B](oldPorts: Map[A, B], newPorts: Map[A, B]): Unit =
+private[k8s] case class PortMapLogger(nsName: String, serviceName: String) {
+  def logDiff[A,B](oldPorts: Map[A, B], newPorts: Map[A, B]): Unit =
     if (log.isLoggable(Logger.TRACE)) {
       for {
         port <- oldPorts.keySet
