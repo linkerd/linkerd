@@ -169,7 +169,7 @@ abstract class EndpointsNamer(
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
                   "k8s ns %s service %s watch error %s",
-                  ns, srv
+                  ns, srv, error
                 )
                 oldMap
             }
