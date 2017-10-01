@@ -8,7 +8,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.telemetry.Metric.{Counter, Gauge, Stat}
+import io.buoyant.telemetry.Metric.{None, Counter, Gauge, Stat}
 import io.buoyant.telemetry.{MetricsTree, Telemeter}
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -52,13 +52,17 @@ class NewRelicTelemeter(
   }
 
   private[this] def mkMetrics(): Map[String, Metric] = {
-    MetricsTree.flatten(metrics).toMap.mapValues {
+    MetricsTree.flatten(metrics).toMap.filter {
+      case (_, None) => false
+      case _ => true
+    }.mapValues {
       case counter: Counter => ScalarIntegerMetric(counter.get)
       case gauge: Gauge => ScalarDecimalMetric(gauge.get)
       case stat: Stat => {
         val summary = stat.snapshottedSummary
         DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
       }
+      case None => null
     }
   }
 }
