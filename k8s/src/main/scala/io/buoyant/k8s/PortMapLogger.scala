@@ -26,7 +26,7 @@ private[k8s] case class PortMapLogger(nsName: String, serviceName: String) {
       (newPorts -- oldPorts.keys).foreach { case (from, to) =>
         log.trace(
           "k8s ns %s service %s mapped port %s to %s",
-          nsName, serviceName, to, from
+          nsName, serviceName, from, to
         )
       }
     }
