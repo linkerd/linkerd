@@ -9,7 +9,7 @@ private[k8s] case class PortMapLogger(nsName: String, serviceName: String) {
         port <- oldPorts.keySet
         oldValue <- oldPorts.get(port)
       } newPorts.get(port) match {
-        case Some(`oldValue`) =>
+        case Some(value) if value == oldValue =>
         // the key exists in the new state, but has the same value in both
         // the old and new states. skip it.
         case Some(newValue) =>
