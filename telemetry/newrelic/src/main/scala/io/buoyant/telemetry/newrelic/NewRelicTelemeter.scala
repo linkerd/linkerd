@@ -8,9 +8,10 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.telemetry.Metric.{None, Counter, Gauge, Stat}
+import io.buoyant.telemetry.Metric.{Counter, Gauge, None, Stat}
 import io.buoyant.telemetry.{MetricsTree, Telemeter}
 import java.util.concurrent.atomic.AtomicBoolean
+import com.twitter.logging.Logger
 
 class NewRelicTelemeter(
   metrics: MetricsTree,
@@ -20,6 +21,8 @@ class NewRelicTelemeter(
   timer: Timer
 ) extends Telemeter {
   import NewRelicTelemeter._
+
+  private[this] lazy val log = Logger.get()
 
   private[this] val agent = Agent(host, NewRelicTelemeter.Version)
   private[this] val json = Parser.jsonObjectMapper(Nil)
@@ -48,7 +51,10 @@ class NewRelicTelemeter(
     val req = Request(Method.Post, NewRelicUri)
     req.headerMap.add(LicenseKeyHeader, licenseKey)
     req.withOutputStream(json.writeValue(_, payload))
-    val _ = client(req) // Fire-and-forget
+    // Fire-and-forget
+    val _ = client(req).onFailure { e =>
+      log.warning("Failed to send metrics to New Relic: %s", e)
+    }
   }
 
   private[this] def mkMetrics(): Map[String, Metric] = {
