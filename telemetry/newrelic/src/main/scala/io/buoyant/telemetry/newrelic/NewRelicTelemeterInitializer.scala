@@ -18,7 +18,7 @@ object NewRelicTelemeterInitializer extends NewRelicTelemeterInitializer
 case class NewRelicConfig(license_key: String, host: Option[String], dst: Option[Path]) extends TelemeterConfig {
   import NewRelicConfig._
 
-  assert(license_key != null)
+  assert(license_key != null, "License key must be provided.")
 
   @JsonIgnore def mk(params: Stack.Params): Telemeter = {
     val client = Http.client
