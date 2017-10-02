@@ -136,4 +136,28 @@ object MetricsTree {
     }
     acc
   }
+
+  /**
+   * Flatten `tree`, skipping empty scopes.
+   */
+  def flattenNones(
+    tree: MetricsTree,
+    prefix: String = "",
+    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
+  ): Seq[(String, Metric)] = {
+    // This method could also have been implemented as
+    // `flatten(...).filter(...)` but this seems more performant.
+    tree.metric match {
+      case Metric.None =>
+      case metric => acc += prefix -> tree.metric
+    }
+
+    for ((name, child) <- tree.children ) {
+      if (prefix.isEmpty)
+        flattenNones(child, name, acc)
+      else
+        flattenNones(child, s"$prefix/$name", acc)
+    }
+    acc
+  }
 }
