@@ -6,6 +6,7 @@ import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.namer.Metadata
 import scala.Function.untupled
@@ -121,14 +122,13 @@ abstract class EndpointsNamer(
   backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
   extends Namer {
-
   import EndpointsNamer._
 
   /**
    * Watch the numbered-port remappings for the service named `serviceName`
    * in the namespace named `nsName`.
-   * @param nsName the name of the Kubernetes namespace.
-   * @param serviceName the name of the Kubernetes service.
+   * @param ns the name of the Kubernetes namespace.
+   * @param srv the name of the Kubernetes service.
    * @return an `Activity` containing a `Map[Int, String]` representing the
    *         port number to port name mappings
    * @note that the corresponding `Activity` instances are cached so we don't
@@ -142,7 +142,7 @@ abstract class EndpointsNamer(
       // memoize port remapping watch activities so that we don't have to
       // create multiple watches on the same `Services` API object.
       case (nsName, serviceName, labelSelector) =>
-        val logEvent = EventLogger(nsName, serviceName)
+        val portLogger = PortMapLogger(nsName, serviceName)
         mkApi(nsName)
           .service(serviceName)
           .activity(
@@ -151,18 +151,17 @@ abstract class EndpointsNamer(
           ) {
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keys)
-                logEvent.deletion(oldMap -- newMap.keys)
-                logEvent.modification(oldMap, newMap)
+                portLogger.logDiff(oldMap, newMap)
                 newMap
               case (oldMap, v1.ServiceModified(service)) =>
                 val newMap = service.portMappings
-                logEvent.addition(newMap -- oldMap.keys)
-                logEvent.deletion(oldMap -- newMap.keys)
-                logEvent.modification(oldMap, newMap)
+                portLogger.logDiff(oldMap, newMap)
                 newMap
               case (oldMap, v1.ServiceDeleted(_)) =>
-                logEvent.deletion(oldMap)
+                log.debug(
+                  "k8s ns %s service %s deleted",
+                  nsName, serviceName
+                )
                 Map.empty
               case (oldMap, v1.ServiceError(error)) =>
                 log.warning(
@@ -231,6 +230,7 @@ abstract class EndpointsNamer(
       // convert the contents of the stable activity to a `NameTree`.
       .map { mkNameTree(id, residual) }
   }
+
 }
 
 object EndpointsNamer {
@@ -240,12 +240,45 @@ object EndpointsNamer {
   protected type PortMap = Map[String, Int]
   protected type NumberedPortMap = Map[Int, String]
 
-  private case class Endpoint(ip: InetAddress, nodeName: Option[String])
+  private[EndpointsNamer] case class Endpoint(ip: InetAddress, nodeName: Option[String])
 
-  private object Endpoint {
+  private[EndpointsNamer] object Endpoint {
     def apply(addr: v1.EndpointAddress): Endpoint =
       Endpoint(InetAddress.getByName(addr.ip), addr.nodeName)
   }
+
+  private[EndpointsNamer] implicit class RichSubsetsSeq(
+    val subsets: Option[Seq[v1.EndpointSubset]]
+  ) extends AnyVal {
+
+    private[this] def toPortMap(subset: v1.EndpointSubset): PortMap =
+      (for {
+        v1.EndpointPort(port, Some(name), maybeProto) <- subset.portsSeq
+        if maybeProto.map(_.toUpperCase).getOrElse("TCP") == "TCP"
+      } yield name -> port)(breakOut)
+
+    private[this] def toEndpointSet(subset: v1.EndpointSubset): Set[Endpoint] =
+      for { address: v1.EndpointAddress <- subset.addressesSeq.toSet } yield {
+        Endpoint(address)
+      }
+
+    def toEndpointsAndPorts: (Set[Endpoint], PortMap) = {
+      val result = for {
+        subsetsSeq <- subsets.toSeq
+        subset <- subsetsSeq
+      } yield {
+        (toEndpointSet(subset), toPortMap(subset))
+      }
+      val (endpoints, ports) = result.unzip
+      (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
+    }
+  }
+
+  private[EndpointsNamer] object Subsets {
+    def unapply(endpoints: v1.Endpoints): Option[(Set[Endpoint], PortMap)] =
+      Some(endpoints.subsets.toEndpointsAndPorts)
+  }
+
 
   private[EndpointsNamer] case class ServiceEndpoints(
     nsName: String,
@@ -253,8 +286,7 @@ object EndpointsNamer {
     endpoints: Set[Endpoint],
     ports: PortMap
   ) {
-    log.debug("k8s ns %s svc %s constructed new ServiceEndpoints with:\n\tendpoints: %s\n\tports: %s", nsName, serviceName, endpoints, ports)
-
+    val portLogger = PortMapLogger(nsName, serviceName)
     def lookupNumberedPort(
       mappings: NumberedPortMap,
       portNumber: Int
@@ -287,26 +319,42 @@ object EndpointsNamer {
         isa = new InetSocketAddress(ip, portNumber)
       } yield Address.Inet(isa, nodeName.map(Metadata.nodeName -> _).toMap): Address
 
-    private[this] val logEvent = EventLogger(nsName, serviceName)
-    def update(event: v1.EndpointsWatch): ServiceEndpoints = {
-      @inline
-      def newState(newEndpoints: Set[Endpoint], newPorts: PortMap): ServiceEndpoints = {
-        logEvent.addition(newEndpoints -- endpoints)
-        logEvent.deletion(endpoints -- newEndpoints)
-        logEvent.addition(newPorts -- ports.keys)
-        logEvent.deletion(ports -- newPorts.keys)
-        logEvent.modification(ports, newPorts)
-        ServiceEndpoints(nsName, serviceName, newEndpoints, newPorts)
+    @inline
+    private[this] def newState(e: v1.Endpoints): ServiceEndpoints = {
+      val (newEndpoints, newPorts) = e.subsets.toEndpointsAndPorts
+      // log new endpoints
+      if (log.isLoggable(Logger.TRACE)) {
+        // log port mapping changes
+        // log endpoints changes
+        (endpoints -- newEndpoints).foreach {
+          log.trace(
+            "k8s ns %s service %s removed %s",
+            nsName, serviceName, _
+          )
+        }
+        (newEndpoints -- endpoints).foreach {
+          log.trace(
+            "k8s ns %s service %s added %s",
+            nsName, serviceName, _
+          )
+        }
       }
+      // log new ports
+      portLogger.logDiff(ports, newPorts)
+      this.copy(endpoints = newEndpoints, ports = newPorts)
+    }
+
+    def update(event: v1.EndpointsWatch): ServiceEndpoints =
       event match {
-        case v1.EndpointsAdded(Subsets(newEndpoints, newPorts)) =>
-          newState(newEndpoints, newPorts)
-        case v1.EndpointsModified(Subsets(newEndpoints, newPorts)) =>
-          newState(newEndpoints, newPorts)
+        case v1.EndpointsAdded(e) =>
+          log.debug("k8s ns %s service %s added endpoints", nsName, serviceName)
+          newState(e)
+        case v1.EndpointsModified(e) =>
+          log.debug("k8s ns %s service %s modified endpoints", nsName, serviceName)
+          newState(e)
         case v1.EndpointsDeleted(_) =>
-          logEvent.deletion(endpoints)
-          logEvent.deletion(ports)
-          ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
+          log.debug("k8s ns %s service %s deleted endpoints", nsName, serviceName)
+          this.copy(endpoints = Set.empty, ports = Map.empty)
         case v1.EndpointsError(error) =>
           log.warning(
             "k8s ns %s service %s endpoints watch error %s",
@@ -314,7 +362,7 @@ object EndpointsNamer {
           )
           this
       }
-    }
+
 
   }
 
@@ -343,50 +391,6 @@ object EndpointsNamer {
           )
           ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
         }
-  }
-
-  private implicit class RichSubsetsSeq(
-    val subsets: Option[Seq[v1.EndpointSubset]]
-  ) extends AnyVal {
-
-    private[this] def toPortMap(subset: v1.EndpointSubset): PortMap =
-      (for {
-        v1.EndpointPort(port, Some(name), maybeProto) <- subset.portsSeq
-        if maybeProto.map(_.toUpperCase).getOrElse("TCP") == "TCP"
-      } yield name -> port)(breakOut)
-
-    private[this] def toEndpointSet(subset: v1.EndpointSubset): Set[Endpoint] =
-      for { address: v1.EndpointAddress <- subset.addressesSeq.toSet } yield {
-        Endpoint(address)
-      }
-
-    def toEndpointsAndPorts: (Set[Endpoint], PortMap) = {
-      val result = for {
-        subsetsSeq <- subsets.toSeq
-        subset <- subsetsSeq
-      } yield {
-        (toEndpointSet(subset), toPortMap(subset))
-      }
-      val (endpoints, ports) = result.unzip
-      (endpoints.flatten.toSet, if (ports.isEmpty) Map.empty else ports.reduce(_ ++ _))
-    }
-  }
-
-  private[EndpointsNamer] object Subsets {
-    def unapply(endpoints: v1.Endpoints): Option[(Set[Endpoint], PortMap)] =
-      Some(endpoints.subsets.toEndpointsAndPorts)
-  }
-
-  private[EndpointsNamer] case class EventLogger(ns: String, srv: String)
-    extends EventLogging {
-    def addition(endpoints: Iterable[Endpoint]): Unit =
-      logActions[Endpoint]("added", "endpoint", _.toString)(endpoints)
-
-    def deletion(endpoints: Iterable[Endpoint]): Unit =
-      logActions[Endpoint]("deleted", "endpoint", _.toString)(endpoints)
-
-    def modification(endpoints: Iterable[(Endpoint, Endpoint)]): Unit =
-      logModification("endpoint")(endpoints)
   }
 
 }
