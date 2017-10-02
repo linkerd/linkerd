@@ -1,6 +1,7 @@
 package io.buoyant.k8s.istio
 
 import com.twitter.finagle.Path
+import com.twitter.finagle.buoyant.Dst
 import com.twitter.logging.Logger
 import io.buoyant.router.context.DstBoundCtx
 
@@ -58,26 +59,3 @@ case class IstioRequest[Req](
   private def findTargetLabelApp: Option[String] = findTargetService.flatMap(_.split('.').headOption)
 }
 
-/**
- * Resolves a valid Istio [[Path]], if any exists for the current [[DstBoundCtx]]
- */
-object CurrentIstioPath {
-  val log = Logger(this.getClass.getName)
-  private val pathLength = 10
-
-  def apply(): Option[Path] = {
-    val path = Option(DstBoundCtx).flatMap { dstBoundCtx =>
-      dstBoundCtx.current.flatMap { bound =>
-        bound.id match {
-          case path: Path if (path.elems.length == pathLength) => Some(path)
-          case _ => None
-        }
-      }
-    }
-
-    if (path.isEmpty)
-      log.warning("Failed resolving %s for current context %s, found %s", getClass.getSimpleName, DstBoundCtx, Option(DstBoundCtx).map(_.current))
-
-    path
-  }
-}
