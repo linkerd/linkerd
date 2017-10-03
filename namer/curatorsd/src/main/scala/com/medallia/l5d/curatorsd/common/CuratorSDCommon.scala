@@ -1,121 +1,68 @@
 package com.medallia.l5d.curatorsd.common
 
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit._
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
-import com.google.common.base.Joiner
+import com.google.common.base.Enums
 import com.google.common.cache.CacheBuilder
-import com.medallia.servicediscovery.ServiceInstanceInfo
+import com.medallia.servicediscovery.ServiceDiscovery
+import com.medallia.servicediscovery.ServiceDiscoveryConfig
+import com.medallia.servicediscovery.ServiceDiscoveryRegistrar.RegistrationFormat
 import com.twitter.logging.Logger
-import com.twitter.util.{Closable, Duration, Future, Time}
-import org.apache.curator.framework.CuratorFrameworkFactory
-import org.apache.curator.retry.ExponentialBackoffRetry
-import org.apache.curator.x.discovery.details.InstanceSerializer
-import org.apache.curator.x.discovery.{ServiceDiscoveryBuilder, ServiceInstance}
-import org.codehaus.jackson.Version
-import org.codehaus.jackson.annotate.JsonIgnore
-import org.codehaus.jackson.map.Module.SetupContext
-import org.codehaus.jackson.map.ObjectMapper
-import org.codehaus.jackson.map.module.SimpleModule
+import com.twitter.util.{Closable, Future, Time}
+
+import scala.language.implicitConversions
 
 object CuratorSDCommon {
 
-  private val curatorClientCache = CacheBuilder.newBuilder().build[String, ServiceDiscoveryInfo]
+  private val serviceDiscoveryCache = CacheBuilder.newBuilder().build[String, ServiceDiscoveryInfo]
+
+  implicit def callable[T](f: () => T): Callable[T] = () => f()
 
   /**
    * @param zkConnectStr ZK connection string
+   * @param backwardsCompatibility oldest format we should support. Default
    * @return Service Discovery set of objects which needs to be closed
    */
-  def createServiceDiscovery(zkConnectStr: String): ServiceDiscoveryInfo = {
-    val serviceDiscoveryInfo = curatorClientCache.get(zkConnectStr, new Callable[ServiceDiscoveryInfo] {
-      def call = ServiceDiscoveryInfo(zkConnectStr)
-    })
+  def createServiceDiscovery(zkConnectStr: String, backwardsCompatibility: Option[String]): ServiceDiscoveryInfo = {
+
+    val parsedBackwardsCompatibility = backwardsCompatibility
+      .flatMap(format => Option(Enums
+        .getIfPresent(classOf[RegistrationFormat], format)
+        .orNull()))
+
+    val serviceDiscoveryInfo = serviceDiscoveryCache.get(
+      zkConnectStr,
+      callable[ServiceDiscoveryInfo](() => ServiceDiscoveryInfo(zkConnectStr, parsedBackwardsCompatibility))
+    )
     serviceDiscoveryInfo.addReference()
     serviceDiscoveryInfo
   }
 
-  def getServiceFullPath(serviceId: String, tenant: Option[String]): String = {
-    tenant.map(t => Joiner.on(".").join(serviceId, t)).getOrElse(serviceId)
-  }
+  /** Unfortunately, Path doesn't allow empty elements. "_" means empty */
+  def fromOptionalPathField(field: String): Option[String] =
+    Some(field).filter(_ != "_")
+
+  /** Unfortunately, Path doesn't allow empty elements. "_" means empty */
+  def toOptionalPathField(value: Option[String]): String =
+    value.getOrElse("_")
 
 }
 
-/**
- * Curator 2.12.0 introduced a non-backwards compatible change described here: https://issues.apache.org/jira/browse/CURATOR-394
- * <p>
- * The problem is mainly a new "enabled" attribute that is included in the serialized json and old clients fail to parse.
- * There's an official patch (https://github.com/apache/curator/pull/208), but it hasn't been released yet.
- * <p>
- * This module is doing something very similar, it excludes the new attribute from the serialization, but still understands it
- * if it's found during deserialization.
- */
-class Curator2120Patch extends SimpleModule("Curator212Patch", new Version(0, 0, 1, null)) {
-
-  /** Way to add annotations to an existing class whose sources we don't control */
-  abstract class ServiceInstanceMixIn {
-
-    @JsonIgnore
-    def isEnabled: Boolean
-
-  }
-
-  override def setupModule(context: SetupContext): Unit = {
-    context.setMixInAnnotations(classOf[ServiceInstance[_]], classOf[ServiceInstanceMixIn])
-  }
-
-}
-
-/** Scala version of JsonInstanceSerializer (supports scala properties) */
-class ScalaJsonInstanceSerializer[T](val targetClass: Class[T]) extends InstanceSerializer[T] {
-
-  private val objectMapper = new ObjectMapper()
-  objectMapper.registerModule(new Curator2120Patch())
-
-  private val serviceInstanceClass = objectMapper.getTypeFactory.constructType(classOf[ServiceInstance[T]])
-
-  override def deserialize(bytes: Array[Byte]): ServiceInstance[T] = {
-    val rawServiceInstance: ServiceInstance[T] = objectMapper.readValue(bytes, serviceInstanceClass)
-    targetClass.cast(rawServiceInstance.getPayload) // just to verify that it's the correct type
-    rawServiceInstance.asInstanceOf[ServiceInstance[T]]
-  }
-
-  override def serialize(instance: ServiceInstance[T]): Array[Byte] = {
-    val out = new ByteArrayOutputStream()
-    objectMapper.writeValue(out, instance)
-    out.toByteArray
-  }
-}
-
-case class ServiceDiscoveryInfo(zkConnectStr: String) extends RefCounted {
+case class ServiceDiscoveryInfo(zkConnectStr: String, backwardsCompatibility: Option[RegistrationFormat]) extends RefCounted {
 
   private val log = Logger(getClass)
 
-  private val DefaultBaseSleepTime = Duration.fromSeconds(1)
-  private val DefaultMaxRetries = 3
+  private val serviceDiscoveryConfig = new ServiceDiscoveryConfig(zkConnectStr)
+    .setBackwardsCompatibility(backwardsCompatibility.orNull)
 
-  private val curatorClient = CuratorFrameworkFactory.builder
-    .connectString(zkConnectStr)
-    .retryPolicy(new ExponentialBackoffRetry(DefaultBaseSleepTime.inMillis.toInt, DefaultMaxRetries))
-    .build
+  log.info("Starting service discovery with config %s", serviceDiscoveryConfig)
+  val serviceDiscovery = new ServiceDiscovery(serviceDiscoveryConfig)
 
-  val serviceDiscovery = ServiceDiscoveryBuilder.builder(classOf[ServiceInstanceInfo])
-    .client(curatorClient)
-    .serializer(new ScalaJsonInstanceSerializer[ServiceInstanceInfo](classOf[ServiceInstanceInfo]))
-    .basePath("")
-    .build()
-
-  curatorClient.start()
-  curatorClient.blockUntilConnected(10, SECONDS)
-
-  serviceDiscovery.start()
-
-  protected override def performClose() = {
-    log.info("Physically closing curator service discovery %s", zkConnectStr)
+  protected override def performClose(): Unit = {
+    log.info("Physically closing service discovery %s", zkConnectStr)
     serviceDiscovery.close()
-    curatorClient.close()
-    log.info("Curator service discovery physically closed")
+    log.info("Service discovery physically closed")
   }
 }
 

@@ -32,7 +32,7 @@ object Base {
 class Base extends Build {
   import Base._
 
-  val headVersion = "1.1.2-medallia-1.4.0"
+  val headVersion = "1.1.2-medallia-1.5.0"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
@@ -72,7 +72,10 @@ class Base extends Build {
     resolvers ++= Seq(
       "twitter-repo" at "https://maven.twttr.com",
       Resolver.mavenLocal,
-      "typesafe" at "https://repo.typesafe.com/typesafe/releases"
+      "Local Maven Repository" at Path.userHome.asFile.toURI.toURL + ".m2/repository", // mavenLocal doesn't seem to be enough
+      Resolver.jcenterRepo,
+      "typesafe" at "https://repo.typesafe.com/typesafe/releases",
+      "Artifactory Realm" at "https://martifactory.io/mvn-virtual"
     ),
     libraryDependencies += compilerPlugin("com.github.ghik" %% "silencer-plugin" % "0.5"),
     libraryDependencies += "com.github.ghik" %% "silencer-lib" % "0.5",

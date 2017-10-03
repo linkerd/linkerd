@@ -57,7 +57,7 @@ object Deps {
   val junit = "junit" % "junit" % "4.10"
 
   // guava
-  val guava = "com.google.guava" % "guava" % "19.0"
+  val guava = "com.google.guava" % "guava" % "21.0"
 
   // jwt for Marathon API
   val jwt = "com.pauldijou" %% "jwt-core" % "0.12.1"
@@ -68,7 +68,14 @@ object Deps {
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
 
   // curator service discovery
-  val curatorSD = "org.apache.curator" % "curator-x-discovery" % "2.12.0"
+  val curatorSD = "org.apache.curator" % "curator-x-discovery" % "4.0.0" exclude("org.apache.zookeeper", "zookeeper")
+
+  val zookeeper = "org.apache.zookeeper" % "zookeeper" % "3.4.10"
+
+  // Medallia service discovery, not transitive for now because it depends on kafka which has an incompatible scala version
+  // Dependencies are obtained from curatorSD at the moment
+  // We should decouple service discovery in rpc-library from everything else
+  val rpcLibrary = "com.medallia" % "rpc-library" % "2.1.1" intransitive()
 
   // kafka
   val kafka = "org.apache.kafka" % "kafka_2.12" % "0.10.1.1"
