@@ -8,7 +8,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.telemetry.Metric.{Counter, Gauge, None, Stat}
+import io.buoyant.telemetry.Metric.{Counter, Gauge, None => MetricNone, Stat}
 import io.buoyant.telemetry.{MetricsTree, Telemeter}
 import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.logging.Logger
@@ -58,19 +58,18 @@ class NewRelicTelemeter(
   }
 
   private[this] def mkMetrics(): Map[String, Metric] =
-    MetricsTree.flattenNones(metrics).toMap.mapValues {
-      case counter: Counter => ScalarIntegerMetric(counter.get)
-      case gauge: Gauge => ScalarDecimalMetric(gauge.get)
-      case stat: Stat =>
-        val summary = stat.snapshottedSummary
-        DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
-      case None =>
-        throw new Exception("metric tree should not have contained Nones!")
-    }.filter {
-      // TODO: handle this better
-      case (_, null) => false
-      case _ => true
-    }
+    for {
+      (key, metric) <- MetricsTree.flatten(metrics).toMap
+      newRelicMetric <- metric match {
+        case counter: Counter => Option(counter.get).map { ScalarIntegerMetric }
+        case gauge: Gauge => Option(gauge.get).map { ScalarDecimalMetric }
+        case stat: Stat =>
+          Option(stat.snapshottedSummary).map { summary =>
+            DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
+          }
+        case MetricNone => None
+      }
+    } yield key -> newRelicMetric
 
 }
 
