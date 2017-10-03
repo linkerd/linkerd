@@ -57,7 +57,7 @@ class NewRelicTelemeter(
     }
   }
 
-  private[this] def mkMetrics(): Map[String, Metric] = {
+  private[this] def mkMetrics(): Map[String, Metric] =
     MetricsTree.flattenNones(metrics).toMap.mapValues {
       case counter: Counter => ScalarIntegerMetric(counter.get)
       case gauge: Gauge => ScalarDecimalMetric(gauge.get)
@@ -66,8 +66,12 @@ class NewRelicTelemeter(
         DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
       case None =>
         throw new Exception("metric tree should not have contained Nones!")
+    }.filter {
+      // TODO: handle this better
+      case (_, null) => false
+      case _ => true
     }
-  }
+
 }
 
 object NewRelicTelemeter {
