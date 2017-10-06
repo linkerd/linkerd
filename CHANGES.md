@@ -1,3 +1,24 @@
+
+## 1.3.0 2017-10-06
+
+* **Breaking Change**: All HTTP engines are now Netty 4; `engine:` configuration key is no longer valid.
+* Upgraded to Finagle 7.1
+* Kubernetes
+  * Added a workaround for an issue where Kubernetes namers fail to update because watches are not correctly restarted due to a regression in some versions of Kubernetes (#1636).
+  * Fixed `io.l5d.k8s.configMap` interpreter failing to update after receiving an invalid dtab (#1639).
+  * Performance improvements for Kubernetes namers.
+* Prometheus
+  * Added an optional `prefix:` configuration key to add a prefix to all metrics reported by Linkerd (#1655).
+* DNS SRV Record namer
+  * Ensured that DNS names in SRV queries are absolute (#1637).
+  * Added an optional `domain` config key for relative DNS lookups (#1637).
+  * Removed redundant `dnssrv` metrics scope from SRV record namer metrics (#1637).
+* Consul
+  * Consul namers no longer watch the entire list of services, improving performance significantly when there are large numbers of services (#1646).
+* Curator
+  * Added support for `ServiceInstance` objects with custom payloads (#1272).
+
+
 ## 1.2.1 2017-09-14
 
 Fix for an issue where Kubernetes namers would continue to route to old
