@@ -10,4 +10,5 @@ routers:
 
 telemetry:
 - kind: io.l5d.newrelic
+  experimental: true
   license_key:

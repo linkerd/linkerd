@@ -19,6 +19,8 @@ case class NewRelicConfig(license_key: String, host: Option[String], dst: Option
   import NewRelicConfig._
   assert(license_key != null, "License key must be provided.")
 
+  @JsonIgnore override val experimentalRequired = true
+
   @JsonIgnore def mk(params: Stack.Params): Telemeter = {
     val client = Http.client
       .withParams(Http.client.params ++ params)
