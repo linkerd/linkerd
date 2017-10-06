@@ -1,6 +1,6 @@
 package io.buoyant.telemetry.newrelic
 
-import com.fasterxml.jackson.annotation.JsonValue
+import com.fasterxml.jackson.annotation.{JsonFormat, JsonValue}
 import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Method, Request, Response}
@@ -8,7 +8,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.telemetry.Metric.{Counter, Gauge, None => MetricNone, Stat}
+import io.buoyant.telemetry.Metric.{Counter, Gauge, Stat, None => MetricNone}
 import io.buoyant.telemetry.{MetricsTree, Telemeter}
 import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.logging.Logger
@@ -87,6 +87,12 @@ case class Agent(host: String, version: String)
 case class Component(name: String, guid: String, duration: Long, metrics: Map[String, Metric])
 
 sealed trait Metric
-case class ScalarIntegerMetric(@JsonValue value: Long) extends Metric
-case class ScalarDecimalMetric(@JsonValue value: Float) extends Metric
+@JsonFormat(shape = JsonFormat.Shape.NUMBER)
+case class ScalarIntegerMetric(value: Long) extends Metric {
+  @JsonValue def integer: Long = value
+}
+@JsonFormat(shape = JsonFormat.Shape.NUMBER)
+case class ScalarDecimalMetric(@JsonValue value: Float) extends Metric {
+  @JsonValue def decimal: Float = value
+}
 case class DistributionMetric(total: Long, count: Long, min: Long, max: Long) extends Metric
