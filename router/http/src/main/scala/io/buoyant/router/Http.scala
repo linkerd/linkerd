@@ -25,6 +25,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       ViaHeaderAppenderFilter.module +:
         StripHopByHopHeadersFilter.module +:
         ClassifierFilter.module +:
+        ApplyHostForwardedHeader.module +:
         StackRouter.newPathStack[Request, Response]
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
@@ -100,4 +101,5 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
   def serve(addr: SocketAddress, factory: ServiceFactory[Request, Response]): ListeningServer =
     server.serve(addr, factory)
+
 }
