@@ -17,7 +17,6 @@ object NewRelicTelemeterInitializer extends NewRelicTelemeterInitializer
 
 case class NewRelicConfig(license_key: String, host: Option[String], dst: Option[Path]) extends TelemeterConfig {
   import NewRelicConfig._
-
   assert(license_key != null, "License key must be provided.")
 
   @JsonIgnore def mk(params: Stack.Params): Telemeter = {
@@ -26,6 +25,7 @@ case class NewRelicConfig(license_key: String, host: Option[String], dst: Option
       .withSessionQualifier.noFailureAccrual
       .withSessionQualifier.noFailFast
       .withTracer(NullTracer)
+      .withTls("platform-api.newrelic.com")
       .newService(Name.Path(dst.getOrElse(DefaultDst)), "newrelic")
     new NewRelicTelemeter(
       params[MetricsTree],
@@ -38,5 +38,5 @@ case class NewRelicConfig(license_key: String, host: Option[String], dst: Option
 }
 
 object NewRelicConfig {
-  val DefaultDst = Path.read("/$/inet/platform-api.newrelic.com/80")
+  val DefaultDst = Path.read("/$/inet/platform-api.newrelic.com/443")
 }
