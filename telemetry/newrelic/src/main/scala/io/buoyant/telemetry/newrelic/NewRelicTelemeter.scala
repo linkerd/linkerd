@@ -70,14 +70,12 @@ class NewRelicTelemeter(
         case counter: Counter => Option(counter.get).map { ScalarIntegerMetric }
         case gauge: Gauge => Option(gauge.get).map { ScalarDecimalMetric }
         case stat: Stat =>
-          // TODO: this requires a sum_of_squares field...
-          //          Option(stat.snapshottedSummary).map { summary =>
-          //            DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
-          //          }
-          None
+          Option(stat.snapshottedSummary).map { summary =>
+            DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
+          }
         case MetricNone => None
       }
-    } yield key -> newRelicMetric
+    } yield s"Component/Linkerd/$key" -> newRelicMetric
 
 }
 
@@ -96,10 +94,12 @@ case class Agent(host: String, version: String)
 case class Component(name: String, guid: String, duration: Long, metrics: Map[String, Metric])
 
 sealed trait Metric
+
 @JsonFormat(shape = JsonFormat.Shape.NUMBER)
 case class ScalarIntegerMetric(value: Long) extends Metric {
   @JsonValue def integer: Long = value
 }
+
 @JsonFormat(shape = JsonFormat.Shape.NUMBER)
 case class ScalarDecimalMetric(@JsonValue value: Float) extends Metric {
   @JsonValue def decimal: Float = value
