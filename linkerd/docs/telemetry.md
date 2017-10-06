@@ -11,7 +11,7 @@ regardless of kind. Telemeters may also have kind-specific parameters.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.influxdb`](#influxdb), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), or [`io.l5d.zipkin`](#zipkin-telemeter).
+kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.influxdb`](#influxdb), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), [`io.l5d.zipkin`](#zipkin-telemeter), or [`io.l5d.newrelic`](#new-relic-experimental)
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## Prometheus
@@ -170,3 +170,28 @@ Key | Default Value | Description
 host | `localhost` | Host to send trace data to.
 port | `9410` | Port to send trace data to (must be the Scribe collector port).
 sampleRate | `0.001` | A value between 0.0 and 1.0 indicating what proportion of requests to trace.
+
+
+## New Relic (experimental)
+
+> Example New Relic config
+
+```yaml
+telemetry:
+- kind: io.l5d.newrelic
+  experimental: true
+  license_key: $NEW_RELIC_LICENSE_KEY
+```
+
+kind: `io.l5d.newrelic`
+
+[New Relic](https://www.newrelic.com/) plugin metrics reporting. This telemeter
+will report metrics to the Linkerd new relic plugin. A New Relic account license key is required.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+experimental | _required_ | Because this telemeter is still considered experimental, you must set this to `true` to use it
+license_key | _required_ | New Relic license key
+prefix | `Linkerd` | String to prefix all exported metric names with.
+host | `127.0.0.1` | The hostname reporting the metrics.
+dst | `/$/inet/platform-api.newrelic.com/443` | Path to the New Relic API server.
