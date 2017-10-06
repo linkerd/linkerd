@@ -11,4 +11,5 @@ routers:
 telemetry:
 - kind: io.l5d.newrelic
   experimental: true
-  license_key:
+  # put your New Relic account license key here!
+  license_key: not_a_real_newrelic_license_key
