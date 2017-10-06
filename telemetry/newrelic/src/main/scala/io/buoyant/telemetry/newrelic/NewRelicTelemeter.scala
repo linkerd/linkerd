@@ -18,6 +18,7 @@ class NewRelicTelemeter(
   client: Service[Request, Response],
   licenseKey: String,
   host: String,
+  name: String,
   timer: Timer
 ) extends Telemeter {
   import NewRelicTelemeter._
@@ -54,7 +55,7 @@ class NewRelicTelemeter(
   }
 
   private[this] def sendMetrics(): Future[Response] = {
-    val payload = MetricsPayload(agent, Seq(Component(Name, Guid, Interval.inSeconds, mkMetrics())))
+    val payload = MetricsPayload(agent, Seq(Component(name, Guid, Interval.inSeconds, mkMetrics())))
     val req = Request(Method.Post, NewRelicUri)
     req.headerMap.add(LicenseKeyHeader, licenseKey)
     req.mediaType = ContentType
@@ -75,7 +76,7 @@ class NewRelicTelemeter(
           }
         case MetricNone => None
       }
-    } yield s"Component/Linkerd/$key" -> newRelicMetric
+    } yield s"Component/$name/$key" -> newRelicMetric
 
 }
 
@@ -85,7 +86,6 @@ object NewRelicTelemeter {
   val Version = "1.0.0" // New Relic plugin version (distinct from Linkerd version)
   val Interval = 1.minute
   val Guid = "io.l5d.linkerd"
-  val Name = "Linkerd"
   val ContentType = MediaType.Json
 }
 

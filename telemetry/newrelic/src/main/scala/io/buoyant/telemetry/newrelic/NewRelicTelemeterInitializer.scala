@@ -15,7 +15,12 @@ class NewRelicTelemeterInitializer extends TelemeterInitializer {
 
 object NewRelicTelemeterInitializer extends NewRelicTelemeterInitializer
 
-case class NewRelicConfig(license_key: String, host: Option[String], dst: Option[Path]) extends TelemeterConfig {
+case class NewRelicConfig(
+  license_key: String,
+  host: Option[String],
+  dst: Option[Path],
+  prefix: Option[String]
+) extends TelemeterConfig {
   import NewRelicConfig._
   assert(license_key != null, "License key must be provided.")
 
@@ -34,6 +39,7 @@ case class NewRelicConfig(license_key: String, host: Option[String], dst: Option
       client,
       license_key,
       host.getOrElse(InetAddress.getLocalHost.getCanonicalHostName),
+      prefix.getOrElse("Linkerd"),
       DefaultTimer
     )
   }
