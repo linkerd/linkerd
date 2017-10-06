@@ -14,12 +14,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.logging.Logger
 
 class NewRelicTelemeter(
-  metrics: MetricsTree,
-  client: Service[Request, Response],
-  licenseKey: String,
-  host: String,
-  name: String,
-  timer: Timer
+  private[this] val  metrics: MetricsTree,
+  private[this] val client: Service[Request, Response],
+  private[this] val licenseKey: String,
+  private[this] val host: String,
+  private[this] val name: String,
+  private[this] val timer: Timer
 ) extends Telemeter {
   import NewRelicTelemeter._
 
