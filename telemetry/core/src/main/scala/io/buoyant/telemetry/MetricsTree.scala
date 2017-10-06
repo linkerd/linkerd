@@ -152,7 +152,7 @@ object MetricsTree {
       case metric => acc += prefix -> tree.metric
     }
 
-    for ((name, child) <- tree.children ) {
+    for ((name, child) <- tree.children) {
       if (prefix.isEmpty)
         flattenNones(child, name, acc)
       else

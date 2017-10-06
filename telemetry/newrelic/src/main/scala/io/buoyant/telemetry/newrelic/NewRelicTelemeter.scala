@@ -3,7 +3,7 @@ package io.buoyant.telemetry.newrelic
 import com.fasterxml.jackson.annotation.{JsonFormat, JsonValue}
 import com.twitter.conversions.time._
 import com.twitter.finagle.Service
-import com.twitter.finagle.http.{Method, Request, Response}
+import com.twitter.finagle.http.{MediaType, Method, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util._
@@ -38,7 +38,14 @@ class NewRelicTelemeter(
 
   private[this] def run0() = {
     val task = timer.schedule(NewRelicTelemeter.Interval) {
-      sendMetrics()
+      val _ = sendMetrics().respond {
+        case Return(r) if r.statusCode == 200 =>
+          log.trace("successfully published metrics to New Relic")
+        case Return(r) =>
+          log.warning("New Relic API returned error %s, %s", r.status, r.contentString)
+        case Throw(e) =>
+          log.warning("failed to send metrics to New Relic: %s", e)
+      }
     }
 
     new Closable with CloseAwaitably {
@@ -46,15 +53,14 @@ class NewRelicTelemeter(
     }
   }
 
-  private[this] def sendMetrics(): Unit = {
+  private[this] def sendMetrics(): Future[Response] = {
     val payload = MetricsPayload(agent, Seq(Component(Name, Guid, Interval.inSeconds, mkMetrics())))
     val req = Request(Method.Post, NewRelicUri)
     req.headerMap.add(LicenseKeyHeader, licenseKey)
+    req.mediaType = ContentType
+    req.accept = ContentType
     req.withOutputStream(json.writeValue(_, payload))
-    // Fire-and-forget
-    val _ = client(req).onFailure { e =>
-      log.warning("Failed to send metrics to New Relic: %s", e)
-    }
+    client(req)
   }
 
   private[this] def mkMetrics(): Map[String, Metric] =
@@ -64,9 +70,11 @@ class NewRelicTelemeter(
         case counter: Counter => Option(counter.get).map { ScalarIntegerMetric }
         case gauge: Gauge => Option(gauge.get).map { ScalarDecimalMetric }
         case stat: Stat =>
-          Option(stat.snapshottedSummary).map { summary =>
-            DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
-          }
+          // TODO: this requires a sum_of_squares field...
+          //          Option(stat.snapshottedSummary).map { summary =>
+          //            DistributionMetric(summary.sum, summary.count, summary.min, summary.max)
+          //          }
+          None
         case MetricNone => None
       }
     } yield key -> newRelicMetric
@@ -74,12 +82,13 @@ class NewRelicTelemeter(
 }
 
 object NewRelicTelemeter {
-  val NewRelicUri = "platform/v1/metrics"
+  val NewRelicUri = "/platform/v1/metrics"
   val LicenseKeyHeader = "X-License-Key"
   val Version = "1.0.0" // New Relic plugin version (distinct from Linkerd version)
   val Interval = 1.minute
-  val Guid = "io.l5d.newrelic"
+  val Guid = "io.l5d.linkerd"
   val Name = "Linkerd"
+  val ContentType = MediaType.Json
 }
 
 case class MetricsPayload(agent: Agent, components: Seq[Component])
