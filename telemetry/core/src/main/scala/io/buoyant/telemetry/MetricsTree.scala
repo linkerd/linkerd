@@ -122,25 +122,10 @@ object MetricsTree {
     }
   }
 
-  def flatten(
-    tree: MetricsTree,
-    prefix: String = "",
-    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
-  ): Seq[(String, Metric)] = {
-    acc += (prefix -> tree.metric)
-    for ((name, child) <- tree.children) {
-      if (prefix.isEmpty)
-        flatten(child, name, acc)
-      else
-        flatten(child, s"$prefix/$name", acc)
-    }
-    acc
-  }
-
   /**
    * Flatten `tree`, skipping empty scopes.
    */
-  def flattenNones(
+  def flatten(
     tree: MetricsTree,
     prefix: String = "",
     acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
@@ -154,9 +139,9 @@ object MetricsTree {
 
     for ((name, child) <- tree.children) {
       if (prefix.isEmpty)
-        flattenNones(child, name, acc)
+        flatten(child, name, acc)
       else
-        flattenNones(child, s"$prefix/$name", acc)
+        flatten(child, s"$prefix/$name", acc)
     }
     acc
   }
