@@ -49,9 +49,10 @@ class CuratorSDNamer(zkConnectStr: String, backwardsCompatibility: Option[String
 
     path match {
       case Path.Utf8(environment, tenant, serviceName) =>
-        log.info(s"env %s tenant %s serviceName %s", environment, tenant, serviceName)
+        val serviceId = new ServiceId(serviceName, tenant, CuratorSDCommon.fromOptionalPathField(environment).orNull)
 
-        val serviceId = new ServiceId(serviceName, CuratorSDCommon.fromOptionalPathField(environment).orNull, tenant)
+        log.info(s"Looking up %s", serviceId)
+
         val addrInit = getAddress(serviceDiscoveryInfo.serviceDiscovery.lookupAll(serviceId).asScala)
         val addrVar = Var.async(addrInit) { update =>
 
