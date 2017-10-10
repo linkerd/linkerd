@@ -6,7 +6,7 @@ import com.twitter.finagle.{Dtab, Path}
 import com.twitter.util.Future
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification}
-import org.apache.thrift.protocol.TProtocolFactory
+import org.apache.thrift.protocol.{TMultiplexedProtocol, TProtocolFactory}
 import org.apache.thrift.transport.TMemoryInputTransport
 
 case class Identifier(
@@ -17,13 +17,21 @@ case class Identifier(
 ) extends RoutingFactory.Identifier[ThriftClientRequest] {
 
   private[this] def suffix(req: ThriftClientRequest): Path = {
-    if (methodInDst) {
-      val messageName = protocol.getProtocol(
-        new TMemoryInputTransport(req.message)
-      ).readMessageBegin().name
-      Path.read(s"/$messageName")
-    } else {
-      Path.empty
+    val messageName = protocol.getProtocol(
+      new TMemoryInputTransport(req.message)
+    ).readMessageBegin().name
+
+    messageName.split(TMultiplexedProtocol.SEPARATOR).toList match {
+      case serviceName :: methodName :: Nil => if (methodInDst) {
+        Path.read(s"/$serviceName/$methodName")
+      } else {
+        Path.read(s"/$serviceName")
+      }
+      case _ => if (methodInDst) {
+        Path.read(s"/$messageName")
+      } else {
+        Path.empty
+      }
     }
   }
 
