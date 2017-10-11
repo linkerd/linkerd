@@ -2,14 +2,13 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.{ChannelClosedException, Service, Dtab, Path}
+import com.twitter.finagle.http.{Request => H1Request, Response => H1Response}
+import com.twitter.finagle.{Dtab, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
-import io.buoyant.k8s.v1beta1
 import io.buoyant.router.RoutingFactory._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
-import com.twitter.finagle.http.{Request => FRequest, Response => FResponse}
 
 class IngressIdentifierTest extends FunSuite with Awaits {
 
@@ -47,13 +46,13 @@ class IngressIdentifierTest extends FunSuite with Awaits {
     }]
   }""")
 
-  val service = Service.mk[FRequest, FResponse] {
-    case req if req.uri == "/apis/extensions/v1beta1/ingresses" =>
-      val rsp = FResponse()
+  val service = Service.mk[H1Request, H1Response] {
+    case req if req.uri.contains("/apis/extensions/v1beta1/ingresses") =>
+      val rsp = H1Response()
       rsp.content = ingressListResource
       Future.value(rsp)
-    case req if req.uri == "/apis/extensions/v1beta1/ingresses?watch=true" =>
-      val rsp = FResponse()
+    case req if req.uri.contains("/apis/extensions/v1beta1/watch/ingresses") =>
+      val rsp = H1Response()
       rsp.content = ingressListResource
       Future.value(rsp)
     case req =>

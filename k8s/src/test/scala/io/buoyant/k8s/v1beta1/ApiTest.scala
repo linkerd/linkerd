@@ -5,9 +5,9 @@ import com.twitter.finagle.{Service => FService}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.{Awaits, Exceptions}
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, OptionValues}
 
-class ApiTest extends FunSuite with Awaits with Exceptions {
+class ApiTest extends FunSuite with Awaits with Exceptions with OptionValues {
 
   val ingressResource = Buf.Utf8("""{
     "kind":"Ingress",
@@ -54,7 +54,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     val ns = Api(service).withNamespace("srv")
-    val ingress = await(ns.ingresses.named("test-ingress").get)
+    val ingress = await(ns.ingresses.named("test-ingress").get()).value
 
     val paths = for (
       spec <- ingress.spec.toSeq;
@@ -63,7 +63,7 @@ class ApiTest extends FunSuite with Awaits with Exceptions {
       http <- rule.http.toSeq;
       path <- http.paths
     ) yield {
-      assert(path.path == Some("/fooPath"))
+      assert(path.path.contains("/fooPath"))
       assert(path.backend.serviceName == "/fooService")
       assert(path.backend.servicePort == "/fooPort")
       path

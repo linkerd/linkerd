@@ -11,7 +11,7 @@ object LocalClassifierStatsFilter {
 
   def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
     new Stack.Module3[param.Stats, param.ExceptionStatsHandler, StatsFilter.Param, ServiceFactory[Req, Rsp]] {
-      val role = StatsFilter.role
+      val role = LocalClassifierStatsFilter.role
       val description = "Report request statistics using local response classifier"
 
       def make(

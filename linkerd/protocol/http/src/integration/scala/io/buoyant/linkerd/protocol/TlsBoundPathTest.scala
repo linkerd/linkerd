@@ -50,8 +50,6 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |    kind: io.l5d.static
              |    configs:
              |    - prefix: "/#/io.l5d.fs/{host}"
-             |      engine:
-             |        kind: netty4
              |      tls:
              |        commonName: "{host}.buoyant.io"
              |        trustCerts:
@@ -113,8 +111,6 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |    kind: io.l5d.static
             |    configs:
             |    - prefix: "/#/io.l5d.fs/bill"
-            |      engine:
-            |        kind: netty4
             |      tls:
             |        commonName: "bill.buoyant.io"
             |        trustCerts:
@@ -181,15 +177,11 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |    kind: io.l5d.static
             |    configs:
             |    - prefix: "/#/io.l5d.fs/bill"
-            |      engine:
-            |        kind: netty4
             |      tls:
             |        commonName: excellent
             |        trustCerts:
             |        - ${certs.caCert.getPath}
             |    - prefix: "/#/io.l5d.fs/ted"
-            |      engine:
-            |        kind: netty4
             |      tls:
             |        commonName: righteous
             |        trustCerts:
@@ -261,8 +253,6 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |    kind: io.l5d.static
              |    configs:
              |    - prefix: "/#/io.l5d.fs/{host}"
-             |      engine:
-             |        kind: netty4
              |      tls:
              |        commonName: "{host}.buoyant.io"
              |        trustCerts:

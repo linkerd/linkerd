@@ -8,20 +8,20 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "1.30.0")
+    ("com.twitter" %% "twitter-server" % "1.32.0")
       .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "6.45.0"
+    "com.twitter" %% s"util-$mod" % "7.1.0"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "6.45.0"
+    "com.twitter" %% s"finagle-$mod" % "7.1.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.10.Final"
+    "io.netty" % s"netty-$mod" % "4.1.14.Final"
 
-  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.1.Final"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.5.Final"
 
   def zkCandidate =
     ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
@@ -68,4 +68,7 @@ object Deps {
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
+
+  // dnsjava
+  val dnsJava = "dnsjava" % "dnsjava" % "2.1.8"
 }

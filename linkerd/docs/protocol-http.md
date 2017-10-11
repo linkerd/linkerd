@@ -342,6 +342,7 @@ spec:
 Key  | Default Value | Description
 ---- | ------------- | -----------
 namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
+ingressClassAnnotation | `linkerd` | When using [multiple ingress controllers](https://github.com/kubernetes/ingress/blob/master/docs/faq/README.md#how-do-i-run-multiple-ingress-controllers-in-the-same-cluster), Linkerd will only use the ingress resource annotated with this class.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
 
@@ -483,31 +484,6 @@ Key | Default Value | Description
 --- | ------------- | -----------
 mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
 mixerPort | `9091` | Port of the Mixer server.
-
-<a name="http-engines"></a>
-## HTTP Engines
-
-> This configures an HTTP router that uses the new
-netty4 implementation on both the client and server:
-
-```yaml
-- protocol: http
-  servers:
-  - port: 4141
-    ip: 0.0.0.0
-    engine:
-      kind: netty4
-  client:
-    engine:
-      kind: netty4
-```
-
-An _engine_ may be configured on HTTP clients and servers, causing an
-alternate HTTP implementation to be used.
-
-Key | Default Value | Description
---- | ------------- | -----------
-kind | `netty4` | Either `netty3` or `netty4`
 
 <a name="http-headers"></a>
 ## HTTP Headers

@@ -21,7 +21,8 @@ case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
       val statusCode = rsp.statusCode
       val responseBytes = rsp.contentLength.map(_.toString).getOrElse("-")
       val requestEndTime = new TimeFormat("dd/MM/yyyy:HH:mm:ss Z").format(Time.now)
-      log.info(s"""$hostHeader $remoteHost $identd $user [$requestEndTime] "$reqResource" $statusCode $responseBytes "$referer" "$userAgent"""")
+      log.info("""%s %s %s %s [%s] "%s" %d %s "%s" "%s"""", hostHeader, remoteHost, identd, user, requestEndTime,
+        reqResource, statusCode, responseBytes, referer, userAgent)
     }
   }
 }

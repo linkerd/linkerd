@@ -68,13 +68,13 @@ object DynParamsFactory {
 }
 
 /**
-  * DynParamsFactory makes an underlying ServiceFactory each time dynamicParams updates.
-  *
-  * @param dynamicParams
-  * @param params
-  * @param next
-  * @param dynStats
-  */
+ * DynParamsFactory makes an underlying ServiceFactory each time dynamicParams updates.
+ *
+ * @param dynamicParams
+ * @param params
+ * @param next
+ * @param dynStats
+ */
 class DynParamsFactory[Req, Rep](
   dynamicParams: Activity[Stack.Params],
   params: Stack.Params,

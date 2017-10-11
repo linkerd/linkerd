@@ -5,14 +5,14 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{Transport, TransportContext}
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 
 object Netty4H2Transporter {
 
-  def mk(addr: SocketAddress, params0: Stack.Params): Transporter[Http2Frame, Http2Frame] = {
+  def mk(addr: SocketAddress, params0: Stack.Params): Transporter[Http2Frame, Http2Frame, TransportContext] = {
     val params = params0 +
       // We rely on HTTP/2 flow control rather than socket-level
       // backpressure.
@@ -33,7 +33,7 @@ object Netty4H2Transporter {
 
     val pipelineInit: ChannelPipeline => Unit =
 
-      if (params[Transport.ClientSsl].e.isDefined) {
+      if (params[Transport.ClientSsl].sslClientConfiguration.isDefined) {
         // secure
         p =>
           {

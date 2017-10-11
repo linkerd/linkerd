@@ -8,40 +8,40 @@ import io.netty.handler.codec.http2._
 private[h2] class DebugHandler(prefix: String)
   extends ChannelDuplexHandler {
 
-  private[this] val log = Logger.get(getClass.getName)
+  private[this] val log = Logger.get("h2")
 
   override def handlerAdded(ctx: ChannelHandlerContext): Unit = {
-    log.debug(s"$prefix.handlerAdded ${ctx.channel}")
+    log.debug("%s.handlerAdded %s", prefix, ctx.channel)
     super.handlerAdded(ctx)
   }
 
   override def handlerRemoved(ctx: ChannelHandlerContext): Unit = {
-    log.debug(s"$prefix.handlerRemoved ${ctx.channel}")
+    log.debug("%s.handlerRemoved %s", prefix, ctx.channel)
     super.handlerRemoved(ctx)
   }
 
   override def channelActive(ctx: ChannelHandlerContext): Unit = {
-    log.debug(s"$prefix.channelActive ${ctx.channel}")
+    log.debug("%s.channelActive %s", prefix, ctx.channel)
     super.channelActive(ctx)
   }
 
   override def channelInactive(ctx: ChannelHandlerContext): Unit = {
-    log.debug(s"$prefix.channelInactive ${ctx.channel}")
+    log.debug("%s.channelInactive %s", prefix, ctx.channel)
     super.channelInactive(ctx)
   }
 
   override def channelRead(ctx: ChannelHandlerContext, obj: Any): Unit = {
-    log.debug(s"$prefix.channelRead ${ctx.channel} $obj")
+    log.debug("%s.channelRead %s %s", prefix, ctx.channel, obj)
     super.channelRead(ctx, obj)
   }
 
   override def channelReadComplete(ctx: ChannelHandlerContext): Unit = {
-    log.debug(s"$prefix.channelReadComplete ${ctx.channel}")
+    log.debug("%s.channelReadComplete %s", prefix, ctx.channel)
     super.channelReadComplete(ctx)
   }
 
   override def userEventTriggered(ctx: ChannelHandlerContext, ev: Any): Unit = {
-    log.debug(s"$prefix.userEventTriggered ${ctx.channel} $ev")
+    log.debug("%s.userEventTriggered %s %s", prefix, ctx.channel, ev)
     val _ = ctx.fireUserEventTriggered(ev)
   }
 
@@ -67,12 +67,12 @@ private[h2] class DebugHandler(prefix: String)
       case obj => obj.toString
     }
 
-    log.debug(s"$reqid $prefix.write ${ctx.channel} [$objstr]")
+    log.debug("%d %s.write %s [%s]", reqid, prefix, ctx.channel, objstr)
     p.addListener(new ChannelFutureListener {
       override def operationComplete(cf: ChannelFuture): Unit = {
         cf.cause match {
-          case null => log.debug(s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
-          case e => log.debug(e, s"$reqid $prefix.write.complete ${cf.channel} [$objstr] $cf")
+          case null => log.debug("%d %s.write.complete %s [%s] %s", reqid, prefix, cf.channel, objstr, cf)
+          case e => log.debug(e, "%d %s.write.complete %s [%s] %s", reqid, prefix, cf.channel, objstr, cf)
         }
       }
     })
@@ -81,10 +81,10 @@ private[h2] class DebugHandler(prefix: String)
   }
 
   override def close(ctx: ChannelHandlerContext, p: ChannelPromise): Unit = {
-    log.debug(s"$prefix.close ${ctx.channel}")
+    log.debug("%s.close %s", prefix, ctx.channel)
     p.addListener(new ChannelFutureListener {
       override def operationComplete(cf: ChannelFuture): Unit =
-        log.debug(s"$prefix.close.complete ${ctx.channel} $cf")
+        log.debug("%s.close.complete %s %s", prefix, ctx.channel, cf)
     })
     super.close(ctx, p)
   }

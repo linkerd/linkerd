@@ -1,13 +1,14 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{ChannelClosedException, Failure}
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2.{Http2Frame, Http2GoAwayFrame, Http2StreamFrame}
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
@@ -15,6 +16,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def log: Logger
   protected[this] def prefix: String
+  protected[this] def stats: StatsReceiver
 
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
@@ -36,6 +38,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
   private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
   protected[this] def isClosed = closed.get
+
+  protected[this] val streamsGauge = stats.addGauge("open_streams") {
+    streams.size()
+  }
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
   @tailrec private[this] def addClosedId(id: Int): Unit = {
@@ -104,7 +110,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Throw(e) if closed.get =>
         log.debug("[%s] dispatcher closed: %s", prefix, e)
         Future.exception(e)
-
+      // if we attempted to cast a Http2Frame as a H1 frame, log a message & kill the
+      // connection.
+      case Throw(e: ClassCastException) if e.getMessage.contains("Transport.cast failed") =>
+        log.warning("[%s] HTTP/2 router could not handle non-HTTP/2 request!", prefix)
+        Future.Unit
       // if all streams have already been closed, then this just means that
       // the client failed to send a GOAWAY frame...
       case Throw(e: ChannelClosedException) if streams.isEmpty =>

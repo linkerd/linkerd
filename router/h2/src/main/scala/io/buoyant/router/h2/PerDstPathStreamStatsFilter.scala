@@ -8,7 +8,7 @@ import io.buoyant.router.{PerDstPathFilter, PerDstPathStatsFilter}
 import io.buoyant.router.context.h2.H2ClassifierCtx
 
 /**
- * Like [[io.buoyant.router.PerDstPathStatsFilter]],
+ * Like io.buoyant.router.PerDstPathStatsFilter,
  * but specialized for H2 streams.
  */
 object PerDstPathStreamStatsFilter {
@@ -28,13 +28,13 @@ object PerDstPathStreamStatsFilter {
         statsP match {
           case param.Stats(stats) if !stats.isNull =>
             val StreamStatsFilter.Param(timeUnit) = statsFilterP
-            val H2Classifier(classifier) =
-              H2ClassifierCtx.current.getOrElse(H2Classifier.param.default)
             val param.ExceptionStatsHandler(exHandler) = exHandlerP
 
             def mkScopedStatsFilter(path: Path): SimpleFilter[Request, Response] = {
               val name = path.show.stripPrefix("/")
               val scopedStats = stats.scope("service", name)
+              val H2Classifier(classifier) =
+                H2ClassifierCtx.current.getOrElse(H2Classifier.param.default)
               new StreamStatsFilter(scopedStats, classifier, exHandler, timeUnit)
             }
 

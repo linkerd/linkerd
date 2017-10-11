@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncMutex
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, Status => SvcStatus}
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -10,7 +11,7 @@ import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicInteger
 
 object Netty4ClientDispatcher {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
   private val MaxStreamId = (math.pow(2, 31) - 1).toInt
 }
@@ -24,19 +25,23 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
-  streamStats: Netty4StreamTransport.StatsReceiver
+  protected[this] val stats: StatsReceiver
 ) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
 
   override protected[this] val log = Netty4ClientDispatcher.log
 
   override protected[this] val prefix =
-    s"C L:${transport.localAddress} R:${transport.remoteAddress}"
+    s"C L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
 
-  transport.onClose.onSuccess(onTransportClose)
+  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
 
-  override def close(deadline: Time): Future[Unit] =
+  transport.context.onClose.onSuccess(onTransportClose)
+
+  override def close(deadline: Time): Future[Unit] = {
+    streamsGauge.remove()
     goAway(GoAway.NoError, deadline)
+  }
 
   private[this] val _id = new AtomicInteger(BaseStreamId)
   private[this] def nextId(): Int = _id.getAndAdd(2) match {

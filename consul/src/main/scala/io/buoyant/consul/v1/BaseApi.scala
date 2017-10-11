@@ -28,16 +28,16 @@ trait BaseApi extends Closable {
     RetryPolicy.backoff(backoffs) {
       // We will assume 5xx are retryable, everything else is not for now
       case (req, Return(rep)) if rep.status.code >= 500 && rep.status.code < 600 =>
-        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on ${UnexpectedResponse(rep)}")
+        log.error("Retrying Consul request '%s %s' on %s", req.method, req.uri, UnexpectedResponse(rep))
         true
 
       case (req, Throw(Failure(Some(err: ConnectionFailedException)))) if req.getParamNames().contains("index") =>
-        log.error(s"Will not retry blocking index request '${req.method} ${req.uri}' on error: $err")
+        log.error("Will not retry blocking index request '%s %s' on error: %s", req.method, req.uri, err)
         false
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (req, Throw(NonFatal(ex))) =>
-        log.error(s"Retrying Consul request '${req.method} ${req.uri}' on NonFatal error: $ex")
+        log.error("Retrying Consul request '%s %s' on NonFatal error: %s", req.method, req.uri, ex)
         true
     },
     HighResTimer.Default,

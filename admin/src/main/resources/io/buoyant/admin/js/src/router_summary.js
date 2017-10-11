@@ -140,10 +140,15 @@ define([
       if (!config) return DEFAULT_BUDGET;
 
       var routerObj = _.find(config.routers, function(router) {
-        return router.label === routerName;
+        if (router.label) {
+            return router.label === routerName;
+        } else {
+            return router.protocol == routerName;
+        }
+
       });
 
-      return _.get(routerObj, 'client.retries.budget.percentCanRetry', DEFAULT_BUDGET);
+      return _.get(routerObj, 'service.retries.budget.percentCanRetry', DEFAULT_BUDGET);
     }
 
     return function(metricsCollector, $summaryEl, $barChartEl, routerName, routerConfig) {

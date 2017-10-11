@@ -8,6 +8,7 @@ import com.twitter.concurrent.AsyncStream
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Return, Throw, Try}
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -29,6 +30,7 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
 
   private[this] object Incomplete {
     val unexpectedEOI = "Unexpected end-of-input"
+
     def unapply(jpe: JsonProcessingException): Boolean =
       jpe.getMessage match {
         case null => false
@@ -93,31 +95,39 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     (objs, rest)
   }
 
+  private def fromReaderJson(r: Reader, chunkSize: Int = Int.MaxValue): AsyncStream[Option[Buf]] = {
+    log.trace("json reading chunk of %d bytes", chunkSize)
+    val read = r.read(chunkSize).respond {
+      case Return(Some(Buf.Utf8(chunk))) =>
+        log.trace("json read chunk: %s", chunk)
+      case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
+        log.trace("json read eoc")
+      case Throw(e) =>
+        log.warning(e, "json read error")
+    }.handle {
+      case NonFatal(e) => None
+    }
+
+    AsyncStream.fromFuture(read).flatMap {
+      //Fake None element to get around scanLeft being one behind bug
+      //Tracked in https://github.com/twitter/util/issues/195
+      //Can be removed once 195 is fixed
+      case Some(buf) => Some(buf) +:: None +:: fromReaderJson(r, chunkSize)
+      case None => AsyncStream.empty[Option[Buf]]
+    }
+  }
+
   def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
-    def chunks(init: Buf): AsyncStream[T] =
-      for {
-        chunk <- {
-          log.trace("json reading chunk of %d bytes", bufsize)
-          val read = reader.read(bufsize).respond {
-            case Return(Some(Buf.Utf8(chunk))) =>
-              log.trace("json read chunk: %s", chunk)
-            case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
-              log.trace("json read eoc")
-            case Throw(e) =>
-              log.warning(e, "json read error")
-          }.handle {
-            case NonFatal(e) => None
+    fromReaderJson(reader, bufsize)
+      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty))(
+        (init, buf) => {
+          buf match {
+            case Some(b) => readChunked[T](init._2.concat(b))
+            case None => (Nil, init._2)
           }
-          AsyncStream.fromFuture(read).flatMap(AsyncStream.fromOption)
         }
-
-        item <- {
-          val (items, tail) = readChunked[T](init.concat(chunk))
-          AsyncStream.fromSeq(items).concat(chunks(tail))
-        }
-      } yield item
-
-    chunks(Buf.Empty)
+      )
+      .flatMap(s => AsyncStream.fromSeq(s._1))
   }
 
 }

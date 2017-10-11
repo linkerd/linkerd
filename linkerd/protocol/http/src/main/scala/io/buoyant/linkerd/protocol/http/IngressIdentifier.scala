@@ -41,7 +41,9 @@ class IngressIdentifier(
 case class IngressIdentifierConfig(
   host: Option[String],
   port: Option[Port],
-  namespace: Option[String]
+  namespace: Option[String],
+  ingressClassAnnotation: Option[String]
+
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
   override def portNum: Option[Int] = port.map(_.port)
@@ -51,7 +53,7 @@ case class IngressIdentifierConfig(
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
     val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
-    new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst), "linkerd")
+    new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"))
   }
 }
 

@@ -8,15 +8,18 @@ import io.buoyant.router.{LocalClassifierStatsFilter, PerDstPathFilter}
 import io.buoyant.router.context.h2.H2ClassifierCtx
 
 /**
- * Like [[io.buoyant.router.LocalClassifierStatsFilter]],
+ * Like io.buoyant.router.LocalClassifierStatsFilter,
  * but specialized for H2 streams.
  */
 object LocalClassifierStreamStatsFilter {
 
+  val role: Stack.Role = LocalClassifierStatsFilter.role
+  val description = "Report request statistics using local H2 stream classifier"
+
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module3[param.Stats, param.ExceptionStatsHandler, StreamStatsFilter.Param, ServiceFactory[Request, Response]] {
-      val role: Stack.Role = LocalClassifierStatsFilter.role
-      val description = "Report request statistics using local H2 stream classifier"
+      val role: Stack.Role = LocalClassifierStreamStatsFilter.role
+      val description = LocalClassifierStreamStatsFilter.description
 
       override def make(
         statsP: param.Stats,

@@ -37,7 +37,7 @@ namers:
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc => /#/io.l5d.fs
 ```
@@ -166,19 +166,22 @@ namers:
   host: 127.0.0.1
   port: 2181
   includeTag: true
-  useHealthCheck: true
+  useHealthCheck: false
+  healthStatuses:
+    - "passing"
+    - "warning"
   setHost: true
   consistencyMode: stale
 ```
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc => /#/io.l5d.consul/dc1/prod;
 ```
 
-linker provides support for service discovery via [Consul](https://www.consul.io/).
+linkerd provides support for service discovery via [Consul](https://www.consul.io/).
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -186,7 +189,8 @@ prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
-useHealthCheck | `false` | If `true`, exclude app instances that are failing Consul health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
+useHealthCheck | `false` | If `true`, exclude app instances that do not match one of the provided `healthStatuses`. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
+healthStatuses | `passing` | List of statuses to used to filter Consul app instances by. Possible values are `passing`, `warning`, `critical`, `maintenance`. Note that if a service defines more than one health check per app instance then the most representative statuses is used (`maintenance` > `critical` > `warning` > `passing`). If `useHealthCheck` is `false` then this parameter has no effect. Regardless of the statuses used to filter, linkerd's built-in resiliency algorithms will still apply.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
@@ -234,7 +238,7 @@ namers:
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc => /#/io.l5d.k8s/prod/http;
 ```
@@ -251,7 +255,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s Path Parameters
@@ -285,7 +289,7 @@ namers:
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc => /#/io.l5d.k8s.external/prod/http;
 ```
@@ -304,7 +308,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s External Path Parameters
@@ -421,7 +425,7 @@ labelSelector | none | The key of the label to filter services.
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See [the k8s guide](https://linkerd.io/doc/latest/k8s/) for more information.
 </aside>
 
 ### K8s Namespaced Path Parameters
@@ -453,7 +457,7 @@ namers:
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc/reviews => /#/io.l5d.k8s.istio/version:v1/http/reviews;
 ```
@@ -504,7 +508,7 @@ namers:
 ```
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /marathonId => /#/io.l5d.marathon;
   /host       => /$/io.buoyant.http.domainToPathPfx/marathonId;
@@ -567,6 +571,60 @@ Further reading:
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
 <a name="zkLeader"></a>
+
+## DNS SRV Records
+
+kind: `io.l5d.dnssrv`
+
+### DNS-SRV Configuration
+
+> Configure a DNS-SRV namer:
+
+```yaml
+namers:
+- kind: io.l5d.dnssrv
+  experimental: true
+  refreshIntervalSeconds: 5
+  domain: srv.dc-1.example.org
+  dnsHosts:
+  - ns0.example.org
+  - ns1.example.org
+```
+
+> Then reference the namer in the dtab to use it:
+
+```yaml
+dtab: |
+  /dnssrv => /#/io.l5d.dnssrv
+  /svc => /dnssrv
+  /svc/myservice =>
+    /dnssrv/myservice |
+    /dnssrv/myservice.srv.dc-2.example.org.;
+```
+
+linkerd provides support for service discovery via DNS SRV records.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.dnssrv` | Resolves names with `/#/<prefix>`.
+experimental | `false` | Since the DNS-SRV namer is still considered experimental, this must be set to `true`.
+refreshIntervalSeconds | `5` | linkerd will perform a SRV lookup for each host every `refreshIntervalSeconds`.
+domain | `.` | Domain to use to expand relative addresses in the dtab into absolute addresses. Absolute addresses ending in `.` will not be expanded. The default value treats all addresses as absolute.
+dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to perform SRV lookups. If not specified, linkerd will use the default system resolver.
+
+### DNS-SRV Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<address>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup. Relative addresses not ending in `.` are resolved relative to `searchDomain`; absolute addresses ending in `.` are treated as-is.
+
 ## ZooKeeper Leader
 
 kind: `io.l5d.zkLeader`
@@ -643,7 +701,7 @@ namers:
 
 > Then reference the namer in the dtab to use it:
 
-```
+```yaml
 dtab: |
   /svc => /#/rewrite
 ```
@@ -742,7 +800,7 @@ would be rewritten to `/pfx/foo/resource/name`
 /$/io.buoyant.hostportPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
@@ -763,7 +821,7 @@ would be rewritten to `/pfx/host/port/etc`.
 /$/io.buoyant.porthostPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 

@@ -1,3 +1,88 @@
+
+## 1.3.0 2017-10-06
+
+* **Breaking Change**: All HTTP engines are now Netty 4; `engine:` configuration key is no longer valid.
+* Upgraded to Finagle 7.1
+* Kubernetes
+  * Added a workaround for an issue where Kubernetes namers fail to update because watches are not correctly restarted due to a regression in some versions of Kubernetes (#1636).
+  * Fixed `io.l5d.k8s.configMap` interpreter failing to update after receiving an invalid dtab (#1639).
+  * Performance improvements for Kubernetes namers.
+* Prometheus
+  * Added an optional `prefix:` configuration key to add a prefix to all metrics reported by Linkerd (#1655).
+* DNS SRV Record namer
+  * Ensured that DNS names in SRV queries are absolute (#1637).
+  * Added an optional `domain` config key for relative DNS lookups (#1637).
+  * Removed redundant `dnssrv` metrics scope from SRV record namer metrics (#1637).
+* Consul
+  * Consul namers no longer watch the entire list of services, improving performance significantly when there are large numbers of services (#1646).
+* Curator
+  * Added support for `ServiceInstance` objects with custom payloads (#1272).
+
+
+## 1.2.1 2017-09-14
+
+Fix for an issue where Kubernetes namers would continue to route to old
+endpoints after a service was deleted and re-created, or scaled down to 0 and
+then scaled back up.
+
+Also includes:
+* The path on which the Prometheus telemeter serves metrics can now be
+  set in the config file.
+* Minor documentation fixes.
+
+
+## 1.2.0 2017-09-07
+
+* **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
+  admin, and namerd admin now serve on 127.0.0.1 by default (instead of
+  0.0.0.0).
+* **Breaking Change**: Removed support for PKCS#1-formatted keys. PKCS#1 formatted keys must be converted to PKCS#8 format.
+* Added experimental `io.l5d.dnssrv` namer for DNS SRV records (#1611)
+* Kubernetes
+  * Added an experimental `io.l5d.k8s.configMap` interpreter for reading dtabs from a Kubernetes ConfigMap (#1603). This interpreter will respond to changes in the ConfigMap, allowing for dynamic dtab updates without the need to run Namerd.
+  * Made ingress controller's ingress class annotation configurable (#1584).
+  * Fixed an issue where Linkerd would continue routing traffic to endpoints of a service after that service was removed (#1622).
+  * Major refactoring and performance improvements to `io.l5d.k8s` and `io.l5d.k8s.ns` namers (#1603).
+  * Ingress controller now checks all available ingress resources before using a default backend (#1607).
+  * Ingress controller now correctly routes requests with host headers that contain ports (#1607).
+* HTTP/2
+  * Fixed an issue where long-running H2 streams would eventually hang (#1598).
+  * Fixed a memory leak on long-running H2 streams (#1598)
+  * Added a user-friendly error message when a HTTP/2 router receives a HTTP/1 request (#1618)
+* HTTP/1
+  * Removed spurious `ReaderDiscarded` exception logged on HTTP/1 retries (#1609)
+* Consul
+  * Added support for querying Consul by specific service health states (#1601)
+  * Consul namers and Dtab store now fall back to a last known good state on Consul observation errors (#1597)
+  * Improved log messages for Consul observation errors (#1597)
+* TLS
+  * Removed support for PKCS#1 keys (#1590)
+  * Added validation to prevent incompatible `disableValidation: true` and `clientAuth` settings in TLS client configurations (#1621)
+* Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
+  admin, and namerd admin to serve on 127.0.0.1 by default (instead of
+  0.0.0.0) (#1366)
+* Deprecated `io.l5d.statsd` telemeter.
+
+
+## 1.1.3 2017-08-09
+
+The 1.1.3 release of Linkerd is mostly focused on improving our HTTP/2 support,
+including better support for gRPC.  Linkerd now supports automatic retries in
+HTTP/2 for retryable requests.
+
+* HTTP/2
+  * Cleaned up spurious errors messages in the Linkerd log output.
+  * Added a number of gRPC response classifiers that use the `grpc-status` code
+    to determine if the response was successful and if it should be retried.
+    See [the docs](https://linkerd.io/config/1.1.3/linkerd/index.html#grpc-response-classifiers) for details.
+  * Added support for failure accrual and automatic retries to HTTP/2.
+  * Fixed a memory leak related to messages with only a headers frame.
+* Istio
+  * Added HTTP/2 support to the Istio integration: the `io.l5d.k8s.istio`
+    identifier can now be used in H2 router configs.
+  * Added support for HTTPRedirect Route Rules.
+* The Linkerd and Namerd admin sites can now be configured to require HTTPS.
+
 ## 1.1.2 2017-07-12
 
 * Marathon Namer TLS support, for DC/OS strict mode.

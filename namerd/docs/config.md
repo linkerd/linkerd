@@ -53,7 +53,7 @@ IP are configurable via a top-level `admin` section.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | `0.0.0.0` | IP for the admin interface.
+ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configures admin to listen on all local IPv4 interfaces.
 port | `9991` | Port for the admin interface.
 
 #### Administrative endpoints

@@ -9,7 +9,7 @@ import io.netty.handler.codec.http2._
 import io.netty.util.AsciiString
 
 object ServerUpgradeHandler {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
 
   private val PrefaceBuf = Http2CodecUtil.connectionPrefaceBuf
   private val PrefaceLen = PrefaceBuf.readableBytes
@@ -62,7 +62,7 @@ class ServerUpgradeHandler(h2Framer: H2FrameCodec) extends ChannelDuplexHandler 
 
     // Stop trying to upgrade the protocol.
     ctx.pipeline.remove(this)
-    log.debug(s"h2 server pipeline: installing framer: ${ctx.pipeline}")
+    log.debug("h2 server pipeline: installing framer: %s", ctx.pipeline)
 
     // Pass it on.
     ctx.fireChannelRead(obj); ()

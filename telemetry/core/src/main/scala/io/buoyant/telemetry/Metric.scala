@@ -13,7 +13,7 @@ object Metric {
 
   class Counter extends FCounter with Metric {
     private[this] val value = new AtomicLong
-    def incr(delta: Int): Unit = {
+    def incr(delta: Long): Unit = {
       val _ = value.getAndAdd(delta)
     }
     def get: Long = value.get

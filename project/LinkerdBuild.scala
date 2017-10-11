@@ -32,13 +32,19 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson ++ Deps.jodaTime)
     .withTests().withIntegration()
 
-  lazy val istio = projectDir("istio")
+  lazy val istioProto = projectDir("istio-proto")
     .withLibs(Deps.jackson)
     .withGrpc
     .withTests()
 
+  lazy val istio = projectDir("istio")
+    .dependsOn(k8s, Namer.core, istioProto)
+    .withTwitterLib(Deps.finagle("http"))
+    .withLibs(Deps.jackson)
+    .withTests()
+
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core, istio)
+    .dependsOn(Namer.core, istioProto)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -122,12 +128,21 @@ object LinkerdBuild extends Base {
       .withLibs(Deps.curatorFramework, Deps.curatorClient, Deps.curatorDiscovery)
       .withTests()
 
+    val dnssrv = projectDir("namer/dnssrv")
+      .dependsOn(core)
+      .withLibs(Deps.dnsJava)
+      .withTests().withIntegration()
+
     val fs = projectDir("namer/fs")
       .dependsOn(core % "compile->compile;test->test")
       .withTests()
 
     val k8s = projectDir("namer/k8s")
       .dependsOn(LinkerdBuild.k8s, core)
+      .withTests()
+
+    val istio = projectDir("namer/istio")
+      .dependsOn(LinkerdBuild.istio, core)
       .withTests()
 
     val marathon = projectDir("namer/marathon")
@@ -145,7 +160,8 @@ object LinkerdBuild extends Base {
       .withLib(Deps.zkCandidate)
       .withTests()
 
-    val all = aggregateDir("namer", core, consul, curator, fs, k8s, marathon, serversets, zkLeader)
+    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader)
+
   }
 
   val admin = projectDir("admin")
@@ -327,7 +343,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
       Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
@@ -395,10 +411,10 @@ object LinkerdBuild extends Base {
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
       .settings(
-        assembly <<= assembly in Bundle,
-        docker <<= docker in Bundle,
-        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
-        dockerPush <<= dockerPush in Bundle
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -443,6 +459,10 @@ object LinkerdBuild extends Base {
         .dependsOn(Namer.core, LinkerdBuild.k8s, perHost, subnet)
         .withTests()
 
+    val istio = projectDir("interpreter/istio")
+      .dependsOn(Namer.core, LinkerdBuild.istio, perHost, subnet)
+      .withTests()
+
     val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
   }
 
@@ -474,8 +494,9 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, k8s, Finagle.h2 % "test->test;e2e->test")
+        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test")
         .withTests().withE2e()
+        .withGrpc
         .withTwitterLibs(Deps.finagle("netty4"))
 
       val http = projectDir("linkerd/protocol/http")
@@ -483,8 +504,8 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
-          k8s,
           istio,
+          istioProto,
           failureAccrual % "e2e",
           tls % "integration",
           Namer.fs % "integration",
@@ -524,7 +545,7 @@ object LinkerdBuild extends Base {
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
       .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
-      .dependsOn(Protocol.thrift % "test")
+      .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")
       .dependsOn(admin, configCore, core)
@@ -572,8 +593,8 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator,
-      Interpreter.fs, Interpreter.k8s, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
@@ -597,10 +618,10 @@ object LinkerdBuild extends Base {
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
       .settings(
-        assembly <<= assembly in Bundle,
-        docker <<= docker in Bundle,
-        dockerBuildAndPush <<= dockerBuildAndPush in Bundle,
-        dockerPush <<= dockerPush in Bundle
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -618,7 +639,7 @@ object LinkerdBuild extends Base {
 
   val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
   val validator = projectDir("validator")
-    .withTwitterLibs(Deps.twitterServer, Deps.twitterUtil("events"), Deps.finagle("http"))
+    .withTwitterLibs(Deps.twitterServer, Deps.finagle("http"))
     .settings(
       mainClass := Some("io.buoyant.namerd.Validator"),
       validateAssembled := (Def.taskDyn {
@@ -663,8 +684,10 @@ object LinkerdBuild extends Base {
   val namerCore = Namer.core
   val namerConsul = Namer.consul
   val namerCurator = Namer.curator
+  val namerDnsSrv = Namer.dnssrv
   val namerFs = Namer.fs
   val namerK8s = Namer.k8s
+  val namerIstio = Namer.istio
   val namerMarathon = Namer.marathon
   val namerServersets = Namer.serversets
   val namerZkLeader = Namer.zkLeader
@@ -689,6 +712,7 @@ object LinkerdBuild extends Base {
   val interpreter = Interpreter.all
   val interpreterFs = Interpreter.fs
   val interpreterK8s = Interpreter.k8s
+  val interpreterIstio = Interpreter.istio
   val interpreterMesh = Interpreter.mesh
   val interpreterNamerd = Interpreter.namerd
   val interpreterPerHost = Interpreter.perHost
@@ -722,6 +746,7 @@ object LinkerdBuild extends Base {
       etcd,
       k8s,
       istio,
+      istioProto,
       marathon,
       testUtil,
       Finagle.all,

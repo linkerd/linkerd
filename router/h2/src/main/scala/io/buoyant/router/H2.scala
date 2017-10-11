@@ -1,17 +1,17 @@
 package io.buoyant.router
 
-import com.twitter.finagle.buoyant.h2.{Request, Response, param => h2param}
+import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Request, Response, param => h2param}
 import com.twitter.finagle.buoyant.{H2 => FinagleH2}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{param, _}
 import com.twitter.finagle.server.StackServer
 import com.twitter.util.Future
 import java.net.SocketAddress
-import com.twitter.finagle.buoyant.h2.service.H2Classifiers
+import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
-import io.buoyant.router.h2.{LocalClassifierStreamStatsFilter, PerDstPathStreamStatsFilter, StreamStatsFilter}
+import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -36,7 +36,8 @@ object H2 extends Router[Request, Response]
       stk.replace(
         ResponseClassifierCtx.Setter.role,
         H2ClassifierCtx.Setter.module[Request, Response]
-      )
+      ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
+        .replace(StatsFilter.role, StreamStatsFilter.module)
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
@@ -47,6 +48,7 @@ object H2 extends Router[Request, Response]
       StackRouter.Client.mkStack(stk)
         .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
         .replace(LocalClassifierStatsFilter.role, LocalClassifierStreamStatsFilter.module)
+        .replace(FailureAccrualFactory.role, H2FailureAccrualFactory.module)
     }
 
     val defaultParams = StackRouter.defaultParams +
@@ -89,9 +91,10 @@ object H2 extends Router[Request, Response]
       .replace(StatsFilter.role, StreamStatsFilter.module)
 
     private val serverResponseClassifier =
-      // TODO: insert H2 classified retries here?
-      H2Classifiers.Default
-    val defaultParams = StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
+      ClassifierFilter.SuccessClassClassifier
+
+    val defaultParams: Stack.Params =
+      StackServer.defaultParams + h2param.H2Classifier(serverResponseClassifier)
   }
 
   val server = FinagleH2.Server(Server.newStack, Server.defaultParams)

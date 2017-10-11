@@ -53,7 +53,15 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   }
 
   private[this]type NsMap = Map[String, VersionedDtab]
-  private[this] object Closed extends Throwable
+  private[this] val dtabListToNsMap: Option[DtabList] => NsMap = {
+    case Some(dtabs) => dtabs.items.map(toDtabMap)(breakOut)
+    case None =>
+      // NOTE: i'm not 100% sure this is the right behaviour here, but i'm assuming
+      //       based on the exceptions in `toDtabMap` and `name` that we want to fail
+      //       fast here rather than wait for a dtab list that doesn't currently exist
+      //       to be created?
+      throw new IllegalStateException("k8s API request for Dtab list returned 404!")
+  }
 
   // Set up a watch on the Kubernetes API to update our internal state
   // NOTE: this currently relies on our watch connection to update the internal state, rather than
@@ -61,36 +69,18 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val states = Var.async[Activity.State[NsMap]](Activity.Pending) { state =>
-    val closeRef = new AtomicReference[Closable](Closable.nop)
-    val pending = api.dtabs.get(None, None, None, retryIndefinitely = true).respond {
-      case Throw(e) => state.update(Activity.Failed(e))
-      case Return(dtabList) =>
-        val initState: NsMap = dtabList.items.map(toDtabMap)(breakOut)
-        state.update(Activity.Ok(initState))
-        val (stream, close) = watchApi.dtabs.watch(None, None, dtabList.metadata.flatMap(_.resourceVersion))
-        closeRef.set(close)
-        val _ = stream.foldLeft(initState) { (nsMap, watchEvent) =>
-          val newState: NsMap = watchEvent match {
-            case DtabAdded(a) => nsMap + toDtabMap(a)
-            case DtabModified(m) => nsMap + toDtabMap(m)
-            case DtabDeleted(d) => nsMap - name(d)
-            case DtabError(e) =>
-              log.error("k8s watch error: %s", e)
-              nsMap
-          }
-          state.update(Activity.Ok(newState))
-          newState
+  private[this] val act: Activity[NsMap] =
+    watchApi.dtabs.activity(dtabListToNsMap) {
+      (nsMap: NsMap, watchEvent) =>
+        watchEvent match {
+          case DtabAdded(a) => nsMap + toDtabMap(a)
+          case DtabModified(m) => nsMap + toDtabMap(m)
+          case DtabDeleted(d) => nsMap - name(d)
+          case DtabError(e) =>
+            log.error("k8s watch error: %s", e)
+            nsMap
         }
     }
-
-    Closable.make { t =>
-      pending.raise(Closed)
-      Closable.ref(closeRef).close(t)
-    }
-  }
-
-  private[this] val act = Activity(states)
 
   /** List all Dtab namespaces */
   def list(): Activity[Set[Ns]] = act.map(_.keySet)

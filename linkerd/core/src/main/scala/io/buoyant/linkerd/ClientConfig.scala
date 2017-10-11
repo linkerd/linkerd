@@ -3,10 +3,9 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.{ClientAuth, PathMatcher, TlsClientConfig => FTlsClientConfig}
+import com.twitter.finagle.buoyant.{ClientAuth, ParamsMaybeWith, PathMatcher, TlsClientConfig => FTlsClientConfig}
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
-import com.twitter.finagle.buoyant.ParamsMaybeWith
 import io.buoyant.router.RetryBudgetConfig
 import io.buoyant.router.RetryBudgetModule.param
 
@@ -42,6 +41,10 @@ case class TlsClientConfig(
   trustCerts: Option[Seq[String]] = None,
   clientAuth: Option[ClientAuth] = None
 ) {
+  require(
+    !disableValidation.getOrElse(false) || clientAuth.isEmpty,
+    "disableValidation: true is incompatible with clientAuth"
+  )
   def params(vars: Map[String, String]): Stack.Params =
     FTlsClientConfig(
       disableValidation,

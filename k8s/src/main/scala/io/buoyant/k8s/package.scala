@@ -6,6 +6,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Service, http => fhttp}
 import com.twitter.logging.Logger
+import com.twitter.util.{Activity, Updatable, Var}
 import io.buoyant.config.JsonStreamParser
 
 /**
@@ -24,4 +25,5 @@ package object k8s {
     LoadService[SerializationModule].foreach { svc => mapper.registerModule(svc.module) }
     new JsonStreamParser(mapper)
   }
+
 }

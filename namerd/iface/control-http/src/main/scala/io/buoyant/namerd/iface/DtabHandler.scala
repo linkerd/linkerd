@@ -59,20 +59,20 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
     }
 
   private[this] def get(ns: String, req: Request): Future[Response] = {
-    val (contentType, codec) = DtabCodec.accept(req.accept).getOrElse(DtabCodec.default)
+    val (mediaType, codec) = DtabCodec.accept(req.acceptMediaTypes).getOrElse(DtabCodec.default)
     if (isStreaming(req)) {
       val dtabs: Event[Try[VersionedDtab]] = storage.observe(ns).values.collect {
         case Return(Some(dtab)) => Return(dtab)
         case Throw(e) => Throw(e)
       }
-      streamingResp(dtabs, Some(contentType)) { dtab =>
+      streamingResp(dtabs, Some(mediaType)) { dtab =>
         codec.write(dtab.dtab).concat(newline)
       }
     } else {
       storage.observe(ns).toFuture.map {
         case Some(dtab) =>
           val rsp = Response()
-          rsp.contentType = contentType
+          rsp.contentType = mediaType
           rsp.headerMap.add(Fields.Etag, DtabHandler.versionString(dtab.version))
           rsp.content = codec.write(dtab.dtab).concat(newline)
           rsp
@@ -93,7 +93,7 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
     }
 
   private[this] def put(ns: String, req: Request): Future[Response] =
-    req.contentType.flatMap(DtabCodec.byContentType) match {
+    req.mediaType.flatMap(DtabCodec.byMediaType) match {
       case Some(codec) =>
         codec.read(req.content) match {
           case Return(dtab) =>
@@ -133,7 +133,7 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
     }
 
   private[this] def post(ns: String, req: Request): Future[Response] =
-    req.contentType.flatMap(DtabCodec.byContentType) match {
+    req.mediaType.flatMap(DtabCodec.byMediaType) match {
       case Some(codec) =>
         codec.read(req.content) match {
           case Return(dtab) =>

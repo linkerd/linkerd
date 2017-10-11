@@ -76,7 +76,7 @@ object Api {
 /**
  * Generally required as an implicit for list resources. Provides the kubernetes-designated
  * name for the resource, as well as a means of transforming an individual instance into a
- * type-specialized [[Watch]].
+ * type-specialized Watch.
  */
 trait ObjectDescriptor[O <: KubeObject, W <: Watch[O]] {
   /**
@@ -97,23 +97,31 @@ trait ObjectDescriptor[O <: KubeObject, W <: Watch[O]] {
  * Describes an Object in the Kubernetes API (i.e.
  * http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpoints)
  */
-trait KubeObject {
+trait KubeObject extends KubeMetadata {
   def apiVersion: Option[String]
-  def metadata: Option[ObjectMeta]
   def kind: Option[String]
 }
 
 /**
- * Describes a List of Objects in the Kubernetes API (i.e.
- * [[http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpointslist EndpointsList]])
+ * A Kubernetes API response with a `metadata` field.
+ *
+ * This is factored out from KubeObject and KubeList so that
+ * the `G` type param on Watchable can be constrained based on it,
+ * while still allowing both KubeObjects and KubeLists to be
+ * Watchable, *and* maintaining the distinction between objects
+ * and lists.
+ */
+trait KubeMetadata {
+  def metadata: Option[ObjectMeta]
+}
+
+/**
+ * Describes a List of Objects in the Kubernetes API (i.e. EndpointsList)
  *
  * @tparam O the type of object contained in the list
  */
-trait KubeList[O <: KubeObject] {
+trait KubeList[O <: KubeObject] extends KubeMetadata {
   def items: Seq[O]
-  def apiVersion: Option[String]
-  def metadata: Option[ObjectMeta]
-  def kind: Option[String]
 }
 
 /**
@@ -163,6 +171,7 @@ object Watch {
     @JsonIgnore
     def resourceVersion = `object`.metadata.flatMap(_.resourceVersion)
   }
+
   trait Added[O <: KubeObject] extends WithObject[O]
   trait Modified[O <: KubeObject] extends WithObject[O]
   trait Deleted[O <: KubeObject] extends WithObject[O]
@@ -171,6 +180,7 @@ object Watch {
     @JsonIgnore
     def resourceVersion = None
   }
+
 }
 
 case class Status(

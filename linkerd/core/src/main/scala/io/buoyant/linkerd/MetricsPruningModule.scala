@@ -28,7 +28,7 @@ object MetricsPruningModule {
           new ServiceFactoryProxy[Req, Rep](next) {
             override def close(deadline: Time): Future[Unit] = {
               self.close(deadline).respond { _ =>
-                log.info(s"Reaping ${label.label}")
+                log.info("Reaping %s", label.label)
                 statsReceiver.prune()
               }
             }

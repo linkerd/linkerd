@@ -3,22 +3,23 @@ package io.buoyant.linkerd.protocol.http
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
 import com.twitter.util.{Future, Promise, Time}
-import com.twitter.logging.Logger
+import com.twitter.logging._
 import io.buoyant.test.Awaits
 import java.util.{logging => javalog}
 import org.scalatest.FunSuite
-import java.lang.{StringBuilder => JStringBuilder}
 
 class AccessLoggerTest extends FunSuite with Awaits {
 
   object StringLogger extends Logger("string", javalog.Logger.getAnonymousLogger()) {
-    val logged = new JStringBuilder(2048)
+    val handler = new StringHandler(new Formatter {
+      override def format(record: javalog.LogRecord): String = formatText(record)
+    }, None)
 
-    override def info(msg: String, items: Any*) {
-      val _ = logged.append(msg)
-    }
+    clearHandlers()
+    addHandler(handler)
+    setLevel(Level.INFO)
 
-    def getLoggedLines(): String = logged.toString()
+    def getLoggedLines(): String = handler.get
   }
 
   test("access logger filter") {

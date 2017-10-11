@@ -3,6 +3,7 @@ package netty4
 
 import com.twitter.finagle.{Failure, Service}
 import com.twitter.finagle.context.{Contexts, RemoteInfo}
+import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
 import com.twitter.util._
@@ -10,7 +11,7 @@ import io.netty.handler.codec.http2._
 import scala.util.control.NoStackTrace
 
 object Netty4ServerDispatcher {
-  private val log = Logger.get(getClass.getName)
+  private val log = Logger.get("h2")
 
   /**
    * Indicates a failure on the downstream service (i.e. before a
@@ -30,18 +31,21 @@ object Netty4ServerDispatcher {
 class Netty4ServerDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   service: Service[Request, Response],
-  streamStats: Netty4StreamTransport.StatsReceiver
+  protected[this] val stats: StatsReceiver
 ) extends Netty4DispatcherBase[Response, Request] with Closable {
   import Netty4ServerDispatcher._
 
   override protected[this] val log = Netty4ServerDispatcher.log
   override protected[this] val prefix =
-    s"S L:${transport.localAddress} R:${transport.remoteAddress}"
+    s"S L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
+  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
 
-  transport.onClose.onSuccess(onTransportClose)
+  transport.context.onClose.onSuccess(onTransportClose)
 
-  override def close(deadline: Time): Future[Unit] =
+  override def close(deadline: Time): Future[Unit] = {
+    streamsGauge.remove()
     goAway(GoAway.NoError, deadline)
+  }
 
   private[this] def newStreamTransport(id: Int): Netty4StreamTransport[Response, Request] = {
     val stream = Netty4StreamTransport.server(id, writer, streamStats)
@@ -52,8 +56,8 @@ class Netty4ServerDispatcher(
   private[this] val serve: Request => Future[Response] = { req =>
     val save = Local.save()
     try {
-      Contexts.local.let(RemoteInfo.Upstream.AddressCtx, transport.remoteAddress) {
-        transport.peerCertificate match {
+      Contexts.local.let(RemoteInfo.Upstream.AddressCtx, transport.context.remoteAddress) {
+        transport.context.peerCertificate match {
           case None =>
             service(req).rescue(wrapServiceEx)
 

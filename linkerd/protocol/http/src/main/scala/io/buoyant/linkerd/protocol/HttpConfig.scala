@@ -6,8 +6,8 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
-import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpEngine, HttpTraceInitializer}
+import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.StatsFilter
@@ -114,16 +114,7 @@ class HttpStaticClient(val configs: Seq[HttpPrefixConfig]) extends HttpClient wi
 
 class HttpPrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with HttpClientConfig
 
-trait HttpClientConfig extends ClientConfig {
-
-  var engine: Option[HttpEngine] = None
-
-  @JsonIgnore
-  override def params(vars: Map[String, String]) = engine match {
-    case Some(engine) => engine.mk(super.params(vars))
-    case None => super.params(vars)
-  }
-}
+trait HttpClientConfig extends ClientConfig
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
@@ -165,17 +156,12 @@ trait HttpSvcConfig extends SvcConfig {
 }
 
 case class HttpServerConfig(
-  engine: Option[HttpEngine],
   addForwardedHeader: Option[AddForwardedHeaderConfig]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    val params = super.serverParams + AddForwardedHeaderConfig.Param(addForwardedHeader)
-    engine match {
-      case None => params
-      case Some(engine) => engine.mk(params)
-    }
+    super.serverParams + AddForwardedHeaderConfig.Param(addForwardedHeader)
   }
 }
 

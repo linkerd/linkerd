@@ -1,19 +1,18 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle._
-import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.dispatch.{SerialClientDispatcher, SerialServerDispatcher}
-import com.twitter.finagle.netty3.{Netty3Listener, Netty3Transporter}
+import com.twitter.finagle.netty4.{Netty4Listener, Netty4Transporter}
 import com.twitter.finagle.server.{StackServer, StdStackServer}
-import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.transport.{Transport, TransportContext}
 import com.twitter.io.Charsets
 import com.twitter.util.Future
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
-import org.jboss.netty.channel._
-import org.jboss.netty.handler.codec.frame.{DelimiterBasedFrameDecoder, Delimiters}
-import org.jboss.netty.handler.codec.string.{StringDecoder, StringEncoder}
+import io.netty.channel._
+import io.netty.handler.codec.{DelimiterBasedFrameDecoder, Delimiters}
+import io.netty.handler.codec.string.{StringDecoder, StringEncoder}
 
 /**
  * Lovingly stolen from finagle-core's tests
@@ -35,24 +34,24 @@ object Echo extends Client[String, String] with Server[String, String] {
    * Finagle Client
    */
 
-  private class DelimEncoder(delim: Char) extends SimpleChannelHandler {
-    override def writeRequested(ctx: ChannelHandlerContext, evt: MessageEvent) = {
-      val newMessage = evt.getMessage match {
+  private class DelimEncoder(delim: Char) extends ChannelOutboundHandlerAdapter {
+    override def write(ctx: ChannelHandlerContext, msg: Any, p: ChannelPromise): Unit = {
+      val delimMsg = msg match {
         case m: String => m + delim
         case m => m
       }
 
-      Channels.write(ctx, evt.getFuture, newMessage, evt.getRemoteAddress)
+      ctx.write(delimMsg, p)
+      ()
     }
   }
 
-  private object StringClientPipeline extends ChannelPipelineFactory {
-    def getPipeline = {
-      val pipeline = Channels.pipeline()
+  private object StringClientPipeline extends (ChannelPipeline => Unit) {
+    def apply(pipeline: ChannelPipeline): Unit = {
       pipeline.addLast("stringEncode", new StringEncoder(UTF_8))
       pipeline.addLast("stringDecode", new StringDecoder(UTF_8))
       pipeline.addLast("line", new DelimEncoder('\n'))
-      pipeline
+      ()
     }
   }
 
@@ -70,7 +69,7 @@ object Echo extends Client[String, String] with Server[String, String] {
     params: Stack.Params = Stack.Params.empty
   )
     extends StdStackClient[String, String, Client]
-    with StringRichClient {
+    with StringRichClient { self =>
     protected def copy1(
       stack: Stack[ServiceFactory[String, String]] = this.stack,
       params: Stack.Params = this.params
@@ -78,11 +77,14 @@ object Echo extends Client[String, String] with Server[String, String] {
 
     protected type In = String
     protected type Out = String
+    protected type Context = TransportContext
 
-    protected def newTransporter(addr: SocketAddress): Transporter[String, String] =
-      Netty3Transporter(StringClientPipeline, addr, params)
+    protected def newTransporter(addr: SocketAddress): Transporter[String, String, TransportContext] =
+      Netty4Transporter.raw(StringClientPipeline, addr, params)
 
-    protected def newDispatcher(transport: Transport[In, Out]) =
+    protected def newDispatcher(transport: Transport[super.In, super.Out] {
+      type Context <: self.Context
+    }) =
       new SerialClientDispatcher(transport)
   }
 
@@ -93,20 +95,19 @@ object Echo extends Client[String, String] with Server[String, String] {
    * Finagle Server
    */
 
-  object StringServerPipeline extends ChannelPipelineFactory {
-    def getPipeline = {
-      val pipeline = Channels.pipeline()
+  object StringServerPipeline extends (ChannelPipeline => Unit) {
+    def apply(pipeline: ChannelPipeline): Unit = {
       pipeline.addLast("line", new DelimiterBasedFrameDecoder(100, Delimiters.lineDelimiter: _*))
       pipeline.addLast("stringDecoder", new StringDecoder(UTF_8))
       pipeline.addLast("stringEncoder", new StringEncoder(UTF_8))
-      pipeline
+      ()
     }
   }
 
   case class Server(
     stack: Stack[ServiceFactory[String, String]] = StackServer.newStack,
     params: Stack.Params = StackServer.defaultParams
-  ) extends StdStackServer[String, String, Server] {
+  ) extends StdStackServer[String, String, Server] { self =>
     protected def copy1(
       stack: Stack[ServiceFactory[String, String]] = this.stack,
       params: Stack.Params = this.params
@@ -114,9 +115,12 @@ object Echo extends Client[String, String] with Server[String, String] {
 
     protected type In = String
     protected type Out = String
+    protected type Context = TransportContext
 
-    protected def newListener() = Netty3Listener(StringServerPipeline, params)
-    protected def newDispatcher(transport: Transport[In, Out], service: Service[String, String]) =
+    protected def newListener() = Netty4Listener(StringServerPipeline, params)
+    protected def newDispatcher(transport: Transport[String, String] {
+      type Context <: self.Context
+    }, service: Service[String, String]) =
       new SerialServerDispatcher(transport, service)
   }
 

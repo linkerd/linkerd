@@ -11,7 +11,7 @@ regardless of kind. Telemeters may also have kind-specific parameters.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), or [`io.l5d.zipkin`](#zipkin-telemeter).
+kind | _required_ | Either [`io.l5d.prometheus`](#prometheus), [`io.l5d.influxdb`](#influxdb), [`io.l5d.statsd`](#statsd-experimental), [`io.l5d.tracelog`](#tracelog), [`io.l5d.recentRequests`](#recent-requests), or [`io.l5d.zipkin`](#zipkin-telemeter).
 experimental | `false` | Set this to `true` to enable the telemeter if it is experimental.
 
 ## Prometheus
@@ -21,6 +21,8 @@ experimental | `false` | Set this to `true` to enable the telemeter if it is exp
 ```yaml
 telemetry:
 - kind: io.l5d.prometheus
+  path: /admin/metrics/prometheus
+  prefix: linkerd_
 ```
 
 kind: `io.l5d.prometheus`
@@ -29,7 +31,10 @@ Exposes admin endpoints:
 
 * `/admin/metrics/prometheus`: retrieve all metrics in [Prometheus](https://prometheus.io) format
 
-This telemeter has no additional parameters.
+Key | Default Value | Description
+--- | ------------- | -----------
+path | `/admin/metrics/prometheus` | HTTP path where linkerd exposes Prometheus metrics
+prefix | No prefix | Prefix for exposed Prometheus metrics
 
 ## InfluxDB
 
@@ -75,6 +80,10 @@ kind: `io.l5d.statsd`
 connects to a given StatsD server via UDP. Counters and timers/histograms are
 exported immediately, based on sample rate. Gauge export interval is
 configurable.
+
+<aside class="warning">
+The StatsD telemeter is unsupported. Due to how StatsD samples counter increments, this telemeter may cause loss of data for important events (such as failures). While the `sampleRate` property can be increased to decrease data loss, doing so will lead to higher Linkerd latency.
+</aside>
 
 Key | Default Value | Description
 --- | ------------- | -----------

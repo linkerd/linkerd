@@ -40,10 +40,10 @@ class ZkSession(
   private[this] def reconnect(): Unit = {
     if (closing) return
 
-    logger.info(s"Closing zk session $sessionId")
+    logger.info("Closing zk session %s", sessionId)
     zk.close()
     val newClient = clientBuilder()
-    logger.info(s"Starting new zk session ${sessionId(newClient)}")
+    logger.info("Starting new zk session %s", sessionId(newClient))
 
     // Upon initial connection, send auth info, then update `client`
     newClient.state.changes.filter {
@@ -54,7 +54,7 @@ class ZkSession(
         case None => Future.Unit
       }
     }.onSuccess { _ =>
-      logger.info(s"New ZKSession is connected. Session ID: ${sessionId(newClient)}")
+      logger.info("New ZKSession is connected. Session ID: %s", sessionId(newClient))
       client() = newClient
       reconnectBackoff.reset()
     }
@@ -66,7 +66,7 @@ class ZkSession(
       }.toFuture().unit.before {
         val jitter = reconnectBackoff.next()
         logger
-          .error(s"Zookeeper session ${sessionId(newClient)} has expired. Reconnecting in $jitter")
+          .error("Zookeeper session %s has expired. Reconnecting in %s", sessionId(newClient), jitter)
         Future.sleep(jitter)
       }.ensure {
         reconnect()
@@ -104,7 +104,7 @@ class ZkSession(
     def loop(): Future[T] =
       limit { go }.rescue {
         case exc: KeeperException.ConnectionLoss =>
-          logger.warning(s"ConnectionLoss to Zookeeper host. Session $sessionId. Retrying")
+          logger.warning("ConnectionLoss to Zookeeper host. Session %s. Retrying", sessionId)
           retryWithDelay { loop() }
       }
 
@@ -130,7 +130,7 @@ class ZkSession(
             u() = Activity.Failed(e)
 
           case Throw(exc) =>
-            logger.error(s"Operation failed with $exc. Session $sessionId")
+            logger.error("Operation failed with %s. Session %s", exc, sessionId)
             u() = Activity.Failed(exc)
             fireAndForget { retryWithDelay { loop() } }
 
@@ -154,7 +154,7 @@ class ZkSession(
                 sessionState == SessionState.SaslAuthenticated |
                 sessionState == SessionState.SyncConnected =>
                 u() = ok
-                logger.info(s"Reacquiring watch on $sessionState. Session: $sessionId")
+                logger.info("Reacquiring watch on %s. Session: %s", sessionState, sessionId)
                 // We may have lost or never set our watch correctly. Retry to ensure we stay connected
                 fireAndForget { retryWithDelay { loop() } }
 
@@ -166,13 +166,15 @@ class ZkSession(
               // Disconnected, NoSyncConnected
               case WatchState.SessionState(sessionState) if sessionState == SessionState.Disconnected |
                 sessionState == SessionState.NoSyncConnected =>
-                logger.warning(s"Intermediate Failure session state: $sessionState. " +
-                  s"Session: $sessionId. Data is now unavailable.")
+                logger.warning(
+                  "Intermediate Failure session state: %s. Session: %s. Data is now unavailable.",
+                  sessionState, sessionId
+                )
                 u() = Activity.Failed(new Exception("" + sessionState))
               // Do NOT keep retrying, wait to be reconnected automatically by the underlying session
 
               case WatchState.SessionState(sessionState) =>
-                logger.error(s"Unexpected session state $sessionState. Session: $sessionId")
+                logger.error("Unexpected session state %s. Session: %s", sessionState, sessionId)
                 u() = Activity.Failed(new Exception("" + sessionState))
                 // We don't know what happened. Retry.
                 fireAndForget { retryWithDelay { loop() } }

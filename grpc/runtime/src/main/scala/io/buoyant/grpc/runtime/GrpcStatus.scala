@@ -1,8 +1,30 @@
 package io.buoyant.grpc.runtime
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.twitter.finagle.buoyant.h2
+import scala.util.Try
 import scala.util.control.NoStackTrace
 
+@JsonSubTypes(Array(
+  new Type(value = classOf[GrpcStatus.Ok], name = "Ok"),
+  new Type(value = classOf[GrpcStatus.Canceled], name = "Cancelled"),
+  new Type(value = classOf[GrpcStatus.Unknown], name = "Unknown"),
+  new Type(value = classOf[GrpcStatus.InvalidArgument], name = "InvalidArgument"),
+  new Type(value = classOf[GrpcStatus.DeadlineExceeded], name = "DeadlineExceeded"),
+  new Type(value = classOf[GrpcStatus.NotFound], name = "NotFound"),
+  new Type(value = classOf[GrpcStatus.AlreadyExists], name = "AlreadyExists"),
+  new Type(value = classOf[GrpcStatus.PermissionDenied], name = "PermissionDenied"),
+  new Type(value = classOf[GrpcStatus.Unauthenticated], name = "Unauthenticated"),
+  new Type(value = classOf[GrpcStatus.ResourceExhausted], name = "ResourceExhausted"),
+  new Type(value = classOf[GrpcStatus.FailedPrecondition], name = "FailedPrecondition"),
+  new Type(value = classOf[GrpcStatus.Aborted], name = "Aborted"),
+  new Type(value = classOf[GrpcStatus.OutOfRange], name = "OutOfRange"),
+  new Type(value = classOf[GrpcStatus.Unimplemented], name = "Unimplemented"),
+  new Type(value = classOf[GrpcStatus.Internal], name = "Internal"),
+  new Type(value = classOf[GrpcStatus.Unavailable], name = "Unavailable"),
+  new Type(value = classOf[GrpcStatus.DataLoss], name = "DataLoss")
+))
 sealed abstract class GrpcStatus(val code: Int) extends NoStackTrace {
   def message: String
 
@@ -52,8 +74,23 @@ object GrpcStatus {
     case 16 => Unauthenticated(msg)
     case code => Other(code, msg)
   }
+  private[this] val StatusKey = "grpc-status"
+  private[this] val MessageKey = "grpc-message"
 
   def unapply(s: GrpcStatus): Option[(Int, String)] = Some((s.code, s.message))
+
+  def unapply(frame: h2.Frame): Option[GrpcStatus] =
+    frame match {
+      case trailers: h2.Frame.Trailers =>
+        for {
+          headerValue <- trailers.get(StatusKey)
+          code <- Try(headerValue.toInt).toOption
+          status = GrpcStatus(code, trailers.get(MessageKey).getOrElse(""))
+        } yield status
+      case _ => None
+    }
+
+  def unapply(message: h2.Message): Option[GrpcStatus] = tryFromHeaders(message.headers)
 
   def fromReset(rst: h2.Reset): GrpcStatus = rst match {
     case h2.Reset.NoError |
@@ -72,20 +109,27 @@ object GrpcStatus {
     case _ => h2.Reset.Cancel
   }
 
-  def fromTrailers(tlrs: h2.Frame.Trailers): GrpcStatus = {
-    val msg = tlrs.get("grpc-message").getOrElse("")
-    tlrs.get("grpc-status") match {
-      case Some(code) =>
-        try GrpcStatus(code.toInt, msg)
-        catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
-      case _ => GrpcStatus.Unknown(msg)
+  def tryFromHeaders(headers: h2.Headers): Option[GrpcStatus] = {
+    val msg = headers.get(MessageKey).getOrElse("")
+    headers.get(StatusKey).map { code =>
+      try GrpcStatus(code.toInt, msg)
+      catch { case _: NumberFormatException => GrpcStatus.Unknown(s"bad status code: '$code'") }
     }
   }
 
-  private def toTrailers(status: GrpcStatus): h2.Frame.Trailers =
-    h2.Frame.Trailers(
-      "grpc-status" -> status.code.toString,
-      "grpc-message" -> status.message
-    )
+  def fromHeaders(headers: h2.Headers): GrpcStatus = {
+    val msg = headers.get(MessageKey).getOrElse("")
+    tryFromHeaders(headers).getOrElse(GrpcStatus.Unknown(msg))
+  }
 
+  private def toTrailers(s: GrpcStatus): h2.Frame.Trailers = {
+    if (s.message == null || s.message.isEmpty) {
+      h2.Frame.Trailers(StatusKey -> s.code.toString)
+    } else {
+      h2.Frame.Trailers(
+        StatusKey -> s.code.toString,
+        MessageKey -> s.message
+      )
+    }
+  }
 }

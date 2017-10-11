@@ -203,7 +203,7 @@ object H2FrameCodec {
 
     val encoder = {
       val fw = new Http2OutboundFrameLogger(new DefaultHttp2FrameWriter, frameLogger)
-      new BetterHttp2ConnectionEncoder(conn, fw)
+      new DefaultHttp2ConnectionEncoder(conn, fw)
     }
 
     val decoder = {

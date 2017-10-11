@@ -91,7 +91,7 @@ class ThriftNamerClient(
 
           // XXX we have to handle other errors, right?
           case Throw(e) =>
-            log.error(e, s"""bind ${path.show}""")
+            log.error(e, "bind %s", path.show)
             Trace.recordBinary("namerd.client/bind.exc", e.toString)
             states() = Activity.Failed(e)
         }
@@ -99,7 +99,7 @@ class ThriftNamerClient(
 
       loop(TStamp.empty)
       Closable.make { deadline =>
-        log.debug(s"""bind released ${path.show}""")
+        log.debug("bind released %s", path.show)
         stopped = true
         Future.Unit
       }
@@ -196,7 +196,7 @@ class ThriftNamerClient(
             }
 
           case Throw(e) =>
-            log.error(e, s"addr on $idPath")
+            log.error(e, "addr on %s", idPath)
             Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
             addr() = Addr.Failed(e)
         }
@@ -204,7 +204,7 @@ class ThriftNamerClient(
 
       loop(TStamp.empty)
       Closable.make { deadline =>
-        log.debug(s"addr released $idPath")
+        log.debug("addr released %s", idPath)
         stopped = true
         Future.Unit
       }
@@ -286,7 +286,7 @@ class ThriftNamerClient(
             loop(stamp1)
 
           case Throw(e@thrift.DelegationFailure(reason)) =>
-            log.error(s"delegation failed: $reason")
+            log.error("delegation failed: %s", reason)
             states() = Activity.Failed(e)
 
           case Throw(e) =>
@@ -325,18 +325,18 @@ class ThriftNamerClient(
             loop(stamp1)
 
           case Throw(e@thrift.DtabFailure(reason)) =>
-            log.error(s"dtab $namespace lookup failed: $reason")
+            log.error("dtab %s lookup failed: %s", namespace, reason)
             states() = Activity.Failed(e)
 
           case Throw(e) =>
-            log.error(e, s"dtab $namespace lookup failed")
+            log.error(e, "dtab %s lookup failed", namespace)
             states() = Activity.Failed(e)
         }
       }
 
       loop(TStamp.empty)
       Closable.make { deadline =>
-        log.debug(s"dtab $namespace released")
+        log.debug("dtab %s released", namespace)
         stopped = true
         Future.Unit
       }

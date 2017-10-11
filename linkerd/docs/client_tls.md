@@ -53,7 +53,7 @@ to destination services.
 
 Key               | Default Value                              | Description
 ----------------- | ------------------------------------------ | -----------
-disableValidation | false                                      | Enable this to skip hostname validation (unsafe).
+disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
 trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
 clientAuth        | none                                       | A client auth object used to sign requests.
@@ -64,6 +64,10 @@ Key      | Default Value | Description
 ---------|---------------|-------------
 certPath | _required_    | File path to the TLS certificate file.
 keyPath  | _required_    | File path to the TLS key file.  Must be in PKCS#8 format.
+
+<aside class="warning">
+Setting `disableValidation: true` will force the use of the JDK SSL provider which does not support client auth. Therefore, `disableValidation: true` and `clientAuth` are incompatible.
+</aside>
 
 Any variables captured from the client prefix may be used in the common name.
 

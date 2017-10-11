@@ -25,7 +25,7 @@ object Json {
 }
 
 sealed trait DtabCodec {
-  def contentTypes: Set[String]
+  def mediaTypes: Set[String]
   def write(dtab: Dtab): Buf
   def read(buf: Buf): Try[Dtab]
 }
@@ -33,14 +33,14 @@ sealed trait DtabCodec {
 object DtabCodec {
 
   object JsonCodec extends DtabCodec {
-    val contentTypes = Set(MediaType.Json)
+    val mediaTypes = Set(MediaType.Json)
     def write(dtab: Dtab) = Json.write(dtab)
     def read(buf: Buf) =
       Json.read[IndexedSeq[Dentry]](buf).map(Dtab(_))
   }
 
   object TextCodec extends DtabCodec {
-    val contentTypes = Set("application/dtab", MediaType.Txt)
+    val mediaTypes = Set("application/dtab", MediaType.Txt)
     def write(dtab: Dtab) = Buf.Utf8(dtab.show)
     def read(buf: Buf) = {
       val Buf.Utf8(d) = buf
@@ -50,13 +50,13 @@ object DtabCodec {
 
   def accept(types: Seq[String]): Option[(String, DtabCodec)] =
     types.map(_.toLowerCase).foldLeft[Option[(String, DtabCodec)]](None) {
-      case (None, ct) => byContentType(ct).map(ct -> _)
+      case (None, mt) => byMediaType(mt).map(mt -> _)
       case (t, _) => t
     }
 
-  def byContentType(ct: String): Option[DtabCodec] =
-    if (JsonCodec.contentTypes(ct)) Some(DtabCodec.JsonCodec)
-    else if (TextCodec.contentTypes(ct)) Some(DtabCodec.TextCodec)
+  def byMediaType(ct: String): Option[DtabCodec] =
+    if (JsonCodec.mediaTypes(ct)) Some(DtabCodec.JsonCodec)
+    else if (TextCodec.mediaTypes(ct)) Some(DtabCodec.TextCodec)
     else None
 
   val default = (MediaType.Json, JsonCodec)

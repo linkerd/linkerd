@@ -53,7 +53,7 @@ case class IstioLoggerConfig(
   private[http] val host = mixerHost.getOrElse(DefaultMixerHost)
   @JsonIgnore
   private[http] val port = mixerPort.map(_.port).getOrElse(DefaultMixerPort)
-  log.info(s"connecting to Istio Mixer at $host:$port")
+  log.info("connecting to Istio Mixer at %s:%d", host, port)
 
   @JsonIgnore
   private[this] val mixerDst = Name.bound(Address(host, port))

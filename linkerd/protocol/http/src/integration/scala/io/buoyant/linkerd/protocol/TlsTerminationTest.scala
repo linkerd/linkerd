@@ -61,8 +61,6 @@ class TlsTerminationTest extends FunSuite with Awaits {
              |    /svc/clifford => /p/dog ;
              |  servers:
              |  - port: 0
-             |    engine:
-             |      kind: netty4
              |    tls:
              |      certPath: ${certs.serviceCerts("linkerd").cert.getPath}
              |      keyPath: ${certs.serviceCerts("linkerd").key.getPath}

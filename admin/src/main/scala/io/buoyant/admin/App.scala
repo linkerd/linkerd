@@ -7,7 +7,6 @@ import com.twitter.server._
 trait App extends TApp
   with Linters
   with Logging
-  with EventSink
   with TimeZoneLogFormat
   with Hooks
   with Lifecycle

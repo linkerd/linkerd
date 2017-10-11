@@ -510,7 +510,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    */
   def send(msg: SendMsg): Future[Future[Unit]] = {
     val headersF = writeHeaders(msg.headers, msg.stream.isEmpty)
-    val streamFF = headersF.map(_ => writeStream(msg.stream))
+    val streamFF = headersF.map { _ =>
+      if (msg.stream.isEmpty) Future.Unit
+      else writeStream(msg.stream)
+    }
 
     val writeF = streamFF.flatten
     onReset.onFailure(writeF.raise(_))
@@ -539,7 +542,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         localReset(Reset.InternalError)
     }
 
-    streamFF
+    localResetOnCancel(streamFF)
   }
 
   private[this] val writeHeaders: (Headers, Boolean) => Future[Unit] = { (hdrs, eos) =>
@@ -590,7 +593,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 }
 
 object Netty4StreamTransport {
-  private lazy val log = Logger.get(getClass.getName)
+  private lazy val log = Logger.get("h2")
 
   /** Helper: a state that supports Reset.  (All but Closed) */
   private trait ResettableState {
@@ -615,7 +618,7 @@ object Netty4StreamTransport {
     override def read(): Future[Frame] = Future.exception(Reset.NoError)
   }
 
-  class StatsReceiver(underlying: FStatsReceiver) {
+  class StatsReceiver(val underlying: FStatsReceiver) {
     private[this] val local = underlying.scope("local")
     private[this] val localDataBytes = local.stat("data", "bytes")
     private[this] val localDataFrames = local.counter("data", "frames")

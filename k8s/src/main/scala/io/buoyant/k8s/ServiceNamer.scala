@@ -1,13 +1,14 @@
 package io.buoyant.k8s
 
+import java.net.InetSocketAddress
 import com.twitter.conversions.time._
-import com.twitter.finagle.{Service => _, _}
+import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
+import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
-import io.buoyant.k8s.Ns.ObjectCache
 import io.buoyant.k8s.v1._
-import java.net.InetSocketAddress
+import scala.Function.untupled
 import scala.collection.mutable
 
 /**
@@ -23,28 +24,54 @@ class ServiceNamer(
   mkApi: String => NsApi,
   backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer) extends Namer {
+  import ServiceNamer._
 
-  private[this] val PrefixLen = 3
   private[this] val variablePrefixLength = PrefixLen + labelName.size
 
-  def lookup(path: Path): Activity[NameTree[Name]] = (path.take(variablePrefixLength), labelName) match {
-    case (id@Path.Utf8(nsName, portName, serviceName), None) =>
-      val nameTree = serviceNs.get(nsName.toLowerCase, None).get(serviceName.toLowerCase, portName.toLowerCase).map(toNameTree(path, _))
-      Activity(nameTree.map(Activity.Ok(_)))
+  // retrieves a memoized activity representing a watch for a
+  // (namespace name, service name, label selector), or establishes
+  // a new watch activity if one does not yet exist.
+  private[this] val service: (String, String, Option[String]) => Activity[Svc] =
+    untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
+      case (nsName, serviceName, labelSelector) =>
+        mkApi(nsName)
+          .service(serviceName)
+          .activity(
+            Svc.fromResponse(nsName, serviceName),
+            labelSelector = labelSelector
+          ) { case (svc, event) => svc.update(event) }
+    })
 
-    case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
-      val nameTree = serviceNs
-        .get(nsName.toLowerCase, Some(s"$label=$labelValue"))
-        .get(serviceName.toLowerCase, portName.toLowerCase)
-        .map(toNameTree(path, _))
+  def lookup(path: Path): Activity[NameTree[Name]] =
+    (path.take(variablePrefixLength), labelName) match {
+      case (id@Path.Utf8(nsName, portName, serviceName), None) =>
+        // "unstable" activity - the activity will update when the existence of
+        // the address changes, *or* when the value of the address changes.
+        service(nsName.toLowerCase, serviceName.toLowerCase, None)
+          .map { _.lookup(portName.toLowerCase) }
+          // stabilize the activity by converting it into an
+          // `Activity[Option[Var[Address]]]`, where the outer `Activity` will
+          // update if the `Option` changes, and the inner `Var` will update on
+          // changes to the value of the `Address`.
+          .stabilizeExistence
+          // convert the contents of the stable activity to a `NameTree`.
+          .map(toNameTree(path, _))
+      case (id@Path.Utf8(nsName, portName, serviceName, labelValue), Some(label)) =>
+        val labelSelector = Some(s"$label=$labelValue")
+        // as above, create an unstable activity, stabilize it, and then
+        // convert to a `NameTree`.
+        service(nsName.toLowerCase, serviceName.toLowerCase, labelSelector)
+          .map { _.lookup(portName.toLowerCase) }
+          .stabilizeExistence
+          .map(toNameTree(path, _))
+      case _ =>
+        Activity.value(NameTree.Neg)
+    }
 
-      Activity(nameTree.map(Activity.Ok(_)))
-
-    case _ =>
-      Activity.value(NameTree.Neg)
-  }
-
-  private[this] def toNameTree(path: Path, svcAddress: Option[Var[Address]]): NameTree[Name.Bound] = svcAddress match {
+  private[this] def toNameTree(
+    path: Path,
+    svcAddress: Option[Var[Address]]
+  ): NameTree[Name.Bound] = svcAddress match {
     case Some(address) =>
       val residual = path.drop(variablePrefixLength)
       val id = path.take(variablePrefixLength)
@@ -54,144 +81,12 @@ class ServiceNamer(
       NameTree.Neg
   }
 
-  private[this] def getPort(service: Service, portName: String): Option[Int] =
-    for {
-      spec <- service.spec
-      port <- spec.ports.find(_.name == portName)
-    } yield port.port
-
-  private[this] val serviceNs = new Ns[Service, ServiceWatch, ServiceList, ServiceCache](backoff, timer) {
-    override protected def mkResource(name: String) = mkApi(name).services
-    override protected def mkCache(name: String) = new ServiceCache(name)
-  }
 }
+private[this] object ServiceNamer {
 
-class ServiceCache(namespace: String)
-  extends ObjectCache[Service, ServiceWatch, ServiceList] {
+  val PrefixLen = 3
 
-  /**
-   * We can stabilize this by changing the type to Var[Option[Var[T]]].
-   * If this Option changes from None to Some or vice versa, the outer Var will
-   * update.  If the value contained in the Some changes, only the inner Var
-   * will update.
-   */
-  private[this] def stabilize[T](unstable: Var[Option[T]]): Var[Option[Var[T]]] = {
-    val init = unstable.sample().map(Var(_))
-    Var.async[Option[VarUp[T]]](init) { update =>
-      // the current inner Var, null if the outer Var is None
-      @volatile var current: VarUp[T] = null
-
-      unstable.changes.respond {
-        case Some(t) if current == null =>
-          // T created
-          current = Var(t)
-          update() = Some(current)
-        case Some(t) =>
-          // T modified
-          current() = t
-        case None =>
-          // T deleted
-          current = null
-          update() = None
-      }
-    }
-  }
-
-  def get(serviceName: String, portName: String): Var[Option[Var[Address]]] = synchronized {
-    // we call this unstable because every change to the Address will cause
-    // the entire Var[Option[Address]] to update.
-    val unstable: Var[Option[Address]] = cache.get(serviceName) match {
-      case Some(ports) =>
-        ports.map(_.ports.get(portName))
-      case None =>
-        val ports = Var(ServiceCache.CacheEntry(Map.empty, Map.empty))
-        cache += serviceName -> ports
-        ports.map(_.ports.get(portName))
-    }
-
-    stabilize(unstable)
-  }
-
-  def getPortMapping(serviceName: String, port: Int): Var[Option[Var[String]]] = synchronized {
-    // we call this unstable because every change to the target port will cause
-    // the entire Var[Option[Int]] to update.
-    val unstable: Var[Option[String]] = cache.get(serviceName) match {
-      case Some(ports) =>
-        ports.map(_.portMap.get(port))
-      case None =>
-        val ports = Var(ServiceCache.CacheEntry(Map.empty, Map.empty))
-        cache += serviceName -> ports
-        ports.map(_.portMap.get(port))
-    }
-
-    stabilize(unstable)
-  }
-
-  private[this]type VarUp[T] = Var[T] with Updatable[T]
-
-  private[this] var cache = Map.empty[String, VarUp[ServiceCache.CacheEntry]]
-
-  def initialize(list: ServiceList): Unit = synchronized {
-    val services = for {
-      service <- list.items
-      meta <- service.metadata
-      name <- meta.name
-    } yield name -> Var(ServiceCache.extractPorts(service))
-    cache = services.toMap
-  }
-
-  def update(watch: ServiceWatch): Unit = synchronized {
-    watch match {
-      case ServiceAdded(service) =>
-        for {
-          meta <- service.metadata
-          name <- meta.name
-        } {
-          log.info("k8s ns %s added service: %s", namespace, name)
-          cache.get(name) match {
-            case Some(ports) =>
-              ports() = ServiceCache.extractPorts(service)
-            case None =>
-              cache += (name -> Var(ServiceCache.extractPorts(service)))
-          }
-        }
-      case ServiceModified(service) =>
-        for {
-          meta <- service.metadata
-          name <- meta.name
-        } {
-          cache.get(name) match {
-            case Some(ports) =>
-              log.info("k8s ns %s modified service: %s", namespace, name)
-              ports() = ServiceCache.extractPorts(service)
-            case None =>
-              log.warning("k8s ns %s received modified watch for unknown service %s", namespace, name)
-          }
-        }
-      case ServiceDeleted(service) =>
-        for {
-          meta <- service.metadata
-          name <- meta.name
-        } {
-          log.debug("k8s ns %s deleted service : %s", namespace, name)
-          cache.get(name) match {
-            case Some(ports) =>
-              ports() = ServiceCache.CacheEntry(Map.empty, Map.empty)
-            case None =>
-              cache += (name -> Var(ServiceCache.CacheEntry(Map.empty, Map.empty)))
-          }
-        }
-      case ServiceError(status) =>
-        log.error("k8s ns %s service port watch error %s", namespace, status)
-    }
-  }
-}
-
-object ServiceCache {
-
-  case class CacheEntry(ports: Map[String, Address], portMap: Map[Int, String])
-
-  private def extractPorts(service: Service): CacheEntry = {
+  def unpackService(service: v1.Service): (Map[String, Address], Map[Int, String]) = {
     val ports = mutable.Map.empty[String, Address]
     val portMap = mutable.Map.empty[Int, String]
 
@@ -201,18 +96,109 @@ object ServiceCache {
       status <- service.status.toSeq
       lb <- status.loadBalancer.toSeq
       spec <- service.spec.toSeq
-      port <- spec.ports
+      v1.ServicePort(port, targetPort, name) <- spec.ports
     } {
       for {
         ingress <- lb.ingress.toSeq.flatten
         hostname <- ingress.hostname.orElse(ingress.ip)
-      } ports += port.name -> Address(new InetSocketAddress(hostname, port.port))
+      } ports += name -> Address(new InetSocketAddress(hostname, port))
 
-      portMap += (port.targetPort match {
-        case Some(targetPort) => port.port -> targetPort
-        case None => port.port -> port.port.toString
+      portMap += (targetPort match {
+        case Some(target) => port -> target
+        case None => port -> port.toString
       })
     }
-    CacheEntry(ports.toMap, portMap.toMap)
+    (ports.toMap, portMap.toMap)
+  }
+
+  /**
+   * Internal representation of a Kubernetes service as a map of port names
+   * to `Address`es and a map of port numbers to port names.
+   * @param ports a map of `String`s representing port names to `Address`es.
+   * @param portMappings a map of port numbers to port names.
+   */
+  case class Svc(
+    nsName: String,
+    serviceName: String,
+    ports: Map[String, Address],
+    portMappings: Map[Int, String]
+  ) {
+    val portLogger = PortMapLogger(nsName, serviceName)
+
+    /**
+     * Look up the port named `portName` and return the corresponding
+     * `Address`, if it exists.
+     * @param portName the port name to look up.
+     * @return `None` if no port named `portName` exists, `Some(Address)`
+     *        a port was found.
+     */
+    def lookup(portName: String): Option[Address] =
+      Try(portName.toInt).toOption match {
+        // if the port name could be parsed as an integer, look up a
+        // numbered port.
+        case Some(portNumber) => lookupNumberedPort(portNumber)
+        // otherwise, look up a named port.
+        case None => lookupNamedPort(portName)
+      }
+
+    private[this] def lookupNamedPort(portName: String): Option[Address] =
+      ports.get(portName)
+
+    private[this] def lookupNumberedPort(portNumber: Int): Option[Address] =
+      for {
+        portName <- portMappings.get(portNumber)
+        address <- ports.get(portName)
+      } yield address
+
+    @inline
+    private[this] def newState(service: v1.Service): Svc = {
+      val (newPorts, newMappings) = unpackService(service)
+      portLogger.logDiff(ports, newPorts)
+      portLogger.logDiff(portMappings, newMappings)
+      this.copy(ports = newPorts, portMappings = newMappings)
+    }
+
+    /**
+     * Update this `Svc` with a [[v1.ServiceWatch]] watch event
+     * @param event the [[v1.ServiceWatch]] watch event that occurred.
+     * @return an updated `Svc` representing the watched service.
+     */
+    def update(event: v1.ServiceWatch): Svc =
+      event match {
+        case v1.ServiceAdded(s) =>
+          log.debug("k8s ns %s service %s added", nsName, serviceName)
+          newState(s)
+        case v1.ServiceModified(s) =>
+          log.debug("k8s ns %s service %s modified", nsName, serviceName)
+          newState(s)
+        case v1.ServiceDeleted(_) =>
+          log.debug("k8s ns %s service %s deleted", nsName, serviceName)
+          this.copy(ports = Map.empty, portMappings = Map.empty)
+        case v1.ServiceError(error) =>
+          log.warning(
+            "k8s ns %s service %s error %s",
+            nsName, serviceName, error
+          )
+          this
+      }
+  }
+
+  object Svc {
+    /**
+     * Creates a new [[Svc]] from a services API response.
+     * @param response an `Option` containing either a [[v1.Service]] API
+     *                 response, or `None` if the service does not exist.
+     * @return either a [[Svc]] populated by the service API response, if
+     *         the service exists, or a [[Svc]] with empty ports and port
+     *         mappings maps if the service does not exist.
+     */
+    def fromResponse(nsName: String, serviceName: String)(response: Option[v1.Service]): Svc =
+      response match {
+        case Some(service: v1.Service) =>
+          val (ports, mappings) = unpackService(service)
+          Svc(nsName, serviceName, ports, mappings)
+        case None =>
+          Svc(nsName, serviceName, Map.empty, Map.empty)
+      }
   }
 }

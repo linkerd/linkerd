@@ -22,7 +22,7 @@ object H2ApplicationProtocol {
       params: Stack.Params,
       next: Stack[ServiceFactory[Request, Response]]
     ): Stack[ServiceFactory[Request, Response]] = {
-      val sslParam = params[Transport.ClientSsl].e.map { config =>
+      val sslParam = params[Transport.ClientSsl].sslClientConfiguration.map { config =>
         val protocols = config.applicationProtocols match {
           case ApplicationProtocols.Supported(protos) => protos :+ ApplicationProtocolNames.HTTP_2
           case ApplicationProtocols.Unspecified => Seq(ApplicationProtocolNames.HTTP_2)

@@ -19,7 +19,7 @@ class DecodingStreamTest extends FunSuite {
         decodedLength += bb.remaining
         bb.remaining
       }
-      protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromTrailers(_)
+      protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromHeaders(_)
     }
 
     // We lay out 4 pseudo-messages across 3 frames:
