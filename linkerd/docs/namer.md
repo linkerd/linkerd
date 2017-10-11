@@ -800,7 +800,7 @@ would be rewritten to `/pfx/foo/resource/name`
 /$/io.buoyant.hostportPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
@@ -821,7 +821,7 @@ would be rewritten to `/pfx/host/port/etc`.
 /$/io.buoyant.porthostPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
