@@ -96,29 +96,31 @@ class DynParamsFactory[Req, Rep](
   @volatile private[this] var closeLeaf: Promise[Time] = new Promise[Time]
   @volatile var closableUnderlying: Closable = Closable.nop
 
-  // don't rebuild the ServiceFactory unless we absolutely need to
-  val dedupParams = new Activity(Var(Activity.Pending, dynamicParams.states.dedup))
-
-  val sf = dedupParams.map { dp =>
+  val sf = dynamicParams.map { p =>
     synchronized {
       updatesCounter.incr()
-      closesCounter.incr()
-      closableUnderlying.close()
       closeLeaf = new Promise[Time]
       // each time the params are updated, make a new ServiceFactory to replace
       // the one currently in use
-      val n = next.make(params ++ dp + HaltClosePropagationFactory.Param(closeLeaf))
-      closableUnderlying = n
-      n
+      val nextFactory = next.make(params ++ p + HaltClosePropagationFactory.Param(closeLeaf))
+
+      closesCounter.incr()
+      // close the previous service factory
+      closableUnderlying.close()
+      closableUnderlying = nextFactory
+      nextFactory
     }
   }
 
+  // don't rebuild the ServiceFactory unless we absolutely need to
+  val dedupSf = new Activity(Var(Activity.Pending, sf.states.dedup))
+
   // keep activity open until the ServiceFactory is closed explicitly
-  val obs = sf.states.respond(_ => ()) // register a listener forever to keep the Activity open
+  private val obs = dedupSf.states.respond(_ => ())
 
   // Proxy the ClientConnection to the underlying ServiceFactory
   override def apply(conn: ClientConnection): Future[Service[Req, Rep]] = {
-    val toFuture = sf.values.toFuture.flatMap(Future.const)
+    val toFuture = dedupSf.values.toFuture.flatMap(Future.const)
     toFuture.flatMap(_.apply(conn))
   }
 
