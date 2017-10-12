@@ -90,11 +90,11 @@ trait FileSvc { self: Svc =>
         case Some(file: Watcher.File.Reg) => file.data
         case _ => Activity.exception(new IllegalStateException(s"unable to find file ${path.getFileName.toString}"))
       }
-    }.map {
+    }.flatMap {
       case Buf.Utf8(svcPrefixConfigs) =>
         val mapper = Parser.objectMapper(svcPrefixConfigs, LoadedInitializers)
-        mapper.readValue[Seq[SvcPrefixConfig]](svcPrefixConfigs)
-      case _ => throw new IllegalStateException(s"unable to read file ${path.getFileName.toString}")
+        Activity.value(mapper.readValue[Seq[SvcPrefixConfig]](svcPrefixConfigs))
+      case _ => Activity.exception(new IllegalStateException(s"unable to read file ${path.getFileName.toString}"))
     }
   }
 

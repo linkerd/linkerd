@@ -6,10 +6,18 @@ import com.twitter.finagle._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util._
 
+/**
+ * Closing a ServiceFactory is difficult to get right; you shouldn't close a ServiceFactory
+ * that someone could later try to pull out of a ServiceFactoryCache.
+ *
+ * This is a module for exercising more precise control on when service factories should be closed.
+ * Instead of propogating all closes indiscriminately, this factory only calls close on its underlying
+ * ServiceFactory when it's closer Param is resolved.
+ */
 object HaltClosePropagationFactory {
   def role: Stack.Role = Stack.Role("HaltClose")
 
-  case class Param(closer: Promise[Time])
+  case class Param(closer: Future[Time])
   implicit object Param extends Stack.Param[Param] {
     override def default: Param = Param(new Promise[Time])
   }
@@ -25,13 +33,11 @@ object HaltClosePropagationFactory {
   }
 }
 
-class HaltClosePropagationFactory[Req, Rep](underlying: ServiceFactory[Req, Rep], closer: Promise[Time]) extends ServiceFactory[Req, Rep] {
+class HaltClosePropagationFactory[Req, Rep](underlying: ServiceFactory[Req, Rep], closer: Future[Time]) extends ServiceFactoryProxy[Req, Rep](underlying) {
   // close the underlying stack if explicitly asked to via closer param
   closer.map(underlying.close)
   // do not propagate normal close requests
-  override def close(deadline: Time): Future[Unit] = Future.Unit
-  override def status: Status = underlying.status
-  def apply(conn: ClientConnection): Future[Service[Req, Rep]] = underlying.apply(conn)
+  override def close(deadline: Time) = Future.Unit
 }
 
 object DynParamsFactory {
@@ -48,6 +54,7 @@ object DynParamsFactory {
     override def description: String = "Dynamically reconfigure the stack"
     override def parameters = Seq(implicitly[Stack.Param[Param]])
 
+    // Stack.insertBefore(...) does not work for leaves, so this is a leaf-specific implementation
     def insertBeforeLeaf(stack: Stack[ServiceFactory[Req, Rep]], module: Stackable[ServiceFactory[Req, Rep]]): Stack[ServiceFactory[Req, Rep]] = stack match {
       case Node(hd, mk, next) => Node(hd, mk, insertBeforeLeaf(next, module))
       case Leaf(_, _) => module.toStack(stack)
@@ -60,6 +67,8 @@ object DynParamsFactory {
       val param.Stats(stats) = params[param.Stats]
       val Param(dynamicParams) = params[Param]
       val dynStats = stats.scope("dynparams")
+      //Insert the HaltClosePropagationFactory immediately before the leaf of the stack
+      //so that we do not accidentally close DynBoundFactory
       val nextWithHaltClose = insertBeforeLeaf(next, HaltClosePropagationFactory.module[Req, Rep])
 
       Stack.Leaf(role, new DynParamsFactory(dynamicParams, params, nextWithHaltClose, dynStats))
@@ -84,42 +93,41 @@ class DynParamsFactory[Req, Rep](
   val updatesCounter = dynStats.counter("updates")
   val closesCounter = dynStats.counter("closes")
 
-  @volatile var closablePromise: Promise[Time] = new Promise[Time]
-  val sf = dynamicParams.map { p =>
+  @volatile private[this] var closeLeaf: Promise[Time] = new Promise[Time]
+  @volatile var closableUnderlying: Closable = Closable.nop
+
+  // don't rebuild the ServiceFactory unless we absolutely need to
+  val dedupParams = new Activity(Var(Activity.Pending, dynamicParams.states.dedup))
+
+  val sf = dedupParams.map { dp =>
     synchronized {
       updatesCounter.incr()
-      closablePromise = new Promise[Time]
+      closesCounter.incr()
+      closableUnderlying.close()
+      closeLeaf = new Promise[Time]
       // each time the params are updated, make a new ServiceFactory to replace
       // the one currently in use
-      next.make(params ++ p + HaltClosePropagationFactory.Param(closablePromise))
+      val n = next.make(params ++ dp + HaltClosePropagationFactory.Param(closeLeaf))
+      closableUnderlying = n
+      n
     }
   }
 
-  // don't rebuild the ServiceFactory unless we absolutely need to
-  val dedupSf = new Activity(Var(Activity.Pending, sf.states.dedup))
-
-  @volatile var closableUnderlying: Closable = Closable.nop
   // keep activity open until the ServiceFactory is closed explicitly
-  private val obs = dedupSf.states.respond {
-    case Activity.Ok(sf) =>
-      closesCounter.incr()
-      // close the previous service factory
-      closableUnderlying.close()
-      closableUnderlying = sf
-    case _ =>
-  }
+  val obs = sf.states.respond(_ => ()) // register a listener forever to keep the Activity open
 
   // Proxy the ClientConnection to the underlying ServiceFactory
   override def apply(conn: ClientConnection): Future[Service[Req, Rep]] = {
-    val toFuture = dedupSf.values.toFuture.flatMap(Future.const)
+    val toFuture = sf.values.toFuture.flatMap(Future.const)
     toFuture.flatMap(_.apply(conn))
   }
 
   override def close(deadline: Time): Future[Unit] = {
     synchronized {
       closesCounter.incr()
-      closablePromise.setValue(deadline)
+      closeLeaf.setValue(deadline)
       closableUnderlying.close(deadline)
+      obs.close(deadline)
     }
   }
 }
