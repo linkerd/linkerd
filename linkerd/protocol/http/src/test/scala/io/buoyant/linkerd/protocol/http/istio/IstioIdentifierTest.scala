@@ -1,11 +1,13 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd.protocol.http.istio
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Request => FRequest, Response => FResponse}
 import com.twitter.finagle.{Dtab, Path, Service}
 import com.twitter.util.Future
-import io.buoyant.k8s.istio.{ApiserverClient, ClusterCache, DiscoveryClient, RouteCache}
+import io.buoyant.grpc.runtime.GrpcStatus
+import io.buoyant.k8s.istio._
+import io.buoyant.k8s.istio.mixer.{MixerCheckStatus, MixerClient}
 import io.buoyant.router.RoutingFactory._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
@@ -174,10 +176,24 @@ class IstioIdentifierTest extends FunSuite with Awaits {
   }
 
   val client = new ApiserverClient(pilotService, 5.seconds)
-  val routeCache = new RouteCache(client)
+  val routeCache = new RouteCacheBackedByApi(client)
   val discoveryClient = new DiscoveryClient(clusterService, 5.seconds)
-  val clusterCache = new ClusterCache(discoveryClient)
-  val identifier = new IstioIdentifier(Path.Utf8("svc"), () => Dtab.base, routeCache, clusterCache)
+  val clusterCache = new ClusterCacheBackedByApi(discoveryClient)
+
+  val noOpMixerClient = new MixerClient(null) {
+    override def report(
+      responseCode: ResponseCodeIstioAttribute,
+      requestPath: RequestPathIstioAttribute,
+      targetService: TargetServiceIstioAttribute,
+      sourceLabel: SourceLabelIstioAttribute,
+      targetLabel: TargetLabelsIstioAttribute,
+      duration: ResponseDurationIstioAttribute
+    ) = Future.Done
+
+    override def checkPreconditions(istioRequest: IstioRequest[_]) = Future.value(MixerCheckStatus(GrpcStatus.Ok("")))
+  }
+
+  val identifier = new IstioIdentifier(Path.Utf8("svc"), () => Dtab.base, routeCache, clusterCache, noOpMixerClient)
 
   test("forwards requests if host doesn't match any vhosts") {
     val req = FRequest()

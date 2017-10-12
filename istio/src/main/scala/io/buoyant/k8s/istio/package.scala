@@ -9,4 +9,6 @@ package object istio {
 
   val DefaultMixerHost = "istio-mixer"
   val DefaultMixerPort = 9091
+
+  val IngressAnnotationClass = "istio"
 }

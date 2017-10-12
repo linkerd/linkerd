@@ -7,7 +7,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.util.Future
 import io.buoyant.config.PolymorphicConfig
 
-abstract class HttpLoggerConfig extends PolymorphicConfig { config =>
+abstract class HttpRequestAuthorizerConfig extends PolymorphicConfig { config =>
 
   @JsonIgnore
   def role: Stack.Role
@@ -35,22 +35,22 @@ abstract class HttpLoggerConfig extends PolymorphicConfig { config =>
   }
 }
 
-object HttpLoggerConfig {
+object HttpRequestAuthorizerConfig {
   object param {
-    case class Logger(loggerStack: Stack[ServiceFactory[Request, Response]])
-    implicit object Logger extends Stack.Param[Logger] {
-      val default = Logger(nilStack)
+    case class RequestAuthorizer(loggerStack: Stack[ServiceFactory[Request, Response]])
+    implicit object RequestAuthorizer extends Stack.Param[RequestAuthorizer] {
+      val default = RequestAuthorizer(nilStack)
     }
   }
 
   def module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module[ServiceFactory[Request, Response]] {
-      override val role = Stack.Role("HttpLogger")
-      override val description = "HTTP Logger"
-      override val parameters = Seq(implicitly[Stack.Param[param.Logger]])
+      override val role = Stack.Role("HttpRequestAuthorizer")
+      override val description = "HTTP RequestAuthorizer"
+      override val parameters = Seq(implicitly[Stack.Param[param.RequestAuthorizer]])
       def make(params: Stack.Params, next: Stack[ServiceFactory[Request, Response]]): Stack[ServiceFactory[Request, Response]] = {
-        val param.Logger(loggerStack) = params[param.Logger]
-        loggerStack ++ next
+        val param.RequestAuthorizer(requestAuthorizerStack) = params[param.RequestAuthorizer]
+        requestAuthorizerStack ++ next
       }
     }
 }

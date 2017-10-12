@@ -291,5 +291,4 @@ class ConfigMapInterpreterTest extends FunSuite
     }
   }
 
-
 }

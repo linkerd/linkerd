@@ -18,7 +18,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
-import io.buoyant.linkerd.protocol.h2.{H2ClassifierConfig, H2LoggerConfig}
+import io.buoyant.linkerd.protocol.h2.{H2ClassifierConfig, H2RequestAuthorizerConfig}
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest}
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
@@ -48,7 +48,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
     val clientStack = H2.router.clientStack
       .replace(H2TraceInitializer.role, H2TraceInitializer.clientModule)
       .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
-      .insertAfter(DtabStatsFilter.role, H2LoggerConfig.module)
+      .insertAfter(DtabStatsFilter.role, H2RequestAuthorizerConfig.module)
 
     //  .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
 
@@ -81,7 +81,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
 object H2Initializer extends H2Initializer
 
-case class H2Config(loggers: Option[Seq[H2LoggerConfig]] = None) extends RouterConfig {
+case class H2Config(loggers: Option[Seq[H2RequestAuthorizerConfig]] = None) extends RouterConfig {
 
   var client: Option[H2Client] = None
   var service: Option[H2Svc] = None
@@ -99,7 +99,7 @@ case class H2Config(loggers: Option[Seq[H2LoggerConfig]] = None) extends RouterC
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
       }
-    H2LoggerConfig.param.Logger(loggerStack)
+    H2RequestAuthorizerConfig.param.RequestAuthorizer(loggerStack)
   }
 
   @JsonIgnore
