@@ -1,8 +1,8 @@
 package io.buoyant.k8s.istio
 
 import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.util.DefaultTimer

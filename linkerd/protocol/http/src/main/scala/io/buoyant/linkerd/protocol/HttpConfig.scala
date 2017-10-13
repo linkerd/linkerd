@@ -41,7 +41,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
-      .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
+      .insertAfter(DtabStatsFilter.role, HttpRequestAuthorizerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
       // ensure the client-stack framing filter is placed below the stats filter
@@ -182,7 +182,7 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
 case class HttpConfig(
   httpAccessLog: Option[String],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
-  loggers: Option[Seq[HttpLoggerConfig]],
+  loggers: Option[Seq[HttpRequestAuthorizerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -215,7 +215,7 @@ case class HttpConfig(
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
       }
-    HttpLoggerConfig.param.Logger(loggerStack)
+    HttpRequestAuthorizerConfig.param.RequestAuthorizer(loggerStack)
   }
 
   @JsonIgnore
