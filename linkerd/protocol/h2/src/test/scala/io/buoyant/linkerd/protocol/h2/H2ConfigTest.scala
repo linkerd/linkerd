@@ -8,6 +8,7 @@ import com.twitter.finagle.buoyant.h2.param.FlowControl._
 import com.twitter.finagle.buoyant.h2.param.Settings._
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.ssl.server.SslServerEngineFactory
+import com.twitter.util.Activity
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
@@ -71,7 +72,7 @@ class H2ConfigTest extends FunSuite {
     assert(sparams[MaxHeaderListSize] == MaxHeaderListSize(Some(2049.bytes)))
     assert(sparams[SslServerEngineFactory.Param].factory.isInstanceOf[Netty4ServerEngineFactory])
 
-    val pparams = config.service.get.pathParams.paramsFor(Path.read("/foo"))
+    val pparams = config.service.get.pathParams.paramsFor(Path.read("/foo")).sample()
     assert(pparams[ClassificationTimeout] == ClassificationTimeout(350.millis))
     assert(pparams[BufferSize] == BufferSize(16384, 16384))
 
