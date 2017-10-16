@@ -13,11 +13,9 @@ import io.buoyant.router.{Http, RoutingFactory}
 import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, MustMatchers, OptionValues}
 
-import org.scalatest.{FunSuite, MustMatchers}
-
-class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
+class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with OptionValues {
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -497,6 +495,40 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
       await(s.close())
     }
 
+  }
+
+  test("timestampHeader adds header") {
+
+    val downstream = Downstream.mk("dog") {
+      req =>
+        req.headerMap.keys must contain ("x-request-start")
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  servers:
+          |  - port: 0
+          |    timestampHeader: x-request-start
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
   }
 
   test("without clearContext") {

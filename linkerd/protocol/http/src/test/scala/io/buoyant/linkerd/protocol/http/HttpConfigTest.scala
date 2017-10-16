@@ -7,10 +7,11 @@ import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpInitializer}
 import io.buoyant.router.Http
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
+import io.buoyant.router.http.TimestampHeaderFilter
 import io.buoyant.test.Awaits
-import org.scalatest.{FunSuite, OptionValues}
+import io.buoyant.test.FunSuite
 
-class HttpConfigTest extends FunSuite with Awaits with OptionValues {
+class HttpConfigTest extends FunSuite with Awaits {
 
   def parse(yaml: String): HttpConfig = {
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(MethodAndHostIdentifierInitializer, PathIdentifierInitializer)))
@@ -114,7 +115,6 @@ class HttpConfigTest extends FunSuite with Awaits with OptionValues {
     )
   }
 
-
   test("timestamp header") {
     val yaml = s"""
                   |protocol: http
@@ -122,14 +122,13 @@ class HttpConfigTest extends FunSuite with Awaits with OptionValues {
                   |  kind: io.l5d.methodAndHost
                   |servers:
                   |- port: 5000
-                  |  timestampHeader:
-                  |    header: x-request-start
+                  |  timestampHeader: x-request-start
       """.stripMargin
     val config = parse(yaml)
     val timestamper = config.servers
-      .headOption.value
-      .timestampHeader.value
-    assert(timestamper.header.value == "x-request-start")
+      .head
+      .serverParams[TimestampHeaderFilter.Param]
+    assert(timestamper.header == "x-request-start")
 
   }
 }

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
@@ -20,7 +20,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
-import io.buoyant.router.http.AddForwardedHeader
+import io.buoyant.router.http.{AddForwardedHeader, TimestampHeaderFilter}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -153,14 +153,14 @@ trait HttpSvcConfig extends SvcConfig {
 
 case class HttpServerConfig(
   addForwardedHeader: Option[AddForwardedHeaderConfig],
-  timestampHeader: Option[TimestampHeaderConfig]
+  timestampHeader: Option[String]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams +
-      AddForwardedHeaderConfig.Param(addForwardedHeader) +
-      TimestampHeaderConfig.Param(timestampHeader)
+    super.serverParams
+      .maybeWith(timestampHeader.map(TimestampHeaderFilter.Param(_))) +
+      AddForwardedHeaderConfig.Param(addForwardedHeader)
   }
 }
 

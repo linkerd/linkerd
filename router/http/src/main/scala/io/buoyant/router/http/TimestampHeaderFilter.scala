@@ -14,12 +14,12 @@ object TimestampHeaderFilter {
 
   val DefaultHeader: String = "X-Request-Start"
 
-  case class Param(header: Option[String]) {
+  case class Param(header: String) {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
 
   object Param {
-    implicit val param = Stack.Param(Param(None))
+    implicit val param = Stack.Param(Param(DefaultHeader))
   }
 
   val role = Stack.Role("TimestampHeaderFilter")
@@ -30,9 +30,9 @@ object TimestampHeaderFilter {
     override def make(
       param: Param,
       next: ServiceFactory[Request, Response]
-    ): ServiceFactory[Request, Response] = param match {
-      case Param(Some(header)) => filter(header) andThen next
-      case Param(None) => next
+    ): ServiceFactory[Request, Response] = {
+      val Param(header) = param
+      filter(header) andThen next
     }
   }
 
