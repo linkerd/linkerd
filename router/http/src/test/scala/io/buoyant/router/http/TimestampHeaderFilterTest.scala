@@ -12,22 +12,24 @@ class TimestampHeaderFilterTest extends FunSuite with OptionValues {
     Future.value(Response())
   }
 
-  val DefaultHeader = "X-Request-Start"
-
   test("adds timestamp header") {
-    val svc = TimestampHeaderFilter.filter(DefaultHeader) andThen Ok
+    val svc = TimestampHeaderFilter
+      .filter(TimestampHeaderFilter.DefaultHeader)
+      .andThen(Ok)
 
     val req = Request()
     req.method = Method.Head
     req.uri = ""
 
     val rsp = await(svc(req))
-    assert(rsp.headerMap.contains(DefaultHeader))
+    assert(rsp.headerMap.contains(TimestampHeaderFilter.DefaultHeader))
 
   }
 
   test("timestamp header contains request time") {
-    val svc = TimestampHeaderFilter.filter(DefaultHeader) andThen Ok
+    val svc = TimestampHeaderFilter
+      .filter(TimestampHeaderFilter.DefaultHeader)
+      .andThen(Ok)
 
     val req = Request()
     req.method = Method.Head
@@ -39,7 +41,11 @@ class TimestampHeaderFilterTest extends FunSuite with OptionValues {
     }
     val rsp = await(rspF)
     assert(Time.now != t_0)
-    assert(rsp.headerMap.get(DefaultHeader).value == t_0.inMillis.toString)
+    assert(
+      rsp.headerMap
+        .get(TimestampHeaderFilter.DefaultHeader)
+        .value == t_0.inMillis.toString
+    )
   }
 
 }

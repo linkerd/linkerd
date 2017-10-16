@@ -152,12 +152,15 @@ trait HttpSvcConfig extends SvcConfig {
 }
 
 case class HttpServerConfig(
-  addForwardedHeader: Option[AddForwardedHeaderConfig]
+  addForwardedHeader: Option[AddForwardedHeaderConfig],
+  timestampHeader: Option[TimestampHeaderConfig]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams + AddForwardedHeaderConfig.Param(addForwardedHeader)
+    super.serverParams +
+      AddForwardedHeaderConfig.Param(addForwardedHeader) +
+      TimestampHeaderConfig.Param(timestampHeader)
   }
 }
 

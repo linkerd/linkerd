@@ -12,38 +12,37 @@ import com.twitter.util.Time
  */
 object TimestampHeaderFilter {
 
-  case class Header(header: String) {
-    def mk(): (Header, Stack.Param[Header]) = (this, Header.param)
+  val DefaultHeader: String = "X-Request-Start"
+
+  case class Param(header: Option[String]) {
+    def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
 
-  object Header {
-    implicit val param = Stack.Param(Header("X-Request-Start"))
+  object Param {
+    implicit val param = Stack.Param(Param(None))
   }
 
   val role = Stack.Role("TimestampHeaderFilter")
 
-  object module extends Stack.Module1[
-    TimestampHeaderFilter.Header,
-    ServiceFactory[Request, Response]
-  ] {
+  object module extends Stack.Module1[Param, ServiceFactory[Request, Response]] {
     override val role: Stack.Role = TimestampHeaderFilter.role
     override val description = "Adds a timestamp header to requests"
     override def make(
-      param: TimestampHeaderFilter.Header,
+      param: Param,
       next: ServiceFactory[Request, Response]
-    ): ServiceFactory[Request, Response] = {
-      val Header(header) = param
-      filter(header).andThen(next)
+    ): ServiceFactory[Request, Response] = param match {
+      case Param(Some(header)) => filter(header) andThen next
+      case Param(None) => next
     }
   }
 
- def filter(header: String): Filter[Request, Response, Request, Response] =
-   (req: Request, svc: Service[Request, Response]) => {
-     val reqT = Time.now
-     svc(req).map { rsp =>
-       rsp.headerMap += header -> reqT.inMillis.toString
-       rsp
-     }
-   }
+  def filter(header: String): Filter[Request, Response, Request, Response] =
+    (req: Request, svc: Service[Request, Response]) => {
+      val reqT = Time.now
+      svc(req).map { rsp =>
+        rsp.headerMap += header -> reqT.inMillis.toString
+        rsp
+      }
+    }
 
 }
