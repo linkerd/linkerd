@@ -1,37 +1,43 @@
 package io.buoyant.router.http
 
 import com.twitter.finagle.{Service, Stack}
-import com.twitter.finagle.http.{Method, Request, Response}
+import com.twitter.finagle.http.{HeaderMap, Method, Request, Response}
 import com.twitter.util.{Future, Time}
 import io.buoyant.test.FunSuite
 import org.scalatest.OptionValues
 
 class TimestampHeaderFilterTest extends FunSuite with OptionValues {
 
-  val Ok = Service.mk[Request, Response] { req =>
-    Future.value(Response())
-  }
-
   val Header = "X-Request-Start"
 
   test("adds timestamp header") {
+    var headers: Option[HeaderMap] = None
+    val downstream = Service.mk[Request, Response] { req =>
+      headers = Some(req.headerMap)
+      Future.value(Response())
+    }
     val svc = TimestampHeaderFilter
       .filter(Header)
-      .andThen(Ok)
+      .andThen(downstream)
 
     val req = Request()
     req.method = Method.Head
     req.uri = ""
 
     val rsp = await(svc(req))
-    assert(rsp.headerMap.contains(Header))
+    assert(headers.value.contains(Header))
 
   }
 
   test("timestamp header contains request time") {
+    var headers: Option[HeaderMap] = None
+    val downstream = Service.mk[Request, Response] { req =>
+      headers = Some(req.headerMap)
+      Future.value(Response())
+    }
     val svc = TimestampHeaderFilter
       .filter(Header)
-      .andThen(Ok)
+      .andThen(downstream)
 
     val req = Request()
     req.method = Method.Head
@@ -44,7 +50,7 @@ class TimestampHeaderFilterTest extends FunSuite with OptionValues {
     val rsp = await(rspF)
     assert(Time.now != t_0)
     assert(
-      rsp.headerMap
+      headers.value
         .get(Header)
         .value == t_0.inMillis.toString
     )

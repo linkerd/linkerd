@@ -128,7 +128,7 @@ class HttpConfigTest extends FunSuite with Awaits {
     val timestamper = config.servers
       .head
       .serverParams[TimestampHeaderFilter.Param]
-    assert(timestamper.header == "x-request-start")
+    assert(timestamper.header.contains("x-request-start"))
 
   }
 }
