@@ -536,6 +536,43 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     }
   }
 
+  test("no timestampHeader does not add timestamp header") {
+    var headers: Option[HeaderMap] = None
+    val downstream = Downstream.mk("test") {
+      req =>
+        headers = Some(req.headerMap)
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${downstream.dentry.show};
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+
+      resp.status must be (Status.Ok)
+      headers.value.keys must not contain "x-request-start"
+    } finally {
+      await(c.close())
+      await(downstream.server.close())
+      await(s.close())
+    }
+  }
+
   test("without clearContext") {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
