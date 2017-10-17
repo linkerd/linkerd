@@ -21,7 +21,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/svs/$name"),
+      Path.read(s"/svc/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -498,11 +498,10 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
   }
 
   test("timestampHeader adds header") {
-
-    val downstream = Downstream.mk("dog") {
+    var headers: Option[HeaderMap] = None
+    val downstream = Downstream.mk("test") {
       req =>
-        req.headerMap.keys must contain ("x-request-start")
-        Try(req.headerMap.get("x-request-start").value.toLong) must be a 'return
+        headers = Some(req.headerMap)
         val rsp = Response()
         rsp.status = Status.Ok
         rsp
@@ -511,7 +510,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     val yaml =
       s"""|routers:
           |- protocol: http
-          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  dtab: ${downstream.dentry.show};
           |  servers:
           |  - port: 0
           |    timestampHeader: x-request-start
@@ -526,7 +525,10 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     val c = upstream(s)
     try {
       val resp = await(c(req))
+
       resp.status must be (Status.Ok)
+      headers.value.keys must contain ("x-request-start")
+      Try(headers.value.get("x-request-start").value.toLong) must be a 'return
     } finally {
       await(c.close())
       await(downstream.server.close())
