@@ -502,6 +502,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     val downstream = Downstream.mk("dog") {
       req =>
         req.headerMap.keys must contain ("x-request-start")
+        Try(req.headerMap.get("x-request-start").value.toLong) must be a 'return
         val rsp = Response()
         rsp.status = Status.Ok
         rsp
@@ -525,8 +526,10 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     val c = upstream(s)
     try {
       val resp = await(c(req))
+      resp.status must be (Status.Ok)
     } finally {
       await(c.close())
+      await(downstream.server.close())
       await(s.close())
     }
   }
