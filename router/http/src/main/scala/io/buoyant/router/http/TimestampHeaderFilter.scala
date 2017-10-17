@@ -2,7 +2,7 @@ package io.buoyant.router.http
 
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.util.Time
+import com.twitter.util.{Future, Time}
 
 /**
  * Adds a timestamp header to a message.
@@ -38,12 +38,15 @@ object TimestampHeaderFilter {
   }
 
   def filter(header: String): Filter[Request, Response, Request, Response] =
-    (req: Request, svc: Service[Request, Response]) => {
-      val reqT = Time.now
-      svc(req).map { rsp =>
-        rsp.headerMap += header -> reqT.inMillis.toString
-        rsp
+    new SimpleFilter[Request, Response] {
+      override def apply(
+        req: Request,
+        svc: Service[Request, Response]
+      ): Future[Response] = {
+        req.headerMap.add(header, Time.now.inMillis.toString)
+        svc(req)
       }
+
     }
 
 }
