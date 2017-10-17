@@ -12,14 +12,12 @@ import com.twitter.util.Time
  */
 object TimestampHeaderFilter {
 
-  val DefaultHeader: String = "X-Request-Start"
-
-  case class Param(header: String) {
+  case class Param(header: Option[String]) {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
   }
 
   object Param {
-    implicit val param = Stack.Param(Param(DefaultHeader))
+    implicit val param = Stack.Param(Param(None))
   }
 
   val role = Stack.Role("TimestampHeaderFilter")
@@ -31,8 +29,11 @@ object TimestampHeaderFilter {
       param: Param,
       next: ServiceFactory[Request, Response]
     ): ServiceFactory[Request, Response] = {
-      val Param(header) = param
-      filter(header) andThen next
+      param match {
+        case Param(None) => next
+        case Param(Some(header)) => filter(header).andThen(next)
+      }
+
     }
   }
 

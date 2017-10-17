@@ -158,9 +158,9 @@ case class HttpServerConfig(
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams
-      .maybeWith(timestampHeader.map(TimestampHeaderFilter.Param(_))) +
-      AddForwardedHeaderConfig.Param(addForwardedHeader)
+    super.serverParams +
+      AddForwardedHeaderConfig.Param(addForwardedHeader) +
+      TimestampHeaderFilter.Param(timestampHeader)
   }
 }
 
