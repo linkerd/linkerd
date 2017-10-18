@@ -5,10 +5,14 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.{Future, Time}
 
 /**
- * Adds a timestamp header to a message.
+ * Adds a timestamp header to a request.
  *
- * This is intended to be used for the New Relic request queue's
- * `x-request-start` header, but might be useful for other purposes?
+ * The header is configured by the value `TimestampHeaderFilter.Param`:
+ * if the param is `None`, then no header will be added, otherwise, the
+ * header name will be the value of the param.
+ *
+ * The timestamp will have millisecond resolution. Currently, this is not
+ * configurable.
  */
 object TimestampHeaderFilter {
 

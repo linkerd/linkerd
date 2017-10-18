@@ -498,7 +498,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
   }
 
   test("timestampHeader adds header") {
-    var headers: Option[HeaderMap] = None
+    @volatile var headers: Option[HeaderMap] = None
     val downstream = Downstream.mk("test") {
       req =>
         headers = Some(req.headerMap)
@@ -537,7 +537,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
   }
 
   test("no timestampHeader does not add timestamp header") {
-    var headers: Option[HeaderMap] = None
+    @volatile var headers: Option[HeaderMap] = None
     val downstream = Downstream.mk("test") {
       req =>
         headers = Some(req.headerMap)
