@@ -13,17 +13,15 @@ import io.buoyant.router.{Http, RoutingFactory}
 import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, MustMatchers, OptionValues}
 
-import org.scalatest.{FunSuite, MustMatchers}
-
-class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
+class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with OptionValues {
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
     val dentry = Dentry(
-      Path.read(s"/svs/$name"),
+      Path.read(s"/svc/$name"),
       NameTree.read(s"/$$/inet/127.1/$port")
     )
   }
@@ -497,6 +495,82 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers {
       await(s.close())
     }
 
+  }
+
+  test("timestampHeader adds header") {
+    @volatile var headers: Option[HeaderMap] = None
+    val downstream = Downstream.mk("test") {
+      req =>
+        headers = Some(req.headerMap)
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${downstream.dentry.show};
+          |  servers:
+          |  - port: 0
+          |    timestampHeader: x-request-start
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+
+      resp.status must be (Status.Ok)
+      headers.value.keys must contain ("x-request-start")
+      Try(headers.value.get("x-request-start").value.toLong) must be a 'return
+    } finally {
+      await(c.close())
+      await(downstream.server.close())
+      await(s.close())
+    }
+  }
+
+  test("no timestampHeader does not add timestamp header") {
+    @volatile var headers: Option[HeaderMap] = None
+    val downstream = Downstream.mk("test") {
+      req =>
+        headers = Some(req.headerMap)
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp
+    }
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: ${downstream.dentry.show};
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.host = "test"
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+
+      resp.status must be (Status.Ok)
+      headers.value.keys must not contain "x-request-start"
+    } finally {
+      await(c.close())
+      await(downstream.server.close())
+      await(s.close())
+    }
   }
 
   test("without clearContext") {

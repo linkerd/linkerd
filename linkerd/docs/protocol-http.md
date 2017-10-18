@@ -56,11 +56,24 @@ HTTP servers accept additional configuration parameters.
 
 ```yaml
 addForwardedHeader: {}
+timestampHeader: {}
 ```
 
 Key | Default Value | Description
 --- | ------------- | -----------
 addForwardedHeader | null | If set, a `Forwarded` header is added to all requests.  See [below](#http-1-1-forwarded).
+timestampHeader | null | If set, the specified header will be added to outbound requests with a timestamp. See [below](#http-1-1-timestamp).
+
+<a name="http-1-1-timestamp"></a>
+### Adding Timestamp Headers ###
+
+> Example:
+
+```yaml
+timestampHeader: X-Request-Start
+````
+
+Some systems, such as [New Relic](https://docs.newrelic.com/docs/apm/applications-menu/features/request-queue-server-configuration-examples), use a header with a timestamp to measure performance. The optional `timestampHeader:` configuration instructs the HTTP server to add a (millisecond-resolution) timestamp on all outbound requests with the specified header.
 
 <a name="http-1-1-forwarded"></a>
 ### Adding the `Forwarded` header ###
