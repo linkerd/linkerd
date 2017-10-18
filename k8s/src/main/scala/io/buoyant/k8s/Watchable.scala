@@ -45,12 +45,11 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None,
     resourceVersion: Option[String] = None,
-    retryIndefinitely: Boolean = false,
-    watch: Boolean = false
+    retryIndefinitely: Boolean = false
   ): Future[Option[G]] = {
     val req = Api.mkreq(
       http.Method.Get,
-      if (watch) watchPath else path,
+      path,
       None,
       LabelSelectorKey -> labelSelector,
       FieldSelectorKey -> fieldSelector,
@@ -168,8 +167,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
                   case None =>
                     // In this case, we want to try loading the initial information instead before watching again.
                     restartWatches(labelSelector, fieldSelector).map {
-                      case (ws, ver) =>
-                        AsyncStream.fromSeq(ws) ++ _watch(ver)
+                      case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
                     }
                 }
               }.flatten

@@ -150,11 +150,9 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
     fieldSelector: Option[String]
   ): Future[(Seq[W], Option[String])] =
     get(
-      labelSelector,
-      fieldSelector,
-      None,
-      retryIndefinitely = true,
-      watch = true
+      labelSelector = labelSelector,
+      fieldSelector = fieldSelector,
+      retryIndefinitely = true
     ).map { maybeList =>
       val list = maybeList.get // list resources should always exist
       (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
@@ -226,19 +224,14 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
     fieldSelector: Option[String] = None
   ): Future[(Seq[W], Option[String])] =
     get(
-      labelSelector,
-      fieldSelector,
-      None,
-      retryIndefinitely = true,
-      watch = true
+      labelSelector = labelSelector,
+      fieldSelector = fieldSelector,
+      retryIndefinitely = true
     ).map { maybeObj =>
       val watch = maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) }
-      val version =
-        for {
-          obj <- maybeObj
-          meta <- obj.metadata
-          version <- meta.resourceVersion
-        } yield version
-      (watch, version)
+      // object watches don't supply a resource version, since the version associated
+      // with the object is tied to when the object was last modified, and therefore
+      // it may be too old to successfully establish a watch
+      (watch, None)
     }
 }
