@@ -26,7 +26,7 @@ linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 ## Want to try it? ##
 
 We distribute binaries which you can download from the [linkerd releases
-page](releases). We also publish docker images for each release, which you can
+page][releases]. We also publish docker images for each release, which you can
 find on [docker hub][docker].
 
 For instructions on how to configure and run linkerd, see the [user
@@ -93,3 +93,4 @@ specific language governing permissions and limitations under the License.
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
 [zipkin]: https://github.com/openzipkin/zipkin
+[releases]: https://github.com/linkerd/linkerd/releases
