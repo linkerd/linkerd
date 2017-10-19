@@ -223,13 +223,10 @@ class ApiTest extends FunSuite
             }
             Future.value(rsp)
           case 2 =>
-            assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.uri == "/api/v1/namespaces/srv/endpoints")
             val rsp = Response()
             rsp.version = req.version
-            rsp.setContentTypeJson()
-            rsp.headerMap("Transfer-Encoding") = "chunked"
-
-            rsp.writer.write(endpointsList) before rsp.writer.close()
+            rsp.content = endpointsList
             Future.value(rsp)
           case 3 =>
             assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=17575669") // this is the top-level resource version
@@ -344,13 +341,10 @@ class ApiTest extends FunSuite
             }
             Future.value(rsp)
           case 2 =>
-            assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.uri == "/api/v1/namespaces/srv/endpoints")
             val rsp = Response()
             rsp.version = req.version
-            rsp.setContentTypeJson()
-            rsp.headerMap("Transfer-Encoding") = "chunked"
-
-            rsp.writer.write(endpointsList) before rsp.writer.close()
+            rsp.content = endpointsList
             Future.value(rsp)
           case 3 =>
             assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=17575669") // this is the top-level resource version
@@ -416,13 +410,10 @@ class ApiTest extends FunSuite
             }
             Future.value(rsp)
           case 2 =>
-            assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.uri == "/api/v1/namespaces/srv/endpoints")
             val rsp = Response()
             rsp.version = req.version
-            rsp.setContentTypeJson()
-            rsp.headerMap("Transfer-Encoding") = "chunked"
-
-            rsp.writer.write(endpointsList) before rsp.writer.close()
+            rsp.content = endpointsList
             Future.value(rsp)
           case 3 =>
             assert(req.uri == "/api/v1/watch/namespaces/srv/endpoints?resourceVersion=17575669") // this is the top-level resource version
