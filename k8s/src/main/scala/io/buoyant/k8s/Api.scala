@@ -163,12 +163,24 @@ case class ObjectReference(
  */
 trait Watch[O <: KubeObject] extends Ordered[Watch[O]] {
   def resourceVersion: Option[String]
-  def versionNum: Option[Long] = for {
+
+  private[Watch] def versionNum: Option[Long] = for {
     versionString <- resourceVersion
-    version <- Try(versionString.toLong).toOption
-  } yield { version }
+    version <- Try(versionString.toLong)
+      .onFailure {
+        log.warning(
+          "k8s event %s resource version '%s' could not be parsed: %s",
+          this,
+          versionString,
+          _
+        )
+      }
+      .toOption
+  } yield version
+
   override def compare(that: Watch[O]): Int =
-    this.versionNum.get.compare(that.versionNum.get)
+    this.versionNum.getOrElse(0L)
+      .compare(that.versionNum.getOrElse(0L))
 }
 
 object Watch {

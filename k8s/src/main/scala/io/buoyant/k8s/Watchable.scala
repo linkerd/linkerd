@@ -189,12 +189,17 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // two-item window over the stream of watch events.
       stream.paired
         .withFilter {
-          case (Some(a), b) => b >= a
-          // n.b. that this case will never actually happen, since we always have
-          // one element already in the AsyncStream (because our first request is a
-          // non-blocking GET that will have already returned at this point). it would
-          // be nice to not have to treat the prev item optionally in this case...
-          case (None, _) => true
+          // if the new event is older than the previous event, skip it.
+          case (Some(a), b) if b < a =>
+            log.debug(
+              "k8s watch on resource at %s received event with resource version older " +
+              "than the previous event's version ('%s' < '%s')",
+              path,
+              a.resourceVersion,
+              b.resourceVersion
+            )
+            false
+          case (_, _) => true
         }
         .map { _._2 }
     }
