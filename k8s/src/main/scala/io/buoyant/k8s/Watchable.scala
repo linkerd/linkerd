@@ -190,10 +190,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       stream.paired
         .withFilter {
           case (Some(a), b) => a < b
-            // n.b. that this case will never actually happen, since we always have
-            // one element already in the AsyncStream (because our first request is a
-            // non-blocking GET that will have already returned at this point). it would
-            // be nice to not have to treat the prev item optionally in this case...
+          // n.b. that this case will never actually happen, since we always have
+          // one element already in the AsyncStream (because our first request is a
+          // non-blocking GET that will have already returned at this point). it would
+          // be nice to not have to treat the prev item optionally in this case...
           case (None, _) => true
         }
         .map { _._2 }
