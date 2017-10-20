@@ -193,7 +193,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           case (Some(a), b) if b < a =>
             log.debug(
               "k8s watch on resource at %s received event with resource version older " +
-              "than the previous event's version ('%s' < '%s')",
+                "than the previous event's version ('%s' < '%s')",
               path,
               a.resourceVersion,
               b.resourceVersion
