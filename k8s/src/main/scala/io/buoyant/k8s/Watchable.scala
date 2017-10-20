@@ -127,6 +127,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           }
         }.flatten
       }
+
       AsyncStream.fromFuture(initialState).flatMap { rsp =>
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
@@ -170,7 +171,13 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
                       case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
                     }
                 }
-              }.flatten
+              }
+              .flatten
+              .paired
+              .map {
+                case (Some(a), b) if a > b => a
+                case (_, b) => b
+              }
 
           case http.Status.Gone =>
             _resourceVersionTooOld()
@@ -273,5 +280,22 @@ object Watchable {
      * @return the last element in the stream, if any.
      */
     def lastOption: Future[Option[T]] = as.toSeq.map(_.lastOption)
+
+    /**
+     * like `iterator.sliding(2)` but for async streams (which don't implement
+     * Iterator).
+     * TODO: probably this could be generalized to sliding(n) but im lazy.
+     * @return
+     */
+    def paired: AsyncStream[(Option[T], T)] = {
+      @volatile var prev: Option[T] = None
+      @volatile var nextPrev: Option[T] = None
+      as.map { curr =>
+        prev = nextPrev
+        nextPrev = Some(curr)
+        (prev, curr)
+      }
+    }
+
   }
 }

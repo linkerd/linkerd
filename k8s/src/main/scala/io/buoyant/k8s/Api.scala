@@ -161,8 +161,14 @@ case class ObjectReference(
  * create actual subclasses (i.e. FooWatch extends Watch[Foo]) rather than using Watch[Foo]
  * directly, and set the correct Jackson annotations on those, to ensure correct parsing.
  */
-trait Watch[O <: KubeObject] {
+trait Watch[O <: KubeObject] extends Ordered[Watch[O]] {
   def resourceVersion: Option[String]
+  def versionNum: Option[Long] = for {
+    versionString <- resourceVersion
+    version <- Try(versionString.toLong).toOption
+  } yield { version }
+  override def compare(that: Watch[O]): Int =
+    this.versionNum.getOrElse(0L).compare(that.versionNum.getOrElse(0L))
 }
 
 object Watch {
