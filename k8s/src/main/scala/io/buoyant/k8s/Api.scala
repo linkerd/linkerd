@@ -168,7 +168,7 @@ trait Watch[O <: KubeObject] extends Ordered[Watch[O]] {
     version <- Try(versionString.toLong).toOption
   } yield { version }
   override def compare(that: Watch[O]): Int =
-    this.versionNum.getOrElse(0L).compare(that.versionNum.getOrElse(0L))
+    this.versionNum.get.compare(that.versionNum.get)
 }
 
 object Watch {

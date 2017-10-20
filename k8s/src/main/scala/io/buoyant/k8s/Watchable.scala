@@ -128,7 +128,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         }.flatten
       }
 
-      AsyncStream.fromFuture(initialState).flatMap { rsp =>
+      val stream = AsyncStream.fromFuture(initialState).flatMap { rsp =>
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
           case http.Status.Ok =>
@@ -173,11 +173,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
                 }
               }
               .flatten
-              .paired
-              .map {
-                case (Some(a), b) if a > b => a
-                case (_, b) => b
-              }
 
           case http.Status.Gone =>
             _resourceVersionTooOld()
@@ -189,6 +184,19 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             AsyncStream.fromFuture(f)
         }
       }
+      // Ignore any cases where we receive a resource version lower
+      // than the last received resource version, by creating a sliding
+      // two-item window over the stream of watch events.
+      stream.paired
+        .withFilter {
+          case (Some(a), b) => a < b
+            // n.b. that this case will never actually happen, since we always have
+            // one element already in the AsyncStream (because our first request is a
+            // non-blocking GET that will have already returned at this point). it would
+            // be nice to not have to treat the prev item optionally in this case...
+          case (None, _) => true
+        }
+        .map { _._2 }
     }
 
     (_watch(resourceVersion), Closable.ref(close))
@@ -289,11 +297,10 @@ object Watchable {
      */
     def paired: AsyncStream[(Option[T], T)] = {
       @volatile var prev: Option[T] = None
-      @volatile var nextPrev: Option[T] = None
       as.map { curr =>
-        prev = nextPrev
-        nextPrev = Some(curr)
-        (prev, curr)
+        val myPrev = prev
+        prev = Some(curr)
+        (myPrev, curr)
       }
     }
 
