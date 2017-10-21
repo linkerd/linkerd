@@ -260,6 +260,48 @@ class ServiceNamerTest extends FunSuite with Awaits {
     }
   }
 
+  test("doesn't time travel") {
+    val _ = new Fixtures {
+      def lookup = Path.read("/pythonsky/admin2/l5d/residual")
+
+      var noChanges = false
+      activity.values.respond { _ =>
+        if (noChanges) fail("NameTree changed unexpectedly")
+      }
+
+      val init = await(activity.toFuture)
+      assert(init == NameTree.Neg)
+
+      // modified (port created)
+      await(writer.write(Rsps.Modified))
+
+      val modified0 = await(activity.toFuture)
+      val NameTree.Leaf(bound0: Name.Bound) = modified0
+      val Addr.Bound(addresses0, meta0) = await(bound0.addr.changes.toFuture)
+      bound0.addr.changes.respond { _ =>
+        if (noChanges) fail("Addr changed unexpectedly")
+      }
+
+
+
+      // modified (port deleted)
+      await(writer.write(Rsps.DeletePort))
+      await(activity.toFuture)
+      await(writer.write(Rsps.Deleted))
+      await(activity.toFuture)
+
+      noChanges = true
+
+      // play events in reverse
+      await(writer.write(Rsps.Created))
+      await(activity.toFuture)
+
+      await(writer.write(Rsps.Modified))
+      await(activity.toFuture)
+    }
+  }
+
+
   test("updates to a different service should not cause NameTree updates") {
     val _ = new Fixtures {
       def lookup = Path.read("/pythonsky/external/l5d/residual")
