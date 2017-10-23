@@ -603,4 +603,31 @@ class ConsulNamerTest extends FunSuite with Awaits {
       )
     }
   }
+  test("Namer doesn't poll consul again after observation is closed") {
+    @volatile var closed = false
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] =
+        if (closed)
+          fail("Consul observed by closed activity!")
+        else
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    val interpreter = ConfiguredDtabNamer(Activity.value(Dtab.empty), Seq(Path.read("/#/io.l5d.consul") -> namer))
+  }
 }
