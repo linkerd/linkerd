@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 /**
  * An abstract class that encapsulates the ability to Watch a k8s [[Resource]].
  */
-private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, G <: KubeMetadata: TypeReference] extends Resource {
+private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, G <: KubeMetadata: TypeReference] extends Resource {
   import Watchable._
 
   protected def backoffs: Stream[Duration]
@@ -145,19 +145,19 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               // stream, but this is necessary to handle the K8s bug where
               // erorrs have the incorrect status code.
               .flatMap {
-                // special case to handle Kubernetes bug where "too old
-                // resource version" errors are returned with status code 200
-                // rather than status code 410.
-                // see https://github.com/kubernetes/kubernetes/issues/35068
-                // for details.
-                case e: Watch.Error[O] if e.status.code.contains(410) =>
-                  log.debug(
-                    "k8s returned 'too old resource version' error with " +
-                      "incorrect HTTP status code, restarting watch"
-                  )
-                  _resourceVersionTooOld()
-                case event => AsyncStream.fromOption(Some(event))
-              }
+              // special case to handle Kubernetes bug where "too old
+              // resource version" errors are returned with status code 200
+              // rather than status code 410.
+              // see https://github.com/kubernetes/kubernetes/issues/35068
+              // for details.
+              case e: Watch.Error[O] if e.status.code.contains(410) =>
+                log.debug(
+                  "k8s returned 'too old resource version' error with " +
+                    "incorrect HTTP status code, restarting watch"
+                )
+                _resourceVersionTooOld()
+              case event => AsyncStream.fromOption(Some(event))
+            }
             watchStream ++ // if the stream ends (k8s will kill connections after ~30m), restart it)
               AsyncStream.fromFuture {
                 // It's safe to call lastOption here, because we're after the `++` operator, so
@@ -172,7 +172,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
                     }
                 }
               }
-              .flatten
+                .flatten
 
           case http.Status.Gone =>
             _resourceVersionTooOld()
@@ -186,13 +186,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       }
       // Ignore any cases where we receive a resource version lower
       // than the last received resource version.
-      .scanLeft[(Option[W], Boolean)]((None, false)) {
-        // TODO: this would be much less ugly if the type of the scan was [W, Boolean]
-        //       but we need the Option to handle the initial value for the scan...
-        case ((Some(latest), _), event) if event > latest => (Some(event), true)
-        case ((Some(latest), _), _) => (Some(latest), false)
-        case ((None, _), event) => (Some(event), true)
-      }.filter(_._2).map(_._1.get)
+        .increasingOnly
+
     }
 
     (_watch(resourceVersion), Closable.ref(close))
@@ -277,12 +272,33 @@ object Watchable {
   private[k8s] val FieldSelectorKey = "fieldSelector"
   private[k8s] val ResourceVersionKey = "resourceVersion"
 
-  implicit class RichAsyncStream[T](as: AsyncStream[T]) {
+  implicit class LastOptionAsyncStream[T](as: AsyncStream[T]) {
     /**
      * Note: forces the stream. For infinite streams, the future never resolves.
      *
      * @return the last element in the stream, if any.
      */
     def lastOption: Future[Option[T]] = as.toSeq.map(_.lastOption)
+
   }
+
+  implicit class IncreasingOnlyAsyncStream[T](as: AsyncStream[T])(implicit ord: Ordering[T]) {
+    import ord.mkOrderingOps
+    /**
+      * Filter out values less than the previous value.
+      * @return a new stream, consisting of this stream with all
+      *         values less than their predecessor removed.
+      */
+    def increasingOnly: AsyncStream[T] =
+      as.scanLeft[(Option[T], Boolean)]((None, false)) {
+        // TODO: this would be much less ugly if the type of the scan was [W, Boolean]
+        //       but we need the Option to handle the initial value for the scan...
+        case ((Some(latest), _), next) if next > latest => (Some(next), true)
+        case ((Some(latest), _), _) => (Some(latest), false)
+        case ((None, _), next) => (Some(next), true)
+      }.filter(_._2).map(_._1.get)
+  }
+
+
+
 }

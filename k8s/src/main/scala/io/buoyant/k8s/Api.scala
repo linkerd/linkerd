@@ -161,10 +161,10 @@ case class ObjectReference(
  * create actual subclasses (i.e. FooWatch extends Watch[Foo]) rather than using Watch[Foo]
  * directly, and set the correct Jackson annotations on those, to ensure correct parsing.
  */
-trait Watch[O <: KubeObject] extends Ordered[Watch[O]] {
+trait Watch[O <: KubeObject] {
   def resourceVersion: Option[String]
 
-  private[Watch] def versionNum: Option[Long] = for {
+  def versionNum: Option[Long] = for {
     versionString <- resourceVersion
     version <- Try(versionString.toLong)
       .onFailure {
@@ -178,9 +178,12 @@ trait Watch[O <: KubeObject] extends Ordered[Watch[O]] {
       .toOption
   } yield version
 
-  override def compare(that: Watch[O]): Int =
-    this.versionNum.getOrElse(0L)
-      .compare(that.versionNum.getOrElse(0L))
+}
+
+class ResourceVersionOrdering[O <: KubeObject, W <: Watch[O]] extends Ordering[W] {
+  override def compare(a: W, b: W): Int =
+    a.versionNum.getOrElse(0L)
+      .compare(b.versionNum.getOrElse(0L))
 }
 
 object Watch {
@@ -200,7 +203,6 @@ object Watch {
   }
 
 }
-
 case class Status(
   kind: Option[String] = None,
   apiVersion: Option[String] = None,
