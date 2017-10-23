@@ -1,7 +1,7 @@
 package io.buoyant.namer.dnssrv
 
 import java.io.IOException
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import java.util.concurrent.atomic.AtomicBoolean
 
 import com.twitter.finagle._
@@ -14,7 +14,6 @@ import org.xbill.DNS
 class DnsSrvNamer(
   prefix: Path,
   resolver: DNS.Resolver,
-  origin: DNS.Name,
   refreshInterval: Duration,
   stats: StatsReceiver,
   pool: FuturePool
@@ -26,6 +25,7 @@ class DnsSrvNamer(
   private[this] val success = stats.counter("lookup_successes_total")
   private[this] val failure = stats.counter("lookup_failures_total")
   private[this] val zeroResults = stats.counter("lookup_zero_results_total")
+  private[this] val badHosts = stats.counter("unknown_srv_hosts_results_total")
   private[this] val latency = stats.stat("request_duration_ms")
   private[this] val log = Logger.get("dnssrv")
 
@@ -65,30 +65,29 @@ class DnsSrvNamer(
   }
 
   private def lookupSrv(address: String, id: Path, residual: Path): Future[NameTree[Name]] = {
-    val question = DNS.Record.newRecord(
-      DNS.Name.fromString(address, origin),
-      DNS.Type.SRV,
-      DNS.DClass.IN
-    )
-    val query = DNS.Message.newQuery(question)
     log.debug("looking up %s", address)
     pool {
-      val message = Stat.time(latency)(resolver.send(query))
-      message.getRcode match {
-        case DNS.Rcode.NXDOMAIN =>
+      val lookup = new DNS.Lookup(address, DNS.Type.SRV, DNS.DClass.IN)
+      lookup.setResolver(resolver)
+      Stat.time(latency)(lookup.run())
+      lookup.getResult match {
+        case DNS.Lookup.HOST_NOT_FOUND | DNS.Lookup.TYPE_NOT_FOUND =>
           log.trace("no results for %s", address)
           failure.incr()
           NameTree.Neg
-        case DNS.Rcode.NOERROR =>
-          val hosts = message.getSectionArray(DNS.Section.ADDITIONAL).collect {
-            case a: DNS.ARecord => a.getName -> a.getAddress
-          }.toMap
-          val srvRecords = message.getSectionArray(DNS.Section.ANSWER).collect {
-            case srv: DNS.SRVRecord =>
-              hosts.get(srv.getTarget) match {
-                case Some(inetAddress) => Address(new InetSocketAddress(inetAddress, srv.getPort))
-                case None => Address(srv.getTarget.toString, srv.getPort)
-              }
+        case DNS.Lookup.SUCCESSFUL =>
+          val answers = Option(lookup.getAnswers).getOrElse(Array.empty)
+          val srvRecords = answers.flatMap {
+            case srv: DNS.SRVRecord => try {
+              val inetAddress = InetAddress.getByName(srv.getTarget.toString())
+              Some(Address(new InetSocketAddress(inetAddress, srv.getPort)))
+            } catch {
+              case _: UnknownHostException =>
+                log.warning(s"srv lookup of $address returned unknown host ${srv.getTarget}")
+                badHosts.incr()
+                None
+            }
+            case _ => None
           }
           if (srvRecords.isEmpty) {
             // valid DNS entry, but no instances.
@@ -103,7 +102,8 @@ class DnsSrvNamer(
             NameTree.Leaf(Name.Bound(Var.value(Addr.Bound(srvRecords: _*)), id, residual))
           }
         case code =>
-          val msg = s"unexpected RCODE: ${DNS.Rcode.string(code)} for $address"
+          val msg = s"unexpected result: $code for $address: ${lookup.getErrorString}"
+          log.error(msg)
           throw new IOException(msg)
       }
     }

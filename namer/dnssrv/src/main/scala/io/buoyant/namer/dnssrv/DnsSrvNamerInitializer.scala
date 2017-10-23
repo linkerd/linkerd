@@ -20,7 +20,6 @@ object DnsSrvNamerInitializer extends DnsSrvNamerInitializer
 
 case class DnsSrvNamerConfig(
   refreshIntervalSeconds: Option[Int],
-  domain: Option[String],
   dnsHosts: Option[Seq[String]]
 ) extends NamerConfig {
 
@@ -44,15 +43,10 @@ case class DnsSrvNamerConfig(
       Edns.Flags,
       Edns.Options
     )
-    val origin = domain match {
-      // always treat domain as absolute, even if trailing `.` is missing in config
-      case Some(str) => DNS.Name.fromString(str, DNS.Name.root)
-      case None => DNS.Name.root
-    }
     val timer = params[param.Timer].timer
     val refreshInterval = refreshIntervalSeconds.getOrElse(5).seconds
     val pool = FuturePool.unboundedPool
-    new DnsSrvNamer(prefix, resolver, origin, refreshInterval, stats, pool)(timer)
+    new DnsSrvNamer(prefix, resolver, refreshInterval, stats, pool)(timer)
   }
 }
 

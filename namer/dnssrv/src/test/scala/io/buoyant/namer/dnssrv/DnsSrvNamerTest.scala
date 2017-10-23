@@ -13,7 +13,6 @@ class DnsSrvNamerTest extends FunSuite with Matchers {
     // ensure it doesn't totally blowup
     val _ = DnsSrvNamerConfig(
       refreshIntervalSeconds = Some(15),
-      domain = None,
       dnsHosts = Some(List("localhost"))
     ).newNamer(Stack.Params.empty)
   }
@@ -26,7 +25,6 @@ class DnsSrvNamerTest extends FunSuite with Matchers {
     val yaml = s"""
                   |kind: io.l5d.dnssrv
                   |experimental: true
-                  |domain: srv.example.org
                   |refreshIntervalSeconds: 60
                   |dnsHosts:
                   |- localhost
@@ -37,6 +35,5 @@ class DnsSrvNamerTest extends FunSuite with Matchers {
     assert(config.refreshIntervalSeconds === Some(60))
     assert(config.dnsHosts === Some(Seq("localhost")))
     assert(config.disabled === false)
-    assert(config.domain === Some("srv.example.org"))
   }
 }
