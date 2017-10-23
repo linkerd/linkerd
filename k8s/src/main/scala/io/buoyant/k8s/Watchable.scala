@@ -128,7 +128,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         }.flatten
       }
 
-      val stream = AsyncStream.fromFuture(initialState).flatMap { rsp =>
+      AsyncStream.fromFuture(initialState).flatMap { rsp =>
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
           case http.Status.Ok =>
@@ -185,23 +185,14 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         }
       }
       // Ignore any cases where we receive a resource version lower
-      // than the last received resource version, by creating a sliding
-      // two-item window over the stream of watch events.
-      stream.paired
-        .withFilter {
-          // if the new event is older than the previous event, skip it.
-          case (Some(a), b) if b < a =>
-            log.debug(
-              "k8s watch on resource at %s received event with resource version older " +
-                "than the previous event's version ('%s' < '%s')",
-              path,
-              a.resourceVersion,
-              b.resourceVersion
-            )
-            false
-          case (_, _) => true
-        }
-        .map { _._2 }
+      // than the last received resource version.
+      .scanLeft[(Option[W], Boolean)]((None, false)) {
+        // TODO: this would be much less ugly if the type of the scan was [W, Boolean]
+        //       but we need the Option to handle the initial value for the scan...
+        case ((Some(latest), _), event) if event > latest => (Some(event), true)
+        case ((Some(latest), _), _) => (Some(latest), false)
+        case ((None, _), event) => (Some(event), true)
+      }.filter(_._2).map(_._1.get)
     }
 
     (_watch(resourceVersion), Closable.ref(close))
@@ -293,21 +284,5 @@ object Watchable {
      * @return the last element in the stream, if any.
      */
     def lastOption: Future[Option[T]] = as.toSeq.map(_.lastOption)
-
-    /**
-     * like `iterator.sliding(2)` but for async streams (which don't implement
-     * Iterator).
-     * TODO: probably this could be generalized to sliding(n) but im lazy.
-     * @return
-     */
-    def paired: AsyncStream[(Option[T], T)] = {
-      @volatile var prev: Option[T] = None
-      as.map { curr =>
-        val myPrev = prev
-        prev = Some(curr)
-        (myPrev, curr)
-      }
-    }
-
   }
 }
