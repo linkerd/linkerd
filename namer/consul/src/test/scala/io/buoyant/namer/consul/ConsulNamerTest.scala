@@ -606,8 +606,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
   }
   test("Namer doesn't poll consul again after observation is closed") {
     val closed =  new Promise[Unit]
+    @volatile var reqs = 0
     class TestApi extends CatalogApi(null, "/v1") {
-      var reqs = 0
       override def serviceNodes(
         serviceName: String,
         datacenter: Option[String],
@@ -615,14 +615,15 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = {
-        reqs += 1
-        if (closed.isDone)
-          Future.exception(new TestFailedException("Consul observed by closed activity!", 1))
-        else
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some(reqs.toString)))
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None if reqs == 0 =>
+          reqs += 1
+          closed.setDone()
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case Some(_) =>
+          reqs += 1
+          Future.never
       }
-
     }
 
     val stats = new InMemoryStatsReceiver
@@ -637,8 +638,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     @volatile var nameTreeUpdates: Int = 0
     val closer = interpreter.bind(Dtab.empty, Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond(state = _)
-    closed.setDone
     await(closed before closer.close())
-    assert(nameTreeUpdates == 1)
+    assert(reqs == 1, "Consul observed by closed activity!")
   }
 }
