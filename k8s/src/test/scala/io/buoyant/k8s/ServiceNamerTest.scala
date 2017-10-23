@@ -282,8 +282,6 @@ class ServiceNamerTest extends FunSuite with Awaits {
         if (noChanges) fail("Addr changed unexpectedly")
       }
 
-
-
       // modified (port deleted)
       await(writer.write(Rsps.DeletePort))
       await(activity.toFuture)
@@ -300,7 +298,6 @@ class ServiceNamerTest extends FunSuite with Awaits {
       await(activity.toFuture)
     }
   }
-
 
   test("updates to a different service should not cause NameTree updates") {
     val _ = new Fixtures {
