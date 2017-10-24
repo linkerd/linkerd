@@ -384,7 +384,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
               Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
             case _ => Future.value(Indexed(Nil, Some("1")))
           }
-        case _ => Future.never // don't respond to blocking index calls
+        case _ => new Promise// don't respond to blocking index calls
       }
     }
 
@@ -620,7 +620,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
           Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
         case Some(_) =>
           reqs += 1
-          Future.never
+          // when the activity is closed, we need to set the state of the future
+          // to the exception, the way a real future would (which Future.never would not do).
+          val promise = new Promise[Indexed[Seq[ServiceNode]]]()
+          promise.setInterruptHandler { case e => promise.setException(e) }
+          promise
       }
     }
 
