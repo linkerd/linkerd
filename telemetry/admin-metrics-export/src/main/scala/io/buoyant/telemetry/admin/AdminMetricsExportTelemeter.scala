@@ -108,8 +108,8 @@ class AdminMetricsExportTelemeter(
     if (pretty) jg.setPrettyPrinter(new DefaultPrettyPrinter())
     jg.writeStartObject()
     val flattened =
-      if (pretty) flattenMetricsTree(tree).sortBy(_._1)
-      else flattenMetricsTree(tree)
+      if (pretty) MetricsTree.flatten(tree).sortBy(_._1)
+      else MetricsTree.flatten(tree)
     flattened.foreach(writeJsonMetric(jg, _))
     jg.writeEndObject()
     jg.close()
@@ -133,21 +133,6 @@ class AdminMetricsExportTelemeter(
       writeJsonTree(jg, child)
     }
     jg.writeEndObject()
-  }
-
-  private[this] def flattenMetricsTree(
-    tree: MetricsTree,
-    prefix: String = "",
-    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
-  ): Seq[(String, Metric)] = {
-    acc += (prefix -> tree.metric)
-    for ((name, child) <- tree.children) {
-      if (prefix.isEmpty)
-        flattenMetricsTree(child, name, acc)
-      else
-        flattenMetricsTree(child, s"$prefix/$name", acc)
-    }
-    acc.toSeq
   }
 
   /** Snapshot histograms to produce histogram summaries, resetting as we go. */

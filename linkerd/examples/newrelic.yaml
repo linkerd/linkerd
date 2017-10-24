@@ -1,0 +1,15 @@
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
+routers:
+- protocol: http
+  dtab: /svc => /#/io.l5d.fs;
+  servers:
+  - port: 4140
+
+telemetry:
+- kind: io.l5d.newrelic
+  experimental: true
+  # put your New Relic account license key here!
+  license_key: not_a_real_newrelic_license_key

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 trait MetricsTree {
   def children: Map[String, MetricsTree]
@@ -119,5 +120,29 @@ object MetricsTree {
       trees.clear()
       metricRef.set(Metric.None)
     }
+  }
+
+  /**
+   * Flatten `tree`, skipping empty scopes.
+   */
+  def flatten(
+    tree: MetricsTree,
+    prefix: String = "",
+    acc: mutable.Buffer[(String, Metric)] = mutable.Buffer()
+  ): Seq[(String, Metric)] = {
+    // This method could also have been implemented as
+    // `flatten(...).filter(...)` but this seems more performant.
+    tree.metric match {
+      case Metric.None =>
+      case metric => acc += prefix -> tree.metric
+    }
+
+    for ((name, child) <- tree.children) {
+      if (prefix.isEmpty)
+        flatten(child, name, acc)
+      else
+        flatten(child, s"$prefix/$name", acc)
+    }
+    acc
   }
 }
