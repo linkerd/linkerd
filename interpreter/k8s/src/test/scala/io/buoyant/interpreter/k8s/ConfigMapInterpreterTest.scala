@@ -112,7 +112,7 @@ class ConfigMapInterpreterTest extends FunSuite
          |      "namespace": "test",
          |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
          |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
-         |      "resourceVersion": "61623848",
+         |      "resourceVersion": "61622966",
          |      "creationTimestamp": "2017-09-14T16:41:38Z"
          |    },
          |    "data": {
@@ -133,7 +133,7 @@ class ConfigMapInterpreterTest extends FunSuite
          |      "namespace": "test",
          |      "selfLink": "/api/v1/namespaces/test/configmaps/test-config",
          |      "uid": "942fd048-996b-11e7-bfc0-42010af00004",
-         |      "resourceVersion": "61623938",
+         |      "resourceVersion": "61622965",
          |      "creationTimestamp": "2017-09-14T16:41:38Z"
          |    },
          |    "data": {

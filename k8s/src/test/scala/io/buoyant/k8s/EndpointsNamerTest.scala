@@ -1167,4 +1167,69 @@ class EndpointsNamerTest extends FunSuite with Awaits {
       assert(addrs(theVar) == Set(Address("10.196.5.87", 7778), Address("10.196.5.88", 7778), Address("10.196.5.89", 7778)))
     }
   }
+
+  test("out of order resource versions ignored") {
+    @volatile var writer: Writer = null
+
+    val service = Service.mk[Request, Response] {
+      case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
+        val rsp = Response()
+        rsp.content = Rsps1626.Init
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/liza1626/endpoints/world-v1") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+
+        writer = rsp.writer
+
+        Future.value(rsp)
+    }
+    val api = v1.Api(service)
+    val timer = new MockTimer
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+
+    val activity = namer.lookup(Path.read("/liza1626/http/world-v1"))
+
+    val _ = activity.states respond { s =>
+      state = s
+    }
+
+    def addrs = state match {
+      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
+        bound.addr.sample() match {
+          case Addr.Bound(addrs, _) =>
+            addrs.map {
+              // discard metadata
+              case Address.Inet(inet, _) => Address(inet)
+              case a => a
+            }
+          case addr =>
+            throw new TestFailedException(
+              s"expected bound addr, got $addr", 1
+            )
+        }
+      case v =>
+        throw new TestFailedException(s"unexpected state: $v", 1)
+    }
+    await(writer.write(Rsps1626.ScaleUp1))
+    assert(addrs.size == 1)
+    await(writer.write(Rsps1626.ScaleUp2))
+    assert(addrs.size == 2)
+
+    await(writer.write(Rsps1626.ScaleUp3))
+    withClue("after highest version number") {
+      assert(addrs.size == 3)
+    }
+    await(writer.write(Rsps1626.ScaleUp2))
+    withClue("after lower-numbered resource version") {
+      assert(addrs.size == 3)
+    }
+    await(writer.write(Rsps1626.ScaleUp1))
+    withClue("after lower-numbered resource version") {
+      assert(addrs.size == 3)
+    }
+  }
+
 }

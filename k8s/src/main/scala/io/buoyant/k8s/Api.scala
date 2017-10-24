@@ -163,6 +163,27 @@ case class ObjectReference(
  */
 trait Watch[O <: KubeObject] {
   def resourceVersion: Option[String]
+
+  def versionNum: Option[Long] = for {
+    versionString <- resourceVersion
+    version <- Try(versionString.toLong)
+      .onFailure {
+        log.warning(
+          "k8s event %s resource version '%s' could not be parsed: %s",
+          this,
+          versionString,
+          _
+        )
+      }
+      .toOption
+  } yield version
+
+}
+
+class ResourceVersionOrdering[O <: KubeObject, W <: Watch[O]] extends Ordering[W] {
+  override def compare(a: W, b: W): Int =
+    a.versionNum.getOrElse(0L)
+      .compare(b.versionNum.getOrElse(0L))
 }
 
 object Watch {
@@ -182,7 +203,6 @@ object Watch {
   }
 
 }
-
 case class Status(
   kind: Option[String] = None,
   apiVersion: Option[String] = None,

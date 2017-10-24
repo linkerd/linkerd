@@ -111,6 +111,13 @@ package object v1 {
   implicit private val serviceWatch = new TypeReference[ServiceWatch] {}
   implicit private val configMapWatch = new TypeReference[ConfigMapWatch] {}
 
+  implicit private val configMapWatchIsOrdered =
+    new ResourceVersionOrdering[ConfigMap, ConfigMapWatch]{}
+  implicit private val endpointsWatchIsOrdered =
+    new ResourceVersionOrdering[Endpoints, EndpointsWatch] {}
+  implicit private val serviceWatchIsOrdered =
+    new ResourceVersionOrdering[Service, ServiceWatch] {}
+
   case class Api(client: Client) extends Version[Object] {
     def group = v1.group
     def version = v1.version
