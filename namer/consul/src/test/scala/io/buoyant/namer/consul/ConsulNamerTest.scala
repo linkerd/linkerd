@@ -3,11 +3,12 @@ package io.buoyant.namer.consul
 import com.twitter.finagle._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future, Promise}
+import com.twitter.util.{Activity, Await, Future, Promise}
 import io.buoyant.consul.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
+import org.scalatest.exceptions.TestFailedException
 
 class ConsulNamerTest extends FunSuite with Awaits {
 
@@ -383,7 +384,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
               Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
             case _ => Future.value(Indexed(Nil, Some("1")))
           }
-        case _ => Future.never // don't respond to blocking index calls
+        case _ => new Promise// don't respond to blocking index calls
       }
     }
 
@@ -602,5 +603,48 @@ class ConsulNamerTest extends FunSuite with Awaits {
         "namer did not update after falling back"
       )
     }
+  }
+  test("Namer doesn't poll consul again after observation is closed") {
+    @volatile var reqs = 0
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None if reqs == 0 =>
+          reqs += 1
+          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+        case Some(_) =>
+          reqs += 1
+          // when the activity is closed, we need to set the state of the future
+          // to the exception, the way a real future would (which Future.never would not do).
+          val promise = new Promise[Indexed[Seq[ServiceNode]]]()
+          promise.setInterruptHandler { case e => promise.setException(e) }
+          promise
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    @volatile var nameTreeUpdates: Int = 0
+    val closer =
+      namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    assert(reqs == 2)
+    await(closer.close())
+    withClue ("after close") { assert(reqs == 2, "Consul observed by closed activity!") }
+    assert(stats.counters.get(Seq("service", "opens")).contains(1))
+    assert(stats.counters.get(Seq("service", "closes")).contains(1))
+    assert(stats.counters.get(Seq("service", "errors")) == None)
   }
 }

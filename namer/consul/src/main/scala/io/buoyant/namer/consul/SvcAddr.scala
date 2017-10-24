@@ -67,7 +67,20 @@ private[consul] object SvcAddr {
             )
             // Drop the index, in case it's been reset by a consul restart
             loop(None)
+          case Throw(ServiceRelease) =>
+            // this exception is raised when we close a watch - thus, it needs
+            // to be special-cased so that we don't continue observing that
+            // service.
+            log.trace(
+              "consul datacenter '%s' service '%s' observation closed",
+              datacenter,
+              key.name
+            )
+            stopped = true
+            Future.Unit
           case Throw(e) =>
+            // an error occurred. if we've previously seen a good state, fall
+            // back to that state; otherwise, fail.
             stats.errors.incr()
             lastGood match {
               case Some(addr) =>
