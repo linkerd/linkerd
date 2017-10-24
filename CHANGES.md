@@ -1,3 +1,13 @@
+## 1.3.1 2017-10-24
+
+* Kubernetes
+  * Fixed a failure to update routing data after restarting watches (#1674).
+  * Ensured that Kubernetes API watch events earlier than the current state are ignored (#1681).
+* Added support for Istio Mixer precondition checks (#1606).
+* Removed spurious error message logging from Consul namer (#1682).
+* Changed DNS SRV record namer to use system DNS resolver configuration (#1679).
+* Added `timestampHeader` configuration to support New Relic request queue (#1672).
+
 
 ## 1.3.0 2017-10-06
 
