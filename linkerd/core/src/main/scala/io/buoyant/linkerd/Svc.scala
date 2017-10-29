@@ -3,7 +3,11 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.PathMatcher
-import io.buoyant.config.PolymorphicConfig
+import com.twitter.finagle.util.LoadService
+import com.twitter.io.Buf
+import com.twitter.util.Activity
+import io.buoyant.config.types.File
+import io.buoyant.config.{Parser, PolymorphicConfig, Watcher}
 import io.buoyant.router.StackRouter.Client.{PathParams, PerPathParams}
 
 /**
@@ -19,7 +23,8 @@ import io.buoyant.router.StackRouter.Client.{PathParams, PerPathParams}
 )
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[DefaultSvcImpl], name = "io.l5d.global"),
-  new JsonSubTypes.Type(value = classOf[StaticSvcImpl], name = "io.l5d.static")
+  new JsonSubTypes.Type(value = classOf[StaticSvcImpl], name = "io.l5d.static"),
+  new JsonSubTypes.Type(value = classOf[FileSvcImpl], name = "io.l5d.fs")
 ))
 abstract class Svc extends PolymorphicConfig {
   @JsonIgnore
@@ -43,7 +48,7 @@ trait DefaultSvc extends SvcConfig { self: Svc =>
   }
 
   @JsonIgnore
-  def pathParams = PerPathParams(Seq(PathParams(matchAll, mk)))
+  def pathParams = PerPathParams(Activity.value(Seq(PathParams(matchAll, mk))))
 }
 
 class DefaultSvcImpl extends Svc with DefaultSvc
@@ -56,11 +61,49 @@ trait StaticSvc { self: Svc =>
   val configs: Seq[SvcPrefixConfig]
 
   @JsonIgnore
-  def pathParams = PerPathParams(configs.map { config =>
+  def pathParams = PerPathParams(Activity.value(configs.map { config =>
     PathParams(config.prefix, config.params)
-  })
+  }))
 }
 
 class StaticSvcImpl(val configs: Seq[SvcPrefixConfig]) extends Svc with StaticSvc
 
 class SvcPrefixConfig(val prefix: PathMatcher) extends SvcConfig
+
+trait FileSvc { self: Svc =>
+  val serviceFile: File
+
+  @JsonIgnore
+  private[this] val path = serviceFile.path
+
+  @JsonIgnore
+  private[this] lazy val watcher = Watcher(path.getParent)
+
+  private[linkerd] lazy val LoadedInitializers = Seq(
+    LoadService[ResponseClassifierInitializer]
+  )
+
+  @JsonIgnore
+  private[this] def configsAct: Activity[Seq[SvcPrefixConfig]] = {
+    watcher.children.flatMap { children =>
+      children.get(path.getFileName.toString) match {
+        case Some(file: Watcher.File.Reg) => file.data
+        case _ => Activity.exception(new IllegalStateException(s"unable to find file ${path.getFileName.toString}"))
+      }
+    }.flatMap {
+      case Buf.Utf8(svcPrefixConfigs) =>
+        val mapper = Parser.objectMapper(svcPrefixConfigs, LoadedInitializers)
+        Activity.value(mapper.readValue[Seq[SvcPrefixConfig]](svcPrefixConfigs))
+      case _ => Activity.exception(new IllegalStateException(s"unable to read file ${path.getFileName.toString}"))
+    }
+  }
+
+  @JsonIgnore
+  def pathParams = PerPathParams(configsAct.map {
+    _.map { config =>
+      PathParams(config.prefix, config.params)
+    }
+  })
+}
+
+class FileSvcImpl(val serviceFile: File) extends Svc with FileSvc

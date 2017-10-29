@@ -154,6 +154,24 @@ If a service matches more than one prefix, all parameters from the matching
 configs will be applied, with parameters defined later in the configuration file
 taking precedence over those defined earlier.
 
+### Filesystem Service Config
+
+```yaml
+- protocol: http
+  service:
+    kind: io.l5d.fs
+    serviceFile: myServiceConfig.yaml
+```
+
+This service configuration reads [service parameters](#service-parameters) from
+a file on disk. These parameters follow the same format as those defined in the
+`configs` section of the Static Service Config. Linkerd watches the file for
+changes and updates service configuration dynamically.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+serviceFile | _required_ | The file-system path to a file containing a list of service parameters.
+
 ### Service Parameters
 
 <aside class="notice">

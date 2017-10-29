@@ -17,6 +17,7 @@ import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
 import com.twitter.util.Future
+import io.buoyant.config.types.File
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
@@ -124,7 +125,8 @@ trait HttpClientConfig extends ClientConfig
 )
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[HttpDefaultSvc], name = "io.l5d.global"),
-  new JsonSubTypes.Type(value = classOf[HttpStaticSvc], name = "io.l5d.static")
+  new JsonSubTypes.Type(value = classOf[HttpStaticSvc], name = "io.l5d.static"),
+  new JsonSubTypes.Type(value = classOf[HttpFsSvc], name = "io.l5d.fs")
 ))
 abstract class HttpSvc extends Svc
 
@@ -133,6 +135,8 @@ class HttpDefaultSvc extends HttpSvc with DefaultSvc with HttpSvcConfig
 class HttpStaticSvc(val configs: Seq[HttpSvcPrefixConfig]) extends HttpSvc with StaticSvc
 
 class HttpSvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with HttpSvcConfig
+
+class HttpFsSvc(val serviceFile: File) extends HttpSvc with FileSvc
 
 trait HttpSvcConfig extends SvcConfig {
 

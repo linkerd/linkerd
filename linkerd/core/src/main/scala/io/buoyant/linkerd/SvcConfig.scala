@@ -2,11 +2,11 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes}
 import com.twitter.conversions.time._
-import com.twitter.finagle.{param, Stack}
+import com.twitter.finagle.{Stack, param}
 import com.twitter.finagle.buoyant.TotalTimeout
 import com.twitter.finagle.service._
 import com.twitter.finagle.buoyant.ParamsMaybeWith
-import com.twitter.util.Duration
+import com.twitter.util.{Activity, Duration}
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.router.{ClassifiedRetries, RetryBudgetConfig}
 import io.buoyant.router.RetryBudgetModule.{param => ev}

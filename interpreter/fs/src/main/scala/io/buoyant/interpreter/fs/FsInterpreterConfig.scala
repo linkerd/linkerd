@@ -6,9 +6,9 @@ import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.io.Buf
 import com.twitter.util.Activity
+import io.buoyant.config.Watcher
 import io.buoyant.config.types.File
-import io.buoyant.namer.{Param, ConfiguredDtabNamer, InterpreterConfig}
-import io.buoyant.namer.fs.Watcher
+import io.buoyant.namer.{ConfiguredDtabNamer, InterpreterConfig, Param}
 
 case class FsInterpreterConfig(dtabFile: File) extends InterpreterConfig {
 

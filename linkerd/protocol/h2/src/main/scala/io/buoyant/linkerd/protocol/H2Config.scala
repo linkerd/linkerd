@@ -18,6 +18,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
+import io.buoyant.config.types.File
 import io.buoyant.linkerd.protocol.h2.{H2ClassifierConfig, H2RequestAuthorizerConfig}
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest}
@@ -177,6 +178,8 @@ class H2DefaultSvc extends H2Svc with DefaultSvc with H2SvcConfig
 class H2StaticSvc(val configs: Seq[H2SvcPrefixConfig]) extends H2Svc with StaticSvc
 
 class H2SvcPrefixConfig(prefix: PathMatcher) extends SvcPrefixConfig(prefix) with H2SvcConfig
+
+class H2FsSvc(val serviceFile: File) extends H2Svc with FileSvc
 
 trait H2SvcConfig extends SvcConfig {
   /**

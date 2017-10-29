@@ -1,11 +1,11 @@
-package io.buoyant.namer.fs
+package io.buoyant.config
 
 import com.twitter.conversions.storage._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import java.nio.file.{Path => NioPath, _}
 import java.nio.file.StandardWatchEventKinds._
+import java.nio.file.{Path => NioPath, _}
 import scala.collection.JavaConverters._
 
 object Watcher {
