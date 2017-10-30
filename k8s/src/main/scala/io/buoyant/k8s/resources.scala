@@ -99,22 +99,22 @@ private[k8s] class NsVersion[O <: KubeObject](
  *
  * @tparam O The parent type for all [[KubeObject]]s served by this Version.
  */
-trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
+trait CustomResourceVersion[O <: KubeObject] extends Version[O] {
   /** domain name, i.e. "buoyant.io" */
   def owner: String
 
   /** version within owner domain, i.e. "v1" */
   def ownerVersion: String
 
-  override val version: String = ThirdPartyVersion.version(owner, ownerVersion)
-  override val path: String = s"/${ThirdPartyVersion.group}/$version"
+  override val version: String = CustomResourceVersion.version(owner, ownerVersion)
+  override val path: String = s"/${CustomResourceVersion.group}/$version"
   override val watchPath: String = s"$path/watch"
 
-  val group: String = ThirdPartyVersion.group
-  override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
+  val group: String = CustomResourceVersion.group
+  override def withNamespace(ns: String) = new NsCustomResourceVersion[O](client, owner, ownerVersion, ns)
 }
 
-object ThirdPartyVersion {
+object CustomResourceVersion {
   def version(owner: String, ownerVersion: String) = s"$owner/$ownerVersion"
   val group = "apis"
 }
@@ -122,8 +122,8 @@ object ThirdPartyVersion {
 /**
  * A namespaced third-party version, i.e. "/apis/buoyant.io/v1/namespaces/ns/".
  */
-class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerVersion: String, ns: String)
-  extends NsVersion[O](client, ThirdPartyVersion.group, ThirdPartyVersion.version(owner, ownerVersion), ns)
+class NsCustomResourceVersion[O <: KubeObject](client: Client, owner: String, ownerVersion: String, ns: String)
+  extends NsVersion[O](client, CustomResourceVersion.group, CustomResourceVersion.version(owner, ownerVersion), ns)
 
 /**
  * Represents the functionality for a  kubernetes API resource serving a list of objects, for example:
