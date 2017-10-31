@@ -91,14 +91,18 @@ private[k8s] class NsVersion[O <: KubeObject](
 }
 
 /**
- * A third-party version contains ThirdPartyResource-typed objects. See
- * https://github.com/kubernetes/kubernetes/blob/master/docs/design/extending-api.md for a description of the
- * design model.
- *
- * Implementors are likely to want to extend this to provide convenience methods on top of the `list` method.
- *
- * @tparam O The parent type for all [[KubeObject]]s served by this Version.
- */
+  * A custom resource version contains CustomResource-typed objects. The API was called ThirdPartyResources in Kubernetes
+  * < 1.7 and has been deprecated since version 1.8. The APIs for both resource versions are identical in implementation. However,
+  * various naming standards have been changed to make the apis more meaningful. For me details
+  * see https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/.
+  * To understand how to create your own custom resources see
+  * https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/ for a description of the
+  * design model.
+  *
+  * Implementors are likely to want to extend this to provide convenience methods on top of the `list` method.
+  *
+  * @tparam O The parent type for all [[KubeObject]]s served by this Version.
+  */
 trait CustomResourceVersion[O <: KubeObject] extends Version[O] {
   /** domain name, i.e. "buoyant.io" */
   def owner: String

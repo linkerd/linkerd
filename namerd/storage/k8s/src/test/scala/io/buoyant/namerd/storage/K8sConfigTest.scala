@@ -22,18 +22,4 @@ class K8sConfigTest extends FunSuite with OptionValues {
     assert(k8s.port.value == Port(8001))
     assert(k8s.namespace.value == "default")
   }
-
-  test("parse v2 config") {
-    val yaml =
-      """
-        |kind: io.l5d.v2.k8s
-        |host: localhost
-        |port: 8001
-        |namespace: default
-      """.stripMargin
-
-    val mapper = Parser.objectMapper(yaml, Iterable(Seq(K8sV2DtabStoreInitializer)))
-    val k8s = mapper.readValue[DtabStoreConfig](yaml).asInstanceOf[K8sConfigV2]
-    assert(k8s.kind == "io.l5d.v2.k8s")
-  }
 }

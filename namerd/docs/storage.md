@@ -40,6 +40,13 @@ The Kubernetes storage plugin does not support TLS.  Instead, you should run `ku
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
 
+
+**Deprecation Notice**:
+As of Kubernetes 1.8+, The ThirdPartyResource API has been [deprecated](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/) in favor of CustomResourceDefinitions
+API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects to CustomResourceDefinition objects. More details on how to migrate to the new API in Kubernetes 1.8+ can be found
+[here](https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource/). 
+
+
 **How to check ThirdPartyResource is enabled**
 
 1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.

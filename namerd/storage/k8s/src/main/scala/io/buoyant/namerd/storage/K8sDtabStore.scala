@@ -113,7 +113,8 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
 
   /**
    * Update an existing dtab based on the current version or create a new
-   * dtab if one doesn't already exist.
+   * dtab if one doesn't already exist. Put returns a DtabVersionMismatchException if the dtab resource version being updated
+    * does not match the current version. If this is the case, a retry for a dtab update should be done.
    */
   def put(ns: String, dtab: FDtab): Future[Unit] = {
     val nsDTab = api.dtabs.named(ns)
@@ -127,8 +128,10 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
           // In the event of a 404 on a PUT, we should POST instead, as the k8s API doesn't appear to
           // support creating on PUT. Note that this is potentially racy if the namespace is created
           // between the PUT and the POST, but it's likely safer to surface that error all the way to
-          // the user in that case than to attempt to recover beyond this point.
+          // the user in that case than to attempt to recover beyond this point. The can retry the PUT request
+          // to ensure the update succeeds.
           case io.buoyant.k8s.Api.NotFound(_) => create(ns, dtab)
+          case io.buoyant.k8s.Api.Conflict(_) => Future.exception(new DtabVersionMismatchException)
         }
       case None => create(ns, dtab)
     }
