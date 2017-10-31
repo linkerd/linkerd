@@ -1,1 +1,2 @@
 com.medallia.l5d.curatorsd.namer.CuratorSDInitializer
+com.medallia.l5d.namer.ReplacingNamerInitializer
