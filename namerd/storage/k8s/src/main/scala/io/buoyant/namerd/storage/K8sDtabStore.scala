@@ -112,16 +112,25 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   }
 
   /**
-   * Update an existing dtab regardless of the current version or create a new
+   * Update an existing dtab based on the current version or create a new
    * dtab if one doesn't already exist.
    */
   def put(ns: String, dtab: FDtab): Future[Unit] = {
-    api.dtabs.named(ns).put(namedDtab(ns, dtab)).unit.rescue {
-      // In the event of a 404 on a PUT, we should POST instead, as the k8s API doesn't appear to
-      // support creating on PUT. Note that this is potentially racy if the namespace is created
-      // between the PUT and the POST, but it's likely safer to surface that error all the way to
-      // the user in that case than to attempt to recover beyond this point.
-      case io.buoyant.k8s.Api.NotFound(_) => create(ns, dtab)
+    val nsDTab = api.dtabs.named(ns)
+    nsDTab.get().flatMap {
+      case Some(value) =>
+        val resourceVersion = for {
+          meta <- value.metadata
+          version <- meta.resourceVersion
+        } yield version
+        nsDTab.put(namedDtab(ns, dtab, resourceVersion)).unit.rescue {
+          // In the event of a 404 on a PUT, we should POST instead, as the k8s API doesn't appear to
+          // support creating on PUT. Note that this is potentially racy if the namespace is created
+          // between the PUT and the POST, but it's likely safer to surface that error all the way to
+          // the user in that case than to attempt to recover beyond this point.
+          case io.buoyant.k8s.Api.NotFound(_) => create(ns, dtab)
+        }
+      case None => create(ns, dtab)
     }
   }
 
