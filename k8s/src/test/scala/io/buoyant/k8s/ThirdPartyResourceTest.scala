@@ -90,6 +90,8 @@ object ThirdPartyResourceTest {
   implicit private val bookTypeRef = new TypeReference[Book] {}
   implicit private val bookListTypeRef = new TypeReference[BookList] {}
   implicit private val bookWatchTypeRef = new TypeReference[BookWatch] {}
+  implicit private val booksWatchIsOrdered =
+    new ResourceVersionOrdering[Book, BookWatch]
 
   case class Api(client: Client) extends ThirdPartyVersion[Object] {
     def owner = "buoyant.io"

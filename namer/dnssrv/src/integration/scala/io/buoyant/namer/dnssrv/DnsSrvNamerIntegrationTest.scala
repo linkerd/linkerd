@@ -14,12 +14,11 @@ class DnsSrvNamerIntegrationTest extends FunSuite with Awaits with Matchers {
     val namer = new DnsSrvNamer(
       Path.empty,
       new DNS.ExtendedResolver,
-      DNS.Name.fromString("mxtoolbox.com", DNS.Name.root),
       Duration.Zero,
       new NullStatsReceiver,
       FuturePool.unboundedPool
     )(DefaultTimer)
-    await(namer.lookup(Path.read("/_http._tcp")).toFuture) match {
+    await(namer.lookup(Path.read("/_http._tcp.mxtoolbox.com")).toFuture) match {
       case NameTree.Leaf(Name.Bound(varAddr)) => varAddr.sample() match {
         case Addr.Bound(addrs, _) => addrs should not be empty
         case addr => fail(s"unexpected addr: $addr")

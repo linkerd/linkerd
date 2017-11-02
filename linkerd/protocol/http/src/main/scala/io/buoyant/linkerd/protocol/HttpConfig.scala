@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
-import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
@@ -20,7 +20,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
-import io.buoyant.router.http.AddForwardedHeader
+import io.buoyant.router.http.{AddForwardedHeader, TimestampHeaderFilter}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -40,7 +40,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(http.AccessLogger.module)
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
       .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
-      .insertAfter(DtabStatsFilter.role, HttpLoggerConfig.module)
+      .insertAfter(DtabStatsFilter.role, HttpRequestAuthorizerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
       .insertAfter(AddrMetadataExtraction.Role, RewriteHostHeader.module)
       // ensure the client-stack framing filter is placed below the stats filter
@@ -152,12 +152,15 @@ trait HttpSvcConfig extends SvcConfig {
 }
 
 case class HttpServerConfig(
-  addForwardedHeader: Option[AddForwardedHeaderConfig]
+  addForwardedHeader: Option[AddForwardedHeaderConfig],
+  timestampHeader: Option[String]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams + AddForwardedHeaderConfig.Param(addForwardedHeader)
+    super.serverParams +
+      AddForwardedHeaderConfig.Param(addForwardedHeader) +
+      TimestampHeaderFilter.Param(timestampHeader)
   }
 }
 
@@ -178,7 +181,7 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
 case class HttpConfig(
   httpAccessLog: Option[String],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
-  loggers: Option[Seq[HttpLoggerConfig]],
+  loggers: Option[Seq[HttpRequestAuthorizerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -211,7 +214,7 @@ case class HttpConfig(
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
       }
-    HttpLoggerConfig.param.Logger(loggerStack)
+    HttpRequestAuthorizerConfig.param.RequestAuthorizer(loggerStack)
   }
 
   @JsonIgnore

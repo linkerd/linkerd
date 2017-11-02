@@ -94,6 +94,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         .serve(new InetSocketAddress(0), ThriftMux.Router.IngestingFilter.andThen(factory))
     }
 
+    val method = "ping"
     val path = "/thriftmux"
     val bound = s"/$$/inet/127.1/${cat.port}"
 
@@ -105,6 +106,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         assert(rsp == "meow")
         withAnnotations(tracer) { anns =>
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.Rpc(method)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
           ()
@@ -115,6 +117,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         assert(rsp == "meow")
         withAnnotations(tracer) { anns =>
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.Rpc(method)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
           ()
@@ -152,6 +155,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         .serve(new InetSocketAddress(0), ThriftMux.Router.IngestingFilter.andThen(factory))
     }
 
+    val method = "ping"
     val path = "/thriftmux"
     val bound = s"/$$/inet/127.1/${dog.port}"
 
@@ -163,6 +167,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         assert(rsp == "woof")
         withAnnotations(tracer) { anns =>
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.Rpc(method)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
           ()
@@ -173,6 +178,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
         assert(rsp == "woof")
         withAnnotations(tracer) { anns =>
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
+          assert(anns.contains(Annotation.Rpc(method)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
           ()

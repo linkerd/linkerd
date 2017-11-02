@@ -38,7 +38,7 @@ object LinkerdBuild extends Base {
     .withTests()
 
   lazy val istio = projectDir("istio")
-    .dependsOn(k8s, Namer.core, istioProto)
+    .dependsOn(k8s, Router.core, Namer.core, istioProto)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()

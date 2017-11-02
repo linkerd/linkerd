@@ -47,6 +47,8 @@ package object v1beta1 {
   implicit private val ingressType = new TypeReference[Ingress] {}
   implicit private val ingressWatch = new TypeReference[IngressWatch] {}
 
+  implicit private val ingressWatchIsOrdered = new ResourceVersionOrdering[Ingress, IngressWatch] {}
+
   case class Api(client: Client) extends Version[Object] {
     def group = v1beta1.group
     def version = v1beta1.version

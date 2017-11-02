@@ -1,7 +1,7 @@
 package io.buoyant.namerd.storage.kubernetes
 
 import com.fasterxml.jackson.core.`type`.TypeReference
-import io.buoyant.k8s.{Client, NsThirdPartyVersion, ThirdPartyVersion}
+import io.buoyant.k8s.{Client, NsThirdPartyVersion, ResourceVersionOrdering, ThirdPartyVersion}
 
 case class Api(client: Client) extends ThirdPartyVersion[Dtab] {
   override def owner: String = Api.Owner
@@ -13,6 +13,7 @@ case class Api(client: Client) extends ThirdPartyVersion[Dtab] {
   implicit private[this] val dtabTypeRef = new TypeReference[Dtab] {}
   implicit private[this] val dtabWatchTypeRef = new TypeReference[DtabWatch] {}
   implicit private[this] val dtabListTypeRef = new TypeReference[DtabList] {}
+  implicit private[this] val dtabWatchIsVersioned = new ResourceVersionOrdering[Dtab, DtabWatch]
   def dtabs = listResource[Dtab, DtabWatch, DtabList]()
 }
 
@@ -27,5 +28,6 @@ class NsApi(client: Client, ns: String)
   implicit private[this] val dtabTypeRef = new TypeReference[Dtab] {}
   implicit private[this] val dtabWatchTypeRef = new TypeReference[DtabWatch] {}
   implicit private[this] val dtabListTypeRef = new TypeReference[DtabList] {}
+  implicit private[this] val dtabWatchIsVersioned = new ResourceVersionOrdering[Dtab, DtabWatch]
   def dtabs = listResource[Dtab, DtabWatch, DtabList]()
 }

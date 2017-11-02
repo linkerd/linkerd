@@ -41,6 +41,12 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
     assert(response.head.ServicePort == Some(8084))
   }
 
+  test("serviceNodes endpoint for empty response") {
+    val service = stubService(Buf.Utf8("[]"))
+    val response = await(CatalogApi(service).serviceNodes("foo")).value
+    assert(response.isEmpty)
+  }
+
   test("serviceNodes endpoint supports consistency parameter") {
     val service = stubService(nodesBuf)
     val api = CatalogApi(service)

@@ -47,7 +47,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
 
   def withNamespace(ns: String) = new NsVersion[O](client, group, version, ns)
 
-  def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
+  def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference: Ordering, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](this, backoffs, stats)
@@ -74,13 +74,13 @@ private[k8s] class NsVersion[O <: KubeObject](
   override val path = s"/$group/$version/namespaces/$ns"
   override val watchPath = s"/$group/$version/watch/namespaces/$ns"
 
-  def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference, L <: KubeList[T]: TypeReference](
+  def listResource[T <: O: TypeReference, W <: Watch[T]: Ordering: TypeReference, L <: KubeList[T]: TypeReference](
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) =
     new NsListResource[T, W, L](this, backoffs, stats)
 
-  def objectResource[T <: O: TypeReference, W <: Watch[T]: TypeReference](
+  def objectResource[T <: O: TypeReference, W <: Watch[T]: Ordering: TypeReference](
     name: String,
     backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
@@ -129,7 +129,7 @@ class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerV
  * Represents the functionality for a  kubernetes API resource serving a list of objects, for example:
  * `/api/v1/namespaces/{namespace}/endpoints`.
  */
-private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
+private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, L <: KubeList[O]: TypeReference](
   parent: Resource,
   protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
@@ -150,11 +150,9 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
     fieldSelector: Option[String]
   ): Future[(Seq[W], Option[String])] =
     get(
-      labelSelector,
-      fieldSelector,
-      None,
-      retryIndefinitely = true,
-      watch = true
+      labelSelector = labelSelector,
+      fieldSelector = fieldSelector,
+      retryIndefinitely = true
     ).map { maybeList =>
       val list = maybeList.get // list resources should always exist
       (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
@@ -165,7 +163,7 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: T
  * Namespaced list resources support more operations than non-namespaced, including POST, DELETE, and
  * retrieval of individual items in the list. (We don't have a full implementation yet).
  */
-private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference, L <: KubeList[O]: TypeReference](
+private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, L <: KubeList[O]: TypeReference](
   parent: NsVersion[_],
   backoffs: Stream[Duration] = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
@@ -190,7 +188,7 @@ private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]:
   }
 }
 
-private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: TypeReference](
+private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference](
   parent: Resource,
   objectName: String,
   listName: Option[String] = None,
@@ -226,19 +224,14 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
     fieldSelector: Option[String] = None
   ): Future[(Seq[W], Option[String])] =
     get(
-      labelSelector,
-      fieldSelector,
-      None,
-      retryIndefinitely = true,
-      watch = true
+      labelSelector = labelSelector,
+      fieldSelector = fieldSelector,
+      retryIndefinitely = true
     ).map { maybeObj =>
       val watch = maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) }
-      val version =
-        for {
-          obj <- maybeObj
-          meta <- obj.metadata
-          version <- meta.resourceVersion
-        } yield version
-      (watch, version)
+      // object watches don't supply a resource version, since the version associated
+      // with the object is tied to when the object was last modified, and therefore
+      // it may be too old to successfully establish a watch
+      (watch, None)
     }
 }

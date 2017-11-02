@@ -598,7 +598,6 @@ namers:
 - kind: io.l5d.dnssrv
   experimental: true
   refreshIntervalSeconds: 5
-  domain: srv.dc-1.example.org
   dnsHosts:
   - ns0.example.org
   - ns1.example.org
@@ -622,7 +621,6 @@ Key | Default Value | Description
 prefix | `io.l5d.dnssrv` | Resolves names with `/#/<prefix>`.
 experimental | `false` | Since the DNS-SRV namer is still considered experimental, this must be set to `true`.
 refreshIntervalSeconds | `5` | linkerd will perform a SRV lookup for each host every `refreshIntervalSeconds`.
-domain | `.` | Domain to use to expand relative addresses in the dtab into absolute addresses. Absolute addresses ending in `.` will not be expanded. The default value treats all addresses as absolute.
 dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to perform SRV lookups. If not specified, linkerd will use the default system resolver.
 
 ### DNS-SRV Path Parameters
@@ -636,7 +634,7 @@ dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to 
 Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
-address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup. Relative addresses not ending in `.` are resolved relative to `searchDomain`; absolute addresses ending in `.` are treated as-is.
+address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup.
 
 ## ZooKeeper Leader
 
@@ -813,7 +811,7 @@ would be rewritten to `/pfx/foo/resource/name`
 /$/io.buoyant.hostportPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with host followed by ip. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 
@@ -834,7 +832,7 @@ would be rewritten to `/pfx/host/port/etc`.
 /$/io.buoyant.porthostPfx/<prefix>/<host>:<port>/etc
 ```
 
-Rewrites a name of the form "host:ip" as a path with ip followed by host. Does
+Rewrites a name of the form "host:port" as a path with the port followed by the host. Does
 not support IPv6 host IPs (because IPv6 notation doesn't work in Paths as-is
 due to bracket characters).
 

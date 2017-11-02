@@ -7,8 +7,9 @@ import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpInitializer}
 import io.buoyant.router.Http
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
+import io.buoyant.router.http.TimestampHeaderFilter
 import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import io.buoyant.test.FunSuite
 
 class HttpConfigTest extends FunSuite with Awaits {
 
@@ -112,5 +113,22 @@ class HttpConfigTest extends FunSuite with Awaits {
       await(identifier(req)).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
         Path.read("/svc/one")
     )
+  }
+
+  test("timestamp header") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |servers:
+                  |- port: 5000
+                  |  timestampHeader: x-request-start
+      """.stripMargin
+    val config = parse(yaml)
+    val timestamper = config.servers
+      .head
+      .serverParams[TimestampHeaderFilter.Param]
+    assert(timestamper.header.contains("x-request-start"))
+
   }
 }
