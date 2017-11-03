@@ -11,8 +11,9 @@ import com.twitter.logging.Logger
 import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.{Handler, NavItem}
-import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
+import io.buoyant.namer.{InterpreterInitializer, InterpreterRefresher, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
+import java.util.concurrent.atomic.AtomicReference
 import scala.util.control.NonFatal
 
 /**
@@ -112,10 +113,23 @@ case class NamerdInterpreterConfig(
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
-    val iface = client.newIface[thrift.Namer.FutureIface](name, label)
+    def newClient() = client.newClient(name, label).toService
 
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]
+
+    val clientRef = new AtomicReference(newClient())
+    val iface = Var(new thrift.Namer.FinagledClient(clientRef.get()))
+    val _refresh = InterpreterRefresher.refresh.respond { _ =>
+      log.info("refreshing namerd interpreter for %s", routerLabel)
+
+      val old = clientRef.getAndSet(newClient())
+      iface.update(new thrift.Namer.FinagledClient(clientRef.get()))
+
+      val _ = old.close(Time.now + 1.minute).onFailure { e =>
+        log.error(e, "failed to close old namerd interpreter")
+      }
+    }
 
     new ThriftNamerClient(iface, ns, stats) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))

@@ -4,6 +4,7 @@ import com.twitter.finagle.Path
 import com.twitter.util._
 import io.buoyant.admin.{App, Build}
 import io.buoyant.linkerd.admin.LinkerdAdmin
+import io.buoyant.namer.InterpreterRefresher
 import java.io.File
 import java.net.{InetSocketAddress, NetworkInterface}
 import scala.collection.JavaConverters._
@@ -29,13 +30,16 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
+
         val linker = config.mk()
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
         val routers = linker.routers.map(initRouter(_))
 
         log.info("initialized")
+        registerRefreshSignalHandler()
         registerTerminationSignalHandler(config.admin.flatMap(_.shutdownGraceMs))
+
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
           Closable.all(telemeters: _*),
@@ -153,4 +157,17 @@ object Main extends App {
     val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
   }
 
+  /**
+   * Register a SIGHUP handler that publishes to an Event when HUP is called.
+   */
+  private def registerRefreshSignalHandler(): Unit = {
+    val handler = new SignalHandler {
+      override def handle(sig: Signal): Unit = {
+        log.info("Received %s. Notifying for refresh", sig)
+        InterpreterRefresher.refresh.notify(Time.now)
+      }
+    }
+
+    val _ = Signal.handle(new Signal("HUP"), handler)
+  }
 }

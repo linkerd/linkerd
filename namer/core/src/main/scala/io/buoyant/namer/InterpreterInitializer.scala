@@ -3,8 +3,13 @@ package io.buoyant.namer
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.util.{Event, Time, Witness}
 import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 import scala.util.control.NoStackTrace
+
+object InterpreterRefresher {
+  val refresh: Event[Time] with Witness[Time] = Event()
+}
 
 abstract class InterpreterConfig extends PolymorphicConfig {
 
