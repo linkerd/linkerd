@@ -13,7 +13,6 @@ import com.twitter.util.TimeConversions._
 import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
-import java.util.concurrent.atomic.AtomicReference
 
 class ThriftNamerClient(
   client: Var[thrift.Namer.FutureIface],
@@ -88,7 +87,8 @@ class ThriftNamerClient(
             case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
               Trace.recordBinary("namerd.client/bind.fail", reason)
               if (!stopped) {
-                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
+                log.debug("resetting stamp on bind")
+                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(TStamp.empty))
               }
 
             // XXX we have to handle other errors, right?
@@ -103,6 +103,7 @@ class ThriftNamerClient(
         Closable.make { deadline =>
           log.debug("bind released %s", path.show)
           stopped = true
+          pending.raise(Failure("bind released", Failure.Interrupted))
           Future.Unit
         }
       }
@@ -196,7 +197,8 @@ class ThriftNamerClient(
             case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
               Trace.recordBinary("namerd.client/addr.fail", msg)
               if (!stopped) {
-                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
+                log.debug("resetting stamp on addr")
+                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(TStamp.empty))
               }
 
             case Throw(e) =>
@@ -210,6 +212,7 @@ class ThriftNamerClient(
         Closable.make { deadline =>
           log.debug("addr released %s", idPath)
           stopped = true
+          pending.raise(Failure("addr released", Failure.Interrupted))
           Future.Unit
         }
       }
@@ -304,6 +307,7 @@ class ThriftNamerClient(
         loop(TStamp.empty)
         Closable.make { deadline =>
           stopped = true
+          pending.raise(Failure("delegat released", Failure.Interrupted))
           Future.Unit
         }
       }
@@ -346,6 +350,7 @@ class ThriftNamerClient(
         Closable.make { deadline =>
           log.debug("dtab %s released", namespace)
           stopped = true
+          pending.raise(Failure("dtab released", Failure.Interrupted))
           Future.Unit
         }
       }
