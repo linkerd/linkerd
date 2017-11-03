@@ -120,8 +120,10 @@ case class NamerdInterpreterConfig(
 
     val clientRef = new AtomicReference(newClient())
     val iface = Var(new thrift.Namer.FinagledClient(clientRef.get()))
+    val refreshes = stats.counter("refreshes")
     val _refresh = InterpreterRefresher.refresh.respond { _ =>
       log.info("refreshing namerd interpreter for %s", routerLabel)
+      refreshes.incr()
 
       val old = clientRef.getAndSet(newClient())
       iface.update(new thrift.Namer.FinagledClient(clientRef.get()))
