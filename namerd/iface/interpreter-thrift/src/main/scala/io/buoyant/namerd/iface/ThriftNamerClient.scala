@@ -114,7 +114,10 @@ class ThriftNamerClient(
       }
     }
 
-    Activity(states)
+    // Ensure observations can be shared.
+    Activity(Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { u =>
+      states.changes.respond(u.update(_))
+    })
   }
 
   private[this] def mkTree(ttree: thrift.BoundTree): NameTree[Name.Bound] = {
@@ -173,10 +176,9 @@ class ThriftNamerClient(
 
   private[this] def watchAddr(id: TPath): Var[Addr] = {
     val idPath = mkPath(id).show
+    log.debug("watchAddr %s", idPath)
 
-    client.flatMap { client =>
-      log.debug("addr client %s %s", idPath, client)
-
+    val addr = client.flatMap { client =>
       Var.async[Addr](Addr.Pending) { addr =>
         @volatile var stopped = false
         @volatile var pending: Future[_] = Future.Unit
@@ -221,6 +223,7 @@ class ThriftNamerClient(
           }
         }
 
+        log.debug("addr client %s %s", idPath, client)
         loop(TStamp.empty)
         Closable.make { deadline =>
           log.debug("addr released %s %s", idPath, client)
@@ -229,6 +232,11 @@ class ThriftNamerClient(
           Future.Unit
         }
       }
+    }
+
+    // Stabilize resolutions so that results are shared across observations.
+    Var.async[Addr](Addr.Pending) { u =>
+      addr.changes.respond(u.update(_))
     }
   }
 
@@ -328,7 +336,10 @@ class ThriftNamerClient(
       }
     }
 
-    Activity(states)
+    // Ensure observations can be shared.
+    Activity(Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { u =>
+      states.changes.respond(u.update(_))
+    })
   }
 
   override def dtab: Activity[Dtab] = {
@@ -373,6 +384,9 @@ class ThriftNamerClient(
       }
     }
 
-    Activity(states)
+    // Ensure observations can be shared.
+    Activity(Var.async[Activity.State[Dtab]](Activity.Pending) { u =>
+      states.changes.respond(u.update(_))
+    })
   }
 }

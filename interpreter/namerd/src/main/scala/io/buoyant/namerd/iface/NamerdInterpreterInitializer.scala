@@ -139,7 +139,11 @@ case class NamerdInterpreterConfig(
       newClient()
     }
 
-    val iface = Var(init, refresh).map(new thrift.Namer.FinagledClient(_))
+    val iface = Var.async(new thrift.Namer.FinagledClient(init)) { up =>
+      refresh.respond { c =>
+        up() = new thrift.Namer.FinagledClient(c)
+      }
+    }
 
     new ThriftNamerClient(iface, ns, stats) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
