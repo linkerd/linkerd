@@ -88,6 +88,7 @@ case class NamerdInterpreterConfig(
             val param.Stats(stats) = _stats
             val retry = new RetryFilter[Req, Rsp](
               RetryPolicy.backoff(backoffs) {
+                case (_, Throw(Failure(Some(Released)))) => false
                 case (_, Throw(NonFatal(ex))) =>
                   log.error(ex, "namerd request failed")
                   true
@@ -101,6 +102,10 @@ case class NamerdInterpreterConfig(
         }
     }
 
+    val monitor = Monitor.mk {
+      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+    }
+
     val param.Stats(stats0) = params[param.Stats]
     val stats = stats0.scope(label)
 
@@ -109,6 +114,7 @@ case class NamerdInterpreterConfig(
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ tlsParams ++ params)
       .transformed(retryTransformer)
+      .withMonitor(monitor)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 

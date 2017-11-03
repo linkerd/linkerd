@@ -14,6 +14,8 @@ import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
+object Released extends Throwable
+
 class ThriftNamerClient(
   client: Var[thrift.Namer.FutureIface],
   namespace: String,
@@ -74,6 +76,7 @@ class ThriftNamerClient(
           val req = thrift.BindReq(tdtab, thrift.NameRef(stamp0, tpath, namespace), tclientId)
           pending = Trace.letClear(client.bind(req)).respond {
             case Return(thrift.Bound(stamp1, ttree, _)) =>
+              log.debug("name bound %s", path.show)
               states() = Try(mkTree(ttree)) match {
                 case Return(tree) =>
                   Trace.recordBinary("namerd.client/bind.tree", tree.show)
@@ -87,13 +90,15 @@ class ThriftNamerClient(
             case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
               Trace.recordBinary("namerd.client/bind.fail", reason)
               if (!stopped) {
-                log.debug("resetting stamp on bind")
+                log.debug(e, "resetting stamp on bind")
                 pending = Future.sleep(retry.seconds).onSuccess(_ => loop(TStamp.empty))
               }
 
+            case Throw(Failure(Some(Released))) =>
+
             // XXX we have to handle other errors, right?
             case Throw(e) =>
-              log.error(e, "bind %s", path.show)
+              log.error(e, "bind on %s", path.show)
               Trace.recordBinary("namerd.client/bind.exc", e.toString)
               states() = Activity.Failed(e)
           }
@@ -103,7 +108,7 @@ class ThriftNamerClient(
         Closable.make { deadline =>
           log.debug("bind released %s", path.show)
           stopped = true
-          pending.raise(Failure("bind released", Failure.Interrupted))
+          pending.raise(Failure(Released, Failure.Interrupted))
           Future.Unit
         }
       }
@@ -130,6 +135,7 @@ class ThriftNamerClient(
               addr
           }
         }
+        log.debug("bound leaf %s", id.show)
         NameTree.Leaf(Name.Bound(addr, id, residual))
 
       case thrift.BoundNode.Alt(ids) =>
@@ -169,6 +175,8 @@ class ThriftNamerClient(
     val idPath = mkPath(id).show
 
     client.flatMap { client =>
+      log.debug("addr client %s %s", idPath, client)
+
       Var.async[Addr](Addr.Pending) { addr =>
         @volatile var stopped = false
         @volatile var pending: Future[_] = Future.Unit
@@ -176,13 +184,16 @@ class ThriftNamerClient(
         def loop(stamp0: TStamp): Unit = if (!stopped) {
           Trace.recordBinary("namerd.client/addr.path", idPath)
           val req = thrift.AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
+          log.debug("addr %s %s", idPath, client)
           pending = Trace.letClear(client.addr(req)).respond {
             case Return(thrift.Addr(stamp1, thrift.AddrVal.Neg(_))) =>
+              log.debug("addr neg %s %s", idPath, client)
               addr() = Addr.Neg
               Trace.record("namerd.client/addr.neg")
               loop(stamp1)
 
             case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, boundMeta)))) =>
+              log.debug("addr bound %s %s", idPath, client)
               val addrs = taddrs.map { taddr =>
                 val thrift.TransportAddress(ipbb, port, addressMeta) = taddr
                 val ipBytes = Buf.ByteArray.Owned.extract(Buf.ByteBuffer.Owned(ipbb))
@@ -197,12 +208,14 @@ class ThriftNamerClient(
             case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
               Trace.recordBinary("namerd.client/addr.fail", msg)
               if (!stopped) {
-                log.debug("resetting stamp on addr")
+                log.debug(e, "resetting stamp on addr %s", idPath)
                 pending = Future.sleep(retry.seconds).onSuccess(_ => loop(TStamp.empty))
               }
 
+            case Throw(Failure(Some(Released))) =>
+
             case Throw(e) =>
-              log.error(e, "addr on %s", idPath)
+              log.error(e, "addr on %s %s", idPath, client)
               Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
               addr() = Addr.Failed(e)
           }
@@ -210,9 +223,9 @@ class ThriftNamerClient(
 
         loop(TStamp.empty)
         Closable.make { deadline =>
-          log.debug("addr released %s", idPath)
+          log.debug("addr released %s %s", idPath, client)
           stopped = true
-          pending.raise(Failure("addr released", Failure.Interrupted))
+          pending.raise(Failure(Released, Failure.Interrupted))
           Future.Unit
         }
       }
@@ -298,6 +311,8 @@ class ThriftNamerClient(
               log.error("delegation failed: %s", reason)
               states() = Activity.Failed(e)
 
+            case Throw(Failure(Some(Released))) =>
+
             case Throw(e) =>
               log.error(e, "delegation failed")
               states() = Activity.Failed(e)
@@ -307,7 +322,7 @@ class ThriftNamerClient(
         loop(TStamp.empty)
         Closable.make { deadline =>
           stopped = true
-          pending.raise(Failure("delegat released", Failure.Interrupted))
+          pending.raise(Failure(Released, Failure.Interrupted))
           Future.Unit
         }
       }
@@ -340,6 +355,8 @@ class ThriftNamerClient(
               log.error("dtab %s lookup failed: %s", namespace, reason)
               states() = Activity.Failed(e)
 
+            case Throw(Failure(Some(Released))) =>
+
             case Throw(e) =>
               log.error(e, "dtab %s lookup failed", namespace)
               states() = Activity.Failed(e)
@@ -350,7 +367,7 @@ class ThriftNamerClient(
         Closable.make { deadline =>
           log.debug("dtab %s released", namespace)
           stopped = true
-          pending.raise(Failure("dtab released", Failure.Interrupted))
+          pending.raise(Failure(Released, Failure.Interrupted))
           Future.Unit
         }
       }
