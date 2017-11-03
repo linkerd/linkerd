@@ -13,7 +13,6 @@ import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, InterpreterRefresher, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
-import java.util.concurrent.atomic.AtomicReference
 import scala.util.control.NonFatal
 
 /**
@@ -118,20 +117,23 @@ case class NamerdInterpreterConfig(
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]
 
-    val clientRef = new AtomicReference(newClient())
-    val iface = Var(new thrift.Namer.FinagledClient(clientRef.get()))
     val refreshes = stats.counter("refreshes")
-    val _refresh = InterpreterRefresher.refresh.respond { _ =>
+    val init = newClient()
+    val refresh = InterpreterRefresher.event.foldLeft(init) { (prior, _) =>
       log.info("refreshing namerd interpreter for %s", routerLabel)
       refreshes.incr()
 
-      val old = clientRef.getAndSet(newClient())
-      iface.update(new thrift.Namer.FinagledClient(clientRef.get()))
-
-      val _ = old.close(Time.now + 1.minute).onFailure { e =>
-        log.error(e, "failed to close old namerd interpreter")
+      prior.close(Time.now).respond {
+        case Return(_) =>
+          log.debug("closed namerd interpreter for %s", routerLabel)
+        case Throw(e) =>
+          log.error(e, "failed to close namerd interpreter for %s", routerLabel)
       }
+
+      newClient()
     }
+
+    val iface = Var(init, refresh).map(new thrift.Namer.FinagledClient(_))
 
     new ThriftNamerClient(iface, ns, stats) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))

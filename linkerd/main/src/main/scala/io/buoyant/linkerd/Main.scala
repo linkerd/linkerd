@@ -163,8 +163,8 @@ object Main extends App {
   private def registerRefreshSignalHandler(): Unit = {
     val handler = new SignalHandler {
       override def handle(sig: Signal): Unit = {
-        log.info("Received %s. Notifying for refresh", sig)
-        InterpreterRefresher.refresh.notify(Time.now)
+        log.info("Received %s. Notifying interpreters for refresh", sig)
+        InterpreterRefresher.refresh()
       }
     }
 
