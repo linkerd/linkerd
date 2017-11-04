@@ -3,6 +3,7 @@ package netty4
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import com.twitter.conversions.time._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ChannelClosedException, Failure}
@@ -17,26 +18,38 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def log: Logger
   protected[this] def prefix: String
   protected[this] def stats: StatsReceiver
+  protected[this] implicit def timer: Timer
 
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
+
+  protected[this] val streamTTLSecs: Duration = 60.seconds // TODO: is this reasonable? should this be configurable?
 
   /**
    * The various states a stream can be in (particularly closed).
    *
    * The failures are distinguished so that the dispatcher can be
    * smart about (not) emiting resets to the remote.
-   *
-   * TODO only track closed streams for a TTL after it has closed.
    */
   private[this] sealed trait StreamTransport {
     def reset(err: Reset): Unit = {}
   }
+
+  private[this] trait SelfReaping {
+    def id: Int
+    log.trace("[%s S:%d] stream %d will reap itself in %s", prefix, id, id, streamTTLSecs)
+    Future.sleep(streamTTLSecs).ensure {
+      val _ = streams.remove(id)
+      log.debug("[%s S:%d] reaped", prefix, id)
+    }
+  }
+
   private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport {
     def toClosed: Option[StreamClosed] =
       this.stream.resetClient.map { resetP => StreamClosed(stream.streamId, resetP) }
     override def reset(err: Reset): Unit = stream.remoteReset(err)
   }
+
   private[this] case class StreamClosed(id: Int, onReset: Promise[Unit]) extends StreamTransport {
 
     onReset.setInterruptHandler {
@@ -54,11 +67,16 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     }
   }
 
-  private[this] object StreamLocalReset extends StreamTransport
-  private[this] object StreamRemoteReset extends StreamTransport
-  private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
+  private[this] case class StreamLocalReset(override val id: Int)
+    extends StreamTransport with SelfReaping
+  private[this] case class StreamRemoteReset(override val id: Int)
+    extends StreamTransport with SelfReaping
+  private[this] case class StreamFailed(cause: Throwable, override val id: Int)
+    extends StreamTransport with SelfReaping
 
   private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
+
+
   private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
   protected[this] def isClosed = closed.get
 
@@ -107,7 +125,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Throw(StreamError.Remote(e)) =>
         // The remote initiated a reset, so just update the state and
         // do nothing else.
-        if (streams.replace(id, open, StreamRemoteReset)) {
+        if (streams.replace(id, open, StreamRemoteReset(id))) {
           e match {
             case rst: Reset => log.debug("[%s S:%d] stream reset from remote: %s", prefix, id, rst)
             case e => log.error(e, "[%s S:%d] stream reset from remote", prefix, id)
@@ -117,7 +135,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Throw(StreamError.Local(e)) =>
         // The local side initiated a reset, so send a reset to
         // the remote.
-        if (streams.replace(id, open, StreamLocalReset)) {
+        if (streams.replace(id, open, StreamLocalReset(id))) {
           log.debug("[%s S:%d] stream reset from local; resetting remote: %s", prefix, id, e)
           val rst = e match {
             case rst: Reset => rst
@@ -127,7 +145,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         }
 
       case Throw(e) =>
-        if (streams.replace(id, open, StreamFailed(e))) {
+        if (streams.replace(id, open, StreamFailed(e, id))) {
           log.error(e, "[%s S:%d] stream reset", prefix, id)
           if (!closed.get) { writer.reset(id, Reset.InternalError); () }
         }
@@ -190,14 +208,14 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
                 if (closed.get) Future.Unit
                 else transport.read().transform(loop)
 
-              case StreamLocalReset | StreamFailed(_) =>
+              case StreamLocalReset(_) | StreamFailed(_, _) =>
                 // The local stream was already reset, but we may still
                 // receive frames until the remote is notified.  Just
                 // disregard these frames.
                 if (closed.get) Future.Unit
                 else transport.read().transform(loop)
 
-              case StreamRemoteReset =>
+              case StreamRemoteReset(_) =>
                 // The stream has been reset and should know better than
                 // to send us messages.
                 writer.reset(id, Reset.Closed)

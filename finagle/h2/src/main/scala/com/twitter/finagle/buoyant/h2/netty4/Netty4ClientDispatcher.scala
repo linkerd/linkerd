@@ -11,6 +11,8 @@ import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.finagle.buoyant.h2.netty4.Netty4StreamTransport.log
 
+import com.twitter.finagle.util.DefaultTimer
+
 object Netty4ClientDispatcher {
   private val log = Logger.get("h2")
   private val BaseStreamId = 3 // ID=1 is reserved for HTTP/1 upgrade
@@ -26,7 +28,8 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
-  protected[this] val stats: StatsReceiver
+  protected[this] val stats: StatsReceiver,
+  override protected[this] val timer: Timer = DefaultTimer
 ) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
 

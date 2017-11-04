@@ -5,9 +5,11 @@ import com.twitter.finagle.{Failure, Service}
 import com.twitter.finagle.context.{Contexts, RemoteInfo}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
+
 import scala.util.control.NoStackTrace
 
 object Netty4ServerDispatcher {
@@ -31,7 +33,8 @@ object Netty4ServerDispatcher {
 class Netty4ServerDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   service: Service[Request, Response],
-  protected[this] val stats: StatsReceiver
+  protected[this] val stats: StatsReceiver,
+  override protected[this] val timer: Timer = DefaultTimer
 ) extends Netty4DispatcherBase[Response, Request] with Closable {
   import Netty4ServerDispatcher._
 
