@@ -316,6 +316,7 @@ object StackRouter {
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
         .replace(FFailureAccrualFactory.role, FailureAccrualFactory.module[Req, Rsp])
+        .insertBefore(LatencyCompensation.Role, FactoryStats.module[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -358,6 +359,7 @@ object StackRouter {
     stk.push(DstTracing.Path.module)
     stk.push(DstPathCtx.Setter.module)
     stk.push(PathRegistry.module)
+    stk.push(FactoryStats.module)
     stk.result
   }
 
@@ -366,6 +368,7 @@ object StackRouter {
     stk.push(DstTracing.Bound.module)
     stk.push(EncodeResidual.role, identity[ServiceFactory[Req, Rsp]](_))
     stk.push(DstBoundCtx.Setter.module)
+    stk.push(FactoryStats.module)
     stk.result
   }
 
