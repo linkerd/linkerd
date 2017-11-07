@@ -75,32 +75,32 @@ case class NamerdInterpreterConfig(
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
 
-    // replaces the client's retry filter with one that retries unconditionally
-    val retryTransformer = new Stack.Transformer {
-      def apply[Req, Rsp](stk: Stack[ServiceFactory[Req, Rsp]]) =
-        stk.replace(Retries.Role, module[Req, Rsp])
+    // // replaces the client's retry filter with one that retries unconditionally
+    // val retryTransformer = new Stack.Transformer {
+    //   def apply[Req, Rsp](stk: Stack[ServiceFactory[Req, Rsp]]) =
+    //     stk.replace(Retries.Role, module[Req, Rsp])
 
-      def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-        new Stack.Module1[param.Stats, ServiceFactory[Req, Rsp]] {
-          val role = Retries.Role
-          val description = "Retries on any non-fatal error"
-          def make(_stats: param.Stats, next: ServiceFactory[Req, Rsp]) = {
-            val param.Stats(stats) = _stats
-            val retry = new RetryFilter[Req, Rsp](
-              RetryPolicy.backoff(backoffs) {
-                case (_, Throw(Failure(Some(Released)))) => false
-                case (_, Throw(NonFatal(ex))) =>
-                  log.error(ex, "namerd request failed")
-                  true
-              },
-              HighResTimer.Default,
-              stats,
-              RetryBudget.Infinite
-            )
-            retry.andThen(next)
-          }
-        }
-    }
+    //   def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
+    //     new Stack.Module1[param.Stats, ServiceFactory[Req, Rsp]] {
+    //       val role = Retries.Role
+    //       val description = "Retries on any non-fatal error"
+    //       def make(_stats: param.Stats, next: ServiceFactory[Req, Rsp]) = {
+    //         val param.Stats(stats) = _stats
+    //         val retry = new RetryFilter[Req, Rsp](
+    //           RetryPolicy.backoff(backoffs) {
+    //             case (_, Throw(Failure(Some(Released)))) => false
+    //             case (_, Throw(NonFatal(ex))) =>
+    //               log.error(ex, "namerd request failed")
+    //               true
+    //           },
+    //           HighResTimer.Default,
+    //           stats,
+    //           RetryBudget.Infinite
+    //         )
+    //         retry.andThen(next)
+    //       }
+    //     }
+    // }
 
     val monitor = Monitor.mk {
       case e: Failure if e.isFlagged(Failure.Interrupted) => true
@@ -113,7 +113,7 @@ case class NamerdInterpreterConfig(
 
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ tlsParams ++ params)
-      .transformed(retryTransformer)
+      // .transformed(retryTransformer)
       .withMonitor(monitor)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual

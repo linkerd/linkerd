@@ -100,7 +100,8 @@ class ThriftNamerClient(
             case Throw(e) =>
               log.error(e, "bind on %s", path.show)
               Trace.recordBinary("namerd.client/bind.exc", e.toString)
-              states() = Activity.Failed(e)
+              // states() = Activity.Failed(e)
+              loop(TStamp.empty)
           }
         }
 
