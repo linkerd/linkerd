@@ -1,20 +1,19 @@
 package io.buoyant.linkerd.protocol
 
 import com.twitter.finagle.http.{Request, Response, TlsFilter}
+import com.twitter.finagle.{Http => FinagleHttp, _}
 import com.twitter.finagle.ssl.server.SslServerConfiguration
-import com.twitter.finagle.ssl.{KeyCredentials, Ssl}
+import com.twitter.finagle.ssl.KeyCredentials
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Future, Try, Var}
+import com.twitter.util.{Future, Var}
 import java.io.{File, FileInputStream}
-import java.net.{InetSocketAddress, SocketAddress}
+import java.net.{InetSocketAddress}
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
 import javax.net.ssl.{SSLContext, TrustManagerFactory}
-
 import scala.sys.process._
-import com.twitter.finagle.{Http => FinagleHttp, _}
 
 object TlsUtils {
 
@@ -25,13 +24,14 @@ object TlsUtils {
   def run(p: ProcessBuilder): Int = p ! DevNull
 
   case class ServiceCert(cert: File, key: File) {
-    def delete(): Try[Unit] =
-      Try(assert(cert.delete()))
-        .flatMap(_ => Try(assert(key.delete())))
+    def delete() { assert(cert.delete() && key.delete()) }
 
-    def renameTo(name: String): Try[Unit] =
-      Try(assert(cert.renameTo(new File(cert.getParentFile, s"${name}_cert.pem"))))
-        .flatMap(_ => Try(assert(key.renameTo(new File(key.getParentFile, s"${name}_pk8.pem")))))
+    def renameTo(name: String) {
+      val newCert = new File(cert.getParentFile, s"${name}_cert.pem")
+      val newKey = new File(key.getParentFile, s"${name}_pk8.pem")
+      assert(cert.renameTo(newCert) && key.renameTo(newKey))
+    }
+
   }
   case class Certs(caCert: File, serviceCerts: Map[String, ServiceCert])
   def withCerts(names: String*)(f: Certs => Unit): Unit = {
