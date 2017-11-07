@@ -181,6 +181,18 @@ dtab: |
   /svc => /#/io.l5d.consul/dc1/prod;
 ```
 
+> Optionally, define node weight using tags:
+
+```yaml
+namers:
+- kind: io.l5d.consul
+  weights:
+   - tag: experimental
+     weight: 0.1
+   - tag: primary
+     weight: 5.0
+```
+
 linkerd provides support for service discovery via [Consul](https://www.consul.io/).
 
 Key | Default Value | Description
@@ -196,6 +208,7 @@ setHost | `false` | If `true`, HTTP requests resolved by Consul will have their 
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 preferServiceAddress | `true` | If `true` use the service address if defined and default to the node address. If `false` always use the node address.
+weights | none | List of tag-weight configurations, for adjusting the weights of node addresses. When a node matches more than one tag, it gets the highest matching weight. In the absence of match or configuration, nodes get a default weight of `1.0`. 
 
 ### Consul Path Parameters
 

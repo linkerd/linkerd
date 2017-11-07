@@ -647,4 +647,43 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assert(stats.counters.get(Seq("service", "closes")).contains(1))
     assert(stats.counters.get(Seq("service", "errors")) == None)
   }
+  test("Namer returns weighted bound address metadata when service has configured weight tag") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          val node = testServiceNode.copy(ServiceTags = Some(Seq("production", "primary")))
+          Future.value(Indexed[Seq[ServiceNode]](Seq(node), Some("1")))
+        case _ => Future.never //don't respond to blocking index calls
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      weights = Map("primary" -> 100),
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+
+    assertOnAddrs(state) { (addrs, _) =>
+      assert(addrs.size == 1)
+      val inet = addrs.head.asInstanceOf[Address.Inet]
+      assert(inet.metadata == Map(Metadata.endpointWeight -> 100))
+      ()
+    }
+
+    assert(stats.counters.get(Seq("service", "opens")).contains(1))
+    assert(stats.counters.get(Seq("service", "updates")).contains(1))
+    assert(stats.counters.get(Seq("lookups")).contains(1))
+  }
 }
