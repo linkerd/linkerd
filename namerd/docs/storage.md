@@ -39,16 +39,13 @@ namespace | `default` | The Kubernetes namespace in which dtabs will be stored. 
 The Kubernetes storage plugin does not support TLS.  Instead, you should run `kubectl proxy` on each host
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
-
 <p></p>
-
-**Deprecation Notice**:
-As of Kubernetes 1.8+, The ThirdPartyResource API has been [deprecated](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/) in favor of CustomResourceDefinitions
-API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects to CustomResourceDefinition objects. More details on how to migrate to the new API in Kubernetes 1.8+ can be found
-[here](https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource/). 
-
-
-**How to check ThirdPartyResource is enabled (for Kubernetes <= 1.7)**
+<aside class="notice">
+The "ThirdPartyResource" resource has been deprecated in favor of a "CustomResourceDefinition" resource in Kubernetes 1.7 and has officially been removed in Kubernetes 1.8+.
+To learn more about how to migrate existing third party resources to Custom Resource Definitions (CRD) <a href="https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource">See this guide.</a>
+</aside>
+ 
+### How to check if ThirdPartyResource is enabled (for Kubernetes v1.7 and below)
 
 1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
 2. Check that kind `ThirdPartyResource` exists in the response.
@@ -70,7 +67,21 @@ API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects
 }
 ```
 
-**How to check CustomResourceDefinition is enabled (for Kubernetes >= 1.8)**
+**Example of configuration for ThirdPartyResource in Kubernetes**
+
+Use this configuration to create the ThirdPartyResource if it does not exist.
+
+```yaml
+metadata:
+  name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: stores dtabs used by Buoyant's `namerd` service
+versions:
+  - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
+```
+
+### How to check if CustomResourceDefinition is enabled (for Kubernetes v1.8+)
 
 1. Open `apiextensions.k8s.io/v1beta1` api - `https://<k8s-cluster-host>/apis/apiextensions.k8s.io/v1beta1`.
 2. Check that kind `CustomResourceDefinition` exists in the response.
@@ -93,21 +104,7 @@ API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects
 }
 ```
 
-**Example of configuration for ThirdPartyResource in Kubernetes (for Kubernetes <= 1.7)**
-
-Use this configuration to create the ThirdPartyResource if it does not exist.
-
-```yaml
-metadata:
-  name: d-tab.l5d.io # the hyphen is required by the Kubernetes API. This will be converted to the CamelCase name "DTab".
-apiVersion: extensions/v1beta1
-kind: ThirdPartyResource
-description: stores dtabs used by Buoyant's `namerd` service
-versions:
-  - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
-```
-
-**Example of configuration for ThirdPartyResource in Kubernetes (for Kubernetes >= 1.8)**
+**Example of configuration for CustomResourceDefinition in Kubernetes**
 
 To create a new CustomResourceDefinition if using Kubernetes 1.8 and greater, use this configuration.
 
