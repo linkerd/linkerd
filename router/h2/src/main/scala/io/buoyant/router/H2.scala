@@ -1,6 +1,6 @@
 package io.buoyant.router
 
-import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Request, Response, param => h2param}
+import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Headers, Request, Response, param => h2param}
 import com.twitter.finagle.buoyant.{H2 => FinagleH2}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{param, _}
@@ -12,6 +12,8 @@ import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
+import io.buoyant.router.http.ForwardClientCertFilter
+import io.buoyant.router.H2Instances._
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -45,7 +47,7 @@ object H2 extends Router[Request, Response]
 
     val clientStack: Stack[ServiceFactory[Request, Response]] = {
       val stk = FinagleH2.Client.newStack
-      StackRouter.Client.mkStack(stk)
+      (ForwardClientCertFilter.module[Request, Headers, Response] +: StackRouter.Client.mkStack(stk))
         .replace(PerDstPathStatsFilter.role, PerDstPathStreamStatsFilter.module)
         .replace(LocalClassifierStatsFilter.role, LocalClassifierStreamStatsFilter.module)
         .replace(FailureAccrualFactory.role, H2FailureAccrualFactory.module)

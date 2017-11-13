@@ -4,7 +4,7 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.Failure
 import com.twitter.finagle.http.{Status, Request}
-import io.buoyant.linkerd.protocol.TlsUtils._
+import io.buoyant.linkerd.tls.TlsUtils._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -39,7 +39,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
         try {
           val server = router.servers.head.serve()
           try {
-            val client = upstream(server)
+            val client = Upstream.mk(server)
             try {
               val rsp = {
                 val req = Request()
@@ -86,7 +86,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
         try {
           val server = router.servers.head.serve()
           try {
-            val client = upstream(server)
+            val client = Upstream.mk(server)
             try {
               val rsp = {
                 val req = Request()

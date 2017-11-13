@@ -1,18 +1,6 @@
-package io.buoyant.linkerd.protocol
+package io.buoyant.linkerd.tls
 
-import com.twitter.finagle.http.{Request, Response, TlsFilter}
-import com.twitter.finagle.{Http => FinagleHttp, _}
-import com.twitter.finagle.ssl.server.SslServerConfiguration
-import com.twitter.finagle.ssl.KeyCredentials
-import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.tracing.NullTracer
-import com.twitter.finagle.transport.Transport
-import com.twitter.util.{Future, Var}
-import java.io.{File, FileInputStream}
-import java.net.{InetSocketAddress}
-import java.security.KeyStore
-import java.security.cert.CertificateFactory
-import javax.net.ssl.{SSLContext, TrustManagerFactory}
+import java.io.File
 import scala.sys.process._
 
 object TlsUtils {
@@ -67,95 +55,6 @@ object TlsUtils {
   def assertOk(cmd: ProcessBuilder): Unit =
     assert(run(cmd) == 0, s"`$cmd` failed")
 
-  def upstreamTls(server: ListeningServer, tlsName: String, caCert: File) = {
-    val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
-
-    // Establish an SSL context that uses our generated certificate.
-    // Cribbed from http://stackoverflow.com/questions/18513792
-    val cf = CertificateFactory.getInstance("X.509");
-    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-    val ks = KeyStore.getInstance(KeyStore.getDefaultType())
-    ks.load(null)
-    ks.setCertificateEntry("caCert", cf.generateCertificate(new FileInputStream(caCert)))
-    tmf.init(ks)
-    val ctx = SSLContext.getInstance("TLS")
-    ctx.init(null, tmf.getTrustManagers(), null)
-
-    val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    FinagleHttp.client
-      .configured(param.Stats(NullStatsReceiver))
-      .configured(param.Tracer(NullTracer))
-      .withTransport.tls(ctx, tlsName)
-      .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
-      .newClient(name, "upstream").toService
-  }
-
-  def upstream(server: ListeningServer) = {
-    val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
-
-    val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    FinagleHttp.client
-      .configured(param.Stats(NullStatsReceiver))
-      .configured(param.Tracer(NullTracer))
-      .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
-      .newClient(name, "upstream").toService
-  }
-
-  case class Downstream(name: String, server: ListeningServer) {
-    val address = server.boundAddress.asInstanceOf[InetSocketAddress]
-    val port = address.getPort
-    val dentry = Dentry(
-      Path.read(s"/svc/$name"),
-      NameTree.read(s"/$$/inet/127.1/$port")
-    )
-  }
-
-  object Downstream {
-    def mk(name: String)(f: Request => Response): Downstream = {
-      val service = Service.mk { req: Request => Future(f(req)) }
-      val server = FinagleHttp.server
-        .configured(param.Label(name))
-        .configured(param.Tracer(NullTracer))
-        .serve(":*", service)
-      Downstream(name, server)
-    }
-
-    def mkTls(name: String, cert: File, key: File)
-      (f: Request => Response): Downstream = {
-      val service = Service.mk { req: Request => Future(f(req)) }
-      val server = FinagleHttp.server
-        .configured(param.Label(name))
-        .configured(param.Tracer(NullTracer))
-        .configured(
-          Transport.ServerSsl(Some(SslServerConfiguration(
-            keyCredentials = KeyCredentials.CertAndKey(cert, key)
-          )))
-        )
-        .serve(":*", service)
-      Downstream(name, server)
-    }
-
-    def const(name: String, value: String): Downstream =
-      mk(name) { _ =>
-        val rsp = Response()
-        rsp.contentString = value
-        rsp
-      }
-
-    def constTls(
-      name: String,
-      value: String,
-      cert: File,
-      key: File
-    ): Downstream =
-      mkTls(name, cert, key) { _ =>
-        val rsp = Response()
-        rsp.contentString = value
-        rsp
-      }
-  }
-
-
   val DevNull = ProcessLogger(_ => ())
 
   def mkCaDirs(dir: File): File = {
@@ -193,6 +92,7 @@ object TlsUtils {
     |nameopt = default_ca
     |certopt = default_ca
     |policy = policy_match
+    |x509_extensions = x509_extensions
     |
     |[ policy_match ]
     |commonName = supplied
@@ -220,6 +120,12 @@ object TlsUtils {
     |[ v3_req ]
     |basicConstraints = CA:FALSE
     |subjectKeyIdentifier = hash
+    |
+    |[ x509_extensions ]
+    |subjectAltName = @alt_names
+    |
+    |[alt_names]
+    |URI.1 = https://buoyant.io
     |""".stripMargin
 
   def newKeyAndCert(subj: String, cfg: File, key: File, cert: File): ProcessBuilder =
