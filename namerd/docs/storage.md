@@ -40,6 +40,7 @@ The Kubernetes storage plugin does not support TLS.  Instead, you should run `ku
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
 
+<p></p>
 
 **Deprecation Notice**:
 As of Kubernetes 1.8+, The ThirdPartyResource API has been [deprecated](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/) in favor of CustomResourceDefinitions
@@ -47,7 +48,7 @@ API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects
 [here](https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource/). 
 
 
-**How to check ThirdPartyResource is enabled**
+**How to check ThirdPartyResource is enabled (for Kubernetes <= 1.7)**
 
 1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
 2. Check that kind `ThirdPartyResource` exists in the response.
@@ -69,7 +70,30 @@ API. Kubernetes 1.7 supports both API to help migrate ThirdPartyResource objects
 }
 ```
 
-**Example of configuration for ThirdPartyResource in Kubernetes**
+**How to check CustomResourceDefinition is enabled (for Kubernetes >= 1.8)**
+
+1. Open `apiextensions.k8s.io/v1beta1` api - `https://<k8s-cluster-host>/apis/apiextensions.k8s.io/v1beta1`.
+2. Check that kind `CustomResourceDefinition` exists in the response.
+
+> Example CustomResourceDefinition response
+
+```yaml
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "apiextensions.k8s.io/v1beta1",
+  "resources": [
+  {
+    "name": "customresourcedefinitions",
+    "singularName": "",
+    "namespaced": false,
+    "kind": "CustomResourceDefinition"
+  }
+  ]
+}
+```
+
+**Example of configuration for ThirdPartyResource in Kubernetes (for Kubernetes <= 1.7)**
 
 Use this configuration to create the ThirdPartyResource if it does not exist.
 
@@ -81,6 +105,25 @@ kind: ThirdPartyResource
 description: stores dtabs used by Buoyant's `namerd` service
 versions:
   - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
+```
+
+**Example of configuration for ThirdPartyResource in Kubernetes (for Kubernetes >= 1.8)**
+
+To create a new CustomResourceDefinition if using Kubernetes 1.8 and greater, use this configuration.
+
+```yaml
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1beta1
+metadata:
+  name: dtabs.l5d.io
+spec:
+  scope: Namespaced
+  group: l5d.io
+  version: v1alpha1
+  names:
+    kind: DTab
+    plural: dtabs
+    singular: dtab
 ```
 
 For a complete example configuration for `Namerd` configured with `k8s` storage,
