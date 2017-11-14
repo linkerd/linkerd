@@ -71,6 +71,11 @@ When TLS is not configured, h2 servers accept both
 requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
 
+
+<aside class="warning">
+Note that HTTP/2 clients should be careful not to send any DATA frame whose body exceeds 1/4th of the stream window size, as doing so may cause the connection to hang.
+</aside>
+
 ## HTTP/2 Server Parameters
 
 Key | Default Value | Description
