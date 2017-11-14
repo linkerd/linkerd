@@ -145,19 +145,19 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               // stream, but this is necessary to handle the K8s bug where
               // erorrs have the incorrect status code.
               .flatMap {
-                // special case to handle Kubernetes bug where "too old
-                // resource version" errors are returned with status code 200
-                // rather than status code 410.
-                // see https://github.com/kubernetes/kubernetes/issues/35068
-                // for details.
-                case e: Watch.Error[O] if e.status.code.contains(410) =>
-                  log.debug(
-                    "k8s returned 'too old resource version' error with " +
-                      "incorrect HTTP status code, restarting watch"
-                  )
-                  _resourceVersionTooOld()
-                case event => AsyncStream.fromOption(Some(event))
-              }
+              // special case to handle Kubernetes bug where "too old
+              // resource version" errors are returned with status code 200
+              // rather than status code 410.
+              // see https://github.com/kubernetes/kubernetes/issues/35068
+              // for details.
+              case e: Watch.Error[O] if e.status.code.contains(410) =>
+                log.debug(
+                  "k8s returned 'too old resource version' error with " +
+                    "incorrect HTTP status code, restarting watch"
+                )
+                _resourceVersionTooOld()
+              case event => AsyncStream.fromOption(Some(event))
+            }
             watchStream ++ // if the stream ends (k8s will kill connections after ~30m), restart it)
               AsyncStream.fromFuture {
                 // It's safe to call lastOption here, because we're after the `++` operator, so
@@ -172,7 +172,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
                     }
                 }
               }
-              .flatten
+                .flatten
 
           case http.Status.Gone =>
             _resourceVersionTooOld()
@@ -184,8 +184,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             AsyncStream.fromFuture(f)
         }
       }
-        // Ignore any cases where we receive a resource version lower
-        // than the last received resource version.
+      // Ignore any cases where we receive a resource version lower
+      // than the last received resource version.
         .increasingOnly
 
     }
@@ -285,10 +285,10 @@ object Watchable {
   implicit class IncreasingOnlyAsyncStream[T](as: AsyncStream[T])(implicit ord: Ordering[T]) {
     import ord.mkOrderingOps
     /**
-     * Filter out values less than the previous value.
-     * @return a new stream, consisting of this stream with all
-     *         values less than their predecessor removed.
-     */
+      * Filter out values less than the previous value.
+      * @return a new stream, consisting of this stream with all
+      *         values less than their predecessor removed.
+      */
     def increasingOnly: AsyncStream[T] =
       as.scanLeft[(Option[T], Boolean)]((None, false)) {
         // TODO: this would be much less ugly if the type of the scan was [W, Boolean]
@@ -298,5 +298,7 @@ object Watchable {
         case ((None, _), next) => (Some(next), true)
       }.filter(_._2).map(_._1.get)
   }
+
+
 
 }
