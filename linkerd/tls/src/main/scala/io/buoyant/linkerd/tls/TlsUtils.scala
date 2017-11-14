@@ -26,7 +26,7 @@ object TlsUtils {
     // First, we create a CA and get a cert/key for linker
     val tmpdir = new File("mktemp -d -t linkerd-tls.XXXXXX".!!.stripLineEnd)
     try {
-      val configFile = mkCaDirs (tmpdir)
+      val configFile = mkCaDirs(tmpdir)
 
       val caCert = new File(tmpdir, "ca+cert.pem")
       val caKey = new File(tmpdir, "private/ca_key.pem")
@@ -46,8 +46,8 @@ object TlsUtils {
         name -> ServiceCert(routerCert, routerPk8)
       }.toMap
 
-      f(Certs (caCert, svcCerts) )
-    } finally{
+      f(Certs(caCert, svcCerts))
+    } finally {
       val _ = Seq("rm", "-rf", tmpdir.getPath).!
     }
   }
@@ -131,29 +131,25 @@ object TlsUtils {
   def newKeyAndCert(subj: String, cfg: File, key: File, cert: File): ProcessBuilder =
     Seq("openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048",
       "-config", cfg.getPath,
-      "-subj",   subj,
+      "-subj", subj,
       "-keyout", key.getPath,
-      "-out",    cert.getPath
-    )
+      "-out", cert.getPath)
 
-  def newReq(subj: String, cfg: File, req: File, key: File): ProcessBuilder  =
+  def newReq(subj: String, cfg: File, req: File, key: File): ProcessBuilder =
     Seq("openssl", "req", "-new", "-nodes",
       "-config", cfg.getPath,
-      "-subj",   subj,
+      "-subj", subj,
       "-keyout", key.getPath,
-      "-out",    req.getPath
-    )
+      "-out", req.getPath)
 
-  def signReq(cfg: File, key: File, cert: File, req: File, newCert: File): ProcessBuilder  =
+  def signReq(cfg: File, key: File, cert: File, req: File, newCert: File): ProcessBuilder =
     Seq("openssl", "ca", "-batch",
-      "-config",  cfg.getPath,
+      "-config", cfg.getPath,
       "-keyfile", key.getPath,
-      "-cert",    cert.getPath,
-      "-out",     newCert.getPath,
-      "-infiles", req.getPath
-    )
+      "-cert", cert.getPath,
+      "-out", newCert.getPath,
+      "-infiles", req.getPath)
 
-
-  def toPk8(in: File, out: File): ProcessBuilder  =
+  def toPk8(in: File, out: File): ProcessBuilder =
     Seq("openssl", "pkcs8", "-topk8", "-nocrypt", "-in", in.getPath, "-out", out.getPath)
 }

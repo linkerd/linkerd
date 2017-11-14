@@ -109,19 +109,38 @@ object ThriftNamerInterface {
     final def apply(): Future[(Stamp, T)] =
       synchronized((current, pending)) match {
         case (Some(current), _) => current.future
-        case (None, pending) => pending.flatMap(_.future)
+        case (None, pending) =>
+          val p = new Promise[(Stamp, T)]()
+          p.setInterruptHandler {
+            case e: Throwable => p.setException(e)
+          }
+          pending.flatMap(_.future).proxyTo(p)
+          p
       }
 
     final def apply(stamp: Stamp): Future[(Stamp, T)] =
       synchronized((current, pending)) match {
         case (Some(current), _) if current.stamp != stamp => current.future
-        case (_, pending) => pending.flatMap(_.future)
+        case (_, pending) =>
+          val p = new Promise[(Stamp, T)]()
+          p.setInterruptHandler {
+            case e: Throwable => p.setException(e)
+          }
+          pending.flatMap(_.future).proxyTo(p)
+          p
       }
 
     final def apply(tstamp: TStamp): Future[(Stamp, T)] =
       apply(Stamp(tstamp))
 
-    final def nextValue: Future[(Stamp, T)] = pending.flatMap(_.future)
+    final def nextValue: Future[(Stamp, T)] = {
+      val p = new Promise[(Stamp, T)]()
+      p.setInterruptHandler {
+        case e: Throwable => p.setException(e)
+      }
+      pending.flatMap(_.future).proxyTo(p)
+      p
+    }
 
     final def close(t: Time): Future[Unit] =
       synchronized {
