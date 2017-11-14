@@ -71,6 +71,10 @@ When TLS is not configured, h2 servers accept both
 requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
 
+<aside class="warning">
+Note that HTTP/2 clients should be careful not to send any DATA frame whose body exceeds 1/4th of the stream window size, as doing so may cause the connection to hang.
+</aside>
+
 ## HTTP/2 Server Parameters
 
 Key | Default Value | Description
@@ -81,6 +85,7 @@ initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on s
 maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+
 
 ## HTTP/2 Service Parameters
 
