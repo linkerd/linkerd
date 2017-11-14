@@ -7,9 +7,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
+import com.twitter.finagle.buoyant.h2.{param => h2Param, _}
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.buoyant.h2.service.H2Classifier
-import com.twitter.finagle.buoyant.h2.{param => h2Param, _}
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.filter.DtabStatsFilter
@@ -21,7 +21,6 @@ import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2.{H2ClassifierConfig, H2RequestAuthorizerConfig}
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest}
-import io.buoyant.router.http.ForwardClientCertFilter
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
@@ -154,12 +153,10 @@ class H2StaticClient(val configs: Seq[H2PrefixConfig]) extends H2Client with Sta
 class H2PrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with H2ClientConfig
 
 trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
-  var forwardClientCert: Option[Boolean] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
     withEndpointParams(super.params(vars))
-      .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
 }
 
 @JsonTypeInfo(
@@ -234,7 +231,6 @@ case class RetryBufferSize(
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   var maxConcurrentStreamsPerConnection: Option[Int] = None
-  val forwardClientCert: Option[Boolean] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -245,7 +241,6 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
     .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
-    .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams)

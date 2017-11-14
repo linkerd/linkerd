@@ -2,7 +2,6 @@ package io.buoyant.linkerd.protocol
 
 import com.twitter.finagle.http.{Request, Status}
 import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.tls.TlsUtils
 import io.buoyant.test.{Awaits, FunSuite}
 import java.net.InetSocketAddress
 
@@ -10,7 +9,7 @@ class TlsCertReloadingTest extends FunSuite with Awaits {
 
   test("cert reloading") {
     TlsUtils.withCerts("foo", "bar") { certs =>
-      val downstream = Downstream.const("foo", "foo")
+      val downstream = TlsUtils.Downstream.const("foo", "foo")
 
       val fooCerts = certs.serviceCerts("foo")
       val barCerts = certs.serviceCerts("bar")
@@ -53,7 +52,7 @@ class TlsCertReloadingTest extends FunSuite with Awaits {
       val outgoingRouter = outgoingLinker.routers.head.initialize()
       val outgoingServer = outgoingRouter.servers.head.serve()
 
-      val upstream = Upstream.mk(outgoingServer)
+      val upstream = TlsUtils.upstream(outgoingServer)
 
       try {
         // build request

@@ -1,7 +1,7 @@
 package io.buoyant.router
 
 import com.twitter.finagle.client.StackClient
-import com.twitter.finagle.http.{HeaderMap, Request, Response, TlsFilter}
+import com.twitter.finagle.http.{Request, Response, TlsFilter}
 import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.param.{ProtocolLibrary, ResponseClassifier}
 import com.twitter.finagle.server.StackServer
@@ -9,7 +9,6 @@ import com.twitter.finagle.{Http => FinagleHttp, Server => FinagleServer, http =
 import io.buoyant.router.ClassifiedRetries.ResponseDiscarder
 import io.buoyant.router.Http.param.HttpIdentifier
 import io.buoyant.router.http._
-import io.buoyant.router.HttpInstances._
 import java.net.SocketAddress
 
 object Http extends Router[Request, Response] with FinagleServer[Request, Response] {
@@ -38,7 +37,6 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
       .transformed(StackRouter.Client.mkStack(_))
       .transformed(_.replace(TracingFilter.role, TracingFilter.module))
       .transformed(_.remove(TlsFilter.role))
-      .transformed(ForwardClientCertFilter.module[Request, HeaderMap, Response] +: _)
 
     val responseDiscarder = ResponseDiscarder[Response] { rsp =>
       if (rsp.isChunked) {

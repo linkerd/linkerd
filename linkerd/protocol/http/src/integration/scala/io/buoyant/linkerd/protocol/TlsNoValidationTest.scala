@@ -3,7 +3,7 @@ package protocol
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
-import io.buoyant.linkerd.tls.TlsUtils._
+import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -35,7 +35,7 @@ class TlsNoValidationTest extends FunSuite with Awaits {
         try {
           val server = router.servers.head.serve()
           try {
-            val client = Upstream.mk(server)
+            val client = upstream(server)
             try {
               val rsp = {
                 val req = Request()

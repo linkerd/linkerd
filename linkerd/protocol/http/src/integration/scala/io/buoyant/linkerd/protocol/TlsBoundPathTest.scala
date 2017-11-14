@@ -4,7 +4,7 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.http.{Status, Request, Response}
 import com.twitter.finagle.{Failure, Service}
-import io.buoyant.linkerd.tls.TlsUtils._
+import io.buoyant.linkerd.protocol.TlsUtils._
 import io.buoyant.namer.fs.FsInitializer
 import io.buoyant.test.Awaits
 import java.io.File
@@ -303,7 +303,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
     try {
       val server = router.servers.head.serve()
       try {
-        val client = Upstream.mk(server)
+        val client = upstream(server)
         try {
           f(client)
         } finally await(client.close())

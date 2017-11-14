@@ -62,16 +62,13 @@ object LinkerdBuild extends Base {
       .withE2e()
       .settings(coverageExcludedPackages := ".*XXX_.*")
 
-    val baseHttp = projectDir("router/base-http")
-      .dependsOn(core)
-
     val h2 = projectDir("router/h2")
-      .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
+      .dependsOn(core, Finagle.h2 % "compile->compile;test->test")
       .withTests()
       .withE2e()
 
     val http = projectDir("router/http")
-      .dependsOn(baseHttp)
+      .dependsOn(core)
       .withTwitterLibs(Deps.finagle("http"))
       .withLib(Deps.boringssl)
       .withTests()
@@ -105,7 +102,7 @@ object LinkerdBuild extends Base {
         thriftIdl % "test,e2e"
       )
 
-    val all = aggregateDir("router", core, baseHttp, h2, http, mux, thrift, thriftMux)
+    val all = aggregateDir("router", core, h2, http, mux, thrift, thriftMux)
   }
 
   object Mesh {
@@ -487,6 +484,8 @@ object LinkerdBuild extends Base {
       .configWithLibs(Test)(Deps.jacksonDatabind, Deps.jacksonYaml)
 
     val tls = projectDir("linkerd/tls")
+      .dependsOn(core)
+      .withTests()
 
     val failureAccrual = projectDir("linkerd/failure-accrual")
       .dependsOn(core)
@@ -495,8 +494,8 @@ object LinkerdBuild extends Base {
     object Protocol {
 
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test", tls % Test)
-        .withTests().withE2e().withIntegration()
+        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test")
+        .withTests().withE2e()
         .withGrpc
         .withTwitterLibs(Deps.finagle("netty4"))
 
@@ -661,7 +660,6 @@ object LinkerdBuild extends Base {
 
   val router = Router.all
   val routerCore = Router.core
-  val routerBaseHttp = Router.baseHttp
   val routerH2 = Router.h2
   val routerHttp = Router.http
   val routerMux = Router.mux
