@@ -8,6 +8,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
 import scala.util.control.NoStackTrace
+import com.twitter.util.StorageUnitConversions._
 import scala.{Stream => SStream}
 
 /**
@@ -249,5 +250,5 @@ class ClassifiedRetryFilter(
 }
 
 object ClassifiedRetryFilter {
-  val DefaultBufferSize = 65535
+  val DefaultBufferSize = 8.kilobytes.bytes
 }
