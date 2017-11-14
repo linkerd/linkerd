@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol
 
 import com.twitter.finagle.http.{Request, Status}
 import io.buoyant.linkerd.Linker
-import io.buoyant.linkerd.protocol.TlsUtils.Downstream
+import io.buoyant.linkerd.tls.TlsUtils
 import io.buoyant.test.FunSuite
 import java.net.InetSocketAddress
 
@@ -54,7 +54,7 @@ class ClientAuthTest extends FunSuite {
       val clientRouter = clientLinker.routers.head.initialize()
       val clientServer = clientRouter.servers.head.serve()
 
-      val upstream = TlsUtils.upstream(clientServer)
+      val upstream = Upstream.mk(clientServer)
 
       try {
         val req = Request()
@@ -116,7 +116,7 @@ class ClientAuthTest extends FunSuite {
       val clientRouter = clientLinker.routers.head.initialize()
       val clientServer = clientRouter.servers.head.serve()
 
-      val upstream = TlsUtils.upstream(clientServer)
+      val upstream = Upstream.mk(clientServer)
 
       try {
         val req = Request()
