@@ -78,7 +78,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     val namespace = "yeezy"
     val clientId = Path.read("/rando/x8u4i5j")
     val service = new TestNamerService(clientId)
-    val client = new ThriftNamerClient(service, namespace, clientId = clientId)
+    val client = new ThriftNamerClient(service, namespace, Stream.continually(Duration.Zero), clientId = clientId)
 
     val act = client.delegate(Dtab.empty, Path.read("/yeezy/tlop/wolves"))
     val delegation = act.toFuture
@@ -108,7 +108,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     """)
 
     val service = new TestNamerService(clientId)
-    val client = new ThriftNamerClient(service, namespace, clientId = clientId)
+    val client = new ThriftNamerClient(service, namespace, Stream.continually(Duration.Zero), clientId = clientId)
     @volatile var state: Activity.State[NameTree[Name.Bound]] = Activity.Pending
     val closer = client.bind(dtab, wolvesPath).states.respond(state = _)
     try {

@@ -17,6 +17,7 @@ import java.net.{InetAddress, InetSocketAddress}
 class ThriftNamerClient(
   client: thrift.Namer.FutureIface,
   namespace: String,
+  backoffs: Stream[Duration],
   statsReceiver: StatsReceiver = NullStatsReceiver,
   clientId: Path = Path.empty,
   _timer: Timer = DefaultTimer
@@ -26,6 +27,8 @@ class ThriftNamerClient(
   private[this] implicit val log = Logger.get(getClass.getName)
   private[this] implicit val timer = _timer
   private[this] val tclientId = TPath(clientId)
+
+  private[this] val Released = Failure("Released", Failure.Interrupted)
 
   /*
    * XXX needs proper eviction, etc
@@ -66,7 +69,7 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
         Trace.recordBinary("namerd.client/bind.ns", namespace)
         Trace.recordBinary("namerd.client/bind.path", path.show)
 
@@ -81,26 +84,28 @@ class ThriftNamerClient(
                 Trace.recordBinary("namerd.client/bind.err", e.toString)
                 Activity.Failed(e)
             }
-            loop(stamp1)
+            loop(stamp1, backoffs0)
 
           case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
             Trace.recordBinary("namerd.client/bind.fail", reason)
             if (!stopped) {
-              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
+              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
             }
 
           // XXX we have to handle other errors, right?
           case Throw(e) =>
             log.error(e, "bind %s", path.show)
             Trace.recordBinary("namerd.client/bind.exc", e.toString)
-            states() = Activity.Failed(e)
+            val sleep #:: backoffs1 = backoffs0
+            pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
         }
       }
 
-      loop(TStamp.empty)
+      loop(TStamp.empty, backoffs)
       Closable.make { deadline =>
         log.debug("bind released %s", path.show)
         stopped = true
+        pending.raise(Released)
         Future.Unit
       }
     }
@@ -168,14 +173,14 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
         Trace.recordBinary("namerd.client/addr.path", idPath)
         val req = thrift.AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
         pending = Trace.letClear(client.addr(req)).respond {
           case Return(thrift.Addr(stamp1, thrift.AddrVal.Neg(_))) =>
             addr() = Addr.Neg
             Trace.record("namerd.client/addr.neg")
-            loop(stamp1)
+            loop(stamp1, backoffs0)
 
           case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, boundMeta)))) =>
             val addrs = taddrs.map { taddr =>
@@ -187,25 +192,27 @@ class ThriftNamerClient(
             // TODO convert metadata
             Trace.recordBinary("namerd.client/addr.bound", addrs)
             addr() = Addr.Bound(addrs.toSet[Address], convertMeta(boundMeta))
-            loop(stamp1)
+            loop(stamp1, backoffs0)
 
           case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
             Trace.recordBinary("namerd.client/addr.fail", msg)
             if (!stopped) {
-              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0))
+              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
             }
 
           case Throw(e) =>
             log.error(e, "addr on %s", idPath)
             Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
-            addr() = Addr.Failed(e)
+            val sleep #:: backoffs1 = backoffs0
+            pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
         }
       }
 
-      loop(TStamp.empty)
+      loop(TStamp.empty, backoffs)
       Closable.make { deadline =>
         log.debug("addr released %s", idPath)
         stopped = true
+        pending.raise(Released)
         Future.Unit
       }
     }
@@ -274,7 +281,7 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
 
         val req = thrift.DelegateReq(tdtab, thrift.Delegation(stamp0, ttree, namespace), tclientId)
         pending = Trace.letClear(client.delegate(req)).respond {
@@ -283,7 +290,7 @@ class ThriftNamerClient(
               case Return(tree) => Activity.Ok(tree)
               case Throw(e) => Activity.Failed(e)
             }
-            loop(stamp1)
+            loop(stamp1, backoffs0)
 
           case Throw(e@thrift.DelegationFailure(reason)) =>
             log.error("delegation failed: %s", reason)
@@ -291,13 +298,15 @@ class ThriftNamerClient(
 
           case Throw(e) =>
             log.error(e, "delegation failed")
-            states() = Activity.Failed(e)
+            val sleep #:: backoffs1 = backoffs0
+            pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
         }
       }
 
-      loop(TStamp.empty)
+      loop(TStamp.empty, backoffs)
       Closable.make { deadline =>
         stopped = true
+        pending.raise(Released)
         Future.Unit
       }
     }
