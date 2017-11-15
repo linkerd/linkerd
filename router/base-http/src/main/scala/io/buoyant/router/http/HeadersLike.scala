@@ -1,9 +1,9 @@
 package io.buoyant.router.http
 
 /**
-  * Type class for HTTP headers object
-  * @tparam H Headers object type
-  */
+ * Type class for HTTP headers object
+ * @tparam H Headers object type
+ */
 trait HeadersLike[H] {
   def toSeq(headers: H): Seq[(String, String)]
   def contains(headers: H, k: String): Boolean

@@ -112,7 +112,7 @@ package object v1 {
   implicit private val configMapWatch = new TypeReference[ConfigMapWatch] {}
 
   implicit private val configMapWatchIsOrdered =
-    new ResourceVersionOrdering[ConfigMap, ConfigMapWatch]{}
+    new ResourceVersionOrdering[ConfigMap, ConfigMapWatch] {}
   implicit private val endpointsWatchIsOrdered =
     new ResourceVersionOrdering[Endpoints, EndpointsWatch] {}
   implicit private val serviceWatchIsOrdered =

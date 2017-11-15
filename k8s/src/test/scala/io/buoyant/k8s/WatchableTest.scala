@@ -4,7 +4,6 @@ import com.twitter.concurrent.AsyncStream
 import io.buoyant.test.FunSuite
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
-
 class WatchableTest extends FunSuite
   with GeneratorDrivenPropertyChecks {
   test("items in AsyncStream.increasingOnly always greater than prior items") {

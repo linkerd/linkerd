@@ -18,7 +18,7 @@ case class Downstream(name: String, server: ListeningServer) {
 }
 
 object Downstream {
-  def mk(name: String)(f: Request=>Future[Response]): Downstream = {
+  def mk(name: String)(f: Request => Future[Response]): Downstream = {
     val service = Service.mk { req: Request => f(req) }
     val server = H2.server
       .configured(fparam.Label(name))

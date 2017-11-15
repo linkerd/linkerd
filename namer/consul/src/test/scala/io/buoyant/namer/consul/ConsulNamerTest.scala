@@ -384,7 +384,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
               Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
             case _ => Future.value(Indexed(Nil, Some("1")))
           }
-        case _ => new Promise// don't respond to blocking index calls
+        case _ => new Promise // don't respond to blocking index calls
       }
     }
 
@@ -642,7 +642,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
     assert(reqs == 2)
     await(closer.close())
-    withClue ("after close") { assert(reqs == 2, "Consul observed by closed activity!") }
+    withClue("after close") { assert(reqs == 2, "Consul observed by closed activity!") }
     assert(stats.counters.get(Seq("service", "opens")).contains(1))
     assert(stats.counters.get(Seq("service", "closes")).contains(1))
     assert(stats.counters.get(Seq("service", "errors")) == None)
