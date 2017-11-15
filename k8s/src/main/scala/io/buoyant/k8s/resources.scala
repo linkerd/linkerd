@@ -93,7 +93,7 @@ private[k8s] class NsVersion[O <: KubeObject](
 /**
   * A custom resource version contains CustomResource-typed objects. The API was called ThirdPartyResources in Kubernetes
   * < 1.7 and has been deprecated since version 1.8. The APIs for both resource versions are identical in implementation. However,
-  * various naming standards have been changed to make the apis more meaningful. For me details
+  * various naming standards have been changed to make the apis more meaningful. For more details
   * see https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/.
   * To understand how to create your own custom resources see
   * https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/ for a description of the

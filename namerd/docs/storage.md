@@ -52,12 +52,11 @@ To learn more about how to migrate existing third party resources to Custom Reso
 
 > Example ThirdPartyResource response
 
-```yaml
+```json
 {
   "kind": "APIResourceList",
   "groupVersion": "extensions/v1beta1",
   "resources": [
-    ...
     {
       "name": "thirdpartyresources",
       "namespaced": false,
@@ -88,7 +87,7 @@ versions:
 
 > Example CustomResourceDefinition response
 
-```yaml
+```json
 {
   "kind": "APIResourceList",
   "apiVersion": "v1",
