@@ -72,9 +72,6 @@ requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
 
 
-<aside class="warning">
-Note that HTTP/2 clients should be careful not to send any DATA frame whose body is longer than the current window size minus the size of the response classification buffer (8 kb), as doing so may cause the stream to hang.
-</aside>
 
 ## HTTP/2 Server Parameters
 
@@ -96,10 +93,14 @@ retryBufferSize         | see below     | A RetryBufferSize object describing th
 
 #### RetryBufferSize
 
+<aside class="warning">
+Note that HTTP/2 clients should be careful not to send any request DATA frame whose body is longer than the current window size minus the size of the request buffer, as doing so may cause the stream to hang.
+</aside>
+
 Key           | Default Value   | Description
 ------------- | --------------- | -----------
-requestBytes  | `65535`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
-responseBytes | `65535`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
+requestBytes  | `8000`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
+responseBytes | `8000`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
 
 ## HTTP/2 Client Parameters
 
