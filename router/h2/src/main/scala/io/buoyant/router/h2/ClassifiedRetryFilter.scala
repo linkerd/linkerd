@@ -250,5 +250,5 @@ class ClassifiedRetryFilter(
 }
 
 object ClassifiedRetryFilter {
-  val DefaultBufferSize = 8.kilobytes.bytes
+  val DefaultBufferSize = 16383
 }

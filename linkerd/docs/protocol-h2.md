@@ -99,8 +99,8 @@ Note that HTTP/2 clients should be careful not to send any request DATA frame wh
 
 Key           | Default Value   | Description
 ------------- | --------------- | -----------
-requestBytes  | `8000`         | If the request stream exceeds this value, the request cannot be retried.  This should be set to the server's window size.
-responseBytes | `8000`         | If the response stream exceeds this value, the request cannot be retried.  This should be set to the client's window size.
+requestBytes  | `16383`         | If the request stream exceeds this value, the request cannot be retried.
+responseBytes | `16383`         | If the response stream exceeds this value, the request cannot be retried.
 
 ## HTTP/2 Client Parameters
 
