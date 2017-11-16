@@ -71,8 +71,6 @@ When TLS is not configured, h2 servers accept both
 requests.  Plaintext clients are currently only capable of issuing
 prior-knowledge requests.
 
-
-
 ## HTTP/2 Server Parameters
 
 Key | Default Value | Description
