@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 
 import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
@@ -26,7 +25,7 @@ import scala.util.control.NoStackTrace
  * buffer itself releases the Frame.  Threrefore you should always call discardBuffer on a
  * BufferedStream before it leaves scope.
  */
-class BufferedStream(underlying: Stream, bufferCapacity: Long = 8.kilobytes.bytes) { bufferedStream =>
+class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { bufferedStream =>
 
   // Mutable state.  All mutations of state must be explicitly synchronized
   private[this] val buffer = mutable.MutableList[RefCountedFrame]()
