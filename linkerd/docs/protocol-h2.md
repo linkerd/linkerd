@@ -73,7 +73,7 @@ prior-knowledge requests.
 
 
 <aside class="warning">
-Note that HTTP/2 clients should be careful not to send any DATA frame whose body exceeds 1/4th of the stream window size, as doing so may cause the connection to hang.
+Note that HTTP/2 clients should be careful not to send any DATA frame whose body is longer than the current window size minus the size of the response classification buffer (8 kb), as doing so may cause the stream to hang.
 </aside>
 
 ## HTTP/2 Server Parameters
