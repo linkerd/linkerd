@@ -75,30 +75,8 @@ case class NamerdInterpreterConfig(
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
 
-    // replaces the client's retry filter with one that retries unconditionally
-    val retryTransformer = new Stack.Transformer {
-      def apply[Req, Rsp](stk: Stack[ServiceFactory[Req, Rsp]]) =
-        stk.replace(Retries.Role, module[Req, Rsp])
-
-      def module[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-        new Stack.Module1[param.Stats, ServiceFactory[Req, Rsp]] {
-          val role = Retries.Role
-          val description = "Retries on any non-fatal error"
-          def make(_stats: param.Stats, next: ServiceFactory[Req, Rsp]) = {
-            val param.Stats(stats) = _stats
-            val retry = new RetryFilter[Req, Rsp](
-              RetryPolicy.backoff(backoffs) {
-                case (_, Throw(NonFatal(ex))) =>
-                  log.error(ex, "namerd request failed")
-                  true
-              },
-              HighResTimer.Default,
-              stats,
-              RetryBudget.Infinite
-            )
-            retry.andThen(next)
-          }
-        }
+    val monitor = Monitor.mk {
+      case e: Failure if e.isFlagged(Failure.Interrupted) => true
     }
 
     val param.Stats(stats0) = params[param.Stats]
@@ -108,7 +86,8 @@ case class NamerdInterpreterConfig(
 
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ tlsParams ++ params)
-      .transformed(retryTransformer)
+      .withRetryBudget(RetryBudget.Empty) // we will only do retries as part of the Var.async loop
+      .withMonitor(monitor)
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
@@ -117,7 +96,7 @@ case class NamerdInterpreterConfig(
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]
 
-    new ThriftNamerClient(iface, ns, stats) with Admin.WithHandlers with Admin.WithNavItems {
+    new ThriftNamerClient(iface, ns, backoffs, stats) with Admin.WithHandlers with Admin.WithNavItems {
       val handler = new NamerdHandler(Seq(routerLabel -> config), Map(routerLabel -> this))
 
       override def adminHandlers: Seq[Handler] =

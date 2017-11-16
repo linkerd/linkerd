@@ -49,7 +49,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     }
     val namers = Map(Path.read("/io.l5d.w00t") -> namer)
     val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId = clientId)
+    val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
 
     val act = client.bind(reqDtab, reqPath)
     val obs = act.states.respond { s =>
@@ -129,7 +129,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       namers
     )
     val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId = clientId)
+    val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
 
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
@@ -178,7 +178,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       namers
     )
     val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, clientId = clientId)
+    val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
     witness.notify(Return(NameTree.Leaf(Name.Bound(
       Var(Addr.Bound(Address("localhost", 9000))),
       Path.read("/io.l5d.w00t/foo"),
