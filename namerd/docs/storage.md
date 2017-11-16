@@ -39,20 +39,24 @@ namespace | `default` | The Kubernetes namespace in which dtabs will be stored. 
 The Kubernetes storage plugin does not support TLS.  Instead, you should run `kubectl proxy` on each host
 which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
 </aside>
-
-**How to check ThirdPartyResource is enabled**
+<p></p>
+<aside class="notice">
+The "ThirdPartyResource" resource has been deprecated in favor of a "CustomResourceDefinition" resource in Kubernetes 1.7 and has officially been removed in Kubernetes 1.8+.
+To learn more about how to migrate existing third party resources to Custom Resource Definitions (CRD) <a href="https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource">See this guide.</a>
+</aside>
+ 
+### How to check if ThirdPartyResource is enabled (for Kubernetes v1.7 and below)
 
 1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.
 2. Check that kind `ThirdPartyResource` exists in the response.
 
 > Example ThirdPartyResource response
 
-```yaml
+```json
 {
   "kind": "APIResourceList",
   "groupVersion": "extensions/v1beta1",
   "resources": [
-    ...
     {
       "name": "thirdpartyresources",
       "namespaced": false,
@@ -74,6 +78,48 @@ kind: ThirdPartyResource
 description: stores dtabs used by Buoyant's `namerd` service
 versions:
   - name: v1alpha1 # Do not change this value as it hardcoded in Namerd and doesn't work with other value.
+```
+
+### How to check if CustomResourceDefinition is enabled (for Kubernetes v1.8+)
+
+1. Open `apiextensions.k8s.io/v1beta1` api - `https://<k8s-cluster-host>/apis/apiextensions.k8s.io/v1beta1`.
+2. Check that kind `CustomResourceDefinition` exists in the response.
+
+> Example CustomResourceDefinition response
+
+```json
+{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "apiextensions.k8s.io/v1beta1",
+  "resources": [
+  {
+    "name": "customresourcedefinitions",
+    "singularName": "",
+    "namespaced": false,
+    "kind": "CustomResourceDefinition"
+  }
+  ]
+}
+```
+
+**Example of configuration for CustomResourceDefinition in Kubernetes**
+
+To create a new CustomResourceDefinition if using Kubernetes 1.8 and greater, use this configuration.
+
+```yaml
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1beta1
+metadata:
+  name: dtabs.l5d.io
+spec:
+  scope: Namespaced
+  group: l5d.io
+  version: v1alpha1
+  names:
+    kind: DTab
+    plural: dtabs
+    singular: dtab
 ```
 
 For a complete example configuration for `Namerd` configured with `k8s` storage,

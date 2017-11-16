@@ -14,8 +14,8 @@ import org.scalatest.{FunSuite, OptionValues}
  * This test both exercises the versioning functionality in `io.buoyant.k8s`, and provides
  * an example implementation. (See `namerd` for the current usage in the Buoyant suite of projects).
  */
-class ThirdPartyResourceTest extends FunSuite with Awaits with OptionValues {
-  import ThirdPartyResourceTest._
+class CustomResourceTest extends FunSuite with Awaits with OptionValues {
+  import CustomResourceTest._
 
   object Fixtures {
     val bookList = Buf.Utf8("""{"kind":"BookList","apiVersion":"buoyant.io/vTest","metadata":{"selfLink":"/apis/buoyant.io/vTest/namespaces/test/books"},"items":[{"metadata":{"name":"programming-in-scala","selfLink":"/apis/buoyant.io/vTest/namespaces/test/books/programming-in-scala"},"title":"Programming in Scala","author":"Martin Odersky"}]} """)
@@ -41,7 +41,7 @@ class ThirdPartyResourceTest extends FunSuite with Awaits with OptionValues {
   }
 }
 
-object ThirdPartyResourceTest {
+object CustomResourceTest {
   trait Object extends BaseObject
 
   case class Book(
@@ -93,7 +93,7 @@ object ThirdPartyResourceTest {
   implicit private val booksWatchIsOrdered =
     new ResourceVersionOrdering[Book, BookWatch]
 
-  case class Api(client: Client) extends ThirdPartyVersion[Object] {
+  case class Api(client: Client) extends CustomResourceVersion[Object] {
     def owner = "buoyant.io"
 
     def ownerVersion = "vTest"
@@ -103,7 +103,7 @@ object ThirdPartyResourceTest {
     def books = listResource[Book, BookWatch, BookList]()
   }
 
-  class NsApi(client: Client, ns: String) extends NsThirdPartyVersion[Object](client, "buoyant.io", "vTest", ns) {
+  class NsApi(client: Client, ns: String) extends NsCustomResourceVersion[Object](client, "buoyant.io", "vTest", ns) {
     def books = listResource[Book, BookWatch, BookList]()
   }
 }

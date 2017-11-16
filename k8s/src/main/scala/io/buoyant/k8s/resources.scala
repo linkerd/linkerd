@@ -91,30 +91,34 @@ private[k8s] class NsVersion[O <: KubeObject](
 }
 
 /**
- * A third-party version contains ThirdPartyResource-typed objects. See
- * https://github.com/kubernetes/kubernetes/blob/master/docs/design/extending-api.md for a description of the
- * design model.
- *
- * Implementors are likely to want to extend this to provide convenience methods on top of the `list` method.
- *
- * @tparam O The parent type for all [[KubeObject]]s served by this Version.
- */
-trait ThirdPartyVersion[O <: KubeObject] extends Version[O] {
+  * A custom resource version contains CustomResource-typed objects. The API was called ThirdPartyResources in Kubernetes
+  * < 1.7 and has been deprecated since version 1.8. The APIs for both resource versions are identical in implementation. However,
+  * various naming standards have been changed to make the apis more meaningful. For more details
+  * see https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/.
+  * To understand how to create your own custom resources see
+  * https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/ for a description of the
+  * design model.
+  *
+  * Implementors are likely to want to extend this to provide convenience methods on top of the `list` method.
+  *
+  * @tparam O The parent type for all [[KubeObject]]s served by this Version.
+  */
+trait CustomResourceVersion[O <: KubeObject] extends Version[O] {
   /** domain name, i.e. "buoyant.io" */
   def owner: String
 
   /** version within owner domain, i.e. "v1" */
   def ownerVersion: String
 
-  override val version: String = ThirdPartyVersion.version(owner, ownerVersion)
-  override val path: String = s"/${ThirdPartyVersion.group}/$version"
+  override val version: String = CustomResourceVersion.version(owner, ownerVersion)
+  override val path: String = s"/${CustomResourceVersion.group}/$version"
   override val watchPath: String = s"$path/watch"
 
-  val group: String = ThirdPartyVersion.group
-  override def withNamespace(ns: String) = new NsThirdPartyVersion[O](client, owner, ownerVersion, ns)
+  val group: String = CustomResourceVersion.group
+  override def withNamespace(ns: String) = new NsCustomResourceVersion[O](client, owner, ownerVersion, ns)
 }
 
-object ThirdPartyVersion {
+object CustomResourceVersion {
   def version(owner: String, ownerVersion: String) = s"$owner/$ownerVersion"
   val group = "apis"
 }
@@ -122,8 +126,8 @@ object ThirdPartyVersion {
 /**
  * A namespaced third-party version, i.e. "/apis/buoyant.io/v1/namespaces/ns/".
  */
-class NsThirdPartyVersion[O <: KubeObject](client: Client, owner: String, ownerVersion: String, ns: String)
-  extends NsVersion[O](client, ThirdPartyVersion.group, ThirdPartyVersion.version(owner, ownerVersion), ns)
+class NsCustomResourceVersion[O <: KubeObject](client: Client, owner: String, ownerVersion: String, ns: String)
+  extends NsVersion[O](client, CustomResourceVersion.group, CustomResourceVersion.version(owner, ownerVersion), ns)
 
 /**
  * Represents the functionality for a  kubernetes API resource serving a list of objects, for example:

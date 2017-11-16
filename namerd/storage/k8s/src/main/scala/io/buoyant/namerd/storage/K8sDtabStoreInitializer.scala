@@ -26,3 +26,5 @@ class K8sDtabStoreInitializer extends DtabStoreInitializer {
   override def configClass = classOf[K8sConfig]
   override def configId = "io.l5d.k8s"
 }
+
+object K8sDtabStoreInitializer extends K8sDtabStoreInitializer

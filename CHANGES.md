@@ -1,3 +1,7 @@
+## 1.3.2 2017-11-17
+* Kubernetes
+  * Deprecated ThirdPartyResources in favor of CustomResourceDefinitions for namerd dtab storage (#1688)
+
 ## 1.3.1 2017-10-24
 
 * Kubernetes
