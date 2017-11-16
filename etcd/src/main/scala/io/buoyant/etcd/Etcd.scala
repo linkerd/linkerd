@@ -44,8 +44,9 @@ object Etcd {
         req.contentType = MediaType.WwwForm
         req
       case _ =>
-        val req = requestBuilder.url(host).build(method, None)
-        req.uri = path.show
+        val req = Request(path.show, params: _*)
+        req.host = host
+        req.method = method
         req
     }
   }
