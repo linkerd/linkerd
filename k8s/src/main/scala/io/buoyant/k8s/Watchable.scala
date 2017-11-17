@@ -71,7 +71,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    * implementing classes should define this method to retrieve the current state
    * of the resource to pass as Modified results to any watchers.
    *
-   * @return a Future containing a sequence of Watches and an optional String representing the current resourceVersion
+   * @return a Future containing a sequence of Watches and an optional String representing the
+   *         current resourceVersion
    */
   protected def restartWatches(
     labelSelector: Option[String] = None,
@@ -83,19 +84,22 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
    *
    * TODO: investigate k8s websockets support as an alternative HTTP approach
    *
-   * @return An asynchronous stream of [[Watch]] objects containing additions, modifications, and
-   *         deletions to the items in the list being watched, and a Closable handle allowing for
-   *         the watch to be terminated.
+   * This function has semantics similar to the argument of [[Var.async]], and can be used to create
+   * a stream of [[Watch]] objects containing additions, modifications, and deletions to the items
+   * in the list being watched,
+   *
+   * @return A Closable handle allowing for the watch to be terminated.
    */
   def watch(
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None,
-    resourceVersion: Option[String] = None
-  ): (AsyncStream[W], Closable) = {
+    resourceVersion: Option[String] = None,
+    state: Updatable[Activity.State[W]]
+  ): Closable = {
     val close = new AtomicReference[Closable](Closable.nop)
 
     // Internal method used to recursively retry watches as needed on failures.
-    def _watch(resourceVersion: Option[String] = None): AsyncStream[W] = {
+    def _watch(resourceVersion: Option[String]): Future[Unit] = {
       val req = Api.mkreq(http.Method.Get, watchPath, None,
         LabelSelectorKey -> labelSelector,
         FieldSelectorKey -> fieldSelector,
@@ -109,26 +113,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         Future.Unit
       })
 
-      @inline
-      def _resourceVersionTooOld() = {
-        // Gone is returned by k8s to indicate the requested resource version is too old to watch. A common scenario
-        // that exhibits this error is:
-        //
-        // 1. Kubernetes kills a connection or the connection is lost
-        // 2. We try to re-establish the watch from the last received version, but because we are only watching a
-        //    subset of resources, that version was a while ago
-        // 3. The watch fails
-        //
-        // We need to reload the initial information to ensure we are "caught up," and then watch again.
-        log.trace("k8s restarting watch on %s, resource version %s was too old", watchPath, resourceVersion)
-        AsyncStream.fromFuture {
-          restartWatches(labelSelector, fieldSelector).map {
-            case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
-          }
-        }.flatten
-      }
-
-      AsyncStream.fromFuture(initialState).flatMap { rsp =>
+      initialState.flatMap { rsp =>
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
           case http.Status.Ok =>
@@ -139,40 +124,13 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               } handle {
                 case _: Reader.ReaderDiscarded =>
               }
+
             })
-            val watchStream = Json.readStream[W](rsp.reader, Api.BufSize)
-              // it would be nice to not have to flat map over the watch
-              // stream, but this is necessary to handle the K8s bug where
-              // erorrs have the incorrect status code.
-              .flatMap {
-                // special case to handle Kubernetes bug where "too old
-                // resource version" errors are returned with status code 200
-                // rather than status code 410.
-                // see https://github.com/kubernetes/kubernetes/issues/35068
-                // for details.
-                case e: Watch.Error[O] if e.status.code.contains(410) =>
-                  log.debug(
-                    "k8s returned 'too old resource version' error with " +
-                      "incorrect HTTP status code, restarting watch"
-                  )
-                  _resourceVersionTooOld()
-                case event => AsyncStream.fromOption(Some(event))
-              }
-            watchStream ++ // if the stream ends (k8s will kill connections after ~30m), restart it)
-              AsyncStream.fromFuture {
-                // It's safe to call lastOption here, because we're after the `++` operator, so
-                // this code will not be executed until `watchStream` has completed.
-                val currentVersion = watchStream.lastOption.map(_.flatMap(_.resourceVersion))
-                currentVersion.flatMap {
-                  case Some(version) => Future.value(_watch(Some(version)))
-                  case None =>
-                    // In this case, we want to try loading the initial information instead before watching again.
-                    restartWatches(labelSelector, fieldSelector).map {
-                      case (ws, ver) => AsyncStream.fromSeq(ws) ++ _watch(ver)
-                    }
-                }
-              }
-              .flatten
+
+            _processEventStream(
+              () => Json.readStream[W](rsp.reader, Api.BufSize),
+              resourceVersion
+            )
 
           case http.Status.Gone =>
             _resourceVersionTooOld()
@@ -180,30 +138,92 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           case status =>
             close.set(Closable.nop)
             log.debug("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
-            val f = Future.exception(Api.UnexpectedResponse(rsp))
-            AsyncStream.fromFuture(f)
+            val exc = Api.UnexpectedResponse(rsp)
+            state.update(Activity.Failed(exc))
+            Future.exception(exc)
         }
       }
-        // Ignore any cases where we receive a resource version lower
-        // than the last received resource version.
-        .increasingOnly
-
     }
 
-    (_watch(resourceVersion), Closable.ref(close))
+    /**
+     * Recursively consume an AsyncStream of watch events from an established connection,
+     * updating [[state]] when appropriate.  Restart the watch on various error conditions.
+     */
+    def _processEventStream(
+      stream: () => AsyncStream[W],
+      largestVersion: Option[String],
+      largestEvent: Option[W] = None
+    ): Future[Unit] = {
+      stream().uncons.flatMap {
+        // Special case to handle Kubernetes bug where "too old resource version" errors are
+        // returned with status code 200 rather than status code 410.
+        // see https://github.com/kubernetes/kubernetes/issues/35068 for details
+        case Some((e: Watch.Error[O], _)) if e.status.code.contains(410) =>
+          log.debug(
+            "k8s returned 'too old resource version' error with incorrect HTTP status code, " +
+              "restarting watch"
+          )
+          _resourceVersionTooOld()
+
+        case Some((event, ws)) =>
+          import Ordering.Implicits._
+          // Register the update only if its resource version is larger than the largest version
+          // seen so far.
+          if (largestEvent.forall(_ < event)) {
+            state.update(Activity.Ok(event))
+            _processEventStream(ws, event.resourceVersion, Some(event))
+          } else {
+            _processEventStream(ws, largestVersion, largestEvent)
+          }
+
+        // If the stream ends (k8s will kill connections after ~30m), restart it at the last known
+        // resource version.
+        case None if largestVersion.isDefined =>
+          _watch(largestVersion)
+
+        // No known resource version: load the initial information before watching again.
+        case None =>
+          _resourceVersionTooOld()
+      }
+    }
+
+    def _resourceVersionTooOld(): Future[Unit] = {
+      // Gone is returned by k8s to indicate the requested resource version is too old to watch.
+      // A common scenario that exhibits this error is:
+      //
+      // 1. Kubernetes kills a connection or the connection is lost
+      // 2. We try to re-establish the watch from the last received version, but because we are only
+      //    watching a subset of resources, that version was a while ago
+      // 3. The watch fails
+      //
+      // We need to reload the initial information to ensure we are "caught up," and then watch
+      // again.
+      log.trace("k8s restarting watch on %s, resource version %s was too old", watchPath,
+        resourceVersion)
+      restartWatches(labelSelector, fieldSelector).flatMap {
+        case (ws, ver) =>
+          for (w <- ws)
+            state.update(Activity.Ok(w))
+
+          _watch(ver)
+      }
+    }
+
+    val _ = _watch(resourceVersion)
+    Closable.ref(close)
   }
 
   /**
    * Convert this Watchable into an [[Activity]] with a function called on
    * each watch event to update the state of the [[Activity]].
-   * @param convert function called to convert the response of a GET request on
-   *                this resource initial state of the [[Activity]]. this takes an
-   *                [[Option]] in case the GET request returns 404.
+   * @param convert       function called to convert the response of a GET request on
+   *                      this resource initial state of the [[Activity]]. this takes an
+   *                      [[Option]] in case the GET request returns 404.
    * @param labelSelector an optional label selector field for the Kubernetes API
    *                      request.
    * @param fieldSelector an optional field selector field for the Kubernetes API
    *                      request.
-   * @param onEvent function called on each [[Watch]] event.
+   * @param onEvent       function called on each [[Watch]] event.
    * @return an [[Activity]]`[T]` updated by [[Watch]] events on this object,
    *         where `T` is the return type of the `onEvent` function
    */
@@ -242,18 +262,19 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             None
           }
 
-          val (stream, close) = watch(
-            labelSelector = labelSelector,
-            fieldSelector = fieldSelector,
-            resourceVersion = version
-          )
-
-          closeRef.set(close)
-          val _ = stream.foldLeft(initialState) { (state0, event) =>
-            val state1 = onEvent(state0, event)
-            state.update(Activity.Ok(state1))
-            state1
-          }
+          val witness = Var
+            .async[Activity.State[W]](Activity.Pending) { updatable =>
+              watch(labelSelector, fieldSelector, version, updatable)
+            }
+            .changes
+            .foldLeft(initialState) {
+              case (state, activity) =>
+                activity match {
+                  case Activity.Ok(event) => onEvent(state, event)
+                  case _ => state
+                }
+            }.register(note => state.update(Activity.Ok(note)))
+          closeRef.set(witness)
         }
 
       Closable.make { t =>
@@ -271,32 +292,4 @@ object Watchable {
   private[k8s] val LabelSelectorKey = "labelSelector"
   private[k8s] val FieldSelectorKey = "fieldSelector"
   private[k8s] val ResourceVersionKey = "resourceVersion"
-
-  implicit class LastOptionAsyncStream[T](as: AsyncStream[T]) {
-    /**
-     * Note: forces the stream. For infinite streams, the future never resolves.
-     *
-     * @return the last element in the stream, if any.
-     */
-    def lastOption: Future[Option[T]] = as.toSeq.map(_.lastOption)
-
-  }
-
-  implicit class IncreasingOnlyAsyncStream[T](as: AsyncStream[T])(implicit ord: Ordering[T]) {
-    import ord.mkOrderingOps
-    /**
-     * Filter out values less than the previous value.
-     * @return a new stream, consisting of this stream with all
-     *         values less than their predecessor removed.
-     */
-    def increasingOnly: AsyncStream[T] =
-      as.scanLeft[(Option[T], Boolean)]((None, false)) {
-        // TODO: this would be much less ugly if the type of the scan was [W, Boolean]
-        //       but we need the Option to handle the initial value for the scan...
-        case ((Some(latest), _), next) if next > latest => (Some(next), true)
-        case ((Some(latest), _), _) => (Some(latest), false)
-        case ((None, _), next) => (Some(next), true)
-      }.filter(_._2).map(_._1.get)
-  }
-
 }
