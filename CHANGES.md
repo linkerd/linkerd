@@ -1,6 +1,17 @@
 ## 1.3.2 2017-11-17
 * Kubernetes
-  * Deprecated ThirdPartyResources in favor of CustomResourceDefinitions for namerd dtab storage (#1688)
+  * Deprecate ThirdPartyResources in favor of CustomResourceDefinitions for namerd dtab storage (#1688)
+* Thrift
+    * Fix a bug with the Thrift Identifier not properly identifying TTwitterThrift requests
+* Consul 
+    * Add tag weight configuration to Consul node addresses
+* Namerd
+    * Fix a memory leak involving the `io.l5d.thriftNameInterpreter` interface
+    * Fix a bug where a Namerd client could sometimes becomes unresponsive
+* gRPC
+    * Fix a bug where large message bodies in unary gRPC requests could cause Linkerd to hang
+* TLS
+    * Add `forwardClientCert` to HTTP and HTTP/2 server configurations to forward client TLS certificates to services behind Linkerd
 
 ## 1.3.1 2017-10-24
 
