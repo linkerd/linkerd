@@ -20,7 +20,7 @@ object CurrentIstioPath {
   }
 
   /**
-   * Returns the target service requested based on the supplied Path.
+   * Returns the target service requested based on the supplied `Path`.
    *
    * The service is expected to be specified in the third last element in the path. For example,
    * in the path:
@@ -49,7 +49,7 @@ object CurrentIstioPath {
 
   /**
    *
-   * Returns the target version of the app requested based on the supplied Path.
+   * Returns the target version of the app requested based on the supplied `Path`.
    *
    * The version of the app is expected to be specified in the second last element in the path. For
    * example, in the path:
@@ -79,9 +79,9 @@ object CurrentIstioPath {
   }
 
   /**
-   * Returns the app requested based on the supplied Path.
+   * Returns the app requested based on the supplied `Path`.
    *
-   * The app is expected to be the first segment of the service as returned by targetServiceIn().
+   * The app is expected to be the first segment of the service as returned by `targetServiceIn()`.
    * For example, in the path:
    *
    * `%,io.l5d.k8s.daemonset,default,incoming,l5d,#,io.l5d.k8s.istio,reviews.default.svc.cluster.local,az:us-west::env:prod::version:v1,http`
@@ -99,7 +99,7 @@ object CurrentIstioPath {
     .flatMap(_.split('.').headOption)
 
   /**
-   * Resolves a valid Istio Path, if any exists for the current DstBoundCtx
+   * Resolves a valid Istio `Path`, if any exists for the current `DstBoundCtx`
    */
   def apply(): Option[Path] = {
     Option(DstBoundCtx) match {
