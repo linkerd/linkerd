@@ -33,10 +33,9 @@ object Etcd {
     method: Method = Method.Get,
     params: Seq[(String, String)] = Nil
   ): Request = {
-    val host = "http://host"
     method match {
       case Method.Post | Method.Put =>
-        val req = requestBuilder.url(host)
+        val req = requestBuilder.url("http://host")
           .addFormElement(params: _*)
           .buildFormPost()
         req.uri = path.show
@@ -45,8 +44,8 @@ object Etcd {
         req
       case _ =>
         val req = Request(path.show, params: _*)
-        req.host = host
         req.method = method
+        req.host = "host"
         req
     }
   }
