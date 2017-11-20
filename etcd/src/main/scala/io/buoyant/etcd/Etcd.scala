@@ -45,6 +45,7 @@ object Etcd {
       case _ =>
         val req = Request(path.show, params: _*)
         req.method = method
+        req.host = "host"
         req
     }
   }
