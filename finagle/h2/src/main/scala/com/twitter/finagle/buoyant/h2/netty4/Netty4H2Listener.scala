@@ -40,8 +40,9 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
-      p.addLast(UnpoolHandler)
-      p.addLast(new ServerUpgradeHandler(codec)); ()
+      p.addLast(new ServerUpgradeHandler(codec))
+      //p.addLast(UnpoolHandler)
+      ()
     }
   }
 

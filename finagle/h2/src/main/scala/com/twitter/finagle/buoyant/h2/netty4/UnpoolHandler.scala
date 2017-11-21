@@ -39,18 +39,22 @@ object UnpoolHandler extends ChannelInboundHandlerAdapter {
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any): Unit = msg match {
     case bb: ByteBuf =>
+      println(bb)
       val _ = ctx.fireChannelRead(copyOnHeapAndRelease(bb))
 
     // This case is special since it helps to avoid unnecessary `replace`
     // when the underlying content is already `EmptyByteBuffer`.
     case bbh: ByteBufHolder if bbh.content.isInstanceOf[EmptyByteBuf] =>
+      println(bbh)
       val _ = ctx.fireChannelRead(bbh)
 
     case bbh: ByteBufHolder =>
+      println(bbh)
       val onHeapContent = copyOnHeapAndRelease(bbh.content)
       val _ = ctx.fireChannelRead(bbh.replace(onHeapContent))
 
-    case _ =>
+    case b =>
+      println(b)
       val _ = ctx.fireChannelRead(msg)
   }
 }
