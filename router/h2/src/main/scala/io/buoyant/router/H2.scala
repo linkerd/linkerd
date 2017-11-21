@@ -38,8 +38,8 @@ object H2 extends Router[Request, Response]
       stk.replace(
         ResponseClassifierCtx.Setter.role,
         H2ClassifierCtx.Setter.module[Request, Response]
-      ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
-        .replace(StatsFilter.role, StreamStatsFilter.module)
+      // ).replace(ClassifiedRetries.role, H2ClassifiedRetries.module)
+      ).replace(StatsFilter.role, StreamStatsFilter.module)
     }
 
     val boundStack: Stack[ServiceFactory[Request, Response]] =
