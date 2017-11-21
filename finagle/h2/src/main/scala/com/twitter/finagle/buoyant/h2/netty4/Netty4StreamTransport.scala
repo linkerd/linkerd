@@ -49,6 +49,8 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
   protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): RecvMsg
 
+  def resetClient: Option[Promise[Unit]]
+
   /*
    * A stream's state is represented by the `StreamState` ADT,
    * reflecting the state diagram detailed in RFC7540 §5.1:
@@ -651,12 +653,17 @@ object Netty4StreamTransport {
   private class Client(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
-    override protected[this] val statsReceiver: StatsReceiver
+    override protected[this] val statsReceiver: StatsReceiver,
+    onServerReset: Future[Unit]
   ) extends Netty4StreamTransport[Request, Response] {
 
     override protected[this] val prefix =
       s"C L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
+    onServerReset.onFailure { fail =>
+      log.debug("[%s] onServerReset observed failure: %s", prefix, fail)
+      this.resetP.setException(fail)
+    }
     //    private[this] val failP = new Promise[Unit] with Promise.InterruptHandler {
     //      override protected def onInterrupt(t: Throwable): Unit = t match {
     //        case StreamError.Remote(rst: Reset) =>
@@ -674,6 +681,7 @@ object Netty4StreamTransport {
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Response =
       Response(Netty4Message.Headers(headers), stream)
 
+    override def resetClient: Option[Promise[Unit]] = None
   }
 
   private class Server(
@@ -685,16 +693,38 @@ object Netty4StreamTransport {
     override protected[this] val prefix =
       s"S L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
+    private[this] val resetClientP: Promise[Unit] = new Promise[Unit]
+
+    this.onReset.onFailure { err =>
+      log.debug("[%s] onReset.onFailure (%s), propagating to client half", prefix, err)
+      resetClientP.setException(err)
+    }
+    resetClientP.onFailure {
+      log.debug("[%s] resetClientP.onFailure (%s)...", prefix, _)
+    }
+
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Request =
-      Request(Netty4Message.Headers(headers), stream, fail = resetP)
+      Request(Netty4Message.Headers(headers), stream, fail = resetClientP)
+
+    override def resetClient: Option[Promise[Unit]] = {
+      val closedResetP = new Promise[Unit]
+      closedResetP.onFailure { err =>
+        log.debug("[%s] closedResetP.onFailure (%s), propagating to client half", prefix, err)
+        resetClientP.setException(err)
+      }
+      Some(closedResetP)
+    }
   }
 
   def client(
     id: Int,
     writer: H2Transport.Writer,
-    stats: StatsReceiver = NullStatsReceiver
-  ): Netty4StreamTransport[Request, Response] =
-    new Client(id, writer, stats)
+    stats: StatsReceiver = NullStatsReceiver,
+    onServerReset: Future[Unit]
+  ): Netty4StreamTransport[Request, Response] = {
+    onServerReset.onFailure { f => log.debug("client constructor observed failure: %s", f) }
+    new Client(id, writer, stats, onServerReset)
+  }
 
   def server(
     id: Int,

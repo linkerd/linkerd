@@ -29,8 +29,22 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
    *
    * TODO only track closed streams for a TTL after it has closed.
    */
-  private[this] sealed trait StreamTransport
-  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
+  private[this] sealed trait StreamTransport {
+    def reset(err: Reset): Unit = {}
+  }
+  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport {
+    def toClosed: StreamClosed = StreamClosed(stream.streamId, this.stream.resetClient)
+    override def reset(err: Reset): Unit = stream.remoteReset(err)
+  }
+  private[this] case class StreamClosed(id: Int, onReset: Option[Promise[Unit]]) extends StreamTransport {
+    override def reset(err: Reset): Unit = synchronized {
+      onReset.foreach { resetP =>
+        log.debug("[%s S:%d] propagating %s to client half of closed stream", prefix, id, err)
+        resetP.setException(err)
+      }
+      streams.remove(id); ()
+    }
+  }
   private[this] object StreamLocalReset extends StreamTransport
   private[this] object StreamRemoteReset extends StreamTransport
   private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
@@ -65,7 +79,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Return(_) =>
         // Free and clear.
         addClosedId(id)
-        streams.remove(id)
+        if (streams.replace(id, open, open.toClosed)) {
+          log.debug("[%s S:%d] open stream closed", prefix, id)
+        } else {
+          streams.remove(id)
+        }
         log.debug("[%s S:%d] stream closed", prefix, id)
 
       case Throw(StreamError.Remote(e)) =>
@@ -182,10 +200,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   private[this] def resetStreams(err: Reset): Boolean =
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
-      streams.values.asScala.foreach {
-        case StreamOpen(st) => st.remoteReset(err)
-        case _ =>
-      }
+      streams.values.asScala.foreach { _.reset(err) }
       demuxing.raise(Failure(err).flagged(Failure.Interrupted))
       true
     } else false

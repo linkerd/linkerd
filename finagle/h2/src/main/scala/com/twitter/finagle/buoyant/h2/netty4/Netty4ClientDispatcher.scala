@@ -58,9 +58,10 @@ class Netty4ClientDispatcher(
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
-  private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
+  private[this] def newStreamTransport(onServerReset: Future[Unit]): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
-    val stream = Netty4StreamTransport.client(id, writer, streamStats)
+    onServerReset.onFailure { f => log.debug("[%s S:%d] newStreamTransport observed failure %s", prefix, id, f) }
+    val stream = Netty4StreamTransport.client(id, writer, streamStats, onServerReset)
     registerStream(id, stream)
     stream
   }
@@ -92,16 +93,17 @@ class Netty4ClientDispatcher(
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
+    val onServerFailure: Future[Unit] = req.onFail
+    log.debug("[%s] Netty4ClientDispatcher.apply(); onFail=%s; onFail.hashCode=%s;", prefix, onServerFailure, onServerFailure.hashCode())
+    onServerFailure.onFailure {
+      log.debug("[%s] Netty4ClientDispatcher.apply observed failure: %s", prefix, _)
+    }
     mutex.acquire().flatMap { permit =>
-      val st = newStreamTransport()
+
+      val st = newStreamTransport(onServerFailure)
       // Stream the request while receiving the response and
       // continue streaming the request until it is complete,
       // canceled,  or the response fails.
-      req.onFail.onFailure { e =>
-        log.debug(e, "[%s] resetting!!!!", prefix)
-        st.localReset(Reset.Cancel)
-        log.debug(e, "[%s] reset!!!!", prefix)
-      }
       val sendFF = st.send(req)
 
       // If the stream is reset prematurely, cancel the pending write

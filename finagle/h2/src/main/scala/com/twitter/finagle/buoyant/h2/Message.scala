@@ -23,7 +23,7 @@ sealed trait Message {
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
-
+  protected val log = Logger.get("h2")
 }
 
 trait Headers {
@@ -93,9 +93,18 @@ trait Request extends Message {
   def method: Method
   def authority: String
   def path: String
+  def stream: Stream
+  def headers: Headers
   override def dup(): Request
-
   def onFail: Future[Unit]
+  onFail.onFailure { e => log.debug("Request trait (not Impl) observed onFail: %s; onFail=%s; ", e, onFail.hashCode()) }
+
+  def copy(
+    headers: Headers = this.headers.dup(),
+    stream: Stream = this.stream,
+    onFail: Future[Unit] = this.onFail
+  ): Request =
+    Request(headers.dup(), stream, onFail)
 }
 
 object Request {
@@ -113,13 +122,16 @@ object Request {
       Headers.Path -> path
     ),
     stream,
-    Future.never
+    new Promise[Unit]
   )
 
-  def apply(headers: Headers, stream: Stream, fail: Future[Unit] = Future.never): Request =
+  def apply(headers: Headers, stream: Stream, fail: Future[Unit]): Request =
     Impl(headers, stream, fail)
 
   private case class Impl(headers: Headers, stream: Stream, onFail: Future[Unit]) extends Request {
+    log.debug("Created %s; onFail=%s;", this, onFail.hashCode())
+    onFail.onFailure { e => log.debug("Request.Impl observed onFail: %s; onFail=%s;", e, onFail.hashCode()) }
+    //    override def onFail: Future[Unit] = failF
     override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).getOrElse("")
@@ -129,7 +141,6 @@ object Request {
     }
     override def authority = headers.get(Headers.Authority).getOrElse("")
     override def path = headers.get(Headers.Path).getOrElse("/")
-    private[this] val log = Logger.get("h2")
   }
 }
 
