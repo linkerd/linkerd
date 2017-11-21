@@ -223,7 +223,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    * closed prematurely.
    */
   def onReset: Future[Unit] = resetP
-  private[this] val resetP = new Promise[Unit]
+  protected[this] val resetP = new Promise[Unit]
 
   def isClosed = stateRef.get match {
     case Closed(_) => true
@@ -237,12 +237,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case err => resetP.setException(StreamError.Remote(err))
     }
 
-  def localReset(err: Reset): Unit =
+  def localReset(err: Reset): Unit = synchronized {
     if (tryReset(err)) err match {
       case Reset.NoError =>
         resetP.setDone(); ()
       case err => resetP.setException(StreamError.Local(err))
     }
+  }
 
   @tailrec private[this] def tryReset(err: Reset): Boolean =
     stateRef.get match {
@@ -656,8 +657,23 @@ object Netty4StreamTransport {
     override protected[this] val prefix =
       s"C L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
+    //    private[this] val failP = new Promise[Unit] with Promise.InterruptHandler {
+    //      override protected def onInterrupt(t: Throwable): Unit = t match {
+    //        case StreamError.Remote(rst: Reset) =>
+    //          log.debug(rst, "[%s] failer failed, resetP", prefix)
+    //          localReset(rst)
+    //          failF.raise(t)
+    //        case e =>
+    //          log.debug(e, "[%s] failer failed, resetP", prefix)
+    //          localReset(Reset.Cancel)
+    //          failF.raise(t)
+    //      }
+    //    }
+    //    failF.proxyTo(failP)
+
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Response =
       Response(Netty4Message.Headers(headers), stream)
+
   }
 
   private class Server(
@@ -670,7 +686,7 @@ object Netty4StreamTransport {
       s"S L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Request =
-      Request(Netty4Message.Headers(headers), stream)
+      Request(Netty4Message.Headers(headers), stream, fail = resetP)
   }
 
   def client(

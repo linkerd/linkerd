@@ -1,5 +1,6 @@
 package com.twitter.finagle.buoyant.h2
 
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise}
 
 /**
@@ -22,6 +23,7 @@ sealed trait Message {
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
+
 }
 
 trait Headers {
@@ -92,6 +94,8 @@ trait Request extends Message {
   def authority: String
   def path: String
   override def dup(): Request
+
+  def onFail: Future[Unit]
 }
 
 object Request {
@@ -108,13 +112,14 @@ object Request {
       Headers.Authority -> authority,
       Headers.Path -> path
     ),
-    stream
+    stream,
+    Future.never
   )
 
-  def apply(headers: Headers, stream: Stream): Request =
-    Impl(headers, stream)
+  def apply(headers: Headers, stream: Stream, fail: Future[Unit] = Future.never): Request =
+    Impl(headers, stream, fail)
 
-  private case class Impl(headers: Headers, stream: Stream) extends Request {
+  private case class Impl(headers: Headers, stream: Stream, onFail: Future[Unit]) extends Request {
     override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).getOrElse("")
@@ -124,6 +129,7 @@ object Request {
     }
     override def authority = headers.get(Headers.Authority).getOrElse("")
     override def path = headers.get(Headers.Path).getOrElse("/")
+    private[this] val log = Logger.get("h2")
   }
 }
 
