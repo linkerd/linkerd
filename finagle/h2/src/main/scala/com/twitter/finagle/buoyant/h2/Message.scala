@@ -97,7 +97,6 @@ trait Request extends Message {
   def headers: Headers
   override def dup(): Request
   def onFail: Future[Unit]
-  onFail.onFailure { e => log.debug("Request trait (not Impl) observed onFail: %s; onFail=%s; ", e, onFail.hashCode()) }
 
   def copy(
     headers: Headers = this.headers.dup(),
@@ -129,8 +128,10 @@ object Request {
     Impl(headers, stream, fail)
 
   private case class Impl(headers: Headers, stream: Stream, onFail: Future[Unit]) extends Request {
-    log.debug("Created %s; onFail=%s;", this, onFail.hashCode())
-    onFail.onFailure { e => log.debug("Request.Impl observed onFail: %s; onFail=%s;", e, onFail.hashCode()) }
+    log.trace("Created %s; onFail=%s;", this, onFail.hashCode())
+    onFail.onFailure { e =>
+      log.trace("Request.Impl observed onFail: %s; onFail=%s;", e, onFail.hashCode())
+    }
     //    override def onFail: Future[Unit] = failF
     override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())

@@ -60,7 +60,6 @@ class Netty4ClientDispatcher(
   // demultiplexed to it.
   private[this] def newStreamTransport(onServerReset: Future[Unit]): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
-    onServerReset.onFailure { f => log.debug("[%s S:%d] newStreamTransport observed failure %s", prefix, id, f) }
     val stream = Netty4StreamTransport.client(id, writer, streamStats, onServerReset)
     registerStream(id, stream)
     stream
@@ -93,11 +92,7 @@ class Netty4ClientDispatcher(
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
-    val onServerFailure: Future[Unit] = req.onFail
-    log.debug("[%s] Netty4ClientDispatcher.apply(); onFail=%s; onFail.hashCode=%s;", prefix, onServerFailure, onServerFailure.hashCode())
-    onServerFailure.onFailure {
-      log.debug("[%s] Netty4ClientDispatcher.apply observed failure: %s", prefix, _)
-    }
+    val onServerFailure = req.onFail
     mutex.acquire().flatMap { permit =>
 
       val st = newStreamTransport(onServerFailure)
