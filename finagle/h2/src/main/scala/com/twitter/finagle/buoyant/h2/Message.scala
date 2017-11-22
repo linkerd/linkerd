@@ -23,7 +23,9 @@ sealed trait Message {
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
-  protected val log = Logger.get("h2")
+}
+protected[Message] object Message {
+  val log = Logger.get("h2")
 }
 
 trait Headers {
@@ -107,22 +109,40 @@ trait Request extends Message {
 }
 
 object Request {
+  import Message._
   def apply(
     scheme: String,
     method: Method,
     authority: String,
     path: String,
     stream: Stream
-  ): Request = Impl(
-    Headers(
-      Headers.Scheme -> scheme,
-      Headers.Method -> method.toString,
-      Headers.Authority -> authority,
-      Headers.Path -> path
-    ),
-    stream,
-    new Promise[Unit]
-  )
+  ): Request = {
+    val req = Impl(
+      Headers(
+        Headers.Scheme -> scheme,
+        Headers.Method -> method.toString,
+        Headers.Authority -> authority,
+        Headers.Path -> path
+      ),
+      stream,
+      Future.never
+    )
+    log.warning(
+      "Created request %s without a server dispatcher onFail future – you probably don't want to do this.",
+      req
+    )
+    req
+  }
+
+  def apply(headers: Headers, stream: Stream): Request = {
+    val req = Impl(headers, stream, Future.never)
+    log.warning(
+      "Created request %s without a server dispatcher onFail future – you probably don't want to do this.",
+      req
+    )
+    req
+  }
+
 
   def apply(headers: Headers, stream: Stream, fail: Future[Unit]): Request =
     Impl(headers, stream, fail)
