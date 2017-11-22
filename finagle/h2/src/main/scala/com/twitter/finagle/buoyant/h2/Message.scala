@@ -18,14 +18,12 @@ import com.twitter.util.{Future, Promise}
  * to satisfy a broader set of use cases.
  */
 sealed trait Message {
+  protected val log = Logger.get("h2")
   def headers: Headers
   def stream: Stream
 
   /** Create a deep copy of the Message with a new copy of headers (but the same stream). */
   def dup(): Message
-}
-protected[Message] object Message {
-  val log = Logger.get("h2")
 }
 
 trait Headers {
@@ -109,7 +107,7 @@ trait Request extends Message {
 }
 
 object Request {
-  import Message._
+  protected val log = Logger.get("h2")
   def apply(
     scheme: String,
     method: Method,
@@ -142,7 +140,6 @@ object Request {
     )
     req
   }
-
 
   def apply(headers: Headers, stream: Stream, fail: Future[Unit]): Request =
     Impl(headers, stream, fail)
