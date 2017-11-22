@@ -34,16 +34,26 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
   private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport {
     def toClosed: Option[StreamClosed] =
-      this.stream.resetClient.map { resetP => StreamClosed(stream.streamId, resetP ) }
+      this.stream.resetClient.map { resetP => StreamClosed(stream.streamId, resetP) }
     override def reset(err: Reset): Unit = stream.remoteReset(err)
   }
   private[this] case class StreamClosed(id: Int, onReset: Promise[Unit]) extends StreamTransport {
+
+    onReset.setInterruptHandler {
+      // the ClientFinished exception is raised to indicate that we no longer
+      // need to track this closed stream for resetting the client stream.
+      case Netty4StreamTransport.ClientFinished =>
+        log.debug("[%s S:%d] client stream finished, discarding StreamClosed...", prefix, id)
+        streams.remove(id); ()
+    }
+
     override def reset(err: Reset): Unit = synchronized {
       log.debug("[%s S:%d] propagating %s to client half of closed stream", prefix, id, err)
       onReset.setException(err)
       streams.remove(id); ()
     }
   }
+
   private[this] object StreamLocalReset extends StreamTransport
   private[this] object StreamRemoteReset extends StreamTransport
   private[this] case class StreamFailed(cause: Throwable) extends StreamTransport

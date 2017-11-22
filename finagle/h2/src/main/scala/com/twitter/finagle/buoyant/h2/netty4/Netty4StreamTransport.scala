@@ -9,6 +9,7 @@ import com.twitter.util.{Future, Promise, Return, Throw}
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
+import scala.util.control.NoStackTrace
 
 /**
  * Reads and writes a bi-directional HTTP/2 stream.
@@ -598,6 +599,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 object Netty4StreamTransport {
   private lazy val log = Logger.get("h2")
 
+  /**
+   * Indicates that the client stream has fully finished,
+   * and the closed server stream need no longer be tracked.
+   */
+  object ClientFinished extends Throwable with NoStackTrace
+
   /** Helper: a state that supports Reset.  (All but Closed) */
   private trait ResettableState {
     def reset(rst: Reset): Unit
@@ -680,6 +687,11 @@ object Netty4StreamTransport {
       case e =>
         log.error(e, "[%s] unexpected server error", prefix)
         localReset(Reset.InternalError)
+    }
+
+    this.onReset.ensure {
+      log.debug("[%s] closed, closed server stream can be discarded...", prefix)
+      onServerReset.raise(ClientFinished)
     }
 
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Response =
