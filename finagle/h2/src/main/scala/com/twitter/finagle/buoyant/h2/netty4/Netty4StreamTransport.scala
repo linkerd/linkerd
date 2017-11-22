@@ -727,7 +727,7 @@ object Netty4StreamTransport {
     id: Int,
     writer: H2Transport.Writer,
     stats: StatsReceiver = NullStatsReceiver,
-    onServerReset: Future[Unit]
+    onServerReset: Future[Unit] = Future.never
   ): Netty4StreamTransport[Request, Response] = {
     new Client(id, writer, stats, onServerReset)
   }
