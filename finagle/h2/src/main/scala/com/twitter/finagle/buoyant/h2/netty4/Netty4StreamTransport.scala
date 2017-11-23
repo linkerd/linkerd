@@ -674,7 +674,7 @@ object Netty4StreamTransport {
           case _ => Reset.Cancel
         }
         log.debug("[%s] server failed with remote reset: %s", prefix, rst)
-        remoteReset(rst)
+        localReset(rst)
 
       case StreamError.Local(e) =>
         val rst = e match {
@@ -682,7 +682,7 @@ object Netty4StreamTransport {
           case _ => Reset.Cancel
         }
         log.debug("[%s] server failed with local reset: %s", prefix, rst)
-        localReset(rst)
+        remoteReset(rst)
 
       case e =>
         log.error(e, "[%s] unexpected server error", prefix)
