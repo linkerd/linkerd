@@ -234,7 +234,6 @@ case class RetryBufferSize(
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   var maxConcurrentStreamsPerConnection: Option[Int] = None
-  val forwardClientCert: Option[Boolean] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -245,7 +244,6 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
     .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
-    .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams)

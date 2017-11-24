@@ -109,6 +109,7 @@ headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams
 initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
 
 
 ## HTTP/2 Identifiers

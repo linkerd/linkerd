@@ -253,7 +253,6 @@ failFast | `false` | If `true`, connection failures are punished more aggressive
 requeueBudget | see [retry budget](#retry-budget-parameters) | A [requeue budget](#retry-budget-parameters) for connection-level retries.
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 requestAttemptTimeoutMs | no timeout | The timeout, in milliseconds, for each attempt (original or retry) of the request made by this client.
-forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
 
 <aside class="notice">
 `forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests.

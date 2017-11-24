@@ -114,6 +114,11 @@ router | Uses the router's `label` as an obfuscated static label.
 static | Accepts a `label` parameter. Produces obfuscated static labels like `_linkerd`.
 
 <a name="http-1-1-identifiers"></a>
+## HTTP Client Parameters
+Key | Default Value | Description
+--- | ------------- | -----------
+forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
+<a name="http-client-parameters"></a>
 ## HTTP/1.1 Identifiers
 
 Identifiers are responsible for creating logical *names* from an incoming
