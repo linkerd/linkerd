@@ -105,11 +105,11 @@ object Stream {
   }
 
   private[this] def failOnInterrupt[T, Q](f: Future[T], q: AsyncQueue[Q]): Future[T] = {
-    val p = new Promise[T]
-    p.setInterruptHandler {
-      case e =>
+    val p = new Promise[T] with Promise.InterruptHandler {
+      override protected def onInterrupt(e: Throwable): Unit = {
         q.fail(e, discard = true)
         f.raise(e)
+      }
     }
     f.proxyTo(p)
     p

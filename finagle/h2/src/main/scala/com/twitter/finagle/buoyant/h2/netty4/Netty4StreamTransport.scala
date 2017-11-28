@@ -182,31 +182,32 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    * retrying on collision).
    */
   private[this] val stateRef: AtomicReference[StreamState] = {
-    val remoteMsgP = new Promise[RecvMsg]
+    val remoteMsgP = new Promise[RecvMsg] with Promise.InterruptHandler {
+      override protected def onInterrupt(t: Throwable): Unit =
+      // When the remote message--especially a client's response--is
+      // canceled, close the transport, sending a RST_STREAM as
+      // appropriate.
+        t match {
+          case err: Reset =>
+            log.debug("[%s] remote message interrupted: %s", prefix, err)
+            localReset(err)
 
-    // When the remote message--especially a client's response--is
-    // canceled, close the transport, sending a RST_STREAM as
-    // appropriate.
-    remoteMsgP.setInterruptHandler {
-      case err: Reset =>
-        log.debug("[%s] remote message interrupted: %s", prefix, err)
-        localReset(err)
+          case Failure(Some(err: Reset)) =>
+            log.debug("[%s] remote message interrupted: %s", prefix, err)
+            localReset(err)
 
-      case Failure(Some(err: Reset)) =>
-        log.debug("[%s] remote message interrupted: %s", prefix, err)
-        localReset(err)
+          case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
+            log.debug("[%s] remote message interrupted: %s", prefix, f)
+            localReset(Reset.Cancel)
 
-      case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
-        log.debug("[%s] remote message interrupted: %s", prefix, f)
-        localReset(Reset.Cancel)
+          case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
+            log.debug("[%s] remote message interrupted: %s", prefix, f)
+            localReset(Reset.Refused)
 
-      case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
-        log.debug("[%s] remote message interrupted: %s", prefix, f)
-        localReset(Reset.Refused)
-
-      case e =>
-        log.debug("[%s] remote message interrupted: %s", prefix, e)
-        localReset(Reset.InternalError)
+          case e =>
+            log.debug("[%s] remote message interrupted: %s", prefix, e)
+            localReset(Reset.InternalError)
+        }
     }
 
     new AtomicReference(Open(new RemotePending(remoteMsgP)))
@@ -570,11 +571,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   }
 
   private[this] def localResetOnCancel[T](f: Future[T]): Future[T] = {
-    val p = new Promise[T]
-    p.setInterruptHandler {
-      case e =>
+    val p = new Promise[T] with Promise.InterruptHandler {
+      override protected def onInterrupt(t: Throwable): Unit = {
         localReset(Reset.Cancel)
-        f.raise(e)
+        f.raise(t)
+      }
     }
     f.proxyTo(p)
     p

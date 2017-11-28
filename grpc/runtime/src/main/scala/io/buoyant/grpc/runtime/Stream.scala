@@ -122,21 +122,23 @@ object Stream {
           }
         }
 
-        val p = new Promise[Stream.Releasable[T]]
-        f.proxyTo(p)
-        p.setInterruptHandler {
-          case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
-            val status = cause match {
-              case Some(s: GrpcStatus) => s
-              case Some(e) => GrpcStatus.Canceled(e.getMessage)
-              case None => GrpcStatus.Canceled()
+        val p = new Promise[Stream.Releasable[T]] with Promise.InterruptHandler {
+          override protected def onInterrupt(t: Throwable): Unit =
+            t match {
+              case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
+                val status = cause match {
+                  case Some(s: GrpcStatus) => s
+                  case Some(e) => GrpcStatus.Canceled(e.getMessage)
+                  case None => GrpcStatus.Canceled()
+                }
+                reset(status)
+                f.raise(e)
+              case _ =>
+                reset(GrpcStatus.Canceled(t.getMessage))
+                f.raise(t)
             }
-            reset(status)
-            f.raise(e)
-          case e =>
-            reset(GrpcStatus.Canceled(e.getMessage))
-            f.raise(e)
         }
+        f.proxyTo(p)
         p
       }
 

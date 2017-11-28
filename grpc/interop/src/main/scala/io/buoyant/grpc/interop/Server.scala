@@ -84,19 +84,21 @@ class Server extends pb.TestService {
     reqs: Stream[pb.StreamingInputCallRequest]
   ): Future[pb.StreamingInputCallResponse] = {
     val f = accumSize(reqs, 0).map { sz => pb.StreamingInputCallResponse(Some(sz)) }
-    val p = new Promise[pb.StreamingInputCallResponse]
-    f.proxyTo(p)
-    p.setInterruptHandler {
-      case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
-        val status = cause match {
-          case Some(s: GrpcStatus) => s
-          case _ => GrpcStatus.Canceled()
+    val p = new Promise[pb.StreamingInputCallResponse] with Promise.InterruptHandler {
+      override protected def onInterrupt(t: Throwable): Unit =
+        t match {
+          case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
+            val status = cause match {
+              case Some(s: GrpcStatus) => s
+              case _ => GrpcStatus.Canceled()
+            }
+            reqs.reset(status)
+            f.raise(e)
+          case e =>
+            f.raise(e)
         }
-        reqs.reset(status)
-        f.raise(e)
-      case e =>
-        f.raise(e)
     }
+    f.proxyTo(p)
     p
   }
 
