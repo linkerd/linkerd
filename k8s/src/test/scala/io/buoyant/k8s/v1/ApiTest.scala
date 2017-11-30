@@ -1,10 +1,12 @@
 package io.buoyant.k8s.v1
 
+import java.util.concurrent.ConcurrentLinkedQueue
+
 import com.twitter.finagle.{Service => FService}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.k8s.{ObjectMeta, ObjectReference}
+import io.buoyant.k8s.{ObjectMeta, ObjectReference, Watchable}
 import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.{FunSuite, Inside, OptionValues}
@@ -96,6 +98,35 @@ class ApiTest extends FunSuite
     if (failure != null) throw failure
   }
 
+  /**
+   * Poll a series of events from a watchable
+   *
+   * @param watchable Object to call .watch on
+   * @param body      Test body.  Accepts one argument--the polling function--that may be called to poll and match a
+   *                  single event (or None if no more events present).
+   */
+  private def watch[T <: Watchable[_, _, _]](watchable: T, resourceVersion: Option[String] = None)(
+    body: (PartialFunction[Option[Activity.State[_]], Any] => Any) => Any
+  ) = {
+    val events = new ConcurrentLinkedQueue[Activity.State[_]]
+    val closable = watchable.watch(
+      resourceVersion = resourceVersion,
+      state = value => { val _ = events.offer(value) }
+    )
+    try {
+      val poll = (eventMatcher: PartialFunction[Option[Activity.State[_]], Any]) =>
+        eventMatcher.applyOrElse(
+          Option(events.poll()),
+          (ev: Option[Activity.State[_]]) => fail(s"unexpected event: $ev")
+        )
+      body(poll)
+      poll {
+        case Some(ev) => fail(s"event was not consumed by test: $ev")
+        case None =>
+      }
+    } finally await(closable.close())
+  }
+
   test("watch endpoint list: one message") {
     val chunk = new Promise[Buf]
     val rsp = Response()
@@ -122,13 +153,12 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, c) = api.withNamespace("srv").endpoints.watch(resourceVersion = Some("1234567"))
-    try {
-      val hd = stream.head
-      assert(!hd.isDefined)
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
+      poll { case None => }
       chunk.setValue(modified0)
-      assert(hd.isDefined)
-    } finally await(c.close())
+      poll { case Some(_) => }
+      poll { case None => }
+    }
     if (failure != null) throw failure
   }
 
@@ -156,52 +186,39 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, closable) = api.withNamespace("srv").endpoints.watch()
-    try {
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
       val w = rsp.writer
       await(w.write(modified2 concat added0))
-      await(stream.uncons) match {
-        case Some((EndpointsModified(eps), getStream)) =>
+      poll {
+        case Some(Activity.Ok(EndpointsModified(eps))) =>
           assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
             Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-
-          await(getStream().uncons) match {
-            case Some((EndpointsAdded(eps), getStream)) =>
-              assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-                Seq("104.154.78.240"))
-
-              val next = getStream().uncons
-              assert(!next.isDefined)
-              await(w.write(modified1))
-              assert(next.isDefined)
-              await(next) match {
-                case Some((EndpointsModified(eps), getStream)) =>
-                  assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-                    Seq("10.248.3.3"))
-
-                  val next = getStream().uncons
-                  assert(!next.isDefined)
-                  await(w.write(modified0))
-                  assert(next.isDefined)
-                  await(next) match {
-                    case Some((EndpointsModified(eps), getStream)) =>
-                      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-                        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-                      val next = getStream().uncons
-                      await(closable.close())
-                    case event =>
-                      fail(s"unexpected event: $event")
-                  }
-                case event =>
-                  fail(s"unexpected event: $event")
-              }
-            case event =>
-              fail(s"unexpected event: $event")
-          }
-        case event =>
-          fail(s"unexpected event: $event")
       }
-    } finally await(closable.close())
+
+      poll {
+        case Some(Activity.Ok(EndpointsAdded(eps))) =>
+          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+            Seq("104.154.78.240"))
+      }
+
+      poll { case None => }
+      await(w.write(modified1))
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(eps))) =>
+          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+            Seq("10.248.3.3"))
+      }
+
+      poll { case None => }
+      await(w.write(modified0))
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(eps))) =>
+          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+      }
+    }
     if (failure != null) throw failure
   }
 
@@ -245,39 +262,32 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, closable) = api.withNamespace("srv").endpoints.watch(resourceVersion = Some(ver))
-    try {
-      await(stream.uncons) match {
-        case Some((EndpointsError(status), stream)) =>
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
+      poll {
+        case Some(Activity.Ok(EndpointsError(status))) =>
           assert(status.status == Some("Failure"))
-          await(stream().uncons) match {
-            case Some((EndpointsModified(mod), stream)) =>
-              assert(mod.metadata.get.resourceVersion.contains("17147786"))
-              assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-              await(stream().uncons) match {
-                case Some((EndpointsModified(mod), stream)) =>
-                  assert(mod.metadata.get.resourceVersion.contains("17147808"))
-                  assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-                  await(stream().uncons) match {
-                    case Some((EndpointsModified(mod), stream)) =>
-                      assert(mod.metadata.get.resourceVersion.contains("27147808"))
-                      assert(mod.subsets.isEmpty)
-                      val next = stream().uncons
-                      await(closable.close())
-                      assert(!next.isDefined)
-                    case event =>
-                      fail(s"unexpected event: $event")
-                  }
-                case event =>
-                  fail(s"unexpected event: $event")
-              }
-            case event =>
-              fail(s"unexpected event: $event")
-          }
-        case event =>
-          fail(s"unexpected event: $event")
       }
-    } finally await(closable.close())
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("17147786"))
+          assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+      }
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("17147808"))
+          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+      }
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("27147808"))
+          assert(mod.subsets.isEmpty)
+      }
+
+      poll { case None => }
+    }
     if (failure != null) throw failure
   }
 
@@ -303,22 +313,18 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, closable) = api.withNamespace("srv").endpoints.watch()
-    try {
-      var uncons = stream.uncons
-      assert(!uncons.isDefined)
+    watch(api.withNamespace("srv").endpoints) { poll =>
+      poll { case None => }
 
       await(rsp.writer.write(modified0))
-      uncons = await(uncons) match {
-        case Some((_, rest)) => rest().uncons
+      poll {
+        case Some(_) =>
         case None => fail("chunk not read")
       }
-      assert(!uncons.isDefined)
-      assert(reqCount == 1)
+      poll { case None => }
 
-      await(closable.close())
-      assert(!uncons.isDefined)
-    } finally await(closable.close())
+      assert(reqCount == 1)
+    }
     if (failure != null) throw failure
   }
 
@@ -363,30 +369,25 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, closable) = api.withNamespace("srv").endpoints.watch(resourceVersion = Some(ver))
-    try {
-      await(stream.uncons) match {
-        case Some((EndpointsModified(mod), stream)) =>
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
           assert(mod.metadata.get.resourceVersion.contains("17147786"))
           assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-          await(stream().uncons) match {
-            case Some((EndpointsModified(mod), stream)) =>
-              assert(mod.metadata.get.resourceVersion.contains("17147808"))
-              assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-              await(stream().uncons) match {
-                case Some((EndpointsModified(mod), stream)) =>
-                  assert(mod.metadata.get.resourceVersion.contains("27147808"))
-                  assert(mod.subsets.isEmpty)
-                  val next = stream().uncons
-                  await(closable.close())
-                  assert(!next.isDefined)
-                case event => fail(s"unexpected event: $event")
-              }
-            case event => fail(s"unexpected event: $event")
-          }
-        case event => fail(s"unexpected event: $event")
       }
-    } finally await(closable.close())
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("17147808"))
+          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+      }
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("27147808"))
+          assert(mod.subsets.isEmpty)
+      }
+    }
     if (failure != null) throw failure
   }
 
@@ -432,30 +433,77 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    val (stream, closable) = api.withNamespace("srv").endpoints.watch(resourceVersion = Some(ver))
-    try {
-      await(stream.uncons) match {
-        case Some((EndpointsModified(mod), stream)) =>
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
           assert(mod.metadata.get.resourceVersion.contains("17147786"))
           assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-          await(stream().uncons) match {
-            case Some((EndpointsModified(mod), stream)) =>
-              assert(mod.metadata.get.resourceVersion.contains("17147808"))
-              assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-              await(stream().uncons) match {
-                case Some((EndpointsModified(mod), stream)) =>
-                  assert(mod.metadata.get.resourceVersion.contains("27147808"))
-                  assert(mod.subsets.isEmpty)
-                  val next = stream().uncons
-                  await(closable.close())
-                  assert(!next.isDefined)
-                case event => fail(s"unexpected event: $event")
-              }
-            case event => fail(s"unexpected event: $event")
-          }
-        case event => fail(s"unexpected event: $event")
       }
-    } finally await(closable.close())
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("17147808"))
+          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+      }
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(mod))) =>
+          assert(mod.metadata.get.resourceVersion.contains("27147808"))
+          assert(mod.subsets.isEmpty)
+      }
+    }
+    if (failure != null) throw failure
+  }
+
+  test("watch observes increasing resourceVersion only") {
+    val rsp = Response()
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
+    val service = FService.mk[Request, Response] { req =>
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          try {
+            assert(req.path == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.params.getBoolean("watch").isEmpty)
+            rsp.version = req.version
+            Future.value(rsp)
+          } catch {
+            case up: TestFailedException => throw up
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
+          }
+        case _ => Future.never
+      }
+    }
+    val api = Api(service)
+
+    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
+      val w = rsp.writer
+      await(w.write(modified2 concat modified0))
+      poll {
+        case Some(Activity.Ok(EndpointsModified(eps))) =>
+          assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
+            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+      }
+
+      poll {
+        case Some(Activity.Ok(EndpointsModified(eps))) =>
+          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+      }
+
+      poll { case None => }
+
+      // repeat the event: no update since resource version is the same
+      await(w.write(modified0))
+      poll { case None => }
+
+      // write an earlier event: no update since resource version is too low
+      await(w.write(modified2))
+      poll { case None => }
+    }
     if (failure != null) throw failure
   }
 

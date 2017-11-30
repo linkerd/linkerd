@@ -301,6 +301,8 @@ class IngressCacheTest extends FunSuite with Awaits {
       val rsp = Response()
       rsp.content = Buf.Utf8(response)
       Future.value(rsp)
+    case req if req.uri.contains("/apis/extensions/v1beta1/watch/ingresses") =>
+      Future.value(Response())
     case req =>
       fail(s"unexpected request for [${req.uri}]: $req")
   }

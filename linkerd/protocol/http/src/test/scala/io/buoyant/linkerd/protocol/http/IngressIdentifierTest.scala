@@ -52,6 +52,8 @@ class IngressIdentifierTest extends FunSuite with Awaits {
       val rsp = Response()
       rsp.content = ingressListResource
       Future.value(rsp)
+    case req if req.uri.contains("/apis/extensions/v1beta1/watch/ingresses") =>
+      Future.value(Response())
     case req =>
       fail(s"unexpected request: $req")
   }
