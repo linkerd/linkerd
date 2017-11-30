@@ -73,7 +73,7 @@ object LinkerdAdmin {
       NavItem("dtab", "delegator"),
       NavItem("logging", "logging")
     ) ++ Admin.extractNavItems(
-        linker.namers ++
+        linker.namers.map(_._2) ++
           linker.routers.map(_.interpreter) ++
           linker.routers ++
           linker.telemeters
@@ -89,7 +89,7 @@ object LinkerdAdmin {
     val adminHandler = new AdminHandler(uniqBy(navItems)(_.name))
 
     val extHandlers = Admin.extractHandlers(
-      linker.namers ++
+      linker.namers.map(_._2) ++
         linker.routers ++
         linker.routers.map(_.interpreter) ++
         linker.telemeters
