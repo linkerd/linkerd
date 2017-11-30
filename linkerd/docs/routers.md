@@ -254,11 +254,6 @@ requeueBudget | see [retry budget](#retry-budget-parameters) | A [requeue budget
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 requestAttemptTimeoutMs | no timeout | The timeout, in milliseconds, for each attempt (original or retry) of the request made by this client.
 
-<aside class="notice">
-`forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests.
-they receive. 
-</aside>
-
 #### Host Connection Pool
 
 ```yaml

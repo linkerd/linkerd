@@ -111,6 +111,10 @@ maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
 
+<aside class="notice">
+`forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests
+they receive.   
+</aside>
 
 ## HTTP/2 Identifiers
 

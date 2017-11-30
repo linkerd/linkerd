@@ -113,12 +113,18 @@ requestRandom | An obfuscated random label like `_6Oq8jJ` _generated for each re
 router | Uses the router's `label` as an obfuscated static label.
 static | Accepts a `label` parameter. Produces obfuscated static labels like `_linkerd`.
 
-<a name="http-1-1-identifiers"></a>
+<a name="http-client-parameters"></a>
 ## HTTP Client Parameters
 Key | Default Value | Description
 --- | ------------- | -----------
 forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
-<a name="http-client-parameters"></a>
+
+<aside class="notice">
+`forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests
+they receive. 
+</aside>
+
+<a name="http-1-1-identifiers"></a>
 ## HTTP/1.1 Identifiers
 
 Identifiers are responsible for creating logical *names* from an incoming
