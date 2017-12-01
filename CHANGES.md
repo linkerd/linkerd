@@ -2,7 +2,7 @@
 
 :rotating_light: Bugfix extravanganza alert! :rotating_light:
 
-This release has been an exciting one! We received a lot of contributions from users in our awesome community. Special thanks
+This release is an exciting one! We received a lot of contributions from our awesome Linkerd community. Special thanks
 to @sgrankin and @carloszuluaga just to name a few. Checkout our recent blog post for the full list of everyone that contributed
 to release 1.3.3.
 * Fix a bug where Namerd using `io.l5d.etcd` as a dtab store returns a 500 HTTP Response when listing DTabs. (#1702)
