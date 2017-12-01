@@ -1,3 +1,16 @@
+## 1.3.3 2017-12-01
+
+:rotating_light: Bugfix extravanganza alert! :rotating_light:
+
+This release is an exciting one! We received a lot of contributions from our awesome Linkerd community. Special thanks
+to [@sgrankin](https://github.com/sgrankin) and [@carloszuluaga](https://github.com/carloszuluaga), just to name a few. Checkout our recent blog post for the full list of everyone that contributed
+to release 1.3.3.
+* Fix a bug where Namerd using `io.l5d.etcd` as a dtab store returns a 500 HTTP Response when listing DTabs. [(#1702)](https://github.com/linkerd/linkerd/pull/1702)
+* Fix an HTTP/2 memory leak where a Netty ByteBuf is not properly released. [(#1711)](https://github.com/linkerd/linkerd/pull/1711)
+* Fix a bug where certain namers do not extend the admin UI. Shoutout to [@robertpanzer](https://github.com/robertpanzer) for finding and fixing this bug! [(#1717)](https://github.com/linkerd/linkerd/pull/1717)
+* Fix an `AsyncStream` memory leak in the Kubernetes watch API. Thanks [@sgrankin](https://github.com/sgrankin) for this PR! [(#1714)](https://github.com/linkerd/linkerd/pull/1714)
+* Fix a bug where the `io.l5d.dnssrv` namer plugin does not always update DNS records. Awesome contribution from [@carloszuluaga](https://github.com/carloszuluaga) [(#1719)](https://github.com/linkerd/linkerd/pull/1719)
+
 ## 1.3.2 2017-11-16
 * Kubernetes
   * Deprecate ThirdPartyResources in favor of CustomResourceDefinitions for namerd dtab storage (#1688)
