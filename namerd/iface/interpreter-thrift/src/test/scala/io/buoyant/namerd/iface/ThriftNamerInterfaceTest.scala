@@ -127,7 +127,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
   trait AddrCtx {
     def interpreter(ns: String): NameInterpreter = ???
-    val pfx = Path.Utf8("atl")
+    val pfx = Path.Utf8("#", "atl")
     val states = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
     val namers = Map(pfx -> new Namer { def lookup(path: Path) = Activity(states) })
     val stampCounter = new AtomicLong(1)
@@ -137,12 +137,12 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
   test("addr") {
     val _ = new AddrCtx {
-      val initRef = thrift.NameRef(TStamp.empty, TPath("atl", "slime", "season"), ns)
+      val initRef = thrift.NameRef(TStamp.empty, TPath("#", "atl", "slime", "season"), ns)
       val initF = service.addr(thrift.AddrReq(initRef, clientId))
       assert(!initF.isDefined)
 
       val addrs = Var[Addr](Addr.Pending)
-      val leaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("atl", "slime", "season")))
+      val leaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("#", "atl", "slime", "season")))
       states() = Activity.Ok(leaf)
       assert(!initF.isDefined) // addrs still pending
 
@@ -168,7 +168,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
   test("addr: deleted and re-created") {
     val _ = new AddrCtx {
-      val id = TPath("atl", "slime", "season")
+      val id = TPath("#", "atl", "slime", "season")
       val rsp0 = service.addr(thrift.AddrReq(thrift.NameRef(TStamp.empty, id, ns), clientId))
       assert(!rsp0.isDefined)
 
@@ -222,6 +222,37 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
         thrift.Addr(TStamp.mk(3), thrift.AddrVal.Bound(baddr))
       }
       assert(Await.result(rsp2, 1.second) == boundAddr1)
+    }
+  }
+
+  test("addr strips transformer prefixes") {
+    val _ = new AddrCtx {
+      val initRef = thrift.NameRef(TStamp.empty, TPath("%", "optimus", "#", "atl", "slime", "seaon"), ns)
+      val initF = service.addr(thrift.AddrReq(initRef, clientId))
+      assert(!initF.isDefined)
+
+      val addrs = Var[Addr](Addr.Pending)
+      val leaf = NameTree.Leaf(Name.Bound(addrs, Path.Utf8("%", "optimus", "#", "alt", "slime", "season")))
+      states() = Activity.Ok(leaf)
+      assert(!initF.isDefined) // addrs still pending
+
+      val isa = new InetSocketAddress("8.8.8.8", 4949)
+      val isaMeta = Addr.Metadata(Metadata.authority -> "acme.co", "ignored" -> "value")
+      val addresses: Set[Address] = Set(Address.Inet(isa, isaMeta))
+      val addressesMeta = Addr.Metadata(Metadata.authority -> "example.com", "another" -> "value")
+      addrs() = Addr.Bound(addresses, addressesMeta)
+      assert(initF.isDefined)
+      val init = Await.result(initF, 1.second)
+
+      val boundAddr = {
+        val ip = ByteBuffer.wrap(isa.getAddress.getAddress)
+        val ipMeta = thrift.AddrMeta(Some("acme.co"))
+        val taddrs = Set(thrift.TransportAddress(ip, isa.getPort, Some(ipMeta)))
+        val baddrMeta = thrift.AddrMeta(Some("example.com"))
+        val baddr = thrift.BoundAddr(taddrs, Some(baddrMeta))
+        thrift.Addr(TStamp.mk(1), thrift.AddrVal.Bound(baddr))
+      }
+      assert(Await.result(initF, 1.second) == boundAddr)
     }
   }
 

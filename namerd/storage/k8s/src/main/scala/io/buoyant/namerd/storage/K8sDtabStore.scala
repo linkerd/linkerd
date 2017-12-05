@@ -114,7 +114,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   /**
    * Update an existing dtab based on the current version or create a new
    * dtab if one doesn't already exist. Put returns a DtabVersionMismatchException if the dtab resource version being updated
-    * does not match the current version. If this is the case, a retry for a dtab update should be done.
+   * does not match the current version. If this is the case, a retry for a dtab update should be done.
    */
   def put(ns: String, dtab: FDtab): Future[Unit] = {
     val nsDTab = api.dtabs.named(ns)

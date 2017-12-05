@@ -184,9 +184,9 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] val stateRef: AtomicReference[StreamState] = {
     val remoteMsgP = new Promise[RecvMsg] with Promise.InterruptHandler {
       override protected def onInterrupt(t: Throwable): Unit =
-      // When the remote message--especially a client's response--is
-      // canceled, close the transport, sending a RST_STREAM as
-      // appropriate.
+        // When the remote message--especially a client's response--is
+        // canceled, close the transport, sending a RST_STREAM as
+        // appropriate.
         t match {
           case err: Reset =>
             log.debug("[%s] remote message interrupted: %s", prefix, err)
