@@ -1,14 +1,14 @@
 package io.buoyant.namerd
 package iface.mesh
 
-import com.twitter.finagle.{Addr, Address, Dtab, Name, Namer, NameTree, Path}
+import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Namer, Path}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
 import io.buoyant.grpc.runtime.{Stream, VarEventStream}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
-import io.buoyant.namer.Metadata
+import io.buoyant.namer.{Metadata, Paths}
 import java.net.Inet6Address
 
 object ResolverService {
@@ -29,7 +29,7 @@ object ResolverService {
     }
 
     private[this] def bind(pid: mesh.Path): Var[Addr] = {
-      val id = fromPath(pid)
+      val id = Paths.stripTransformerPrefix(fromPath(pid))
       val (pfx, namer) = namers
         .find { case (pfx, _) => id.startsWith(pfx) }
         .getOrElse(DefaultNamer)
