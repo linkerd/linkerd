@@ -4,6 +4,7 @@
 [![Circle CI][l5d-ci-badge]][l5d-ci]
 [![Slack Status][slack-badge]][slack]
 [![Docker Pulls][docker-badge]][docker]
+[![CII Best Practices][cii-badge]][cii]
 
 :balloon: Welcome to Linkerd! :wave:
 
@@ -74,6 +75,8 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- references -->
+[cii-badge]:https://bestpractices.coreinfrastructure.org/projects/1445/badge
+[cii]: https://bestpractices.coreinfrastructure.org/projects/1445
 [cncf]: https://www.cncf.io/about
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [docker-badge]: https://img.shields.io/docker/pulls/buoyantio/linkerd.svg
