@@ -83,7 +83,7 @@ specific language governing permissions and limitations under the License.
 [l5d-ci-badge]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
 [l5d-ci]: https://circleci.com/gh/linkerd/linkerd
 [l5d-eg]: https://github.com/linkerd/linkerd-examples
-[l5d-logo]: https://cloud.githubusercontent.com/assets/9226/12433413/c6fff880-beb5-11e5-94d1-1afb1258f464.png
+[l5d-logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
 [l5d-tcp]: https://github.com/linkerd/linkerd-tcp
 [l5d-viz]: https://github.com/linkerd/linkerd-viz
 [l5d-zipkin]: https://github.com/linkerd/linkerd-zipkin
