@@ -5,31 +5,31 @@
 [![Slack Status][slack-badge]][slack]
 [![Docker Pulls][docker-badge]][docker]
 
-:balloon: Welcome to linkerd! :wave:
+:balloon: Welcome to Linkerd! :wave:
 
-linkerd is a transparent *service mesh*, designed to make modern applications
+Linkerd is a transparent *service mesh*, designed to make modern applications
 safe and sane by transparently adding service discovery, load balancing, failure
 handling, instrumentation, and routing to all inter-service communication.
 
-linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
+Linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
 proxy, and can usually be dropped into existing applications with a minimum of
 configuration, regardless of what language they're written in. It works with
 many common protocols and service discovery backends, including scheduled
 environments like Mesos and Kubernetes.
 
-linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
+Linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
 production-tested RPC framework used by high-traffic companies like Twitter,
 Pinterest, Tumblr, PagerDuty, and others.
 
-linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
+Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
 
 ## Want to try it? ##
 
-We distribute binaries which you can download from the [linkerd releases
-page][releases]. We also publish docker images for each release, which you can
-find on [docker hub][docker].
+We distribute binaries which you can download from the [Linkerd releases
+page][releases]. We also publish Docker images for each release, which you can
+find on [Docker Hub][docker].
 
-For instructions on how to configure and run linkerd, see the [user
+For instructions on how to configure and run Linkerd, see the [user
 documentation on linkerd.io](https://linkerd.io).
 
 ## Working in this repo ##
