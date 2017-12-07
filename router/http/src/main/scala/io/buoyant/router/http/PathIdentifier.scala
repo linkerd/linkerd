@@ -20,7 +20,13 @@ case class PathIdentifier(
   def apply(req: Request): Future[RequestIdentification[Request]] =
     req.path.split("/").drop(1) match {
       case path if path.size >= segments =>
-        val params = req.getParams()
+        val query = {
+          val u = req.uri
+          u.indexOf('?') match {
+            case -1 => ""
+            case n => u.substring(n)
+          }
+        }
 
         if (consume) {
           req.uri = req.path.split("/").drop(segments + 1) match {
@@ -29,15 +35,9 @@ case class PathIdentifier(
               val trailingSlash = if (req.path.endsWith("/")) "/" else ""
               x.mkString("/", "/", trailingSlash)
           }
-          if (params.size() > 0)
-            req.uri = req.uri.concat("?")
-              .concat(
-                req.getParams()
-                .toArray(Array[java.util.Map.Entry[String, String]]())
-                .map(m => s"${m.getKey}=${m.getValue}")
-                .mkString
-              )
+          req.uri = req.uri.concat(query)
         }
+
         val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
         Future.value(new IdentifiedRequest[Request](dst, req))
       case _ =>
