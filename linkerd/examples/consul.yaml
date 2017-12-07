@@ -7,7 +7,7 @@ namers:
 routers:
 - protocol: http
   dtab: |
-    /svc     => /#/consul/dc1/prod;
+    /svc     => /#/io.l5d.consul/dc1/prod;
   servers:
   - port: 4140
     ip: 0.0.0.0
