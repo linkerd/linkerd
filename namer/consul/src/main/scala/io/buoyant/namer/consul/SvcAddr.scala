@@ -64,15 +64,7 @@ private[consul] object SvcAddr {
 
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
-          case Throw(Failure(Some(err: ConnectionFailedException))) =>
-            log.warning(
-              "consul datacenter '%s' service '%s' retrying on connection" +
-                " failure: %s",
-              datacenter, key.name, err
-            )
-            // Drop the index, in case it's been reset by a consul restart
-            loop(None)
-          case Throw(f: Failure) if f.cause.contains(ServiceRelease) =>
+          case Throw(Failure(Some(ServiceRelease))) =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
             // service.
@@ -83,6 +75,14 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
+          case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            log.warning(
+              "consul datacenter '%s' service '%s' retrying on connection" +
+                " failure: %s",
+              datacenter, key.name, err
+            )
+            // Drop the index, in case it's been reset by a consul restart
+            loop(None)
           case Throw(e) =>
             // an error occurred. if we've previously seen a good state, fall
             // back to that state; otherwise, fail.
