@@ -18,6 +18,8 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
 
 private[consul] object SvcAddr {
 
+  private[this] object ServiceRelease extends Exception with NoStackTrace
+
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
     val closes = stats.counter("closes")
@@ -70,7 +72,7 @@ private[consul] object SvcAddr {
             )
             // Drop the index, in case it's been reset by a consul restart
             loop(None)
-          case Throw(ServiceRelease) =>
+          case Throw(f: Failure) if f.cause.contains(ServiceRelease) =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
             // service.
@@ -136,7 +138,7 @@ private[consul] object SvcAddr {
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
-        pending.raise(ServiceRelease)
+        pending.raise(Failure("service observation released", ServiceRelease, Failure.Interrupted))
         Future.Unit
       }
     }
@@ -193,9 +195,6 @@ private[consul] object SvcAddr {
     val meta = Addr.Metadata((Metadata.endpointWeight, weight))
     Try(Address.Inet(new InetSocketAddress(ip, port), meta)).toOption
   }
-
-  private[this] val ServiceRelease =
-    Failure("service observation released", Failure.Interrupted)
 
   private[this] val NoIndexException =
     Failure(new IllegalArgumentException("consul did not return an index") with NoStackTrace)
