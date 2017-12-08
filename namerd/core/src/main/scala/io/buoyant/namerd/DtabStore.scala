@@ -52,6 +52,9 @@ object DtabStore {
   class DtabNamespaceDoesNotExistException(ns: Ns)
     extends Exception(s"The dtab namespace $ns does not exist")
 
+  class DtabNamespaceInvalidException(ns: Ns)
+    extends Exception(s"The dtab namespace $ns contains invalid characters")
+
   object Forbidden extends Exception("You do not have sufficient permissions")
 
   class Proxy(underlying: DtabStore) extends DtabStore {

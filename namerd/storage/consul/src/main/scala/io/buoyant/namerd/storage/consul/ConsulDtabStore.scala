@@ -1,13 +1,15 @@
 package io.buoyant.namerd
 package storage.consul
 
+import java.util.regex.Pattern
+
 import com.google.common.cache.{CacheBuilder, CacheLoader}
 import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.consul.v1._
-import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Version}
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabNamespaceInvalidException, DtabVersionMismatchException, Version}
 
 class ConsulDtabStore(
   api: KvApi,
@@ -18,6 +20,8 @@ class ConsulDtabStore(
 ) extends DtabStore {
 
   private[this] val log = Logger.get("consul")
+
+  def namespaceIsValid(ns: Ns): Boolean = Pattern.matches("[\\w+\\-?/?]+", ns)
 
   override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
@@ -62,7 +66,8 @@ class ConsulDtabStore(
     Activity(run).stabilize
   }
 
-  def create(ns: Ns, dtab: Dtab): Future[Unit] =
+  def create(ns: Ns, dtab: Dtab): Future[Unit] = {
+    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
     api.put(
       s"${root.show}/$ns",
       dtab.show,
@@ -72,8 +77,10 @@ class ConsulDtabStore(
     ).flatMap { result =>
         if (result) Future.Done else Future.exception(new DtabNamespaceAlreadyExistsException(ns))
       }
+  }
 
   def delete(ns: Ns): Future[Unit] = {
+    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
     val key = s"${root.show}/$ns"
     api.get(key, datacenter = datacenter, consistency = writeConsistency).transform {
       case Return(_) => api.delete(
@@ -87,6 +94,7 @@ class ConsulDtabStore(
   }
 
   def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = {
+    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
     val Buf.Utf8(vstr) = version
     Try(vstr.toLong) match {
       case Return(_) =>
@@ -103,13 +111,15 @@ class ConsulDtabStore(
     }
   }
 
-  def put(ns: Ns, dtab: Dtab): Future[Unit] =
+  def put(ns: Ns, dtab: Dtab): Future[Unit] = {
+    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
     api.put(
       s"${root.show}/$ns",
       dtab.show,
       datacenter = datacenter,
       consistency = writeConsistency
     ).unit
+  }
 
   // We don't hold cached observations open so caching these is very cheap.  Therefore we don't
   // limit the size of this cache.
@@ -120,7 +130,9 @@ class ConsulDtabStore(
       }
     )
 
-  def observe(ns: Ns): Activity[Option[VersionedDtab]] = dtabCache.get(ns).stabilize
+  def observe(ns: Ns): Activity[Option[VersionedDtab]] = {
+    if (namespaceIsValid(ns)) dtabCache.get(ns).stabilize else Activity.exception(new DtabNamespaceInvalidException(ns))
+  }
 
   private[this] def _observe(ns: Ns): Activity[Option[VersionedDtab]] = {
     val key = s"${root.show}/$ns"
@@ -162,4 +174,6 @@ class ConsulDtabStore(
     }
     Activity(run).stabilize
   }
+
 }
+
