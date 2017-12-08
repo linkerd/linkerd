@@ -20,14 +20,24 @@ case class PathIdentifier(
   def apply(req: Request): Future[RequestIdentification[Request]] =
     req.path.split("/").drop(1) match {
       case path if path.size >= segments =>
-        if (consume) {
-          req.uri = req.uri.split("/").drop(segments + 1) match {
-            case Array() => "/"
-            case x =>
-              val trailingSlash = if (req.uri.endsWith("/")) "/" else ""
-              x.mkString("/", "/", trailingSlash)
+        val query = {
+          val u = req.uri
+          u.indexOf('?') match {
+            case -1 => ""
+            case n => u.substring(n)
           }
         }
+
+        if (consume) {
+          req.uri = req.path.split("/").drop(segments + 1) match {
+            case Array() => "/"
+            case x =>
+              val trailingSlash = if (req.path.endsWith("/")) "/" else ""
+              x.mkString("/", "/", trailingSlash)
+          }
+          req.uri = req.uri.concat(query)
+        }
+
         val dst = Dst.Path(prefix ++ Path.Utf8(path.take(segments): _*), baseDtab(), Dtab.local)
         Future.value(new IdentifiedRequest[Request](dst, req))
       case _ =>
