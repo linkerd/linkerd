@@ -163,7 +163,12 @@ object LinkerdBuild extends Base {
       .withLib(Deps.zkCandidate)
       .withTests()
 
-    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader)
+    val rancher = projectDir("namer/rancher")
+      .dependsOn(core)
+      .withTwitterLib(Deps.finagle("http"))
+      .withTests()
+
+    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader, rancher)
 
   }
 
@@ -346,7 +351,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
       Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv, Namer.rancher,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
       Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
@@ -594,7 +599,7 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
       Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
@@ -693,6 +698,7 @@ object LinkerdBuild extends Base {
   val namerMarathon = Namer.marathon
   val namerServersets = Namer.serversets
   val namerZkLeader = Namer.zkLeader
+  val namerRancher = Namer.rancher
 
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples

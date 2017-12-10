@@ -15,7 +15,7 @@ These parameters are available to the namer regardless of kind. Namers may also 
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), or [`io.l5d.rewrite`](#rewrite).
+kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), [`io.l5d.rancher`](#rancher), or [`io.l5d.rewrite`](#rewrite).
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
@@ -692,6 +692,54 @@ Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells linkerd to resolve the request path using the curator namer.
 serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
+
+<a name="rancher"></a>
+## Rancher
+
+kind: `io.l5d.rancher`
+
+### Rancher configuration
+
+> Configure a Rancher namer:
+
+```yaml
+namers:
+- kind: io.l5d.rancher
+  experimental: true
+  portMappings:
+    proxy: 8080
+```
+
+> Then reference the namer in the dtab to use it:
+
+```yaml
+dtab: |
+  /rancher => /#/io.l5d.rancher
+  /svc => /$/io.buoyant.http.domainToPathPfx/rancher/http;
+```
+
+linkerd provides support for service discovery via Rancher's [Metadata-API](https://rancher.com/docs/rancher/v1.6/en/rancher-services/metadata-service/).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+prefix | `io.l5d.rancher` | Resolves names with `/#/<prefix>`.
+experimental | `false` | Since the Rancher namer is still considered experimental, this must be set to `true`.
+portMappings | `<empty map>` | If specified, you can use the names of these port-mappings for the `<port>` path parameter. By default, the namer knows `http` and `https`.
+
+### Rancher Path Parameters
+
+> Dtab Path Format
+
+```yaml
+/#/<prefix>/<port>/<stack>/<service>
+```
+
+Key | Required | Description
+--- | -------- | -----------
+prefix | yes | Tells linkerd to resolve the request path using the Rancher namer.
+port | yes | The port name or number to route the request to
+stack | yes | Name of the stack of the service
+service | yes | The name of the service
 
 <a name="rewrite"></a>
 ## Rewrite
