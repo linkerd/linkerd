@@ -18,7 +18,8 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
 
 private[consul] object SvcAddr {
 
-  private[this] object ServiceRelease extends Exception with NoStackTrace
+  private[this] val ServiceRelease =
+    new Exception("service observation released") with NoStackTrace
 
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
@@ -64,7 +65,7 @@ private[consul] object SvcAddr {
 
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
-          case Throw(Failure(Some(ServiceRelease))) =>
+          case Throw(Failure(Some(cause))) if cause == ServiceRelease =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
             // service.
