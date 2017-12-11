@@ -2,6 +2,7 @@ package io.buoyant.namerd
 package storage.consul
 
 import com.google.common.cache.{CacheBuilder, CacheLoader}
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
@@ -14,19 +15,23 @@ class ConsulDtabStore(
   root: Path,
   datacenter: Option[String] = None,
   readConsistency: Option[ConsistencyMode] = None,
-  writeConsistency: Option[ConsistencyMode] = None
+  writeConsistency: Option[ConsistencyMode] = None,
+  _timer: Timer = DefaultTimer
 ) extends DtabStore {
 
   private[this] val log = Logger.get("consul")
+  private[this] implicit val timer = _timer
 
   override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
 
     val run = Var.async[Activity.State[Set[Ns]]](Activity.Pending) { updates =>
       @volatile var running = true
+      var retPending: Future[_] = Future.Unit
 
-      def cycle(index: Option[String]): Future[Unit] =
+      def cycle(index: Option[String], backoffs: Stream[Duration]): Future[Unit] =
         if (running)
+
           api.list(
             s"${root.show}/",
             blockingIndex = index,
@@ -38,19 +43,20 @@ class ConsulDtabStore(
               case Return(result) =>
                 val namespaces = result.value.map(namespace).toSet
                 updates() = Activity.Ok(namespaces)
-                cycle(result.index)
+                cycle(result.index, backoffs)
               case Throw(e: NotFound) =>
                 updates() = Activity.Ok(Set.empty[Ns])
-                cycle(e.rsp.headerMap.get(Headers.Index))
+                cycle(e.rsp.headerMap.get(Headers.Index), backoffs)
               case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
               case Throw(e) =>
                 updates() = Activity.Failed(e)
                 log.error("consul ns list observation error %s", e)
-                cycle(None)
+                val sleep #:: backoffs0 = backoffs
+                Future.sleep(sleep).flatMap(_ => cycle(None, backoffs0))
             }
         else
           Future.Unit
-      val pending = cycle(None)
+      val pending = cycle(None, api.backoffs)
 
       Closable.make { _ =>
         running = false
@@ -127,7 +133,7 @@ class ConsulDtabStore(
     val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
       @volatile var running = true
 
-      def cycle(index: Option[String]): Future[Unit] =
+      def cycle(index: Option[String], backoffs: Stream[Duration]): Future[Unit] =
         if (running)
           api.get(
             key,
@@ -140,19 +146,21 @@ class ConsulDtabStore(
               val version = Buf.Utf8(result.index.get)
               val dtab = Dtab.read(result.value)
               updates() = Activity.Ok(Some(VersionedDtab(dtab, version)))
-              cycle(result.index)
+              cycle(result.index, backoffs)
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(None)
-              cycle(e.rsp.headerMap.get(Headers.Index))
+              cycle(e.rsp.headerMap.get(Headers.Index), backoffs)
             case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               log.error("consul ns %s dtab observation error %s", ns, e)
-              cycle(None)
+              val sleep #:: backoffs0 = backoffs
+              Future.sleep(sleep).flatMap(_ => cycle(None, backoffs0))
+
           }
         else
           Future.Unit
-      val pending = cycle(None)
+      val pending = cycle(None, api.backoffs)
 
       Closable.make { _ =>
         running = false
