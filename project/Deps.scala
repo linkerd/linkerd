@@ -59,7 +59,7 @@ object Deps {
   val junit = "junit" % "junit" % "4.10"
 
   // guava
-  val guava = "com.google.guava" % "guava" % "19.0"
+  val guava = "com.google.guava" % "guava" % "23.0"
 
   // jwt for Marathon API
   val jwt = "com.pauldijou" %% "jwt-core" % "0.12.1"
