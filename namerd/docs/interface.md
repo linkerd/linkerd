@@ -1,10 +1,10 @@
 # Interfaces
 
-An interface is a published network interface to namerd. All of the interfaces
+An interface is a published network interface to Namerd. All of the interfaces
 listed below provide Finagle's [`NameInterpreter`](
 https://twitter.github.io/finagle/docs/com/twitter/finagle/naming/NameInterpreter.html)
 functionality for remote resolution of destinations using dtabs stored in
-namerd. Additionally, the [`io.l5d.httpController`](#http-controller) interface
+Namerd. Additionally, the [`io.l5d.httpController`](#http-controller) interface
 provides a dtab read/write API that's used by
 [namerctl](https://github.com/linkerd/namerctl).
 
@@ -25,12 +25,12 @@ tls | no tls | The namer interface will serve over TLS if this parameter is prov
 kind: `io.l5d.thriftNameInterpreter`
 
 A read-only interface providing `NameInterpreter` functionality over the
-ThriftMux protocol. Use linkerd's `io.l5d.namerd` interpreter to resolve
+ThriftMux protocol. Use Linkerd's `io.l5d.namerd` interpreter to resolve
 destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4100` | The port number on which to serve the namer interface.
 retryBaseSecs | `600` | Base number of seconds to tell clients to wait before retrying after an error.
 retryJitterSecs | `60` | Maximum number of seconds to jitter retry time by.
@@ -51,12 +51,12 @@ addrCacheInactive | `100` | The size of the address inactive cache.
 kind: `io.l5d.mesh`
 
 A read-only interface providing `NameInterpreter` functionality over the gRCP
-protocol. Use linkerd's `io.l5d.mesh` interpreter to resolve destinations via
+protocol. Use Linkerd's `io.l5d.mesh` interpreter to resolve destinations via
 this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4321` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
@@ -68,12 +68,12 @@ The HTTP controller provides APIs for reading and writing dtabs, as well as for
 viewing how names are resolved.  This API can also be accessed using the
 [namerctl](https://github.com/linkerd/namerctl) command line tool.
 Additionally, this API provides an HTTP implementation of the `NameInterpreter`
-interface. Use linkerd's `io.l5d.namerd.http` interpreter to resolve
+interface. Use Linkerd's `io.l5d.namerd.http` interpreter to resolve
 destinations via this interface.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures namerd to listen on all local IPv4 interfaces.
+ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4180` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
@@ -403,7 +403,7 @@ curl :4180/api/1/bound-names
 ]
 ```
 
-Returns a list of concrete names that namerd knows about.
+Returns a list of concrete names that Namerd knows about.
 
 Parameter | Type | Description
 --------- | ---- | -----------

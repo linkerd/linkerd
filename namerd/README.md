@@ -1,6 +1,6 @@
-# namerd #
+# Namerd #
 
-namerd is a service for managing linkerd (and finagle) name delegation
+Namerd is a service for managing Linkerd (and finagle) name delegation
 (i.e. routing).
 
 ```
@@ -9,7 +9,7 @@ Application
 Request
   |
   V
-linkerd ----logical name-----> namerd <--> Service Discovery
+Linkerd ----logical name-----> Namerd <--> Service Discovery
         <---concrete address--        <--> Dtab Storage
   |
 Request
@@ -18,19 +18,19 @@ Request
 Destination
 ```
 
-namerd is a service that resolves logical names to concrete addresses.  By
-having linkerd use namerd for name delegation, we reduce the load on service
-discovery backends and can use namerd as a central place to control routing
+Namerd is a service that resolves logical names to concrete addresses.  By
+having Linkerd use Namerd for name delegation, we reduce the load on service
+discovery backends and can use Namerd as a central place to control routing
 across a fleet of linkers.
 
-namerd supports pluggable modules for dtab storage, naming and service
-discovery, and servable interfaces.  For example, namerd can be configured to
+Namerd supports pluggable modules for dtab storage, naming and service
+discovery, and servable interfaces.  For example, Namerd can be configured to
 use ZooKeeper for storage, ZooKeeper Serversets for service discovery, and
 a long-poll thrift interface.
 
 ## Quickstart ##
 
-namerd can be run locally with the commands
+Namerd can be run locally with the commands
 
 ```
 ./sbt namerd-examples/basic:run
@@ -42,7 +42,7 @@ or
 
 ## Http Control Interface ##
 
-namerd provides an http interface to create, update and retrieve Dtabs, as
+Namerd provides an http interface to create, update and retrieve Dtabs, as
 defined in `HttpControlService`.
 
 For a command-line tool which wraps this interface, try

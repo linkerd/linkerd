@@ -1,10 +1,10 @@
-# Contributing to linkerd #
+# Contributing to Linkerd #
 
 :balloon: Thanks for your help improving the project!
 
 ## Getting Help ##
 
-If you have a question about linkerd or have encountered problems using it,
+If you have a question about Linkerd or have encountered problems using it,
 start by [asking a question in the forums][discourse] or join us on
 [Slack][slack].
 

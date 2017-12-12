@@ -1,6 +1,6 @@
 # Storage
 
-A storage object configures the namerd dtabStore which stores and retrieves
+A storage object configures the Namerd dtabStore which stores and retrieves
 dtabs. This object supports the following parameters:
 
 <aside class="notice">
@@ -33,7 +33,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
-namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which namerd is running.
+namespace | `default` | The Kubernetes namespace in which dtabs will be stored. This should usually be the same namespace in which Namerd is running.
 
 <aside class="notice">
 The Kubernetes storage plugin does not support TLS.  Instead, you should run `kubectl proxy` on each host
@@ -44,7 +44,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 The "ThirdPartyResource" resource has been deprecated in favor of a "CustomResourceDefinition" resource in Kubernetes 1.7 and has officially been removed in Kubernetes 1.8+.
 To learn more about how to migrate existing third party resources to Custom Resource Definitions (CRD) <a href="https://kubernetes.io/docs/tasks/access-kubernetes-api/migrate-third-party-resource">See this guide.</a>
 </aside>
- 
+
 ### How to check if ThirdPartyResource is enabled (for Kubernetes v1.7 and below)
 
 1. Open `extensions/v1beta1` api - `https://<k8s-cluster-host>/apis/extensions/v1beta1`.

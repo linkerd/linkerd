@@ -1,6 +1,6 @@
 # Introduction
 
-> A linkerd config example
+> A Linkerd config example
 
 ```yaml
 admin:
@@ -43,9 +43,9 @@ telemetry:
   level: TRACE
 ```
 
-Welcome to the Configuration Reference for linkerd!
+Welcome to the Configuration Reference for Linkerd!
 
-linkerd's configuration is controlled via a configuration file, which must be provided
+Linkerd's configuration is controlled via a configuration file, which must be provided
 as a command-line argument. It may be a local file path or `-` to
 indicate that the configuration should be read from the standard input.
 For convenience, the release package includes a default `linkerd.yaml` file in
@@ -57,11 +57,11 @@ The configuration may be specified as a JSON or YAML object. There are no requir
 
 Key | Required | Description
 --- | -------- | -----------
-[admin](#administrative-interface) | no | Configures linkerd's administrative interface.
-[routers](#routers-intro) | yes | Configures linkerd's RPC support for various protocols.
-[namers](#namers-and-service-discovery) | no | Configures linkerd's integration with various service discovery backends.
-[telemetry](#telemetry-intro) | no | Configures linkerd's metrics instrumentation.
-[usage](#usage) | no | Configures linkerd usage reporting.
+[admin](#administrative-interface) | no | Configures Linkerd's administrative interface.
+[routers](#routers-intro) | yes | Configures Linkerd's RPC support for various protocols.
+[namers](#namers-and-service-discovery) | no | Configures Linkerd's integration with various service discovery backends.
+[telemetry](#telemetry-intro) | no | Configures Linkerd's metrics instrumentation.
+[usage](#usage) | no | Configures Linkerd usage reporting.
 
 
 ### Administrative interface
@@ -75,7 +75,7 @@ admin:
     keyPath: /foo/key.pem
 ```
 
-linkerd supports an administrative interface, both as a web ui and a collection
+Linkerd supports an administrative interface, both as a web ui and a collection
 of json endpoints. The exposed admin port and ip to listen on are configurable
 via a top-level `admin` section.
 
@@ -99,7 +99,7 @@ curl ":9990/admin/pprof/profile?seconds=10&hz=100"
 curl ":9990/delegator.json?path=/http/1.1/GET/foo&dtab=/http/*=>/$/inet/127.1/9990"
 ```
 
-Default admin endpoints available in both linkerd and namerd:
+Default admin endpoints available in both Linkerd and Namerd:
 
 Endpoint | Description
 -------- | -----------
@@ -112,15 +112,15 @@ Endpoint | Description
 `/admin/pprof/contention` | CPU contention profile which identifies blocked threads (Thread.State.BLOCKED), in pprof format. The process will be profiled for 10 seconds at a frequency of 100 hz. These values can be controlled via HTTP request parameters `seconds` and `hz` respectively.
 `/admin/pprof/heap` | heap profile computed by the heapster agent, output is in pprof format
 `/admin/pprof/profile` | CPU usage profile in pprof format. The process will be profiled for 10 seconds at a frequency of 100 hz. These values can be controlled via HTTP request parameters `seconds` and `hz` respectively.
-`/admin/registry.json` | displays how linkerd is currently configured across a variety of dimensions including the client stack, server stack, flags, service loader values, system properties, environment variables, build properties and more
-`/admin/server_info` | build information about this linkerd
+`/admin/registry.json` | displays how Linkerd is currently configured across a variety of dimensions including the client stack, server stack, flags, service loader values, system properties, environment variables, build properties and more
+`/admin/server_info` | build information about this Linkerd
 `/admin/shutdown` | initiate a graceful shutdown
 `/admin/threads` | capture the current stacktraces, set `Accept: application/json` to force json
 `/admin/threads.json` | identical to `admin/threads`
 `/admin/tracing` | enable (`/admin/tracing?enable=true`) or disable tracing (`/admin/tracing?disable=true`)
-`/config.json` | current linkerd configuration, this should match your config file
+`/config.json` | current Linkerd configuration, this should match your config file
 
-Endpoints only available in linkerd:
+Endpoints only available in Linkerd:
 
 Endpoint | Description
 -------- | -----------
@@ -128,7 +128,7 @@ Endpoint | Description
 `/delegator.json` | given `path`, `dtab`, and an optional `namespace` param, return the delegation tree
 `/logging.json` | currently configured loggers and log levels
 
-Note that in addition to a default set of admin endpoints, linkerd plugins may
+Note that in addition to a default set of admin endpoints, Linkerd plugins may
 dynamically add their own endpoints.
 
 HTTP Identifier Endpoints (running on `httpIdentifierPort`):
@@ -144,7 +144,7 @@ be found at
 
 ### Routers Intro
 
-> A minimal linkerd configuration example, which forwards all requests on `localhost:8080` to `localhost:8888`
+> A minimal Linkerd configuration example, which forwards all requests on `localhost:8080` to `localhost:8888`
 
 ```yaml
 routers:
@@ -155,7 +155,7 @@ routers:
 ```
 
 All configurations must define a **routers** key, the value of which
-must be an array of router configurations. Each router implements RPC for a supported protocol. linkerd doesn't need to understand the payload in an RPC call, but it does need to know enough about the protocol to determine the logical name of the destination.
+must be an array of router configurations. Each router implements RPC for a supported protocol. Linkerd doesn't need to understand the payload in an RPC call, but it does need to know enough about the protocol to determine the logical name of the destination.
 
 See [routers](#routers).
 
@@ -167,8 +167,8 @@ namers:
   rootDir: disco
 ```
 
-linkerd supports a variety of common service discovery backends, including
-ZooKeeper and Consul. linkerd provides abstractions on top of service discovery
+Linkerd supports a variety of common service discovery backends, including
+ZooKeeper and Consul. Linkerd provides abstractions on top of service discovery
 lookups that allow the use of arbitrary numbers of service discovery backends,
 and for precedence and failover rules to be expressed between them. This logic
 is governed by the [routing](#router-parameters) configuration.
@@ -194,7 +194,7 @@ telemetry:
 ```
 
 A telemeter may receive stats and trace annotations, i.e. to send to a collector
-or export. Telemetry data can be collected and exported from a linkerd process by
+or export. Telemetry data can be collected and exported from a Linkerd process by
 configuring telemeters via a top-level `telemetry` section. See
 [telemetry](#telemetry).
 
@@ -208,15 +208,15 @@ usage:
 ```
 
 In order to make improvements and prioritize features, we'd like to gain a
-broader picture of how users run linkerd. Linkerd gathers anonymized usage data,
+broader picture of how users run Linkerd. Linkerd gathers anonymized usage data,
 and sends it to Buoyant once an hour.  This behavior can be configured or
 disabled in the usage config.
 
 The kind of data captured is as follows:
 
-1. How linkerds are configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
-2. What environments are linkerds running in (Operating System, Container orchestration solution),
-3. How do linkerds perform in those contexts (JVM performance, Number of requests served)
+1. How Linkerd is configured (The kinds of namers, initializers, identifiers, transformers, protocols, & interpreters used)
+2. What environments Linkerd is running in (Operating System, Container orchestration solution),
+3. How Linkerd performs in those contexts (JVM performance, Number of requests served)
 
 We do not collect the labels of namers/routers, designated service addresses or
 directories, dtabs, request/response data, or any other possibly identifying information.
