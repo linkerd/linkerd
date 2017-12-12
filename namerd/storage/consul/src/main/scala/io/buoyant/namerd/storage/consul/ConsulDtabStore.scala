@@ -57,6 +57,7 @@ class ConsulDtabStore(
             }
         else
           Future.Unit
+
       val pending = cycle(None)
 
       Closable.make { _ =>
@@ -70,58 +71,68 @@ class ConsulDtabStore(
   }
 
   def create(ns: Ns, dtab: Dtab): Future[Unit] = {
-    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
-    api.put(
-      s"${root.show}/$ns",
-      dtab.show,
-      cas = Some("0"),
-      datacenter = datacenter,
-      consistency = writeConsistency
-    ).flatMap { result =>
-        if (result) Future.Done else Future.exception(new DtabNamespaceAlreadyExistsException(ns))
-      }
+    if (!namespaceIsValid(ns))
+      Future.exception(new DtabNamespaceInvalidException(ns))
+    else
+      api.put(
+        s"${root.show}/$ns",
+        dtab.show,
+        cas = Some("0"),
+        datacenter = datacenter,
+        consistency = writeConsistency
+      ).flatMap { result =>
+          if (result) Future.Done else Future.exception(new DtabNamespaceAlreadyExistsException(ns))
+        }
   }
 
   def delete(ns: Ns): Future[Unit] = {
-    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
-    val key = s"${root.show}/$ns"
-    api.get(key, datacenter = datacenter, consistency = writeConsistency).transform {
-      case Return(_) => api.delete(
-        key,
-        datacenter = datacenter,
-        consistency = writeConsistency
-      ).unit
-      case Throw(e: NotFound) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
-      case Throw(e) => Future.exception(e)
+    if (!namespaceIsValid(ns))
+      Future.exception(new DtabNamespaceInvalidException(ns))
+    else {
+      val key = s"${root.show}/$ns"
+      api.get(key, datacenter = datacenter, consistency = writeConsistency).transform {
+        case Return(_) => api.delete(
+          key,
+          datacenter = datacenter,
+          consistency = writeConsistency
+        ).unit
+        case Throw(e: NotFound) => Future.exception(new DtabNamespaceDoesNotExistException(ns))
+        case Throw(e) => Future.exception(e)
+      }
     }
   }
 
   def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = {
-    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
-    val Buf.Utf8(vstr) = version
-    Try(vstr.toLong) match {
-      case Return(_) =>
-        api.put(
-          s"${root.show}/$ns",
-          dtab.show,
-          cas = Some(vstr),
-          datacenter = datacenter,
-          consistency = writeConsistency
-        ).flatMap { result =>
-            if (result) Future.Done else Future.exception(new DtabVersionMismatchException)
-          }
-      case _ => Future.exception(new DtabVersionMismatchException)
+    if (!namespaceIsValid(ns))
+      Future.exception(new DtabNamespaceInvalidException(ns))
+    else {
+      val Buf.Utf8(vstr) = version
+      Try(vstr.toLong) match {
+        case Return(_) =>
+          api.put(
+            s"${root.show}/$ns",
+            dtab.show,
+            cas = Some(vstr),
+            datacenter = datacenter,
+            consistency = writeConsistency
+          ).flatMap { result =>
+              if (result) Future.Done else Future.exception(new DtabVersionMismatchException)
+            }
+        case _ => Future.exception(new DtabVersionMismatchException)
+      }
     }
   }
 
   def put(ns: Ns, dtab: Dtab): Future[Unit] = {
-    if (!namespaceIsValid(ns)) Future.exception(new DtabNamespaceInvalidException(ns))
-    api.put(
-      s"${root.show}/$ns",
-      dtab.show,
-      datacenter = datacenter,
-      consistency = writeConsistency
-    ).unit
+    if (!namespaceIsValid(ns))
+      Future.exception(new DtabNamespaceInvalidException(ns))
+    else
+      api.put(
+        s"${root.show}/$ns",
+        dtab.show,
+        datacenter = datacenter,
+        consistency = writeConsistency
+      ).unit
   }
 
   // We don't hold cached observations open so caching these is very cheap.  Therefore we don't
@@ -167,6 +178,7 @@ class ConsulDtabStore(
           }
         else
           Future.Unit
+
       val pending = cycle(None)
 
       Closable.make { _ =>
@@ -177,6 +189,5 @@ class ConsulDtabStore(
     }
     Activity(run).stabilize
   }
-
 }
 
