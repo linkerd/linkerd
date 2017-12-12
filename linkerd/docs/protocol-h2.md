@@ -50,7 +50,7 @@ accordingly. Note that gRPC may be configured over TLS as well.
 
 protocol: `h2`
 
-linkerd now has _experimental_ support for HTTP/2. There are a number of
+Linkerd now has _experimental_ support for HTTP/2. There are a number of
 [open issues](https://github.com/linkerd/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
 that are being addressed. Please
 [report](https://github.com/linkerd/linkerd/issues/new) any
@@ -113,13 +113,13 @@ forwardClientCert | false | Determines if client certificates are forwarded thro
 
 <aside class="notice">
 `forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests
-they receive.   
+they receive.
 </aside>
 
 ## HTTP/2 Identifiers
 
 Identifiers are responsible for creating logical *names* from an incoming
-request; these names are then matched against the dtab. (See the [linkerd
+request; these names are then matched against the dtab. (See the [Linkerd
 routing overview](https://linkerd.io/in-depth/routing/) for more details on
 this.) All h2 identifiers have a `kind`.  If a list of identifiers is
 provided, each identifier is tried in turn until one successfully assigns a
@@ -218,7 +218,7 @@ urlPath | N/A | The first `segments` elements of the path from the URL
 
 kind: `io.l5d.ingress`
 
-Using this identifier enables linkerd to function as a Kubernetes ingress
+Using this identifier enables Linkerd to function as a Kubernetes ingress
 controller. The ingress identifier compares HTTP/2 requests to [ingress
 resource](https://kubernetes.io/docs/user-guide/ingress/) rules, and assigns a
 name based on those rules.
@@ -247,7 +247,7 @@ namers:
 - kind: io.l5d.k8s
 ```
 
-> An example ingress resource watched by the linkerd ingress controller:
+> An example ingress resource watched by the Linkerd ingress controller:
 
 ```yaml
 apiVersion: extensions/v1beta1
@@ -271,7 +271,7 @@ spec:
 
 Key  | Default Value | Description
 ---- | ------------- | -----------
-namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, linkerd will watch all namespaces.
+namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, Linkerd will watch all namespaces.
 ingressClassAnnotation | `linkerd` | When using [multiple ingress controllers](https://github.com/kubernetes/ingress/blob/master/docs/faq/README.md#how-do-i-run-multiple-ingress-controllers-in-the-same-cluster), Linkerd will only use the ingress resource annotated with this class.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
@@ -380,20 +380,20 @@ mixerPort | `9091` | Port of the Mixer server.
 
 ## HTTP/2 Headers
 
-linkerd reads and sets several headers prefixed by `l5d-`, as is done
+Linkerd reads and sets several headers prefixed by `l5d-`, as is done
 by the `http` protocol.
 
 ### HTTP/2 Context Headers
 
-_Context headers_ (`l5d-ctx-*`) are generated and read by linkerd
+_Context headers_ (`l5d-ctx-*`) are generated and read by Linkerd
 instances. Applications should forward all context headers in order
-for all linkerd features to work.
+for all Linkerd features to work.
 
 Header | Description
 ------ | -----------
 `dtab-local` | Deprecated. Use `l5d-ctx-dtab` and `l5d-dtab`.
 `l5d-ctx-deadline` | Describes time bounds within which a request is expected to be satisfied. Currently deadlines are only advisory and do not factor into request cancellation.
-`l5d-ctx-trace` | Encodes Zipkin-style trace IDs and flags so that trace annotations emitted by linkerd may be correlated.
+`l5d-ctx-trace` | Encodes Zipkin-style trace IDs and flags so that trace annotations emitted by Linkerd may be correlated.
 
 <aside class="warning">
 Edge services should take care to ensure these headers are not set
@@ -416,9 +416,9 @@ Header | Description
 `l5d-sample` | A client-specified trace sample rate override.
 
 <aside class="notice">
-If linkerd processes incoming requests for applications
+If Linkerd processes incoming requests for applications
 (i.e. in linker-to-linker configurations), applications do not need to
-provide special treatment for these headers since linkerd does <b>not</b>
+provide special treatment for these headers since Linkerd does <b>not</b>
 forward these headers (and instead translates them into context
 headers). If applications receive traffic directly, they <b>should</b>
 forward these headers.
@@ -431,14 +431,14 @@ from untrusted sources.
 
 ### HTTP/2 Informational Request Headers
 
-The informational headers linkerd emits on outgoing requests.
+The informational headers Linkerd emits on outgoing requests.
 
 Header | Description
 ------ | -----------
-`l5d-dst-service` | The logical service name of the request as identified by linkerd.
+`l5d-dst-service` | The logical service name of the request as identified by Linkerd.
 `l5d-dst-client` | The concrete client name after delegation.
 `l5d-dst-residual` | An optional residual path remaining after delegation.
-`l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and linkerd instances.
+`l5d-reqid` | A token that may be used to correlate requests in a callgraph across services and Linkerd instances.
 
 Applications are not required to forward these headers on downstream
 requests.
@@ -451,11 +451,11 @@ headers from requests sent to the outside world.
 
 ### HTTP/2 Informational Response Headers
 
-The informational headers linkerd emits on outgoing responses.
+The informational headers Linkerd emits on outgoing responses.
 
 Header | Description
 ------ | -----------
-`l5d-err` | Indicates a linkerd-generated error. Error responses that do not have this header are application errors.
+`l5d-err` | Indicates a Linkerd-generated error. Error responses that do not have this header are application errors.
 
 Applications are not required to forward these headers on upstream
 responses.

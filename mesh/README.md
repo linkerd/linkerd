@@ -1,10 +1,10 @@
 # io.linkerd.mesh #
 
-A set of gRPC APIs that can be used to control linkerd.
+A set of gRPC APIs that can be used to control Linkerd.
 
 The mesh consists of client-side plugin interfaces (initially, just
 NameInterpreter) as well as server-side service implementations
-(initially, in namerd's 'io.l5d.mesh' iface).
+(initially, in Namerd's 'io.l5d.mesh' iface).
 
 **Status**: Experimental; the API will break in an upcoming release.
 

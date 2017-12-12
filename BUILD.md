@@ -1,16 +1,16 @@
 ## Development guide ##
 
-This document will help you build linkerd from source.
+This document will help you build Linkerd from source.
 
 This repo contains two main application build targets:
-- linkerd, a service mesh router
-- namerd, a service for centrally managing routing policy and fronting service discovery.
+- `linkerd`, a service mesh router
+- `namerd`, a service for centrally managing routing policy and fronting service discovery.
 
-More details at [namerd's quickstart](namerd/README.md#quickstart)
+More details at [Namerd's quickstart](namerd/README.md#quickstart)
 
 ## Working in this repository ##
 
-[sbt][sbt] is used to build and test linkerd. Developers should not
+[sbt][sbt] is used to build and test Linkerd. Developers should not
 use a system-installed version of sbt, and should instead use the
 `./sbt` script, which ensures that a compatible version of sbt is
 available.
@@ -138,9 +138,9 @@ See the [javascript readme](/admin/src/main/resources/io/buoyant/admin/README.md
 
 #### Building an executable ####
 
-linkerd provides a plugin system so that features may be chosen at
+Linkerd provides a plugin system so that features may be chosen at
 packaging time.  To this end, there are multiple configurations for
-running and packaging linkerd executables.
+running and packaging Linkerd executables.
 
 The _assembly_ plugin can be used to produce an executable containing
 all library dependencies.  The `linkerd` subproject has several build
@@ -154,7 +154,7 @@ configurations to support packaging:
 [success] Total time: 14 s, completed Jan 29, 2016 4:29:40 PM
 ```
 
-Similarly, a namerd executable can be produced with the command:
+Similarly, a Namerd executable can be produced with the command:
 ```
 > namerd/assembly
 ```
@@ -165,10 +165,10 @@ Before releasing ensure that [CHANGES.md](CHANGES.md) is updated to include the
 version that you're trying to release.
 
 By default, the _-SNAPSHOT_ suffix is appended to the version number when
-building linkerd.  In order to build a non-snapshot (i.e. releasable) version of
-linkerd, the build must occur from a release tag in git.
+building Linkerd.  In order to build a non-snapshot (i.e. releasable) version of
+Linkerd, the build must occur from a release tag in git.
 
-For example, in order to build the 0.0.10 release of linkerd:
+For example, in order to build the 0.0.10 release of Linkerd:
 
 1. Ensure that the head version is 0.0.10
 2. `git tag 0.0.10 && git push origin 0.0.10`
@@ -187,8 +187,8 @@ Each of these configurations may be used to build a docker image.
 
 The produced image does not contain any configuration.  It's expected
 that configuration is provided by another docker layer or volume.  For
-example, if you have linkerd configuration in
-_path/to/myapp/linkerd.yml_, you could start linkerd in docker with
+example, if you have a Linkerd configuration in
+_path/to/myapp/linkerd.yml_, you could start Linkerd in docker with
 the following command:
 
 ```
@@ -214,13 +214,13 @@ The list of image names may be changed with a command like:
 #### DCOS ####
 
 Namerd supports a DCOS-specific configuration. When used in conjunction with
-namerd's `io.l5d.zk` dtab storage, this
+Namerd's `io.l5d.zk` dtab storage, this
 configuration provides bootstrapping of the ZooKeeper `pathPrefix`, along with
 a default dtab.
 
 ##### Run locally #####
 
-This executes only the namerd-dcos-bootstrap command, it does not boot namerd.
+This executes only the `namerd-dcos-bootstrap` command, it does not boot Namerd.
 
 ```bash
 $ ./sbt "namerd/dcos:run-main io.buoyant.namerd.DcosBootstrap namerd/examples/zk.yaml"
@@ -229,8 +229,8 @@ $ ./sbt "namerd/dcos:run-main io.buoyant.namerd.DcosBootstrap namerd/examples/zk
 ##### Run assembly script locally #####
 
 The assembly script executes two commands serially:
-1. runs namerd-dcos-bootstrap
-2. boots namerd
+1. runs `namerd-dcos-bootstrap`
+2. boots Namerd
 
 ```bash
 $ ./sbt namerd/dcos:assembly

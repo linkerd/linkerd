@@ -1,7 +1,7 @@
 # Telemetry
 
 A telemeter may receive stats and trace annotations, e.g., to send to a collector
-or export. Telemetry data can be collected and exported from a linkerd process by
+or export. Telemetry data can be collected and exported from a Linkerd process by
 configuring telemeters via a top-level `telemetry` section.
 
 <aside class="notice">
@@ -33,7 +33,7 @@ Exposes admin endpoints:
 
 Key | Default Value | Description
 --- | ------------- | -----------
-path | `/admin/metrics/prometheus` | HTTP path where linkerd exposes Prometheus metrics
+path | `/admin/metrics/prometheus` | HTTP path where Linkerd exposes Prometheus metrics
 prefix | No prefix | Prefix for exposed Prometheus metrics
 
 ## InfluxDB
@@ -92,7 +92,7 @@ prefix | `linkerd` | String to prefix all exported metric names with.
 hostname | `127.0.0.1` | Hostname of the StatsD server.
 port | `8125` | Port of the StatsD server.
 gaugeIntervalMs | `10000` | Interval to export Gauges, in milliseconds.
-sampleRate | `0.01` | A value between 0.0 and 1.0 indicating what proportion of counter and timing/histogram events to export. Higher values will result in higher linkerd latency.
+sampleRate | `0.01` | A value between 0.0 and 1.0 indicating what proportion of counter and timing/histogram events to export. Higher values will result in higher Linkerd latency.
 
 ## TraceLog
 
@@ -113,7 +113,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | Host to send trace data to.
 sampleRate | `1.0` | A value between 0.0 and 1.0 indicating what proportion of traces to log.
-level | `INFO` | Log-level used to log traces. It should be equal (or greater) to the linkerd log level, set by the `-log.level` flag or at runtime in the logging tab of the admin dashboard (defaults to `INFO`). Field can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [TwitterServer's Logging documentation](https://twitter.github.io/twitter-server/Features.html#logging).
+level | `INFO` | Log-level used to log traces. It should be equal (or greater) to the Linkerd log level, set by the `-log.level` flag or at runtime in the logging tab of the admin dashboard (defaults to `INFO`). Field can have one of the following values: `ALL`, `CRITICAL`, `DEBUG`, `ERROR`, `FATAL`, `INFO`, `OFF`, `TRACE`, `WARNING`. For full details, see [TwitterServer's Logging documentation](https://twitter.github.io/twitter-server/Features.html#logging).
 
 ## Recent Requests
 
@@ -130,7 +130,7 @@ kind: `io.l5d.recentRequests`
 
 The recent requests telemeter keeps an in-memory record of recent requests and uses it to populate
 the recent requests table on the admin dashboard.  This table can be viewed at `/requests` on the
-admin port.  Recording requests can have an impact on linkerd performance, so make sure to set a
+admin port.  Recording requests can have an impact on Linkerd performance, so make sure to set a
 sample rate that is appropriate for your level of traffic.
 
 Key        | Default Value | Description

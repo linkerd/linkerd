@@ -3,13 +3,13 @@
 ## Getting Help ##
 
 Github issues are for bug reports and feature requests. For questions about
-linkerd, how to use it, or debugging assistance, start by
+Linkerd, how to use it, or debugging assistance, start by
 [asking a question in the forums](https://discourse.linkerd.io/) or join us on
 [Slack](https://slack.linkerd.io/).
 
 Full details at [CONTRIBUTING.md](https://github.com/linkerd/linkerd/blob/master/CONTRIBUTING.md).
 
-## Filing a linkerd issue ##
+## Filing a Linkerd issue ##
 
 Issue Type:
 

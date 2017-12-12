@@ -13,10 +13,10 @@ to release 1.3.3.
 
 ## 1.3.2 2017-11-16
 * Kubernetes
-  * Deprecate ThirdPartyResources in favor of CustomResourceDefinitions for namerd dtab storage (#1688)
+  * Deprecate ThirdPartyResources in favor of CustomResourceDefinitions for Namerd dtab storage (#1688)
 * Thrift
     * Fix a bug with the Thrift Identifier not properly identifying TTwitterThrift requests
-* Consul 
+* Consul
     * Add the ability to weight addresses based on Consul tags
 * Namerd
     * Fix a memory leak involving the `io.l5d.thriftNameInterpreter` interface
@@ -71,8 +71,8 @@ Also includes:
 
 ## 1.2.0 2017-09-07
 
-* **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
-  admin, and namerd admin now serve on 127.0.0.1 by default (instead of
+* **Breaking Change**: `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, Linkerd
+  admin, and Namerd admin now serve on 127.0.0.1 by default (instead of
   0.0.0.0).
 * **Breaking Change**: Removed support for PKCS#1-formatted keys. PKCS#1 formatted keys must be converted to PKCS#8 format.
 * Added experimental `io.l5d.dnssrv` namer for DNS SRV records (#1611)
@@ -96,8 +96,8 @@ Also includes:
 * TLS
   * Removed support for PKCS#1 keys (#1590)
   * Added validation to prevent incompatible `disableValidation: true` and `clientAuth` settings in TLS client configurations (#1621)
-* Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, linkerd
-  admin, and namerd admin to serve on 127.0.0.1 by default (instead of
+* Changed `io.l5d.mesh`, `io.l5d.thriftNameInterpreter`, Linkerd
+  admin, and Namerd admin to serve on 127.0.0.1 by default (instead of
   0.0.0.0) (#1366)
 * Deprecated `io.l5d.statsd` telemeter.
 
@@ -152,7 +152,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 * TLS
   * Add support for client auth TLS.
-  * Add TLS support for `io.l5d.httpController` and `io.l5d.mesh` namerd
+  * Add TLS support for `io.l5d.httpController` and `io.l5d.mesh` Namerd
     interfaces.
 * HTTP/2
   * Reset h2 remote streams that continue to send frames after the local stream
@@ -176,7 +176,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 ## 1.0.2 2017-05-12
 
 * Fix issue where TLS could not be used with H2.
-* Fix linkerd admin dashboard edge case.
+* Fix Linkerd admin dashboard edge case.
 
 ## 1.0.1 2017-05-12
 
@@ -184,7 +184,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * Upgrade to finagle 6.44.
 * HTTP/1.1:
   * Fix connection leak when retrying on responses with chunked bodies.
-  * Remove linkerd headers and body when clearContext is set.
+  * Remove Linkerd headers and body when clearContext is set.
   * Add io.l5d.http.allSuccessful and io.l5d.h2.allSuccessful response classifiers.
 * HTTP/2:
   * Fix race condition causing every request on a connection to deadline.
@@ -245,19 +245,19 @@ We’ve made some internal changes to keep up with the latest and greatest:
 ## 0.9.1 2017-03-15
 
 * Admin dashboard:
-  * Fix display issues for long dtabs in the namerd tab.
+  * Fix display issues for long dtabs in the Namerd tab.
   * Indicate the primary path in the dtab tab.
   * Add `tree` and `q` params to /admin/metrics.json.
 * Kubernetes:
   * Allow k8s namer to accept port numbers.
   * Make k8s namer case insensitive.
-  * Add k8s ingress identifiers to allow linkerd to act as an ingress controller.
+  * Add k8s ingress identifiers to allow Linkerd to act as an ingress controller.
 * Fix TTwitter thrift protocol upgrade bug.
 * Rewrite Location & Refresh HTTP response headers when Linkerd
   rewrites request Host header.
 * Increase default binding cache size to reduce connection churn.
 * Fetch correct protoc version on demand.
-* Introduce the `io.l5d.mesh` linkerd interpreter and namerd iface. The mesh
+* Introduce the `io.l5d.mesh` Linkerd interpreter and Namerd iface. The mesh
   iface exposes a gRPC API that can be used for multiplexed, streaming updates.
   (*Experimental*)
 
@@ -310,15 +310,15 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 * Introduce the grpc-gen and grpc-runtime projects, enabling code
   generation of gRPC clients and servers for Finagle.
-* Various bug fixes to the linkerd admin dashboard.
+* Various bug fixes to the Linkerd admin dashboard.
 * The default docker images now use a 64 bit JVM.  A `-32b` docker image is
   also availble but does not support the boringssl TLS extensions required for
   ALPN, etc.
 * Marathon:
   * Support "ip per task" feature
 * Client failure accrual is now configurable via the `failureAccrual` parameter
-* Add `io.l5d.namerd.http` interpreter which uses namerd's streaming HTTP api
-* linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
+* Add `io.l5d.namerd.http` interpreter which uses Namerd's streaming HTTP api
+* Linkerd now writes the local dtab to the `l5d-ctx-dtab` header instead of
   `dtab-local`
 * Transformers:
   * Transformers will now prepend a prefix to the id of the bound names they
@@ -339,7 +339,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 ## 0.8.3 2016-11-07
 
-* Make several namers available to namerd that were missing
+* Make several namers available to Namerd that were missing
 * Fix crash when viewing the dtab playground
 * Announce to all routable addresses when announcing 0.0.0.0
 * Add experimental Apache Curator namer
@@ -363,8 +363,8 @@ We’ve made some internal changes to keep up with the latest and greatest:
   * Remove unused TLS options from the k8s storage plugin config.
   * Add k8s external namer for routing to k8s ingress services.
   * Improve error-handling behavior in k8s API clients.
-* Support serving the namerd namer interface over TLS.
-* Document namerd's HTTP API.
+* Support serving the Namerd namer interface over TLS.
+* Document Namerd's HTTP API.
 * Improve retry metrics to include a total counter of all retry requests.
 * Fix a path-parsing bug in the io.l5d.path namer.
 * Provide a default log4j configuration so that netty logging is managed properly.
@@ -377,7 +377,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 ## 0.8.1 2016-09-21
 
-* Fix missing data on the linkerd admin dashboard
+* Fix missing data on the Linkerd admin dashboard
 * Allow a non-default port to be specified for the etcd storage plugin
 
 ## 0.8.0 2016-09-20
@@ -404,21 +404,21 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * Lowercase `Host` header value in `io.l5d.methodAndHost` identifier
 * Introduce transformers for post-processing the set of addresses returned by
   an interpreter.
-  * Add k8s transformers to support linkerd-to-linkerd deployments when linkerd
+  * Add k8s transformers to support linker-to-linker deployments when Linkerd
     is deployed as a k8s daemonset.
 * Remove hop-by-hop headers for better HTTP proxy compliance
 
 
 ## 0.7.5
 
-* Beautiful new linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
+* Beautiful new Linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
 * Fix query paramater encoding when rewriting proxied requests
 * Improve error handling and retry behavior of consul plugins.
 * Add `useHealthCheck` parameter to Consul Namer #589
 * The k8s namer will now resume watches if the connection is closed.
-* Improved the performance of the namerd HTTP API.
+* Improved the performance of the Namerd HTTP API.
 * Configured namers are now available to other plugins
 * `enableProbation` is now disabled by default on clients. It leads to
   unexpected behavior in environments that reuse IP:PORT pairs across
@@ -427,7 +427,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 ## 0.7.4
 
 * Dashboard: add toggling to the router clients to better handle large numbers of clients
-* namerd HTTP API:
+* Namerd HTTP API:
   * Add `resolve` endpoint
   * All endpoints return json
 * Add `authority` metadata field to re-write HTTP host/:authority on demand
@@ -439,21 +439,21 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * Path identifier should only parse as many segments as requested
 * Introduce the _telemetry_ plugin subsystem to support arbitrary stats
   exporters and to eventually supplant the `tracers` subsystem.
-* Add announcer support! linkerd can now announce to service discovery backends!
+* Add announcer support! Linkerd can now announce to service discovery backends!
   * Add zk announcer.
 
 ## 0.7.3
 
 * Allow protocol-specific parameters to be inherited on servers #561.
 * Don't clear addr on k8s service deletion #567.
-* Modify namerd's `/delegate` http endpoint to return bound names #569.
+* Modify Namerd's `/delegate` http endpoint to return bound names #569.
 * Memoize status stats components #547.
 
 ## 0.7.2
 
 * Add support for tags in the `io.l5d.consul` namer.
-* Add an experimental `io.l5d.consul` storage backend for namerd.
-* linkerd should use last known good data if it get errors from namerd.
+* Add an experimental `io.l5d.consul` storage backend for Namerd.
+* Linkerd should use last known good data if it get errors from Namerd.
 * Fix exceptions when k8s namer encounters unexpected end of stream #551.
 * Expose HTTP codec parameters as configuration options.
 * Handle "too old" error when re-establishing Kubernetes watches.
@@ -461,7 +461,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 ## 0.7.1
 
-* Turn off HTTP decompression so that linkerd doesn't decompress and then
+* Turn off HTTP decompression so that Linkerd doesn't decompress and then
   recompress bodies.
 * Various bug fixes in the dtab UI
 * Optional dtab query parameter for selected Namerd HTTP Control API endpoints
@@ -484,13 +484,13 @@ We’ve made some internal changes to keep up with the latest and greatest:
     specified by users.
   * `l5d-dst-*` no longer set on responses
 * Fix graceful connection teardown on streaming HTTP responses #482.
-* linkerd routers' `timeoutMs` configuration now applies on the
+* Linkerd routers' `timeoutMs` configuration now applies on the
   server-side, so that the timeout acts as a global timeout rather
   than an individual request timeout.
-* Binding cache size is now configurable in linkerd and namerd
+* Binding cache size is now configurable in Linkerd and Namerd
 * Use :: as the zk host delimiter in the zk leader namer
 * Admin site/dashboard UI improvements:
-  * The linkerd dtab UI now works correctly with the namerd interpreter
+  * The Linkerd dtab UI now works correctly with the Namerd interpreter
   * Added server success rate graphs to the dashboard, improved responsiveness
   * Added the ability to navigate to a specific router's dashboard
   * Standardized the look and feel of the admin pages
@@ -530,27 +530,27 @@ We’ve made some internal changes to keep up with the latest and greatest:
   time to spend binding a path.
 * Add experimental support for storing dtabs in Kubernetes via the
   ThirdPartyResource API (which must be enabled in your cluster).
-* **Breaking api change** in namerd: dtabs are now string-encoded
+* **Breaking api change** in Namerd: dtabs are now string-encoded
   rather than thrift-encoded.
-* Add `/api/1/bind`, `/api/1/addr`, and `/api/1/delegate` HTTP APIs to namerd
+* Add `/api/1/bind`, `/api/1/addr`, and `/api/1/delegate` HTTP APIs to Namerd
   * Most HTTP APIs now support `?watch=true` for returning updates via a
     streaming response.
 * Add ACL and authentication support to the ZooKeeper DtabStore.
 * Support wildcards in dtabs!
-* New linkerd dashboard is now enabled by default!! :chart_with_upwards_trend:
+* New Linkerd dashboard is now enabled by default!! :chart_with_upwards_trend:
 
 ## 0.3.1
 
-* Add beta version of linkerd dashboard version 2.0.  Try it out at
-  `/dashboard` on the linkerd admin site. :chart_with_upwards_trend:
+* Add beta version of Linkerd dashboard version 2.0.  Try it out at
+  `/dashboard` on the Linkerd admin site. :chart_with_upwards_trend:
 * Support Zipkin tracer configuration via config file, to enable automatic
-  export of tracing data from linkerd to a Zipkin collector.
-* namerd's HTTP dtab API now supports the HEAD and DELETE methods
-* Tear-down address observations in namerd if a service is deleted
+  export of tracing data from Linkerd to a Zipkin collector.
+* Namerd's HTTP dtab API now supports the HEAD and DELETE methods
+* Tear-down address observations in Namerd if a service is deleted
 
 ## 0.3.0
 
-* Added :sparkles: namerd :sparkles: : a service for managing linkerd (and finagle)
+* Added :sparkles: Namerd :sparkles: : a service for managing Linkerd (and finagle)
   name delegation.
 * **Breaking change** to configs: `httpUriInDst` is now specified under the
   `identifier` header (see linkerd/docs/config.md for add'l info)
@@ -568,7 +568,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * Add a loadBalancer section to the client config where a load balancer can be
   specified and configured.  The load balancers that are currently supported are
   p2c, ewma, aperture, and heap.
-* Add a config.json admin endpoint which re-serializes the parsed linkerd config.
+* Add a config.json admin endpoint which re-serializes the parsed Linkerd config.
 * Add a `maxConcurrentRequests` config option to limit number of concurrent
   requests accepted by a server.
 * Add a `hostConnectionPool` client config section to control the number of
@@ -579,7 +579,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 ## 0.2.0
 
 * This release contains **breaking changes** to the configuration file format.
-  linkerd config files are now a bit more explicit and less "magical",
+  Linkerd config files are now a bit more explicit and less "magical",
   in the following ways:
   * Router configuration options can no longer be specified globally at the
     root level of the config file, but must be specified per-router.
@@ -642,7 +642,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 
 This is a big release! Get ready.
 
-* Brand new name: :sunrise: linkerd :balloon:
+* Brand new name: :sunrise: Linkerd :balloon:
 * We're open source! This release is under Apache License v2.
 * Tons of documentation on https://linkerd.io!
 * This release adds config file support! You can express all your routing,
