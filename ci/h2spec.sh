@@ -22,18 +22,16 @@ echo "${SEP} running h2spec against linkerd..."
 # or on the PATH
 set +e
 WHICH_H2SPEC=$(which h2spec)
-if [[ $? -eq 0 ]]; then
+WHICH_H2SPEC_STATUS=$?
+set -e
+if [[ WHICH_H2SPEC_STATUS -eq 0 ]]; then
     # if which found an h2spec executable, just return that path.
     H2SPEC_EXEC="${WHICH_H2SPEC}"
-    set -e
 else
-    set -e
+    HOME_BIN="${HOME}/bin"
     # which didn't find a h2spec on the path. check if it exists in
-    # the working dir, and if not, dow nload it.
-    if [ -e "h2spec" ] ; then
-        # h2spec was found in the working dir, use that.
-        H2SPEC_EXEC="./h2spec"
-    else
+    # ~/bin (which may not be on the path) and if not, download it.
+    if ! [ -e "${HOME_BIN}/h2spec" ] ; then
         # if we don't already have a h2spec executable, download it.
         echo "${SEP} h2spec not found..."
         # detect OS for downloading h2spec.
@@ -47,21 +45,23 @@ else
               H2SPEC_TAR="h2spec_linux_amd64.tar.ghz"
               ;;
         esac
-        # cd into /usr/local/bin to install h2spec.
-        DIR=$(pwd)
-        cd /usr/local/bin
+
         # download h2spec.
         H2SPEC_URL="https://github.com/summerwind/h2spec/releases/download/v2.1.0/${H2SPEC_TAR}"
+        H2SPEC_TMP=$(mktemp -d -t h2spec)
+        TAR_PATH="${H2SPEC_TMP}/${H2SPEC_TAR}"
         printf "${SEP} downloading h2spec..."
-        wget -O "${H2SPEC_TAR}" "${H2SPEC_URL}" > /dev/null 2>&1 &
+        wget -O "${TAR_PATH}" "${H2SPEC_URL}" > /dev/null 2>&1 &
         spin
         # untar.
-        tar xf "${H2SPEC_TAR}" > /dev/null &
+        if ! [ -e $HOME_BIN ]; then
+            mkdir $HOME_BIN
+        fi
+        tar xf "${TAR_PATH}" -C "${HOME}/bin" > /dev/null &
         spin
-        printf " downloading h2spec...done!\n"
-        cd $DIR
-        H2SPEC_EXEC="/usr/local/bin/h2spec"
+        printf " downloaded h2spec to ~/bin.\n"
     fi
+    H2SPEC_EXEC="${HOME}/bin/h2spec"
 fi
 
 # test for presence of nghttpd
@@ -75,7 +75,7 @@ if [[ NGHTTPD_STATUS -ne 0 ]]; then
 fi
 
 # find linkerd executable.
-L5D_PATH=$(find . -name 'linkerd-*-exec')
+L5D_PATH=$(find linkerd/target/scala-2.12 -name 'linkerd-*-exec')
 
 if ! [ -e "${L5D_PATH}" ]; then
     # if we couldn't find a linkerd-exec, build it.
@@ -83,11 +83,11 @@ if ! [ -e "${L5D_PATH}" ]; then
     printf "${SEP} building linkerd..."
     ./sbt linkerd/assembly > /dev/null 2>&1 &
     spin
-    printf " building linkerd...done!\n"
-    L5D_PATH=$(find . -name 'linkerd-*-exec')
+    L5D_PATH=$(find linkerd/target/scala-2.12 -name 'linkerd-*-exec')
+    printf " built ${L5D_PATH}.\n"
+else
+    echo "${SEP} found linkerd executable: $L5D_PATH"
 fi
-
-echo "${SEP} found linkerd executable: $L5D_PATH"
 
 # start nghttpd.
 nghttpd 8080 --no-tls 2>&1 &
@@ -95,9 +95,8 @@ NGHTTPD_PID=$!
 echo "${SEP} started nghttpd"
 
  # run linkerd and send output to logfile.
-"${L5D_PATH}" -log.level=DEBUG linkerd/examples/h2spec.yaml &> "$LOGFILE" &
+"${L5D_PATH}" -log.level=DEBUG linkerd/examples/h2spec.yaml &> "${LOGFILE}" &
 L5D_PID=$!
-printf "${SEP} starting linkerd..."
 
 # make sure to kill the linkerd and nghttpd processes when terminating the
 # script, regardless of how
@@ -107,6 +106,7 @@ trap '
     ' EXIT
 
 # wait until linkerd starts...
+printf "${SEP} starting linkerd..."
 i=0
 set +e
 until $(curl -sfo /dev/null http://localhost:9990/admin/ping); do
@@ -114,7 +114,7 @@ until $(curl -sfo /dev/null http://localhost:9990/admin/ping); do
     printf "\r$(tput bold)${SPIN:$i:1}$(tput sgr0)"
     sleep .1
 done
-printf " starting linkerd...done!\n"
+printf " started linkerd.\n"
 
 # run h2spec against linkerd, printing linkerd's logs if h2spec failed.
 "${H2SPEC_EXEC}" -p 4140
