@@ -3,8 +3,9 @@ package io.buoyant.k8s
 import java.util.concurrent.atomic.AtomicReference
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
+import com.twitter.finagle.buoyant.RetryFilter
 import com.twitter.finagle.param.HighResTimer
-import com.twitter.finagle.service.{Backoff, RetryBudget, RetryFilter, RetryPolicy}
+import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Failure, Filter, http}
@@ -21,6 +22,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   protected def backoffs: Stream[Duration]
   protected def stats: StatsReceiver
+  protected implicit val timer = HighResTimer.Default
+
   // whether or not to pass resource versions on watches; this should be true
   // for List resources & false for object resources.
   // TODO: there is probably a more elegant way to represent this...
@@ -38,7 +41,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     },
     HighResTimer.Default,
     stats,
-    RetryBudget.Infinite
+    RetryBudget.Infinite,
+    _.reader.discard()
   )
 
   def get(
@@ -99,7 +103,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     val close = new AtomicReference[Closable](Closable.nop)
 
     // Internal method used to recursively retry watches as needed on failures.
-    def _watch(resourceVersion: Option[String]): Future[Unit] = {
+    def _watch(resourceVersion: Option[String], backoffs0: Stream[Duration]): Future[Unit] = {
       val req = Api.mkreq(http.Method.Get, watchPath, None,
         LabelSelectorKey -> labelSelector,
         FieldSelectorKey -> fieldSelector,
@@ -124,7 +128,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               } handle {
                 case _: Reader.ReaderDiscarded =>
               }
-
             })
 
             _processEventStream(
@@ -132,15 +135,11 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               resourceVersion
             )
 
-          case http.Status.Gone =>
-            _resourceVersionTooOld()
-
           case status =>
-            close.set(Closable.nop)
+            rsp.reader.discard()
             log.debug("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
-            val exc = Api.UnexpectedResponse(rsp)
-            state.update(Activity.Failed(exc))
-            Future.exception(exc)
+            val sleep #:: backoffs1 = backoffs0
+            Future.sleep(sleep).before(_resourceVersionTooOld(backoffs1))
         }
       }
     }
@@ -163,7 +162,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             "k8s returned 'too old resource version' error with incorrect HTTP status code, " +
               "restarting watch"
           )
-          _resourceVersionTooOld()
+          _resourceVersionTooOld(backoffs)
 
         case Some((event, ws)) =>
           import Ordering.Implicits._
@@ -179,15 +178,15 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         // If the stream ends (k8s will kill connections after ~30m), restart it at the last known
         // resource version.
         case None if largestVersion.isDefined =>
-          _watch(largestVersion)
+          _watch(largestVersion, backoffs)
 
         // No known resource version: load the initial information before watching again.
         case None =>
-          _resourceVersionTooOld()
+          _resourceVersionTooOld(backoffs)
       }
     }
 
-    def _resourceVersionTooOld(): Future[Unit] = {
+    def _resourceVersionTooOld(backoffs0: Stream[Duration]): Future[Unit] = {
       // Gone is returned by k8s to indicate the requested resource version is too old to watch.
       // A common scenario that exhibits this error is:
       //
@@ -198,18 +197,18 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       //
       // We need to reload the initial information to ensure we are "caught up," and then watch
       // again.
-      log.trace("k8s restarting watch on %s, resource version %s was too old", watchPath,
+      log.debug("k8s restarting watch on %s, resource version %s was too old", watchPath,
         resourceVersion)
       restartWatches(labelSelector, fieldSelector).flatMap {
         case (ws, ver) =>
           for (w <- ws)
             state.update(Activity.Ok(w))
 
-          _watch(ver)
+          _watch(ver, backoffs0)
       }
     }
 
-    val _ = _watch(resourceVersion)
+    val _ = _watch(resourceVersion, backoffs)
     Closable.ref(close)
   }
 
