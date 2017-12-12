@@ -25,6 +25,7 @@ kind | `io.l5d.http.nonRetryable5XX` | Either [`io.l5d.http.nonRetryable5XX`](#n
 ## Non-Retryable 5XX
 
 kind: `io.l5d.http.nonRetryable5XX`
+
 kind: `io.l5d.h2.nonRetryable5XX`
 
 All 5XX responses are considered to be failures and none of these
@@ -33,6 +34,7 @@ requests are considered to be retryable.
 ## Retryable Read 5XX
 
 kind: `io.l5d.http.retryableRead5XX`
+
 kind: `io.l5d.h2.retryableRead5XX`
 
 All 5XX responses are considered to be failures. However, `GET`,
@@ -45,6 +47,7 @@ Requests with chunked bodies are NEVER considered to be retryable.
 ## Retryable Idempotent 5XX
 
 kind: `io.l5d.http.retryableIdempotent5XX`
+
 kind: `io.l5d.h2.retryableIdempotent5XX`
 
 Like _io.l5d.http.retryableRead5XX_/_io.l5d.h2.retryableRead5XX_, but `PUT` and
@@ -57,6 +60,7 @@ Requests with chunked bodies are NEVER considered to be retryable.
 ## All Successful
 
 kind:  `io.l5d.http.allSuccessful`
+
 kind:  `io.l5d.h2.allSuccessful`
 
 All responses are considered to be successful, regardless of status code.
