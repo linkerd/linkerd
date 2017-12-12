@@ -123,7 +123,7 @@ class H2FrameCodec(
         try {
           http2Handler.encoder.writeData(
             http2HandlerCtx,
-            data.streamId,
+            data.stream.id,
             data.content.retain(),
             data.padding,
             data.isEndStream,
@@ -134,7 +134,7 @@ class H2FrameCodec(
       case headers: Http2HeadersFrame =>
         http2Handler.encoder.writeHeaders(
           http2HandlerCtx,
-          headers.streamId,
+          headers.stream.id,
           headers.headers(),
           headers.padding,
           headers.isEndStream,
@@ -144,7 +144,7 @@ class H2FrameCodec(
       case reset: Http2ResetFrame =>
         http2Handler.resetStream(
           http2HandlerCtx,
-          reset.streamId,
+          reset.stream.id,
           reset.errorCode,
           promise
         ); ()
@@ -152,7 +152,7 @@ class H2FrameCodec(
       case update: Http2WindowUpdateFrame =>
         try {
           http2Handler.connection.local.flowController.consumeBytes(
-            http2Handler.connection.stream(update.streamId),
+            http2Handler.connection.stream(update.stream.id),
             update.windowSizeIncrement
           )
           promise.setSuccess(); ()

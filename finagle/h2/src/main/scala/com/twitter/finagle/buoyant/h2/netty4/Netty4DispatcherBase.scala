@@ -131,7 +131,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         else Future.Unit
 
       case Return(f: Http2StreamFrame) =>
-        f.streamId match {
+        f.stream.id match {
           case 0 =>
             val e = new IllegalArgumentException(s"unexpected frame on stream 0: ${f.name}")
             goAway(GoAway.ProtocolError).before(Future.exception(e))

@@ -22,7 +22,13 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
   override def write(id: Int, msg: Headers, eos: Boolean): Future[Unit] = {
     val headers = Netty4Message.Headers.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
-    if (id >= 0) frame.streamId(id)
+
+    // val http2FrameStream = Http2ChannelDuplexHandler.newStream(id)
+    // val http2FrameStream = Http2FrameCodec.newStream()
+    // val http2FrameStream = new Http2FrameCodec.DefaultHttp2FrameStream()
+    val http2FrameStream = frame.stream
+
+    if (id >= 0) frame.stream(new Http2FrameStream(id))
     write(frame)
   }
 
