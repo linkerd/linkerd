@@ -19,7 +19,7 @@ class ConsulDtabStore(
 
   private[this] val log = Logger.get("consul")
 
-  val validNs = raw"^[A-Za-z0-9_-]+".r
+  private[this] val validNs = raw"^[A-Za-z0-9_-]+".r
 
   def namespaceIsValid(ns: Ns): Boolean = ns match {
     case validNs(_*) => true
@@ -71,9 +71,9 @@ class ConsulDtabStore(
   }
 
   def create(ns: Ns, dtab: Dtab): Future[Unit] = {
-    if (!namespaceIsValid(ns))
+    if (!namespaceIsValid(ns)) {
       Future.exception(new DtabNamespaceInvalidException(ns))
-    else
+    } else {
       api.put(
         s"${root.show}/$ns",
         dtab.show,
@@ -83,12 +83,13 @@ class ConsulDtabStore(
       ).flatMap { result =>
           if (result) Future.Done else Future.exception(new DtabNamespaceAlreadyExistsException(ns))
         }
+    }
   }
 
   def delete(ns: Ns): Future[Unit] = {
-    if (!namespaceIsValid(ns))
+    if (!namespaceIsValid(ns)) {
       Future.exception(new DtabNamespaceInvalidException(ns))
-    else {
+    } else {
       val key = s"${root.show}/$ns"
       api.get(key, datacenter = datacenter, consistency = writeConsistency).transform {
         case Return(_) => api.delete(
@@ -103,9 +104,9 @@ class ConsulDtabStore(
   }
 
   def update(ns: Ns, dtab: Dtab, version: Version): Future[Unit] = {
-    if (!namespaceIsValid(ns))
+    if (!namespaceIsValid(ns)) {
       Future.exception(new DtabNamespaceInvalidException(ns))
-    else {
+    } else {
       val Buf.Utf8(vstr) = version
       Try(vstr.toLong) match {
         case Return(_) =>
@@ -124,15 +125,16 @@ class ConsulDtabStore(
   }
 
   def put(ns: Ns, dtab: Dtab): Future[Unit] = {
-    if (!namespaceIsValid(ns))
+    if (!namespaceIsValid(ns)) {
       Future.exception(new DtabNamespaceInvalidException(ns))
-    else
+    } else {
       api.put(
         s"${root.show}/$ns",
         dtab.show,
         datacenter = datacenter,
         consistency = writeConsistency
       ).unit
+    }
   }
 
   // We don't hold cached observations open so caching these is very cheap.  Therefore we don't
@@ -180,7 +182,6 @@ class ConsulDtabStore(
           Future.Unit
 
       val pending = cycle(None)
-
       Closable.make { _ =>
         running = false
         pending.raise(Failure("Consul observation released", Failure.Interrupted))
@@ -190,4 +191,3 @@ class ConsulDtabStore(
     Activity(run).stabilize
   }
 }
-
