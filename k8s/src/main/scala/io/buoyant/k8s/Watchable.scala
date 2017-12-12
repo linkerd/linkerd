@@ -8,6 +8,7 @@ import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
+import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Reader
 import com.twitter.util.TimeConversions._
@@ -22,7 +23,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   protected def backoffs: Stream[Duration]
   protected def stats: StatsReceiver
-  protected implicit val timer = HighResTimer.Default
+  protected implicit val timer = DefaultTimer
 
   // whether or not to pass resource versions on watches; this should be true
   // for List resources & false for object resources.
