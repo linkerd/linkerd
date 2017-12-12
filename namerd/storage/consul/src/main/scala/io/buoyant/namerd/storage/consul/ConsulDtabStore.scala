@@ -1,8 +1,6 @@
 package io.buoyant.namerd
 package storage.consul
 
-import java.util.regex.Pattern
-
 import com.google.common.cache.{CacheBuilder, CacheLoader}
 import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
@@ -21,7 +19,12 @@ class ConsulDtabStore(
 
   private[this] val log = Logger.get("consul")
 
-  def namespaceIsValid(ns: Ns): Boolean = Pattern.matches("[\\w+\\-?/?]+", ns)
+  val validNs = raw"^[A-Za-z0-9_-]+".r
+
+  def namespaceIsValid(ns: Ns): Boolean = ns match {
+    case validNs(_*) => true
+    case _ => false
+  }
 
   override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)

@@ -53,7 +53,7 @@ object DtabStore {
     extends Exception(s"The dtab namespace $ns does not exist")
 
   class DtabNamespaceInvalidException(ns: Ns)
-    extends Exception(s"The dtab namespace $ns contains invalid characters")
+    extends Exception(s"invalid dtab namespace $ns: namespace must contain only letter, number or '-' characters")
 
   object Forbidden extends Exception("You do not have sufficient permissions")
 
