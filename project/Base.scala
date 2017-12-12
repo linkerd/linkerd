@@ -62,8 +62,8 @@ class Base extends Build {
     organization := "io.buoyant",
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
-    scalaVersion in GlobalScope := "2.12.1",
-    crossScalaVersions in GlobalScope := Seq("2.11.11", "2.12.1"),
+    scalaVersion in GlobalScope := "2.12.4",
+    crossScalaVersions in GlobalScope := Seq("2.11.12", "2.12.4"),
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
     scalacOptions ++=
       Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
@@ -153,7 +153,7 @@ class Base extends Build {
     assemblyJarName in assembly := s"${name.value}-${version.value}-${configuration.value}-exec",
     docker := (docker dependsOn (assembly in configuration)).value,
     dockerEnvPrefix := "",
-    dockerJavaImage := (dockerJavaImage in Global).?(_.getOrElse("openjdk:8u131-jre")).value,
+    dockerJavaImage := (dockerJavaImage in Global).?(_.getOrElse("openjdk:8u151-jre")).value,
     dockerfile in docker := new Dockerfile {
       val envPrefix = dockerEnvPrefix.value.toUpperCase
       val home = s"/${organization.value}/${name.value}/${version.value}"

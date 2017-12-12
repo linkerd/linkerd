@@ -8,7 +8,7 @@ set -xeu
 # Based on Finagle's dependency-fetching script.
 
 # Optionally accept the scala version as an argument
-SCALA_VERSION=${1:-2.12.1}
+SCALA_VERSION=${1:-2.12.4}
 
 # Allow git shas to be cached so that rebuilds are only done as needed.
 function tracking_shas(){
