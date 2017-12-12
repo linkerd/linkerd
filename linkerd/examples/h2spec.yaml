@@ -1,0 +1,18 @@
+admin:
+  port: 9990
+  ip: 0.0.0.0
+
+usage:
+  enabled: false
+
+telemetry:
+- kind: io.l5d.prometheus
+
+routers:
+- protocol: h2
+  experimental: true
+  label: h2
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+  dtab: /svc => /$/inet/127.1/8080
