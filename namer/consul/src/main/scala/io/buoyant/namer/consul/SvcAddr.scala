@@ -18,6 +18,9 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
 
 private[consul] object SvcAddr {
 
+  private[this] val ServiceRelease =
+    new Exception("service observation released") with NoStackTrace
+
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
     val closes = stats.counter("closes")
@@ -62,15 +65,7 @@ private[consul] object SvcAddr {
 
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
-          case Throw(Failure(Some(err: ConnectionFailedException))) =>
-            log.warning(
-              "consul datacenter '%s' service '%s' retrying on connection" +
-                " failure: %s",
-              datacenter, key.name, err
-            )
-            // Drop the index, in case it's been reset by a consul restart
-            loop(None)
-          case Throw(ServiceRelease) =>
+          case Throw(Failure(Some(cause))) if cause == ServiceRelease =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
             // service.
@@ -81,6 +76,14 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
+          case Throw(Failure(Some(err: ConnectionFailedException))) =>
+            log.warning(
+              "consul datacenter '%s' service '%s' retrying on connection" +
+                " failure: %s",
+              datacenter, key.name, err
+            )
+            // Drop the index, in case it's been reset by a consul restart
+            loop(None)
           case Throw(e) =>
             // an error occurred. if we've previously seen a good state, fall
             // back to that state; otherwise, fail.
@@ -136,7 +139,7 @@ private[consul] object SvcAddr {
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
-        pending.raise(ServiceRelease)
+        pending.raise(Failure("service observation released", ServiceRelease, Failure.Interrupted))
         Future.Unit
       }
     }
@@ -193,9 +196,6 @@ private[consul] object SvcAddr {
     val meta = Addr.Metadata((Metadata.endpointWeight, weight))
     Try(Address.Inet(new InetSocketAddress(ip, port), meta)).toOption
   }
-
-  private[this] val ServiceRelease =
-    Failure("service observation released", Failure.Interrupted)
 
   private[this] val NoIndexException =
     Failure(new IllegalArgumentException("consul did not return an index") with NoStackTrace)
