@@ -47,13 +47,15 @@ else
               H2SPEC_TAR="h2spec_linux_amd64.tar.ghz"
               ;;
         esac
-
+        # cd into /usr/local/bin to install h2spec.
         DIR=$(pwd)
         cd /usr/local/bin
+        # download h2spec.
         H2SPEC_URL="https://github.com/summerwind/h2spec/releases/download/v2.1.0/${H2SPEC_TAR}"
         printf "${SEP} downloading h2spec..."
         wget -O "${H2SPEC_TAR}" "${H2SPEC_URL}" > /dev/null 2>&1 &
         spin
+        # untar.
         tar xf "${H2SPEC_TAR}" > /dev/null &
         spin
         printf " downloading h2spec...done!\n"
@@ -61,11 +63,22 @@ else
         H2SPEC_EXEC="/usr/local/bin/h2spec"
     fi
 fi
-set -e
 
+# test for presence of nghttpd
+set +e
+command -v nghttpd > /dev/null
+NGHTTPD_STATUS=$?
+set -e
+if [[ NGHTTPD_STATUS -ne 0 ]]; then
+    echo "${SEP} nghttpd not found; please install nghttpd before continuing."
+    exit "${NGHTTPD_STATUS}"
+fi
+
+# find linkerd executable.
 L5D_PATH=$(find . -name 'linkerd-*-exec')
 
 if ! [ -e "${L5D_PATH}" ]; then
+    # if we couldn't find a linkerd-exec, build it.
     echo "${SEP} linkerd executable not found!"
     printf "${SEP} building linkerd..."
     ./sbt linkerd/assembly > /dev/null 2>&1 &
@@ -76,7 +89,7 @@ fi
 
 echo "${SEP} found linkerd executable: $L5D_PATH"
 
-which nghttpd > /dev/null | sed "s/^/${SEP} /"
+# start nghttpd.
 nghttpd 8080 --no-tls 2>&1 &
 NGHTTPD_PID=$!
 echo "${SEP} started nghttpd"
