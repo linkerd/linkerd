@@ -27,9 +27,8 @@ class ConsulDtabStore(
 
     val run = Var.async[Activity.State[Set[Ns]]](Activity.Pending) { updates =>
       @volatile var running = true
-      var retPending: Future[_] = Future.Unit
 
-      def cycle(index: Option[String], backoffs: Stream[Duration]): Future[Unit] =
+      def cycle(index: Option[String], backoffs0: Stream[Duration]): Future[Unit] =
         if (running)
 
           api.list(
@@ -43,16 +42,16 @@ class ConsulDtabStore(
               case Return(result) =>
                 val namespaces = result.value.map(namespace).toSet
                 updates() = Activity.Ok(namespaces)
-                cycle(result.index, backoffs)
+                cycle(result.index, backoffs0)
               case Throw(e: NotFound) =>
                 updates() = Activity.Ok(Set.empty[Ns])
-                cycle(e.rsp.headerMap.get(Headers.Index), backoffs)
+                cycle(e.rsp.headerMap.get(Headers.Index), backoffs0)
               case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
               case Throw(e) =>
                 updates() = Activity.Failed(e)
                 log.error("consul ns list observation error %s", e)
-                val sleep #:: backoffs0 = backoffs
-                Future.sleep(sleep).flatMap(_ => cycle(None, backoffs0))
+                val sleep #:: backoffs1 = backoffs0
+                Future.sleep(sleep).before(cycle(None, backoffs1))
             }
         else
           Future.Unit
@@ -133,7 +132,7 @@ class ConsulDtabStore(
     val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
       @volatile var running = true
 
-      def cycle(index: Option[String], backoffs: Stream[Duration]): Future[Unit] =
+      def cycle(index: Option[String], backoffs0: Stream[Duration]): Future[Unit] =
         if (running)
           api.get(
             key,
@@ -146,16 +145,16 @@ class ConsulDtabStore(
               val version = Buf.Utf8(result.index.get)
               val dtab = Dtab.read(result.value)
               updates() = Activity.Ok(Some(VersionedDtab(dtab, version)))
-              cycle(result.index, backoffs)
+              cycle(result.index, backoffs0)
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(None)
-              cycle(e.rsp.headerMap.get(Headers.Index), backoffs)
+              cycle(e.rsp.headerMap.get(Headers.Index), backoffs0)
             case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               log.error("consul ns %s dtab observation error %s", ns, e)
-              val sleep #:: backoffs0 = backoffs
-              Future.sleep(sleep).flatMap(_ => cycle(None, backoffs0))
+              val sleep #:: backoffs1 = backoffs0
+              Future.sleep(sleep).before(cycle(None, backoffs1))
 
           }
         else
