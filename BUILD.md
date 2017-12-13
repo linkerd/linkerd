@@ -111,6 +111,18 @@ assembled artifacts. It may be run with:
 > validator/validateAssembled
 ```
 
+The `ci/` directory contains a Bash script to run the HTTP/2 conformance
+testing tool [`h2spec`](https://github.com/summerwind/h2spec) against a
+Linkerd HTTP/2 router:
+```
+$ ./ci/h2spec.sh
+```
+
+Note that the script requires both `h2spec` and `nghttpd`. It will
+download and install `h2spec` to `~/bin`, if it is not already installed
+on your system. `nghttpd` can be installed from your package manager of
+choice.
+
 #### Writing tests ####
 
 Test files for each of the above test configurations are stored in a
