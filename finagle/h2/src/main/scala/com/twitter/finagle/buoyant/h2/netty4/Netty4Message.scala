@@ -102,10 +102,12 @@ private[h2] object Netty4Message {
 
     def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
       val sz = f.content.readableBytes + f.padding
-      val buf = ByteBufAsBuf(f.content)
-      val releaser: () => Future[Unit] =
+      val buf = ByteBufAsBuf(f.content.retain())
+      val releaser: () => Future[Unit] = {
+        f.content.release()
         if (sz > 0) () => updateWindow(sz)
         else () => Future.Unit
+      }
       Frame.Data(buf, f.isEndStream, releaser)
     }
   }
