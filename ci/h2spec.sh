@@ -4,7 +4,7 @@ set -o pipefail
 shopt -s extglob
 
 SEP="$(tput bold)⣷$(tput sgr0)"
-LOGFILE="l5d-h2spec.log"
+LOGFILE=$(mktemp -t l5d-h2spec.log)
 SPIN='⣾⣽⣻⢿⡿⣟⣯⣷'
 
 spin() {
@@ -18,41 +18,65 @@ spin() {
 }
 
 echo "${SEP} running h2spec against linkerd..."
-# if we can't find h2spec, download it
-if ! [ -e "h2spec" ] ; then
-    # if we don't already have a h2spec executable, wget it from github
-    echo "${SEP} h2spec not found..."
-    # detect OS for downloading h2spec
-    case $OSTYPE in
-        darwin*)
-          echo "${SEP} detected OS as macOS"
-          H2SPEC_FILE="h2spec_darwin_amd64.tar.gz"
-          ;;
-        linux*)
-          echo "${SEP} detected OS as linux"
-          H2SPEC_FILE="h2spec_linux_amd64.tar.ghz"
-          ;;
+# test if we have a h2spec binary - either in the working dir,
+# or on the PATH
+set +e
+WHICH_H2SPEC=$(which h2spec)
+if [[ $? -eq 0 ]]; then
+    # if which found an h2spec executable, just return that path.
+    H2SPEC_EXEC="${WHICH_H2SPEC}"
+    set -e
+else
+    set -e
+    # which didn't find a h2spec on the path. check if it exists in
+    # the working dir, and if not, dow nload it.
+    if [ -e "h2spec" ] ; then
+        # h2spec was found in the working dir, use that.
+        H2SPEC_EXEC="./h2spec"
+    else
+        # if we don't already have a h2spec executable, download it.
+        echo "${SEP} h2spec not found..."
+        # detect OS for downloading h2spec.
+        case $OSTYPE in
+            darwin*)
+              echo "${SEP} detected OS as macOS"
+              H2SPEC_TAR="h2spec_darwin_amd64.tar.gz"
+              ;;
+            linux*)
+              echo "${SEP} detected OS as linux"
+              H2SPEC_TAR="h2spec_linux_amd64.tar.ghz"
+              ;;
+        esac
 
-    esac
-    H2SPEC_URL="https://github.com/summerwind/h2spec/releases/download/v2.1.0/${H2SPEC_FILE}"
-    printf "${SEP} downloading h2spec..."
-    wget "${H2SPEC_URL}" > /dev/null 2>&1 &
-    spin
-    tar xf "${H2SPEC_FILE}" > /dev/null 2>&1 &
-    spin
-    printf "\n"
+        DIR=$(pwd)
+        cd /usr/local/bin
+        H2SPEC_URL="https://github.com/summerwind/h2spec/releases/download/v2.1.0/${H2SPEC_TAR}"
+        printf "${SEP} downloading h2spec..."
+        wget -O "${H2SPEC_TAR}" "${H2SPEC_URL}" > /dev/null 2>&1 &
+        spin
+        tar xf "${H2SPEC_TAR}" > /dev/null &
+        spin
+        printf " downloading h2spec...done!\n"
+        cd $DIR
+        H2SPEC_EXEC="/usr/local/bin/h2spec"
+    fi
 fi
+set -e
 
 L5D_PATH=$(find . -name 'linkerd-*-exec')
 
-until [ -e "${L5D_PATH}" ]; do
+if ! [ -e "${L5D_PATH}" ]; then
     echo "${SEP} linkerd executable not found!"
-    ./sbt linkerd:compile | sed "s/^/${SEP} sbt ${SEP} /"
+    printf "${SEP} building linkerd..."
+    ./sbt linkerd/assembly > /dev/null 2>&1 &
+    spin
+    printf " building linkerd...done!\n"
     L5D_PATH=$(find . -name 'linkerd-*-exec')
-done
+fi
 
 echo "${SEP} found linkerd executable: $L5D_PATH"
 
+which nghttpd > /dev/null | sed "s/^/${SEP} /"
 nghttpd 8080 --no-tls 2>&1 &
 NGHTTPD_PID=$!
 echo "${SEP} started nghttpd"
@@ -77,19 +101,16 @@ until $(curl -sfo /dev/null http://localhost:9990/admin/ping); do
     printf "\r$(tput bold)${SPIN:$i:1}$(tput sgr0)"
     sleep .1
 done
-printf "\n"
-set -e
+printf " starting linkerd...done!\n"
 
 # run h2spec against linkerd, printing linkerd's logs if h2spec failed.
-set +e
-./h2spec -p 4140
+"${H2SPEC_EXEC}" -p 4140
 H2SPEC_STATUS=$?
 set -e
 if [ "${H2SPEC_STATUS}" -eq 0 ]; then
     echo "${SEP} h2spec passed!"
 else
-    echo "${SEP} h2spec failed! linkerd logs:"
-    cat "${LOGFILE}"
+    echo "${SEP} h2spec failed! linkerd logs: ${LOGFILE}"
 fi
 
 exit "${H2SPEC_STATUS}"

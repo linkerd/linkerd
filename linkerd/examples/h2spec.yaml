@@ -5,9 +5,6 @@ admin:
 usage:
   enabled: false
 
-telemetry:
-- kind: io.l5d.prometheus
-
 routers:
 - protocol: h2
   experimental: true
