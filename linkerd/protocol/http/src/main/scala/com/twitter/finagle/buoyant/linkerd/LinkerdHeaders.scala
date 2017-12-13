@@ -6,7 +6,7 @@ import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
 import com.twitter.finagle.http._
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Return, Throw, Time, Try}
-import java.net.URLEncoder
+import java.net.{InetSocketAddress, URLEncoder}
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
 import scala.collection.breakOut
@@ -421,6 +421,12 @@ object Headers {
       private[this] def annotate(msg: Message): Unit = {
         val headers = msg.headerMap
         val _b = headers.set(Bound, boundShow)
+
+        val addr = bound.addr.sample().asInstanceOf[com.twitter.finagle.Addr.Bound]
+        val inet = addr.addrs.head.asInstanceOf[com.twitter.finagle.Address.Inet]
+        val host = inet.addr.getHostString
+        headers.set("Host", host)
+
         pathShow match {
           case None =>
           case Some(p) =>
