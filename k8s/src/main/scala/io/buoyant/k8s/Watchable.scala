@@ -32,8 +32,11 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
   protected def infiniteRetryFilter = new RetryFilter[http.Request, http.Response](
     RetryPolicy.backoff(backoffs) {
-      // We will assume 5xx are retryable, everything else is not for now
-      case (_, Return(rep)) => rep.status.code >= 500 && rep.status.code < 600
+      // 2XX, 404, and 411 are considered valid responses and should not be retried
+      case (_, Return(rep)) if rep.status.code >= 200 && rep.status.code < 300 => false
+      case (_, Return(rep)) if rep.status == http.Status.NotFound || rep.status == http.Status.Gone => false
+      // All other status codes are unexpected and should be retried
+      case (_, Return(rep)) => true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
