@@ -1106,6 +1106,88 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
   }
 
+  test("initial get returns unexpected status") {
+    @volatile var i = 0
+    val service = Service.mk[Request, Response] {
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints/sessions" && i == 0 =>
+        val rsp = Response()
+        rsp.status = http.Status.NotAcceptable
+        i += 1
+        Future.value(rsp)
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints/sessions" =>
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/srv/endpoints/sessions") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+        Future.value(rsp)
+    }
+
+    val api = v1.Api(service)
+    val timer = new MockTimer
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+
+    val activity = namer.lookup(Path.read("/srv/http/sessions"))
+
+    val addrs = await(activity.toFuture.map {
+      case NameTree.Leaf(Name.Bound(vaddr)) => vaddr.sample() match {
+        case Addr.Bound(addrs, _) => addrs
+        case a => fail("unexpected Addr type: " + a)
+      }
+    })
+
+    assert(addrs == Set(Address("10.248.4.9", 8083), Address("10.248.7.11", 8083), Address("10.248.8.9", 8083)))
+  }
+
+  test("watch returns unexpected status") {
+    @volatile var i = 0
+    val service = Service.mk[Request, Response] {
+      case req if req.uri == "/api/v1/namespaces/srv/endpoints/sessions" =>
+        val rsp = Response()
+        rsp.content = Rsps.Init
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/srv/endpoints/sessions") && i == 0 =>
+        val rsp = Response()
+        rsp.status = http.Status.NotAcceptable
+        i += 1
+        Future.value(rsp)
+      case req if req.uri.startsWith("/api/v1/watch/namespaces/srv/endpoints/sessions") =>
+        val rsp = Response()
+        rsp.setChunked(true)
+        rsp.writer.write(Rsps.ScaleUp)
+        Future.value(rsp)
+    }
+
+    val api = v1.Api(service)
+    val timer = new MockTimer
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+
+    val activity = namer.lookup(Path.read("/srv/http/sessions"))
+
+    eventually {
+      val addrs = await(activity.toFuture.map {
+        case NameTree.Leaf(Name.Bound(vaddr)) => vaddr.sample() match {
+          case Addr.Bound(addrs, _) => addrs
+          case a => fail("unexpected Addr type: " + a)
+        }
+      })
+
+      assert(
+        addrs == Set(
+          Address("10.248.4.9", 8083),
+          Address("10.248.7.11", 8083),
+          Address("10.248.8.9", 8083),
+          Address("10.248.1.11", 8083)
+        )
+      )
+    }
+  }
+
   test("existing Vars are updated when a service goes away and comes back") {
     // linkerd #1626 reproduction
     @volatile var writer: Writer = null
