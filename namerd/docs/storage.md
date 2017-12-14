@@ -183,13 +183,6 @@ datacenter | uses agent's datacenter | The datacenter to forward requests to.
 readConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for reads.
 writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
-backoffDuration | See [backoff duration](#backoff-duration-parameters)  | The maximum duration to wait between retries to the consul API. The retry duration increases after each failed request to the Consul API from 1ms to `maxBackoffDurationMs` 
+backoff |  exponential backoff from 1ms to 1min | Object that determines which backoff algorithm should be used. See [retry backoff](https://linkerd.io/config/head/linkerd#retry-backoff-parameters)
 
-### Backoff Duration Parameters
 
-Specifies the min and max duration between retries on failed requests to the Consul API.
-  
-Key   | Default Value | Description
------ | ------------- | -----------
-minMs | `1`| initial minimum duration between each retry
-maxMs | `10000` | maximum duration between each retry

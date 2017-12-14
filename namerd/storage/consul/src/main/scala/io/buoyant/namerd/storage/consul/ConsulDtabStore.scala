@@ -185,7 +185,7 @@ class ConsulDtabStore(
         else
           Future.Unit
       val pending = cycle(None, api.backoffs)
-      
+
       Closable.make { _ =>
         running = false
         pending.raise(Failure("Consul observation released", Failure.Interrupted))
