@@ -103,14 +103,18 @@ private[h2] object Netty4Message {
     def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
       val sz = f.content.readableBytes + f.padding
       val buf = ByteBufAsBuf(f.content.retain())
-      val releaser: () => Future[Unit] = {
+      val releaser: () => Future[Unit] =
         () =>
           {
+            // When releasing the frame, call `updateWindow` with the frame's
+            // size to release the frame's window capacity.
             val res = if (sz > 0) updateWindow(sz) else Future.Unit
+            // Because `ByteBufAsBuf` does not support reference counting,
+            // it's necessary to call `.release()` on the underlying `ByteBuf`
+            // when releasing the data frame.
             f.content.release()
             res
           }
-      }
       Frame.Data(buf, f.isEndStream, releaser)
     }
   }
