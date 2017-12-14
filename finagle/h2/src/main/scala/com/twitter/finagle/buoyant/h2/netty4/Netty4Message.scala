@@ -104,9 +104,12 @@ private[h2] object Netty4Message {
       val sz = f.content.readableBytes + f.padding
       val buf = ByteBufAsBuf(f.content.retain())
       val releaser: () => Future[Unit] = {
-        f.content.release()
-        if (sz > 0) () => updateWindow(sz)
-        else () => Future.Unit
+        () =>
+          {
+            val res = if (sz > 0) updateWindow(sz) else Future.Unit
+            f.content.release()
+            res
+          }
       }
       Frame.Data(buf, f.isEndStream, releaser)
     }
