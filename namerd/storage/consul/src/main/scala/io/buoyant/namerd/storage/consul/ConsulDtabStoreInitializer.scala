@@ -16,7 +16,8 @@ case class ConsulConfig(
   datacenter: Option[String] = None,
   readConsistencyMode: Option[ConsistencyMode] = None,
   writeConsistencyMode: Option[ConsistencyMode] = None,
-  failFast: Option[Boolean] = None
+  failFast: Option[Boolean] = None,
+  maxBackoffDurationMs: Option[Int] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -24,6 +25,7 @@ case class ConsulConfig(
   override def mkDtabStore: DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
+    val maxBackoffMs = maxBackoffDurationMs.getOrElse(DefaultMaxDurationMs)
 
     val service = Http.client
       .interceptInterrupts
@@ -33,7 +35,7 @@ case class ConsulConfig(
       .withTracer(NullTracer)
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, maxBackoffMs),
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
       datacenter = datacenter,
       readConsistency = readConsistencyMode,
@@ -45,6 +47,7 @@ case class ConsulConfig(
 object ConsulConfig {
   val DefaultHost = "localhost"
   val DefaultPort = Port(8500)
+  val DefaultMaxDurationMs = 10000
 }
 
 class ConsulDtabStoreInitializer extends DtabStoreInitializer {

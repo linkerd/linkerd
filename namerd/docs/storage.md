@@ -183,4 +183,5 @@ datacenter | uses agent's datacenter | The datacenter to forward requests to.
 readConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for reads.
 writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
+maxBackoffDurationMs | `10000` | The maximum duration to wait between retries to the consul API. The retry duration increases after each failed request to the Consul API from 1ms to `maxBackoffDurationMs` 
 

@@ -9,13 +9,14 @@ import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.util._
 
 object KvApi {
-  def apply(c: Client): KvApi = new KvApi(c, s"/$versionString")
+  val DefaultMaxBackOffDuration = 10000
+  def apply(c: Client, backoffMs: Int = DefaultMaxBackOffDuration): KvApi = new KvApi(c, s"/$versionString", Backoff.exponentialJittered(1.milliseconds, backoffMs.milliseconds))
 }
 
 class KvApi(
   val client: Client,
   val uriPrefix: String,
-  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 1.minute),
   val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
   val kvPrefix = s"$uriPrefix/kv"
