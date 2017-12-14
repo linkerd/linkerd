@@ -6,7 +6,7 @@ import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
-import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
+import io.buoyant.namerd.{BackoffConfig, DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
   host: Option[String],
@@ -17,7 +17,7 @@ case class ConsulConfig(
   readConsistencyMode: Option[ConsistencyMode] = None,
   writeConsistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None,
-  maxBackoffDurationMs: Option[Int] = None
+  backoffDuration: Option[BackoffConfig] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -25,7 +25,7 @@ case class ConsulConfig(
   override def mkDtabStore: DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
-    val maxBackoffMs = maxBackoffDurationMs.getOrElse(DefaultMaxDurationMs)
+    val maxBackoffMs = backoffDuration.getOrElse(DefaultMaxDurationMs).mk
 
     val service = Http.client
       .interceptInterrupts
@@ -47,7 +47,7 @@ case class ConsulConfig(
 object ConsulConfig {
   val DefaultHost = "localhost"
   val DefaultPort = Port(8500)
-  val DefaultMaxDurationMs = 10000
+  val DefaultMaxDurationMs = BackoffConfig(Some(1), Some(10000))
 }
 
 class ConsulDtabStoreInitializer extends DtabStoreInitializer {

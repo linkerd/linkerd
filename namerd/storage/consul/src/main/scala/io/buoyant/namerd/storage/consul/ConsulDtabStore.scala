@@ -16,11 +16,10 @@ class ConsulDtabStore(
   datacenter: Option[String] = None,
   readConsistency: Option[ConsistencyMode] = None,
   writeConsistency: Option[ConsistencyMode] = None,
-  _timer: Timer = DefaultTimer
+  implicit val _timer: Timer = DefaultTimer
 ) extends DtabStore {
 
   private[this] val log = Logger.get("consul")
-  private[this] implicit val timer = _timer
 
   override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
