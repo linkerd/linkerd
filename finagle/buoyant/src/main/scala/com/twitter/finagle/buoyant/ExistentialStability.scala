@@ -75,6 +75,8 @@ object ExistentialStability {
             update() = Activity.Ok(None)
           case Activity.Pending =>
             update() = Activity.Pending
+          case Activity.Failed(e) =>
+            update() = Activity.Failed(e)
         }
       }
       Activity(inner)
