@@ -6,7 +6,6 @@ namers:
 routers:
 - protocol: http
   httpAccessLog: logs/access.log
-  label: netty3
   maxChunkKB: 16
   maxHeadersKB: 16
   maxInitialLineKB: 16
