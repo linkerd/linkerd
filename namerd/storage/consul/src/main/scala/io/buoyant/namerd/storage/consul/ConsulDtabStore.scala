@@ -29,6 +29,13 @@ class ConsulDtabStore(
     case _ => false
   }
 
+  private[this] val validNs = raw"^[A-Za-z0-9_-]+".r
+
+  def namespaceIsValid(ns: Ns): Boolean = ns match {
+    case validNs(_*) => true
+    case _ => false
+  }
+
   override val list: Activity[Set[Ns]] = {
     def namespace(key: String): Ns = key.stripPrefix("/").stripSuffix("/").substring(root.show.length)
 
