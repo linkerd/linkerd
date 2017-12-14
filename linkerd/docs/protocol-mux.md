@@ -14,7 +14,7 @@ routers:
 
 protocol: `mux`
 
-linkerd experimentally supports the [mux
+Linkerd experimentally supports the [mux
 protocol](http://twitter.github.io/finagle/guide/Protocols.html#mux).
 
 ## Mux Router Parameters

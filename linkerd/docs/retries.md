@@ -15,7 +15,7 @@ routers:
         maxMs: 10000
 ```
 
-linkerd can automatically retry requests on certain failures and can be
+Linkerd can automatically retry requests on certain failures and can be
 configured via the retries block.  Retries fall into two categories: retries
 and requeues.
 

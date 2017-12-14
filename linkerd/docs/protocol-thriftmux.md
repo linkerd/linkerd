@@ -16,7 +16,7 @@ routers:
 
 protocol: `thriftmux`
 
-linkerd _experimentally_ supports the thriftmux
+Linkerd _experimentally_ supports the thriftmux protocol.
 
 Thriftmux protocol is capable of routing traffic to pure thrift service and
 will use [Thrift](http://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol on the client.

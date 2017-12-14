@@ -27,6 +27,7 @@ trait ClientConfig {
   ) = {
     val setHost = new SetHostFilter(getHost, getPort)
     Http.client.withParams(Http.client.params ++ params)
+      .withHttpStats
       .withTracer(NullTracer)
       .withStreaming(true)
       .filtered(setHost)

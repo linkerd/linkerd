@@ -35,7 +35,7 @@ kind: `io.l5d.specificHost`
 The specific host transformer filters the list of addresses down to only
 addresses that have the same IP address as the specified host. This transformer
 can be used by an incoming router to only route traffic to specific
-destinations. This is useful when linkerd is running inside a Docker container
+destinations. This is useful when Linkerd is running inside a Docker container
 and the traffic is to be sent to another Docker container on the same host.
 
 Key  | Default Value | Description
@@ -47,7 +47,7 @@ host | _required_    | The host to use.
 kind: `io.l5d.port`
 
 The port transformer replaces the port number in every address with a
-configured value.  This can be used if there is an incoming linkerd router (or
+configured value.  This can be used if there is an incoming Linkerd router (or
 other reverse-proxy) running on a fixed port on each host and you wish to send
 traffic to that port instead of directly to the destination address.
 

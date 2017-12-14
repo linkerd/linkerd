@@ -29,72 +29,72 @@ The default interpreter resolves names via the configured
 [`namers`](#namers), with a fallback to the default Finagle
 `Namer.Global` that handles paths of the form `/$/`.
 
-## namerd thrift
+## Namerd thrift
 
 kind: `io.l5d.namerd`
 
-The namerd thrift interpreter offloads the responsibilities of name resolution
-to the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter uses namerd's long-poll thrift interface
+The Namerd thrift interpreter offloads the responsibilities of name resolution
+to the Namerd service.  Any namers configured in this Linkerd are not used.  The
+interpreter uses Namerd's long-poll thrift interface
 (`io.l5d.thriftNameInterpreter`). Note that the protocol that the interpreter
-uses to talk to namerd is unrelated to the protocols of linkerd's routers.
+uses to talk to Namerd is unrelated to the protocols of Linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-dst | _required_ | A Finagle path locating the namerd service.
-namespace | `default` | The name of the namerd dtab to use.
-retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
-tls | no tls | Requests to namerd will be made using TLS if this parameter is provided.  It must be a [namerd client TLS](#namerd-client-tls) object.
+dst | _required_ | A Finagle path locating the Namerd service.
+namespace | `default` | The name of the Namerd dtab to use.
+retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
+tls | no tls | Requests to Namerd will be made using TLS if this parameter is provided.  It must be a [Namerd client TLS](#namerd-client-tls) object.
 
-### namerd retry
+### Namerd retry
 
 Key | Default Value | Description
 --- | ------------- | -----------
 baseSeconds | 5 seconds | The base number of seconds to wait before retrying.
 maxSeconds | 10 minutes | The maximum number of seconds to wait before retrying.
 
-### namerd client tls
+### Namerd client tls
 
 Key | Default Value | Description
 --- | ------------- | -----------
-commonName | _required_ | The common name to use for namerd requests.
+commonName | _required_ | The common name to use for Namerd requests.
 caCert | N/A | The path to the CA cert used for common name validation.
 
-## namerd http
+## Namerd http
 
 kind: `io.l5d.namerd.http`
 
-The namerd http interpreter offloads the responsibilities of name resolution to
-the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter uses namerd's HTTP streaming interface (`io.l5d.httpController`).
-Note that the protocol that the interpreter uses to talk to namerd is unrelated
-to the protocols of linkerd's routers.
+The Namerd http interpreter offloads the responsibilities of name resolution to
+the Namerd service.  Any namers configured in this Linkerd are not used.  The
+interpreter uses Namerd's HTTP streaming interface (`io.l5d.httpController`).
+Note that the protocol that the interpreter uses to talk to Namerd is unrelated
+to the protocols of Linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because the http interpreter is still considered experimental, you must set this to `true` to use it.
-dst | _required_ | A Finagle path locating the namerd service.
-namespace | `default` | The name of the namerd dtab to use.
-retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
-tls | no tls | Requests to namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
+dst | _required_ | A Finagle path locating the Namerd service.
+namespace | `default` | The name of the Namerd dtab to use.
+retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
+tls | no tls | Requests to Namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 
-## namerd mesh
+## Namerd mesh
 
 kind: `io.l5d.mesh`
 
-The namerd mesh interpreter offloads the responsibilities of name resolution to
-the namerd service.  Any namers configured in this linkerd are not used.  The
-interpreter uses namerd's gRPC mesh interface (`io.l5d.mesh`). Note that the
-protocol that the interpreter uses to talk to namerd is unrelated to the
-protocols of linkerd's routers.
+The Namerd mesh interpreter offloads the responsibilities of name resolution to
+the Namerd service.  Any namers configured in this Linkerd are not used.  The
+interpreter uses Namerd's gRPC mesh interface (`io.l5d.mesh`). Note that the
+protocol that the interpreter uses to talk to Namerd is unrelated to the
+protocols of Linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 experimental | _required_ | Because the mesh interpreter is still considered experimental, you must set this to `true` to use it.
-dst | _required_ | A Finagle path locating the namerd service.
-root | `/default` | A single-element Finagle path representing the namerd namespace.
-retry | see [namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to namerd.
-tls | no tls | Requests to namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
+dst | _required_ | A Finagle path locating the Namerd service.
+root | `/default` | A single-element Finagle path representing the Namerd namespace.
+retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
+tls | no tls | Requests to Namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 
 ## File-System
 

@@ -63,7 +63,7 @@ Due to the implmentation of file watches in Java, this namer consumes a high
 amount of CPU and is not suitable for production use.
 </aside>
 
-linkerd ships with a simple file-based service discovery mechanism called the
+Linkerd ships with a simple file-based service discovery mechanism called the
 *file-based namer*. This system is intended to act as a structured form of
 basic host lists.
 
@@ -77,13 +77,13 @@ experimentation.
 
 This service discovery mechanism is tied to the directory set by the
 `namers/rootDir` key in `config.yaml`. This directory must be on the local
-filesystem and relative to linkerd's start path. Every file in this directory
+filesystem and relative to Linkerd's start path. Every file in this directory
 corresponds to a service, where the name of the file is the service's _concrete
 name_, and the contents of the file must be a newline-delimited set of
 addresses.
 
-linkerd watches all files in this directory, so files can be added, removed, or
-updated, and linkerd will pick up the changes automatically.
+Linkerd watches all files in this directory, so files can be added, removed, or
+updated, and Linkerd will pick up the changes automatically.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -100,7 +100,7 @@ rootDir | _required_ | the directory containing name files as described above.
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the fs namer.
+prefix | yes | Tells Linkerd to resolve the request path using the fs namer.
 fileName | yes | The file in `rootDir` to use when resolving this request.
 
 <a name="serversets"></a>
@@ -128,7 +128,7 @@ dtab: |
   /svc => /#/io.l5d.serversets/discovery/prod;
 ```
 
-linkerd provides support for [ZooKeeper
+Linkerd provides support for [ZooKeeper
 ServerSets](https://twitter.github.io/commons/apidocs/com/twitter/common/zookeeper/ServerSet.html).
 
 Key | Default Value | Description
@@ -146,7 +146,7 @@ zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` 
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the serversets namer.
+prefix | yes | Tells Linkerd to resolve the request path using the serversets namer.
 zkHosts | yes | The ZooKeeper host to use for this request.
 zkPath | yes | The ZooKeeper path to use for this request.
 endpoint | no | The ZooKeeper endpoint to use for this request.
@@ -193,7 +193,7 @@ namers:
      weight: 5.0
 ```
 
-linkerd provides support for service discovery via [Consul](https://www.consul.io/).
+Linkerd provides support for service discovery via [Consul](https://www.consul.io/).
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -201,14 +201,14 @@ prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
 host | `localhost` | The Consul host.
 port | `8500` | The Consul port.
 includeTag | `false` | If `true`, read a Consul tag from the path.
-useHealthCheck | `false` | If `true`, exclude app instances that do not match one of the provided `healthStatuses`. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
-healthStatuses | `passing` | List of statuses to used to filter Consul app instances by. Possible values are `passing`, `warning`, `critical`, `maintenance`. Note that if a service defines more than one health check per app instance then the most representative statuses is used (`maintenance` > `critical` > `warning` > `passing`). If `useHealthCheck` is `false` then this parameter has no effect. Regardless of the statuses used to filter, linkerd's built-in resiliency algorithms will still apply.
+useHealthCheck | `false` | If `true`, exclude app instances that do not match one of the provided `healthStatuses`. Even if `false`, Linkerd's built-in resiliency algorithms will still apply.
+healthStatuses | `passing` | List of statuses to used to filter Consul app instances by. Possible values are `passing`, `warning`, `critical`, `maintenance`. Note that if a service defines more than one health check per app instance then the most representative statuses is used (`maintenance` > `critical` > `warning` > `passing`). If `useHealthCheck` is `false` then this parameter has no effect. Regardless of the statuses used to filter, Linkerd's built-in resiliency algorithms will still apply.
 token | no authentication | The auth token to use when making API calls.
 setHost | `false` | If `true`, HTTP requests resolved by Consul will have their Host header overwritten to `${serviceName}.service.${datacenter}.${domain}`. `$domain` is fetched from Consul.
 consistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent`.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 preferServiceAddress | `true` | If `true` use the service address if defined and default to the node address. If `false` always use the node address.
-weights | none | List of tag-weight configurations, for adjusting the weights of node addresses. When a node matches more than one tag, it gets the highest matching weight. In the absence of match or configuration, nodes get a default weight of `1.0`. 
+weights | none | List of tag-weight configurations, for adjusting the weights of node addresses. When a node matches more than one tag, it gets the highest matching weight. In the absence of match or configuration, nodes get a default weight of `1.0`.
 
 ### Consul Path Parameters
 
@@ -226,7 +226,7 @@ weights | none | List of tag-weight configurations, for adjusting the weights of
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the consul namer.
+prefix | yes | Tells Linkerd to resolve the request path using the consul namer.
 datacenter | yes | The Consul datacenter to use for this request. It can have a value `.local` (otherwise invalid datacenter name from Consul's perspective) in order to reference a datacenter of the agent namer is connected to.
 tag | yes if includeTag is `true` | The Consul tag to use for this request.
 serviceName | yes | The Consul service name to use for this request.
@@ -256,7 +256,7 @@ dtab: |
   /svc => /#/io.l5d.k8s/prod/http;
 ```
 
-linkerd provides support for service discovery via
+Linkerd provides support for service discovery via
 [Kubernetes](https://k8s.io/).
 
 Key | Default Value | Description
@@ -281,7 +281,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the k8s namer.
+prefix | yes | Tells Linkerd to resolve the request path using the k8s namer.
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name or port number.
 svc-name | yes | The name of the service.
@@ -309,7 +309,7 @@ dtab: |
 
 The [Kubernetes](https://k8s.io/) External namer looks up the IP of the external
 load balancer for the given service on the given port.  This can be used by
-linkerd instances running outside of k8s to route to services running in k8s.
+Linkerd instances running outside of k8s to route to services running in k8s.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -334,7 +334,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the k8s external namer.
+prefix | yes | Tells Linkerd to resolve the request path using the k8s external namer.
 namespace | yes | The Kubernetes namespace.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
@@ -451,7 +451,7 @@ which will create a local proxy for securely talking to the Kubernetes cluster A
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the k8s external namer.
+prefix | yes | Tells Linkerd to resolve the request path using the k8s external namer.
 port-name | yes | The port name.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The label value used to filter services.
@@ -495,7 +495,7 @@ port | `8080` | The port of the Istio-Manager.
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the Istio namer.
+prefix | yes | Tells Linkerd to resolve the request path using the Istio namer.
 port-name | yes | The port name.
 cluster | yes | The fully qualified name of the service.
 labels | yes | A `::` delimited list of `label:value` pairs.  Only endpoints that match all of these label selectors will be returned.
@@ -528,7 +528,7 @@ dtab: |
   /svc => /host;
 ```
 
-linkerd provides support for service discovery via
+Linkerd provides support for service discovery via
 [Marathon](https://mesosphere.github.io/marathon/).
 
 Key | Default Value | Description
@@ -538,7 +538,7 @@ host | `marathon.mesos` | The Marathon master host.
 port | `80` | The Marathon master port.
 uriPrefix | none | The Marathon API prefix. This prefix depends on your Marathon configuration. For example, running Marathon locally, the API is available at `localhost:8080/v2/`, while the default setup on AWS/DCOS is `$(dcos config show core.dcos_url)/marathon/v2/apps`.
 ttlMs | `5000` | The polling interval in milliseconds against the Marathon API.
-useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, linkerd's built-in resiliency algorithms will still apply.
+useHealthCheck | `false` | If `true`, exclude app instances that are failing Marathon health checks. Even if `false`, Linkerd's built-in resiliency algorithms will still apply.
 tls | no tls | The Marathon namer will make requests to Marathon/DCOS using TLS if this parameter is provided. This is useful when DC/OS is run in [strict](https://docs.mesosphere.com/latest/security/#security-modes) security mode. It must be a [client TLS](#client-tls) object. Note that the `clientAuth` config value will be unused, as DC/OS does not use mutual TLS.
 
 ### Marathon Path Parameters
@@ -551,7 +551,7 @@ tls | no tls | The Marathon namer will make requests to Marathon/DCOS using TLS 
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+prefix | yes | Tells Linkerd to resolve the request path using the marathon namer.
 appId | yes | The app id of a marathon application. This id can be multiple path segments long. For example, the app with id "/users" can be reached with `/#/io.l5d.marathon/users`. Likewise, the app with id "/appgroup/usergroup/users" can be reached with `/#/io.l5d.marathon/appgroup/usergroup/users`.
 
 ### Marathon Authentication
@@ -614,14 +614,14 @@ dtab: |
     /dnssrv/myservice.srv.dc-2.example.org.;
 ```
 
-linkerd provides support for service discovery via DNS SRV records.
+Linkerd provides support for service discovery via DNS SRV records.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.dnssrv` | Resolves names with `/#/<prefix>`.
 experimental | `false` | Since the DNS-SRV namer is still considered experimental, this must be set to `true`.
-refreshIntervalSeconds | `5` | linkerd will perform a SRV lookup for each host every `refreshIntervalSeconds`.
-dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to perform SRV lookups. If not specified, linkerd will use the default system resolver.
+refreshIntervalSeconds | `5` | Linkerd will perform a SRV lookup for each host every `refreshIntervalSeconds`.
+dnsHosts | `<empty list>` | If specified, Linkerd will use these DNS servers to perform SRV lookups. If not specified, Linkerd will use the default system resolver.
 
 ### DNS-SRV Path Parameters
 
@@ -633,7 +633,7 @@ dnsHosts | `<empty list>` | If specified, linkerd will use these DNS servers to 
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+prefix | yes | Tells Linkerd to resolve the request path using the marathon namer.
 address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup.
 
 ## ZooKeeper Leader
@@ -659,7 +659,7 @@ zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` 
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the marathon namer.
+prefix | yes | Tells Linkerd to resolve the request path using the marathon namer.
 zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 
 <a name="curator"></a>
@@ -690,7 +690,7 @@ basePath | `/` | The ZooKeeper path for Curator discovery.
 
 Key | Required | Description
 --- | -------- | -----------
-prefix | yes | Tells linkerd to resolve the request path using the curator namer.
+prefix | yes | Tells Linkerd to resolve the request path using the curator namer.
 serviceName | yes | The name of the Curator service to lookup in ZooKeeper.
 
 <a name="rewrite"></a>
@@ -744,13 +744,13 @@ name    | _required_       | The replacement name.  Variables captured in the pa
 
 Key    | Required | Description
 ------ | -------- | -----------
-prefix | yes      | Tells linkerd to resolve the request path using the rewrite namer.
+prefix | yes      | Tells Linkerd to resolve the request path using the rewrite namer.
 name   | yes      | Attempt to match this name against the pattern and replace it with the configured name.
 
 <a name="rewritingNamers"></a>
 ## Rewriting Namers
 
-In addition to service discovery namers, linkerd supplies a number of utility
+In addition to service discovery namers, Linkerd supplies a number of utility
 namers. These namers assist in path rewriting when the transformation is more
 complicated than just prefix substitution. They are prefixed with `/$/` instead
 of `/#/`, and can be used without explicitly adding them to the

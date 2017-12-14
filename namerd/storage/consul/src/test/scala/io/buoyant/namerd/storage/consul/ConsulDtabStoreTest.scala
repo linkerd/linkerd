@@ -1,0 +1,234 @@
+package io.buoyant.namerd.storage.consul
+
+import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.{Dtab, Path, Service}
+import com.twitter.io.Buf
+import com.twitter.util.{Activity, Future}
+import io.buoyant.consul.v1.KvApi
+import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceInvalidException}
+import io.buoyant.namerd.{Ns, VersionedDtab}
+import io.buoyant.test.{Awaits, Exceptions, FunSuite}
+
+class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
+
+  val namespacesJson = """["namerd/dtabs/foo/bar/", "namerd/dtabs/foo/baz/"]"""
+  val namerdPrefix = "/namerd/dtabs"
+
+  test("List available namespaces") {
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      req.getParam("index", "") match {
+        case "" =>
+          rsp.headerMap.set("X-Consul-Index", "4")
+          rsp.content = Buf.Utf8(namespacesJson)
+          Future.value(rsp)
+        case _ => Future.never
+
+      }
+    }
+
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+
+    @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
+    store.list.states respond {
+      state = _
+    }
+    assert(state == Activity.Ok(Set("foo/bar", "foo/baz")))
+  }
+
+  test("return an empty set when namespaces are absent") {
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response(status = Status(404))
+      req.getParam("index", "") match {
+        case "" =>
+          rsp.headerMap.set("X-Consul-Index", "4")
+          Future.value(rsp)
+        case _ => Future.never
+      }
+    }
+
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+
+    @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
+    store.list.states respond { state = _ }
+    assert(state == Activity.Ok(Set()))
+  }
+
+  test("Throw DtabNamespaceInvalidException when creating dtab with bad namespace") {
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      Future.never
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    assertThrows[DtabNamespaceInvalidException] {
+      await(store.create("%2e%2e", Dtab.empty))
+    }
+  }
+
+  test("Throw DtabNamespaceAlreadyExistsException when creating an already existing dtab") {
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      rsp.content = Buf.Utf8("""false""")
+      rsp.headerMap.set("X-Consul-Index", "4")
+      if (req.path.contains("default")) {
+        Future.value(rsp)
+      } else {
+        Future.never
+      }
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    assertThrows[DtabNamespaceAlreadyExistsException] {
+      await(store.create("default", Dtab.empty))
+    }
+  }
+
+  test("Throw DtabNamespaceInvalidException when deleting dtab with bad namespace") {
+    val badNamespace = "b@dn@m35p@c3"
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      rsp.content = Buf.Utf8("""true""")
+      rsp.headerMap.set("X-Consul-Index", "4")
+      if (req.path.contains(badNamespace)) {
+        Future.value(rsp)
+      } else {
+        Future.never
+      }
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    assertThrows[DtabNamespaceInvalidException] {
+      await(store.delete(badNamespace))
+    }
+  }
+
+  test("Throw DtabNamespaceInvalidException when updating dtab with bad namespace") {
+    val badNamespace = "b@dn@m35p@c3"
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      rsp.content = Buf.Utf8("""true""")
+      rsp.headerMap.set("X-Consul-Index", "4")
+      if (req.path.contains(badNamespace)) {
+        Future.value(rsp)
+      } else {
+        Future.never
+      }
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    assertThrows[DtabNamespaceInvalidException] {
+      await(store.update(badNamespace, Dtab.empty, Buf.Empty))
+    }
+  }
+
+  test("Throw DtabNamespaceInvalidException when updating a dtab using put with bad namespace") {
+    val badNamespace = "b@dn@m35p@c3"
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      rsp.content = Buf.Utf8("""true""")
+      rsp.headerMap.set("X-Consul-Index", "4")
+      if (req.path.contains(badNamespace)) {
+        Future.value(rsp)
+      } else {
+        Future.never
+      }
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    assertThrows[DtabNamespaceInvalidException] {
+      await(store.put(badNamespace, Dtab.empty))
+    }
+  }
+
+  test("return Activity Failed with DtabNamespaceInvalidException") {
+    val badNamespace = "%2e%2e"
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      Future.never
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
+    store.observe(badNamespace).states respond { state = _ }
+    assert(state.isInstanceOf[Activity.Failed])
+  }
+
+  test("return Activity of Option[VersionedDtab] on observe") {
+    val namespace = "default"
+    val dtab = """/svc => /#/inet/host/port;"""
+    val version = "4"
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      rsp.headerMap.set("X-Consul-Index", version)
+      rsp.content = Buf.Utf8(dtab)
+      if (req.path.contains(namespace) && req.getParam("index", "").isEmpty) {
+        Future.value(rsp)
+      } else {
+        Future.never
+      }
+
+    }
+    val store = new ConsulDtabStore(
+      KvApi(service),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+    @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
+    store.observe(namespace).states respond { state = _ }
+    assert(state == Activity.Ok(Some(VersionedDtab(Dtab.read(dtab), Buf.Utf8(version)))))
+  }
+
+}

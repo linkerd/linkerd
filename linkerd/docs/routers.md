@@ -89,11 +89,11 @@ ip | loopback address | The local IP address. A value like 0.0.0.0 configures th
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
-clearContext | `false` | If `true`, all headers that set linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
+clearContext | `false` | If `true`, all headers that set Linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
 
 ## Service Configuration
 
-This section defines the policy that linkerd will use when talking to services.
+This section defines the policy that Linkerd will use when talking to services.
 The structure of this section depends on its `kind`.
 
 Key  | Default Value    | Description
@@ -168,7 +168,7 @@ responseClassifier  | `io.l5d.http.nonRetryable5XX` | A (sometimes protocol-spec
 
 ## Client Configuration
 
-This section defines how the clients that linkerd creates will be configured.  The structure of this section depends on
+This section defines how the clients that Linkerd creates will be configured.  The structure of this section depends on
 its `kind`.
 
 Key  | Default Value    | Description

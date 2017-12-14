@@ -1,7 +1,7 @@
 package io.buoyant.k8s.v1
 
+import com.twitter.concurrent.AsyncQueue
 import java.util.concurrent.ConcurrentLinkedQueue
-
 import com.twitter.finagle.{Service => FService}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
@@ -99,32 +99,18 @@ class ApiTest extends FunSuite
   }
 
   /**
-   * Poll a series of events from a watchable
-   *
-   * @param watchable Object to call .watch on
-   * @param body      Test body.  Accepts one argument--the polling function--that may be called to poll and match a
-   *                  single event (or None if no more events present).
+   * Get an AsyncQueue of events from a watchable
    */
-  private def watch[T <: Watchable[_, _, _]](watchable: T, resourceVersion: Option[String] = None)(
-    body: (PartialFunction[Option[Activity.State[_]], Any] => Any) => Any
-  ) = {
-    val events = new ConcurrentLinkedQueue[Activity.State[_]]
+  private def watch[T <: Watchable[_, _, _]](
+    watchable: T,
+    resourceVersion: Option[String] = None
+  ): (AsyncQueue[Activity.State[Any]], Closable) = {
+    val events = new AsyncQueue[Activity.State[Any]]
     val closable = watchable.watch(
       resourceVersion = resourceVersion,
       state = value => { val _ = events.offer(value) }
     )
-    try {
-      val poll = (eventMatcher: PartialFunction[Option[Activity.State[_]], Any]) =>
-        eventMatcher.applyOrElse(
-          Option(events.poll()),
-          (ev: Option[Activity.State[_]]) => fail(s"unexpected event: $ev")
-        )
-      body(poll)
-      poll {
-        case Some(ev) => fail(s"event was not consumed by test: $ev")
-        case None =>
-      }
-    } finally await(closable.close())
+    (events, closable)
   }
 
   test("watch endpoint list: one message") {
@@ -153,12 +139,12 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
-      poll { case None => }
-      chunk.setValue(modified0)
-      poll { case Some(_) => }
-      poll { case None => }
-    }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567"))
+    assert(events.size == 0)
+    chunk.setValue(modified0)
+    await(events.poll())
+    assert(events.size == 0)
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -186,39 +172,44 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
-      val w = rsp.writer
-      await(w.write(modified2 concat added0))
-      poll {
-        case Some(Activity.Ok(EndpointsModified(eps))) =>
-          assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
-            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-      }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567"))
+    val w = rsp.writer
+    await(w.write(modified2 concat added0))
 
-      poll {
-        case Some(Activity.Ok(EndpointsAdded(eps))) =>
-          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-            Seq("104.154.78.240"))
-      }
-
-      poll { case None => }
-      await(w.write(modified1))
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(eps))) =>
-          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-            Seq("10.248.3.3"))
-      }
-
-      poll { case None => }
-      await(w.write(modified0))
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(eps))) =>
-          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-      }
+    {
+      val Activity.Ok(EndpointsModified(eps)) = await(events.poll())
+      assert(
+        eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
+          Seq("10.248.2.8", "10.248.7.10", "10.248.8.8")
+      )
     }
+
+    {
+      val Activity.Ok(EndpointsAdded(eps)) = await(events.poll())
+      assert(
+        eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+          Seq("104.154.78.240")
+      )
+    }
+
+    assert(events.size == 0)
+    await(w.write(modified1))
+
+    {
+      val Activity.Ok(EndpointsModified(eps)) = await(events.poll())
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.3.3"))
+    }
+
+    assert(events.size == 0)
+    await(w.write(modified0))
+
+    {
+      val Activity.Ok(EndpointsModified(eps)) = await(events.poll())
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    }
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -262,32 +253,33 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
-      poll {
-        case Some(Activity.Ok(EndpointsError(status))) =>
-          assert(status.status == Some("Failure"))
-      }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver))
 
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147786"))
-          assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-      }
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147808"))
-          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-      }
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("27147808"))
-          assert(mod.subsets.isEmpty)
-      }
-
-      poll { case None => }
+    {
+      val Activity.Ok(EndpointsError(status)) = await(events.poll())
+      assert(status.status == Some("Failure"))
     }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147786"))
+      assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
+    }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147808"))
+      assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+    }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("27147808"))
+      assert(mod.subsets.isEmpty)
+    }
+
+    assert(events.size == 0)
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -313,18 +305,15 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints) { poll =>
-      poll { case None => }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints)
 
-      await(rsp.writer.write(modified0))
-      poll {
-        case Some(_) =>
-        case None => fail("chunk not read")
-      }
-      poll { case None => }
+    assert(events.size == 0)
 
-      assert(reqCount == 1)
-    }
+    await(rsp.writer.write(modified0))
+    await(events.poll())
+    assert(events.size == 0)
+    assert(reqCount == 1)
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -369,25 +358,26 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147786"))
-          assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-      }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver))
 
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147808"))
-          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-      }
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("27147808"))
-          assert(mod.subsets.isEmpty)
-      }
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147786"))
+      assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
     }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147808"))
+      assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+    }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("27147808"))
+      assert(mod.subsets.isEmpty)
+    }
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -433,25 +423,26 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver)) { poll =>
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147786"))
-          assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
-      }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some(ver))
 
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("17147808"))
-          assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
-      }
-
-      poll {
-        case Some(Activity.Ok(EndpointsModified(mod))) =>
-          assert(mod.metadata.get.resourceVersion.contains("27147808"))
-          assert(mod.subsets.isEmpty)
-      }
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147786"))
+      assert(mod.subsets.get.head.addresses.contains(Seq(EndpointAddress("10.248.9.109", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("accounts-h5zht"), Some("0b598c6e-9f9b-11e5-94e8-42010af00045"), None, Some("17147785"), None))))))
     }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("17147808"))
+      assert(mod.subsets.get.head.addresses.contains(List(EndpointAddress("10.248.4.134", None, Some(ObjectReference(Some("Pod"), Some("greg-test"), Some("auth-54q3e"), Some("0d5d0a2d-9f9b-11e5-94e8-42010af00045"), None, Some("17147807"), None))))))
+    }
+
+    {
+      val Activity.Ok(EndpointsModified(mod)) = await(events.poll())
+      assert(mod.metadata.get.resourceVersion.contains("27147808"))
+      assert(mod.subsets.isEmpty)
+    }
+    closable.close()
     if (failure != null) throw failure
   }
 
@@ -479,31 +470,32 @@ class ApiTest extends FunSuite
     }
     val api = Api(service)
 
-    watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567")) { poll =>
-      val w = rsp.writer
-      await(w.write(modified2 concat modified0))
-      poll {
-        case Some(Activity.Ok(EndpointsModified(eps))) =>
-          assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
-            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-      }
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567"))
+    val w = rsp.writer
+    await(w.write(modified2 concat modified0))
 
-      poll {
-        case Some(Activity.Ok(EndpointsModified(eps))) =>
-          assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
-            Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
-      }
-
-      poll { case None => }
-
-      // repeat the event: no update since resource version is the same
-      await(w.write(modified0))
-      poll { case None => }
-
-      // write an earlier event: no update since resource version is too low
-      await(w.write(modified2))
-      poll { case None => }
+    {
+      val Activity.Ok(EndpointsModified(eps)) = await(events.poll())
+      assert(eps.subsets.get.flatMap(_.notReadyAddresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
     }
+
+    {
+      val Activity.Ok(EndpointsModified(eps)) = await(events.poll())
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    }
+
+    assert(events.size == 0)
+
+    // repeat the event: no update since resource version is the same
+    await(w.write(modified0))
+    assert(events.size == 0)
+
+    // write an earlier event: no update since resource version is too low
+    await(w.write(modified2))
+    assert(events.size == 0)
+    closable.close()
     if (failure != null) throw failure
   }
 

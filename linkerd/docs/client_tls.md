@@ -7,7 +7,7 @@ routers:
 - protocol: http
   servers:
   - port: 4140
-    # accept incoming TLS traffic from remote linkerd
+    # accept incoming TLS traffic from remote Linkerd
     tls:
       certPath: /certificates/certificate.pem
       keyPath: /certificates/key.pem
@@ -25,7 +25,7 @@ keyPath | _required_ | File path to the TLS key file.
 requireClientAuth | false | If true, only accept requests with valid client certificates.
 caCertPath | none | File path to the CA cert to validate the client certificates.
 
-See [Transparent TLS with linkerd](https://blog.buoyant.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
+See [Transparent TLS with Linkerd](https://blog.buoyant.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
 and key files.
 
 ## Client TLS
@@ -48,7 +48,7 @@ routers:
 In order to send outgoing tls traffic, the tls parameter must be defined as a
 [client parameter](#client-parameters).
 
-A client TLS object describes how linkerd should use TLS when sending requests
+A client TLS object describes how Linkerd should use TLS when sending requests
 to destination services.
 
 Key               | Default Value                              | Description

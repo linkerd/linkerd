@@ -49,10 +49,10 @@ contributing changes.
 ## Related Repos ##
 
 * [linkerd-examples][l5d-eg]: A variety of configuration examples and explanations
-* [linkerd-tcp][l5d-tcp]: A lightweight TCP/TLS load balancer that uses namerd
-* [linkerd-viz][l5d-viz]: Zero-configuration service dashboard for linkerd
+* [linkerd-tcp][l5d-tcp]: A lightweight TCP/TLS load balancer that uses Namerd
+* [linkerd-viz][l5d-viz]: Zero-configuration service dashboard for Linkerd
 * [linkerd-zipkin][l5d-zipkin]: [Zipkin][zipkin] tracing plugins
-* [namerctl][namerctl]: A commandline utility for controlling namerd
+* [namerctl][namerctl]: A commandline utility for controlling Namerd
 
 ## Code of Conduct ##
 

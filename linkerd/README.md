@@ -1,4 +1,4 @@
-# linkerd #
+# Linkerd #
 
 [linkerd.io](https://linkerd.io)
 
@@ -22,7 +22,7 @@ initiate a graceful shutdown of a running router.
 ### Running ###
 
 The `linkerd` project's packaging configurations may also be used to
-run linkerd locally, e.g.:
+run Linkerd locally, e.g.:
 
 ```
 > linkerd/bundle:run path/to/config.yml
