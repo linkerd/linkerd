@@ -13,6 +13,7 @@ import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity
 import io.buoyant.namerd.iface.thriftscala.{Delegation, DtabRef, DtabReq}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.nio.ByteBuffer
+import java.util.Random
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.control.NonFatal
 
@@ -73,7 +74,11 @@ object ThriftNamerInterface {
    * A utility for generating stamps unique to an instance.
    */
   private[namerd] class LocalStamper extends Stamper {
-    private[this] val counter = new AtomicLong(Long.MinValue)
+    private[this] val counter = {
+      // Start with a random long so stamps between multiple instances are unlikely to collide
+      val rand = new Random()
+      new AtomicLong(rand.nextLong())
+    }
 
     def apply(): Stamp = Stamp.mk(counter.getAndIncrement())
   }
