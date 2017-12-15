@@ -1,6 +1,6 @@
 ## 1.3.4 2017-12-15
 
-Linkerd 1.3.4 includes a fix for a data corruption issue that could effect HTTP/2 and gRPC routers, several improvements to the Consul namer and dtab store, fixes for retry issues in the Kubernetes namer, and more.
+Linkerd 1.3.4 continues the focus on reliability and stability. It includes a bugfix for HTTP/2 and gRPC routers, several improvements to the Consul namer and dtab store, fixes for 4xx responses in the Kubernetes namer, and more.
 
 * Fix an issue where the `io.l5d.path` identifier would consume query parameters from the request URL, preventing them from reaching the downstream service ([#1734](https://github.com/linkerd/linkerd/pull/1734)).
 * Several minor fixes to documentation and examples.
