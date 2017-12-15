@@ -11,7 +11,7 @@ Linkerd 1.3.4 continues the focus on reliability and stability. It includes a bu
 * HTTP/2 and gRPC
   * Fix buffer data corruption regression introduced in 1.3.3 ([#1751](https://github.com/linkerd/linkerd/pull/1751)). Thanks to [@vadimi](https://github.com/vadimi), who contributed to this fix!
 * Kubernetes
-  * Improve handling of Kubernetes API watch errors in `io.l5d.k8s` ([#1744](https://github.com/linkerd/linkerd/pull/1744)).
+  * Improve handling of Kubernetes API watch errors in `io.l5d.k8s` ([#1744](https://github.com/linkerd/linkerd/pull/1744), [#1752](https://github.com/linkerd/linkerd/pull/1752)).
 * Namerd
   * Fix `NoHostsAvailable` exception thrown by `io.l5d.mesh` when Namerd has namers configured with transformers ([#1729](https://github.com/linkerd/linkerd/pull/1729)).
 
