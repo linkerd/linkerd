@@ -1,3 +1,22 @@
+## 1.3.4 2017-12-15
+
+Linkerd 1.3.4 includes a fix for a data corruption issue that could effect HTTP/2 and gRPC routers, several improvements to the Consul namer and dtab store, fixes for retry issues in the Kubernetes namer, and more.
+
+* Fix an issue where the `io.l5d.path` identifier would consume query parameters from the request URL, preventing them from reaching the downstream service ([#1734](https://github.com/linkerd/linkerd/pull/1734)).
+* Upgrade Guava depenmdency to 23.0, fixing version conflict warnings when compiling Linkerd ([#1736](https://github.com/linkerd/linkerd/pull/1736)).
+* Several minor fixes to documentation and examples.
+* Consul
+  * Improve handling of invalid namespaces in Namerd's Consul dtab store ([#1739](https://github.com/linkerd/linkerd/pull/1739)).
+  * Add backoffs to Consul dtab store observation retries ([#1742](https://github.com/linkerd/linkerd/pull/1742)).
+  * Fix `io.l5d.consul` namer logging large numbers of spurious error messages during normal operation ([#1738](https://github.com/linkerd/linkerd/pull/1738)).
+* HTTP/2 and gRPC
+  * Fix buffer data corruption regression introduced in 1.3.3 ([#1751](https://github.com/linkerd/linkerd/pull/1751)). Thanks to [@vadimi](https://github.com/vadimi), who contributed to this fix!
+* Kubernetes
+  * `io.l5d.k8s` namer now retries watches when the Kubernetes API server returns a 4xx error code ([#1744](https://github.com/linkerd/linkerd/pull/1744)).
+  * Fix `io.l5d.k8s` namer throwing `MatchError`s when the initial GET request for a Kubernetes API watch fails ([#1752](https://github.com/linkerd/linkerd/pull/1752)).
+* Namerd
+  * Fix `NoHostsAvailable` exception thrown by `io.l5d.mesh` when Namerd has namers configured with transformers ([#1729](https://github.com/linkerd/linkerd/pull/1729)).
+
 ## 1.3.3 2017-12-01
 
 :rotating_light: Bugfix extravanganza alert! :rotating_light:
