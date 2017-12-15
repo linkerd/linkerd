@@ -73,6 +73,3 @@ case class RetriesConfig(
   def mkBackoff: Option[ClassifiedRetries.Backoffs] =
     backoff.map(_.mk).map(ClassifiedRetries.Backoffs(_))
 }
-
-
-

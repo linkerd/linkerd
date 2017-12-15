@@ -1,10 +1,11 @@
 package io.buoyant.linkerd.failureAccrual
 
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.{ConstantBackoffConfig, FailureAccrualConfig, JitteredBackoffConfig}
+import io.buoyant.linkerd.FailureAccrualConfig
 import io.buoyant.test.FunSuite
 import org.scalatest.OptionValues
 import com.twitter.conversions.time._
+import io.buoyant.namer.{ConstantBackoffConfig, JitteredBackoffConfig}
 import org.scalatest.prop.PropertyChecks
 import org.scalacheck.Gen
 
