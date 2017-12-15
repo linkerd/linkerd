@@ -1,3 +1,20 @@
+## 1.3.4 2017-12-15
+
+Linkerd 1.3.4 continues the focus on reliability and stability. It includes a bugfix for HTTP/2 and gRPC routers, several improvements to the Consul namer and dtab store, fixes for 4xx responses in the Kubernetes namer, and more.
+
+* Fix an issue where the `io.l5d.path` identifier would consume query parameters from the request URL, preventing them from reaching the downstream service ([#1734](https://github.com/linkerd/linkerd/pull/1734)).
+* Several minor fixes to documentation and examples.
+* Consul
+  * Improve handling of invalid namespaces in Namerd's Consul dtab store ([#1739](https://github.com/linkerd/linkerd/pull/1739)).
+  * Add backoffs to Consul dtab store observation retries ([#1742](https://github.com/linkerd/linkerd/pull/1742)).
+  * Fix `io.l5d.consul` namer logging large numbers of spurious error messages during normal operation ([#1738](https://github.com/linkerd/linkerd/pull/1738)).
+* HTTP/2 and gRPC
+  * Fix buffer data corruption regression introduced in 1.3.3 ([#1751](https://github.com/linkerd/linkerd/pull/1751)). Thanks to [@vadimi](https://github.com/vadimi), who contributed to this fix!
+* Kubernetes
+  * Improve handling of Kubernetes API watch errors in `io.l5d.k8s` ([#1744](https://github.com/linkerd/linkerd/pull/1744), [#1752](https://github.com/linkerd/linkerd/pull/1752)).
+* Namerd
+  * Fix `NoHostsAvailable` exception thrown by `io.l5d.mesh` when Namerd has namers configured with transformers ([#1729](https://github.com/linkerd/linkerd/pull/1729)).
+
 ## 1.3.3 2017-12-01
 
 :rotating_light: Bugfix extravanganza alert! :rotating_light:
