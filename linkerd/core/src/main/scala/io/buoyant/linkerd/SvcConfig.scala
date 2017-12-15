@@ -1,13 +1,12 @@
 package io.buoyant.linkerd
 
-import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes}
+import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.conversions.time._
 import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.buoyant.TotalTimeout
 import com.twitter.finagle.service._
 import com.twitter.finagle.buoyant.ParamsMaybeWith
-import com.twitter.util.Duration
-import io.buoyant.config.PolymorphicConfig
+import io.buoyant.namer.BackoffConfig
 import io.buoyant.router.{ClassifiedRetries, RetryBudgetConfig}
 import io.buoyant.router.RetryBudgetModule.{param => ev}
 
@@ -74,33 +73,3 @@ case class RetriesConfig(
   def mkBackoff: Option[ClassifiedRetries.Backoffs] =
     backoff.map(_.mk).map(ClassifiedRetries.Backoffs(_))
 }
-
-@JsonSubTypes(Array(
-  new JsonSubTypes.Type(value = classOf[ConstantBackoffConfig], name = "constant"),
-  new JsonSubTypes.Type(value = classOf[JitteredBackoffConfig], name = "jittered")
-))
-abstract class BackoffConfig extends PolymorphicConfig {
-  @JsonIgnore
-  def mk: Stream[Duration]
-}
-
-case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {
-  // ms defaults to 0 when not specified
-  def mk = Backoff.constant(ms.millis)
-}
-
-/** See http://www.awsarchitectureblog.com/2015/03/backoff.html */
-case class JitteredBackoffConfig(minMs: Option[Int], maxMs: Option[Int]) extends BackoffConfig {
-  def mk = {
-    val min = minMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'minMs' must be specified")
-    }
-    val max = maxMs match {
-      case Some(ms) => ms.millis
-      case None => throw new IllegalArgumentException("'maxMs' must be specified")
-    }
-    Backoff.decorrelatedJittered(min, max)
-  }
-}
-

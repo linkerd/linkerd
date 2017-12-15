@@ -1,9 +1,10 @@
 package io.buoyant.consul.v1
 
 import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.{Failure, Service}
 import com.twitter.io.Buf
-import com.twitter.util.Future
+import com.twitter.util.{Duration, Future}
 import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
@@ -16,6 +17,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   val deleteOkBuf = Buf.Utf8("""true""")
   val deleteFailBuf = Buf.Utf8("""false""")
   var lastUri = ""
+  val constBackoff = Backoff.const(Duration.Zero)
 
   def stubService(buf: Buf) = Service.mk[Request, Response] { req =>
     val rsp = Response()
@@ -29,7 +31,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("list returns an indexed seq of key names") {
     val service = stubService(listBuf)
 
-    val result = await(KvApi(service).list("/foo/"))
+    val result = await(KvApi(service, constBackoff).list("/foo/"))
 
     assert(result.index == Some("4"))
     assert(result.value.size == 2)
@@ -45,13 +47,13 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[NotFound](
-      await(KvApi(failureService).list("/wrong/path/"))
+      await(KvApi(failureService, constBackoff).list("/wrong/path/"))
     )
   }
 
   test("list supports consistency parameter") {
     val service = stubService(listBuf)
-    val api = KvApi(service)
+    val api = KvApi(service, constBackoff)
 
     await(api.list("/foo/"))
     assert(!lastUri.contains("consistent"))
@@ -71,7 +73,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("get returns an indexed value") {
     val service = stubService(getBuf)
 
-    val result = await(KvApi(service).get("/some/path/to/key"))
+    val result = await(KvApi(service, constBackoff).get("/some/path/to/key"))
     assert(result.index == Some("4"))
     assert(result.value == "foobar")
   }
@@ -79,7 +81,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("get uses raw values") {
     val service = stubService(putFailBuf)
 
-    await(KvApi(service).get("/path/to/key"))
+    await(KvApi(service, constBackoff).get("/path/to/key"))
     assert(lastUri.contains(s"raw=true"))
   }
 
@@ -92,13 +94,13 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[NotFound](
-      await(KvApi(failureService).get("/wrong/path"))
+      await(KvApi(failureService, constBackoff).get("/wrong/path"))
     )
   }
 
   test("get supports consistency parameter") {
     val service = stubService(getBuf)
-    val api = KvApi(service)
+    val api = KvApi(service, constBackoff)
 
     await(api.get("/path/to/key"))
     assert(!lastUri.contains("consistent"))
@@ -118,7 +120,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("multiGet returns an indexed seq of values") {
     val service = stubService(multiGetBuf)
 
-    val result = await(KvApi(service).multiGet("/sample"))
+    val result = await(KvApi(service, constBackoff).multiGet("/sample"))
     assert(result.index == Some("4"))
     assert(result.value.size == 1)
     assert(result.value.head.decoded == Some("foobar"))
@@ -127,14 +129,14 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("multiGet by default is non-recurse") {
     val service = stubService(multiGetBuf)
 
-    await(KvApi(service).multiGet("/path/to/key"))
+    await(KvApi(service, constBackoff).multiGet("/path/to/key"))
     assert(!lastUri.contains("recurse"))
   }
 
   test("multiGet with recurse set to true adds a recurse parameter") {
     val service = stubService(multiGetBuf)
 
-    await(KvApi(service).multiGet("/path/to/key", recurse = Some(true)))
+    await(KvApi(service, constBackoff).multiGet("/path/to/key", recurse = Some(true)))
     assert(lastUri.contains("recurse"))
   }
 
@@ -147,13 +149,13 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[NotFound](
-      await(KvApi(failureService).multiGet("/wrong/path"))
+      await(KvApi(failureService, constBackoff).multiGet("/wrong/path"))
     )
   }
 
   test("multiGet supports consistency parameter") {
     val service = stubService(multiGetBuf)
-    val api = KvApi(service)
+    val api = KvApi(service, constBackoff)
 
     await(api.multiGet("/path/to/key"))
     assert(!lastUri.contains("consistent"))
@@ -173,30 +175,30 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("put returns true on success") {
     val service = stubService(putOkBuf)
 
-    val result = await(KvApi(service).put("/path/to/key", "foobar"))
+    val result = await(KvApi(service, constBackoff).put("/path/to/key", "foobar"))
     assert(result)
   }
 
   test("put returns false on failure") {
     val service = stubService(putFailBuf)
 
-    val result = await(KvApi(service).put("/path/to/key", "foobar"))
+    val result = await(KvApi(service, constBackoff).put("/path/to/key", "foobar"))
     assert(!result)
   }
 
   test("put cas flag") {
     val service = stubService(putFailBuf)
 
-    await(KvApi(service).put("/path/to/key", "foobar", cas = Some("0")))
+    await(KvApi(service, constBackoff).put("/path/to/key", "foobar", cas = Some("0")))
     assert(lastUri.contains(s"cas=0"))
 
-    await(KvApi(service).put("/path/to/key", "foobar"))
+    await(KvApi(service, constBackoff).put("/path/to/key", "foobar"))
     assert(!lastUri.contains(s"cas"))
   }
 
   test("put supports consistency parameter") {
     val service = stubService(putOkBuf)
-    val api = KvApi(service)
+    val api = KvApi(service, constBackoff)
 
     await(api.put("/path/to/key", "foobar"))
     assert(!lastUri.contains("consistent"))
@@ -216,44 +218,44 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
   test("delete returns true on success") {
     val service = stubService(putOkBuf)
 
-    val result = await(KvApi(service).delete("/path/to/key"))
+    val result = await(KvApi(service, constBackoff).delete("/path/to/key"))
     assert(result)
   }
 
   test("delete returns false on failure") {
     val service = stubService(putFailBuf)
 
-    val result = await(KvApi(service).delete("/path/to/key"))
+    val result = await(KvApi(service, constBackoff).delete("/path/to/key"))
     assert(!result)
   }
 
   test("delete cas flag") {
     val service = stubService(putFailBuf)
 
-    await(KvApi(service).delete("/path/to/key", cas = Some("0")))
+    await(KvApi(service, constBackoff).delete("/path/to/key", cas = Some("0")))
     assert(lastUri.contains(s"cas=0"))
 
-    await(KvApi(service).delete("/path/to/key"))
+    await(KvApi(service, constBackoff).delete("/path/to/key"))
     assert(!lastUri.contains(s"cas"))
   }
 
   test("delete by default is non-recurse") {
     val service = stubService(deleteOkBuf)
 
-    await(KvApi(service).delete("/path/to/key"))
+    await(KvApi(service, constBackoff).delete("/path/to/key"))
     assert(!lastUri.contains("recurse"))
   }
 
   test("delete with recurse set to true adds a recurse parameter") {
     val service = stubService(deleteOkBuf)
 
-    await(KvApi(service).delete("/path/to/key", recurse = Some(true)))
+    await(KvApi(service, constBackoff).delete("/path/to/key", recurse = Some(true)))
     assert(lastUri.contains("recurse"))
   }
 
   test("delete supports consistency parameter") {
     val service = stubService(putOkBuf)
-    val api = KvApi(service)
+    val api = KvApi(service, constBackoff)
 
     await(api.delete("/path/to/key"))
     assert(!lastUri.contains("consistent"))
@@ -272,9 +274,9 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
 
   test("blocking index returned from one call can be used to set index on subsequent calls") {
     val service = stubService(getBuf)
-    val index = await(KvApi(service).get("/some/path")).index.get
+    val index = await(KvApi(service, constBackoff).get("/some/path")).index.get
 
-    await(KvApi(service).get("/some/path", blockingIndex = Some(index)))
+    await(KvApi(service, constBackoff).get("/some/path", blockingIndex = Some(index)))
     assert(lastUri.contains(s"index=$index"))
   }
 
@@ -283,7 +285,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.exception(new Exception("I have no idea who to talk to"))
     }
     assertThrows[Exception](
-      await(KvApi(failureService).list("/foo/"))
+      await(KvApi(failureService, constBackoff).list("/foo/"))
     )
   }
 
@@ -301,7 +303,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
         Future.exception(new Exception("I have no idea who to talk to"))
       }
     }
-    val result = await(KvApi(failureService).list("/some/path/", retry = true))
+    val result = await(KvApi(failureService, constBackoff).list("/some/path/", retry = true))
     assert(result.index == Some("4"))
     assert(result.value == List("foo/bar/", "foo/baz/"))
   }
@@ -312,7 +314,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
         Failure("consul observation released", Failure.Interrupted)
       )
     }
-    val api = KvApi(failureService)
+    val api = KvApi(failureService, constBackoff)
     val result = api.list("/some/path/", retry = true)
     assertThrows[Failure](
       await(result)
@@ -330,7 +332,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     }
 
     assertThrows[UnexpectedResponse](
-      await(KvApi(failureService).list("/some/path/", datacenter = Some("non-existent dc")))
+      await(KvApi(failureService, constBackoff).list("/some/path/", datacenter = Some("non-existent dc")))
     )
   }
 
@@ -342,7 +344,7 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[Forbidden](
-      await(KvApi(failureService).get("/some/path"))
+      await(KvApi(failureService, constBackoff).get("/some/path"))
     )
   }
 }

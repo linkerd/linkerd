@@ -1,11 +1,14 @@
 package io.buoyant.namerd.storage.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
+import io.buoyant.namer.BackoffConfig
+import com.twitter.conversions.time._
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
@@ -16,7 +19,8 @@ case class ConsulConfig(
   datacenter: Option[String] = None,
   readConsistencyMode: Option[ConsistencyMode] = None,
   writeConsistencyMode: Option[ConsistencyMode] = None,
-  failFast: Option[Boolean] = None
+  failFast: Option[Boolean] = None,
+  backoff: Option[BackoffConfig] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -24,6 +28,7 @@ case class ConsulConfig(
   override def mkDtabStore: DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
+    val backoffs = backoff.map(_.mk).getOrElse(DefaultBackoff)
 
     val service = Http.client
       .interceptInterrupts
@@ -33,7 +38,7 @@ case class ConsulConfig(
       .withTracer(NullTracer)
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, backoffs),
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
       datacenter = datacenter,
       readConsistency = readConsistencyMode,
@@ -45,6 +50,7 @@ case class ConsulConfig(
 object ConsulConfig {
   val DefaultHost = "localhost"
   val DefaultPort = Port(8500)
+  val DefaultBackoff = Backoff.decorrelatedJittered(1.millis, 1.minute)
 }
 
 class ConsulDtabStoreInitializer extends DtabStoreInitializer {

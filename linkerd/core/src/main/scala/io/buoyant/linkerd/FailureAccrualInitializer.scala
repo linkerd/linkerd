@@ -5,7 +5,8 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
 import com.twitter.finagle.service.Backoff
 import com.twitter.util.Duration
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
+import io.buoyant.namer.BackoffConfig
 
 abstract class FailureAccrualInitializer extends ConfigInitializer
 

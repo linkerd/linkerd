@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.twitter.finagle.service.Retries
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
+import io.buoyant.namer.{ConstantBackoffConfig, JitteredBackoffConfig}
 import io.buoyant.router.RetryBudgetConfig
 import org.scalatest.FunSuite
 

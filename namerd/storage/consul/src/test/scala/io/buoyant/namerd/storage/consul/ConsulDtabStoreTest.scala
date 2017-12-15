@@ -1,9 +1,10 @@
 package io.buoyant.namerd.storage.consul
 
 import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.{Dtab, Path, Service}
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future}
+import com.twitter.util.{Activity, Duration, Future}
 import io.buoyant.consul.v1.KvApi
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceInvalidException}
 import io.buoyant.namerd.{Ns, VersionedDtab}
@@ -13,6 +14,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
 
   val namespacesJson = """["namerd/dtabs/foo/bar/", "namerd/dtabs/foo/baz/"]"""
   val namerdPrefix = "/namerd/dtabs"
+  val constBackoff = Backoff.const(Duration.Zero)
 
   test("List available namespaces") {
     val service = Service.mk[Request, Response] { req =>
@@ -29,7 +31,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
     }
 
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -55,7 +57,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
     }
 
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -74,7 +76,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       Future.never
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -98,7 +100,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       }
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -123,7 +125,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       }
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -148,7 +150,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       }
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -173,7 +175,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       }
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -192,7 +194,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
       Future.never
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
@@ -220,7 +222,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
 
     }
     val store = new ConsulDtabStore(
-      KvApi(service),
+      KvApi(service, constBackoff),
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
