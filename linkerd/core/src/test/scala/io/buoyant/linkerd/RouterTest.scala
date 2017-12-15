@@ -3,10 +3,11 @@ package io.buoyant.linkerd
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import io.buoyant.config.Parser
-import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, TestInterpreter, TestInterpreterInitializer}
+import io.buoyant.namer.{ConfiguredNamersInterpreter, InterpreterInitializer, JitteredBackoffConfig, TestInterpreter, TestInterpreterInitializer}
 import io.buoyant.router.{Originator, RetryBudgetConfig, RoutingFactory}
 import io.buoyant.test.Exceptions
 import java.net.InetAddress
+
 import org.scalatest.FunSuite
 
 class RouterTest extends FunSuite with Exceptions {
