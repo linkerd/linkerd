@@ -10,6 +10,7 @@ import com.twitter.util._
 class RancherNamer(
   prefix: Path,
   portMappings: Option[Map[String, Int]],
+  maxWait: Int,
   params: Stack.Params,
   stats: StatsReceiver
 )(implicit val timer: Timer) extends Namer {
@@ -20,7 +21,7 @@ class RancherNamer(
     "https" -> 443
   ) ++ portMappings.getOrElse(Map())
 
-  private[this] val client = new RancherClient(log, params, stats)
+  private[this] val client = new RancherClient(maxWait, log, params, stats)
 
   private[this] def lookupPort(port: String): Option[Int] =
     (Try(port.toInt).toOption, ports.get(port)) match {
@@ -35,7 +36,7 @@ class RancherNamer(
         val containers: Activity[Option[Addr]] = client.activity.map { allContainers =>
           val eligable: Set[Address] = allContainers
             .filter(c => stack.equalsIgnoreCase(c.stackName) && service.equalsIgnoreCase(c.serviceName))
-            .collect(scala.Function.unlift(_.toAddr(portNum)))
+            .flatMap(_.toAddr(portNum))
             .toSet
 
           Option(eligable).filter(_.nonEmpty).map(Addr.Bound(_))

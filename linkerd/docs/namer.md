@@ -714,8 +714,9 @@ namers:
 
 ```yaml
 dtab: |
-  /rancher => /#/io.l5d.rancher
-  /svc => /$/io.buoyant.http.domainToPathPfx/rancher/http;
+  /rancher => /#/io.l5d.rancher;
+  /s => /rancher/http;
+  /svc => /$/io.buoyant.http.domainToPathPfx/s;
 ```
 
 linkerd provides support for service discovery via Rancher's [Metadata-API](https://rancher.com/docs/rancher/v1.6/en/rancher-services/metadata-service/).
@@ -725,6 +726,7 @@ Key | Default Value | Description
 prefix | `io.l5d.rancher` | Resolves names with `/#/<prefix>`.
 experimental | `false` | Since the Rancher namer is still considered experimental, this must be set to `true`.
 portMappings | `<empty map>` | If specified, you can use the names of these port-mappings for the `<port>` path parameter. By default, the namer knows `http` and `https`.
+maxWait | 30 | The max number of seconds to wait for changes in the Rancher Metadata-API before starting a new request.
 
 ### Rancher Path Parameters
 

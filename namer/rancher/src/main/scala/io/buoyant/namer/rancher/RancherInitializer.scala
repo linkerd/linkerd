@@ -14,7 +14,8 @@ class RancherInitializer extends NamerInitializer {
 object RancherInitializer extends RancherInitializer
 
 case class RancherConfig(
-  portMappings: Option[Map[String, Int]]
+  portMappings: Option[Map[String, Int]],
+  maxWait: Option[Int]
 ) extends NamerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.rancher")
@@ -29,6 +30,6 @@ case class RancherConfig(
   override def newNamer(params: Stack.Params): RancherNamer = {
     val timer: Timer = params[param.Timer].timer
     val stats = params[param.Stats].statsReceiver.scope(prefix.show.stripPrefix("/"))
-    new RancherNamer(prefix, portMappings, params, stats)(timer)
+    new RancherNamer(prefix, portMappings, maxWait.getOrElse(30), params, stats)(timer)
   }
 }
