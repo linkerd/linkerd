@@ -1,6 +1,7 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
+import com.twitter.finagle.ChannelClosedException
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import org.scalatest.FunSuite
@@ -17,21 +18,22 @@ class JsonTest extends FunSuite {
 
   test("chunked: message") {
     val obj = TestType("foo", Some(TestType("bar")))
-    val (objs, rest) = Json.readChunked[TestType](Json.writeBuf(obj))
-    assert(objs == Seq(obj))
+    val (decoded, rest) = Json.readBuf[TestType](Json.writeBuf(obj))
+    assert(decoded == Seq(obj))
     assert(rest.isEmpty)
   }
 
   test("chunked: message + newline") {
     val obj = TestType("foo", Some(TestType("bar")))
-    val (objs, rest) = Json.readChunked[TestType](Json.writeBuf(obj).concat(Buf.Utf8("\n")))
-    assert(objs == Seq(obj))
+    val (decoded, rest) = Json.readBuf[TestType](Json.writeBuf(obj).concat(Buf.Utf8("\n")))
+    assert(decoded == Seq(obj))
     assert(rest == Buf.Utf8("\n"))
   }
 
   test("chunked: ignore unknown properties") {
-    val (objs, rest) = Json.readChunked[TestType](Json.writeBuf(OtherType("foo", Some("bar"))))
-    assert(objs == Seq(TestType("bar")))
+    val obj = OtherType("foo", Some("bar"))
+    val (decoded, rest) = Json.readBuf[TestType](Json.writeBuf(obj))
+    assert(decoded == Seq(TestType("bar")))
   }
 
   test("chunked: 2 full objects and a partial object") {
@@ -40,7 +42,7 @@ class JsonTest extends FunSuite {
     val obj2 = TestType("baf", Some(TestType("bal")))
     val readable = Json.writeBuf(obj0).concat(Json.writeBuf(obj1))
     val buf = readable.concat(Json.writeBuf(obj2))
-    val (objs, rest) = Json.readChunked[TestType](buf.slice(0, buf.length - 7))
+    val (objs, rest) = Json.readBuf[TestType](buf.slice(0, buf.length - 7))
     assert(objs == Seq(obj0, obj1))
     assert(rest == buf.slice(readable.length, buf.length - 7))
   }
@@ -52,8 +54,8 @@ class JsonTest extends FunSuite {
     val readable = Json.writeBuf(obj0)
     val buf = readable.concat(Json.writeBuf(obj1))
     val toChop = 10
-    val (objs, rest) = Json.readChunked[TypeWithSeq](buf.slice(0, buf.length - toChop))
-    assert(objs == Seq(obj0))
+    val (decoded, rest) = Json.readBuf[TypeWithSeq](buf.slice(0, buf.length - toChop))
+    assert(decoded == Seq(obj0))
     assert(rest == buf.slice(readable.length, buf.length - toChop))
   }
 
@@ -64,7 +66,9 @@ class JsonTest extends FunSuite {
       TestType("bah", Some(TestType("bat"))),
       TestType("baf", Some(TestType("bal")))
     )
-    val whole = objs.foldLeft(Buf.Empty)(_ concat Json.writeBuf(_))
+    val whole = objs.foldLeft(Buf.Empty) { (b, o) =>
+      b.concat(Json.writeBuf(o)).concat(Buf.Utf8("\n"))
+    }
     val sz = whole.length / objs.length
     val chunks = Seq(
       whole.slice(0, sz - 2),
@@ -72,59 +76,45 @@ class JsonTest extends FunSuite {
       whole.slice(2 * sz + 2, whole.length)
     )
 
-    var stream = Json.readStream[TestType](rw)
-
-    var next = stream.uncons
-    assert(!next.isDefined)
-
-    // partial object
-    Await.result(rw.write(chunks(0)))
-    assert(!next.isDefined)
-
-    // rest of first object, second object, and beginning of thrd object
-    Await.result(rw.write(chunks(1)))
-    assert(next.isDefined)
-
-    stream = Await.result(next) match {
-      case Some((obj, stream)) =>
-        assert(obj == objs(0))
-        stream()
-      case ev => fail(s"unexpected event: $ev")
-    }
-
-    // a second object was written as well:
-    next = stream.uncons
-    assert(next.isDefined)
-
-    stream = Await.result(next) match {
-      case Some((obj, stream)) =>
-        assert(obj == objs(1))
-        stream()
-      case ev => fail(s"unexpected event: $ev")
-    }
-
-    // third object hasn't been fully written yet
-    next = stream.uncons
-    assert(!next.isDefined)
-
-    // write the third object
-    Await.result(rw.write(chunks(2)))
-    assert(next.isDefined)
-
-    stream = Await.result(next) match {
-      case Some((obj, stream)) =>
-        assert(obj == objs(2))
-        stream()
-      case ev => fail(s"unexpected event: $ev")
-    }
-
-    // reader is waiting for more data
-    next = stream.uncons
-    assert(!next.isDefined)
-
-    // but we close the stream instead
+    val decoded = Json.readStream[TestType](rw).toSeq()
+    for (c <- chunks)
+      Await.result(rw.write(c))
     Await.result(rw.close())
-    assert(next.isDefined)
-    assert(Await.result(next) == None)
+
+    assert(Await.result(decoded) == objs)
+  }
+
+  test("stream: messages exceeding buffer size") {
+    val bufsize = 8 * 1024
+    val obj = TestType("foo" * 10000, Some(TestType("inner")))
+    val buf = Json.writeBuf(obj)
+    assert(buf.length > bufsize)
+    val stream = Json.readStream[TestType](Reader.fromBuf(buf), bufsize)
+    val decoded = Await.result(stream.toSeq())
+    assert(decoded == Seq(obj))
+  }
+
+  test("stream: empty chunk reads") {
+    val rw = Reader.writable()
+    val decoded = Json.readStream[TestType](rw).toSeq()
+
+    val obj = TestType("foo", Some(TestType("inner")))
+    val objBuf = Json.writeBuf(obj)
+    Await.ready(rw.write(objBuf))
+    Await.ready(rw.write(Buf.Utf8("\n"))) // Empty chunk
+    Await.ready(rw.close())
+
+    assert(Await.result(decoded) == Seq(obj))
+  }
+
+  test("stream: failing reader terminates stream") {
+    val rw = Reader.writable()
+    val decoded = Json.readStream[TestType](rw)
+
+    val obj = TestType("foo", Some(TestType("inner")))
+    Await.result(rw.write(Json.writeBuf(obj)))
+    rw.fail(new ChannelClosedException)
+
+    assert(Await.result(decoded.toSeq()) == Seq(obj))
   }
 }
