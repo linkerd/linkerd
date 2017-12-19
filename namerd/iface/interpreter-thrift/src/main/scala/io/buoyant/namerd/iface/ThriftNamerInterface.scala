@@ -552,7 +552,10 @@ class ThriftNamerInterface(
     val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, ttree, ns), _) = req
     val dtab = Dtab.read(dtabstr)
     val tree = parseDelegateTree(ttree).toNameTree
-    Future.const(delegationCache.get(ns, dtab, tree)).flatMap { observer =>
+    Future.const(delegationCache.get(ns, dtab, tree)).rescue {
+      // Cache input failed, continue as one-shot
+      case _: MaximumObservationsReached => Future.value(observeDelegation(ns, dtab, tree))
+    }.flatMap { observer =>
       observer(reqStamp)
     }.transform {
       case Return((TStamp(tstamp), delegateTree)) =>
