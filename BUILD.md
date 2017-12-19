@@ -211,7 +211,7 @@ For example, in order to build the 0.0.10 release of Linkerd:
 
 Each of these configurations may be used to build a docker image.
 ```
-> ;linkerd/docker ;namerd/docker
+> ;linkerd/docker ;namerd/docker; linkerd/jdk:docker; namerd/jdk:docker
 ...
 [info] Tagging image 94ab0793addf with name: buoyantio/linkerd:0.0.10-SNAPSHOT
 ```
