@@ -138,13 +138,11 @@ launch_l5d() {
     get_l5d
 
     # start nghttpd.
-    local nghttpd_pid
     nghttpd 8080 --no-tls 2>&1 &
     nghttpd_pid=$!
     echo "${SEP} started nghttpd"
 
     # run linkerd and send output to logfile.
-    local l5d_pid
     "${L5D_PATH}" -log.level=DEBUG linkerd/examples/h2spec.yaml &> "${LOGFILE}" &
     l5d_pid=$!
 
