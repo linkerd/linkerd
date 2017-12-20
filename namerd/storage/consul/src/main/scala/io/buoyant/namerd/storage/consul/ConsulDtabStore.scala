@@ -188,8 +188,7 @@ class ConsulDtabStore(
             case Throw(e: NotFound) =>
               updates() = Activity.Ok(None)
               cycle(e.rsp.headerMap.get(Headers.Index), backoffs0)
-            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) =>
-              Future.Done
+            case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
             case Throw(e) =>
               updates() = Activity.Failed(e)
               log.error("consul ns %s dtab observation error %s", ns, e)
