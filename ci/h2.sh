@@ -3,17 +3,24 @@ set -eu
 set -o pipefail
 shopt -s extglob
 
-SEP="$(tput bold)⣷$(tput sgr0)"
+BOLD="$(tput bold)"
+UNBOLD="$(tput sgr0)"
+ERR="✖"
+OK="✔"
+SEP="${BOLD}⠶${UNBOLD}"
 LOGFILE=$(mktemp -t l5d-h2spec.log)
-SPIN='⣾⣽⣻⢿⡿⣟⣯⣷'
+SPIN='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+LOAD='⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿'
+LOAD_REST='⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐'
+H2SPEC_STATUS=0
 
 ##### Functions
 spin() {
     local pid=$!
     local i=0
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        i=$(( (i+1) %8 ))
-        printf "\r$(tput bold)${SPIN:$i:1}$(tput sgr0)"
+        i=$(( (i+1) %10 ))
+        printf "${PHASE} \r$(tput bold)${SPIN:$i:1}$(tput sgr0)"
         sleep .1
     done
 }
@@ -28,31 +35,35 @@ get_h2spec() {
     set +e
     local which_h2spec
     local which_status
-    which_h2spec=$(which_h2spec h2spec)
+    which_h2spec=$(which h2spec)
     which_status=$?
     set -e
     if [[ which_status -eq 0 ]]; then
-        # if which_h2spec found an h2spec executable, just return that path.
+        # if which found an h2spec executable, just return that path.
         H2SPEC_PATH="${which_h2spec}"
     else
         local home_bin 
         home_bin="${HOME}/bin"
-        # which_h2spec didn't find a h2spec on the path. check if it exists in
+        # which didn't find a h2spec on the path. check if it exists in
         # ~/bin (which_h2spec may not be on the path) and if not, download it.
         if ! [ -e "${home_bin}/h2spec" ] ; then
             # if we don't already have a h2spec executable, download it.
-            echo "${SEP} h2spec not found..."
+            echo "${PHASE} ${SEP} h2spec not found..."
             # detect OS for downloading h2spec.
             local h2spec_tar # name of the h2spec tarball for this OS
             case $OSTYPE in
                 darwin*)
-                echo "${SEP} detected OS as macOS"
-                h2spec_tar="h2spec_darwin_amd64.tar.gz"
-                ;;
+                    echo "${PHASE} ${SEP} detected OS as macOS"
+                    h2spec_tar="h2spec_darwin_amd64.tar.gz"
+                    ;;
                 linux*)
-                echo "${SEP} detected OS as linux"
-                h2spec_tar="h2spec_linux_amd64.tar.ghz"
-                ;;
+                    echo "${PHASE} ${SEP} detected OS as linux"
+                    h2spec_tar="h2spec_linux_amd64.tar.ghz"
+                    ;;
+                *)  
+                    echo "${PHASE} ${ERR} unsupported OS detected!"
+                    exit 1
+                    ;;
             esac
 
             local h2spec_url # url of the h2spec tarball
@@ -62,7 +73,7 @@ get_h2spec() {
             h2spec_url="https://github.com/summerwind/h2spec/releases/download/v2.1.0/${h2spec_tar}"
             h2spec_tmp=$(mktemp -d -t h2spec)
             tar_path="${h2spec_tmp}/${h2spec_tar}"
-            printf "${SEP} downloading h2spec..."
+            printf "%s %s downloading h2spec..." "${PHASE}" "${SEP}"
             wget -O "${tar_path}" "${h2spec_url}" > /dev/null 2>&1 &
             spin
             # untar.
@@ -71,7 +82,7 @@ get_h2spec() {
             fi
             tar xf "${tar_path}" -C "${HOME}/bin" > /dev/null &
             spin
-            printf " downloaded h2spec to ~/bin.\n"
+            printf "\r%s %s downloaded h2spec to ~/bin.\n" "${PHASE}" "${OK}"
         fi
         H2SPEC_PATH="${HOME}/bin/h2spec"
     fi
@@ -113,34 +124,41 @@ get_l5d() {
 
     if ! [ -e "${L5D_PATH}" ]; then
         # if we couldn't find a linkerd-exec, build it.
-        echo "${SEP} linkerd executable not found!"
-        printf "${SEP} building linkerd..."
+        echo "${PHASE} ${SEP} linkerd executable not found!"
+        printf "%s %s building linkerd..." "${PHASE}" "${SEP}" 
         ./sbt linkerd/assembly > /dev/null 2>&1 &
         spin
         L5D_PATH=$(find linkerd/target/scala-2.12 -name 'linkerd-*-exec')
-        printf " built ${L5D_PATH}.\n"
+        printf "\r%s %s built %s.\n" "${PHASE}" "${OK}" "${L5D_PATH}"
     else
-        echo "${SEP} found linkerd executable: $L5D_PATH"
+        echo "${PHASE} ${OK} found linkerd executable: $L5D_PATH"
     fi
 }
 
 # start nghttpd + linkerd.
 # 
 # sets trap to kill l5d/nghttpd on exit.
-launch_l5d() {
+setup() {
+    PHASE="${BOLD}setup${UNBOLD}"
     # test that nghttpd exists, or else exit.
     if ! nghttpd_exists; then
-        echo "${SEP} nghttpd not found; please install nghttpd before continuing."
+        echo "{$PHASE} ${ERR} nghttpd not found; please install nghttpd before continuing."
         exit $?
     fi
 
     # get path to linkerd or compile if it doesn't exist.
     get_l5d
-
+    set +e
     # start nghttpd.
     nghttpd 8080 --no-tls 2>&1 &
+    nghttpd_status=$?
     nghttpd_pid=$!
-    echo "${SEP} started nghttpd"
+    set -e
+    if [ "${nghttpd_status}" != "0" ]; then 
+        echo "${PHASE} ${ERR} couldn't start nghttpd!"
+        exit ${nghttpd_status}
+    fi
+    echo "${PHASE} ${OK} started nghttpd"
 
     # run linkerd and send output to logfile.
     "${L5D_PATH}" -log.level=DEBUG linkerd/examples/h2spec.yaml &> "${LOGFILE}" &
@@ -149,21 +167,21 @@ launch_l5d() {
     # make sure to kill the linkerd and nghttpd processes when terminating the
     # script, regardless of how
     trap '
-        echo ${SEP} killing nghttpd; kill ${nghttpd_pid};
-        echo ${SEP} killing linkerd; kill ${l5d_pid}
+        echo ${BOLD}teardown ${SEP} killing nghttpd; kill ${nghttpd_pid};
+        echo ${BOLD}teardown ${SEP} killing linkerd; kill ${l5d_pid}
         ' EXIT
 
     # wait until linkerd starts...
-    printf "${SEP} starting linkerd..."
+    printf "%s %s starting linkerd..." "${PHASE}" "${SEP}"
     local i
     i=0
     set +e
     until $(curl -sfo /dev/null http://localhost:9990/admin/ping); do
-        i=$(( (i+1) %8 ))
-        printf "\r$(tput bold)${SPIN:$i:1}$(tput sgr0)"
+        i=$(( (i+1) %10 ))
+        printf "\r%s $(tput bold)%s$(tput sgr0)" "${PHASE}" "${SPIN:$i:1}"
         sleep .1
     done
-    printf " started linkerd.\n"
+    printf "\r%s %s started linkerd.\n" "${PHASE}" "${OK}"
 }
 
 # print usage message
@@ -175,29 +193,63 @@ if [ "$#" -eq 0 ]; then
     usage
     exit 64
 fi
-launch_l5d
+setup
+
+set +u
 while [ "$1" != "" ]; do
     case $1 in
         spec)
-            echo "${SEP} running h2spec against linkerd..."
+            PHASE="${BOLD}h2spec${UNBOLD}"
+            echo "${PHASE} ${SEP} running h2spec against linkerd..."
             get_h2spec
             # run h2spec against linkerd, printing linkerd's logs if h2spec failed.
+            set +e
             "${H2SPEC_PATH}" -p 4140
             H2SPEC_STATUS=$?
             set -e
             if [ "${H2SPEC_STATUS}" -eq 0 ]; then
-                echo "${SEP} h2spec passed!"
+                echo "${PHASE} ${OK} h2spec passed!"
             else
-                echo "${SEP} h2spec failed! linkerd logs: ${LOGFILE}"
+                echo "${PHASE} ${ERR} h2spec failed! linkerd logs: ${LOGFILE}"
             fi
             ;;
-        load)    
-            echo "h2load: not yet implemented"
+        load)
+            PHASE="${BOLD}h2load${UNBOLD}"    
+            printf "%s %s running h2load against linkerd..." "${PHASE}" "${SEP}"
+            i=0
+            while read -r line; do
+                case $line in 
+                    starting*)
+                        printf "\r%s %s running h2load against linkerd %s" "${PHASE}" "${SEP}" "${LOAD:1:$i}" "${LOAD_REST}"
+                        ;;
+                    Application*|"")
+                        ;;
+                    spawning*|progress*)
+                        i=$(( (i+1) ))
+                        printf "\r%s %s running h2load against linkerd $(tput bold)%s$(tput sgr0)%s" "${PHASE}" "${SEP}" "${LOAD:1:$i}" "${LOAD_REST:$i:20}"
+                        ;;
+                    finished*)
+                        printf "\n%s %s %s\n" "${PHASE}" "${SEP}" "${line}"
+                        ;;
+                    *)
+                        echo "${PHASE} ${SEP} ${line}"
+                        ;;
+                esac
+            done < <(
+                h2load --requests=100000        \
+                       --clients=10             \
+                       --threads=10             \
+                       http://localhost:4140/   \
+                    2>/dev/null
+                )
             ;;
         * )
             usage
-            exit 1
+            exit 64
             ;;
     esac
     shift
 done
+
+
+exit ${H2SPEC_STATUS}
