@@ -11,7 +11,7 @@ SEP="${BOLD}⠶${UNBOLD}"
 LOGFILE=$(mktemp -t l5d-h2spec.log)
 SPIN='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 LOAD='⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿'
-LOAD_REST='⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐'
+LOAD_REST='⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐⠐|'
 H2SPEC_STATUS=0
 
 ##### Functions
