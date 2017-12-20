@@ -8,9 +8,9 @@ import com.twitter.util._
 import io.buoyant.consul.v1.KvApi
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceInvalidException}
 import io.buoyant.namerd.{Ns, VersionedDtab}
-import io.buoyant.test.{Awaits, Exceptions, FunSuite}
+import io.buoyant.test.{ActivityValues, Awaits, Exceptions, FunSuite}
 
-class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
+class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with ActivityValues  {
 
   val namespacesJson = """["namerd/dtabs/foo/bar/", "namerd/dtabs/foo/baz/"]"""
   val namerdPrefix = "/namerd/dtabs"
@@ -262,7 +262,7 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions {
     )
     @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
     store.observe(namespace).states respond { state = _ }
-    assert(state == Activity.Failed(expectedException))
+    assert(state.failed.getMessage == expectedException.getMessage)
   }
 
 }
