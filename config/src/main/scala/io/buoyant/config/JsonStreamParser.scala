@@ -75,7 +75,9 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     // if reads fail
     val terminatingReader = new Reader {
       def read(n: Int): Future[Option[Buf]] = reader.read(n).handle {
-        case NonFatal(_) => None
+        case NonFatal(e) =>
+          log.debug(e, "Error reading JSON stream")
+          None
       }
       def discard(): Unit = reader.discard()
     }
