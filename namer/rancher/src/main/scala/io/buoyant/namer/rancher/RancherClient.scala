@@ -96,7 +96,7 @@ class RancherClient(
       Future.whileDo(!done.get) {
         log.trace("starting version request")
 
-        val request = http.Request(http.Method.Get, s"/2015-12-19/version?wait=true&maxWait=${maxWait}&value=${v}")
+        val request = http.Request(http.Method.Get, s"/2015-12-19/version?wait=true&maxWait=${maxWait}&value=${v.getOrElse("initial")}")
         request.host = "rancher-metadata"
 
         service(request)
@@ -109,7 +109,7 @@ class RancherClient(
               state.update(Activity.Ok(newVersion))
               Future.Unit
             case Return(newVersion) if v.contains(newVersion) =>
-              log.trace("metadata-version didn't change. Old: %s, received: %s", v, newVersion)
+              log.trace("metadata-version didn't change. Old: %s, received: %s", v.get, newVersion)
               Future.Unit
             case Throw(e) =>
               // TODO: This should probably be handled by a exponentail back-off
