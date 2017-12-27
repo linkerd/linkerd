@@ -13,8 +13,8 @@ import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stats.{Stat, StatsReceiver}
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.logging.Logger
+import com.twitter.util._
 import com.twitter.util.Activity.State
-import com.twitter.util.{Timer, Var, Activity, Duration, Future, Closable, Return, Throw}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.reflect.{ClassTag, classTag}
 

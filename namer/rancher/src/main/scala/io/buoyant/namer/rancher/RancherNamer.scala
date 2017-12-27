@@ -1,11 +1,11 @@
 package io.buoyant.namer.rancher
 
-import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.logging.Logger
-import com.twitter.util.Activity.State
 import com.twitter.util._
+import com.twitter.util.Activity.State
 
 class RancherNamer(
   prefix: Path,
