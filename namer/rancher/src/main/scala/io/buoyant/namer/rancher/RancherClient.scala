@@ -141,7 +141,7 @@ class RancherClient(
         .map { RancherParser().readValue[List[RancherContainer]] }
         .onSuccess { containers =>
           log.debug("received %s new containers", containers.size)
-        }: Future[List[RancherContainer]]
+        }
     }
   }
 
