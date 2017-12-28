@@ -46,12 +46,11 @@ class ThriftNamerClient(
    */
   private[this] val bindCacheMu = new {}
   private[this] var bindCache = Map.empty[(Dtab, Path), InstrumentedBind]
+  private[this] var bindGaugeCache = statsReceiver.addGauge("bindcache.size")(bindCache.size)
 
   private[this] val addrCacheMu = new {}
   private[this] var addrCache = Map.empty[Path, InstrumentedAddr]
-
-  statsReceiver.addGauge("bindcache.size")(bindCache.size)
-  statsReceiver.addGauge("addrcache.size")(addrCache.size)
+  private[this] var addrCacheGauge = statsReceiver.addGauge("addrcache.size")(addrCache.size)
 
   private[this] val bindSuccessCounter = statsReceiver.counter("bind", "success")
   private[this] val bindFailureCounter = statsReceiver.counter("bind", "failure")
