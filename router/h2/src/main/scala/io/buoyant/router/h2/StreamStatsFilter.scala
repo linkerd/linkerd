@@ -152,7 +152,7 @@ class StreamStatsFilter(
   override def apply(req0: Request, service: Service[Request, Response]): Future[Response] = {
     reqCount.incr()
     val reqT = Stopwatch.start()
-    val req1 = Request(req0.headers, reqStreamStats(reqT)(req0.stream))
+    val req1 = req0.copy(stream = reqStreamStats(reqT)(req0.stream))
 
     @inline def classify(rsp: Response)(frame: Option[Try[Frame]]): Unit =
       // Only classify if early classification wasn't applicable.

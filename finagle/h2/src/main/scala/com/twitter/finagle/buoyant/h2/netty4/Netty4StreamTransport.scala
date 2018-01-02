@@ -9,6 +9,7 @@ import com.twitter.util.{Future, Promise, Return, Throw}
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
+import scala.util.control.NoStackTrace
 
 /**
  * Reads and writes a bi-directional HTTP/2 stream.
@@ -48,6 +49,8 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   protected[this] def statsReceiver: StatsReceiver
 
   protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): RecvMsg
+
+  def resetClient: Option[Promise[Unit]]
 
   /*
    * A stream's state is represented by the `StreamState` ADT,
@@ -224,7 +227,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    * closed prematurely.
    */
   def onReset: Future[Unit] = resetP
-  private[this] val resetP = new Promise[Unit]
+  protected[this] val resetP = new Promise[Unit]
 
   def isClosed = stateRef.get match {
     case Closed(_) => true
@@ -238,12 +241,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case err => resetP.setException(StreamError.Remote(err))
     }
 
-  def localReset(err: Reset): Unit =
+  def localReset(err: Reset): Unit = synchronized {
     if (tryReset(err)) err match {
       case Reset.NoError =>
         resetP.setDone(); ()
       case err => resetP.setException(StreamError.Local(err))
     }
+  }
 
   @tailrec private[this] def tryReset(err: Reset): Boolean =
     stateRef.get match {
@@ -596,6 +600,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 object Netty4StreamTransport {
   private lazy val log = Logger.get("h2")
 
+  /**
+   * Indicates that the client stream has fully finished,
+   * and the closed server stream need no longer be tracked.
+   */
+  object ClientFinished extends Throwable with NoStackTrace
+
   /** Helper: a state that supports Reset.  (All but Closed) */
   private trait ResettableState {
     def reset(rst: Reset): Unit
@@ -651,14 +661,44 @@ object Netty4StreamTransport {
   private class Client(
     override val streamId: Int,
     override protected[this] val transport: H2Transport.Writer,
-    override protected[this] val statsReceiver: StatsReceiver
+    override protected[this] val statsReceiver: StatsReceiver,
+    onServerReset: Future[Unit]
   ) extends Netty4StreamTransport[Request, Response] {
 
     override protected[this] val prefix =
       s"C L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
+    onServerReset.onFailure {
+      case StreamError.Remote(e) =>
+        val rst = e match {
+          case rst: Reset => rst
+          case _ => Reset.Cancel
+        }
+        log.debug("[%s] server failed with remote reset: %s", prefix, rst)
+        localReset(rst)
+
+      case StreamError.Local(e) =>
+        val rst = e match {
+          case rst: Reset => rst
+          case _ => Reset.Cancel
+        }
+        log.debug("[%s] server failed with local reset: %s", prefix, rst)
+        remoteReset(rst)
+
+      case e =>
+        log.error(e, "[%s] unexpected server error", prefix)
+        localReset(Reset.InternalError)
+    }
+
+    this.onReset.ensure {
+      log.debug("[%s] closed, closed server stream can be discarded...", prefix)
+      onServerReset.raise(ClientFinished)
+    }
+
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Response =
       Response(Netty4Message.Headers(headers), stream)
+
+    override val resetClient: Option[Promise[Unit]] = None
   }
 
   private class Server(
@@ -670,16 +710,28 @@ object Netty4StreamTransport {
     override protected[this] val prefix =
       s"S L:${transport.localAddress} R:${transport.remoteAddress} S:${streamId}"
 
+    private[this] val resetClientP: Promise[Unit] = new Promise[Unit]
+
+    this.onReset.onFailure { err =>
+      log.debug("[%s] onReset.onFailure (%s), propagating to client half", prefix, err)
+      resetClientP.setException(err)
+    }
+
     override protected[this] def mkRecvMsg(headers: Http2Headers, stream: Stream): Request =
-      Request(Netty4Message.Headers(headers), stream)
+      Request(Netty4Message.Headers(headers), stream, fail = resetClientP)
+
+    override val resetClient: Option[Promise[Unit]] = Some(resetClientP)
+
   }
 
   def client(
     id: Int,
     writer: H2Transport.Writer,
-    stats: StatsReceiver = NullStatsReceiver
-  ): Netty4StreamTransport[Request, Response] =
-    new Client(id, writer, stats)
+    stats: StatsReceiver = NullStatsReceiver,
+    onServerReset: Future[Unit] = Future.never
+  ): Netty4StreamTransport[Request, Response] = {
+    new Client(id, writer, stats, onServerReset)
+  }
 
   def server(
     id: Int,

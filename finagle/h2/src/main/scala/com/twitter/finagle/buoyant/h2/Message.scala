@@ -1,5 +1,6 @@
 package com.twitter.finagle.buoyant.h2
 
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise}
 
 /**
@@ -17,6 +18,7 @@ import com.twitter.util.{Future, Promise}
  * to satisfy a broader set of use cases.
  */
 sealed trait Message {
+  protected val log = Logger.get("h2")
   def headers: Headers
   def stream: Stream
 
@@ -91,30 +93,63 @@ trait Request extends Message {
   def method: Method
   def authority: String
   def path: String
+  def stream: Stream
+  def headers: Headers
   override def dup(): Request
+  def onFail: Future[Unit]
+
+  def copy(
+    headers: Headers = this.headers.dup(),
+    stream: Stream = this.stream,
+    onFail: Future[Unit] = this.onFail
+  ): Request =
+    Request(headers.dup(), stream, onFail)
 }
 
 object Request {
+  protected val log = Logger.get("h2")
   def apply(
     scheme: String,
     method: Method,
     authority: String,
     path: String,
     stream: Stream
-  ): Request = Impl(
-    Headers(
-      Headers.Scheme -> scheme,
-      Headers.Method -> method.toString,
-      Headers.Authority -> authority,
-      Headers.Path -> path
-    ),
-    stream
-  )
+  ): Request = {
+    val req = Impl(
+      Headers(
+        Headers.Scheme -> scheme,
+        Headers.Method -> method.toString,
+        Headers.Authority -> authority,
+        Headers.Path -> path
+      ),
+      stream,
+      Future.never
+    )
+    log.warning(
+      "Created request %s without a server dispatcher onFail future – you probably don't want to do this.",
+      req
+    )
+    req
+  }
 
-  def apply(headers: Headers, stream: Stream): Request =
-    Impl(headers, stream)
+  def apply(headers: Headers, stream: Stream): Request = {
+    val req = Impl(headers, stream, Future.never)
+    log.warning(
+      "Created request %s without a server dispatcher onFail future – you probably don't want to do this.",
+      req
+    )
+    req
+  }
 
-  private case class Impl(headers: Headers, stream: Stream) extends Request {
+  def apply(headers: Headers, stream: Stream, fail: Future[Unit]): Request =
+    Impl(headers, stream, fail)
+
+  private case class Impl(headers: Headers, stream: Stream, onFail: Future[Unit]) extends Request {
+    log.trace("Created %s; onFail=%s;", this, onFail.hashCode())
+    onFail.onFailure { e =>
+      log.trace("Request.Impl observed onFail: %s; onFail=%s;", e, onFail.hashCode())
+    }
+    //    override def onFail: Future[Unit] = failF
     override def toString = s"Request($scheme, $method, $authority, $path, $stream)"
     override def dup() = copy(headers = headers.dup())
     override def scheme = headers.get(Headers.Scheme).getOrElse("")

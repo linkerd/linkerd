@@ -59,7 +59,7 @@ class ClassifiedRetryFilter(
     val fork = Future.const(requestBuffer.fork())
 
     def dispatch(reqStream: Stream, backoffs: SStream[Duration], count: Int): Future[Response] = {
-      val req = Request(request.headers.dup(), reqStream)
+      val req = request.copy(stream = reqStream)
 
       // Attempt to retry.
       // If a retry is not possible because the request buffer has been discarded or we have run

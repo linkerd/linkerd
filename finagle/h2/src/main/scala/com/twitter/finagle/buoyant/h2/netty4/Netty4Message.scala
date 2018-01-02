@@ -83,8 +83,10 @@ private[h2] object Netty4Message {
   }
 
   object Request {
-    def apply(netty4Headers: Http2Headers, data: Stream): h2.Request =
-      h2.Request(Headers(netty4Headers), data)
+    def apply(netty4Headers: Http2Headers, data: Stream): h2.Request = {
+      log.warning("constructing new request without onFail future, you probably shouldn't do this")
+      h2.Request(Headers(netty4Headers), data, Future.never)
+    }
   }
 
   object Response {

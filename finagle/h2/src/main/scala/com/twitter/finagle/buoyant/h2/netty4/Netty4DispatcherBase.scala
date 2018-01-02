@@ -29,8 +29,31 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
    *
    * TODO only track closed streams for a TTL after it has closed.
    */
-  private[this] sealed trait StreamTransport
-  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
+  private[this] sealed trait StreamTransport {
+    def reset(err: Reset): Unit = {}
+  }
+  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport {
+    def toClosed: Option[StreamClosed] =
+      this.stream.resetClient.map { resetP => StreamClosed(stream.streamId, resetP) }
+    override def reset(err: Reset): Unit = stream.remoteReset(err)
+  }
+  private[this] case class StreamClosed(id: Int, onReset: Promise[Unit]) extends StreamTransport {
+
+    onReset.setInterruptHandler {
+      // the ClientFinished exception is raised to indicate that we no longer
+      // need to track this closed stream for resetting the client stream.
+      case Netty4StreamTransport.ClientFinished =>
+        log.debug("[%s S:%d] client stream finished, discarding StreamClosed...", prefix, id)
+        streams.remove(id); ()
+    }
+
+    override def reset(err: Reset): Unit = synchronized {
+      log.debug("[%s S:%d] propagating %s to client half of closed stream", prefix, id, err)
+      onReset.setException(err)
+      streams.remove(id); ()
+    }
+  }
+
   private[this] object StreamLocalReset extends StreamTransport
   private[this] object StreamRemoteReset extends StreamTransport
   private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
@@ -65,7 +88,20 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       case Return(_) =>
         // Free and clear.
         addClosedId(id)
-        streams.remove(id)
+        open.toClosed match {
+          case Some(closed) if streams.replace(id, open, closed) =>
+            // the open stream is a server dispatcher stream whose corresponding
+            // client stream may not be closed yet. we need to continue tracking
+            // it in the event of a reset.
+            log.debug("[%s S:%d] open stream replaced by StreamClosed", prefix, id)
+          case _ =>
+            // either the stream is a client dispatcher stream, or the stream
+            // transitioned to closed from a state other than open. just
+            // remove it.
+            log.debug("[%s S:%d] open stream removed", prefix, id)
+            streams.remove(id)
+
+        }
         log.debug("[%s S:%d] stream closed", prefix, id)
 
       case Throw(StreamError.Remote(e)) =>
@@ -182,10 +218,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   private[this] def resetStreams(err: Reset): Boolean =
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
-      streams.values.asScala.foreach {
-        case StreamOpen(st) => st.remoteReset(err)
-        case _ =>
-      }
+      streams.values.asScala.foreach { _.reset(err) }
       demuxing.raise(Failure(err).flagged(Failure.Interrupted))
       true
     } else false

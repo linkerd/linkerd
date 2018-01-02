@@ -9,6 +9,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicInteger
+import com.twitter.finagle.buoyant.h2.netty4.Netty4StreamTransport.log
 
 object Netty4ClientDispatcher {
   private val log = Logger.get("h2")
@@ -57,9 +58,9 @@ class Netty4ClientDispatcher(
 
   // Initialize a new Stream; and store it so that a response may be
   // demultiplexed to it.
-  private[this] def newStreamTransport(): Netty4StreamTransport[Request, Response] = {
+  private[this] def newStreamTransport(onServerReset: Future[Unit]): Netty4StreamTransport[Request, Response] = {
     val id = nextId()
-    val stream = Netty4StreamTransport.client(id, writer, streamStats)
+    val stream = Netty4StreamTransport.client(id, writer, streamStats, onServerReset)
     registerStream(id, stream)
     stream
   }
@@ -91,9 +92,10 @@ class Netty4ClientDispatcher(
    * response when it is received.
    */
   override def apply(req: Request): Future[Response] = {
-
+    val onServerFailure = req.onFail
     mutex.acquire().flatMap { permit =>
-      val st = newStreamTransport()
+
+      val st = newStreamTransport(onServerFailure)
       // Stream the request while receiving the response and
       // continue streaming the request until it is complete,
       // canceled,  or the response fails.
