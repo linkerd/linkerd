@@ -75,7 +75,7 @@ object Deps {
   // Medallia service discovery, not transitive for now because it depends on kafka which has an incompatible scala version
   // Dependencies are obtained from curatorSD at the moment
   // We should decouple service discovery in rpc-library from everything else
-  val rpcLibrary = "com.medallia" % "rpc-library" % "2.1.1" intransitive()
+  val rpcLibrary = "com.medallia" % "rpc-library" % "2.1.3" intransitive()
 
   // kafka
   val kafka = "org.apache.kafka" % "kafka_2.12" % "0.10.1.1"
