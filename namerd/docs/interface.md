@@ -50,7 +50,7 @@ addrCacheInactive | `100` | The size of the address inactive cache.
 
 kind: `io.l5d.mesh`
 
-A read-only interface providing `NameInterpreter` functionality over the gRCP
+A read-only interface providing `NameInterpreter` functionality over the gRPC
 protocol. Use Linkerd's `io.l5d.mesh` interpreter to resolve destinations via
 this interface.
 
