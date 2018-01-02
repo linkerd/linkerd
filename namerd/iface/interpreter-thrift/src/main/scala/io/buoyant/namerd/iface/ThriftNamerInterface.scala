@@ -542,8 +542,8 @@ class ThriftNamerInterface(
     mkObserver(act, stamper)
   }
   private[this] val delegationCache = new ObserverCache[(String, Dtab, NameTree[Name.Path]), DelegateTree[Name.Bound]](
-    activeCapacity = 10,
-    inactiveCapacity = 1,
+    activeCapacity = 1000,
+    inactiveCapacity = 100,
     stats = stats.scope("delegationcache"),
     mkObserver = (observeDelegation _).tupled
   )
