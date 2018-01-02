@@ -12,6 +12,7 @@ object LinkerdBuild extends Base {
 
   val Bundle = config("bundle")
   val Dcos = config("dcos") extend Bundle
+  val Jdk = config("jdk") extend Bundle
   val LowMem = config("lowmem") extend Bundle
 
   val configCore = projectDir("config")
@@ -353,6 +354,12 @@ object LinkerdBuild extends Base {
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
+    val JdkSettings = BundleSettings ++ Seq(
+      dockerJavaImage := s"openjdk:${openJdkVersion}-jdk",
+      dockerTag := s"${version.value}-jdk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-jdk-exec"
+    )
+
     val LowMemSettings = BundleSettings ++ Seq(
       dockerJavaImage := "buoyantio/debian-32-bit",
       dockerTag := s"${version.value}-32b",
@@ -405,10 +412,12 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("namerd",
         core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
-      .configs(Bundle, Dcos, LowMem)
+      .configs(Bundle, Dcos, Jdk, LowMem)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(Jdk)(BundleProjects: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
       .configDependsOn(Dcos)(dcosBootstrap)
@@ -609,13 +618,21 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
     )
 
+    val JdkSettings = BundleSettings ++ Seq(
+      dockerJavaImage := s"openjdk:${openJdkVersion}-jdk",
+      dockerTag := s"${version.value}-jdk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-jdk-exec"
+    )
+
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
         Announcer.all, Namer.all, Protocol.all)
-      .configs(Bundle, LowMem)
+      .configs(Bundle, Jdk, LowMem)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(Jdk)(BundleProjects: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
       .settings(
