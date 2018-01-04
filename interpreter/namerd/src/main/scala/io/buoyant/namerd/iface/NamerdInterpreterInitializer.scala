@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.{HighResTimer, Label}
 import com.twitter.finagle.service._
@@ -13,6 +14,9 @@ import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
+import com.twitter.conversions.time
+import com.twitter.finagle.liveness.FailureDetector
+
 import scala.util.control.NonFatal
 
 /**
@@ -48,11 +52,34 @@ case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
   }
 }
 
+case class FailureThresholdConfig(
+  minPeriodMs: Option[Int],
+  threshold: Double,
+  windowSize: Option[Int],
+  closeTimeoutMs: Option[Int]
+) {
+  val defaultConfig = ThresholdConfig()
+  def params: Stack.Params = {
+    val thresholdCfg = for {
+      minPeriod <- minPeriodMs
+      window <- windowSize
+      timeout <- closeTimeoutMs
+    } yield ThresholdConfig(
+      minPeriod.milliseconds,
+      threshold,
+      window,
+      timeout.milliseconds
+    )
+    StackParams.empty + FailureDetector.Param(thresholdCfg.getOrElse(defaultConfig))
+  }
+}
+
 case class NamerdInterpreterConfig(
   dst: Option[Path],
   namespace: Option[String],
   retry: Option[Retry],
-  tls: Option[ClientTlsConfig]
+  tls: Option[ClientTlsConfig],
+  failureThreshold: Option[FailureThresholdConfig]
 ) extends NamespacedInterpreterConfig { config =>
 
   @JsonIgnore
@@ -83,9 +110,10 @@ case class NamerdInterpreterConfig(
     val stats = stats0.scope(label)
 
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+    val failureThresholdParams = failureThreshold.map(_.params).getOrElse(StackParams.empty)
 
     val client = ThriftMux.client
-      .withParams(ThriftMux.client.params ++ tlsParams ++ params)
+      .withParams(ThriftMux.client.params ++ tlsParams ++ failureThresholdParams ++ params)
       .withRetryBudget(RetryBudget.Empty) // we will only do retries as part of the Var.async loop
       .withMonitor(monitor)
       .withSessionQualifier.noFailFast
