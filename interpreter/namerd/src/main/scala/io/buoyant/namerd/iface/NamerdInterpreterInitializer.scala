@@ -1,12 +1,14 @@
 package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.param.{HighResTimer, Label}
+import com.twitter.finagle.param.Label
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
 import com.twitter.util.{NonFatal => _, _}
@@ -14,10 +16,6 @@ import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
-import com.twitter.conversions.time
-import com.twitter.finagle.liveness.FailureDetector
-
-import scala.util.control.NonFatal
 
 /**
  * The namerd interpreter offloads the responsibilities of name resolution to
@@ -54,24 +52,21 @@ case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
 
 case class FailureThresholdConfig(
   minPeriodMs: Option[Int],
-  threshold: Double,
+  @JsonDeserialize(contentAs = classOf[java.lang.Double]) threshold: Option[Double],
   windowSize: Option[Int],
   closeTimeoutMs: Option[Int]
 ) {
-  val defaultConfig = ThresholdConfig()
+  @JsonIgnore
   def params: Stack.Params = {
-    val thresholdCfg = for {
-      minPeriod <- minPeriodMs
-      window <- windowSize
-      timeout <- closeTimeoutMs
-    } yield ThresholdConfig(
-      minPeriod.milliseconds,
-      threshold,
-      window,
-      timeout.milliseconds
+    val thresholdConfig = ThresholdConfig(
+      minPeriodMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultMinPeriod),
+      threshold.getOrElse(FailureThresholdConfig.DefaultThreshold),
+      windowSize.getOrElse(FailureThresholdConfig.DefaultWindowSize),
+      closeTimeoutMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultCloseTimeout)
     )
-    StackParams.empty + FailureDetector.Param(thresholdCfg.getOrElse(defaultConfig))
+    StackParams.empty + FailureDetector.Param(thresholdConfig)
   }
+
 }
 
 case class NamerdInterpreterConfig(
@@ -110,7 +105,7 @@ case class NamerdInterpreterConfig(
     val stats = stats0.scope(label)
 
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
-    val failureThresholdParams = failureThreshold.map(_.params).getOrElse(StackParams.empty)
+    val failureThresholdParams = failureThreshold.map(_.params).getOrElse(FailureThresholdConfig.defaultStackParam)
 
     val client = ThriftMux.client
       .withParams(ThriftMux.client.params ++ tlsParams ++ failureThresholdParams ++ params)
@@ -137,4 +132,19 @@ case class NamerdInterpreterConfig(
 
 object NamerdInterpreterConfig {
   def kind = classOf[NamerdInterpreterConfig].getCanonicalName
+}
+
+object FailureThresholdConfig {
+
+  val DefaultMinPeriod = 5000.milliseconds
+  val DefaultThreshold = 2.0
+  val DefaultWindowSize = 100
+  val DefaultCloseTimeout = 4000.milliseconds
+
+  def defaultStackParam = StackParams.empty + FailureDetector.Param(ThresholdConfig(
+    DefaultMinPeriod,
+    DefaultThreshold,
+    DefaultWindowSize,
+    DefaultCloseTimeout
+  ))
 }
