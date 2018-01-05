@@ -2,7 +2,7 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.{Dtab, Service}
-import com.twitter.util.Future
+import com.twitter.util.{Future, Return, Throw}
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.namer.RichActivity
 
@@ -18,20 +18,19 @@ class DtabHandler(
 
   override def apply(req: Request): Future[Response] = req.path match {
     case rexp(namespace) =>
-      getDtab(namespace).map {
-        case Some(dtab) =>
-          val response = Response()
-          response.contentType = MediaType.Html + ";charset=UTF-8"
-          response.contentString = render(namespace, dtab.dtab)
-          response
-        case None => Response(Status.NotFound)
+      getDtab(namespace).transform {
+        case Return(None) => Future.value(Response(Status.NotFound))
+        case Return(Some(dtab)) =>
+          render(namespace, dtab.dtab)
+        case Throw(e) =>
+          renderError(namespace, e)
       }
     case _ =>
       Future.value(Response(Status.NotFound))
   }
 
-  def render(name: String, dtab: Dtab) =
-    s"""
+  def render(name: String, dtab: Dtab): Future[Response] = {
+    val content = s"""
       <!doctype html>
       <html>
         <head>
@@ -53,11 +52,50 @@ class DtabHandler(
             </div>
           </div>
 
-          <script id="data" type="application/json">{"namespace": "$name", "dtab": ${DelegateApiHandler.Codec.writeStr(dtab)}}</script>
+          <script id="data" type="application/json">{"namespace": "$name", "dtab": ${
+      DelegateApiHandler
+        .Codec.writeStr(dtab)
+    }}</script>
           <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
         </body>
       </html>
     """
+    val response = Response()
+    response.contentType = MediaType.Html + ";charset=UTF-8"
+    response.contentString = content
+    Future.value(response)
+  }
+
+  def renderError(name: String, e: Throwable): Future[Response] = {
+    val content = s"""
+      <!doctype html>
+      <html>
+        <head>
+          <title>namerd admin</title>
+          <link rel="shortcut icon" href="../files/images/favicon.png" />
+          <link type="text/css" href="../files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/fonts.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/dashboard.css" rel="stylesheet"/>
+          <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
+        </head>
+        <body>
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-lg-6">
+                <h2 class="router-label-title">Dtab Error</h2>
+                <p>An error was encountered when fetching or parsing the dtab:</p>
+                <pre>$e</pre>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    """
+    val response = Response()
+    response.contentType = MediaType.Html + ";charset=UTF-8"
+    response.contentString = content
+    Future.value(response)
+  }
 }
 
 object DtabHandler {

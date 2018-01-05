@@ -10,7 +10,7 @@ import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNam
 import io.buoyant.namerd.{Ns, VersionedDtab}
 import io.buoyant.test.{ActivityValues, Awaits, Exceptions, FunSuite}
 
-class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with ActivityValues  {
+class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with ActivityValues {
 
   val namespacesJson = """["namerd/dtabs/foo/bar/", "namerd/dtabs/foo/baz/"]"""
   val namerdPrefix = "/namerd/dtabs"
