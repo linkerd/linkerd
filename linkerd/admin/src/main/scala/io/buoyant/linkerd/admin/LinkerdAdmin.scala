@@ -2,6 +2,7 @@ package io.buoyant.linkerd
 package admin
 
 import com.twitter.finagle._
+import com.twitter.finagle.client.buoyant.ClientStateHandler
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.finagle.naming.NameInterpreter
@@ -41,6 +42,8 @@ object LinkerdAdmin {
       Handler("/delegator.json", new DelegateApiHandler(getInterpreter))
     )
   }
+
+  val clientState: Handler = Handler("/client_state.json", new ClientStateHandler)
 
   def static(adminHandler: AdminHandler): Seq[Handler] = Seq(
     Handler("/", new DashboardHandler(adminHandler)),
@@ -102,6 +105,6 @@ object LinkerdAdmin {
     static(adminHandler) ++ config(lc) ++
       boundNames(linker.namers.map { case (_, n) => n }) ++
       delegator(adminHandler, linker.routers) ++
-      extHandlers
+      extHandlers :+ clientState
   }
 }
