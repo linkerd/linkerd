@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 class NamerdTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = NamerdInterpreterConfig(Some(Path.read("/whats/in/a")), Some("name"), None, None)
+    val _ = NamerdInterpreterConfig(Some(Path.read("/whats/in/a")), Some("name"), None, None, None)
       .newInterpreter(Stack.Params.empty)
   }
 
