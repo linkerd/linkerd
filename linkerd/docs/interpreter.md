@@ -50,14 +50,14 @@ failureThreshold | no failureThreshold | Sets the [failure threshold](#failure-t
 ### Failure Threshold
 
 Linkerd uses a [Threshold Failure Detector](https://github.com/twitter/finagle/blob/master/finagle-core/src/main/scala/com/twitter/finagle/liveness/ThresholdFailureDetector.scala) 
-to determine the health of a Namerd instance. Linkerd sends pings to Namerd periodically and evaluates the health of Namerd based on a set number of ping latencies
+to determine the health of the connection to a Namerd instance. Linkerd sends pings to Namerd periodically and evaluates the health of Namerd based on a set number of ping latencies
 
 Key | Default Value | Description
 --- | ------------- | -----------
-minPeriodMs | 5000 | period between session pings to Namerd
+minPeriodMs | 5000 | The period between session pings to Namerd
 threshold | 2.0 | Used to calculate the maximum allowed ping latency 
-windowSize | 100 | number of observations to make to gauge session liveness of Namerd
-closeTimeoutMs | 4000 | timeout for a session ping's response before Linkerd terminates a session
+windowSize | 100 | The number of observations to make to gauge session liveness of Namerd
+closeTimeoutMs | 4000 | Timeout for a session ping's response before Linkerd terminates a session
 
 ### Namerd retry
 

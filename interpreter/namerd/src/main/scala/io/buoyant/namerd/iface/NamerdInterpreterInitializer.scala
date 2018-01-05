@@ -136,10 +136,10 @@ object NamerdInterpreterConfig {
 
 object FailureThresholdConfig {
 
-  val DefaultMinPeriod = 5000.milliseconds
+  val DefaultMinPeriod = 5.seconds
   val DefaultThreshold = 2.0
   val DefaultWindowSize = 100
-  val DefaultCloseTimeout = 4000.milliseconds
+  val DefaultCloseTimeout = 4.seconds
 
   def defaultStackParam = StackParams.empty + FailureDetector.Param(ThresholdConfig(
     DefaultMinPeriod,
