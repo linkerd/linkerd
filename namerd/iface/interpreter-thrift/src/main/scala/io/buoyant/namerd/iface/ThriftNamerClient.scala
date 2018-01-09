@@ -86,6 +86,7 @@ class ThriftNamerClient(
           Trace.recordBinary("namerd.client/bind.path", path.show)
 
           val req = thrift.BindReq(tdtab, thrift.NameRef(stamp0, tpath, namespace), tclientId)
+          log.info("bind %s", path.show)
           pending = Trace.letClear(client.bind(req)).respond {
             case Return(thrift.Bound(stamp1, ttree, _)) =>
               bindSuccessCounter.incr()
@@ -99,21 +100,24 @@ class ThriftNamerClient(
               }
               loop(stamp1, backoffs0)
 
-            case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
-              bindFailureCounter.incr()
-              Trace.recordBinary("namerd.client/bind.fail", reason)
+            case Throw(e@thrift.BindFailure(reason, _, _, _)) =>
               if (!stopped) {
-                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
+                bindFailureCounter.incr()
+                Trace.recordBinary("namerd.client/bind.fail", reason)
+                val sleep #:: backoffs1 = backoffs0
+                pending = Future.sleep(sleep).onSuccess(_ => loop(stamp0, backoffs1))
               }
 
             case Throw(Failure(Some(Released))) =>
 
             case Throw(e) =>
-              bindFailureCounter.incr()
-              log.error(e, "bind %s", path.show)
-              Trace.recordBinary("namerd.client/bind.exc", e.toString)
-              val sleep #:: backoffs1 = backoffs0
-              pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
+              if (!stopped) {
+                bindFailureCounter.incr()
+                log.error(e, "bind %s", path.show)
+                Trace.recordBinary("namerd.client/bind.exc", e.toString)
+                val sleep #:: backoffs1 = backoffs0
+                pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
+              }
           }
         }
 
@@ -199,14 +203,17 @@ class ThriftNamerClient(
         def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
           Trace.recordBinary("namerd.client/addr.path", idPath)
           val req = thrift.AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
+          log.info("addr %s", idPath)
           pending = Trace.letClear(client.addr(req)).respond {
             case Return(thrift.Addr(stamp1, thrift.AddrVal.Neg(_))) =>
               addr() = Addr.Neg
+              log.info("addr %s negative resolution", idPath)
               Trace.record("namerd.client/addr.neg")
               loop(stamp1, backoffs0)
 
             case Return(thrift.Addr(stamp1, thrift.AddrVal.Bound(thrift.BoundAddr(taddrs, boundMeta)))) =>
               addrSuccessCounter.incr()
+              log.info("addr %s resolved to %d", idPath, taddrs.size)
               val addrs = taddrs.map { taddr =>
                 val thrift.TransportAddress(ipbb, port, addressMeta) = taddr
                 val ipBytes = Buf.ByteArray.Owned.extract(Buf.ByteBuffer.Owned(ipbb))
@@ -219,18 +226,23 @@ class ThriftNamerClient(
               loop(stamp1, backoffs0)
 
             case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
-              addrFailureCounter.incr()
-              Trace.recordBinary("namerd.client/addr.fail", msg)
               if (!stopped) {
-                pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
+                addrFailureCounter.incr()
+                log.error(e, "addr %s", idPath)
+                Trace.recordBinary("namerd.client/addr.fail", msg)
+
+                val sleep #:: backoffs1 = backoffs0
+                pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
               }
 
             case Throw(e) =>
-              addrFailureCounter.incr()
-              log.error(e, "addr on %s", idPath)
-              Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
-              val sleep #:: backoffs1 = backoffs0
-              pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
+              if (!stopped) {
+                addrFailureCounter.incr()
+                log.error(e, "addr %s", idPath)
+                Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
+                val sleep #:: backoffs1 = backoffs0
+                pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
+              }
           }
         }
 
