@@ -5,9 +5,9 @@ import com.twitter.finagle.http.{HeaderMap, Request, Response}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.util.Future
 import io.opentracing.References
+import io.opentracing.contrib.tracerresolver.TracerResolver
 import io.opentracing.propagation.{Format, TextMap}
 import io.opentracing.tag.Tags
-import io.opentracing.util.GlobalTracer
 
 object OpenTracingFilter {
   val role = Stack.Role("openTracing")
@@ -18,7 +18,7 @@ object OpenTracingFilter {
 
       def make(_tracer: param.Tracer, next: ServiceFactory[Request, Response]) = {
         val param.Tracer(tracer) = _tracer
-        if (!GlobalTracer.isRegistered) next
+        if (TracerResolver.resolveTracer() == null) next
         else (new OpenTracingFilter).andThen(next)
       }
     }
@@ -31,8 +31,8 @@ class OpenTracingFilter extends SimpleFilter[Request, Response] {
   }
 
   private[this] def recordRequest(req: Request): Unit = {
-    if (GlobalTracer.isRegistered) {
-      val tracer = GlobalTracer.get()
+    val tracer = TracerResolver.resolveTracer()
+    if (tracer != null) {
       val spanBuilder = tracer.buildSpan(req.method.name)
         .withTag(Tags.COMPONENT.getKey, "linkerd")
         .withTag(Tags.HTTP_METHOD.getKey, req.method.name)
