@@ -71,4 +71,7 @@ object Deps {
 
   // dnsjava
   val dnsJava = "dnsjava" % "dnsjava" % "2.1.8"
+
+  // opentracing
+  val opentracing = "io.opentracing" % "opentracing-util" % "0.30.0"
 }

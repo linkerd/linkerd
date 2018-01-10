@@ -75,6 +75,7 @@ object LinkerdBuild extends Base {
       .dependsOn(baseHttp)
       .withTwitterLibs(Deps.finagle("http"))
       .withLib(Deps.boringssl)
+      .withLib(Deps.opentracing)
       .withTests()
       .withE2e()
 
