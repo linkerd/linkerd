@@ -21,27 +21,16 @@ class DtabHandler(
       getDtab(namespace).transform {
         case Return(None) => Future.value(Response(Status.NotFound))
         case Return(Some(dtab)) =>
-          render(namespace, dtab.dtab)
+          renderDtab(namespace, dtab.dtab)
         case Throw(e) =>
-          renderError(namespace, e)
+          renderError(e)
       }
     case _ =>
       Future.value(Response(Status.NotFound))
   }
 
-  def render(name: String, dtab: Dtab): Future[Response] = {
-    val content = s"""
-      <!doctype html>
-      <html>
-        <head>
-          <title>namerd admin</title>
-          <link rel="shortcut icon" href="../files/images/favicon.png" />
-          <link type="text/css" href="../files/css/lib/bootstrap.min.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/fonts.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/dashboard.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
-        </head>
-        <body>
+  def renderDtab(name: String, dtab: Dtab): Future[Response] = {
+    val body = s"""
           <div class="container-fluid">
             <div class="row">
               <div class="col-lg-6">
@@ -57,16 +46,26 @@ class DtabHandler(
         .Codec.writeStr(dtab)
     }}</script>
           <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
-        </body>
-      </html>
-    """
-    val response = Response()
-    response.contentType = MediaType.Html + ";charset=UTF-8"
-    response.contentString = content
-    Future.value(response)
+      """
+    render(body)
   }
 
-  def renderError(name: String, e: Throwable): Future[Response] = {
+  def renderError(e: Throwable): Future[Response] = {
+    val body = s"""
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-lg-6">
+                <h2 class="router-label-title">Dtab Error</h2>
+                <p>An error was encountered when fetching or parsing the dtab:</p>
+                <pre>$e</pre>
+              </div>
+            </div>
+          </div>
+    """
+    render(body)
+  }
+
+  def render(body: String): Future[Response] = {
     val content = s"""
       <!doctype html>
       <html>
@@ -79,15 +78,7 @@ class DtabHandler(
           <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
         </head>
         <body>
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col-lg-6">
-                <h2 class="router-label-title">Dtab Error</h2>
-                <p>An error was encountered when fetching or parsing the dtab:</p>
-                <pre>$e</pre>
-              </div>
-            </div>
-          </div>
+        $body
         </body>
       </html>
     """
