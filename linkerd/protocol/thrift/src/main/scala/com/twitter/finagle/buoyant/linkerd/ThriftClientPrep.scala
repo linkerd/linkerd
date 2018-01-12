@@ -2,8 +2,10 @@ package com.twitter.finagle.buoyant.linkerd
 
 import com.twitter.finagle.Thrift.param.{AttemptTTwitterUpgrade, ProtocolFactory}
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.filter.PayloadSizeFilter
+import com.twitter.finagle.naming.BindingFactory.Dest
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.thrift._
@@ -15,6 +17,11 @@ import org.apache.thrift.transport.TMemoryInputTransport
 object ThriftClientPrep {
 
   val role = StackClient.Role.prepConn
+
+  case class SendConcreteDest(enabled: Boolean)
+  implicit object SendConcreteDest extends Stack.Param[SendConcreteDest] {
+    override def default = SendConcreteDest(false)
+  }
 
   val module = new Stack.ModuleParams[ServiceFactory[ThriftClientRequest, Array[Byte]]] {
     override def parameters: Seq[Stack.Param[_]] = Nil
@@ -31,7 +38,20 @@ object ThriftClientPrep {
       val Label(label) = params[Label]
       val Thrift.param.ClientId(clientId) = params[Thrift.param.ClientId]
       val Thrift.param.ProtocolFactory(pf) = params[Thrift.param.ProtocolFactory]
-      prepare(next, stats, attemptUpgrade, label, clientId, pf)
+      val dest = if (params[SendConcreteDest].enabled) {
+        params[Dest].dest match {
+          case bound: Name.Bound =>
+            bound.id match {
+              case d: Path => Some(d)
+              case _ => None
+            }
+          case _ => None
+        }
+      } else {
+        None
+      }
+
+      prepare(next, stats, attemptUpgrade, label, clientId, dest, pf)
     }
   }
 
@@ -40,6 +60,7 @@ object ThriftClientPrep {
     attemptUpgrade: Boolean,
     label: String,
     clientId: Option[ClientId],
+    dest: Option[Path],
     pf: TProtocolFactory
   )(
     service: Service[ThriftClientRequest, Array[Byte]]
@@ -50,7 +71,7 @@ object ThriftClientPrep {
     val payloadSizeService = payloadSize.andThen(service)
     val upgradedService =
       if (attemptUpgrade) {
-        upgrade(payloadSizeService, label, clientId, pf)
+        upgrade(payloadSizeService, label, clientId, dest, pf)
       } else {
         Future.value(payloadSizeService)
       }
@@ -66,9 +87,10 @@ object ThriftClientPrep {
     attemptUpgrade: Boolean,
     label: String,
     clientId: Option[ClientId],
+    dest: Option[Path],
     pf: TProtocolFactory
   ): ServiceFactory[ThriftClientRequest, Array[Byte]] = {
-    val preparingFactory = underlying.flatMap(prepareService(stats, attemptUpgrade, label, clientId, pf))
+    val preparingFactory = underlying.flatMap(prepareService(stats, attemptUpgrade, label, clientId, dest, pf))
 
     if (attemptUpgrade) {
       new ServiceFactoryProxy(preparingFactory) {
@@ -89,6 +111,7 @@ object ThriftClientPrep {
     service: Service[ThriftClientRequest, Array[Byte]],
     label: String,
     clientId: Option[ClientId],
+    dest: Option[Path],
     pf: TProtocolFactory
   ): Future[Service[ThriftClientRequest, Array[Byte]]] = {
     // Attempt to upgrade the protocol the first time around by
@@ -111,7 +134,7 @@ object ThriftClientPrep {
       val ttwitter = new TTwitterClientFilter(
         label,
         reply.`type` != TMessageType.EXCEPTION,
-        clientId, pf
+        clientId, dest, pf
       )
       // TODO: also apply this for Protocols.binaryFactory
 

@@ -1,6 +1,6 @@
 package com.twitter.finagle.buoyant.linkerd
 
-import com.twitter.finagle.{Dentry, Dtab, Service, SimpleFilter}
+import com.twitter.finagle.{Dentry, Dtab, Service, SimpleFilter, Path}
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.thrift._
 import com.twitter.finagle.tracing.Trace
@@ -13,13 +13,14 @@ import org.apache.thrift.protocol.TProtocolFactory
 
 /**
  * Forked from https://github.com/twitter/finagle/blob/develop/finagle-thrift/src/main/scala/com/twitter/finagle/thrift/TTwitterClientFilter.scala
- * We have modified TTwitterClientFilter to read the dest field out of the Dest local context and
- * write it into the dest request header.
+ * We have modified TTwitterClientFilter to write a given dest into the dest request header.  If
+ * no dest is supplied, the dest is taken from the Dest local context.
  */
 class TTwitterClientFilter(
   serviceName: String,
   isUpgraded: Boolean,
   clientId: Option[ClientId],
+  dest: Option[Path],
   protocolFactory: TProtocolFactory
 )
   extends SimpleFilter[ThriftClientRequest, Array[Byte]] {
@@ -43,7 +44,10 @@ class TTwitterClientFilter(
     traceId._parentId.foreach { id => header.setParent_span_id(id.toLong) }
     header.setTrace_id(traceId.traceId.toLong)
     header.setFlags(traceId.flags.toLong)
-    header.setDest(Dest.local.show)
+    dest match {
+      case Some(d) => header.setDest(d.show)
+      case None => header.setDest(Dest.local.show)
+    }
 
     traceId.sampled match {
       case Some(s) => header.setSampled(s)

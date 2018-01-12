@@ -38,6 +38,7 @@ Key | Default Value | Description
 dstPrefix | `/svc` | A path prefix used in `dtab`.
 thriftMethodInDst | `false` | If `true`, thrift method names are appended to destinations for outgoing requests.
 thriftProtocol | `binary` | Either `binary` (TBinaryProtocol) or `compact` (TCompactProtocol). Applies to both clients and servers.
+sendConcreteDest | `false` | If `true`, Linkerd will send the concrete bound name in the TTwitter Dest header.  This option only applies if the TTwitter thrift protocol is used.
 
 
 ## Thrift Server Parameters
