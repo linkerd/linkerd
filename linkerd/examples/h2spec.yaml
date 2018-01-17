@@ -7,7 +7,6 @@ usage:
 
 routers:
 - protocol: h2
-  experimental: true
   label: h2
   servers:
   - port: 4140
