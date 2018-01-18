@@ -1,13 +1,13 @@
 ## 1.3.5 2018-01-17
 
-This release focuses on improvements and ixes for Namerd and the Linkerd Admin UI, and features a number of community contributions!
+This release focuses on quality, and on improving the debugging process. It includes improvements and fixes for Linkerd's Kubernetes support, administrative UI, and Namerd control plane. It officially graduates HTTP/2 support out of experimental, and also features a number of community contributions!
 
 * 🎓 H2 router and `io.l5d.mesh` Namerd interface are no longer experimental ([#1782](https://github.com/linkerd/linkerd/pull/1782))! 🎓
 * Add an experimental namer for Rancher service discovery ([#1740](https://github.com/linkerd/linkerd/pull/1740)). A huge thank you to [@fangel](https://github.com/fangel) for contributing this namer!
 * Kubernetes
   * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to recieve updates from an endpoint ([#1755](https://github.com/linkerd/linkerd/pull/1755)). Contributed by [@obeattie](https://github.com/obeattie).
 * Admin UI
-  * Add `/admin/client_state.json` endpoint to return the current address set of each client to aid in debugging ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
+  * Add an /admin/client_state.json debugging endpoint to expose the current address set of each client, allowing you to easily inspect where Linkerd thinks it can send traffic to ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
   * Fix an error when using the admin UI to perform delegations with a dtab stored in Namerd over the `io.l5d.thriftNameInterpreter` interface ([#1762](https://github.com/linkerd/linkerd/pull/1762)). Thanks to [@jackkleeman](https://github.com/jackkleeman)!
   * Render an error instead of a blank page for failures on Namerd's dtab playground ([#1770](https://github.com/linkerd/linkerd/pull/1770)).
 * Namerd
