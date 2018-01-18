@@ -1,24 +1,15 @@
 ## 1.3.5 2018-01-17
 
-* Add an experimental namer for Rancher service discovery ([#1740). A huge thank you to [@fangel](https://github.com/fangel) for contributing this namer!
+* Add an experimental namer for Rancher service discovery ([#1740](https://github.com/linkerd/linkerd/pull/1740)). A huge thank you to [@fangel](https://github.com/fangel) for contributing this namer!
 * Kubernetes
-  * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to recieve updates from an endpoint ([#1755]). Contributed by [@obeattie].
+  * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to recieve updates from an endpoint ([#1755](https://github.com/linkerd/linkerd/pull/1755)). Contributed by [@obeattie](https://github.com/obeattie).
 * Admin UI
-  * Add `/admin/client_state.json` endpoint to return the current address set of each client ([#1768]).
-  * Fix an error when using the admin UI to perform delegations with a dtab stored in Namerd over the `io.l5d.thriftNameInterpreter` interface ([#1762]). Thanks to [@jackkleeman](https://github.com/jackkleeman)!
-  * Render an error instead of a blank page for failures on Namerd's dtab playground ([#1770]).
+  * Add `/admin/client_state.json` endpoint to return the current address set of each client ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
+  * Fix an error when using the admin UI to perform delegations with a dtab stored in Namerd over the `io.l5d.thriftNameInterpreter` interface ([#1762](https://github.com/linkerd/linkerd/pull/1762)). Thanks to [@jackkleeman](https://github.com/jackkleeman)!
+  * Render an error instead of a blank page for failures on Namerd's dtab playground ([#1770](https://github.com/linkerd/linkerd/pull/1770)).
 * Namerd
-  * Errors parsing dtabs stored in Consul are now surfaced in log messages ([#1760]).
-  * Fix an error where Linekrd could sometimes miss updates from Namerd when using the `io.l5d.thriftNameInterpreter` interface ([#1753]). Thanks to [@obeattie]!
-
-[@obeattie]: https://github.com/obeattie
-[#1740]: https://github.com/linkerd/linkerd/pull/1740
-[#1753]: https://github.com/linkerd/linkerd/pull/1753
-[#1755]: https://github.com/linkerd/linkerd/pull/1755
-[#1760]: https://github.com/linkerd/linkerd/pull/1760
-[#1762]: https://github.com/linkerd/linkerd/pull/1762
-[#1768]: https://github.com/linkerd/linkerd/pull/1768
-[#1770]: https://github.com/linkerd/linkerd/pull/1768
+  * Errors parsing dtabs stored in Consul are now surfaced in log messages ([#1760](https://github.com/linkerd/linkerd/pull/1760)).
+  * Fix an error where Linekrd could sometimes miss updates from Namerd when using the `io.l5d.thriftNameInterpreter` interface ([#1753](https://github.com/linkerd/linkerd/pull/1753)). Thanks to [@obeattie](https://github.com/obeattie)!
 
 ## 1.3.4 2017-12-15
 
