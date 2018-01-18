@@ -19,7 +19,6 @@ class MeshInterpreterInitializerTest extends FunSuite {
 
   test("parse config") {
     val yaml = s"""|kind: io.l5d.mesh
-                   |experimental: true
                    |dst: /$$/inet/127.1/4321
                    |root: /default
                    |tls:
@@ -45,25 +44,5 @@ class MeshInterpreterInitializerTest extends FunSuite {
     assert(tls.trustCerts == Some(List("/foo/caCert.pem")))
     assert(tls.clientAuth.get.certPath == "/namerd-cert.pem")
     assert(tls.clientAuth.get.keyPath == "/namerd-key.pk8")
-  }
-
-  test("without experimental") {
-    val yaml = s"""|kind: io.l5d.mesh
-                   |dst: /$$/inet/127.1/4321
-                   |root: /default
-                   |tls:
-                   |  disableValidation: false
-                   |  commonName: "{service}"
-                   |  trustCerts:
-                   |  - /foo/caCert.pem
-                   |  clientAuth:
-                   |    certPath: /namerd-cert.pem
-                   |    keyPath: /namerd-key.pk8
-                   |""".stripMargin
-
-    val mapper = Parser.objectMapper(yaml, Iterable(Seq(MeshInterpreterInitializer)))
-    val namerd = mapper.readValue[InterpreterConfig](yaml).asInstanceOf[MeshInterpreterConfig]
-    mapper.writeValueAsString(namerd) // ensure serialization doesn't blow up
-    assert(namerd.disabled)
   }
 }
