@@ -12,10 +12,10 @@ case class H2AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
     val remoteHost = "-"
     val identd = "-"
     val user = "-"
-    val referer = "-"
+    val referer = reqHeaders.get("referer").getOrElse("-")
     val userAgent = reqHeaders.get("user-agent").getOrElse("-")
     var hostHeader = req.authority
-    val reqResource = s"${req.method.toString.toUpperCase} ${req.path} -"
+    val reqResource = s"${req.method.toString.toUpperCase} ${req.path} HTTP/2"
 
     svc(req).onSuccess { rsp =>
       val statusCode = rsp.status.code
