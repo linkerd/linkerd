@@ -2,6 +2,7 @@ package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.buoyant.h2.{Request, Response}
+import com.twitter.finagle.context.RemoteInfo
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
 
@@ -9,7 +10,7 @@ case class H2AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, svc: Service[Request, Response]) = {
     val reqHeaders = req.headers
-    val remoteHost = "-"
+    val remoteHost = RemoteInfo.Upstream.addr.getOrElse("-")
     val identd = "-"
     val user = "-"
     val referer = reqHeaders.get("referer").getOrElse("-")
