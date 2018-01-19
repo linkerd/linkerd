@@ -5,12 +5,16 @@ import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.finagle.context.RemoteInfo
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
+import java.net.{InetSocketAddress}
 
 case class H2AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, svc: Service[Request, Response]) = {
     val reqHeaders = req.headers
-    val remoteHost = RemoteInfo.Upstream.addr.getOrElse("-")
+    val remoteHost = RemoteInfo.Upstream.addr match {
+      case Some(isa: InetSocketAddress) => isa.getHostString
+      case _ => "-"
+    }
     val identd = "-"
     val user = "-"
     val referer = reqHeaders.get("referer").getOrElse("-")
