@@ -4,7 +4,6 @@ import com.twitter.conversions.storage._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import java.io.IOException
 import java.nio.file.{Path => NioPath, _}
 import java.nio.file.StandardWatchEventKinds._
 import scala.collection.JavaConverters._
@@ -60,11 +59,13 @@ object Watcher {
       log.debug("fs observing %s", root)
       @volatile var closed = false
 
+      val watcher = root.getFileSystem.newWatchService()
+
       /*
        * Watch this root directory for updates. When new directories
        * are observed, watch them.
        */
-      def watch(dirs: Map[String, File.Dir], regs: Map[String, File.UpReg], watcher: WatchService): Unit = pool {
+      def watch(dirs: Map[String, File.Dir], regs: Map[String, File.UpReg]): Unit = pool {
         if (closed) return
         log.debug("fs waiting for events on %s", root)
         val key = watcher.take()
@@ -116,57 +117,55 @@ object Watcher {
         }
 
         if (key.reset())
-          watch(updirs, upregs, watcher)
+          watch(updirs, upregs)
       }
 
-      /*
-       * Asynchronously load up the initial state of the root and then--if that succeeds--watch it for updates
-       */
-
-      val watcher = Try {
-        val w = root.getFileSystem.newWatchService()
-        root.register(w, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
-        w
+      val watchKey = Try {
+        root.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
       }
 
-      watcher match {
-        case Throw(e) => state() = Activity.Failed(e)
-        case Return(w) => pool {
-          Try(Files.newDirectoryStream(root)) match {
-            case Return(files) =>
-              var (dirs, regs) = (Map.empty[String, File.Dir], Map.empty[String, File.UpReg])
-              files.asScala.foreach {
-                case d if Files.isDirectory(d) =>
-                  val name = d.getFileName.toString
-                  log.debug("fs init dir %s", name)
-                  dirs += name -> Watcher(d)
+      watchKey match {
+        case Throw(e) =>
+          state() = Activity.Failed(e)
+          watcher.close()
+        case Return(_) =>
+          // Asynchronously load up the initial state of the root and then--if that succeeds--watch it for updates
+          pool {
+            Try(Files.newDirectoryStream(root)) match {
+              case Return(files) =>
+                var (dirs, regs) = (Map.empty[String, File.Dir], Map.empty[String, File.UpReg])
+                files.asScala.foreach {
+                  case d if Files.isDirectory(d) =>
+                    val name = d.getFileName.toString
+                    log.debug("fs init dir %s", name)
+                    dirs += name -> Watcher(d)
 
-                case f if Files.isRegularFile(f) =>
-                  val name = f.getFileName.toString
-                  val reg = File.UpReg()
-                  //val child = root.resolve(f)
-                  val child = f
-                  log.debug("fs init file %s => %s", root, child)
-                  pool {
-                    reg.buf() = read(child)
-                  }
-                  regs += name -> reg
+                  case f if Files.isRegularFile(f) =>
+                    val name = f.getFileName.toString
+                    val reg = File.UpReg()
+                    //val child = root.resolve(f)
+                    val child = f
+                    log.debug("fs init file %s => %s", root, child)
+                    pool {
+                      reg.buf() = read(child)
+                    }
+                    regs += name -> reg
 
-                case _ =>
-              }
+                  case _ =>
+                }
 
-              state() = Activity.Ok(regs ++ dirs)
-              watch(dirs, regs, w)
+                state() = Activity.Ok(regs ++ dirs)
+                watch(dirs, regs)
 
-            case Throw(e) =>
-              state() = Activity.Failed(e)
+              case Throw(e) =>
+                state() = Activity.Failed(e)
+            }
           }
-        }
       }
 
       Closable.make { _ =>
         closed = true
-        watcher.foreach(_.close())
+        watcher.close()
         Future.Unit
       }
     }
