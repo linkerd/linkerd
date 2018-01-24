@@ -7,7 +7,7 @@ This release focuses on quality, and on improving the debugging process. It incl
 * Kubernetes
   * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to recieve updates from an endpoint ([#1755](https://github.com/linkerd/linkerd/pull/1755)). Contributed by [@obeattie](https://github.com/obeattie).
 * Admin UI
-  * Add an /admin/client_state.json debugging endpoint to expose the current address set of each client, allowing you to easily inspect where Linkerd thinks it can send traffic to ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
+  * Add a /client_state.json debugging endpoint to expose the current address set of each client, allowing you to easily inspect where Linkerd thinks it can send traffic to ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
   * Fix an error when using the admin UI to perform delegations with a dtab stored in Namerd over the `io.l5d.thriftNameInterpreter` interface ([#1762](https://github.com/linkerd/linkerd/pull/1762)). Thanks to [@jackkleeman](https://github.com/jackkleeman)!
   * Render an error instead of a blank page for failures on Namerd's dtab playground ([#1770](https://github.com/linkerd/linkerd/pull/1770)).
 * Namerd
