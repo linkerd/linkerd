@@ -42,7 +42,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
-        log.error("retrying k8s request to %s on error %s", path, ex)
+        log.warning("retrying k8s request to %s on error %s", path, ex)
         true
     },
     HighResTimer.Default,
@@ -143,7 +143,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           case status =>
             rsp.reader.discard()
-            log.error("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
+            log.warning("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
             val sleep #:: backoffs1 = backoffs0
             Future.sleep(sleep).before(_resourceVersionTooOld(backoffs1))
         }
