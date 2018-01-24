@@ -60,7 +60,6 @@ object Watcher {
       @volatile var closed = false
 
       val watcher = root.getFileSystem.newWatchService()
-      root.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
 
       /*
        * Watch this root directory for updates. When new directories
@@ -121,39 +120,47 @@ object Watcher {
           watch(updirs, upregs)
       }
 
-      /*
-       * Asynchronously load up the initial state of the root and then--if that succeeds--watch it for updates
-       */
-      pool {
-        Try(Files.newDirectoryStream(root)) match {
-          case Return(files) =>
-            var (dirs, regs) = (Map.empty[String, File.Dir], Map.empty[String, File.UpReg])
-            files.asScala.foreach {
-              case d if Files.isDirectory(d) =>
-                val name = d.getFileName.toString
-                log.debug("fs init dir %s", name)
-                dirs += name -> Watcher(d)
+      val watchKey = Try {
+        root.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
+      }
 
-              case f if Files.isRegularFile(f) =>
-                val name = f.getFileName.toString
-                val reg = File.UpReg()
-                //val child = root.resolve(f)
-                val child = f
-                log.debug("fs init file %s => %s", root, child)
-                pool {
-                  reg.buf() = read(child)
+      watchKey match {
+        case Throw(e) =>
+          state() = Activity.Failed(e)
+          watcher.close()
+        case Return(_) =>
+          // Asynchronously load up the initial state of the root and then--if that succeeds--watch it for updates
+          pool {
+            Try(Files.newDirectoryStream(root)) match {
+              case Return(files) =>
+                var (dirs, regs) = (Map.empty[String, File.Dir], Map.empty[String, File.UpReg])
+                files.asScala.foreach {
+                  case d if Files.isDirectory(d) =>
+                    val name = d.getFileName.toString
+                    log.debug("fs init dir %s", name)
+                    dirs += name -> Watcher(d)
+
+                  case f if Files.isRegularFile(f) =>
+                    val name = f.getFileName.toString
+                    val reg = File.UpReg()
+                    //val child = root.resolve(f)
+                    val child = f
+                    log.debug("fs init file %s => %s", root, child)
+                    pool {
+                      reg.buf() = read(child)
+                    }
+                    regs += name -> reg
+
+                  case _ =>
                 }
-                regs += name -> reg
 
-              case _ =>
+                state() = Activity.Ok(regs ++ dirs)
+                watch(dirs, regs)
+
+              case Throw(e) =>
+                state() = Activity.Failed(e)
             }
-
-            state() = Activity.Ok(regs ++ dirs)
-            watch(dirs, regs)
-
-          case Throw(e) =>
-            state() = Activity.Failed(e)
-        }
+          }
       }
 
       Closable.make { _ =>
