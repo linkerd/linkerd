@@ -1,15 +1,14 @@
 package io.buoyant.config
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.core.{JsonParser, JsonProcessingException}
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.concurrent.AsyncStream
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
-import com.twitter.util.{Return, Throw, Try}
+import com.twitter.util.{Future, Try}
 
-import scala.collection.mutable
 import scala.util.control.NonFatal
 
 class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
@@ -29,105 +28,68 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
   object EndOfStream extends Throwable
 
   private[this] object Incomplete {
-    val unexpectedEOI = "Unexpected end-of-input"
+    val unexpectedEOI = "end-of-input"
 
     def unapply(jpe: JsonProcessingException): Boolean =
       jpe.getMessage match {
         case null => false
-        case msg => msg.startsWith(unexpectedEOI)
+        case msg => msg.contains(unexpectedEOI)
       }
   }
 
-  protected[this] def parse[T](buf: Buf)(f: JsonParser => T) = {
-    val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(buf)
+  private[this] def readBufObj[T: TypeReference](chunk: Buf): (Option[T], Buf) = {
+    val Buf.ByteArray.Owned(bytes, begin, end) = Buf.ByteArray.coerce(chunk)
     val parser = mapper.getFactory.createParser(bytes, begin, end - begin)
-    try f(parser) finally parser.close()
+
+    val (obj, offsetAfter) = try {
+      val v = Option(parser.readValueAs[T](implicitly[TypeReference[T]]))
+      val o = parser.getCurrentLocation.getByteOffset.toInt
+      (v, o)
+    } catch {
+      case Incomplete() => (None, 0)
+    } finally {
+      parser.close()
+    }
+
+    log.trace("json read object: %s", obj)
+    val leftover = chunk.slice(offsetAfter, chunk.length)
+    (obj, leftover)
   }
 
   /**
-   * Given a chunk of bytes, read a stream of objects, and return the remaining unread buffer.
+   * Given a chunk of bytes, read a sequence of objects, and return the remaining unread buffer.
    */
-  def readChunked[T: TypeReference](chunk: Buf): (Seq[T], Buf) = {
-    var objs = mutable.Buffer.empty[T]
-    var offset = 0L
-    parse(chunk) { json =>
-      var reading = true
-      while (reading) {
-        log.ifTrace {
-          val Buf.Utf8(rest) = chunk.slice(offset.toInt, chunk.length)
-          s"json chunk reading: [$offset, ${chunk.length}] $rest"
-        }
-
-        try {
-          json.readValueAs[T](implicitly[TypeReference[T]]) match {
-            case obj if obj != null =>
-              objs.append(obj)
-
-              val prior = offset
-              offset = json.getCurrentLocation.getByteOffset
-              reading = offset < chunk.length - 1
-
-              log.ifTrace {
-                val Buf.Utf8(read) = chunk.slice(prior.toInt, offset.toInt)
-                s"json chunk read: [$prior, $offset] $read $obj"
-              }
-
-            case _ =>
-              val Buf.Utf8(chunkstr) = chunk
-              val msg = s"could not decode json object in chunk @ ${offset} bytes: ${chunkstr}"
-              throw new IllegalStateException(msg)
-          }
-        } catch {
-          case Incomplete() =>
-            reading = false
-            log.ifTrace {
-              val Buf.Utf8(incomplete) = chunk.slice(offset.toInt, chunk.length)
-              s"json chunk incomplete: [$offset, ${chunk.length}] $incomplete"
-            }
-        }
-      }
-    }
-
-    val rest =
-      if (offset >= chunk.length) Buf.Empty
-      else chunk.slice(offset.toInt, chunk.length)
-
-    (objs, rest)
-  }
-
-  private def fromReaderJson(r: Reader, chunkSize: Int = Int.MaxValue): AsyncStream[Option[Buf]] = {
-    log.trace("json reading chunk of %d bytes", chunkSize)
-    val read = r.read(chunkSize).respond {
-      case Return(Some(Buf.Utf8(chunk))) =>
-        log.trace("json read chunk: %s", chunk)
-      case Return(None) | Throw(_: Reader.ReaderDiscarded) =>
-        log.trace("json read eoc")
-      case Throw(e) =>
-        log.warning(e, "json read error")
-    }.handle {
-      case NonFatal(e) => None
-    }
-
-    AsyncStream.fromFuture(read).flatMap {
-      //Fake None element to get around scanLeft being one behind bug
-      //Tracked in https://github.com/twitter/util/issues/195
-      //Can be removed once 195 is fixed
-      case Some(buf) => Some(buf) +:: None +:: fromReaderJson(r, chunkSize)
-      case None => AsyncStream.empty[Option[Buf]]
+  def readBuf[T: TypeReference](b: Buf, objs: Seq[T] = Seq.empty): (Seq[T], Buf) = {
+    readBufObj(b) match {
+      case (Some(o), leftover) if !leftover.isEmpty =>
+        readBuf(leftover, objs :+ o)
+      case (Some(o), _) =>
+        (objs :+ o, Buf.Empty)
+      case (None, leftover) =>
+        (objs, leftover)
     }
   }
 
   def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
-    fromReaderJson(reader, bufsize)
-      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty))(
-        (init, buf) => {
-          buf match {
-            case Some(b) => readChunked[T](init._2.concat(b))
-            case None => (Nil, init._2)
-          }
-        }
-      )
-      .flatMap(s => AsyncStream.fromSeq(s._1))
-  }
+    // Wrap the reader so reads just terminate if a non-fatal exception occurs. This ensures the below AsyncStream ends
+    // if reads fail
+    val terminatingReader = new Reader {
+      def read(n: Int): Future[Option[Buf]] = reader.read(n).handle {
+        case NonFatal(e) =>
+          log.debug(e, "Error reading JSON stream")
+          None
+      }
+      def discard(): Unit = reader.discard()
+    }
 
+    AsyncStream.fromReader(terminatingReader, bufsize)
+      .scanLeft[(Seq[T], Buf)]((Nil, Buf.Empty)) {
+        case ((_, leftover), chunk) =>
+          val b = leftover.concat(chunk)
+          readBuf(b)
+      }
+      .flatMap {
+        case (v, _) => AsyncStream.fromSeq(v)
+      }
+  }
 }

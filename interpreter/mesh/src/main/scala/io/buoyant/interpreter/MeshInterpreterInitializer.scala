@@ -45,9 +45,6 @@ case class MeshInterpreterConfig(
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
 
-  @JsonIgnore
-  override val experimentalRequired = true
-
   /**
    * Construct a namer.
    */

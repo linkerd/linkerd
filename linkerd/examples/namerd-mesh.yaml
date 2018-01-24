@@ -1,9 +1,8 @@
-# Use the experimental namerd gRPC API for name resolution.
+# Use the namerd gRPC API for name resolution.
 routers:
 - protocol: http
   interpreter:
     kind: io.l5d.mesh
-    experimental: true
     dst: /$/inet/127.1/4321
     root: /default
   servers:

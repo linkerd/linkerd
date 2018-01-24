@@ -5,7 +5,7 @@ namers:
 
 routers:
 - protocol: h2
-  experimental: true
+  h2AccessLog: logs/access.log
   dtab: |
     /srv => /#/io.l5d.fs;
     /svc/localhost:4142 => /$/inet/127.1/8888;
