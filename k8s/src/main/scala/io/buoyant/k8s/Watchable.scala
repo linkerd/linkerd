@@ -36,11 +36,13 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       case (_, Return(rep)) if rep.status.code >= 200 && rep.status.code < 300 => false
       case (_, Return(rep)) if rep.status == http.Status.NotFound || rep.status == http.Status.Gone => false
       // All other status codes are unexpected and should be retried
-      case (_, Return(rep)) => true
+      case (_, Return(rep)) =>
+        log.error("retrying k8s request to %s on unexpected response code %d with message %s", path, rep.statusCode, rep.contentString)
+        true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
       case (_, Throw(NonFatal(ex))) =>
-        log.error("retrying k8s request to %s on error %s", path, ex)
+        log.warning("retrying k8s request to %s on error %s", path, ex)
         true
     },
     HighResTimer.Default,
@@ -141,7 +143,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           case status =>
             rsp.reader.discard()
-            log.debug("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
+            log.warning("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
             val sleep #:: backoffs1 = backoffs0
             Future.sleep(sleep).before(_resourceVersionTooOld(backoffs1))
         }
