@@ -7,7 +7,7 @@ import org.scalatest.FunSuite
 
 class IngressIdentifierConfigTest extends FunSuite {
   test("sanity") {
-    val ingressConfig = new IngressIdentifierConfig(Some("example.org"), Some(Port(9090)), None, Some("linkerd-ingress"))
+    val ingressConfig = new IngressIdentifierConfig(Some("example.org"), Some(Port(9090)), None, Some("linkerd-ingress"), Some(false))
     val _ = ingressConfig.newIdentifier(Params.empty)
   }
 
@@ -19,6 +19,7 @@ class IngressIdentifierConfigTest extends FunSuite {
     val ingress = mapper.readValue[IngressIdentifierConfig](yaml)
     assert(ingress.namespace == None)
     assert(ingress.ingressClassAnnotation == None)
+    assert(ingress.strict == None)
   }
 
   test("parse config with namespace") {
@@ -42,5 +43,17 @@ class IngressIdentifierConfigTest extends FunSuite {
     val ingress = mapper.readValue[IngressIdentifierConfig](yaml)
     assert(ingress.namespace == Some("istio-ns"))
     assert(ingress.ingressClassAnnotation == Some("istio"))
+  }
+
+  test("parse config for strict ingress") {
+    val yaml =
+      """|kind: io.l5d.ingress
+         |strict: true
+      """.stripMargin
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(IngressIdentifierInitializer)))
+    val ingress = mapper.readValue[IngressIdentifierConfig](yaml)
+    assert(ingress.namespace == None)
+    assert(ingress.ingressClassAnnotation == None)
+    assert(ingress.strict == Some(true))
   }
 }

@@ -18,13 +18,14 @@ class IngressIdentifier(
   baseDtab: () => Dtab,
   namespace: Option[String],
   apiClient: Service[http.Request, http.Response],
-  annotationClass: String
+  annotationClass: String,
+  strict: Boolean
 ) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass, strict)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val matchingPath = ingressCache.matchPath(req.host, req.path)
@@ -42,7 +43,8 @@ case class IngressIdentifierConfig(
   host: Option[String],
   port: Option[Port],
   namespace: Option[String],
-  ingressClassAnnotation: Option[String]
+  ingressClassAnnotation: Option[String],
+  strict: Option[Boolean]
 
 ) extends HttpIdentifierConfig with ClientConfig {
   @JsonIgnore
@@ -53,7 +55,7 @@ case class IngressIdentifierConfig(
     baseDtab: () => Dtab = () => Dtab.base
   ): Identifier[Request] = {
     val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
-    new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"))
+    new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"), strict.getOrElse(false))
   }
 }
 

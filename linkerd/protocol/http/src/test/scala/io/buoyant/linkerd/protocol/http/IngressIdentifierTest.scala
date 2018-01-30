@@ -59,7 +59,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("identifies requests by host, without path") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request()
     req0.method = Method.Get
     req0.uri = "/penguins"
@@ -73,7 +73,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("identifies requests by host & path") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request()
     req0.method = Method.Get
     req0.uri = "/fooPath/penguins"
@@ -87,7 +87,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("falls back to the default backend") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request()
     req0.method = Method.Get
     req0.uri = "/fooPath/penguins"
@@ -99,4 +99,30 @@ class IngressIdentifierTest extends FunSuite with Awaits {
     }
   }
 
+  test("strict ingress identifies requests by host & path") {
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
+    val req0 = Request()
+    req0.method = Method.Get
+    req0.uri = "/fooPath/penguins"
+    req0.host = "foo.bar.com"
+
+    await(identifier(req0)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(name == Path.read("/svc/fooNamespace/fooPathPort/fooPathService"))
+      case id: UnidentifiedRequest[Request] => fail(s"unexpected identification: ${id.reason}")
+    }
+  }
+
+  test("strict ingress does not fall back to the default backend") {
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
+    val req0 = Request()
+    req0.method = Method.Get
+    req0.uri = "/fooPath/puffins"
+    req0.host = "authority"
+    await(identifier(req0)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        fail(s"unexpected identification: ${name}")
+      case id: UnidentifiedRequest[Request] => assert(id.reason == "no ingress rule matches")
+    }
+  }
 }
