@@ -367,7 +367,7 @@ Key  | Default Value | Description
 ---- | ------------- | -----------
 namespace | (all) | The Kubernetes namespace where the ingress resources are deployed. If not specified, Linkerd will watch all namespaces.
 ingressClassAnnotation | `linkerd` | When using [multiple ingress controllers](https://github.com/kubernetes/ingress/blob/master/docs/faq/README.md#how-do-i-run-multiple-ingress-controllers-in-the-same-cluster), Linkerd will only use the ingress resource annotated with this class.
-ignoreDefaultBackends | `false` | Ignore default backends - identify requests only when ingress rules exist.
+ignoreDefaultBackends | `false` | Identify requests only when they match an explicit ingress rule specifying a host and/or path.
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
 
