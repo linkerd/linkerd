@@ -99,7 +99,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
     }
   }
 
-  test("strict ingress identifies requests by host & path") {
+  test("ignoreDefaultBackends ingress identifies requests by host & path") {
     val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
     val req0 = Request()
     req0.method = Method.Get
@@ -113,7 +113,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
     }
   }
 
-  test("strict ingress does not fall back to the default backend") {
+  test("ignoreDefaultBackends ingress does not fall back to the default backend") {
     val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
     val req0 = Request()
     req0.method = Method.Get

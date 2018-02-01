@@ -71,14 +71,14 @@ object IngressCache {
  * and checks incoming requests against cached ingress rules.
  *
  * @param namespace: The k8s namespace to filter on. If None, it watches all namespaces.
- * @param strict: Don't create a 'fallback' IngressPath that matches any request for each IngressSpec.
+ * @param ignoreDefaultBackends: Don't create a 'fallback' IngressPath that matches any request for each IngressSpec.
  */
 
 class IngressCache(
   namespace: Option[String],
   apiClient: Service[Request, Response],
   annotationClass: String,
-  strict: Boolean = false
+  ignoreDefaultBackends: Boolean = false
 ) {
   import IngressCache._
 
@@ -134,8 +134,8 @@ class IngressCache(
 
       val name = ingress.metadata.flatMap(_.name)
       val fallback = spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort)).filter { p =>
-        if (strict) log.warning("ingress %s.%s: strict mode enabled, ignoring default backend: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), p)
-        !strict
+        if (ignoreDefaultBackends) log.warning("ingress %s.%s: ignoreDefaultBackends mode enabled, ignoring default backend: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), p)
+        !ignoreDefaultBackends
       }
       IngressSpec(name, namespace, fallback, paths)
     }

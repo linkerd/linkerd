@@ -19,7 +19,7 @@ class IngressIdentifierConfigTest extends FunSuite {
     val ingress = mapper.readValue[IngressIdentifierConfig](yaml)
     assert(ingress.namespace == None)
     assert(ingress.ingressClassAnnotation == None)
-    assert(ingress.strict == None)
+    assert(ingress.ignoreDefaultBackends == None)
   }
 
   test("parse config with namespace") {
@@ -45,15 +45,15 @@ class IngressIdentifierConfigTest extends FunSuite {
     assert(ingress.ingressClassAnnotation == Some("istio"))
   }
 
-  test("parse config for strict ingress") {
+  test("parse config for ignoreDefaultBackends ingress") {
     val yaml =
       """|kind: io.l5d.ingress
-         |strict: true
+         |ignoreDefaultBackends: true
       """.stripMargin
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(IngressIdentifierInitializer)))
     val ingress = mapper.readValue[IngressIdentifierConfig](yaml)
     assert(ingress.namespace == None)
     assert(ingress.ingressClassAnnotation == None)
-    assert(ingress.strict == Some(true))
+    assert(ingress.ignoreDefaultBackends == Some(true))
   }
 }

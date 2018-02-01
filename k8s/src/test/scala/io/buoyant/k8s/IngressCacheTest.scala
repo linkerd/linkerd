@@ -399,7 +399,7 @@ class IngressCacheTest extends FunSuite with Awaits {
     assert(await(cache.matchPath(host, "/unknown-path")).get.svc == "fallback")
   }
 
-  test("strict ingress caches ignore default backends") {
+  test("ignoreDefaultBackends ingress caches ignore default backends") {
     val service = mkIngressApiServiceReturning(ingressResourceListWithOneIngressWithFallback)
     val cache = new IngressCache(None, service, annotationClass, true)
     assert(await(cache.matchPath(host, "/some-path")).get.svc == "echo")

@@ -18,13 +18,13 @@ class IngressIdentifier(
   namespace: Option[String],
   apiClient: Service[http.Request, http.Response],
   annotationClass: String,
-  strict: Boolean
+  ignoreDefaultBackends: Boolean
 ) extends Identifier[Request] {
 
   private[this] val unidentified: RequestIdentification[Request] =
     new UnidentifiedRequest(s"no ingress rule matches")
 
-  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass, strict)
+  private[this] val ingressCache = new IngressCache(namespace, apiClient, annotationClass, ignoreDefaultBackends)
 
   override def apply(req: Request): Future[RequestIdentification[Request]] = {
     val headerToMatch = req.headers.get(Headers.Authority)
@@ -44,7 +44,7 @@ case class IngressIdentifierConfig(
   port: Option[Port],
   namespace: Option[String],
   ingressClassAnnotation: Option[String],
-  strict: Option[Boolean]
+  ignoreDefaultBackends: Option[Boolean]
 
 ) extends H2IdentifierConfig with ClientConfig {
   override def portNum: Option[Int] = port.map(_.port)
@@ -54,7 +54,7 @@ case class IngressIdentifierConfig(
     val DstPrefix(pfx) = params[DstPrefix]
     val BaseDtab(baseDtab) = params[BaseDtab]
     val client = mkClient(params).configured(Label("ingress-identifier"))
-    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"), strict.getOrElse(false))
+    new IngressIdentifier(pfx, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"), ignoreDefaultBackends.getOrElse(false))
   }
 }
 
