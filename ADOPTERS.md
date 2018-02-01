@@ -22,4 +22,4 @@ These organizations are publicly using Linkerd in production:
 - [Zooz](https://www.zooz.com/)
 
 If you're using Linkerd and aren't on this list, feel free to
-[https://github.com/linkerd/linkerd/pulls](submit a pull request)!
+[submit a pull request](https://github.com/linkerd/linkerd/pulls)!
