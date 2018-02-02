@@ -1,6 +1,6 @@
 package io.buoyant.namerd.storage.etcd
 
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.namerd.DtabStoreConfig
@@ -8,7 +8,7 @@ import org.scalatest.{FunSuite, OptionValues}
 
 class EtcdConfigTest extends FunSuite with OptionValues {
   test("sanity") {
-    val store = EtcdConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore
+    val store = EtcdConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore(Stack.Params.empty)
   }
 
   test("parse config") {

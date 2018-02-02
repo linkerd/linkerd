@@ -1,6 +1,7 @@
 package io.buoyant.namerd.storage.etcd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Stack
 import com.twitter.finagle.{Http, Path}
 import io.buoyant.config.types.Port
 import io.buoyant.etcd.Key
@@ -17,7 +18,7 @@ case class EtcdConfig(
   override val experimentalRequired = true
 
   @JsonIgnore
-  override def mkDtabStore: DtabStore = {
+  override def mkDtabStore(params: Stack.Params): DtabStore = {
     new EtcdDtabStore(new Key(
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
       Http.newService(s"${host getOrElse DefaultHost}:${(port getOrElse DefaultPort).port}")

@@ -1,6 +1,7 @@
 package io.buoyant.namerd.storage
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.twitter.finagle.Stack
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.ClientConfig
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
@@ -15,7 +16,7 @@ case class K8sConfig(
   def portNum = port.map(_.port)
 
   @JsonIgnore
-  override def mkDtabStore: DtabStore = {
+  override def mkDtabStore(params: Stack.Params): DtabStore = {
     val client = mkClient()
 
     new K8sDtabStore(client, dst, namespace.getOrElse(DefaultNamespace))
