@@ -294,6 +294,61 @@ class IngressCacheTest extends FunSuite with Awaits {
   ]
 }"""
 
+  val ingressResourceListWithOneIngressWithFallback =
+    """
+{
+  "kind": "IngressList",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "selfLink": "/apis/extensions/v1beta1/ingresses",
+    "resourceVersion": "58845"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "the-ingress",
+        "namespace": "default",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/the-ingress",
+        "uid": "6c1466d7-813e-11e7-b89b-080027a996b8",
+        "resourceVersion": "58840",
+        "generation": 1,
+        "creationTimestamp": "2017-08-14T22:17:55Z"
+      },
+      "spec": {
+        "backend": {
+          "serviceName": "fallback",
+          "servicePort": 2022
+        },
+        "rules": [
+          {
+            "http": {
+              "paths": [
+                {
+                  "path": "/some-path",
+                  "backend": {
+                    "serviceName": "echo",
+                    "servicePort": 1010
+                  }
+                },
+                {
+                  "path": "/other-path",
+                  "backend": {
+                    "serviceName": "echo",
+                    "servicePort": 2021
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "status": {
+        "loadBalancer": {}
+      }
+    }
+  ]
+}"""
+
   val annotationClass = "linkerd"
 
   def mkIngressApiServiceReturning(response: String) = Service.mk[Request, Response] {
@@ -335,6 +390,20 @@ class IngressCacheTest extends FunSuite with Awaits {
     val service = mkIngressApiServiceReturning(ingressResourceListWithOneIngress)
     val cache = new IngressCache(None, service, annotationClass)
     assert(await(cache.matchPath(Some("myhost:80"), "/some-path")).get.svc == "echo")
+  }
+
+  test("ingress caches honor default backends") {
+    val service = mkIngressApiServiceReturning(ingressResourceListWithOneIngressWithFallback)
+    val cache = new IngressCache(None, service, annotationClass)
+    assert(await(cache.matchPath(host, "/some-path")).get.svc == "echo")
+    assert(await(cache.matchPath(host, "/unknown-path")).get.svc == "fallback")
+  }
+
+  test("ignoreDefaultBackends ingress caches ignore default backends") {
+    val service = mkIngressApiServiceReturning(ingressResourceListWithOneIngressWithFallback)
+    val cache = new IngressCache(None, service, annotationClass, true)
+    assert(await(cache.matchPath(host, "/some-path")).get.svc == "echo")
+    assert(await(cache.matchPath(host, "/unknown-path")) == None)
   }
 
   test("on multiple path matches, return first match") {

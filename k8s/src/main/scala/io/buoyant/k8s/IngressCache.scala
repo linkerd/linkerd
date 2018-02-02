@@ -15,8 +15,8 @@ case class IngressSpec(
   def getMatchingPath(hostHeader: Option[String], requestPath: String): Option[IngressPath] = {
     val matchingPath = rules.find(_.matches(hostHeader, requestPath))
     matchingPath match {
-      case Some(path) => log.info("k8s found rule matching %s %s: %s", hostHeader.getOrElse(""), requestPath, path)
-      case None => log.info("no ingress rule found for request %s %s", hostHeader.getOrElse(""), requestPath)
+      case Some(path) => log.info("ingress %s.%s: found rule matching %s %s: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), hostHeader.getOrElse(""), requestPath, path)
+      case None => log.debug("ingress %s.%s: no rules found matching %s %s", name.getOrElse("unknown"), namespace.getOrElse("default"), hostHeader.getOrElse(""), requestPath)
     }
     matchingPath
   }
@@ -71,9 +71,15 @@ object IngressCache {
  * and checks incoming requests against cached ingress rules.
  *
  * @param namespace: The k8s namespace to filter on. If None, it watches all namespaces.
+ * @param ignoreDefaultBackends: Don't create a 'fallback' IngressPath that matches any request for each IngressSpec.
  */
 
-class IngressCache(namespace: Option[String], apiClient: Service[Request, Response], annotationClass: String) {
+class IngressCache(
+  namespace: Option[String],
+  apiClient: Service[Request, Response],
+  annotationClass: String,
+  ignoreDefaultBackends: Boolean = false
+) {
   import IngressCache._
 
   val api = namespace match {
@@ -126,8 +132,12 @@ class IngressCache(namespace: Option[String], apiClient: Service[Request, Respon
         IngressPath(rule.host, path.path, namespace.getOrElse("default"), path.backend.serviceName, path.backend.servicePort)
       }
 
-      val fallback = spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort))
-      IngressSpec(ingress.metadata.flatMap(_.name), namespace, fallback, paths)
+      val name = ingress.metadata.flatMap(_.name)
+      val fallback = if (ignoreDefaultBackends) {
+        log.warning("ingress %s.%s: ignoreDefaultBackends enabled, ignoring default backend", name.getOrElse("unknown"), namespace.getOrElse("default"))
+        None
+      } else spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort))
+      IngressSpec(name, namespace, fallback, paths)
     }
   }
 

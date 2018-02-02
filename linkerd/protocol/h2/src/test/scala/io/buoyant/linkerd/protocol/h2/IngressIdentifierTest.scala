@@ -60,7 +60,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("identifies requests by host, without path") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request("http", Method.Get, "foo.bar.com", "/penguins", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
@@ -70,7 +70,7 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("identifies requests by host & path") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request("http", Method.Get, "foo.bar.com", "/fooPath/penguins", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
@@ -80,12 +80,32 @@ class IngressIdentifierTest extends FunSuite with Awaits {
   }
 
   test("falls back to the default backend") {
-    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd")
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", false)
     val req0 = Request("http", Method.Get, "authority", "/", Stream.empty())
     await(identifier(req0)) match {
       case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
         assert(name == Path.read("/svc/fooNamespace/defaultPort/defaultService"))
       case id: UnidentifiedRequest[Request] => fail(s"unexpected identification: ${id.reason}")
+    }
+  }
+
+  test("ignoreDefaultBackends ingress identifies requests by host & path") {
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
+    val req0 = Request("http", Method.Get, "foo.bar.com", "/fooPath/penguins", Stream.empty())
+    await(identifier(req0)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        assert(name == Path.read("/svc/fooNamespace/fooPathPort/fooPathService"))
+      case id: UnidentifiedRequest[Request] => fail(s"unexpected identification: ${id.reason}")
+    }
+  }
+
+  test("ignoreDefaultBackends ingress does not fall back to the default backend") {
+    val identifier = new IngressIdentifier(Path.Utf8("svc"), () => Dtab.empty, None, service, "linkerd", true)
+    val req0 = Request("http", Method.Get, "authority", "/fooPath/puffins", Stream.empty())
+    await(identifier(req0)) match {
+      case IdentifiedRequest(Dst.Path(name, base, local), req1) =>
+        fail(s"unexpected identification: ${name}")
+      case id: UnidentifiedRequest[Request] => assert(id.reason == "no ingress rule matches")
     }
   }
 }
