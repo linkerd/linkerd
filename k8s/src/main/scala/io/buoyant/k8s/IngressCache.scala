@@ -133,10 +133,10 @@ class IngressCache(
       }
 
       val name = ingress.metadata.flatMap(_.name)
-      val fallback = spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort)).filter { p =>
-        if (ignoreDefaultBackends) log.warning("ingress %s.%s: ignoreDefaultBackends mode enabled, ignoring default backend: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), p)
-        !ignoreDefaultBackends
-      }
+      val fallback = if (ignoreDefaultBackends) {
+        log.warning("ingress %s.%s: ignoreDefaultBackends enabled, ignoring default backend", name.getOrElse("unknown"), namespace.getOrElse("default"))
+        None
+      } else spec.backend.map(b => IngressPath(None, None, namespace.getOrElse("default"), b.serviceName, b.servicePort))
       IngressSpec(name, namespace, fallback, paths)
     }
   }
