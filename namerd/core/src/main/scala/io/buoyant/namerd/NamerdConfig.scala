@@ -56,7 +56,7 @@ private[namerd] case class NamerdConfig(
     JvmStats.register(stats)
     LoadedStatsReceiver.self = NullStatsReceiver
 
-    val dtabStore = storage.mkDtabStore
+    val dtabStore = storage.mkDtabStore(Stack.Params.empty + param.Stats(stats.scope("dtabstore")))
     val namersByPfx = mkNamers(Stack.Params.empty + param.Stats(stats.scope("namer")))
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats.scope("interface"))
     val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)

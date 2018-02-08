@@ -1,6 +1,6 @@
 package io.buoyant.namerd.storage.consul
 
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Stack}
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.consul.v1.ConsistencyMode
@@ -9,7 +9,7 @@ import org.scalatest.{FunSuite, OptionValues}
 
 class ConsulConfigTest extends FunSuite with OptionValues {
   test("sanity") {
-    val store = ConsulConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore
+    val store = ConsulConfig(None, None, Some(Path.read("/foo/bar"))).mkDtabStore(Stack.Params.empty)
   }
 
   test("parse config") {

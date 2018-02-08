@@ -1,7 +1,8 @@
 package io.buoyant.namerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
+import com.twitter.finagle.Stack
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
 abstract class DtabStoreInitializer extends ConfigInitializer
 
@@ -22,5 +23,5 @@ abstract class DtabStoreConfig extends PolymorphicConfig {
   def disabled = experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
-  def mkDtabStore: DtabStore
+  def mkDtabStore(params: Stack.Params): DtabStore
 }

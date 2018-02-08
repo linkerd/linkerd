@@ -2,7 +2,8 @@ package io.buoyant.namerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.JsonMappingException
-import com.twitter.finagle.{Path, Dtab}
+import com.twitter.finagle.Stack
+import com.twitter.finagle.{Dtab, Path}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
 import io.buoyant.namer.fs.FsInitializer
@@ -14,7 +15,7 @@ object TestDtabStoreInitializer extends DtabStoreInitializer {
 
 class TestDtabStore extends DtabStoreConfig {
   @JsonIgnore
-  override def mkDtabStore = NullDtabStore
+  override def mkDtabStore(params: Stack.Params) = NullDtabStore
 }
 
 class NamerdConfigTest extends FunSuite {

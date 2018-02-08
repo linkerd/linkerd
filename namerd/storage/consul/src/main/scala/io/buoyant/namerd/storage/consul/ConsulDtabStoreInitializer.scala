@@ -9,6 +9,7 @@ import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
 import io.buoyant.namer.BackoffConfig
 import com.twitter.conversions.time._
+import com.twitter.finagle.Stack
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}
 
 case class ConsulConfig(
@@ -25,7 +26,7 @@ case class ConsulConfig(
   import ConsulConfig._
 
   @JsonIgnore
-  override def mkDtabStore: DtabStore = {
+  override def mkDtabStore(params: Stack.Params): DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
     val backoffs = backoff.map(_.mk).getOrElse(DefaultBackoff)
