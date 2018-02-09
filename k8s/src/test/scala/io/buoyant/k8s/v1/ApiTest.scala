@@ -488,13 +488,13 @@ class ApiTest extends FunSuite
 
     assert(events.size == 0)
 
-    // repeat the event: no update since resource version is the same
+    // repeat the event: update since resource version is the same
     await(w.write(modified0))
-    assert(events.size == 0)
+    assert(events.size == 1)
 
     // write an earlier event: no update since resource version is too low
     await(w.write(modified2))
-    assert(events.size == 0)
+    assert(events.size == 1)
     closable.close()
     if (failure != null) throw failure
   }

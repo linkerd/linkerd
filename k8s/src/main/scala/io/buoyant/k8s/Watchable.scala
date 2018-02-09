@@ -172,12 +172,14 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
         case Some((event, ws)) =>
           import Ordering.Implicits._
-          // Register the update only if its resource version is larger than the largest version
+          // Register the update only if its resource version is larger than or equal to the largest version
           // seen so far.
-          if (largestEvent.forall(_ < event)) {
+          if (largestEvent.forall(_ <= event)) {
+            log.debug(s"k8s returned a new resource: $event")
             state.update(Activity.Ok(event))
             _processEventStream(ws, event.resourceVersion, Some(event))
           } else {
+            log.debug(s"k8s returned an old resource. Using most up to date resource: $event")
             _processEventStream(ws, largestVersion, largestEvent)
           }
 
