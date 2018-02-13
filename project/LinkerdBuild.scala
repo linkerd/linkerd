@@ -530,7 +530,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Router.mux)
 
       val thrift = projectDir("linkerd/protocol/thrift")
-        .dependsOn(core, Router.thrift % "compile->compile;test->test;e2e->e2e")
+        .dependsOn(core, Router.thrift % "compile->compile;test->test;e2e->e2e", Interpreter.perHost % "e2e")
         .withTests()
         .withE2e()
 

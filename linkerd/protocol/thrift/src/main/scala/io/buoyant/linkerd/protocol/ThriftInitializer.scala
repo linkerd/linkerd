@@ -44,7 +44,8 @@ object ThriftInitializer extends ThriftInitializer
 
 case class ThriftConfig(
   thriftMethodInDst: Option[Boolean],
-  thriftProtocol: Option[ThriftProtocol]
+  thriftProtocol: Option[ThriftProtocol],
+  sendConcreteDest: Option[Boolean]
 ) extends RouterConfig {
 
   var servers: Seq[ThriftServerConfig] = Nil
@@ -62,6 +63,7 @@ case class ThriftConfig(
   override def routerParams = super.routerParams
     .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
     .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
+    .maybeWith(sendConcreteDest.map(ThriftClientPrep.SendConcreteDest(_)))
 }
 
 case class ThriftServerConfig(
