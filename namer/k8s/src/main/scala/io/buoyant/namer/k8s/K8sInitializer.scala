@@ -41,9 +41,9 @@ case class K8sConfig(
    */
   @JsonIgnore
   override def newNamer(params: Stack.Params): Namer = {
-    val client = mkClient(params).withLabel("client")
+    val client = Api(mkClient(params).withLabel("client").newService(dst))
     def mkNs(ns: String) = {
-      Api(client.newService(dst)).withNamespace(ns)
+      client.withNamespace(ns)
     }
     new MultiNsNamer(prefix, labelSelector, mkNs)
   }
