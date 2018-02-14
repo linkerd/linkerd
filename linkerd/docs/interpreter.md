@@ -49,13 +49,13 @@ failureThreshold | no failureThreshold | Sets the [failure threshold](#failure-t
 
 ### Failure Threshold
 
-Linkerd uses a [Threshold Failure Detector](https://github.com/twitter/finagle/blob/master/finagle-core/src/main/scala/com/twitter/finagle/liveness/ThresholdFailureDetector.scala) 
+Linkerd uses a [Threshold Failure Detector](https://github.com/twitter/finagle/blob/master/finagle-core/src/main/scala/com/twitter/finagle/liveness/ThresholdFailureDetector.scala)
 to determine the health of the connection to a Namerd instance. Linkerd sends pings to Namerd periodically and evaluates the health of Namerd based on a set number of ping latencies
 
 Key | Default Value | Description
 --- | ------------- | -----------
 minPeriodMs | 5000 | The period between session pings to Namerd
-threshold | 2.0 | Used to calculate the maximum allowed ping latency 
+threshold | 2.0 | Used to calculate the maximum allowed ping latency
 windowSize | 100 | The number of observations to make to gauge session liveness of Namerd
 closeTimeoutMs | 4000 | Timeout for a session ping's response before Linkerd terminates a session
 
@@ -103,7 +103,6 @@ protocols of Linkerd's routers.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-experimental | _required_ | Because the mesh interpreter is still considered experimental, you must set this to `true` to use it.
 dst | _required_ | A Finagle path locating the Namerd service.
 root | `/default` | A single-element Finagle path representing the Namerd namespace.
 retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
