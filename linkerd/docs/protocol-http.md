@@ -31,7 +31,7 @@ Key | Default Value | Description
 dstPrefix | `/svc` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
-loggers | A list of loggers.  See [Http-specific loggers](#http-1-1-loggers).
+loggers | none | A list of loggers.  See [Http-specific loggers](#http-1-1-loggers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
 maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.

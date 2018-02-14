@@ -7,7 +7,7 @@
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
+  h2AccessLog: access.log
   servers:
   - port: 4143
     tls:
@@ -32,7 +32,6 @@ routers:
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
   label: grpc
   servers:
   - port: 4142
@@ -50,17 +49,16 @@ accordingly. Note that gRPC may be configured over TLS as well.
 
 protocol: `h2`
 
-Linkerd now has _experimental_ support for HTTP/2. There are a number of
-[open issues](https://github.com/linkerd/linkerd/issues?q=is%3Aopen+is%3Aissue+label%3Ah2)
-that are being addressed. Please
-[report](https://github.com/linkerd/linkerd/issues/new) any
-additional issues with this protocol!
+The HTTP/2 protocol is used when the *protocol* option of the
+[routers configuration block](#router-parameters) is set to *h2*.
+This protocol has additional configuration options on the *routers* block.
 
 Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | A path prefix used by [H2-specific identifiers](#http-2-identifiers).
-experimental | `false` | Set this to `true` to opt-in to experimental h2 support.
-identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [HTTP/2 Identifiers](#http-2-identifiers).
+h2AccessLog | none | Sets the access log path.  If not specified, no access log is written.
+identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [H2-specific identifiers](#http-2-identifiers).
+loggers | none | A list of loggers.  See [H2-specific loggers](#http-2-loggers).
 
 When TLS is configured, h2 routers negotiate to communicate over
 HTTP/2 via ALPN.
@@ -145,7 +143,6 @@ used as the logical name.
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
   identifier:
     kind: io.l5d.header.token
     header: my-header
@@ -187,7 +184,6 @@ and will be routed based on this name by the corresponding Dtab.
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
   identifier:
     kind: io.l5d.header.path
     segments: 2
@@ -235,7 +231,6 @@ The HTTP/2 Ingress Identifier compares an ingress rule's `host` field to the
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
   identifier:
     kind: io.l5d.ingress
     namespace: default
@@ -305,7 +300,6 @@ on those rules.
 ```yaml
 routers:
 - protocol: h2
-  experimental: true
   identifier:
     kind: io.l5d.k8s.istio
 ```
