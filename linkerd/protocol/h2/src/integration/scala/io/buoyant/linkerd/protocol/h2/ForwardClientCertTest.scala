@@ -1,16 +1,15 @@
 package io.buoyant.linkerd.protocol.h2
 
-import java.io.FileInputStream
-import java.security.MessageDigest
-import java.security.cert.CertificateFactory
-import javax.xml.bind.DatatypeConverter.printHexBinary
-
 import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
 import com.twitter.util.Future
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.tls.TlsUtils.withCerts
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
+import java.io.FileInputStream
+import java.security.MessageDigest
+import java.security.cert.CertificateFactory
+import javax.xml.bind.DatatypeConverter.printHexBinary
 
 class ForwardClientCertTest extends FunSuite {
 
