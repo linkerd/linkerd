@@ -2,6 +2,7 @@ package io.buoyant.k8s.v1
 
 import com.twitter.concurrent.AsyncQueue
 import java.util.concurrent.ConcurrentLinkedQueue
+
 import com.twitter.finagle.{Service => FService}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
@@ -18,9 +19,11 @@ class ApiTest extends FunSuite
   with OptionValues {
 
   val modified0 = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4602708","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"addresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
+  val deleted0 = Buf.Utf8("""{"type":"DELETED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4602708","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"addresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
   val added0 = Buf.Utf8("""{"type":"ADDED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"kubernetes","namespace":"default","selfLink":"/api/v1/namespaces/default/endpoints/kubernetes","uid":"9f84ade1-242a-11e5-a145-42010af0faf2","resourceVersion":"4502710","creationTimestamp":"2015-07-06T22:01:58Z"},"subsets":[{"addresses":[{"ip":"104.154.78.240"}],"ports":[{"port":443,"protocol":"TCP"}]}]}}""")
   val modified1 = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"kube-dns","namespace":"kube-system","selfLink":"/api/v1/namespaces/kube-system/endpoints/kube-dns","uid":"a2952670-2a81-11e5-9cdb-42010af03dd2","resourceVersion":"4527454","creationTimestamp":"2015-07-14T23:39:57Z","labels":{"k8s-app":"kube-dns","kubernetes.io/cluster-service":"true","kubernetes.io/name":"KubeDNS"}},"subsets":[{"addresses":[{"ip":"10.248.3.3","targetRef":{"kind":"Pod","namespace":"kube-system","name":"kube-dns-v8-9ei0c","uid":"798a67f2-483a-11e5-9859-42010af01815","resourceVersion":"4427453"}}],"ports":[{"name":"dns-tcp","port":53,"protocol":"TCP"},{"name":"dns","port":53,"protocol":"UDP"}]}]}}""")
   val modified2 = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4502709","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"notReadyAddresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
+  val modified3 = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4602709","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"addresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
 
   val endpoints0 = Buf.Utf8("""{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"accounts","namespace":"srv","selfLink":"/api/v1/namespaces/srv/endpoints/accounts","uid":"1b0e7393-4d10-11e5-9859-42010af01815","resourceVersion":"4430527","creationTimestamp":"2015-08-27T23:05:27Z"},"subsets":[{"addresses":[{"ip":"10.248.1.6","targetRef":{"kind":"Pod","namespace":"srv","name":"accounts-63f7n","uid":"1a91058a-4d10-11e5-9859-42010af01815","resourceVersion":"4430526"}},{"ip":"10.248.5.6","targetRef":{"kind":"Pod","namespace":"srv",""")
   val endpoints1 = Buf.Utf8(""""name":"accounts-rvgf2","uid":"1a90f98c-4d10-11e5-9859-42010af01815","resourceVersion":"4430498"}},{"ip":"10.248.8.6","targetRef":{"kind":"Pod","namespace":"srv","name":"accounts-is3is","uid":"1a90eac3-4d10-11e5-9859-42010af01815","resourceVersion":"4430524"}}],"ports":[{"name":"http","port":8086,"protocol":"TCP"}]}]}""")
@@ -488,13 +491,136 @@ class ApiTest extends FunSuite
 
     assert(events.size == 0)
 
-    // repeat the event: update since resource version is the same
+    // repeat the event: don't update, since resource version is the same
     await(w.write(modified0))
-    assert(events.size == 1)
+    assert(events.size == 0)
 
     // write an earlier event: no update since resource version is too low
     await(w.write(modified2))
-    assert(events.size == 1)
+    assert(events.size == 0)
+    closable.close()
+    if (failure != null) throw failure
+  }
+
+
+  test("watch ignores duplicate resourceVersion for non-DELETE events") {
+    val rsp = Response()
+    // this is the same event as modified2 but with the resource versions of modified1
+    val modifiedDup = Buf.Utf8("""{"type":"MODIFIED","object":{"kind":"Endpoints","apiVersion":"v1","metadata":{"name":"io","namespace":"buoy","selfLink":"/api/v1/namespaces/buoy/endpoints/io","uid":"625ecb50-3aea-11e5-bf6b-42010af087d8","resourceVersion":"4602708","creationTimestamp":"2015-08-04T20:50:05Z"},"subsets":[{"notReadyAddresses":[{"ip":"10.248.2.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-42wnm","uid":"79a3d50c-4dc7-11e5-9859-42010af01815","resourceVersion":"4502705"}},{"ip":"10.248.7.10","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-csb9m","uid":"79a3b947-4dc7-11e5-9859-42010af01815","resourceVersion":"4502707"}},{"ip":"10.248.8.8","targetRef":{"kind":"Pod","namespace":"buoy","name":"io-7oj63","uid":"79a3af61-4dc7-11e5-9859-42010af01815","resourceVersion":"4502703"}}],"ports":[{"name":"router","port":4140,"protocol":"TCP"},{"name":"frontend","port":8080,"protocol":"TCP"}]}]}}""")
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
+    val service = FService.mk[Request, Response] { req =>
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          try {
+            assert(req.path == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.params.getBoolean("watch").isEmpty)
+            rsp.version = req.version
+            Future.value(rsp)
+          } catch {
+            case up: TestFailedException => throw up
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
+          }
+        case _ => Future.never
+      }
+    }
+    val api = Api(service)
+
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567"))
+    val w = rsp.writer
+
+    assert(events.size == 0)
+
+    // initial event
+    await(w.write(modified0))
+    withClue("after writing one event") {
+      assert(events.size == 1)
+    }
+
+    // write an event with the same resource version: no update.
+    await(w.write(modifiedDup))
+    withClue("after writing two events with the same resource version") {
+      assert(events.size == 1)
+    }
+    closable.close()
+    if (failure != null) throw failure
+  }
+
+  test("watch allows DELETE events with the current resource version") {
+    val rsp = Response()
+    @volatile var reqCount = 0
+    @volatile var failure: Throwable = null
+    val service = FService.mk[Request, Response] { req =>
+      reqCount += 1
+      reqCount match {
+        case 1 =>
+          try {
+            assert(req.path == "/api/v1/watch/namespaces/srv/endpoints")
+            assert(req.params.getBoolean("watch").isEmpty)
+            rsp.version = req.version
+            Future.value(rsp)
+          } catch {
+            case up: TestFailedException => throw up
+            case e: Throwable =>
+              failure = e
+              Future.exception(e)
+          }
+        case _ => Future.never
+      }
+    }
+    val api = Api(service)
+    val (events, closable) = watch(api.withNamespace("srv").endpoints, resourceVersion = Some("1234567"))
+    val w = rsp.writer
+
+    assert(events.size == 0)
+    val resourceVersion1 = 4602708
+    // initial event
+    await(w.write(modified0))
+    withClue("after writing first MODIFIED event") {
+      assert(events.size == 1)
+
+      val Activity.Ok(event: EndpointsWatch) = await(events.poll())
+      assert(event.versionNum.value == resourceVersion1)
+      val EndpointsModified(eps) = event
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    }
+
+    assert(events.size == 0)
+
+
+    // write a DELETE event with the same resource version
+    await(w.write(deleted0))
+    withClue("after writing first DELETE event") {
+      assert(events.size == 1)
+
+      val Activity.Ok(event: EndpointsWatch) = await(events.poll())
+      assert(event.versionNum.value == resourceVersion1)
+      val EndpointsDeleted(eps) = event
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    }
+
+    // write an event with higher version than the delete event.
+    await(w.write(modified3))
+    withClue("after writing second MODIFIED event") {
+      assert(events.size == 1)
+
+      val Activity.Ok(event: EndpointsWatch) = await(events.poll())
+      assert(event.versionNum.value == 4602709)
+      val EndpointsModified(eps) = event
+      assert(eps.subsets.get.flatMap(_.addresses).flatten.map(_.ip) ==
+        Seq("10.248.2.8", "10.248.7.10", "10.248.8.8"))
+    }
+
+    // write DELETE event again. it should be ignored.
+    await(w.write(deleted0))
+    withClue("after writing first DELETE event again") {
+      assert(events.size == 0)
+    }
     closable.close()
     if (failure != null) throw failure
   }
