@@ -3,6 +3,7 @@ package io.buoyant.k8s
 import com.twitter.finagle.Service
 import com.twitter.io.Buf
 import com.twitter.util.Future
+import com.twitter.util.Promise
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 import com.twitter.finagle.http.{Request, Response}
@@ -243,6 +244,55 @@ class IngressCacheTest extends FunSuite with Awaits {
   ]
 }"""
 
+  val ingressDeletedFromMoreThanOneLinkerdIngresses =
+    """
+{
+  "type": "DELETED",
+  "object": {
+    "apiVersion": "extensions/v1beta1",
+    "kind": "Ingress",
+    "metadata": {
+      "name": "linkerd-ingress",
+      "namespace": "default",
+      "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/istio-ingress",
+      "uid": "07900e6b-813d-11e7-b89b-080027a996b8",
+      "resourceVersion": "58098",
+      "generation": 1,
+      "creationTimestamp": "2017-08-14T22:07:57Z",
+      "annotations": {
+        "kubernetes.io/ingress.class": "linkerd"
+      }
+    },
+    "spec": {
+      "rules": [
+        {
+          "http": {
+            "paths": [
+              {
+                "path": "/linkerd-1",
+                "backend": {
+                  "serviceName": "echo1",
+                  "servicePort": 6060
+                }
+              },
+              {
+                "path": "/shared",
+                "backend": {
+                  "serviceName": "shared1",
+                  "servicePort": 6061
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "loadBalancer": {}
+    }
+  }
+}"""
+
   val ingressResourceListWithOneIngress =
     """
 {
@@ -352,12 +402,21 @@ class IngressCacheTest extends FunSuite with Awaits {
   val annotationClass = "linkerd"
 
   def mkIngressApiServiceReturning(response: String) = Service.mk[Request, Response] {
+    mkWatchedIngressApiServiceReturning(response, "")
+  }
+
+  def mkWatchedIngressApiServiceReturning(response: String, watchResponse: String) = Service.mk[Request, Response] {
     case req if req.uri.contains("/apis/extensions/v1beta1/ingresses") =>
       val rsp = Response()
       rsp.content = Buf.Utf8(response)
       Future.value(rsp)
     case req if req.uri.contains("/apis/extensions/v1beta1/watch/ingresses") =>
-      Future.value(Response())
+      var doWatch = new Promise[Unit]
+      doWatch.setDone()
+      val rsp = Response()
+      rsp.setChunked(true)
+      doWatch before rsp.writer.write(Buf.Utf8(watchResponse))
+      Future.value(rsp)
     case req =>
       fail(s"unexpected request for [${req.uri}]: $req")
   }
@@ -404,6 +463,15 @@ class IngressCacheTest extends FunSuite with Awaits {
     val cache = new IngressCache(None, service, annotationClass, true)
     assert(await(cache.matchPath(host, "/some-path")).get.svc == "echo")
     assert(await(cache.matchPath(host, "/unknown-path")) == None)
+  }
+
+  test("deleting an ingress does not reset the ingress cache") {
+    val service = mkWatchedIngressApiServiceReturning(
+      ingressResourceListWithMoreThanOneLinkerdIngresses,
+      ingressDeletedFromMoreThanOneLinkerdIngresses
+    )
+    val cache = new IngressCache(None, service, annotationClass, true)
+    assert(await(cache.matchPath(host, "/linkerd-2")).get.svc == "echo2")
   }
 
   test("on multiple path matches, return first match") {
