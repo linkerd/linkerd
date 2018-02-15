@@ -12,7 +12,8 @@ import io.buoyant.test.{ActivityValues, Awaits, Exceptions, FunSuite}
 
 class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with ActivityValues {
 
-  val namespacesJson = """["namerd/dtabs/foo/bar/", "namerd/dtabs/foo/baz/"]"""
+  val namespacesJson = """["namerd/dtabs/foo", "namerd/dtabs/bar"]"""
+  val namespacesWithDirsJson = """["namerd/dtabs/", "namerd/dtabs/foo", "namerd/dtabs/bar/"]"""
   val namerdPrefix = "/namerd/dtabs"
   val constBackoff = Backoff.const(Duration.Zero)
 
@@ -42,7 +43,36 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
     store.list.states respond {
       state = _
     }
-    assert(state == Activity.Ok(Set("foo/bar", "foo/baz")))
+    assert(state == Activity.Ok(Set("foo", "bar")))
+  }
+
+  test("List available namespaces - when Consul KV dirs are explicit") {
+    val service = Service.mk[Request, Response] { req =>
+      val rsp = Response()
+      rsp.setContentTypeJson()
+      req.getParam("index", "") match {
+        case "" =>
+          rsp.headerMap.set("X-Consul-Index", "4")
+          rsp.content = Buf.Utf8(namespacesWithDirsJson)
+          Future.value(rsp)
+        case _ => Future.never
+
+      }
+    }
+
+    val store = new ConsulDtabStore(
+      KvApi(service, constBackoff),
+      Path.read(namerdPrefix),
+      None,
+      readConsistency = None,
+      writeConsistency = None
+    )
+
+    @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
+    store.list.states respond {
+      state = _
+    }
+    assert(state == Activity.Ok(Set("foo")))
   }
 
   test("return an empty set when namespaces are absent") {
