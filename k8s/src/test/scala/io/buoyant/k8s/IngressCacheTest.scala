@@ -412,11 +412,9 @@ class IngressCacheTest extends FunSuite with Awaits with OptionValues {
       rsp.content = Buf.Utf8(response)
       Future.value(rsp)
     case req if req.uri.contains("/apis/extensions/v1beta1/watch/ingresses") =>
-      var doWatch = new Promise[Unit]
-      doWatch.setDone()
       val rsp = Response()
       rsp.setChunked(true)
-      doWatch before rsp.writer.write(Buf.Utf8(watchResponse))
+      rsp.writer.write(Buf.Utf8(watchResponse))
       Future.value(rsp)
     case req =>
       fail(s"unexpected request for [${req.uri}]: $req")
