@@ -14,6 +14,14 @@ import javax.xml.bind.DatatypeConverter.printHexBinary
 class ForwardClientCertTest extends FunSuite {
 
   test("forward client certificate") {
+    testForwardedClient()
+  }
+
+  test("forward client certificate with existing x-forwarded-client-cert header") {
+    testForwardedClient(Some("""Hash=ABC;SAN=https://spoof.io;Subject="C=US,CN=root"""))
+  }
+
+  private def testForwardedClient(xForwardedClientCert: Option[String] = None) = {
     withCerts("upstream", "linkerd") { certs =>
       var downstreamRequest: Request = null
       val dog = Downstream.mk("dogs") { req =>
@@ -48,7 +56,9 @@ class ForwardClientCertTest extends FunSuite {
       val client = Upstream.mkTls(server, "linkerd", certs.caCert, Some(upstreamServiceCert))
 
       try {
-        val rsp = await(client(Request("http", Method.Get, "clifford", "/", Stream.empty())))
+        val request = Request("http", Method.Get, "clifford", "/", Stream.empty())
+        xForwardedClientCert.foreach(h => request.headers.add("x-forwarded-client-cert", h))
+        val rsp = await(client(request))
 
         assert(await(rsp.stream.readDataString) == "woof")
         assert(downstreamRequest.headers.get("x-forwarded-client-cert") == {
