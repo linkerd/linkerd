@@ -471,6 +471,10 @@ class IngressCacheTest extends FunSuite with Awaits {
       ingressDeletedFromMoreThanOneLinkerdIngresses
     )
     val cache = new IngressCache(None, service, annotationClass, true)
+    // The ingress that was deleted is gone.
+    assert(await(cache.matchPath(host, "/linkerd-1")) == None)
+
+    // Untouched ingresses remain.
     assert(await(cache.matchPath(host, "/linkerd-2")).get.svc == "echo2")
   }
 
