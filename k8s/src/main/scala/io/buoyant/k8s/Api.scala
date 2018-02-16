@@ -191,8 +191,8 @@ class ResourceVersionOrdering[O <: KubeObject, W <: Watch[O]] extends Ordering[W
         // is deleted, the resource version of the corresponding DELETED
         // event is *equal* to the version of the resource that was deleted,
         // so we still want these events to be applied.
-      case (_: Deleted[O], _) if aVersion >= bVersion => 1
-      case (_, _: Deleted[O]) if aVersion <= bVersion => -1
+      case (_: Deleted[O], _) if aVersion == bVersion => 1
+      case (_, _: Deleted[O]) if aVersion == bVersion => -1
         // Otherwise, if neither a nor b is a DELETED event, simply compare their
         // version numbers as normal.
       case _ => aVersion.compare(bVersion)
