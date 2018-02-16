@@ -96,8 +96,10 @@ class IngressCache(
             mkIngress(m)
               .map { item => ingresses.filterNot(isNameEqual(_, item)) :+ item }
               .getOrElse(ingresses)
-          case v1beta1.IngressDeleted(_) =>
-            Seq.empty
+          case v1beta1.IngressDeleted(d) =>
+            mkIngress(d)
+              .map { item => ingresses.filterNot(isNameEqual(_, item)) }
+              .getOrElse(ingresses)
           case v1beta1.IngressError(e) =>
             log.error("k8s watch error: %s", e)
             ingresses
