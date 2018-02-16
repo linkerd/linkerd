@@ -7,6 +7,8 @@ import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
 import java.net.InetSocketAddress
 
+import com.twitter.finagle.util.DefaultTimer
+
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -42,6 +44,7 @@ private[consul] object SvcAddr {
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats
   ): Var[Addr] = {
+    def initialBackoffs = consulApi.backoffs
     val meta = mkMeta(key, datacenter, domain)
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
       consulApi.serviceNodes(
@@ -61,7 +64,7 @@ private[consul] object SvcAddr {
       // a good state was seen.
       @volatile var lastGood: Option[Addr] = None
       @volatile var stopped: Boolean = false
-      def loop(index0: Option[String]): Future[Unit] = {
+      def loop(index0: Option[String], backoffs: Option[Stream[Duration]]): Future[Unit] = {
 
         if (stopped) Future.Unit
         else getAddresses(index0).transform {
@@ -82,8 +85,11 @@ private[consul] object SvcAddr {
                 " failure: %s",
               datacenter, key.name, err
             )
-            // Drop the index, in case it's been reset by a consul restart
-            loop(None)
+
+            sleepAndDo(backoffs.getOrElse(initialBackoffs)) { nextBackoffs =>
+              // Drop the index, in case it's been reset by a consul restart
+              loop(None, Some(nextBackoffs))
+            }
           case Throw(e) =>
             // an error occurred. if we've previously seen a good state, fall
             // back to that state; otherwise, fail.
@@ -98,7 +104,9 @@ private[consul] object SvcAddr {
                     " falling back to last good state",
                   datacenter, key.name, e
                 )
-                loop(index0)
+                sleepAndDo(backoffs.getOrElse(initialBackoffs)) { nextBackoffs =>
+                  loop(index0, Some(nextBackoffs))
+                }
               case None =>
                 // if no previous good state was seen, treat the exception
                 // as effectively fatal to the service observation.
@@ -131,11 +139,11 @@ private[consul] object SvcAddr {
             lastGood = Some(addr)
             state() = addr
 
-            loop(index1)
+            loop(index1, None)
         }
       }
 
-      val pending = loop(None)
+      val pending = loop(None, None)
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
@@ -143,6 +151,11 @@ private[consul] object SvcAddr {
         Future.Unit
       }
     }
+  }
+
+  private[this] def sleepAndDo[A](backoffs: Stream[Duration])(action: Function1[Stream[Duration], Future[A]]): Future[A] = {
+    implicit val timer: Timer = DefaultTimer
+    Future.sleep(backoffs.head).before(action(backoffs.tail))
   }
 
   private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
