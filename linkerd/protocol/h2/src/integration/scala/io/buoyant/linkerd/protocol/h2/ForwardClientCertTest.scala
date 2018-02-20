@@ -22,7 +22,7 @@ class ForwardClientCertTest extends FunSuite {
   }
 
   private def testForwardedClient(xForwardedClientCert: Option[String] = None) = {
-    withCerts("upstream", "linkerd") { certs =>
+    withCerts(true, Seq("upstream", "linkerd")) { certs =>
       var downstreamRequest: Request = null
       val dog = Downstream.mk("dogs") { req =>
         downstreamRequest = req
@@ -65,7 +65,7 @@ class ForwardClientCertTest extends FunSuite {
           val cf = CertificateFactory.getInstance("X.509")
           val cert = cf.generateCertificate(new FileInputStream(upstreamServiceCert.cert))
           val digest = MessageDigest.getInstance("SHA-256")
-          Some(s"""Hash=${printHexBinary(digest.digest(cert.getEncoded))};SAN=https://buoyant.io;Subject="C=US,CN=upstream"""")
+          Some(s"""Hash=${printHexBinary(digest.digest(cert.getEncoded))};SAN=https://buoyant.io;DNS=upstream;DNS=linkerd;Subject="C=US,CN=upstream"""")
         })
         ()
       } finally {

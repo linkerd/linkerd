@@ -1,6 +1,8 @@
 package io.buoyant.linkerd.tls
 
-import java.io.File
+import java.io.{File, FileWriter}
+
+import scala.collection.mutable
 import scala.sys.process._
 
 object TlsUtils {
@@ -22,11 +24,22 @@ object TlsUtils {
 
   }
   case class Certs(caCert: File, serviceCerts: Map[String, ServiceCert])
+
   def withCerts(names: String*)(f: Certs => Unit): Unit = {
+    withCerts(false, names)(f: Certs => Unit)
+  }
+
+  def withCerts(addDnsAltNames: Boolean, names: Seq[String])(f: Certs => Unit): Unit = {
     // First, we create a CA and get a cert/key for linker
     val tmpdir = new File("mktemp -d -t linkerd-tls.XXXXXX".!!.stripLineEnd)
     try {
       val configFile = mkCaDirs(tmpdir)
+      if (addDnsAltNames) {
+        // When we add DNS SAN (Subject Alternative Name) names, it overrides CN (Common Name).
+        // So, tests which modify CN to simulate failure scenarios will start failing if this is added for all.
+        // Reference: https://stackoverflow.com/questions/5935369/ssl-how-do-common-names-cn-and-subject-alternative-names-san-work-together
+        addDnsAltNamesInConfig(tmpdir, names)
+      }
 
       val caCert = new File(tmpdir, "ca+cert.pem")
       val caKey = new File(tmpdir, "private/ca_key.pem")
@@ -70,6 +83,13 @@ object TlsUtils {
     cw.print(opensslCfg(dir.getPath))
     cw.close()
     configFile
+  }
+
+  def addDnsAltNamesInConfig(dir: File, names: Seq[String]): Unit = {
+    val configFile = new File(dir, "openssl.cfg")
+    val cw = new FileWriter(configFile, true)
+    cw.write(dnsAltNames(names))
+    cw.close()
   }
 
   // copied from http://www.eclectica.ca/howto/ssl-cert-howto.php
@@ -127,6 +147,12 @@ object TlsUtils {
     |[alt_names]
     |URI.1 = https://buoyant.io
     |""".stripMargin
+
+  def dnsAltNames(names: Seq[String]): String = {
+    val altNames = new Array[String](names.length)
+    names.indices.foreach(i => altNames(i) = "DNS." + (i + 1) + " = " + names(i))
+    altNames.mkString("\n")
+  }
 
   def newKeyAndCert(subj: String, cfg: File, key: File, cert: File): ProcessBuilder =
     Seq("openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048",

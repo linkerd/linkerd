@@ -11,6 +11,7 @@ import scala.collection.mutable
 class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: RequestLike[Req, H]) extends SimpleFilter[Req, Rep] {
 
   val GeneralNameTypeUri = 6
+  val GeneralNameTypeDns = 2
 
   val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
 
@@ -24,11 +25,15 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
         case x509ClientCert: X509Certificate =>
           val altNames = x509ClientCert.getSubjectAlternativeNames
           if (altNames != null && altNames.size > 0) {
-            val altName = altNames.iterator.next
-            val nameType = altName.get(0)
-            val nameValue = altName.get(1)
-            if (nameType == GeneralNameTypeUri) {
-              clientCertHeader ++= s";SAN=$nameValue"
+            val it = altNames.iterator
+            while (it.hasNext) {
+              val altName = it.next
+              val nameType = altName.get(0)
+              val nameValue = altName.get(1)
+              nameType match {
+                case GeneralNameTypeUri => clientCertHeader ++= s";SAN=$nameValue"
+                case GeneralNameTypeDns => clientCertHeader ++= s";DNS=$nameValue"
+              }
             }
           }
 
