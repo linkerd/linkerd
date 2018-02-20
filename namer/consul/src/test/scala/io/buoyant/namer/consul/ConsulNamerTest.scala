@@ -8,7 +8,6 @@ import io.buoyant.consul.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
-import org.scalatest.exceptions.TestFailedException
 
 class ConsulNamerTest extends FunSuite with Awaits {
 
@@ -81,7 +80,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer fails if the consul api cannot be reached") {
+  test("Namer stays pending if the consul api cannot be reached") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -98,36 +97,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Failed(ChannelWriteException(None)))
-    assert(stats.counters == Map(
-      Seq("service", "opens") -> 1,
-      Seq("service", "errors") -> 1,
-      Seq("lookups") -> 1
-    ))
-  }
-
-  test("Namer goes pending when dc does not exist") {
-    class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceMap(
-        datacenter: Option[String] = None,
-        blockingIndex: Option[String] = None,
-        consistency: Option[ConsistencyMode] = None,
-        retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = {
-        // When the dc doesn't exist, consul throws a 500, which is
-        // automatically retried indefinitely:
-        Future.never
-      }
-    }
-    val stats = new InMemoryStatsReceiver
-    val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
-    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-
-    namer.lookup(Path.read("/nosuchdc/servicename/residual")).states respond { state = _ }
-
     assert(state == Activity.Pending)
     assert(stats.counters == Map(
       Seq("service", "opens") -> 1,
+      Seq("service", "errors") -> 1,
       Seq("lookups") -> 1
     ))
   }
@@ -540,6 +513,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     val scaleUp = new Promise[Unit]
     val doFail = new Promise[Unit]
     val scaleToEmpty = new Promise[Unit]
+    val scenarioComplete = new Promise[Unit]
     @volatile var didFail = false
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
@@ -563,7 +537,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
               Future.exception(new Exception("something bad happened"))
             }
           )
-        case _ => Future.never
+        case _ =>
+          scenarioComplete.setDone()
+          Future.never
       }
     }
 
@@ -598,6 +574,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       }
 
       scaleToEmpty.setDone()
+      Await.ready(scenarioComplete)
       assert(
         state == Activity.Ok(NameTree.Neg),
         "namer did not update after falling back"
