@@ -22,7 +22,7 @@ class ForwardClientCertTest extends FunSuite {
   }
 
   private def testForwardedClient(xForwardedClientCert: Option[String] = None) = {
-    withCerts(true, Seq("upstream", "linkerd")) { certs =>
+    withCerts("upstream", "linkerd") { certs =>
       var downstreamRequest: Request = null
       val dog = Downstream.mk("dogs") { req =>
         downstreamRequest = req

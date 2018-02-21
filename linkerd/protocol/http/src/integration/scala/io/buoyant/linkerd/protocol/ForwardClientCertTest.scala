@@ -12,7 +12,7 @@ import javax.xml.bind.DatatypeConverter.printHexBinary
 class ForwardClientCertTest extends FunSuite {
 
   test("forward client certificate") {
-    withCerts(true, Seq("upstream", "linkerd")) { certs =>
+    withCerts("upstream", "linkerd") { certs =>
       var downstreamRequest: Request = null
       val dog = Downstream.mk("dogs") { req =>
         downstreamRequest = req

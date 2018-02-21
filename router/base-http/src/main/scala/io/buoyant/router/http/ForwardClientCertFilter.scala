@@ -31,7 +31,7 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
               val nameType = altName.get(0)
               val nameValue = altName.get(1)
               nameType match {
-                case GeneralNameTypeUri => clientCertHeader ++= s";SAN=$nameValue"
+                case GeneralNameTypeUri => clientCertHeader ++= s";SAN=$nameValue" // Use "SAN:" instead of "URI:" for backward compatibility with previous releases.
                 case GeneralNameTypeDns => clientCertHeader ++= s";DNS=$nameValue"
               }
             }
