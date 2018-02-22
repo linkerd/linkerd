@@ -26,23 +26,27 @@ object ExistentialStability {
         @volatile var current: VarUp[T] = null
         @volatile var exists = false
         unstable.changes.respond {
-          case Some(t) if current == null =>
+          case Some(t) if current == null => synchronized {
             // T created
             exists = true
             current = Var(t)
             update() = Some(current)
-          case Some(t) if !exists =>
+          }
+          case Some(t) if !exists => synchronized {
             // T re-created
             exists = true
             current() = t
             update() = Some(current)
-          case Some(t) =>
+          }
+          case Some(t) => synchronized {
             // T modified
             current() = t
-          case None =>
+          }
+          case None => synchronized {
             // T deleted
             exists = false
             update() = None
+          }
         }
       }
     }
@@ -56,27 +60,33 @@ object ExistentialStability {
         @volatile var current: VarUp[T] = null
         @volatile var exists = false
         unstable.states.respond {
-          case Activity.Ok(Some(t)) if current == null =>
+          case Activity.Ok(Some(t)) if current == null => synchronized {
             // T created
             current = Var(t)
             exists = true
             update() = Activity.Ok(Some(current))
-          case Activity.Ok(Some(t)) if !exists =>
+          }
+          case Activity.Ok(Some(t)) if !exists => synchronized {
             // T recreated
             exists = true
             current() = t
             update() = Activity.Ok(Some(current))
-          case Activity.Ok(Some(t)) =>
+          }
+          case Activity.Ok(Some(t)) => synchronized {
             // T modified
             current() = t
-          case Activity.Ok(None) =>
+          }
+          case Activity.Ok(None) => synchronized {
             // T deleted
             exists = false
             update() = Activity.Ok(None)
-          case Activity.Pending =>
+          }
+          case Activity.Pending => synchronized {
             update() = Activity.Pending
-          case Activity.Failed(e) =>
+          }
+          case Activity.Failed(e) => synchronized {
             update() = Activity.Failed(e)
+          }
         }
       }
       Activity(inner)
