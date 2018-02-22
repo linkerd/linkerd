@@ -1,7 +1,6 @@
 package io.buoyant.linkerd.tls
 
 import java.io.{File, FileWriter}
-
 import scala.collection.mutable
 import scala.sys.process._
 
@@ -95,8 +94,7 @@ object TlsUtils {
   }
 
   def dnsAltNames(names: Seq[String]): String = {
-    val altNames = new Array[String](names.length)
-    names.indices.foreach(i => altNames(i) = "DNS." + (i + 1) + " = " + names(i))
+    val altNames = names.zipWithIndex.map { case(name, i) => s"DNS.${i+1} = $name" }
     altNames.mkString("\n")
   }
 
