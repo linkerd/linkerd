@@ -9,7 +9,8 @@ import java.net.InetSocketAddress
 class TlsCertReloadingTest extends FunSuite with Awaits {
 
   test("cert reloading") {
-    TlsUtils.withCerts("foo", "bar") { certs =>
+    // Create certificates without SAN DNS entries that override CN.
+    TlsUtils.withCertsWithCustomDnsAltNames(Seq("foo", "bar"), null) { certs =>
       val downstream = Downstream.const("foo", "foo")
 
       val fooCerts = certs.serviceCerts("foo")

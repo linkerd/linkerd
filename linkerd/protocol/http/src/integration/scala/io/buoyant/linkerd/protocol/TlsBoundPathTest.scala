@@ -212,8 +212,8 @@ class TlsBoundPathTest extends FunSuite with Awaits {
   }
 
   test("wrong common name") {
-
-    withCerts("bill.buoyant.io", "ted.buoyant.io") { certs =>
+    // Create certificates without SAN DNS entries that override CN.
+    withCertsWithCustomDnsAltNames(Seq("bill.buoyant.io", "ted.buoyant.io"), null) { certs =>
       val bill = Downstream
         .constTls(
           "bill",

@@ -1,6 +1,7 @@
 package io.buoyant.linkerd.tls
 
-import java.io.File
+import java.io.{File, FileWriter}
+import scala.collection.mutable
 import scala.sys.process._
 
 object TlsUtils {
@@ -22,11 +23,24 @@ object TlsUtils {
 
   }
   case class Certs(caCert: File, serviceCerts: Map[String, ServiceCert])
+
   def withCerts(names: String*)(f: Certs => Unit): Unit = {
+    // By default add DNS SAN entries for upstream/downstream certificates.
+    // Important: DNS SAN entries overrides CN as per RFC 6125. So, if adding CN specific logic, use the method {@link #withCertsWithCustomDnsAltNames}
+    // Reference: https://stackoverflow.com/questions/5935369/ssl-how-do-common-names-cn-and-subject-alternative-names-san-work-together
+    withCertsWithCustomDnsAltNames(names, names)(f: Certs => Unit)
+  }
+
+  def withCertsWithCustomDnsAltNames(names: Seq[String], dnsAltNames: Seq[String])(f: Certs => Unit): Unit = {
     // First, we create a CA and get a cert/key for linker
     val tmpdir = new File("mktemp -d -t linkerd-tls.XXXXXX".!!.stripLineEnd)
     try {
       val configFile = mkCaDirs(tmpdir)
+      if (dnsAltNames != null) {
+        // More granular way of doing this would be to use -addext option in openssl command once it's available.
+        // Reference: https://github.com/openssl/openssl/commit/bfa470a4f64313651a35571883e235d3335054eb
+        addDnsAltNamesInConfig(tmpdir, dnsAltNames)
+      }
 
       val caCert = new File(tmpdir, "ca+cert.pem")
       val caKey = new File(tmpdir, "private/ca_key.pem")
@@ -70,6 +84,18 @@ object TlsUtils {
     cw.print(opensslCfg(dir.getPath))
     cw.close()
     configFile
+  }
+
+  def addDnsAltNamesInConfig(dir: File, names: Seq[String]): Unit = {
+    val configFile = new File(dir, "openssl.cfg")
+    val cw = new FileWriter(configFile, true)
+    cw.write(dnsAltNames(names))
+    cw.close()
+  }
+
+  def dnsAltNames(names: Seq[String]): String = {
+    val altNames = names.zipWithIndex.map { case(name, i) => s"DNS.${i+1} = $name" }
+    altNames.mkString("\n")
   }
 
   // copied from http://www.eclectica.ca/howto/ssl-cert-howto.php
