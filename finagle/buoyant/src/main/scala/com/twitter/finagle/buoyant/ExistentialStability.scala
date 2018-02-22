@@ -25,24 +25,25 @@ object ExistentialStability {
         // the current inner Var, null if the outer Var is None
         @volatile var current: VarUp[T] = null
         @volatile var exists = false
+        val mu = new {}
         unstable.changes.respond {
-          case Some(t) if current == null => synchronized {
+          case Some(t) if current == null => mu.synchronized {
             // T created
             exists = true
             current = Var(t)
             update() = Some(current)
           }
-          case Some(t) if !exists => synchronized {
+          case Some(t) if !exists => mu.synchronized {
             // T re-created
             exists = true
             current() = t
             update() = Some(current)
           }
-          case Some(t) => synchronized {
+          case Some(t) => mu.synchronized {
             // T modified
             current() = t
           }
-          case None => synchronized {
+          case None => mu.synchronized {
             // T deleted
             exists = false
             update() = None
@@ -59,33 +60,34 @@ object ExistentialStability {
         // the current inner Var, null if the outer Var is None
         @volatile var current: VarUp[T] = null
         @volatile var exists = false
+        val mu = new {}
         unstable.states.respond {
-          case Activity.Ok(Some(t)) if current == null => synchronized {
+          case Activity.Ok(Some(t)) if current == null => mu.synchronized {
             // T created
             current = Var(t)
             exists = true
             update() = Activity.Ok(Some(current))
           }
-          case Activity.Ok(Some(t)) if !exists => synchronized {
+          case Activity.Ok(Some(t)) if !exists => mu.synchronized {
             // T recreated
             exists = true
             current() = t
             update() = Activity.Ok(Some(current))
           }
-          case Activity.Ok(Some(t)) => synchronized {
+          case Activity.Ok(Some(t)) => mu.synchronized {
             // T modified
             current() = t
           }
-          case Activity.Ok(None) => synchronized {
+          case Activity.Ok(None) => mu.synchronized {
             // T deleted
             exists = false
             update() = Activity.Ok(None)
           }
-          case Activity.Pending => synchronized {
+          case Activity.Pending => mu.synchronized {
             update() = Activity.Pending
             exists = false
           }
-          case Activity.Failed(e) => synchronized {
+          case Activity.Failed(e) => mu.synchronized {
             update() = Activity.Failed(e)
             exists = false
           }
