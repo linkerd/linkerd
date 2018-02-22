@@ -83,9 +83,11 @@ object ExistentialStability {
           }
           case Activity.Pending => synchronized {
             update() = Activity.Pending
+            exists = false
           }
           case Activity.Failed(e) => synchronized {
             update() = Activity.Failed(e)
+            exists = false
           }
         }
       }
