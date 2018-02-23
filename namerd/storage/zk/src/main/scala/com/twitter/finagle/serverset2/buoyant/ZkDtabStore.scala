@@ -42,8 +42,12 @@ class ZkDtabStore(
     authInfo,
     stats
   )
-  private[this] def actOf[T](go: ZooKeeperRW => Future[Watched[T]]): Activity[T] =
-    zkSession.watchedOperation(go(zkSession.zk))
+  private[this] def actOf[T](go: ZooKeeperRW => Future[Watched[T]]): Activity[T] = {
+    val states = zkSession.zk.flatMap { zk =>
+      zkSession.watchedOperation(go(zk)).run
+    }
+    Activity(states)
+  }
 
   private[this] val actNs = actOf(_.getChildrenWatch(zkPrefix)).map(_.children.toSet)
 
@@ -56,7 +60,7 @@ class ZkDtabStore(
     val path = s"$zkPrefix/$ns"
     log.info("Attempting to create dtab at %s", path)
 
-    zkSession.zk.create(
+    zkSession.zk.sample.create(
       path,
       Some(Buf.Utf8(dtab.show)),
       acls.map(ZkDtabStore.zkAcl),
@@ -66,6 +70,8 @@ class ZkDtabStore(
           Future.exception(new DtabNamespaceAlreadyExistsException(ns))
         case KeeperException.NoAuth(_) =>
           Future.exception(Forbidden)
+      }.onFailure { e =>
+        log.error(e, "Failed to create dtab at %s", path)
       }.unit
   }
 
@@ -73,7 +79,7 @@ class ZkDtabStore(
     val path = s"$zkPrefix/$ns"
     log.info("Attempting to delete dtab at %s", path)
 
-    zkSession.zk.delete(path, None).rescue {
+    zkSession.zk.sample.delete(path, None).rescue {
       case KeeperException.NoNode(_) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
       case KeeperException.NoAuth(_) =>
@@ -85,7 +91,7 @@ class ZkDtabStore(
     val path = s"$zkPrefix/$ns"
     log.info("Attempting to update dtab at %s", path)
 
-    zkSession.zk.setData(
+    zkSession.zk.sample.setData(
       path,
       Some(Buf.Utf8(dtab.show)),
       Some(versionInt(version))
@@ -122,13 +128,13 @@ class ZkDtabStore(
     // If both fail, the user can always retry the put.
     Future.collectToTry(
       Seq(
-        zkSession.zk.create(
+        zkSession.zk.sample.create(
         path,
         Some(Buf.Utf8(dtab.show)),
         acls.map(ZkDtabStore.zkAcl),
         CreateMode.Persistent
       ).unit,
-        zkSession.zk.setData(path, Some(Buf.Utf8(dtab.show)), None).unit
+        zkSession.zk.sample.setData(path, Some(Buf.Utf8(dtab.show)), None).unit
       )
     ).flatMap {
         case Seq(Throw(KeeperException.NoAuth(_)), _) |

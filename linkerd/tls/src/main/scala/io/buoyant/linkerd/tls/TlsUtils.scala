@@ -94,7 +94,7 @@ object TlsUtils {
   }
 
   def dnsAltNames(names: Seq[String]): String = {
-    val altNames = names.zipWithIndex.map { case(name, i) => s"DNS.${i+1} = $name" }
+    val altNames = names.zipWithIndex.map { case (name, i) => s"DNS.${i + 1} = $name" }
     altNames.mkString("\n")
   }
 
