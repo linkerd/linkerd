@@ -6,6 +6,7 @@ import com.twitter.finagle.{Failure, http}
 import com.twitter.finagle.http.MediaType
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
+import io.buoyant.k8s.Watch.Deleted
 
 /**
  * Contains various classes and methods useful for interacting with the Kubernetes API.
@@ -181,9 +182,24 @@ trait Watch[O <: KubeObject] {
 }
 
 class ResourceVersionOrdering[O <: KubeObject, W <: Watch[O]] extends Ordering[W] {
-  override def compare(a: W, b: W): Int =
-    a.versionNum.getOrElse(0L)
-      .compare(b.versionNum.getOrElse(0L))
+  override def compare(a: W, b: W): Int = {
+    val aVersion = a.versionNum.getOrElse(0l)
+    val bVersion = b.versionNum.getOrElse(0l)
+    (a, b) match {
+        // Special-case DELETED events to be greater than other events
+        // with the same version number. This is because when a resource
+        // is deleted, the resource version of the corresponding DELETED
+        // event is *equal* to the version of the resource that was deleted,
+        // so we still want these events to be applied.
+      case (_: Deleted[O], _) if aVersion == bVersion => 1
+      case (_, _: Deleted[O]) if aVersion == bVersion => -1
+        // Otherwise, if neither a nor b is a DELETED event, simply compare their
+        // version numbers as normal.
+      case _ => aVersion.compare(bVersion)
+    }
+  }
+
+
 }
 
 object Watch {
