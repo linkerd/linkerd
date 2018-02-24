@@ -10,6 +10,7 @@ class LogFormatterTest extends WordSpec {
 
   val record = new LogRecord(Level.INFO, "Logging useful info")
   record.setMillis(1519468460239L)
+  record.setThreadID(1)
 
   "LogFormatter" should {
 
