@@ -20,7 +20,6 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     interval = scaled(Span(100, Milliseconds))
   )
 
-  val retryIn = () => 1.second
   val clientId = Path.empty
   val ns = "testns"
 
@@ -48,7 +47,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
         else Activity.exception(new Exception)
     }
     val namers = Map(Path.read("/io.l5d.w00t") -> namer)
-    val service = new ThriftNamerInterface(interpreter, namers, newStamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, namers, newStamper, Capacity.default, NullStatsReceiver)
     val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
 
     val act = client.bind(reqDtab, reqPath)
@@ -128,7 +127,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       Activity.value(Dtab.read("/srv => /io.l5d.w00t; /host => /srv; /svc => /host")),
       namers
     )
-    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, Capacity.default, NullStatsReceiver)
     val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
 
     val tree = await(client.delegate(
@@ -177,8 +176,8 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
       Activity.value(Dtab.read("/svc => /io.l5d.w00t")),
       namers
     )
-    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, retryIn, Capacity.default, NullStatsReceiver)
-    val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Zero), clientId = clientId)
+    val service = new ThriftNamerInterface(interpreter, namers.toMap, newStamper, Capacity.default, NullStatsReceiver)
+    val client = new ThriftNamerClient(service, ns, Stream.continually(Duration.Top), clientId = clientId)
     witness.notify(Return(NameTree.Leaf(Name.Bound(
       Var(Addr.Bound(Address("localhost", 9000))),
       Path.read("/io.l5d.w00t/foo"),
