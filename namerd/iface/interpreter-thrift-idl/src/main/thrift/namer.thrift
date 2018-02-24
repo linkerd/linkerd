@@ -64,7 +64,7 @@ struct Bound {
 
 exception BindFailure {
   1: string reason
-  2: i32 retryInSeconds
+  2: i32 retryInSeconds // DEPRECATED & IGNORED
   3: NameRef name
   4: Ns ns
 }
@@ -115,7 +115,7 @@ struct Addr {
 
 exception AddrFailure {
   1: string reason
-  2: i32 retryInSeconds
+  2: i32 retryInSeconds // DEPRECATED & IGNORED
   3: NameRef name
 }
 

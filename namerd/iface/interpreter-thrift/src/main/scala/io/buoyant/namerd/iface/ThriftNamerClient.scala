@@ -96,11 +96,12 @@ class ThriftNamerClient(
             }
             loop(stamp1, backoffs0)
 
-          case Throw(e@thrift.BindFailure(reason, retry, _, _)) =>
+          case Throw(e@thrift.BindFailure(reason, _, _, _)) =>
             bindFailureCounter.incr()
             Trace.recordBinary("namerd.client/bind.fail", reason)
             if (!stopped) {
-              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
+              val sleep #:: backoffs1 = backoffs0
+              pending = Future.sleep(sleep).onSuccess(_ => loop(stamp0, backoffs1))
             }
 
           case Throw(e) =>
@@ -206,11 +207,12 @@ class ThriftNamerClient(
             addr() = Addr.Bound(addrs.toSet[Address], convertMeta(boundMeta))
             loop(stamp1, backoffs0)
 
-          case Throw(e@thrift.AddrFailure(msg, retry, _)) =>
+          case Throw(e@thrift.AddrFailure(msg, _, _)) =>
             addrFailureCounter.incr()
             Trace.recordBinary("namerd.client/addr.fail", msg)
             if (!stopped) {
-              pending = Future.sleep(retry.seconds).onSuccess(_ => loop(stamp0, backoffs0))
+              val sleep #:: backoffs1 = backoffs0
+              pending = Future.sleep(sleep).onSuccess(_ => loop(stamp0, backoffs1))
             }
 
           case Throw(e) =>
