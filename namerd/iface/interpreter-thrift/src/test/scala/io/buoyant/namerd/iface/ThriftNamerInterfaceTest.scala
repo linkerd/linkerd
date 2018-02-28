@@ -16,7 +16,6 @@ import org.scalatest.FunSuite
 class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   import ThriftNamerInterface._
 
-  val retryIn = () => 1.second
   val clientId = TPath(Path.empty)
   val ns = "testns"
 
@@ -27,7 +26,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     }
     val stampCounter = new AtomicLong(1)
     val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, Capacity.default, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
     val initName = thrift.NameRef(TStamp.empty, TPath("ysl", "thugger"), ns)
@@ -78,7 +77,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
     val stampCounter = new AtomicLong(1)
     val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, Capacity.default, NullStatsReceiver)
 
     // The first request before the tree has been refined -- no value initially
     val path = TPath("ysl", "thugger")
@@ -113,7 +112,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
 
     val stampCounter = new AtomicLong(1)
     val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, Map.empty, stamper, Capacity.default, NullStatsReceiver)
 
     val initF = service.dtab(thrift.DtabReq(TStamp.empty, "pandoracorn", clientId))
     assert(!initF.isDefined)
@@ -132,7 +131,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     val namers = Map(pfx -> new Namer { def lookup(path: Path) = Activity(states) })
     val stampCounter = new AtomicLong(1)
     val stamper = () => Stamp.mk(stampCounter.getAndIncrement)
-    val service = new ThriftNamerInterface(interpreter, namers, stamper, retryIn, Capacity.default, NullStatsReceiver)
+    val service = new ThriftNamerInterface(interpreter, namers, stamper, Capacity.default, NullStatsReceiver)
   }
 
   test("addr") {

@@ -25,7 +25,7 @@ class ZkSession(
 
   private[this] val client =
     Var(Watched[ZooKeeperRW](NullZooKeeperRW, Var(WatchState.Pending)))
-  def zk = client.sample.value
+  def zk: Var[ZooKeeperRW] = client.map(_.value)
   private[this] def state = client.sample.state
 
   reconnect()
@@ -34,14 +34,14 @@ class ZkSession(
 
   def close(): Future[Unit] = {
     closing = true
-    zk.close()
+    zk.sample.close()
   }
 
   private[this] def reconnect(): Unit = {
     if (closing) return
 
     logger.info("Closing zk session %s", sessionId)
-    zk.close()
+    zk.sample.close()
     val newClient = clientBuilder()
     logger.info("Starting new zk session %s", sessionId(newClient))
 
