@@ -8,6 +8,9 @@ import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.protocol.H2Initializer
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
+import java.io.File
+import scala.io.Source
+import scala.util.Random
 
 class H2EndToEndTest extends FunSuite {
 
@@ -15,7 +18,6 @@ class H2EndToEndTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
 
     val dog = Downstream.const("dog", "woof")
-
 
     val config =
       s"""|routers:
@@ -151,4 +153,77 @@ class H2EndToEndTest extends FunSuite {
     await(dog.server.close())
   }
 
+  test("logs to correct files") {
+    val stats = new InMemoryStatsReceiver
+
+    val dog = Downstream.const("dog", "woof")
+
+    val logs = Array(
+      File.createTempFile("access", "log0"),
+      File.createTempFile("access", "log1")
+    )
+    logs.foreach { log => log.deleteOnExit() }
+
+    def randomPort = 32000 + (Random.nextDouble * 30000).toInt
+
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  label: router0
+          |  h2AccessLog: ${logs(0).getPath}
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: ${randomPort}
+          |- protocol: h2
+          |  label: router1
+          |  h2AccessLog: ${logs(1).getPath}
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: ${randomPort}
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+      .configured(Stats(stats))
+
+    val routers = linker.routers.map { router =>
+      router.initialize()
+    }
+
+    try {
+      Array("/path0", "/path1", "/path2", "/path3").zipWithIndex.foreach {
+        case (path, i) =>
+          val routerIndex = i%2
+          val server = routers(routerIndex).servers.head.serve()
+
+          val client = Upstream.mk(server)
+          def get(host: String, path: String = path)(f: Response => Unit) = {
+            val req = Request("http", Method.Get, host, path, Stream.empty())
+            val rsp = await(client(req))
+            f(rsp)
+          }
+
+          try {
+            get("dog") { rsp =>
+              assert(rsp.status == Status.Ok)
+              assert(await(rsp.stream.readDataString) == "woof")
+              ()
+            }
+          } finally {
+            await(client.close())
+            await(server.close())
+          }
+
+          val source = Source.fromFile(logs(routerIndex))
+          val lines = try source.mkString finally source.close()
+          assert(lines.contains(path))
+      }
+    } finally {
+      await(dog.server.close())
+      routers.foreach { router => await(router.close()) }
+    }
+  }
 }

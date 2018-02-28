@@ -235,7 +235,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           }
           val clientParams = params[StackRouter.Client.PerClientParams].paramsFor(name)
           // client stats are scoped by label within .newClient
-          client.withParams(params ++ clientParams + clientStats)
+          client.withParams(params ++ clientParams + RouterLabel.Param(label) + clientStats)
             .newClient(bound, mkClientLabel(bound))
         }
 

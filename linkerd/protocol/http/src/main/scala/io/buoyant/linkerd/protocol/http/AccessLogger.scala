@@ -4,6 +4,7 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stacka
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
+import io.buoyant.router.RouterLabel
 
 case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
 
@@ -52,10 +53,11 @@ object AccessLogger {
   }
 
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module4[param.File, param.RollPolicy, param.Append, param.RotateCount, ServiceFactory[Request, Response]] {
+    new Stack.Module5[RouterLabel.Param, param.File, param.RollPolicy, param.Append, param.RotateCount, ServiceFactory[Request, Response]] {
       val role = Stack.Role("HttpAccessLogger")
       val description = "Log Http requests/response summaries to a file"
       def make(
+        label: RouterLabel.Param,
         file: param.File,
         roll: param.RollPolicy,
         append: param.Append,
@@ -66,7 +68,7 @@ object AccessLogger {
           case param.File("") => factory
           case param.File(path) =>
             val logger = LoggerFactory(
-              node = "access",
+              node = "access_" + label,
               level = Some(Level.INFO),
               handlers = List(FileHandler(
                 path, roll.policy, append.append, rotate.count,
