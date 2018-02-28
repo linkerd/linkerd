@@ -12,8 +12,11 @@ import com.twitter.util._
 import io.buoyant.router.{Http, RoutingFactory}
 import io.buoyant.router.http.MethodAndHostIdentifier
 import io.buoyant.test.Awaits
+import java.io.File
 import java.net.InetSocketAddress
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
+import scala.io.Source
+import scala.util.Random
 
 class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with OptionValues {
 
@@ -618,5 +621,72 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
       "l5d-ctx-thing"
     ))
     assert(headers.get("l5d-ctx-dtab") == Some(localDtab))
+  }
+
+  test("logs to correct files") {
+    val downstream = Downstream.mk("test") {
+      req =>
+        val rsp = Response()
+        rsp.status = Status.Ok
+        rsp
+    }
+
+    val logs = Array(
+      File.createTempFile("access", "log0"),
+      File.createTempFile("access", "log1")
+    )
+    logs.foreach { log => log.deleteOnExit() }
+
+    val rand = new Random()
+
+    def randomPort = 32000 + (Random.nextDouble * 30000).toInt
+
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  label: router0
+          |  httpAccessLog: ${logs(0).getPath}
+          |  dtab: ${downstream.dentry.show};
+          |  servers:
+          |  - port: ${randomPort}
+          |- protocol: http
+          |  label: router1
+          |  httpAccessLog: ${logs(1).getPath}
+          |  dtab: ${downstream.dentry.show};
+          |  servers:
+          |  - port: ${randomPort}
+          |""".stripMargin
+
+    val routers = Linker.load(yaml).routers.map { router =>
+      router.initialize()
+    }
+
+    try {
+      Array("/path0", "/path1", "/path2", "/path3").zipWithIndex.foreach {
+        case (path, i) =>
+          val routerIndex = i%2
+
+          val req = Request()
+          req.host = "test"
+          req.uri = path
+
+          val s = routers(routerIndex).servers.head.serve()
+          val c = upstream(s)
+          try {
+            val resp = await(c(req))
+            resp.status must be (Status.Ok)
+          } finally {
+            await(c.close())
+            await(s.close())
+          }
+
+          val source = Source.fromFile(logs(routerIndex))
+          val lines = try source.mkString finally source.close()
+          assert(lines.contains(path))
+      }
+    } finally {
+      await(downstream.server.close())
+      routers.foreach { router => await(router.close()) }
+    }
   }
 }

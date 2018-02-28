@@ -5,6 +5,7 @@ import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.finagle.context.RemoteInfo
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
+import io.buoyant.router.RouterLabel
 import java.net.{InetSocketAddress}
 
 case class H2AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
@@ -57,10 +58,11 @@ object H2AccessLogger {
   }
 
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module4[param.File, param.RollPolicy, param.Append, param.RotateCount, ServiceFactory[Request, Response]] {
+    new Stack.Module5[RouterLabel.Param, param.File, param.RollPolicy, param.Append, param.RotateCount, ServiceFactory[Request, Response]] {
       val role = Stack.Role("H2AccessLogger")
       val description = "Log h2 requests/response summaries to a file"
       def make(
+        label: RouterLabel.Param,
         file: param.File,
         roll: param.RollPolicy,
         append: param.Append,
@@ -71,7 +73,7 @@ object H2AccessLogger {
           case param.File("") => factory
           case param.File(path) =>
             val logger = LoggerFactory(
-              node = "access",
+              node = "access_" + label,
               level = Some(Level.INFO),
               handlers = List(FileHandler(
                 path, roll.policy, append.append, rotate.count,

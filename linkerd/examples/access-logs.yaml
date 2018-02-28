@@ -1,0 +1,29 @@
+# Simple config for testing multiple access logs.
+# `curl localhost:4140`:
+#   linkerd1:4140 -> linkerd2:4141 -> admin:9990
+
+admin:
+  ip: 0.0.0.0
+  port: 9990
+
+telemetry:
+- kind: io.l5d.recentRequests
+  sampleRate: 1.0
+
+routers:
+- protocol: http
+  httpAccessLog: logs/access1.log
+  label: linkerd1
+  dtab: |
+    /svc => /$/inet/127.1/4141;
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+- protocol: http
+  httpAccessLog: logs/access2.log
+  label: linkerd2
+  dtab: |
+    /svc => /$/inet/127.1/9990;
+  servers:
+  - port: 4141
+    ip: 0.0.0.0
