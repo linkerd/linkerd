@@ -209,6 +209,7 @@ consistencyMode | `default` | Select between [Consul API consistency modes](http
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 preferServiceAddress | `true` | If `true` use the service address if defined and default to the node address. If `false` always use the node address.
 weights | none | List of tag-weight configurations, for adjusting the weights of node addresses. When a node matches more than one tag, it gets the highest matching weight. In the absence of match or configuration, nodes get a default weight of `1.0`.
+tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [TLS](#consul-tls).
 
 ### Consul Path Parameters
 
@@ -231,6 +232,44 @@ datacenter | yes | The Consul datacenter to use for this request. It can have a 
 tag | yes if includeTag is `true` | The Consul tag to use for this request.
 serviceName | yes | The Consul service name to use for this request.
 
+### Consul TLS
+
+>Linkerd supports encrypted communication via TLS to Consul.
+
+```yaml
+namers:
+- kind: io.l5d.consul
+  host: localhost
+  port: 8500
+  tls:
+    disableValidation: false
+    commonName: consul.io
+    trustCerts:
+    - /certificates/cacert.pem
+    clientAuth:
+      certPath: /certificates/cert.pem
+      keyPath: /certificates/key.pem
+```
+
+A TLS object describes how Linkerd should use TLS when sending requests to Consul agent.
+
+Key               | Default Value                              | Description
+----------------- | ------------------------------------------ | -----------
+disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
+commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
+trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
+clientAuth        | none                                       | A client auth object used to sign requests.
+
+If present, a clientAuth object must contain two properties:
+
+Key      | Default Value | Description
+---------|---------------|-------------
+certPath | _required_    | File path to the TLS certificate file.
+keyPath  | _required_    | File path to the TLS key file.  Must be in PKCS#8 format.
+
+<aside class="warning">
+Setting `disableValidation: true` will force the use of the JDK SSL provider which does not support client auth. Therefore, `disableValidation: true` and `clientAuth` are incompatible.
+</aside>
 
 <a name="k8s"></a>
 ## Kubernetes service discovery
