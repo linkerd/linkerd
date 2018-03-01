@@ -2,11 +2,12 @@ package io.buoyant.namer.consul
 
 import com.twitter.finagle._
 import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.util.DefaultTimer
+import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.Metadata
 import java.net.InetSocketAddress
-
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -34,6 +35,7 @@ private[consul] object SvcAddr {
    */
   def apply(
     consulApi: v1.ConsulApi,
+    apiBackoffs: Stream[Duration],
     datacenter: String,
     key: SvcKey,
     domain: Option[String],
@@ -41,7 +43,7 @@ private[consul] object SvcAddr {
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats
-  ): Var[Addr] = {
+  )(implicit timer: Timer = DefaultTimer): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
       consulApi.serviceNodes(
@@ -50,21 +52,18 @@ private[consul] object SvcAddr {
         tag = key.tag,
         blockingIndex = index,
         consistency = consistency,
-        retry = true
+        retry = false
       ).map(indexedToAddresses(preferServiceAddress, tagWeights))
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
     Var.async[Addr](Addr.Pending) { state =>
       stats.opens.incr()
-      // last good state - if an error occurs, fall back to this if
-      // a good state was seen.
-      @volatile var lastGood: Option[Addr] = None
       @volatile var stopped: Boolean = false
-      def loop(index0: Option[String]): Future[Unit] = {
+      def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentValueToLog: Addr): Future[Unit] = {
 
         if (stopped) Future.Unit
-        else getAddresses(index0).transform {
+        else getAddresses(blockingIndex).transform {
           case Throw(Failure(Some(cause))) if cause == ServiceRelease =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
@@ -76,45 +75,24 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
-          case Throw(Failure(Some(err: ConnectionFailedException))) =>
-            log.warning(
-              "consul datacenter '%s' service '%s' retrying on connection" +
-                " failure: %s",
-              datacenter, key.name, err
-            )
-            // Drop the index, in case it's been reset by a consul restart
-            loop(None)
+
           case Throw(e) =>
-            // an error occurred. if we've previously seen a good state, fall
-            // back to that state; otherwise, fail.
+            // do not update state, log error and continue polling with backoff
             stats.errors.incr()
-            lastGood match {
-              case Some(addr) =>
-                // if we've already seen a good state, fall back to that and
-                // try again.
-                state() = addr
-                log.warning(
-                  "consul datacenter '%s' service '%s' observation error %s," +
-                    " falling back to last good state",
-                  datacenter, key.name, e
-                )
-                loop(index0)
-              case None =>
-                // if no previous good state was seen, treat the exception
-                // as effectively fatal to the service observation.
-                state() = Addr.Failed(e)
-                log.error(
-                  "consul datacenter '%s' service '%s' observation error %s," +
-                    " no previous good state to fall back to!",
-                  datacenter, key.name, e
-                )
-                Future.exception(e)
-            }
+            log.log(
+              failureLogLevel,
+              "consul datacenter '%s' service '%s' observation error %s." +
+                " Last known state is %s",
+              datacenter, key.name, e, currentValueToLog
+            )
+            val backoff #:: nextBackoffs = backoffs
+            // subsequent errors are logged as DEBUG
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
 
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
             // TODO: do we want to revert to the last good state here, as well?
-            state() = Addr.Failed(NoIndexException)
+            state.update(Addr.Failed(NoIndexException))
             stats.errors.incr()
             log.error(
               "consul datacenter '%s' service '%s' didn't return an index!",
@@ -122,20 +100,19 @@ private[consul] object SvcAddr {
             )
             Future.exception(NoIndexException)
 
-          case Return(v1.Indexed(addrs, index1)) =>
+          case Return(v1.Indexed(addrs, xConsulIndex)) =>
             stats.updates.incr()
             val addr = addrs match {
               case addrs if addrs.isEmpty => Addr.Neg
               case addrs => Addr.Bound(addrs, meta)
             }
-            lastGood = Some(addr)
-            state() = addr
+            state.update(addr)
 
-            loop(index1)
+            loop(xConsulIndex, apiBackoffs, Level.WARNING, addr)
         }
       }
 
-      val pending = loop(None)
+      val pending = loop(None, apiBackoffs, Level.WARNING, Addr.Pending)
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()

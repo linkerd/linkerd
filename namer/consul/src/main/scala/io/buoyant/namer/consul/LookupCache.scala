@@ -1,12 +1,16 @@
 package io.buoyant.namer.consul
 
-import com.twitter.finagle.Address.Inet
+import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.Metadata
 import scala.Function.untupled
+
+private[consul] object LookupCache {
+  val DefaultBackoffs: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
+}
 
 /**
  * A helper supporting service resolution in consul, caching
@@ -34,6 +38,7 @@ private[consul] class LookupCache(
           case ((dcName, domainOption)) =>
             val addr = SvcAddr(
               consulApi,
+              LookupCache.DefaultBackoffs,
               dcName,
               key,
               domainOption,
