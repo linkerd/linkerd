@@ -33,7 +33,7 @@ a long-poll thrift interface.
 Namerd can be run locally with the commands
 
 ```
-./sbt namerd-examples/basic:run
+./sbt namerd/examples/basic:run
 ```
 or
 ```
