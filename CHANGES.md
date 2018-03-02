@@ -1,3 +1,30 @@
+## 1.3.6 2018-03-01
+
+This release focuses on correctness and bug fixes. Much of the work was in service to Linkerd's Kubernetes and Consul support. This release features contributions from [Salesforce](https://github.com/salesforce), [NCBI](https://github.com/ncbi), [Planet Labs](https://github.com/planetlabs), [Buoyant](https://github.com/buoyantio), [FOODit](https://github.com/foodit), and Variomedia.
+
+* Add support for DNS SAN names in XFCC ([#1826](https://github.com/linkerd/linkerd/pull/1826)). Thanks to [@shakti-das](https://github.com/shakti-das)!
+* Fix ZooKeeper connection loss by better handling of session expiration ([#1830](https://github.com/linkerd/linkerd/pull/1830)).
+* Fix race condition in ExistentialStability, used by Kubernetes and Rancher namers ([#1828](https://github.com/linkerd/linkerd/pull/1828)).
+* Fix inotify leaks in `io.l5d.fs` by cleaning them up in case of errors ([#1787](https://github.com/linkerd/linkerd/pull/1787)).
+* Fix access logs writing to same file when configured via multiple routers ([#1837](https://github.com/linkerd/linkerd/pull/1837)).
+* Kubernetes
+  * Fix ingress cache resetting when it should not ([#1817](https://github.com/linkerd/linkerd/pull/1817)). Thanks to [@negz](https://github.com/negz)!
+  * Introduce a `ignoreDefaultBackends` config key under `io.l5d.ingress`. This adds a 'strict' Kubernetes ingress identifier that ignores default backends ([#1794](https://github.com/linkerd/linkerd/pull/1794)). Thanks to [@negz](https://github.com/negz)!
+  * Fix issue where Kubernetes ingresses are sometimes not deleted ([#1810](https://github.com/linkerd/linkerd/pull/1810)).
+  * Fix namer client stats by using a single client for the entire `io.l5d.k8s` namer ([#1774](https://github.com/linkerd/linkerd/pull/1774)).
+  * Log unexpected responses from the Kubernetes API ([#1790](https://github.com/linkerd/linkerd/pull/1790)).
+* Consul
+  * Fix namerd admin inteface hanging ([#1816](https://github.com/linkerd/linkerd/pull/1816)). Thanks to [@Ashald](https://github.com/Ashald), and also [@hynek](https://github.com/hynek) for testing!
+  * Do not rely on ConsulApi retries in `io.l5d.consul` namer  ([#1827](https://github.com/linkerd/linkerd/pull/1827)). Thanks to [@edio](https://github.com/edio).
+* TLS
+  * Add test case to ensure `x-forwarded-client-cert` header can't be spoofed ([#1811](https://github.com/linkerd/linkerd/pull/1811)). Thanks to [@drichelson](https://github.com/drichelson)!
+* Namerd
+  * Add ability to record stats from `DtabStore` plugins ([#1801](https://github.com/linkerd/linkerd/pull/1801)). Thanks to [@edio](https://github.com/edio)!
+* Admin
+  * Use the system configured timezone when formatting logs ([#1833](https://github.com/linkerd/linkerd/pull/1833)). Thanks to [@fantayeneh](https://github.com/fantayeneh)!
+* HTTP/2
+  * Add access logging, via `h2AccessLog` config key in `h2` routers ([#1786](https://github.com/linkerd/linkerd/pull/1786)).
+
 ## 1.3.5 2018-01-17
 
 This release focuses on quality, and on improving the debugging process. It includes improvements and fixes for Linkerd's Kubernetes support, administrative UI, and Namerd control plane. It officially graduates HTTP/2 support out of experimental, and also features a number of community contributions!
