@@ -2,7 +2,7 @@ package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{ClientAuth, PathMatcher, TlsClientConfig}
+import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.config.types.Port
@@ -50,25 +50,6 @@ object ConsulInitializer extends ConsulInitializer
 
 case class TagWeight(tag: String, weight: Double)
 
-case class TlsConsulConfig(
-  disableValidation: Option[Boolean],
-  commonName: Option[String],
-  trustCerts: Option[Seq[String]] = None,
-  clientAuth: Option[ClientAuth] = None
-) {
-  require(
-    !disableValidation.getOrElse(false) || clientAuth.isEmpty,
-    "disableValidation: true is incompatible with clientAuth"
-  )
-  def params: Stack.Params =
-    TlsClientConfig(
-      disableValidation,
-      commonName,
-      trustCerts,
-      clientAuth
-    ).params
-}
-
 case class ConsulConfig(
   host: Option[String],
   port: Option[Port],
@@ -81,7 +62,7 @@ case class ConsulConfig(
   failFast: Option[Boolean] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Option[Seq[TagWeight]] = None,
-  tls: Option[TlsConsulConfig] = None
+  tls: Option[TlsClientConfig] = None
 ) extends NamerConfig {
 
   @JsonIgnore
