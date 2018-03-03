@@ -33,6 +33,7 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
               nameType match {
                 case GeneralNameTypeUri => clientCertHeader ++= s";SAN=$nameValue" // Use "SAN:" instead of "URI:" for backward compatibility with previous releases.
                 case GeneralNameTypeDns => clientCertHeader ++= s";DNS=$nameValue"
+                case _ =>
               }
             }
           }
