@@ -565,6 +565,7 @@ object LinkerdBuild extends Base {
     val main = projectDir("linkerd/main")
       .dependsOn(admin, configCore, core)
       .withTwitterLib(Deps.twitterServer)
+      .withTests()
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties("io/buoyant/linkerd")
       .settings(coverageExcludedPackages := ".*")

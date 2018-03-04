@@ -1,14 +1,13 @@
 package io.buoyant.linkerd
 
+import java.io.File
+
 import com.twitter.finagle.Path
 import com.twitter.util._
-import io.buoyant.admin.{App, Build}
+import io.buoyant.admin.{AdminConfig, App, Build}
 import io.buoyant.linkerd.admin.LinkerdAdmin
-import java.io.File
-import java.net.{InetSocketAddress, NetworkInterface}
-import scala.collection.JavaConverters._
+
 import scala.io.Source
-import sun.misc.{Signal, SignalHandler}
 
 /**
  * linkerd main execution.
@@ -28,28 +27,47 @@ object Main extends App {
 
     args match {
       case Array(path) =>
-        val config = loadLinker(path)
-        val linker = config.mk()
-        val admin = initAdmin(config, linker)
-        val telemeters = linker.telemeters.map(_.run())
-        val routers = linker.routers.map(initRouter(_))
-
-        log.info("initialized")
-        registerTerminationSignalHandler(config.admin.flatMap(_.shutdownGraceMs))
-        closeOnExit(Closable.sequence(
-          Closable.all(routers: _*),
-          Closable.all(telemeters: _*),
-          Closable.all(admin: _*)
-        ))
-        Await.all(routers: _*)
-        Await.all(telemeters: _*)
-        Await.all(admin: _*)
-
+        start(loadLinker(path))(TerminationHook) match {
+          case Throw(ex) => exitOnError(ex.getMessage)
+          case Return(svc) =>
+            closeOnExit(svc)
+            Await.result(svc)
+        }
       case _ => exitOnError("usage: linkerd path/to/config")
     }
+
   }
 
-  private def loadLinker(path: String): Linker.LinkerConfig = {
+  private val shutdownGraceMs =
+    (config: AdminConfig) =>
+      config.shutdownGraceMs
+        .map(Duration.fromMilliseconds(_))
+        .getOrElse(DefaultShutdownGrace)
+
+  private val shutdown = (shutdownGraceMs: Duration) => {
+    Await.result[Unit](close(shutdownGraceMs))
+  }
+
+  def start(config: Linker.LinkerConfig)(terminationHook: TerminationHook): Try[Closable with CloseAwaitably] = {
+    val maybeSvcs = for {
+      linker <- Try(config.mk())
+      admin = initAdmin(config, linker)
+      telemeters = linker.telemeters.map(_.run())
+      routers = linker.routers.map(initRouter(_))
+      _ = log.info("initialized")
+    } yield admin ++ telemeters ++ routers
+
+    for {
+      svcs <- maybeSvcs
+      _ = terminationHook.register(shutdown, config.admin.map(shutdownGraceMs).get)
+    } yield new Closable with CloseAwaitably {
+      private[this] val closer = Closable.sequence(Closable.all(svcs: _*))
+      def close(deadline: Time) = closeAwaitably { closer.close(deadline) }
+    }
+
+  }
+
+  def loadLinker(path: String): Linker.LinkerConfig = {
     val configText = path match {
       case "-" =>
         Source.fromInputStream(System.in).mkString
@@ -102,13 +120,7 @@ object Main extends App {
     name: Path
   ): Closable = {
     val addrs = if (server.ip.getHostAddress == "0.0.0.0") {
-      val a = for {
-        interface <- NetworkInterface.getNetworkInterfaces.asScala
-        if interface.isUp
-        inet <- interface.getInetAddresses.asScala
-        if !inet.isLoopbackAddress
-      } yield new InetSocketAddress(inet.getHostAddress, server.port)
-      a.toSeq
+      InetSocketAddresses.listeningOn(server.port)
     } else {
       Seq(server.addr)
     }
@@ -119,38 +131,14 @@ object Main extends App {
         Closable.nop
 
       case announcers =>
-        val closers = announcers.flatMap {
-          case (prefix, announcer) =>
-            for {
-              addr <- addrs
-            } yield {
-              log.info("announcing %s as %s to %s", addr, name.show, announcer.scheme)
-              announcer.announce(addr, name.drop(prefix.size))
-            }
-        }
+        val closers = for {
+          (prefix, announcer) <- announcers
+          addr <- addrs
+          _ = log.info("announcing %s as %s to %s", addr, name.show, announcer.scheme)
+        } yield announcer.announce(addr, name.drop(prefix.size))
+
         Closable.all(closers: _*)
     }
-  }
-
-  /**
-   * Trap termination signals and triggers an App.close for a graceful shutdown.
-   * Shutdown hook is not used because it has, at least, the following problems:
-   * <ul>
-   *   <li>LogManager uses a shutdown hook which makes nothing to be logged during shutdown
-   *   <li>TracerCache uses a shutdown hook to flush
-   * </ul>
-   */
-  private def registerTerminationSignalHandler(shutdownGraceMs: Option[Int]): Unit = {
-    val shutdownHandler = new SignalHandler {
-      override def handle(sig: Signal): Unit = {
-        log.info("Received %s. Shutting down ...", sig)
-        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(DefaultShutdownGrace)
-        Await.result(close(closeTimeOut))
-      }
-    }
-
-    Signal.handle(new Signal("INT"), shutdownHandler)
-    val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
   }
 
 }
