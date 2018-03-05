@@ -7,6 +7,11 @@ import scala.io.Source
 
 object Main extends App {
 
+  /**
+   * Flag to validate a configuration.
+   */
+  private val validate = flag.apply("validate", false, "Only validate a configuration and finish with a proper status code")
+
   def main(): Unit = {
     val build = Build.load("/io/buoyant/namerd/build.properties")
     log.info("namerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
@@ -14,6 +19,9 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadNamerd(path)
+        if (validate())
+          return
+
         val namerd = config.mk()
 
         val admin = namerd.admin.serve(this, NamerdAdmin(config, namerd))

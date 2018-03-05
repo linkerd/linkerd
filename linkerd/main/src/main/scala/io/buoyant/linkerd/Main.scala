@@ -19,6 +19,11 @@ import sun.misc.{Signal, SignalHandler}
  */
 object Main extends App {
 
+  /**
+   * Flag to validate a configuration.
+   */
+  private val validate = flag.apply("validate", false, "Only validate a configuration and finish with a proper status code")
+
   private[this] val DefaultShutdownGrace =
     Duration.fromSeconds(10)
 
@@ -29,6 +34,9 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
+        if (validate())
+          return
+
         val linker = config.mk()
         val admin = initAdmin(config, linker)
         val telemeters = linker.telemeters.map(_.run())
