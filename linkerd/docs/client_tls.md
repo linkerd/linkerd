@@ -20,6 +20,7 @@ the server.
 
 Key | Default Value | Description
 --- | ------------- | -----------
+enabled | true | Enable TLS on outgoing connections.
 certPath | _required_ | File path to the TLS certificate file.
 keyPath | _required_ | File path to the TLS key file.
 requireClientAuth | false | If true, only accept requests with valid client certificates.
