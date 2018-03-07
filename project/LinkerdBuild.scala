@@ -240,6 +240,7 @@ object LinkerdBuild extends Base {
        |   -XX:+UseStringDeduplication                       \
        |   -Dcom.twitter.util.events.sinkEnabled=false       \
        |   -Dorg.apache.thrift.readLength=10485760           \
+       |   -Djdk.nio.maxCachedBufferSize=262144              \
        |   ${LOCAL_JVM_OPTIONS:-}                            "
        |""".stripMargin
 
