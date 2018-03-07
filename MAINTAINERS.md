@@ -6,3 +6,4 @@ The Linkerd maintainers are:
 * William Morgan <william@buoyant.io> @wmorgan: docs and governance
 * Borys Pierov <pierovbg@ncbi.nlm.nih.gov> @Ashald: Consul integration
 * Zack Angelo <zack.angelo@bigcommerce.com> @zackangelo: H2 codec
+* Christopher Taylor @ccmtaylor: DNS SRV namer
