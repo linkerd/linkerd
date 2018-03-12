@@ -16,7 +16,7 @@ object Deps {
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "7.1.0"
+    "com.twitter" %% s"finagle-$mod" % "18.2.0"
 
   def netty4(mod: String) =
     "io.netty" % s"netty-$mod" % "4.1.14.Final"
