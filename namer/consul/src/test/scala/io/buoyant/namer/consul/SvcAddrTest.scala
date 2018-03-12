@@ -136,4 +136,21 @@ class SvcAddrTest extends FunSuite with Matchers {
     // then
     extracted should be(Some(cause))
   }
+
+  test("should be Addr.Neg if dc does not exist") {
+    // givenn
+    val invoked = Promise[Unit]()
+    val api = apiStub { (_, _, _, _, _, _) =>
+      invoked.setDone()
+      Future.exception(new Throwable("No path to datacenter"))
+    }
+
+    // when
+    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    addr.changes.respond(_ => ())
+
+    // then
+    Await.ready(invoked, 1.second)
+    addr.sample() should matchPattern { case Addr.Neg => }
+  }
 }

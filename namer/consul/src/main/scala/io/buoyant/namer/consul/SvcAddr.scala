@@ -22,6 +22,8 @@ private[consul] object SvcAddr {
   private[this] val ServiceRelease =
     new Exception("service observation released") with NoStackTrace
 
+  private[this] val NonExistentDcMessage = "No path to datacenter"
+
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
     val closes = stats.counter("closes")
@@ -85,6 +87,9 @@ private[consul] object SvcAddr {
                 " Last known state is %s",
               datacenter, key.name, e, currentValueToLog
             )
+            if (e.toString.contains(NonExistentDcMessage)) {
+              state.update(Addr.Neg)
+            }
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
