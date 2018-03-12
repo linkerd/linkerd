@@ -52,17 +52,17 @@ private[h2] class DebugHandler(prefix: String)
     val objstr = obj match {
       case f: Http2HeadersFrame =>
         val eos = if (f.isEndStream) "eos" else "---"
-        s"${f.streamId} $eos HEADERS"
+        s"${f.stream().id()} $eos HEADERS"
 
       case f: Http2DataFrame =>
         val eos = if (f.isEndStream) "eos" else "---"
-        s"${f.streamId} $eos DATA ${f.content.capacity}B"
+        s"${f.stream().id()} $eos DATA ${f.content.capacity}B"
 
       case f: Http2ResetFrame =>
-        s"${f.streamId} eos ${f.name}"
+        s"${f.stream().id()} eos ${f.name}"
 
       case f: Http2StreamFrame =>
-        s"${f.streamId} --- ${f.name}"
+        s"${f.stream().id()} --- ${f.name}"
 
       case obj => obj.toString
     }

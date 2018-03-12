@@ -1,8 +1,10 @@
 package io.netty.handler.codec.http2
 
-import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBuf
 import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPromise}
-import io.netty.handler.codec.http.HttpServerUpgradeHandler.UpgradeEvent;
+import io.netty.handler.codec.http.HttpServerUpgradeHandler.UpgradeEvent
+import io.netty.handler.codec.http2.Http2Connection.PropertyKey
+import io.netty.handler.codec.http2.Http2FrameCodec.DefaultHttp2FrameStream;
 
 /**
  * This is a direct reimplementation of io.netty.handler.codec.http2.Http2FrameCodec.
@@ -21,16 +23,36 @@ class H2FrameCodec(
   import H2FrameCodec._
 
   private[this] var channelCtx, http2HandlerCtx: ChannelHandlerContext = null
+  private[this] val newKey = http2Handler.connection.newKey
+  private[this] val streamKey = http2Handler.connection.newKey
+  private[this] var frameStreamToInitialize: DefaultHttp2FrameStream = null
 
   private[this] val connectionListener = new Http2ConnectionAdapter {
 
+    override def onStreamAdded(stream: Http2Stream): Unit = {
+      if (frameStreamToInitialize != null && stream.id == frameStreamToInitialize.id) {
+        frameStreamToInitialize.setStreamAndProperty(streamKey, stream)
+        frameStreamToInitialize = null
+      }
+    }
+
     override def onStreamActive(stream: Http2Stream): Unit = channelCtx match {
       case null => // UPGRADE stream is active before handlerAdded
-      case ctx => ctx.fireUserEventTriggered(new Http2StreamActiveEvent(stream.id)); ()
+      case ctx =>
+        if (http2Handler.connection.local().isValidStreamId(stream.id)) return
+
+        val stream2 = new DefaultHttp2FrameStream()
+        stream2.setStreamAndProperty(newKey, stream)
+        ctx.fireUserEventTriggered(Http2FrameStreamEvent.stateChanged(stream2)); ()
     }
 
     override def onStreamClosed(stream: Http2Stream): Unit = {
-      channelCtx.fireUserEventTriggered(new Http2StreamClosedEvent(stream.id)); ()
+      val stream2: Http2FrameStream = stream.getProperty(newKey)
+      channelCtx match {
+        case ctx =>
+          val event = Http2FrameStreamEvent.stateChanged(stream2)
+          ctx.fireUserEventTriggered(event); ()
+      }
     }
 
     override def onGoAwayReceived(lastStreamId: Int, errorCode: Long, data: ByteBuf): Unit = {
@@ -72,7 +94,9 @@ class H2FrameCodec(
           // active before handler added.  The stream was already made
           // active, but ctx may have been null so it wasn't
           // initialized.  https://github.com/netty/netty/issues/4942
-          connectionListener.onStreamActive(stream)
+          if (stream.getProperty(streamKey) == null) {
+            connectionListener.onStreamActive(stream)
+          }
 
           upgrade.upgradeRequest.headers.setInt(
             HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text,
@@ -123,7 +147,7 @@ class H2FrameCodec(
         try {
           http2Handler.encoder.writeData(
             http2HandlerCtx,
-            data.streamId,
+            data.stream.id,
             data.content.retain(),
             data.padding,
             data.isEndStream,
@@ -134,7 +158,7 @@ class H2FrameCodec(
       case headers: Http2HeadersFrame =>
         http2Handler.encoder.writeHeaders(
           http2HandlerCtx,
-          headers.streamId,
+          headers.stream.id,
           headers.headers(),
           headers.padding,
           headers.isEndStream,
@@ -144,15 +168,21 @@ class H2FrameCodec(
       case reset: Http2ResetFrame =>
         http2Handler.resetStream(
           http2HandlerCtx,
-          reset.streamId,
+          reset.stream.id,
           reset.errorCode,
+          promise
+        ); ()
+
+      case settings: Http2SettingsFrame =>
+        http2Handler.encoder().writeSettings(
+          http2HandlerCtx, settings.settings(),
           promise
         ); ()
 
       case update: Http2WindowUpdateFrame =>
         try {
           http2Handler.connection.local.flowController.consumeBytes(
-            http2Handler.connection.stream(update.streamId),
+            http2Handler.connection.stream(update.stream.id),
             update.windowSizeIncrement
           )
           promise.setSuccess(); ()
@@ -226,6 +256,7 @@ object H2FrameCodec {
 
     override protected def onStreamError(
       ctx: ChannelHandlerContext,
+      outbound: Boolean,
       cause: Throwable,
       exc: Http2Exception.StreamException
     ): Unit =
@@ -234,15 +265,14 @@ object H2FrameCodec {
           ctx.fireExceptionCaught(exc); ()
         }
       } finally {
-        super.onStreamError(ctx, cause, exc)
+        super.onStreamError(ctx, outbound, cause, exc)
       }
   }
 
   private class FrameListener extends Http2FrameAdapter {
 
     override def onRstStreamRead(ctx: ChannelHandlerContext, id: Int, code: Long): Unit = {
-      val rst = new DefaultHttp2ResetFrame(code)
-      rst.streamId(id)
+      val rst = new DefaultHttp2ResetFrame(code).stream()
       ctx.fireChannelRead(rst); ()
     }
 
@@ -265,7 +295,7 @@ object H2FrameCodec {
       eos: Boolean
     ): Unit = {
       val hdrs = new DefaultHttp2HeadersFrame(headers, eos, padding)
-      hdrs.streamId(streamId)
+      hdrs.stream().id()
       ctx.fireChannelRead(hdrs); ()
     }
 
@@ -277,9 +307,14 @@ object H2FrameCodec {
       eos: Boolean
     ): Int = {
       val data = new DefaultHttp2DataFrame(content.retain(), eos, padding)
-      data.streamId(streamId)
+      data.stream().id
       ctx.fireChannelRead(data)
       0 // bytes are marked as consumed via WindowUpdateFrame writes
+    }
+
+    override def onSettingsRead(ctx: ChannelHandlerContext, settings: Http2Settings): Unit = {
+      val settingsFrame = new DefaultHttp2SettingsFrame(settings)
+      ctx.fireChannelRead(settingsFrame); ()
     }
 
   }

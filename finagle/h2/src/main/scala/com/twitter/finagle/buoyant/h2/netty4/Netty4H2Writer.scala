@@ -19,37 +19,35 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
    * H2Transport.Writer -- netty4-agnostic h2 message writer
    */
 
-  override def write(id: Int, msg: Headers, eos: Boolean): Future[Unit] = {
+  override def write(id: Int, streamState: Http2Stream.State, msg: Headers, eos: Boolean): Future[Unit] = {
     val headers = Netty4Message.Headers.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
-    if (id >= 0) frame.streamId(id)
+    if (id >= 0) frame.stream(H2FrameStream(id, streamState))
     write(frame)
   }
 
-  override def write(id: Int, f: Frame): Future[Unit] = f match {
-    case data: Frame.Data => write(id, data.buf, data.isEnd)
-    case tlrs: Frame.Trailers => write(id, tlrs, eos = true)
+  override def write(id: Int, streamState: Http2Stream.State, f: Frame): Future[Unit] = f match {
+    case data: Frame.Data => write(id, streamState, data.buf, data.isEnd)
+    case tlrs: Frame.Trailers => write(id, streamState, tlrs, eos = true)
   }
 
-  override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
+  override def write(id: Int, streamState: Http2Stream.State, buf: Buf, eos: Boolean): Future[Unit] = {
     val bb = BufAsByteBuf(buf)
     val nettyFrame = new DefaultHttp2DataFrame(bb, eos)
-    if (id >= 0) nettyFrame.streamId(id)
-    // We retain this frame before sending it to Netty because we may be using it elsewhere.
-    // It is our responsibility to call frame.release() when we are done with it.
+    if (id >= 0) nettyFrame.stream(H2FrameStream(id, streamState))
     write(nettyFrame.retain())
   }
 
-  override def updateWindow(id: Int, incr: Int): Future[Unit] = {
+  override def updateWindow(id: Int, streamState: Http2Stream.State, incr: Int): Future[Unit] = {
     val frame = new DefaultHttp2WindowUpdateFrame(incr)
-    if (id >= 0) frame.streamId(id)
+    if (id >= 0) frame.stream(H2FrameStream(id, streamState))
     write(frame)
   }
 
-  override def reset(id: Int, rst: Reset): Future[Unit] = {
+  override def reset(id: Int, streamState: Http2Stream.State, rst: Reset): Future[Unit] = {
     require(id > 0)
     val code = Netty4Message.Reset.toHttp2Error(rst)
-    val frame = new DefaultHttp2ResetFrame(code).streamId(id)
+    val frame = new DefaultHttp2ResetFrame(code).stream(H2FrameStream(id, streamState))
     write(frame)
   }
 
