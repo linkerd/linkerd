@@ -161,4 +161,6 @@ object Stream {
       }
     }
 
+  def fromFuture[T](fut: Future[T]): Stream[T] = deferred(fut.map(value))
+
 }

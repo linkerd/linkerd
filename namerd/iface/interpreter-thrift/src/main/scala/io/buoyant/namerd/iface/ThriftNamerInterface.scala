@@ -46,6 +46,9 @@ object ThriftNamerInterface {
   object TStamp {
     val empty = ByteBuffer.wrap(Array.empty)
 
+    // an arbitrary non-empty stamp
+    def one = mk(1L)
+
     def apply(s: Stamp): TStamp = {
       val Buf.ByteBuffer.Owned(t) = Buf.ByteBuffer.coerce(s)
       t
@@ -536,32 +539,41 @@ class ThriftNamerInterface(
     namer.bind(NameTree.Leaf(id.drop(pfx.size)))
   }
 
-  private[this] def observeDelegation(ns: Ns, dtab: Dtab, tree: NameTree[Name.Path]) = {
-    val act = interpreters(ns) match {
-      case interpreter: Delegator =>
-        interpreter.delegate(dtab, tree)
-      case _ =>
-        throw new UnsupportedOperationException(s"Name Interpreter for $ns cannot show delegations")
-    }
-    mkObserver(act, stamper)
-  }
-  private[this] val delegationCache = new ObserverCache[(String, Dtab, NameTree[Name.Path]), DelegateTree[Name.Bound]](
-    activeCapacity = 1000,
-    inactiveCapacity = 100,
-    stats = stats.scope("delegationcache"),
-    mkObserver = (observeDelegation _).tupled
-  )
+  private[this] def nonDelegatorException(ns: String) =
+    Future.exception(new UnsupportedOperationException(s"Name Interpreter for $ns cannot show delegations"))
 
+  // Unlike other methods in this interface, delegate is NOT long-polling.  Clients should always
+  // request with an empty stamp and should only re-poll when they want to explicitly check for a
+  // new value.  For backwards compatibility with older long-polling clients, delegate will never
+  // respond to a request with a non-empty stamp.  This means that it will leave the long-poll
+  // pending until it is cancelled by the client.
   override def delegate(req: thrift.DelegateReq): Future[Delegation] = {
     val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, ttree, ns), _) = req
     val dtab = Dtab.read(dtabstr)
     val tree = parseDelegateTree(ttree).toNameTree
-    Future.const(delegationCache.get(ns, dtab, tree)).flatMap { observer =>
-      observer(reqStamp)
-    }.transform {
-      case Return((TStamp(tstamp), delegateTree)) =>
+
+    val validateStamp = if (reqStamp == TStamp.empty) {
+      Future.Unit
+    } else {
+      // A non-empty stamp indicates that this is a subsequent request from a long-polling client.
+      // For backwards compatibility, we do not respond so that the client will keep the initial
+      // value for the delegation.
+      Future.never
+    }
+    val delegator = validateStamp.before {
+      interpreters(ns) match {
+        case d: Delegator => Future.value(d)
+        case _ => nonDelegatorException(ns)
+      }
+    }
+    val delegation = delegator.flatMap { _.delegate(dtab, tree) }
+    delegation.transform {
+      case Return(delegateTree) =>
         val (root, nodes, _) = mkDelegateTree(delegateTree)
-        Future.value(thrift.Delegation(tstamp, thrift.DelegateTree(root, nodes), ns))
+        // Clients should ignore the stamp value in the response.  However, older long-polling
+        // clients will make a second response with this stamp.  We set the stamp to a non-empty
+        // value so that we know to leave the second request pending.
+        Future.value(thrift.Delegation(TStamp.one, thrift.DelegateTree(root, nodes), ns))
       case Throw(e) =>
         val failure = thrift.DelegationFailure(e.getMessage)
         Future.exception(failure)

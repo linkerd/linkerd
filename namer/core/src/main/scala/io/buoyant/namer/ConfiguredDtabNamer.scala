@@ -3,7 +3,7 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{Activity, Var}
+import com.twitter.util.{Activity, Future, Var}
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],
@@ -45,8 +45,8 @@ case class ConfiguredDtabNamer(
   override def delegate(
     dtab: Dtab,
     tree: NameTree[Name.Path]
-  ): Activity[DelegateTree[Bound]] =
-    configuredDtab.flatMap { confDtab =>
+  ): Future[DelegateTree[Bound]] =
+    configuredDtab.toFuture.flatMap { confDtab =>
       namersInterpreter.delegate(confDtab ++ dtab, tree)
     }
 

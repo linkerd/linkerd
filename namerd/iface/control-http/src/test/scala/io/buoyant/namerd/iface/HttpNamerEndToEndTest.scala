@@ -128,7 +128,7 @@ class HttpNamerEndToEndTest extends FunSuite with Eventually with IntegrationPat
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
       Path.read("/svc/poop")
-    ).toFuture)
+    ))
 
     assert(tree ==
       DelegateTree.Delegate(

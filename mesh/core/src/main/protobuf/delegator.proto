@@ -18,6 +18,7 @@ service Delegator {
   rpc StreamDtab (DtabReq) returns (stream DtabRsp) {}
 
   rpc GetDelegateTree (DelegateTreeReq) returns (DelegateTreeRsp) {}
+  // DEPRECATED: This method will only return one value.  Use GetDelegateTree instead.
   rpc StreamDelegateTree (DelegateTreeReq) returns (stream DelegateTreeRsp) {}
 }
 

@@ -8,7 +8,6 @@ import com.twitter.concurrent.AsyncStream
 import com.twitter.io.{Buf, Reader}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Try}
-
 import scala.util.control.NonFatal
 
 class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {

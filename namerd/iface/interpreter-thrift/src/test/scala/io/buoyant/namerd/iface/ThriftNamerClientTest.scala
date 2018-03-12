@@ -80,8 +80,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     val service = new TestNamerService(clientId)
     val client = new ThriftNamerClient(service, namespace, Stream.continually(Duration.Zero), clientId = clientId)
 
-    val act = client.delegate(Dtab.empty, Path.read("/yeezy/tlop/wolves"))
-    val delegation = act.toFuture
+    val delegation = client.delegate(Dtab.empty, Path.read("/yeezy/tlop/wolves"))
     assert(!delegation.isDefined)
 
     val tree = DelegateTree.Delegate(Path.read("/yeezus/tlop/wolves"), Dentry.read("/yeezy => /yeezus"), DelegateTree.Neg(Path.read("/yeezus/tlop/wolves"), Dentry.nop))
