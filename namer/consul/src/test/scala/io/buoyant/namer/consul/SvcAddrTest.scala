@@ -44,23 +44,6 @@ class SvcAddrTest extends FunSuite with Matchers {
       ): Future[Indexed[Seq[ServiceNode]]] = stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry)
     }
 
-  test("should remain pending on error from start") {
-    // givenn
-    val invoked = Promise[Unit]()
-    val api = apiStub { (_, _, _, _, _, _) =>
-      invoked.setDone()
-      Future.exception(new Throwable("whatever is thrown we catch"))
-    }
-
-    // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
-
-    // then
-    Await.ready(invoked, 1.second)
-    addr.sample() should matchPattern { case Addr.Pending => }
-  }
-
   test("should keep last known Addr.Bound value on error") {
     // given
     val invoked = Promise[Unit]()
@@ -89,7 +72,7 @@ class SvcAddrTest extends FunSuite with Matchers {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
         addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
-      case _ => fail("should be Addr.Bound")
+      case neg: Addr => neg should be(Addr.Neg)
     }
   }
 
@@ -137,7 +120,7 @@ class SvcAddrTest extends FunSuite with Matchers {
     extracted should be(Some(cause))
   }
 
-  test("should be Addr.Neg if dc does not exist") {
+  test("should be Addr.Neg unexpected error occurs") {
     // givenn
     val invoked = Promise[Unit]()
     val api = apiStub { (_, _, _, _, _, _) =>

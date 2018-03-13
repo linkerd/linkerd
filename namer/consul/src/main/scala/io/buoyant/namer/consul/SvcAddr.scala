@@ -87,9 +87,7 @@ private[consul] object SvcAddr {
                 " Last known state is %s",
               datacenter, key.name, e, currentValueToLog
             )
-            if (e.toString.contains(NonExistentDcMessage)) {
-              state.update(Addr.Neg)
-            }
+            state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
