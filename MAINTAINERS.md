@@ -7,3 +7,14 @@ The Linkerd maintainers are:
 * Borys Pierov <pierovbg@ncbi.nlm.nih.gov> @Ashald: Consul integration
 * Zack Angelo <zack.angelo@bigcommerce.com> @zackangelo: H2 codec
 * Christopher Taylor @ccmtaylor: DNS SRV namer
+
+
+<!--
+# Adding a new maintainer
+
+* Submit a PR modifying this file
+* Add maintainer to .github/CODEOWNERS
+* Obtain approvals per GOVERNANCE.md
+* Invite maintainer to https://github.com/orgs/linkerd/teams/linkerd-maintainers/members
+* Invite maintainer to https://github.com/orgs/linkerd/people
+-->
