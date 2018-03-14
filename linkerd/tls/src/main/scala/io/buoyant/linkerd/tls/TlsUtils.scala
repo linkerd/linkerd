@@ -152,6 +152,7 @@ object TlsUtils {
     |
     |[alt_names]
     |URI.1 = https://buoyant.io
+    |IP.1 = 127.0.0.1
     |""".stripMargin
 
   def newKeyAndCert(subj: String, cfg: File, key: File, cert: File): ProcessBuilder =
