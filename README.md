@@ -61,7 +61,7 @@ minutes to review our [code of conduct][coc].
 
 ## License ##
 
-Copyright 2016-2017, Buoyant Inc. All rights reserved.
+Copyright 2018, Linkerd Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
