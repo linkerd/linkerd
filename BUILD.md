@@ -249,8 +249,8 @@ The base Docker image used to build the final images may be set and overwritten 
 [info] Defining linkerd/bundle:dockerJavaImage
 [info] The new value will be used by linkerd/bundle:docker::dockerfile
 [info] Reapplying settings...
-[info] Set current project to all (in build file:/Users/mohsenrezaei/dev/buoyant/linkerd/)
->  show linkerd/bundle:dockerJavaImage
+[info] Set current project to all (in build file:~/buoyant/linkerd/)
+> show linkerd/bundle:dockerJavaImage
 [info] myFromImage
 ```
 
