@@ -242,6 +242,26 @@ The list of image names may be changed with a command like:
 [info] List(buoyantio/linkerd:0.0.10-SNAPSHOT, gcr.io/gce-project/linkerd:v0.0.10-SNAPSHOT)
 ```
 
+The base Docker image used to build the final images may be set and overwritten at buildtime like:
+
+```
+> set Base.dockerJavaImage in (linkerd, Bundle) := "myFromImage"
+[info] Defining linkerd/bundle:dockerJavaImage
+[info] The new value will be used by linkerd/bundle:docker::dockerfile
+[info] Reapplying settings...
+[info] Set current project to all (in build file:~/buoyant/linkerd/)
+> show linkerd/bundle:dockerJavaImage
+[info] myFromImage
+```
+
+or, with build command like:
+
+```bash
+$ ./sbt 'set Base.dockerJavaImage in (linkerd, Bundle) := "myFromImage"' linkerd/docker
+```
+
+_NOTE:_ The same setting applies to all apps and configs, i.e. `set ... (linkerd|namerd, Bundle|LowMem|Jdk) ...`.
+
 #### DCOS ####
 
 Namerd supports a DCOS-specific configuration. When used in conjunction with
