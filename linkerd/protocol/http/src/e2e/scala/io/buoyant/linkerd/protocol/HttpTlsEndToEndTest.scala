@@ -4,22 +4,28 @@ import java.io.{File, InputStream}
 import java.net.InetSocketAddress
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
-
-import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
-import com.twitter.finagle.http._
-import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
-import com.twitter.finagle.http.{param => _, _}
-import com.twitter.finagle.http.{Method, Status}
+import com.twitter.finagle.http.{Method, Status, param => _, _}
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.ssl.server.SslServerConfiguration
 import com.twitter.finagle.ssl.{ClientAuth, KeyCredentials, TrustCredentials}
 import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
 import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
+import org.scalatest.Retries
+import org.scalatest.tagobjects.Retryable
 
-class HttpTlsEndToEndTest extends FunSuite {
+
+class HttpTlsEndToEndTest extends FunSuite with Retries {
+
+  override def withFixture(test: NoArgTest) = {
+    if (isRetryable(test))
+      withRetry { super.withFixture(test) }
+    else
+      super.withFixture(test)
+  }
 
   private[this] def loadResource(p: String): InputStream =
     getClass.getResourceAsStream(p)
@@ -36,7 +42,7 @@ class HttpTlsEndToEndTest extends FunSuite {
     Future.value(Response())
   }
 
-  test("client/server works with TLS") {
+  test("client/server works with TLS", Retryable) {
     val srv = {
       val srvCert = loadPem("linkerd-tls-e2e-cert")
       val srvKey = loadPem("linkerd-tls-e2e-key")
