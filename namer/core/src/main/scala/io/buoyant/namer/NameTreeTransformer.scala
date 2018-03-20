@@ -3,7 +3,7 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle._
-import com.twitter.util.Activity
+import com.twitter.util.{Activity, Future}
 
 /**
  * A NameTreeTransformer performs some kind of transformation on bound
@@ -52,7 +52,7 @@ trait NameTreeTransformer {
  */
 trait DelegatingNameTreeTransformer extends NameTreeTransformer {
 
-  protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]]
+  protected def transformDelegate(tree: DelegateTree[Name.Bound]): Future[DelegateTree[Name.Bound]]
 
   /** Like wrap, but preserving the ability of the NameInterpreter to delegate */
   def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = new NameInterpreter with Delegator {
@@ -62,7 +62,7 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
     override def delegate(
       dtab: Dtab,
       tree: NameTree[Name.Path]
-    ): Activity[DelegateTree[Bound]] =
+    ): Future[DelegateTree[Bound]] =
       underlying.delegate(dtab, tree).flatMap(transformDelegate)
 
     override def dtab: Activity[Dtab] = underlying.dtab
@@ -114,8 +114,8 @@ trait FilteringNameTreeTransformer extends DelegatingNameTreeTransformer {
 
   }
 
-  override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Activity[DelegateTree[Name.Bound]] =
-    Activity.value(tree.flatMap { leaf =>
+  override protected def transformDelegate(tree: DelegateTree[Name.Bound]): Future[DelegateTree[Name.Bound]] =
+    Future.value(tree.flatMap { leaf =>
       val bound = mapBound(leaf.value)
       val path = bound.id match {
         case id: Path => id

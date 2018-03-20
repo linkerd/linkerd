@@ -155,7 +155,8 @@ struct DelegateTree {
 }
 
 struct Delegation {
-  1: Stamp stamp
+  // Delegation does not support long-polling. Clients should always send an empty stamp.
+  1: Stamp stamp // DEPRECATED
   2: DelegateTree tree
   3: Ns ns
 }

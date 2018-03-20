@@ -31,12 +31,12 @@ class StreamingNamerClient(
   override def delegate(
     dtab: Dtab,
     tree: NameTree[Name.Path]
-  ): Activity[DelegateTree[Name.Bound]] = {
+  ): Future[DelegateTree[Name.Bound]] = {
     val path = tree match {
       case NameTree.Leaf(Name.Path(p)) => p
       case _ => throw new IllegalArgumentException("Delegation too complex")
     }
-    delegateCache.get((dtab, path))
+    getDelegate(dtab, path)
   }
 
   override def dtab: Activity[Dtab] = watchDtab
@@ -59,13 +59,6 @@ class StreamingNamerClient(
     .build[Path, Var[Addr]](
       new CacheLoader[Path, Var[Addr]] {
         def load(key: Path): Var[Addr] = watchAddr(key)
-      }
-    )
-
-  private[this] val delegateCache = CacheBuilder.newBuilder()
-    .build[BindKey, Activity[DelegateTree[Name.Bound]]](
-      new CacheLoader[BindKey, Activity[DelegateTree[Name.Bound]]] {
-        def load(key: BindKey): Activity[DelegateTree[Name.Bound]] = watchDelegate(key._1, key._2)
       }
     )
 
@@ -134,7 +127,7 @@ class StreamingNamerClient(
     })
   }
 
-  private[this] def watchDelegate(dtab: Dtab, path: Path): Activity[DelegateTree[Name.Bound]] = {
+  private[this] def getDelegate(dtab: Dtab, path: Path): Future[DelegateTree[Name.Bound]] = {
     @volatile var rspF: Future[Response] = Future.never
 
     val delegateReq = Request(
@@ -143,7 +136,7 @@ class StreamingNamerClient(
       "dtab" -> dtab.show
     )
 
-    Activity.future(client(delegateReq)).map { rsp =>
+    client(delegateReq).map { rsp =>
       mapper.readValue[JsonDelegateTree](rsp.contentString)
     }.map(JsonDelegateTree.toDelegateTree)
   }

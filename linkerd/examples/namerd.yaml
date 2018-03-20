@@ -1,10 +1,30 @@
 # Use namerd for name resolution.
 routers:
 - protocol: http
+  label: named-thrift
   interpreter:
     kind: io.l5d.namerd
     dst: /$/inet/localhost/4100
     namespace: default
   servers:
   - port: 4140
+    ip: 0.0.0.0
+- protocol: http
+  label: named-http
+  interpreter:
+    kind: io.l5d.namerd.http
+    experimental: true
+    dst: /$/inet/localhost/4180
+    namespace: default
+  servers:
+  - port: 4141
+    ip: 0.0.0.0
+- protocol: http
+  label: named-grpc
+  interpreter:
+    kind: io.l5d.mesh
+    dst: /$/inet/localhost/4321
+    root: /default
+  servers:
+  - port: 4142
     ip: 0.0.0.0

@@ -73,9 +73,14 @@ object Client {
     override def delegate(
       dtab: Dtab,
       tree: NameTree[Name.Path]
-    ): Activity[DelegateTree[Name.Bound]] = {
-      val open = () => delegator.streamDelegateTree(mkDelegateTreeReq(root, dtab, tree))
-      streamActivity(open, decodeDelegateTree, backoffs, timer)
+    ): Future[DelegateTree[Name.Bound]] = {
+      val req = mkDelegateTreeReq(root, dtab, tree)
+      delegator.getDelegateTree(req).flatMap { delegateTree =>
+        decodeDelegateTree(delegateTree) match {
+          case Some(decoded) => Future.value(decoded)
+          case None => Future.exception(new Exception("Failed to decode delegate tree: " + delegateTree))
+        }
+      }
     }
 
     private[this] val resolve: Path => Var[Addr] = {

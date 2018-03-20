@@ -254,7 +254,6 @@ object DelegateApiHandler {
     (dtabTry, pathTry) match {
       case (Return(d), Return(p)) =>
         delegator.delegate(d, p)
-          .toFuture
           .flatMap(JsonDelegateTree.mk).map { tree =>
             val rsp = Response()
             rsp.content = Codec.writeBuf(tree)

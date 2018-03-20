@@ -59,29 +59,14 @@ object DelegatorService {
               case None => Dtab.empty
               case Some(d) => fromDtab(d)
             }
-            getNs(ns).delegate(dtab, tree).toFuture.map(toDelegateTreeRsp)
+            getNs(ns).delegate(dtab, tree).map(toDelegateTreeRsp)
 
           case root => Future.exception(Errors.InvalidRoot(root))
         }
     }
 
-    override def streamDelegateTree(req: mesh.DelegateTreeReq): Stream[mesh.DelegateTreeRsp] = req match {
-      case mesh.DelegateTreeReq(None, _, _) => Stream.exception(Errors.NoRoot)
-      case mesh.DelegateTreeReq(_, None, _) => Stream.exception(Errors.NoName)
-      case mesh.DelegateTreeReq(Some(proot), Some(ptree), dtab0) =>
-        fromPath(proot) match {
-          case Path.Utf8(ns) =>
-            val tree = fromPathNameTree(ptree).map(Name.Path(_))
-            val dtab = dtab0 match {
-              case None => Dtab.empty
-              case Some(d) => fromDtab(d)
-            }
-            val ev = getNs(ns).delegate(dtab, tree).values.map(toDelegateTreeRspEv)
-            VarEventStream(ev)
-
-          case root => Stream.exception(Errors.InvalidRoot(root))
-        }
-    }
+    override def streamDelegateTree(req: mesh.DelegateTreeReq): Stream[mesh.DelegateTreeRsp] =
+      Stream.fromFuture(getDelegateTree(req))
 
     private[this] def getNs(ns: String): NameInterpreter with Delegator = {
       val dtabVar = store.observe(ns).map(_extractDtab)

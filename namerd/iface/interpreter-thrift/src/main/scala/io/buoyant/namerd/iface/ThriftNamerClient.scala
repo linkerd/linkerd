@@ -284,7 +284,7 @@ class ThriftNamerClient(
   override def delegate(
     dtab: Dtab,
     tree: NameTree[Name.Path]
-  ): Activity[DelegateTree[Bound]] = {
+  ): Future[DelegateTree[Bound]] = {
     val tdtab = dtab.show
     val (root, nodes, _) = tree match {
       case NameTree.Leaf(n@Name.Path(p)) =>
@@ -293,44 +293,20 @@ class ThriftNamerClient(
     }
     val ttree = thrift.DelegateTree(root, nodes)
 
-    val states = Var.async[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending) { states =>
-      @volatile var stopped = false
-      @volatile var pending: Future[_] = Future.Unit
-
-      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
-
-        val req = thrift.DelegateReq(tdtab, thrift.Delegation(stamp0, ttree, namespace), tclientId)
-        pending = Trace.letClear(client.delegate(req)).respond {
-          case Return(thrift.Delegation(stamp1, ttree, _)) =>
-            delegateSuccessCounter.incr()
-            states() = Try(mkDelegateTree(ttree)) match {
-              case Return(tree) => Activity.Ok(tree)
-              case Throw(e) => Activity.Failed(e)
-            }
-            loop(stamp1, backoffs0)
-
-          case Throw(e@thrift.DelegationFailure(reason)) =>
-            delegateFailureCounter.incr()
-            log.error("delegation failed: %s", reason)
-            states() = Activity.Failed(e)
-
-          case Throw(e) =>
-            delegateFailureCounter.incr()
-            log.error(e, "delegation failed")
-            val sleep #:: backoffs1 = backoffs0
-            pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
-        }
-      }
-
-      loop(TStamp.empty, backoffs)
-      Closable.make { deadline =>
-        stopped = true
-        pending.raise(Released)
-        Future.Unit
-      }
+    val req = thrift.DelegateReq(tdtab, thrift.Delegation(TStamp.empty, ttree, namespace), tclientId)
+    Trace.letClear(client.delegate(req)).transform {
+      case Return(thrift.Delegation(stamp1, ttree, _)) =>
+        delegateSuccessCounter.incr()
+        Future(mkDelegateTree(ttree))
+      case Throw(e@thrift.DelegationFailure(reason)) =>
+        delegateFailureCounter.incr()
+        log.error("delegation failed: %s", reason)
+        Future.exception(e)
+      case Throw(e) =>
+        delegateFailureCounter.incr()
+        log.error(e, "delegation failed")
+        Future.exception(e)
     }
-
-    Activity(states)
   }
 
   override def dtab: Activity[Dtab] = {

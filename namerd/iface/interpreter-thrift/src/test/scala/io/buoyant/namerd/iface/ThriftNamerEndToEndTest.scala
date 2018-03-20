@@ -133,7 +133,7 @@ class ThriftNamerEndToEndTest extends FunSuite with Eventually with IntegrationP
     val tree = await(client.delegate(
       Dtab.read("/host/poop => /srv/woop"),
       Path.read("/svc/poop")
-    ).toFuture)
+    ))
 
     assert(tree ==
       DelegateTree.Delegate(

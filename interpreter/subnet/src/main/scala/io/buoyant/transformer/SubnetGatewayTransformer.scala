@@ -2,8 +2,8 @@ package io.buoyant.transformer
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
-import com.twitter.util.{Activity, Var}
-import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer}
+import com.twitter.util.{Activity, Future, Var}
+import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer, RichActivity}
 
 /**
  * Transforms a bound name tree to only include addresses in
@@ -30,8 +30,8 @@ class GatewayTransformer(
   gatewayPredicate: (Address, Address) => Boolean
 ) extends DelegatingNameTreeTransformer {
 
-  override protected def transformDelegate(tree: DelegateTree[Bound]): Activity[DelegateTree[Bound]] =
-    gatewayTree.map { gateways =>
+  override protected def transformDelegate(tree: DelegateTree[Bound]): Future[DelegateTree[Bound]] =
+    gatewayTree.toFuture.map { gateways =>
       val routable = flatten(gateways.eval.toSet.flatten)
       DelegatingNameTreeTransformer.transformDelegate(tree, mapBound(_, routable))
     }

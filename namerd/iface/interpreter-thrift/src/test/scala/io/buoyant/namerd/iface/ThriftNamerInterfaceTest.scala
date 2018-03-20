@@ -4,8 +4,8 @@ import com.twitter.conversions.time._
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.util.{Activity, Await, Duration, Var}
-import io.buoyant.namer.{Metadata, DelegateTree, Delegator}
+import com.twitter.util._
+import io.buoyant.namer.{DelegateTree, Delegator, Metadata}
 import io.buoyant.namerd.iface.{thriftscala => thrift}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -67,10 +67,9 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
   }
 
   test("delegate") {
-    val states = Var[Activity.State[DelegateTree[Name.Bound]]](Activity.Pending)
+    val delegation = new Promise[DelegateTree[Name.Bound]]
     def interpreter(ns: String) = new NameInterpreter with Delegator {
-      override def delegate(dtab: Dtab, tree: NameTree[Name.Path]) =
-        Activity(states)
+      override def delegate(dtab: Dtab, tree: NameTree[Name.Path]) = delegation
       override def bind(dtab: Dtab, path: Path) = ???
       override def dtab: Activity[Dtab] = ???
     }
@@ -92,7 +91,7 @@ class ThriftNamerInterfaceTest extends FunSuite with Awaits {
     val initF = service.delegate(thrift.DelegateReq("", initTree, clientId))
     assert(!initF.isDefined)
 
-    states() = Activity.Ok(DelegateTree.Delegate(Path.read("/ysl/thugger"), Dentry.read("/ysl => /atl"),
+    delegation.setValue(DelegateTree.Delegate(Path.read("/ysl/thugger"), Dentry.read("/ysl => /atl"),
       DelegateTree.Leaf(Path.read("/ysl/thugger"), Dentry.read("/ysl => /atl"), Name.Bound(null, Path.read("/atl/thugger"), Path.empty))))
 
     val init = await(initF)
