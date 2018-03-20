@@ -10,9 +10,9 @@ import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Awaits, BudgetedRetries}
 import org.scalatest.tagobjects.Retryable
-import org.scalatest.{FunSuite, MustMatchers, OptionValues, Retries}
+import org.scalatest.{FunSuite, MustMatchers, OptionValues}
 import scala.io.Source
 import scala.util.Random
 
@@ -21,14 +21,8 @@ class HttpEndToEndTest
     with Awaits
     with MustMatchers
     with OptionValues
-    with Retries {
+    with BudgetedRetries {
 
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
-  }
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]

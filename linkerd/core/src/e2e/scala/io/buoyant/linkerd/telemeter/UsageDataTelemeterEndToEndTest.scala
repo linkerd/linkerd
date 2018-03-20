@@ -18,19 +18,11 @@ import io.buoyant.linkerd._
 import io.buoyant.linkerd.usage.UsageMessage
 import io.buoyant.namer.{NamerInitializer, TestNamerInitializer}
 import io.buoyant.telemetry.MetricsTree
-import io.buoyant.test.{Awaits, FunSuite}
-import org.scalatest.Retries
+import io.buoyant.test.{Awaits, BudgetedRetries, FunSuite}
 import org.scalatest.tagobjects.Retryable
 import scala.util.Try
 
-class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits with Retries {
-
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
-  }
+class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits with BudgetedRetries {
 
   case class Downstream(name: String, server: ListeningServer, service: Service[Request, Response]) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]

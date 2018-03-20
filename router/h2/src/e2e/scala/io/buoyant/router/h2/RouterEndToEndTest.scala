@@ -9,21 +9,13 @@ import com.twitter.finagle.{ChannelClosedException, Dtab, Failure, Path}
 import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Throw}
 import io.buoyant.router.h2.ClassifiedRetries.BufferSize
-import io.buoyant.test.FunSuite
-import org.scalatest.Retries
+import io.buoyant.test.{BudgetedRetries, FunSuite}
 import org.scalatest.tagobjects.Retryable
 
 class RouterEndToEndTest
   extends FunSuite
   with ClientServerHelpers
-  with Retries {
-
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
-  }
+  with BudgetedRetries {
 
   test("simple prior knowledge", Retryable) {
     val cat = Downstream.const("cat", "meow")

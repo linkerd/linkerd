@@ -13,19 +13,11 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.test.FunSuite
-import org.scalatest.Retries
+import io.buoyant.test.{BudgetedRetries, FunSuite}
 import org.scalatest.tagobjects.Retryable
 
 
-class HttpTlsEndToEndTest extends FunSuite with Retries {
-
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
-  }
+class HttpTlsEndToEndTest extends FunSuite with BudgetedRetries {
 
   private[this] def loadResource(p: String): InputStream =
     getClass.getResourceAsStream(p)

@@ -5,19 +5,11 @@ import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.{H2, h2}
 import com.twitter.util.Future
 import grpc.{testing => pb}
-import io.buoyant.test.FunSuite
-import org.scalatest.Retries
+import io.buoyant.test.{BudgetedRetries, FunSuite}
 
-class NetworkedInteropTest extends FunSuite with InteropTestBase with Retries {
+class NetworkedInteropTest extends FunSuite with InteropTestBase with BudgetedRetries {
 
   // override def only = Set("large_unary")
-
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
-  }
 
   val autoRefillConnectionWindow = h2.param.FlowControl.AutoRefillConnectionWindow(true)
   val initialWindowSize = h2.param.Settings.InitialStreamWindowSize(Some(1.megabyte))

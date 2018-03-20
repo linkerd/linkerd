@@ -6,11 +6,11 @@ import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
 import com.twitter.finagle.{Mux => FinagleMux, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.test.Awaits
+import io.buoyant.test.{Awaits, BudgetedRetries}
+import org.scalatest.FunSuite
 import org.scalatest.tagobjects.Retryable
-import org.scalatest.{FunSuite, Retries}
 
-class MuxEndToEndTest extends FunSuite with Awaits with Retries {
+class MuxEndToEndTest extends FunSuite with Awaits with BudgetedRetries {
 
 
   /*
@@ -84,13 +84,6 @@ class MuxEndToEndTest extends FunSuite with Awaits with Retries {
       val Buf.Utf8(body) = await(client(req)).body
       body
     }
-  }
-
-  override def withFixture(test: NoArgTest) = {
-    if (isRetryable(test))
-      withRetry { super.withFixture(test) }
-    else
-      super.withFixture(test)
   }
 
   // sanity check without router
