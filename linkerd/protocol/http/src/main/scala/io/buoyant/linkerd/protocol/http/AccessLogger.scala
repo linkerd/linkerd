@@ -1,12 +1,14 @@
 package io.buoyant.linkerd.protocol.http
 
+import java.util.TimeZone
+
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.logging._
 import com.twitter.util.{Time, TimeFormat}
 import io.buoyant.router.RouterLabel
 
-case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
+case class AccessLogger(log: Logger, timeFormat: TimeFormat = AccessLogger.DefaultFormat) extends SimpleFilter[Request, Response] {
 
   def apply(req: Request, svc: Service[Request, Response]) = {
     val reqHeaders = req.headerMap
@@ -21,7 +23,7 @@ case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
     svc(req).onSuccess { rsp =>
       val statusCode = rsp.statusCode
       val responseBytes = rsp.contentLength.map(_.toString).getOrElse("-")
-      val requestEndTime = new TimeFormat("dd/MM/yyyy:HH:mm:ss Z").format(Time.now)
+      val requestEndTime = timeFormat.format(Time.now)
       log.info("""%s %s %s %s [%s] "%s" %d %s "%s" "%s"""", hostHeader, remoteHost, identd, user, requestEndTime,
         reqResource, statusCode, responseBytes, referer, userAgent)
     }
@@ -29,6 +31,7 @@ case class AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
 }
 
 object AccessLogger {
+  private val DefaultFormat = new TimeFormat("dd/MM/yyyy:HH:mm:ss z", TimeZone.getDefault)
 
   object param {
     case class File(path: String)
