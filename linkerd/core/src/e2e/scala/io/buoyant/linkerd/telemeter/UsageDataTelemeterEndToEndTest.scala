@@ -1,5 +1,8 @@
 package io.buoyant.linkerd.telemeter
 
+import java.net.InetSocketAddress
+import java.text.SimpleDateFormat
+import java.util.Date
 import com.google.protobuf.CodedInputStream
 import com.twitter.conversions.time._
 import com.twitter.finagle.Address.Inet
@@ -16,12 +19,19 @@ import io.buoyant.linkerd.usage.UsageMessage
 import io.buoyant.namer.{NamerInitializer, TestNamerInitializer}
 import io.buoyant.telemetry.MetricsTree
 import io.buoyant.test.{Awaits, FunSuite}
-import java.net.InetSocketAddress
-import java.text.SimpleDateFormat
-import java.util.Date
+import org.scalatest.Retries
+import org.scalatest.tagobjects.Retryable
 import scala.util.Try
 
-class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
+class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits with Retries {
+
+  override def withFixture(test: NoArgTest) = {
+    if (isRetryable(test))
+      withRetry { super.withFixture(test) }
+    else
+      super.withFixture(test)
+  }
+
   case class Downstream(name: String, server: ListeningServer, service: Service[Request, Response]) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
     val port = address.getPort
@@ -43,7 +53,7 @@ class UsageDataTelemeterEndToEndTest extends FunSuite with Awaits {
     namers: Seq[NamerInitializer] = Seq(TestNamerInitializer)
   ) = Linker.Initializers(protocol = protos, namer = namers)
 
-  test("telemeter sends metrics") {
+  test("telemeter sends metrics", Retryable) {
     val promise = new Promise[UsageMessage]
     val proxy = Downstream.mk("proxy") { r =>
       val Buf.ByteBuffer.Owned(bb) = Buf.ByteBuffer.coerce(r.content)

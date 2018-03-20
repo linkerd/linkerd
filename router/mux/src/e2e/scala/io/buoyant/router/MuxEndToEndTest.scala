@@ -1,16 +1,17 @@
 package io.buoyant.router
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Mux=>FinagleMux, _}
+import java.net.InetSocketAddress
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.{BufferingTracer, NullTracer}
+import com.twitter.finagle.{Mux => FinagleMux, _}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.Awaits
-import java.net.InetSocketAddress
-import org.scalatest.FunSuite
+import org.scalatest.tagobjects.Retryable
+import org.scalatest.{FunSuite, Retries}
 
-class MuxEndToEndTest extends FunSuite with Awaits {
+class MuxEndToEndTest extends FunSuite with Awaits with Retries {
+
 
   /*
    * A bunch of utility/setup.  The test is configured as follows:
@@ -85,8 +86,15 @@ class MuxEndToEndTest extends FunSuite with Awaits {
     }
   }
 
+  override def withFixture(test: NoArgTest) = {
+    if (isRetryable(test))
+      withRetry { super.withFixture(test) }
+    else
+      super.withFixture(test)
+  }
+
   // sanity check without router
-  test("client-server no routing") {
+  test("client-server no routing", Retryable) {
     val horse = Downstream.const("horse", "neigh")
     val client = Upstream(horse)
     assert(client("mred") == "neigh")
@@ -94,7 +102,7 @@ class MuxEndToEndTest extends FunSuite with Awaits {
     await(client.client.close())
   }
 
-  test("end-to-end mux routing") {
+  test("end-to-end mux routing", Retryable) {
     // downstream services
     val cat = Downstream.const("cat", "meow")
     val dog = Downstream.const("dog", "woof")
