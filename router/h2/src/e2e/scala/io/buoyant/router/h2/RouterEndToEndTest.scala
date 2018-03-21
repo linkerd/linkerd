@@ -1,21 +1,23 @@
 package io.buoyant.router
 package h2
 
+import java.net.InetSocketAddress
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.{ChannelClosedException, Dtab, Failure, Path}
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2._
+import com.twitter.finagle.{ChannelClosedException, Dtab, Failure, Path}
 import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Throw}
 import io.buoyant.router.h2.ClassifiedRetries.BufferSize
-import io.buoyant.test.FunSuite
-import java.net.InetSocketAddress
+import io.buoyant.test.{BudgetedRetries, FunSuite}
+import org.scalatest.tagobjects.Retryable
 
 class RouterEndToEndTest
   extends FunSuite
-  with ClientServerHelpers {
+  with ClientServerHelpers
+  with BudgetedRetries {
 
-  test("simple prior knowledge") {
+  test("simple prior knowledge", Retryable) {
     val cat = Downstream.const("cat", "meow")
     val dog = Downstream.const("dog", "woof")
     val dtab = Dtab.read(s"""
@@ -47,7 +49,7 @@ class RouterEndToEndTest
     }
   }
 
-  test("fails requests with connection-headers") {
+  test("fails requests with connection-headers", Retryable) {
     val dog = Downstream.const("dog", "woof")
     val dtab = Dtab.read(s"""
         /p/dog => /$$/inet/127.1/${dog.port} ;
@@ -73,7 +75,7 @@ class RouterEndToEndTest
     }
   }
 
-  test("resets downstream on upstream cancelation") {
+  test("resets downstream on upstream cancelation", Retryable) {
     val dogReqP = new Promise[Stream]
     val dogRspP = new Promise[Stream]
     @volatile var serverInterrupted: Option[Throwable] = None
@@ -116,7 +118,7 @@ class RouterEndToEndTest
     }
   }
 
-  test("resets downstream on upstream disconnect") {
+  test("resets downstream on upstream disconnect", Retryable) {
     val dogReqP = new Promise[Stream]
     val dogRspP = new Promise[Stream]
     val dog = Downstream.service("dog") { req =>
@@ -164,7 +166,7 @@ class RouterEndToEndTest
     }
   }
 
-  test("resets upstream on downstream failure") {
+  test("resets upstream on downstream failure", Retryable) {
     val dogReqP = new Promise[Stream]
     val dogRspP = new Promise[Stream]
     val dog = Downstream.service("dog") { req =>

@@ -1,8 +1,9 @@
 package io.buoyant.grpc.interop
 
-import com.twitter.util.{Future, Return, Throw, Try}
+import com.twitter.util.Future
 import grpc.{testing => pb}
 import io.buoyant.test.FunSuite
+import org.scalatest.tagobjects.Retryable
 
 trait InteropTestBase { _: FunSuite =>
 
@@ -32,13 +33,13 @@ trait InteropTestBase { _: FunSuite =>
     if (only.nonEmpty && !only(name)) ignore(name) {}
     else todo.get(name) match {
       case Some(msg) =>
-        test(name) {
+        test(name, Retryable) {
           assertThrows[Throwable](await(withClient(run)))
           cancel(s"TODO: $msg")
         }
 
       case None =>
-        test(name) { await(withClient(run)) }
+        test(name, Retryable) { await(withClient(run)) }
     }
 
 }

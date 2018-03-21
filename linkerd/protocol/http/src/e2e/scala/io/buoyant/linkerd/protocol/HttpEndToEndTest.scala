@@ -1,24 +1,28 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
-import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{param => _, _}
-import com.twitter.finagle.http.Method._
-import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
-import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.util._
-import io.buoyant.router.{Http, RoutingFactory}
-import io.buoyant.router.http.MethodAndHostIdentifier
-import io.buoyant.test.Awaits
 import java.io.File
 import java.net.InetSocketAddress
+import com.twitter.finagle.buoyant.linkerd.Headers
+import com.twitter.finagle.http.Method._
+import com.twitter.finagle.http.{param => _, _}
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
+import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
+import com.twitter.util._
+import io.buoyant.test.{Awaits, BudgetedRetries}
+import org.scalatest.tagobjects.Retryable
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
 import scala.io.Source
 import scala.util.Random
 
-class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with OptionValues {
+class HttpEndToEndTest
+  extends FunSuite
+    with Awaits
+    with MustMatchers
+    with OptionValues
+    with BudgetedRetries {
+
 
   case class Downstream(name: String, server: ListeningServer) {
     val address = server.boundAddress.asInstanceOf[InetSocketAddress]
@@ -79,7 +83,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
       case Annotation.Message(m) if Seq("l5d.retryable", "l5d.failure").contains(m) => m
     }
 
-  test("linking") {
+  test("linking", Retryable) {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
     def withAnnotations(f: Seq[Annotation] => Unit): Unit = {
@@ -150,7 +154,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
   }
 
 
-  test("marks 5XX as failure by default") {
+  test("marks 5XX as failure by default", Retryable) {
     val stats = new InMemoryStatsReceiver
     val tracer = NullTracer
 
@@ -207,7 +211,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     }
   }
 
-  test("marks exceptions as failure by default") {
+  test("marks exceptions as failure by default", Retryable) {
     val stats = new InMemoryStatsReceiver
     val tracer = NullTracer
 
@@ -349,22 +353,22 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     }
   }
 
-  test("retries retryableIdempotent5XX") {
+  test("retries retryableIdempotent5XX", Retryable) {
     retryTest("io.l5d.http.retryableIdempotent5XX", idempotentMethods)
   }
 
-  test("retries retryablRead5XX") {
+  test("retries retryablRead5XX", Retryable) {
     retryTest("io.l5d.http.retryableRead5XX", readMethods)
   }
 
-  test("retries nonRetryable5XX") {
+  test("retries nonRetryable5XX", Retryable) {
     retryTest("io.l5d.http.nonRetryable5XX", Set.empty)
   }
 
   val dtabReadHeaders = Seq("l5d-dtab", "l5d-ctx-dtab")
   val dtabWriteHeader = "l5d-ctx-dtab"
 
-  for (readHeader <- dtabReadHeaders) test(s"dtab read from $readHeader header") {
+  for (readHeader <- dtabReadHeaders) test(s"dtab read from $readHeader header", Retryable) {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
 
@@ -397,7 +401,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     assert(!headers.contains("dtab-local"))
   }
 
-  test("dtab-local header is ignored") {
+  test("dtab-local header is ignored", Retryable) {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
 
@@ -427,7 +431,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     assert(!headers.contains(dtabWriteHeader))
   }
 
-  test("with clearContext") {
+  test("with clearContext", Retryable) {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
       rsp.contentString = req.headerMap.collect {
@@ -472,7 +476,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     ))
   }
 
-  test("clearContext will remove linkerd error headers and body") {
+  test("clearContext will remove linkerd error headers and body", Retryable) {
     val yaml =
       s"""|routers:
           |- protocol: http
@@ -500,7 +504,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
 
   }
 
-  test("timestampHeader adds header") {
+  test("timestampHeader adds header", Retryable) {
     @volatile var headers: Option[HeaderMap] = None
     val downstream = Downstream.mk("test") {
       req =>
@@ -539,7 +543,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     }
   }
 
-  test("no timestampHeader does not add timestamp header") {
+  test("no timestampHeader does not add timestamp header", Retryable) {
     @volatile var headers: Option[HeaderMap] = None
     val downstream = Downstream.mk("test") {
       req =>
@@ -576,7 +580,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     }
   }
 
-  test("without clearContext") {
+  test("without clearContext", Retryable) {
     val downstream = Downstream.mk("dog") { req =>
       val rsp = Response()
       rsp.contentString = req.headerMap.collect {
@@ -623,7 +627,7 @@ class HttpEndToEndTest extends FunSuite with Awaits with MustMatchers with Optio
     assert(headers.get("l5d-ctx-dtab") == Some(localDtab))
   }
 
-  test("logs to correct files") {
+  test("logs to correct files", Retryable) {
     val downstream = Downstream.mk("test") {
       req =>
         val rsp = Response()

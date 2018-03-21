@@ -1,13 +1,13 @@
 package io.buoyant.grpc.interop
 
+import java.net.InetSocketAddress
 import com.twitter.conversions.storage._
 import com.twitter.finagle.buoyant.{H2, h2}
 import com.twitter.util.Future
 import grpc.{testing => pb}
-import io.buoyant.test.FunSuite
-import java.net.InetSocketAddress
+import io.buoyant.test.{BudgetedRetries, FunSuite}
 
-class NetworkedInteropTest extends FunSuite with InteropTestBase {
+class NetworkedInteropTest extends FunSuite with InteropTestBase with BudgetedRetries {
 
   // override def only = Set("large_unary")
 
