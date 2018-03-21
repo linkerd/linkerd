@@ -111,7 +111,7 @@ class AppIdNamer(
             pending = api.getAddrs(app).respond {
               case Return(addrs) =>
                 initialized = true
-                addr() = Addr.Bound(addrs)
+                addr() = if (addrs.isEmpty) Addr.Neg else Addr.Bound(addrs)
                 if (!stopped) {
                   pending = Future.sleep(ttl).onSuccess(_ => loop())
                 }
