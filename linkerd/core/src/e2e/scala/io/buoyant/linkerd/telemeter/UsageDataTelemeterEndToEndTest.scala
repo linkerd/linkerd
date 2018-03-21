@@ -1,8 +1,5 @@
 package io.buoyant.linkerd.telemeter
 
-import java.net.InetSocketAddress
-import java.text.SimpleDateFormat
-import java.util.Date
 import com.google.protobuf.CodedInputStream
 import com.twitter.conversions.time._
 import com.twitter.finagle.Address.Inet
@@ -19,6 +16,9 @@ import io.buoyant.linkerd.usage.UsageMessage
 import io.buoyant.namer.{NamerInitializer, TestNamerInitializer}
 import io.buoyant.telemetry.MetricsTree
 import io.buoyant.test.{Awaits, BudgetedRetries, FunSuite}
+import java.net.InetSocketAddress
+import java.text.SimpleDateFormat
+import java.util.Date
 import org.scalatest.tagobjects.Retryable
 import scala.util.Try
 
