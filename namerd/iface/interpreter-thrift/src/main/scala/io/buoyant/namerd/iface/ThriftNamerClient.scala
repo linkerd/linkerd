@@ -15,7 +15,7 @@ import io.buoyant.namerd.iface.{thriftscala => thrift}
 import java.net.{InetAddress, InetSocketAddress}
 
 class ThriftNamerClient(
-  client: thrift.Namer.FutureIface,
+  client: thrift.Namer.MethodPerEndpoint,
   namespace: String,
   backoffs: Stream[Duration],
   statsReceiver: StatsReceiver = NullStatsReceiver,

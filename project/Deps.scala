@@ -12,8 +12,7 @@ object Deps {
       .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "7.1.0"
-
+    "com.twitter" %% s"util-$mod" % "18.2.0"
   // networking
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "18.2.0"
