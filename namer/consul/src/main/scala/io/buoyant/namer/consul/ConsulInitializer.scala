@@ -82,9 +82,6 @@ case class ConsulConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val service = Http.client
-      // Removes the default client requeues module,
-      // (retries are handled in BaseApi.infiniteRetryFilter)
-      .withStack(Http.client.stack.remove(Retries.Role))
       .withParams(Http.client.params ++ tlsParams ++ params)
       .withLabel("client")
       .interceptInterrupts
