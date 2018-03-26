@@ -3,7 +3,7 @@ package io.buoyant.namer.consul
 import com.twitter.conversions.time._
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Addr, Address}
+import com.twitter.finagle.{Addr, Address, Failure}
 import com.twitter.util.{Await, Duration, Future, Promise, Timer, Var}
 import io.buoyant.consul.v1.{CatalogApi, ConsistencyMode, HealthStatus, Indexed, ServiceNode}
 import io.buoyant.namer.consul.SvcAddr.Stats
@@ -112,5 +112,28 @@ class SvcAddrTest extends FunSuite with Matchers {
     // then
     Await.ready(retried, 1.second)
     numOfRequests.intValue() should equal(numOfAttempts)
+  }
+
+  test("should extract nested root cause correctly") {
+    // given
+    val cause = Failure("cause")
+    val failure = Failure("one", Failure("two", Failure("three", cause)))
+
+    // when
+    val extracted = SvcAddr.RootCause.unapply(failure)
+
+    // then
+    extracted should be(Some(cause))
+  }
+
+  test("should extract root cause if there are no nested causes") {
+    // given
+    val cause = Failure("cause")
+
+    // when
+    val extracted = SvcAddr.RootCause.unapply(cause)
+
+    // then
+    extracted should be(Some(cause))
   }
 }
