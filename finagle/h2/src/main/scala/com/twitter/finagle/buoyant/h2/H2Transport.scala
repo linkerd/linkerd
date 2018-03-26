@@ -15,6 +15,7 @@ object H2Transport {
     def remoteAddress: SocketAddress
 
     def write(id: Int, orig: Headers, eos: Boolean): Future[Unit]
+    def write(id: Int, buf: Buf, eos: Boolean): Future[Unit]
     def write(id: Int, frame: Frame): Future[Unit]
 
     /**

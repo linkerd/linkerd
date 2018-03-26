@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.io.Buf
-import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 /**
@@ -195,7 +194,6 @@ object Frame {
       private[this] val releaseP = new Promise[Unit]
       def onRelease = releaseP
       def release() = {
-        Logger().trace(s"Data frame ${hashCode()} releasing...")
         val f = release0()
         releaseP.become(f)
         f

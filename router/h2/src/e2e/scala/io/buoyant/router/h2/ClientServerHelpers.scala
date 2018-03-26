@@ -84,7 +84,6 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
 
     def get(host: String, path: String = "/")(check: Option[String] => Boolean): Future[Unit] = {
       val req = Request("http", Method.Get, host, path, Stream.empty())
-      log.debug("Waiting for response...")
       val rsp = await(service(req))
       assert(rsp.status == Status.Ok)
       val stream = rsp.stream.onFrame {
@@ -93,7 +92,6 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
           val _ = assert(check(Some(data)))
         case f =>
       }
-      log.debug("Reading stream to end...")
       stream.readToEnd
     }
 

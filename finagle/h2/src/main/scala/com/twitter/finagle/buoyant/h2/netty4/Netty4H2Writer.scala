@@ -26,25 +26,19 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     write(frame)
   }
 
-  override def write(id: Int, frame: Frame): Future[Unit] =
-    frame match {
-      case data: Frame.Data =>
-        val Buf.Utf8(s) = data.buf
-        val bb = BufAsByteBuf(data.buf)
-        val nettyFrame = new DefaultHttp2DataFrame(bb, data.isEnd)
-        if (id >= 0) nettyFrame.streamId(id)
-        // We retain this frame before sending it to Netty because we may be using it elsewhere.
-        // It is our responsibility to call frame.release() when we are done with it.
-        nettyFrame.retain()
-        Logger().trace(s"### sending bb (${System.identityHashCode(bb)}) to netty.  RefCnt=${bb.refCnt()}, content='${s}'")
+  override def write(id: Int, f: Frame): Future[Unit] = f match {
+    case data: Frame.Data => write(id, data.buf, data.isEnd)
+    case tlrs: Frame.Trailers => write(id, tlrs, eos = true)
+  }
 
-        write(nettyFrame).respond { _ =>
-          Logger().trace(s"### write of bb (${System.identityHashCode(bb)}) is complete.  RefCnt=${bb.refCnt()}, content='${s}'")
-
-        }
-      case tlrs: Frame.Trailers =>
-        write(id, tlrs, eos = true)
-    }
+  override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
+    val bb = BufAsByteBuf(buf)
+    val nettyFrame = new DefaultHttp2DataFrame(bb, eos)
+    if (id >= 0) nettyFrame.streamId(id)
+    // We retain this frame before sending it to Netty because we may be using it elsewhere.
+    // It is our responsibility to call frame.release() when we are done with it.
+    write(nettyFrame.retain())
+  }
 
   override def updateWindow(id: Int, incr: Int): Future[Unit] = {
     val frame = new DefaultHttp2WindowUpdateFrame(incr)

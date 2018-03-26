@@ -6,7 +6,6 @@ import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCo
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
 import com.twitter.io.Buf
-import com.twitter.logging.Logger
 import com.twitter.util._
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
@@ -200,36 +199,22 @@ object BufferedStream {
     val released = new AtomicBoolean(false)
 
     latch.await {
-      Logger().trace(s"### Refcounted frame ${hashCode()} got to refcount 0.  Releasing...")
       if (released.compareAndSet(false, true)) {
-        Logger().trace("### (releasing frame for real")
         releasedP.become(underlying.release())
       }
     }
 
-    def open(): Unit = {
-      latch.incr();
-      Logger().trace(s"### Refcounted frame ${hashCode()} incr to " + latch.getCount)
-
-      ()
-    }
+    def open(): Unit = { latch.incr(); () }
     override def onRelease: Future[Unit] = releasedP
     override def release(): Future[Unit] = {
       latch.decr()
-      Logger().trace(s"### Refcounted frame ${hashCode()} decr to " + latch.getCount)
       Future.Unit
     }
-
-    override def toString: String = super.toString + "+RC=" + latch.getCount
   }
 
   class RefCountedDataFrame(val underlying: Frame.Data) extends Frame.Data with RefCountedFrame {
-
-    Logger().trace(s"Ref counted data frame for ${underlying.hashCode()} has hashCode ${hashCode()}")
-
     override def isEnd: Boolean = underlying.isEnd
     override def buf: Buf = underlying.buf
-    override def toString: String = super.toString + "+RC=" + latch.getCount
   }
 
   class RefCountedTrailersFrame(val underlying: Frame.Trailers) extends Frame.Trailers with RefCountedFrame {
