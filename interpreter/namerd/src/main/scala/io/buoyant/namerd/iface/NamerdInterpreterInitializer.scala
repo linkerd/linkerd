@@ -42,6 +42,7 @@ case class Retry(
 case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
   def params: Stack.Params = {
     TlsClientConfig(
+      enabled = Some(true),
       disableValidation = Some(false),
       commonName = Some(commonName),
       trustCerts = caCert.map(Seq(_)),
