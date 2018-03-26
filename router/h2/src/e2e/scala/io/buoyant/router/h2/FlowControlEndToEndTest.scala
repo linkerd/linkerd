@@ -4,15 +4,20 @@ package h2
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.io.Buf
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.{Duration, Future, Promise}
 import io.buoyant.test.FunSuite
 import scala.collection.mutable.ListBuffer
+import com.twitter.conversions.time._
 
 class FlowControlEndToEndTest
   extends FunSuite
   with ClientServerHelpers {
 
+
   test("client/server request flow control") {
+
+    setLogLevel(Level.TRACE)
+
     val streamP = new Promise[Stream]
     val server = { req: Request =>
       streamP.setValue(req.stream)
@@ -38,6 +43,8 @@ class FlowControlEndToEndTest
       }
     } finally setLogLevel(Level.OFF)
   }
+
+  override def defaultWait: Duration = 1.minute
 
   val WindowSize = 65535
 

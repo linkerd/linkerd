@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Throw, Try}
 
 /**
@@ -194,6 +195,7 @@ object Frame {
       private[this] val releaseP = new Promise[Unit]
       def onRelease = releaseP
       def release() = {
+        Logger().trace(s"Data frame ${hashCode()} releasing...")
         val f = release0()
         releaseP.become(f)
         f
@@ -201,8 +203,12 @@ object Frame {
       def isEnd = eos
     }
 
+    object NoopRelease extends Function0[Future[Unit]] {
+      override def apply(): Future[Unit] = Future.Unit
+    }
+
     def apply(buf: Buf, eos: Boolean): Data =
-      apply(buf, eos, () => Future.Unit)
+      apply(buf, eos, NoopRelease)
 
     def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
       apply(Buf.Utf8(s), eos, release)
@@ -212,6 +218,13 @@ object Frame {
 
     def eos(buf: Buf): Data = apply(buf, true)
     def eos(s: String): Data = apply(s, true)
+
+    def copy(frame: Data, eos: Boolean): Data = new Data {
+      def buf = frame.buf
+      def onRelease = frame.onRelease
+      def release() = frame.release()
+      def isEnd = eos
+    }
   }
 
   /** A terminal Frame including headers. */

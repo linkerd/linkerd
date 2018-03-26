@@ -3,7 +3,9 @@ package netty4
 
 import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.netty4.ByteBufAsBuf
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise}
+import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
@@ -100,9 +102,19 @@ private[h2] object Netty4Message {
 
   object Data {
 
+    private def heapToBuf(bb: ByteBuf): Buf.ByteArray = {
+      val begin = bb.arrayOffset + bb.readerIndex
+      val end = begin + bb.readableBytes
+      new Buf.ByteArray(bb.array, begin, end)
+    }
+
     def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
       val sz = f.content.readableBytes + f.padding
-      val buf = ByteBufAsBuf(f.content.retain())
+
+      if (f.content.hasArray) f.retain()
+      val buf = ByteBufAsBuf(f.content)
+      val Buf.Utf8(s) = buf
+      log.trace(s"### Wrapping bb (${System.identityHashCode(f.content)}) in a buf.  RefCnt=${f.content.refCnt()} content='$s'")
       val releaser: () => Future[Unit] =
         () =>
           {
@@ -112,10 +124,13 @@ private[h2] object Netty4Message {
             // Because `ByteBufAsBuf` does not support reference counting,
             // it's necessary to call `.release()` on the underlying `ByteBuf`
             // when releasing the data frame.
+            log.trace(s"### Frame of bb (${System.identityHashCode(f.content)}) has been released. Will release bb. RefCnt=${f.content.refCnt()}")
             f.content.release()
             res
           }
-      Frame.Data(buf, f.isEndStream, releaser)
+      val frame = Frame.Data(buf, f.isEndStream, releaser)
+      log.trace(s"### Wrapping bb (${System.identityHashCode(f.content)}) in a buf for frame ${frame.hashCode()}.  RefCnt=${f.content.refCnt()} content='$s'")
+      frame
     }
   }
 

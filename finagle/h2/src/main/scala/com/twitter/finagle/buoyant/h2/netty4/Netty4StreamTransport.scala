@@ -489,7 +489,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   }
 
   private[this] def toFrame(f: Http2StreamFrame): Frame = f match {
-    case f: Http2DataFrame => Netty4Message.Data(f, updateWindow)
+    case f: Http2DataFrame =>
+      log.trace("[%s] reading data frame...", prefix)
+      val out = Netty4Message.Data(f, updateWindow)
+      log.trace("[%s] data frame from netty has hash %s", prefix, out.hashCode())
+      out
     case f: Http2HeadersFrame if f.isEndStream => Netty4Message.Trailers(f.headers)
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
@@ -587,8 +591,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
       case LocalOpen() =>
         statsReceiver.recordLocalFrame(frame)
+        log.trace(s"[%s] writing frame....: ${frame.hashCode()} = ${frame}", prefix)
         transport.write(streamId, frame).rescue(wrapRemoteEx)
-          .before(frame.release().rescue(wrapLocalEx))
+          .transform { _ =>
+            log.trace(s"[%s] ### Calling release on a frame: ${frame.hashCode()}", prefix)
+            frame.release().rescue(wrapLocalEx)
+          }
     }
   }
 }
