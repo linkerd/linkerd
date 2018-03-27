@@ -18,7 +18,7 @@ trait BudgetedRetries extends FunSuite with Retries {
     if (isRetryable(test)) withRetries(test, retries)
     else super.withFixture(test)
 
-  private[this] def withRetries (test: NoArgTest, remaining: Int): Outcome =
+  private[this] def withRetries(test: NoArgTest, remaining: Int): Outcome =
     super.withFixture(test) match {
       case Failed(_) | Canceled(_) if remaining == 1 => super.withFixture(test)
       case Failed(_) | Canceled(_) => withRetries(test, remaining - 1)
