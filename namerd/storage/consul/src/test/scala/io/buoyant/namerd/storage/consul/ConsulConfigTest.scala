@@ -43,7 +43,7 @@ class ConsulConfigTest extends FunSuite with OptionValues {
     assert(consul.readConsistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.writeConsistencyMode == Some(ConsistencyMode.Consistent))
     val clientAuth = ClientAuth("/certificates/cert.pem", "/certificates/key.pem")
-    val tlsConfig = TlsClientConfig(Some(false), Some("consul.io"), Some(List("/certificates/cacert.pem")), Some(clientAuth))
+    val tlsConfig = TlsClientConfig(None, Some(false), Some("consul.io"), Some(List("/certificates/cacert.pem")), Some(clientAuth))
     assert(consul.tls == Some(tlsConfig))
   }
 
