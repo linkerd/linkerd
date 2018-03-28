@@ -124,7 +124,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   private[this] class RemoteClosed(q: AsyncQueue[Frame])
     extends StreamState with ResettableState {
     def close(): Unit = q.fail(Reset.NoError, discard = false)
-    override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
+    override def reset(rst: Reset): Unit = {
+      q.fail(rst, discard = false)
+      Stream.drainFrameQueue(q)
+      ()
+    }
   }
   private[this] object RemoteClosed {
     def unapply(rc: RemoteClosed): Boolean = true
@@ -151,7 +155,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def toRemoteClosed: RemoteClosed = new RemoteClosed(q)
     def offer(f: Frame): Boolean = q.offer(f)
     def close(): Unit = q.fail(Reset.NoError, discard = false)
-    override def reset(rst: Reset): Unit = q.fail(rst, discard = true)
+    override def reset(rst: Reset): Unit = {
+      q.fail(rst, discard = false)
+      Stream.drainFrameQueue(q)
+      ()
+    }
   }
   private[this] object RemoteStreaming {
     def apply(q: AsyncQueue[Frame]): RemoteStreaming = new RemoteStreaming(q)
@@ -313,6 +321,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         statsReceiver.recordRemoteFrame(f)
         true
       } else {
+        f.release()
         log.debug("[%s] remote offer failed", prefix)
         false
       }
@@ -583,8 +592,12 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
   private[this] val writeFrame: Frame => Future[Unit] = { frame =>
     stateRef.get match {
-      case Closed(rst) => Future.exception(StreamError.Remote(rst))
-      case LocalClosed(_) => Future.exception(new IllegalStateException("writing on closed stream"))
+      case Closed(rst) =>
+        frame.release()
+        Future.exception(StreamError.Remote(rst))
+      case LocalClosed(_) =>
+        frame.release()
+        Future.exception(new IllegalStateException("writing on closed stream"))
       case LocalOpen() =>
         statsReceiver.recordLocalFrame(frame)
         transport.write(streamId, frame).rescue(wrapRemoteEx)

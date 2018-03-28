@@ -66,6 +66,7 @@ jobs:
       - run:
           name: Install sbt dependencies
           command: |
+            apt-get install -y git
             sh -x ci/update.sh
 
       # Download and install npm dependencies. They may already be in cache.

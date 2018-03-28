@@ -68,6 +68,13 @@ object Stream {
   // performed).  This would require some form of buffering, ideally
   // in the dispatcher and server stream
 
+  def drainFrameQueue(q: AsyncQueue[Frame]): Future[Nothing] = {
+    q.poll().flatMap { f =>
+      f.release()
+      drainFrameQueue(q)
+    }
+  }
+
   /**
    * In order to create a stream, we need a mechanism to write to it.
    */
@@ -104,10 +111,11 @@ object Stream {
     }
   }
 
-  private[this] def failOnInterrupt[T, Q](f: Future[T], q: AsyncQueue[Q]): Future[T] = {
+  private[this] def failOnInterrupt[T](f: Future[T], q: AsyncQueue[Frame]): Future[T] = {
     val p = new Promise[T] with Promise.InterruptHandler {
       override protected def onInterrupt(e: Throwable): Unit = {
-        q.fail(e, discard = true)
+        q.fail(e, discard = false)
+        drainFrameQueue(q)
         f.raise(e)
       }
     }
@@ -122,7 +130,11 @@ object Stream {
       if (frameQ.offer(f)) failOnInterrupt(f.onRelease, frameQ)
       else Future.exception(Reset.Closed)
 
-    override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+    override def reset(err: Reset): Unit = {
+      frameQ.fail(err, discard = false)
+      drainFrameQueue(frameQ)
+      ()
+    }
     override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
   }
 
@@ -152,10 +164,15 @@ object Stream {
       override def onEnd = Future.Unit
       override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
       override def write(f: Frame): Future[Unit] = {
-        frameQ.fail(Reset.Closed, discard = true)
+        frameQ.fail(Reset.Closed, discard = false)
+        drainFrameQueue(frameQ)
         Future.exception(Reset.Closed)
       }
-      override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+      override def reset(err: Reset): Unit = {
+        frameQ.fail(err, discard = false)
+        drainFrameQueue(frameQ)
+        ()
+      }
       override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
     }
 
