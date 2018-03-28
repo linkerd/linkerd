@@ -1,0 +1,20 @@
+namers: []
+
+routers:
+- protocol: http
+  dtab: |
+    /svc/foo => /$/inet/www.google.com/443 ;
+    /svc/bar => /$/inet/localhost/7777
+
+  servers:
+  - port: 4140
+
+  client:
+    kind: io.l5d.static
+    configs:
+    - prefix: "/$/inet/{service}"
+      tls:
+        commonName: "{service}"
+    - prefix: /$/inet/localhost
+      tls:
+        enabled: false

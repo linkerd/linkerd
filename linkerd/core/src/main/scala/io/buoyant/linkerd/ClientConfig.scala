@@ -36,6 +36,7 @@ trait ClientConfig {
 }
 
 case class TlsClientConfig(
+  enabled: Option[Boolean],
   disableValidation: Option[Boolean],
   commonName: Option[String],
   trustCerts: Option[Seq[String]] = None,
@@ -47,6 +48,7 @@ case class TlsClientConfig(
   )
   def params(vars: Map[String, String]): Stack.Params =
     FTlsClientConfig(
+      enabled,
       disableValidation,
       commonName.map(PathMatcher.substitute(vars, _)),
       trustCerts,

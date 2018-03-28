@@ -64,7 +64,7 @@ private[consul] object SvcAddr {
 
         if (stopped) Future.Unit
         else getAddresses(blockingIndex).transform {
-          case Throw(Failure(Some(cause))) if cause == ServiceRelease =>
+          case Throw(RootCause(cause)) if cause == ServiceRelease =>
             // this exception is raised when we close a watch - thus, it needs
             // to be special-cased so that we don't continue observing that
             // service.
@@ -117,7 +117,7 @@ private[consul] object SvcAddr {
         stopped = true
         stats.closes.incr()
         pending.raise(Failure("service observation released", ServiceRelease, Failure.Interrupted))
-        Future.Unit
+        pending
       }
     }
   }
@@ -176,4 +176,8 @@ private[consul] object SvcAddr {
 
   private[this] val NoIndexException =
     Failure(new IllegalArgumentException("consul did not return an index") with NoStackTrace)
+
+  object RootCause {
+    def unapply(e: Throwable): Option[Throwable] = Option(e.getCause).flatMap(unapply).orElse(Some(e))
+  }
 }

@@ -10,13 +10,16 @@ import java.io._
 import scala.util.control.NoStackTrace
 
 case class TlsClientConfig(
+  enabled: Option[Boolean],
   disableValidation: Option[Boolean],
   commonName: Option[String],
   trustCerts: Option[Seq[String]] = None,
   clientAuth: Option[ClientAuth] = None
 ) {
   def params: Stack.Params = this match {
-    case TlsClientConfig(Some(true), _, _, clientAuth) =>
+    case TlsClientConfig(Some(false), _, _, _, _) =>
+      Stack.Params.empty + Transport.ClientSsl(None)
+    case TlsClientConfig(_, Some(true), _, _, clientAuth) =>
       val tlsConfig = SslClientConfiguration(
         trustCredentials = TrustCredentials.Insecure,
         keyCredentials = keyCredentials(clientAuth)
@@ -24,7 +27,7 @@ case class TlsClientConfig(
       Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
         SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
-    case TlsClientConfig(_, Some(cn), certs, clientAuth) =>
+    case TlsClientConfig(_, _, Some(cn), certs, clientAuth) =>
       // map over the optional certs parameter - we want to pass
       // `TrustCredentials.CertCollection` if we were given a list of certs,
       // but `TrustCredentials.Unspecified` (rather than an empty cert
@@ -60,7 +63,7 @@ case class TlsClientConfig(
       Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
         SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
-    case TlsClientConfig(Some(false) | None, None, _, _) =>
+    case TlsClientConfig(_, Some(false) | None, None, _, _) =>
       val msg = "tls is configured with validation but `commonName` is not set"
       throw new IllegalArgumentException(msg) with NoStackTrace
   }
