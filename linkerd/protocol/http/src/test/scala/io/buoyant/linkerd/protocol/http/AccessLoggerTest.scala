@@ -1,11 +1,10 @@
 package io.buoyant.linkerd.protocol.http
 
 import java.util.{TimeZone, logging => javalog}
-
 import com.twitter.finagle.Service
 import com.twitter.finagle.http._
 import com.twitter.logging._
-import com.twitter.util.{Future, Promise, Time}
+import com.twitter.util.{Future, Promise, Time, TimeFormat}
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
@@ -26,7 +25,8 @@ class AccessLoggerTest extends FunSuite with Awaits {
     val done = new Promise[Unit]
     // This timestamp is: Wed, 06 Jan 2016 21:21:26 GMT
     Time.withTimeAt(Time.fromSeconds(1452115286)) { tc =>
-      val service = AccessLogger(StringLogger) andThen Service.mk[Request, Response] { req =>
+      val timeFormat = new TimeFormat("dd/MM/yyyy:HH:mm:ss z", TimeZone.getDefault)
+      val service = AccessLogger(StringLogger, timeFormat) andThen Service.mk[Request, Response] { req =>
         val rsp = Response()
         rsp.status = Status.PaymentRequired
         rsp.contentType = "application/json"
