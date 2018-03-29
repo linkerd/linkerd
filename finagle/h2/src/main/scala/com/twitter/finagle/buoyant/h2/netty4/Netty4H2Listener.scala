@@ -40,7 +40,6 @@ object Netty4H2Listener {
 
   private[this] object PlaintextListener extends ListenerMaker {
     override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
-      p.addLast(UnpoolHandler)
       p.addLast(new ServerUpgradeHandler(codec)); ()
     }
   }
@@ -48,7 +47,6 @@ object Netty4H2Listener {
   private[this] object TlsListener extends ListenerMaker {
     val PlaceholderKey = "h2 framer placeholder"
     override protected[this] def pipelineInit(codec: => H2FrameCodec) = { p: ChannelPipeline =>
-      p.addLast(UnpoolHandler)
       p.addLast(PlaceholderKey, new ChannelDuplexHandler)
         .addLast("alpn", new Alpn(codec)); ()
     }

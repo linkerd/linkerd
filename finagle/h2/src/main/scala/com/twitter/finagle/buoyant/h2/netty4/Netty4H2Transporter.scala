@@ -37,7 +37,6 @@ object Netty4H2Transporter {
         // secure
         p =>
           {
-            p.addLast(UnpoolHandler)
             p.addLast(FramerKey, framer); ()
           }
       } else {
@@ -51,7 +50,6 @@ object Netty4H2Transporter {
             // Prior Knowledge: ensure messages are buffered until
             // handshake completes.
             p => {
-              p.addLast(UnpoolHandler)
               p.addLast(framer)
               p.addLast(new BufferingConnectDelay); ()
             }
