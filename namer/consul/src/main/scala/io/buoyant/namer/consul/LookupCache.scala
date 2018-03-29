@@ -30,7 +30,7 @@ private[consul] class LookupCache(
 
 
   private[this] val lookupCounter = stats.counter("lookups")
-  private val service: StatsReceiver = stats.scope("service")
+  private[this] val service: StatsReceiver = stats.scope("service")
   private[this] val cachedCounter = service.counter("cached")
   private[this] val serviceStats = SvcAddr.Stats(service)
 
@@ -53,24 +53,24 @@ private[consul] class LookupCache(
         }
 
         val observation = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { observationState =>
-          val closable = addrFuture.transform {
+          val closableFuture = addrFuture.transform {
             case Return(addr) =>
-              val closableObservation = addr.changes.respond {
+              val observationClosable = addr.changes.respond {
                 case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
                 case Addr.Pending => observationState.update(Activity.Pending)
                 case Addr.Failed(why) => observationState.update(Activity.Failed(why))
                 case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
               }
-              Future(closableObservation)
+              Future.value(observationClosable)
             case Throw(cause) =>
               // We probably failed to fetch agent config. This is critical.
               // TODO: if this has happened only restart can restore namerd to working state. Throw exception instead?
               observationState.update(Activity.Failed(cause))
-              Future(Closable.nop)
+              Future.value(Closable.nop)
           }
 
           Closable.make { deadline =>
-            closable.flatMap(_.close(deadline))
+            closableFuture.flatMap(_.close(deadline))
           }
         }
 
