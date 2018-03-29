@@ -69,14 +69,19 @@ object Stream {
   // in the dispatcher and server stream
 
   /**
-   * Read all frames from the queue and release them.  This can be called on a queue after
-   * calling q.fail(e, discard = false) as a safe alternative to q.fail(e, discard = true).
+   * Fail the queue and release all of its Frames.  This can be called as a safe alternative to
+   * q.fail(e, discard = true).
    */
-  def drainFrameQueue(q: AsyncQueue[Frame]): Future[Nothing] = {
-    q.poll().flatMap { f =>
-      f.release()
-      drainFrameQueue(q)
+  def failAndDrainFrameQueue(q: AsyncQueue[Frame], e: Throwable): Unit = {
+    q.fail(e, discard = false)
+    def drain(q: AsyncQueue[Frame]): Future[Nothing] = {
+      q.poll().flatMap { f =>
+        f.release()
+        drain(q)
+      }
     }
+    drain(q)
+    ()
   }
 
   /**
@@ -118,8 +123,7 @@ object Stream {
   private[this] def failOnInterrupt[T](f: Future[T], q: AsyncQueue[Frame]): Future[T] = {
     val p = new Promise[T] with Promise.InterruptHandler {
       override protected def onInterrupt(e: Throwable): Unit = {
-        q.fail(e, discard = false)
-        drainFrameQueue(q)
+        failAndDrainFrameQueue(q, e)
         f.raise(e)
       }
     }
@@ -135,9 +139,7 @@ object Stream {
       else Future.exception(Reset.Closed)
 
     override def reset(err: Reset): Unit = {
-      frameQ.fail(err, discard = false)
-      drainFrameQueue(frameQ)
-      ()
+      failAndDrainFrameQueue(frameQ, err)
     }
     override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
   }
@@ -168,14 +170,12 @@ object Stream {
       override def onEnd = Future.Unit
       override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
       override def write(f: Frame): Future[Unit] = {
-        frameQ.fail(Reset.Closed, discard = false)
-        drainFrameQueue(frameQ)
+        failAndDrainFrameQueue(frameQ, Reset.Closed)
         Future.exception(Reset.Closed)
       }
       override def reset(err: Reset): Unit = {
         frameQ.fail(err, discard = false)
-        drainFrameQueue(frameQ)
-        ()
+        failAndDrainFrameQueue(frameQ, err)
       }
       override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
     }

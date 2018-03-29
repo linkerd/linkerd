@@ -125,9 +125,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     extends StreamState with ResettableState {
     def close(): Unit = q.fail(Reset.NoError, discard = false)
     override def reset(rst: Reset): Unit = {
-      q.fail(rst, discard = false)
-      Stream.drainFrameQueue(q)
-      ()
+      Stream.failAndDrainFrameQueue(q, rst)
     }
   }
   private[this] object RemoteClosed {
@@ -157,8 +155,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def close(): Unit = q.fail(Reset.NoError, discard = false)
     override def reset(rst: Reset): Unit = {
       q.fail(rst, discard = false)
-      Stream.drainFrameQueue(q)
-      ()
+      Stream.failAndDrainFrameQueue(q, rst)
     }
   }
   private[this] object RemoteStreaming {

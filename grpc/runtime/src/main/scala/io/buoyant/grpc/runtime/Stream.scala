@@ -22,18 +22,21 @@ object Stream {
     def close(): Future[Unit]
   }
 
-  private def drainQueue[T](q: AsyncQueue[Releasable[T]]): Future[Nothing] = {
-    q.poll().flatMap { t =>
-      t.release()
-      drainQueue(q)
+  private def failAndDrainQueue[T](q: AsyncQueue[Releasable[T]], e: Throwable): Unit = {
+    q.fail(e, discard = false)
+    def drain(q: AsyncQueue[Releasable[T]]): Future[Nothing] = {
+      q.poll().flatMap { t =>
+        t.release()
+        drain(q)
+      }
     }
+    drain(q)
+    ()
   }
 
   def fromQueue[T](q: AsyncQueue[Releasable[T]]): Stream[T] = new Stream[T] {
     override def reset(rst: GrpcStatus): Unit = {
-      q.fail(rst, discard = false)
-      drainQueue(q)
-      ()
+      failAndDrainQueue(q, rst)
     }
     override def recv(): Future[Releasable[T]] = q.poll()
   }
@@ -58,9 +61,7 @@ object Stream {
     private[this] val q = new AsyncQueue[Releasable[T]]
 
     override def reset(e: GrpcStatus): Unit = {
-      q.fail(e, discard = false)
-      drainQueue(q)
-      ()
+      failAndDrainQueue(q, e)
     }
 
     override def recv(): Future[Releasable[T]] = q.poll()
