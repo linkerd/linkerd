@@ -51,7 +51,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Future.value(LocalAgent(Config = Some(Config(Domain = Some(domain), Datacenter = datacenter))))
   }
 
-  test("Namer stays pending while looking up datacenter for the first time") {
+  test("Namer returns Neg while looking up datacenter for the first time") {
     class TestCatalogApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -80,7 +80,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer stays pending if the consul api cannot be reached") {
+  test("Namer returns Neg if the consul api cannot be reached") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -97,7 +97,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Pending)
+    assert(state == Activity.Ok(NameTree.Neg))
     assert(stats.counters == Map(
       Seq("service", "opens") -> 1,
       Seq("service", "errors") -> 1,
@@ -105,7 +105,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer returns neg when servicename does not exist") {
+  test("Namer returns Neg when servicename does not exist") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -471,7 +471,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer falls back to last observed good state on serviceNodes failure") {
+  test("Namer returns Neg on serviceNodes failure") {
     class TestApi extends CatalogApi(null, "/v1") {
       @volatile var alreadyFailed = false
       override def serviceNodes(
@@ -503,13 +503,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assertOnAddrs(state) { (_, metadata) =>
-      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
-      ()
-    }
-
+    assert(state == Activity.Ok(NameTree.Neg))
   }
-  test("Namer falls back to most recent observed good state on serviceNodes failure") {
+  test("Namer falls to Neg state to on serviceNodes failure after preceding successful serviceNode requests") {
     val scaleUp = new Promise[Unit]
     val doFail = new Promise[Unit]
     val scaleToEmpty = new Promise[Unit]
@@ -568,10 +564,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     withClue("after failure") {
       doFail.setDone()
-      assertOnAddrs(state) { (addrs, _) =>
-        assert(addrs.size == 2, "namer fell back to wrong state")
-        ()
-      }
+      assert(state == Activity.Ok(NameTree.Neg))
 
       scaleToEmpty.setDone()
       Await.ready(scenarioComplete)
@@ -581,6 +574,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       )
     }
   }
+
   test("Namer doesn't poll consul again after observation is closed") {
     @volatile var reqs = 0
     class TestApi extends CatalogApi(null, "/v1") {
