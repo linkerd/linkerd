@@ -3,7 +3,7 @@ package io.buoyant.namer.consul
 import com.twitter.finagle._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future, Promise}
+import com.twitter.util.{Activity, Await, Future, Promise}
 import io.buoyant.consul.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
 import io.buoyant.test.Awaits
