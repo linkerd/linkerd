@@ -68,6 +68,10 @@ object Stream {
   // performed).  This would require some form of buffering, ideally
   // in the dispatcher and server stream
 
+  /**
+   * Read all frames from the queue and release them.  This can be called on a queue after
+   * calling q.fail(e, discard = false) as a safe alternative to q.fail(e, discard = true).
+   */
   def drainFrameQueue(q: AsyncQueue[Frame]): Future[Nothing] = {
     q.poll().flatMap { f =>
       f.release()

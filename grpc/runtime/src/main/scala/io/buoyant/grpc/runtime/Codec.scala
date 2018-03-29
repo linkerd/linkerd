@@ -82,7 +82,7 @@ object Codec {
           Future.value(orig -> status)
 
         case d: h2.Frame.Data =>
-          // Copy the buffer so that the frame and it's buffer can be safely released.
+          // Copy the buffer so that the frame and its buffer can be safely released.
           val bbCopy = Buf.ByteBuffer.Shared.extract(d.buf)
           val buf = orig.concat(Buf.ByteBuffer.Owned(bbCopy))
           val isEnd = d.isEnd
