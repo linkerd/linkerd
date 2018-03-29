@@ -4,14 +4,15 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure}
-import com.twitter.util.{Await, Duration, Future, Promise, Timer, Var}
+import com.twitter.util.{Duration, Future, Promise, Timer, Var}
 import io.buoyant.consul.v1.{CatalogApi, ConsistencyMode, HealthStatus, Indexed, ServiceNode}
 import io.buoyant.namer.consul.SvcAddr.Stats
+import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.{FunSuite, Matchers}
 
-class SvcAddrTest extends FunSuite with Matchers {
+class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
   implicit val timer: Timer = DefaultTimer
 
@@ -64,10 +65,9 @@ class SvcAddrTest extends FunSuite with Matchers {
 
     // when
     val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
 
     // then
-    Await.ready(invoked, 1.second)
+    await(addr.changes.toFuture)
     addr.sample() match {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
@@ -93,7 +93,7 @@ class SvcAddrTest extends FunSuite with Matchers {
     addr.changes.respond(_ => ())
 
     // then
-    Await.ready(retried, 1.second)
+    await(retried)
     numOfRequests.intValue() should equal(numOfAttempts)
   }
 
@@ -121,7 +121,7 @@ class SvcAddrTest extends FunSuite with Matchers {
   }
 
   test("should be Addr.Neg unexpected error occurs") {
-    // givenn
+    // given
     val invoked = Promise[Unit]()
     val api = apiStub { (_, _, _, _, _, _) =>
       invoked.setDone()
@@ -130,10 +130,9 @@ class SvcAddrTest extends FunSuite with Matchers {
 
     // when
     val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
 
     // then
-    Await.ready(invoked, 1.second)
+    await(addr.changes.toFuture)
     addr.sample() should matchPattern { case Addr.Neg => }
   }
 }

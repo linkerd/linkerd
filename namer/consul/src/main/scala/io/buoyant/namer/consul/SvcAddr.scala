@@ -22,8 +22,6 @@ private[consul] object SvcAddr {
   private[this] val ServiceRelease =
     new Exception("service observation released") with NoStackTrace
 
-  private[this] val NonExistentDcMessage = "No path to datacenter"
-
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
     val closes = stats.counter("closes")
