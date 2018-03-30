@@ -94,6 +94,30 @@ class ClientTest extends FunSuite {
     assert(basParams[Transport.ClientSsl].sslClientConfiguration.isEmpty)
   }
 
+  test("variable capture from prefix with fragment") {
+    val client = parse("""|kind: io.l5d.static
+                          |configs:
+                          |- prefix: "/#/io.l5d.serversets/s/*/staging/{service}:https"
+                          |  tls:
+                          |    commonName: "*.{service}.com"
+                          |- prefix: "/#/io.l5d.serversets/s/{role}/prod/{service}:https"
+                          |  tls:
+                          |    commonName: "{role}.{service}.com"""".stripMargin)
+
+    val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.serversets/s/nobody/staging/foo:https"))
+    val Transport.ClientSsl(Some(SslClientConfiguration(Some(fooCn), _, _, _, _, _))) =
+      fooParams[Transport.ClientSsl]
+    assert(fooCn == "*.foo.com")
+
+    val barParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.serversets/s/www/prod/bar:https"))
+    val Transport.ClientSsl(Some(SslClientConfiguration(Some(barCn), _, _, _, _, _))) =
+      barParams[Transport.ClientSsl]
+    assert(barCn == "www.bar.com")
+
+    val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.wrong/bas"))
+    assert(basParams[Transport.ClientSsl].sslClientConfiguration.isEmpty)
+  }
+
   test("failure accrual") {
     val client = parse("""|kind: io.l5d.static
                           |configs:

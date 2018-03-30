@@ -35,14 +35,34 @@ class PathMatcherTest extends FunSuite {
     assert(matcher.extract(Path.read("/foo/bar/bas")) == Some(Map("A" -> "bar")))
   }
 
+  test("capture segments with fragment") {
+    val matcher = PathMatcher("/foo/bar/{A}:http")
+    assert(matcher.extract(Path.read("/foo/bar/bas:http")) == Some(Map("A" -> "bas")))
+  }
+
   test("capture and wildcards") {
     val matcher = PathMatcher("/foo/{A}/*/{B}")
     assert(matcher.extract(Path.read("/foo/boo/bar/bas")) == Some(Map("A" -> "boo", "B" -> "bas")))
   }
 
+  test("capture segments with fragment and wildcards") {
+    val matcher = PathMatcher("/foo/{A}/*/{B}:http")
+    assert(matcher.extract(Path.read("/foo/boo/bar/bas:http")) == Some(Map("A" -> "boo", "B" -> "bas")))
+  }
+
   test("failed capture") {
     val matcher = PathMatcher("/foo/{A}/bar")
     assert(matcher.extract(Path.read("/foo/bar/bad")) == None)
+  }
+
+  test("failed capture with fragment") {
+    val matcher = PathMatcher("/foo/{A}:http")
+    assert(matcher.extract(Path.read("/foo/bar/bas:http")) == None)
+  }
+
+  test("failed capture with fragment out of order") {
+    val matcher = PathMatcher("/foo/bar/{A}:http/{B}")
+    assert(matcher.extract(Path.read("/foo/bar/bas:http/blarg")) == Some(Map("A" -> "bas")))
   }
 
   test("substitute") {
