@@ -104,6 +104,9 @@ class ThriftNamerClient(
               pending = Future.sleep(sleep).onSuccess(_ => loop(stamp0, backoffs1))
             }
 
+          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
+          // The request has been cancelled.  Do nothing.
+
           case Throw(e) =>
             bindFailureCounter.incr()
             log.error(e, "bind %s", path.show)
@@ -214,6 +217,9 @@ class ThriftNamerClient(
               val sleep #:: backoffs1 = backoffs0
               pending = Future.sleep(sleep).onSuccess(_ => loop(stamp0, backoffs1))
             }
+
+          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
+          // The request has been cancelled.  Do nothing.
 
           case Throw(e) =>
             addrFailureCounter.incr()
@@ -333,6 +339,9 @@ class ThriftNamerClient(
             dtabFailureCounter.incr()
             log.error("dtab %s lookup failed: %s", namespace, reason)
             states() = Activity.Failed(e)
+
+          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
+          // The request has been cancelled.  Do nothing.
 
           case Throw(e) =>
             dtabFailureCounter.incr()
