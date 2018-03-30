@@ -3,6 +3,7 @@ package netty4
 
 import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.netty4.ByteBufAsBuf
+import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise}
 import io.netty.handler.codec.http2._
 import scala.collection.JavaConverters._
@@ -102,7 +103,11 @@ private[h2] object Netty4Message {
 
     def apply(f: Http2DataFrame, updateWindow: Int => Future[Unit]): Frame.Data = {
       val sz = f.content.readableBytes + f.padding
-      val buf = ByteBufAsBuf(f.content.retain())
+
+      // ByteBufAsBuf does an unnecessary release() for array backed ByteBufs which throws off our
+      // reference counting.  We do a retain() here to cancel it out.
+      if (f.content.hasArray) f.retain()
+      val buf = ByteBufAsBuf(f.content)
       val releaser: () => Future[Unit] =
         () =>
           {

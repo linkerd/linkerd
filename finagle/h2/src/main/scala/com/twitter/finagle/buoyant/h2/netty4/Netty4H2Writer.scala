@@ -33,12 +33,11 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
 
   override def write(id: Int, buf: Buf, eos: Boolean): Future[Unit] = {
     val bb = BufAsByteBuf(buf)
-    val frame = new DefaultHttp2DataFrame(bb, eos)
-    if (id >= 0) frame.streamId(id)
-    write(frame.retain()).ensure {
-      // just for reference-counting, not flow control.
-      frame.release(); ()
-    }
+    val nettyFrame = new DefaultHttp2DataFrame(bb, eos)
+    if (id >= 0) nettyFrame.streamId(id)
+    // We retain this frame before sending it to Netty because we may be using it elsewhere.
+    // It is our responsibility to call frame.release() when we are done with it.
+    write(nettyFrame.retain())
   }
 
   override def updateWindow(id: Int, incr: Int): Future[Unit] = {

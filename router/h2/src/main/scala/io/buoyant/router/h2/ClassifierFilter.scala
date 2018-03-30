@@ -135,9 +135,7 @@ class ClassifierFilter(classifier: H2Classifier) extends SimpleFilter[Request, R
                 // replace it with a new data frame without that flag.
                 // otherwise, the trailers we add to the stream will never
                 // be reached.
-                val frame2 = Frame.Data(frame.buf, eos = false)
-                // release the old data frame, since it will be replaced.
-                frame.release()
+                val frame2 = Frame.Data.copy(frame, eos = false)
                 Seq(frame2, Trailers(SuccessClassHeader -> success))
               case frame =>
                 // if the current frame is not an end frame, just keep going...

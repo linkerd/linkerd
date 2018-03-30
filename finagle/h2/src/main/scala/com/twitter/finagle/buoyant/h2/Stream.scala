@@ -69,6 +69,22 @@ object Stream {
   // in the dispatcher and server stream
 
   /**
+   * Fail the queue and release all of its Frames.  This can be called as a safe alternative to
+   * q.fail(e, discard = true).
+   */
+  def failAndDrainFrameQueue(q: AsyncQueue[Frame], e: Throwable): Unit = {
+    q.fail(e, discard = false)
+    def drain(q: AsyncQueue[Frame]): Future[Nothing] = {
+      q.poll().flatMap { f =>
+        f.release()
+        drain(q)
+      }
+    }
+    drain(q)
+    ()
+  }
+
+  /**
    * In order to create a stream, we need a mechanism to write to it.
    */
   trait Writer {
@@ -104,10 +120,10 @@ object Stream {
     }
   }
 
-  private[this] def failOnInterrupt[T, Q](f: Future[T], q: AsyncQueue[Q]): Future[T] = {
+  private[this] def failOnInterrupt[T](f: Future[T], q: AsyncQueue[Frame]): Future[T] = {
     val p = new Promise[T] with Promise.InterruptHandler {
       override protected def onInterrupt(e: Throwable): Unit = {
-        q.fail(e, discard = true)
+        failAndDrainFrameQueue(q, e)
         f.raise(e)
       }
     }
@@ -122,7 +138,9 @@ object Stream {
       if (frameQ.offer(f)) failOnInterrupt(f.onRelease, frameQ)
       else Future.exception(Reset.Closed)
 
-    override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+    override def reset(err: Reset): Unit = {
+      failAndDrainFrameQueue(frameQ, err)
+    }
     override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
   }
 
@@ -152,10 +170,13 @@ object Stream {
       override def onEnd = Future.Unit
       override def read(): Future[Frame] = failOnInterrupt(frameQ.poll(), frameQ)
       override def write(f: Frame): Future[Unit] = {
-        frameQ.fail(Reset.Closed, discard = true)
+        failAndDrainFrameQueue(frameQ, Reset.Closed)
         Future.exception(Reset.Closed)
       }
-      override def reset(err: Reset): Unit = frameQ.fail(err, discard = true)
+      override def reset(err: Reset): Unit = {
+        frameQ.fail(err, discard = false)
+        failAndDrainFrameQueue(frameQ, err)
+      }
       override def close(): Unit = frameQ.fail(Reset.NoError, discard = false)
     }
 
@@ -201,8 +222,12 @@ object Frame {
       def isEnd = eos
     }
 
+    object NoopRelease extends Function0[Future[Unit]] {
+      override def apply(): Future[Unit] = Future.Unit
+    }
+
     def apply(buf: Buf, eos: Boolean): Data =
-      apply(buf, eos, () => Future.Unit)
+      apply(buf, eos, NoopRelease)
 
     def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
       apply(Buf.Utf8(s), eos, release)
@@ -212,6 +237,13 @@ object Frame {
 
     def eos(buf: Buf): Data = apply(buf, true)
     def eos(s: String): Data = apply(s, true)
+
+    def copy(frame: Data, eos: Boolean): Data = new Data {
+      def buf = frame.buf
+      def onRelease = frame.onRelease
+      def release() = frame.release()
+      def isEnd = eos
+    }
   }
 
   /** A terminal Frame including headers. */

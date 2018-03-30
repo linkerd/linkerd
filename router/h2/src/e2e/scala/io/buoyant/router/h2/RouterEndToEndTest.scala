@@ -205,5 +205,4 @@ class RouterEndToEndTest
       await(router.close())
     }
   }
-
 }

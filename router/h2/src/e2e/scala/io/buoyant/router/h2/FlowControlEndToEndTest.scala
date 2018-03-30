@@ -2,11 +2,9 @@ package io.buoyant.router
 package h2
 
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.io.Buf
 import com.twitter.logging.Level
-import com.twitter.util.{Future, Promise}
+import com.twitter.util.Promise
 import io.buoyant.test.FunSuite
-import scala.collection.mutable.ListBuffer
 
 class FlowControlEndToEndTest
   extends FunSuite
