@@ -77,7 +77,7 @@ private[consul] object SvcAddr {
             Future.Unit
 
           case Throw(e) =>
-            // do not update state, log error and continue polling with backoff
+            // update state with Addr.Neg, log error and continue polling with backoff
             stats.errors.incr()
             log.log(
               failureLogLevel,

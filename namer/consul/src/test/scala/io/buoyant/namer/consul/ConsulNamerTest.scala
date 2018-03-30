@@ -51,7 +51,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       Future.value(LocalAgent(Config = Some(Config(Domain = Some(domain), Datacenter = datacenter))))
   }
 
-  test("Namer returns Neg while looking up datacenter for the first time") {
+  test("Namer stays pending while looking up datacenter for the first time") {
     class TestCatalogApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -505,7 +505,74 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assert(state == Activity.Ok(NameTree.Neg))
   }
-  test("Namer falls to Neg state to on serviceNodes failure after preceding successful serviceNode requests") {
+
+  test("Namer state returns Neg then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
+    val datacenterWillBeUnavailable = new Promise[Unit]
+    val datacenterIsAvailable = new Promise[Unit]
+    val scenarioComplete = new Promise[Unit]
+    @volatile var datacenterIsUp = false
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+         serviceName: String,
+         datacenter: Option[String],
+         tag: Option[String],
+         blockingIndex: Option[String],
+         consistency: Option[ConsistencyMode],
+         retry: Boolean
+       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          if (datacenterIsUp)
+            datacenterIsAvailable before Future.value(
+              Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("1"))
+            )
+          else {
+            datacenterIsUp = true
+            Future.exception(new Exception("datacenter does not exist yet"))
+          }
+        case Some("1") =>
+          datacenterWillBeUnavailable before Future.exception(new Exception("something bad happened again"))
+        case _ =>
+          scenarioComplete.setDone()
+          Future.never
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    @volatile var nameTreeUpdates: Int = 0
+    namer.lookup(Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
+      nameTreeUpdates += 1
+      log.info(s"count: $nameTreeUpdates")
+      state = s
+    }
+
+
+    withClue("before datacenter is available") {
+      assert(state == Activity.Ok(NameTree.Neg))
+
+      datacenterIsAvailable.setDone()
+      eventually {
+        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
+      }
+
+    }
+
+    withClue("during datacenter crash") {
+      datacenterWillBeUnavailable.setDone()
+      eventually {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
+    }
+  }
+
+  test("Namer falls to Neg state on serviceNodes failure after preceding successful serviceNode requests") {
     val scaleUp = new Promise[Unit]
     val doFail = new Promise[Unit]
     val scaleToEmpty = new Promise[Unit]
@@ -567,7 +634,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(state == Activity.Ok(NameTree.Neg))
 
       scaleToEmpty.setDone()
-      Await.ready(scenarioComplete)
+      await(scenarioComplete)
       assert(
         state == Activity.Ok(NameTree.Neg),
         "namer did not update after falling back"
