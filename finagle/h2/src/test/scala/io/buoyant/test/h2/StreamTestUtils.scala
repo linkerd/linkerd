@@ -29,13 +29,17 @@ object StreamTestUtils {
   def readDataStream(stream: Stream): Future[Buf] = {
     stream.read().flatMap {
       case frame: Frame.Data if frame.isEnd =>
-        val buf = frame.buf
+        // Copy the data so that the underlying buffer can be released.
+        val bbCopy = Buf.ByteBuffer.Shared.extract(frame.buf)
         val _ = frame.release()
-        Future.value(buf)
+        Future.value(Buf.ByteBuffer.Owned(bbCopy))
       case frame: Frame.Data =>
-        val buf = frame.buf
+        // Copy the data so that the underlying buffer can be released.
+        val bbCopy = Buf.ByteBuffer.Shared.extract(frame.buf)
         val _ = frame.release()
-        readDataStream(stream).map(buf.concat)
+        readDataStream(stream).map { rest =>
+          Buf.ByteBuffer.Owned(bbCopy).concat(rest)
+        }
       case frame: Frame.Trailers =>
         val _ = frame.release()
         Future.value(Buf.Empty)
