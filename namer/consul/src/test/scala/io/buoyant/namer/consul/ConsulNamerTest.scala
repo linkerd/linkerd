@@ -509,7 +509,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
   test("Namer state returns Neg then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
     val datacenterWillBeUnavailable = new Promise[Unit]
     val datacenterIsAvailable = new Promise[Unit]
-    val scenarioComplete = new Promise[Unit]
     @volatile var datacenterIsUp = false
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
@@ -530,9 +529,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
             Future.exception(new Exception("datacenter does not exist yet"))
           }
         case Some("1") =>
-          datacenterWillBeUnavailable before Future.exception(new Exception("something bad happened again"))
+          datacenterWillBeUnavailable before Future.exception(new Exception("datacenter was deleted"))
         case _ =>
-          scenarioComplete.setDone()
           Future.never
       }
     }
@@ -555,7 +553,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
 
     withClue("before datacenter is available") {
-      assert(state == Activity.Ok(NameTree.Neg))
+      eventually {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
+
 
       datacenterIsAvailable.setDone()
       eventually {
@@ -597,7 +598,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
               scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
             else {
               didFail = true
-              Future.exception(new Exception("something bad happened"))
+              Future.exception(new Exception("serviceNode failure"))
             }
           )
         case _ =>
