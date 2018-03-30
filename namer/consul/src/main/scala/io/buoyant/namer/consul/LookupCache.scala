@@ -28,15 +28,18 @@ private[consul] class LookupCache(
 
   private[this] val localDcMoniker = ".local"
 
+
   private[this] val lookupCounter = stats.counter("lookups")
-  private[this] val serviceStats = SvcAddr.Stats(stats.scope("service"))
+  private[this] val service: StatsReceiver = stats.scope("service")
+  private[this] val cachedCounter = service.counter("cached")
+  private[this] val serviceStats = SvcAddr.Stats(service)
 
   private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
     untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
       case (dc, key, id, residual) =>
-        resolveDc(dc).join(domain).flatMap {
+        val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
           case ((dcName, domainOption)) =>
-            val addr = SvcAddr(
+            SvcAddr(
               consulApi,
               LookupCache.DefaultBackoffs,
               dcName,
@@ -47,17 +50,32 @@ private[consul] class LookupCache(
               weights,
               serviceStats
             )
-            log.debug("consul ns %s service %s found + %s", dc, key, residual.show)
-
-            val stateVar: Var[Activity.State[NameTree[Name.Bound]]] = addr.map {
-              case Addr.Neg => Activity.Ok(NameTree.Neg)
-              case Addr.Pending => Activity.Pending
-              case Addr.Failed(why) => Activity.Failed(why)
-              case Addr.Bound(_, _) =>
-                Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
-            }
-            new Activity(stateVar)
         }
+
+        val observation = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { observationState =>
+          val closableFuture = addrFuture.transform {
+            case Return(addr) =>
+              val observationClosable = addr.changes.respond {
+                case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
+                case Addr.Pending => observationState.update(Activity.Pending)
+                case Addr.Failed(why) => observationState.update(Activity.Failed(why))
+                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
+              }
+              Future.value(observationClosable)
+            case Throw(cause) =>
+              // We probably failed to fetch agent config. This is critical.
+              // TODO: if this has happened only restart can restore namerd to working state. Throw exception instead?
+              observationState.update(Activity.Failed(cause))
+              Future.value(Closable.nop)
+          }
+
+          Closable.make { deadline =>
+            closableFuture.flatMap(_.close(deadline))
+          }
+        }
+
+        cachedCounter.incr()
+        new Activity(observation)
     })
 
   def apply(
@@ -71,25 +89,20 @@ private[consul] class LookupCache(
     cachedLookup(dc, key, id, residual)
   }
 
-  private[this] def resolveDc(datacenter: String): Activity[String] =
+  private[this] def resolveDc(datacenter: String): Future[String] =
     if (datacenter == localDcMoniker)
       localDc.map(_.getOrElse(datacenter))
-    else Activity.value(datacenter)
+    else Future.value(datacenter)
 
-  // Note that this 3 activities are never recomputed.  We simply do a
-  // lookup for the domain and then wrap it an activity for
-  // convenience.
-  private[this] lazy val agentConfig: Activity[Option[v1.Config]] =
-    Activity.future(agentApi.localAgent(retry = true)).map(_.Config)
+  private[this] lazy val agentConfig: Future[Option[v1.Config]] = agentApi.localAgent(retry = true).map(_.Config)
 
-  private[this] lazy val domain: Activity[Option[String]] =
+  private[this] lazy val domain: Future[Option[String]] =
     if (setHost) {
       agentConfig.map { config =>
         val dom = config.flatMap(_.Domain).getOrElse("consul")
         Some(dom.stripPrefix(".").stripSuffix("."))
       }
-    } else Activity.value(None)
+    } else Future.value(None)
 
-  private[this] lazy val localDc = agentConfig.map(_.flatMap(_.Datacenter))
-
+  private[this] lazy val localDc: Future[Option[String]] = agentConfig.map(_.flatMap(_.Datacenter))
 }
