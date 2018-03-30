@@ -82,7 +82,11 @@ object PathMatcher {
               vars + (exprSegment.substring(1, exprSegment.length - 1) -> pathSegment)
             )
           else
-            None
+            (exprSegment.split(":"), pathSegment.split(":")) match {
+              case (Array(a, b), Array(y, z)) if a.startsWith("{") && a.endsWith("}") && b == z =>
+                Some(vars + (a.substring(1, a.length - 1) -> y))
+              case _ => None
+            }
         case (_, None) => Some(vars)
         case (None, _) => None
       }
