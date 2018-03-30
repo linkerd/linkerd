@@ -77,7 +77,7 @@ private[consul] object SvcAddr {
             Future.Unit
 
           case Throw(e) =>
-            // do not update state, log error and continue polling with backoff
+            // update state with Addr.Neg, log error and continue polling with backoff
             stats.errors.incr()
             log.log(
               failureLogLevel,
@@ -85,6 +85,7 @@ private[consul] object SvcAddr {
                 " Last known state is %s",
               datacenter, key.name, e, currentValueToLog
             )
+            state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))

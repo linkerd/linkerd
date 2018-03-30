@@ -4,14 +4,15 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure}
-import com.twitter.util.{Await, Duration, Future, Promise, Timer, Var}
+import com.twitter.util.{Duration, Future, Promise, Timer, Var}
 import io.buoyant.consul.v1.{CatalogApi, ConsistencyMode, HealthStatus, Indexed, ServiceNode}
 import io.buoyant.namer.consul.SvcAddr.Stats
+import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.{FunSuite, Matchers}
 
-class SvcAddrTest extends FunSuite with Matchers {
+class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
   implicit val timer: Timer = DefaultTimer
 
@@ -44,23 +45,6 @@ class SvcAddrTest extends FunSuite with Matchers {
       ): Future[Indexed[Seq[ServiceNode]]] = stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry)
     }
 
-  test("should remain pending on error from start") {
-    // givenn
-    val invoked = Promise[Unit]()
-    val api = apiStub { (_, _, _, _, _, _) =>
-      invoked.setDone()
-      Future.exception(new Throwable("whatever is thrown we catch"))
-    }
-
-    // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
-
-    // then
-    Await.ready(invoked, 1.second)
-    addr.sample() should matchPattern { case Addr.Pending => }
-  }
-
   test("should keep last known Addr.Bound value on error") {
     // given
     val invoked = Promise[Unit]()
@@ -81,15 +65,14 @@ class SvcAddrTest extends FunSuite with Matchers {
 
     // when
     val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
 
     // then
-    Await.ready(invoked, 1.second)
+    await(addr.changes.toFuture)
     addr.sample() match {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
         addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
-      case _ => fail("should be Addr.Bound")
+      case neg: Addr => neg should be(Addr.Neg)
     }
   }
 
@@ -110,7 +93,7 @@ class SvcAddrTest extends FunSuite with Matchers {
     addr.changes.respond(_ => ())
 
     // then
-    Await.ready(retried, 1.second)
+    await(retried)
     numOfRequests.intValue() should equal(numOfAttempts)
   }
 
@@ -135,5 +118,21 @@ class SvcAddrTest extends FunSuite with Matchers {
 
     // then
     extracted should be(Some(cause))
+  }
+
+  test("should be Addr.Neg unexpected error occurs") {
+    // given
+    val invoked = Promise[Unit]()
+    val api = apiStub { (_, _, _, _, _, _) =>
+      invoked.setDone()
+      Future.exception(new Throwable("No path to datacenter"))
+    }
+
+    // when
+    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+
+    // then
+    await(addr.changes.toFuture)
+    addr.sample() should matchPattern { case Addr.Neg => }
   }
 }

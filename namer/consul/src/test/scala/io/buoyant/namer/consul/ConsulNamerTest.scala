@@ -81,7 +81,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer stays pending if the consul api cannot be reached") {
+  test("Namer returns Neg if the consul api cannot be reached") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -98,7 +98,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Pending)
+    assert(state == Activity.Ok(NameTree.Neg))
     assert(stats.counters == Map(
       Seq("service", "cached") -> 1,
       Seq("service", "opens") -> 1,
@@ -107,7 +107,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer returns neg when servicename does not exist") {
+  test("Namer returns Neg when servicename does not exist") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -481,7 +481,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer falls back to last observed good state on serviceNodes failure") {
+  test("Namer returns Neg on serviceNodes failure") {
     class TestApi extends CatalogApi(null, "/v1") {
       @volatile var alreadyFailed = false
       override def serviceNodes(
@@ -513,13 +513,77 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assertOnAddrs(state) { (_, metadata) =>
-      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
-      ()
+    assert(state == Activity.Ok(NameTree.Neg))
+  }
+
+  test("Namer state returns Neg then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
+    val datacenterWillBeUnavailable = new Promise[Unit]
+    val datacenterIsAvailable = new Promise[Unit]
+    @volatile var datacenterIsUp = false
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+         serviceName: String,
+         datacenter: Option[String],
+         tag: Option[String],
+         blockingIndex: Option[String],
+         consistency: Option[ConsistencyMode],
+         retry: Boolean
+       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        case Some("0") | None =>
+          if (datacenterIsUp)
+            datacenterIsAvailable before Future.value(
+              Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("1"))
+            )
+          else {
+            datacenterIsUp = true
+            Future.exception(new Exception("datacenter does not exist yet"))
+          }
+        case Some("1") =>
+          datacenterWillBeUnavailable before Future.exception(new Exception("datacenter was deleted"))
+        case _ =>
+          Future.never
+      }
     }
 
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    @volatile var nameTreeUpdates: Int = 0
+    namer.lookup(Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
+      nameTreeUpdates += 1
+      log.info(s"count: $nameTreeUpdates")
+      state = s
+    }
+
+
+    withClue("before datacenter is available") {
+      eventually {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
+
+
+      datacenterIsAvailable.setDone()
+      eventually {
+        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
+      }
+
+    }
+
+    withClue("during datacenter crash") {
+      datacenterWillBeUnavailable.setDone()
+      eventually {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
+    }
   }
-  test("Namer falls back to most recent observed good state on serviceNodes failure") {
+
+  test("Namer falls to Neg state on serviceNodes failure after preceding successful serviceNode requests") {
     val scaleUp = new Promise[Unit]
     val doFail = new Promise[Unit]
     val scaleToEmpty = new Promise[Unit]
@@ -544,7 +608,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
               scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
             else {
               didFail = true
-              Future.exception(new Exception("something bad happened"))
+              Future.exception(new Exception("serviceNode failure"))
             }
           )
         case _ =>
@@ -578,19 +642,17 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     withClue("after failure") {
       doFail.setDone()
-      assertOnAddrs(state) { (addrs, _) =>
-        assert(addrs.size == 2, "namer fell back to wrong state")
-        ()
-      }
+      assert(state == Activity.Ok(NameTree.Neg))
 
       scaleToEmpty.setDone()
-      Await.ready(scenarioComplete)
+      await(scenarioComplete)
       assert(
         state == Activity.Ok(NameTree.Neg),
         "namer did not update after falling back"
       )
     }
   }
+
   test("Namer doesn't poll consul again after observation is closed") {
     @volatile var reqs = 0
     class TestApi extends CatalogApi(null, "/v1") {
