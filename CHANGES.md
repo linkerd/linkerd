@@ -1,3 +1,18 @@
+## 1.3.7-rc1 2018-03-30
+
+* Add support for more types of client certificates in the ForwardClientCertFilter ([#1850](https://github.com/linkerd/linkerd/pull/1850)).
+* Improve documentation on how to override the base Docker image ([#1867](https://github.com/linkerd/linkerd/pull/1867)).
+* Improve the efficientcy of the dtab delegator UI ([#1862](https://github.com/linkerd/linkerd/pull/1862)).
+* Add a command line flag for config file validation ([#1854](https://github.com/linkerd/linkerd/pull/1854)).
+* Fix a bug where the wrong timezone was being used in access logs ([#1851](https://github.com/linkerd/linkerd/pull/1851)).
+* Add the ability to explicitly disable TLS for specific clients ([#1856](https://github.com/linkerd/linkerd/pull/1856)).
+* Consul:
+  * Add support for TLS-encrypted communication with Consul ([#1842](https://github.com/linkerd/linkerd/pull/1842)).
+  * Fix a connection leak to Consul ([#1877](https://github.com/linkerd/linkerd/pull/1877)).
+  * Fix a bug where Linkerd would timeout requests to non-existent Consul datacenters ([#1863](https://github.com/linkerd/linkerd/pull/1877)).
+* Remove many alarming but harmless error messages from Linkerd and Namerd logs ([#1871](https://github.com/linkerd/linkerd/pull/1871), [#1884](https://github.com/linkerd/linkerd/pull/1884), [#1875](https://github.com/linkerd/linkerd/pull/1875)).
+* Fix ByteBuffer memory leaks in HTTP/2 ([#1879](https://github.com/linkerd/linkerd/pull/1879), [#1858](https://github.com/linkerd/linkerd/pull/1858)).
+
 ## 1.3.6 2018-03-01
 
 This release focuses on correctness and bug fixes. Much of the work was in service to Linkerd's Kubernetes and Consul support. This release features contributions from [Salesforce](https://github.com/salesforce), [NCBI](https://github.com/ncbi), [Planet Labs](https://github.com/planetlabs), [Buoyant](https://github.com/buoyantio), [FOODit](https://github.com/foodit), and Variomedia.
