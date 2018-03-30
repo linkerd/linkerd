@@ -75,21 +75,28 @@ object PathMatcher {
             _extract(pathSegments.tail, exprSegments.tail, vars)
           else if (exprSegment == pathSegment)
             _extract(pathSegments.tail, exprSegments.tail, vars)
-          else if (exprSegment.startsWith("{") && exprSegment.endsWith("}"))
-            _extract(
-              pathSegments.tail,
-              exprSegments.tail,
-              vars + (exprSegment.substring(1, exprSegment.length - 1) -> pathSegment)
-            )
           else
-            (exprSegment.split(":"), pathSegment.split(":")) match {
-              case (Array(a, b), Array(y, z)) if a.startsWith("{") && a.endsWith("}") && b == z =>
-                Some(vars + (a.substring(1, a.length - 1) -> y))
+            """\{([a-zA-Z0-9.:-]+)\}""".r.findAllIn(exprSegment) match {
+              case k if !k.isEmpty && pathSegment.startsWith(exprSegment.take(k.start)) =>
+                var keys = k.toArray
+                keys.foldLeft(exprSegment.replace(".", "\\."))(_re).r.findAllIn(pathSegment) match {
+                  case v if !v.isEmpty =>
+                    _extract(
+                      pathSegments.tail,
+                      exprSegments.tail,
+                      vars ++ keys.map { key =>
+                        key.drop(1).dropRight(1) -> v.group(keys.indexOf(key) + 1)
+                      }.toMap
+                    )
+                  case _ => None
+                }
               case _ => None
             }
         case (_, None) => Some(vars)
         case (None, _) => None
       }
+
+    private[this] def _re(x: String, y: String) = x.replace(y, "(.*)")
 
     override def toString: String = expr
   }

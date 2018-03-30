@@ -45,9 +45,21 @@ class PathMatcherTest extends FunSuite {
     assert(matcher.extract(Path.read("/foo/boo/bar/bas")) == Some(Map("A" -> "boo", "B" -> "bas")))
   }
 
-  test("capture segments with endpoint and wildcards") {
-    val matcher = PathMatcher("/foo/{A}/*/{B}:http")
-    assert(matcher.extract(Path.read("/foo/boo/bar/bas:http")) == Some(Map("A" -> "boo", "B" -> "bas")))
+  test("capture segment from partial expression") {
+    val matcher = PathMatcher("/foo/bar/{A}.com/{B}")
+    assert(matcher.extract(Path.read("/foo/bar/foo.com/80")) == Some(Map("A" -> "foo", "B" -> "80")))
+
+    val matcher2 = PathMatcher("/foo/bar/{A}-{B}/{C}")
+    assert(matcher2.extract(Path.read("/foo/bar/foo-com/80")) == Some(Map("A" -> "foo", "B" -> "com", "C" -> "80")))
+
+    val matcher3 = PathMatcher("/foo/bar/{A}.{B}/{C}")
+    assert(matcher3.extract(Path.read("/foo/bar/foo.com/80")) == Some(Map("A" -> "foo", "B" -> "com", "C" -> "80")))
+
+    val matcher4 = PathMatcher("/foo/bar/{A}.{B}.{C}/{D}")
+    assert(matcher4.extract(Path.read("/foo/bar/www.foo.com/80")) == Some(Map("A" -> "www", "B" -> "foo", "C" -> "com", "D" -> "80")))
+
+    val matcher5 = PathMatcher("/foo/{A}/*/{B}:http")
+    assert(matcher5.extract(Path.read("/foo/boo/bar/bas:http")) == Some(Map("A" -> "boo", "B" -> "bas")))
   }
 
   test("failed capture") {
@@ -58,11 +70,6 @@ class PathMatcherTest extends FunSuite {
   test("failed capture with endpoint") {
     val matcher = PathMatcher("/foo/{A}:http")
     assert(matcher.extract(Path.read("/foo/bar/bas:http")) == None)
-  }
-
-  test("paritial failed capture with endpoint out of order") {
-    val matcher = PathMatcher("/foo/bar/{A}:http/{B}")
-    assert(matcher.extract(Path.read("/foo/bar/bas:http/blarg")) == Some(Map("A" -> "bas")))
   }
 
   test("substitute") {
