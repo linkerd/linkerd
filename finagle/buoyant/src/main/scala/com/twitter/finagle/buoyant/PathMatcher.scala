@@ -76,7 +76,7 @@ object PathMatcher {
           else if (exprSegment == pathSegment)
             _extract(pathSegments.tail, exprSegments.tail, vars)
           else
-            """\{([a-zA-Z0-9.:-]+)\}""".r.findAllIn(exprSegment) match {
+            """\{([a-zA-Z0-9\\.:-]+)\}""".r.findAllIn(exprSegment) match {
               case k if !k.isEmpty && pathSegment.startsWith(exprSegment.take(k.start)) =>
                 var keys = k.toArray
                 keys.foldLeft(exprSegment.replace(".", "\\."))(_re).r.findAllIn(pathSegment) match {
