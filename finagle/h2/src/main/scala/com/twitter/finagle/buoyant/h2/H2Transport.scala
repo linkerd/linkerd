@@ -11,7 +11,7 @@ object H2Transport {
   /**
    * A codec-agnostic interface supporting writes of H2 messages to a transport.
    */
-  trait Writer extends {
+  trait Writer {
 
     def localAddress: SocketAddress
     def remoteAddress: SocketAddress

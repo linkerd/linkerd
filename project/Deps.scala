@@ -18,7 +18,7 @@ object Deps {
     "com.twitter" %% s"finagle-$mod" % "18.2.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.21.Final"
+    "io.netty" % s"netty-$mod" % "4.1.16.Final"
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.7.Final"
 
