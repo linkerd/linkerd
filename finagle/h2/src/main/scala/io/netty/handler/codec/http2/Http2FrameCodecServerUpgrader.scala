@@ -7,5 +7,5 @@ import io.netty.channel.ChannelHandler
  */
 class Http2FrameCodecServerUpgrader(name: String, framer: H2FrameCodec, handler: ChannelHandler)
   extends Http2ServerUpgradeCodec(framer.connectionHandler) {
-  def this(framer: H2FrameCodec) = this(null, framer, framer)
+  def this(framer: H2FrameCodec) = this(null, framer, framer.connectionHandler)
 }

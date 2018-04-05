@@ -26,11 +26,11 @@ class H2FrameCodec(
   private[this] var channelCtx, http2HandlerCtx: ChannelHandlerContext = null
 
   private[this] val connectionListener = new Http2ConnectionAdapter {
-
     override def onStreamActive(stream: Http2Stream): Unit = {
       if (channelCtx != null) {
-        if (http2Handler.connection.local().isValidStreamId(stream.id)) return
-
+        if (http2Handler.connection.local().isValidStreamId(stream.id)) {
+          return
+        }
         val stream2 = new DefaultHttp2FrameStream
         stream2.setStreamAndProperty(streamKey, stream)
         channelCtx.fireUserEventTriggered(Http2FrameStreamEvent.stateChanged(stream2)); ()
@@ -62,6 +62,10 @@ class H2FrameCodec(
     channelCtx = ctx
     ctx.pipeline.addBefore(ctx.executor, ctx.name, null, http2Handler)
     http2HandlerCtx = ctx.pipeline.context(http2Handler)
+  }
+
+  def handlerAdded0(ctx: ChannelHandlerContext): Unit = {
+    println("handler0")
   }
 
   /**
@@ -214,7 +218,8 @@ object H2FrameCodec {
     require(0.0 < updateRatio && updateRatio < 1.0)
 
     val conn = new DefaultHttp2Connection(isServer)
-    val streamKey = conn.newKey()
+    var streamKey = conn.newKey()
+    val frameListener = new FrameListener(conn, streamKey)
     conn.local.flowController(new DefaultHttp2LocalFlowController(conn, updateRatio, refillConn) {
       settings.initialWindowSize match {
         case null =>
@@ -232,9 +237,9 @@ object H2FrameCodec {
       val fr = new Http2InboundFrameLogger(new DefaultHttp2FrameReader, frameLogger)
       new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
-    decoder.frameListener(new FrameListener(conn, streamKey))
+    decoder.frameListener(frameListener)
 
-    val handler = new ConnectionHandler(decoder, encoder, settings)
+    val handler = new ConnectionHandler(decoder, encoder, settings, streamKey)
     new H2FrameCodec(handler, streamKey)
   }
 
@@ -243,16 +248,23 @@ object H2FrameCodec {
   private class ConnectionHandler(
     decoder: Http2ConnectionDecoder,
     encoder: Http2ConnectionEncoder,
-    initialSettings: Http2Settings
+    initialSettings: Http2Settings,
+    streamKey: PropertyKey
   ) extends Http2ConnectionHandler(decoder, encoder, initialSettings) {
 
   }
 
   private class FrameListener(connection: Http2Connection, streamKey: PropertyKey) extends Http2FrameAdapter {
 
-    def requireStream(streamId: Int) = {
-      val stream = connection.stream(streamId).getProperty(streamKey).asInstanceOf[Http2FrameStream]
-      if (stream == null) throw new IllegalStateException(s"Stream object required for identifier: $streamId")
+    val key = streamKey
+
+    def requireStream(streamId: Int): Http2FrameStream = {
+      val stream = connection.stream(streamId).getProperty(key).asInstanceOf[Http2FrameStream] match {
+        case null =>
+          val frameStream = new DefaultHttp2FrameStream
+          frameStream.setStreamAndProperty(key, connection.stream(streamId))
+        case str => str
+      }
       stream
     }
     override def onRstStreamRead(ctx: ChannelHandlerContext, id: Int, code: Long): Unit = {
