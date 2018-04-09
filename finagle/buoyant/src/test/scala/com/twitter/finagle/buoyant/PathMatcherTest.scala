@@ -60,6 +60,9 @@ class PathMatcherTest extends FunSuite {
 
     val matcher5 = PathMatcher("/foo/{A}/*/{B}:http")
     assert(matcher5.extract(Path.read("/foo/boo/bar/bas:http")) == Some(Map("A" -> "boo", "B" -> "bas")))
+
+    val matcher6 = PathMatcher("/foo/bar/{A}-{B}")
+    assert(matcher6.extract(Path.read("/foo/bar/foo-bar-baz")) == Some(Map("A" -> "foo-bar", "B" -> "baz")))
   }
 
   test("failed capture") {
