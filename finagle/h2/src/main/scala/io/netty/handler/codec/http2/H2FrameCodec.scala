@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.channel.{ChannelDuplexHandler, ChannelHandlerContext, ChannelPromise}
 import io.netty.handler.codec.http.HttpServerUpgradeHandler.UpgradeEvent
 import io.netty.handler.codec.http2.Http2Connection.PropertyKey
-import io.netty.handler.codec.http2.Http2FrameCodec.DefaultHttp2FrameStream;
+import io.netty.handler.codec.http2.Http2FrameCodec.DefaultHttp2FrameStream
 
 /**
  * This is a direct reimplementation of io.netty.handler.codec.http2.Http2FrameCodec.
@@ -21,38 +21,13 @@ class H2FrameCodec(
   streamKey: PropertyKey
 ) extends ChannelDuplexHandler {
 
-  import H2FrameCodec._
-
   private[this] var channelCtx, http2HandlerCtx: ChannelHandlerContext = null
 
-  private[this] val connectionListener = new Http2ConnectionAdapter {
-    override def onStreamActive(stream: Http2Stream): Unit = {
-      if (channelCtx != null) {
-        if (http2Handler.connection.local().isValidStreamId(stream.id)) {
-          return
-        }
-        val stream2 = new DefaultHttp2FrameStream
-        stream2.setStreamAndProperty(streamKey, stream)
-        channelCtx.fireUserEventTriggered(Http2FrameStreamEvent.stateChanged(stream2)); ()
-      }
-    }
-
-    override def onStreamClosed(stream: Http2Stream): Unit = {
-      val stream2: Http2FrameStream = stream.getProperty(streamKey)
-      channelCtx match {
-        case ctx =>
-          val event = Http2FrameStreamEvent.stateChanged(stream2)
-          ctx.fireUserEventTriggered(event); ()
-      }
-    }
-
-    override def onGoAwayReceived(lastStreamId: Int, errorCode: Long, data: ByteBuf): Unit = {
-      channelCtx.fireChannelRead(new DefaultHttp2GoAwayFrame(lastStreamId, errorCode, data)); ()
-    }
-  }
+  private[this] val connectionListener = new Http2ConnectionAdapter
 
   http2Handler.connection.addListener(connectionListener)
 
+  // used to gain access to the httpHandler in other channel Contexts int the pipeline
   def connectionHandler: Http2ConnectionHandler = http2Handler
 
   /**
@@ -62,10 +37,6 @@ class H2FrameCodec(
     channelCtx = ctx
     ctx.pipeline.addBefore(ctx.executor, ctx.name, null, http2Handler)
     http2HandlerCtx = ctx.pipeline.context(http2Handler)
-  }
-
-  def handlerAdded0(ctx: ChannelHandlerContext): Unit = {
-    println("handler0")
   }
 
   /**
@@ -219,7 +190,6 @@ object H2FrameCodec {
 
     val conn = new DefaultHttp2Connection(isServer)
     var streamKey = conn.newKey()
-    val frameListener = new FrameListener(conn, streamKey)
     conn.local.flowController(new DefaultHttp2LocalFlowController(conn, updateRatio, refillConn) {
       settings.initialWindowSize match {
         case null =>
@@ -237,7 +207,6 @@ object H2FrameCodec {
       val fr = new Http2InboundFrameLogger(new DefaultHttp2FrameReader, frameLogger)
       new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
-    decoder.frameListener(frameListener)
 
     val handler = new ConnectionHandler(decoder, encoder, settings, streamKey)
     new H2FrameCodec(handler, streamKey)
@@ -250,62 +219,61 @@ object H2FrameCodec {
     encoder: Http2ConnectionEncoder,
     initialSettings: Http2Settings,
     streamKey: PropertyKey
-  ) extends Http2ConnectionHandler(decoder, encoder, initialSettings) {
+  ) extends Http2FrameCodec(encoder, decoder, initialSettings) {
 
-  }
+    decoder.frameListener(new FrameListener(connection, streamKey))
 
-  private class FrameListener(connection: Http2Connection, streamKey: PropertyKey) extends Http2FrameAdapter {
+    private class FrameListener(connection: Http2Connection, streamKey: PropertyKey) extends Http2FrameAdapter {
 
-    val key = streamKey
+      val key = streamKey
 
-    def requireStream(streamId: Int): Http2FrameStream = {
-      val stream = connection.stream(streamId).getProperty(key).asInstanceOf[Http2FrameStream] match {
-        case null =>
-          val frameStream = new DefaultHttp2FrameStream
-          frameStream.setStreamAndProperty(key, connection.stream(streamId))
-        case str => str
+      def requireStream(streamId: Int): Http2FrameStream = {
+        val stream = connection.stream(streamId).getProperty(key).asInstanceOf[Http2FrameStream] match {
+          case null =>
+            val frameStream = new DefaultHttp2FrameStream
+            frameStream.setStreamAndProperty(key, connection.stream(streamId))
+          case str => str
+        }
+        stream
       }
-      stream
-    }
-    override def onRstStreamRead(ctx: ChannelHandlerContext, id: Int, code: Long): Unit = {
-      val rst = new DefaultHttp2ResetFrame(code).stream(requireStream(id))
-      ctx.fireChannelRead(rst); ()
-    }
+      override def onRstStreamRead(ctx: ChannelHandlerContext, id: Int, code: Long): Unit = {
+        val rst = new DefaultHttp2ResetFrame(code).stream(requireStream(id))
+        ctx.fireChannelRead(rst); ()
+      }
 
-    override def onHeadersRead(
-      ctx: ChannelHandlerContext,
-      streamId: Int,
-      headers: Http2Headers,
-      streamDependency: Int,
-      weight: Short,
-      exclusive: Boolean,
-      padding: Int,
-      eos: Boolean
-    ): Unit = onHeadersRead(ctx, streamId, headers, padding, eos)
+      override def onHeadersRead(
+        ctx: ChannelHandlerContext,
+        streamId: Int,
+        headers: Http2Headers,
+        streamDependency: Int,
+        weight: Short,
+        exclusive: Boolean,
+        padding: Int,
+        eos: Boolean
+      ): Unit = onHeadersRead(ctx, streamId, headers, padding, eos)
 
-    override def onHeadersRead(
-      ctx: ChannelHandlerContext,
-      streamId: Int,
-      headers: Http2Headers,
-      padding: Int,
-      eos: Boolean
-    ): Unit = {
-      val hdrs = new DefaultHttp2HeadersFrame(headers, eos, padding).stream(requireStream(streamId))
-      ctx.fireChannelRead(hdrs); ()
+      override def onHeadersRead(
+        ctx: ChannelHandlerContext,
+        streamId: Int,
+        headers: Http2Headers,
+        padding: Int,
+        eos: Boolean
+      ): Unit = {
+        val hdrs = new DefaultHttp2HeadersFrame(headers, eos, padding).stream(requireStream(streamId))
+        ctx.fireChannelRead(hdrs); ()
+      }
+
+      override def onDataRead(
+        ctx: ChannelHandlerContext,
+        streamId: Int,
+        content: ByteBuf,
+        padding: Int,
+        eos: Boolean
+      ): Int = {
+        val data = new DefaultHttp2DataFrame(content.retain(), eos, padding).stream(requireStream(streamId))
+        ctx.fireChannelRead(data)
+        0 // bytes are marked as consumed via WindowUpdateFrame writes
+      }
     }
-
-    override def onDataRead(
-      ctx: ChannelHandlerContext,
-      streamId: Int,
-      content: ByteBuf,
-      padding: Int,
-      eos: Boolean
-    ): Int = {
-      val data = new DefaultHttp2DataFrame(content.retain(), eos, padding).stream(requireStream(streamId))
-      ctx.fireChannelRead(data)
-      0 // bytes are marked as consumed via WindowUpdateFrame writes
-    }
-
   }
-
 }
