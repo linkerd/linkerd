@@ -89,13 +89,13 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
             case rst: Reset => rst
             case _ => Reset.Cancel
           }
-          if (!closed.get) { writer.reset(id, Http2Stream.State.CLOSED, rst); () }
+          if (!closed.get) { writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), rst); () }
         }
 
       case Throw(e) =>
         if (streams.replace(id, open, StreamFailed(e))) {
           log.error(e, "[%s S:%d] stream reset", prefix, id)
-          if (!closed.get) { writer.reset(id, Http2Stream.State.CLOSED, Reset.InternalError); () }
+          if (!closed.get) { writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.InternalError); () }
         }
     }
   }
@@ -133,6 +133,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         else Future.Unit
 
       case Return(f: Http2SettingsFrame) =>
+        // We received a settings frame, keep reading from the transport
         transport.read().transform(loop)
 
       case Return(f: Http2StreamFrame) =>
@@ -146,7 +147,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
               case null if id <= closedId.get =>
                 // The stream has been closed and should know better than
                 // to send us messages.
-                writer.reset(id, Http2Stream.State.CLOSED, Reset.Closed)
+                writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.Closed)
 
               case null =>
                 demuxNewStream(f).before {
@@ -169,7 +170,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
               case StreamRemoteReset =>
                 // The stream has been reset and should know better than
                 // to send us messages.
-                writer.reset(id, Http2Stream.State.CLOSED, Reset.Closed)
+                writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.Closed)
             }
         }
 

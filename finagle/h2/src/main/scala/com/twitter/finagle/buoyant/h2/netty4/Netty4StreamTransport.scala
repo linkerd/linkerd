@@ -507,7 +507,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
 
-  private[this] val updateWindow: Int => Future[Unit] = transport.updateWindow(streamId, getNettyH2State, _)
+  private[this] val updateWindow: Int => Future[Unit] = transport.updateWindow(H2FrameStream(streamId, getNettyH2State), _)
 
   /**
    * Write a `SendMsg`-typed [[Message]] to the remote.
@@ -566,7 +566,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case LocalOpen() =>
         if (ConnectionHeaders.detect(hdrs)) {
           Future.exception(StreamError.Local(Reset.ProtocolError))
-        } else localResetOnCancel(transport.write(streamId, getNettyH2State, hdrs, eos))
+        } else localResetOnCancel(transport.write(H2FrameStream(streamId, getNettyH2State), hdrs, eos))
     }
   }
 
@@ -604,7 +604,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         Future.exception(new IllegalStateException("writing on closed stream"))
       case LocalOpen() =>
         statsReceiver.recordLocalFrame(frame)
-        transport.write(streamId, getNettyH2State, frame).rescue(wrapRemoteEx)
+        transport.write(H2FrameStream(streamId, getNettyH2State), frame).rescue(wrapRemoteEx)
           .transform { _ =>
             frame.release().rescue(wrapLocalEx)
           }

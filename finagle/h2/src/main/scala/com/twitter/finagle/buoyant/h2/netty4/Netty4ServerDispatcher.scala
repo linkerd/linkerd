@@ -133,7 +133,7 @@ class Netty4ServerDispatcher(
       transport.write(settingsFrame)
 
     case frame =>
-      log.error("[%s S:%s] unexpected %s; sending GO_AWAY", prefix, frame, frame.name)
+      log.error("[%s S:%s] unexpected %s frame; sending GO_AWAY", prefix, frame, frame.name)
       val e = new IllegalArgumentException(s"unexpected frame on new stream: ${frame.name}")
       goAway(GoAway.ProtocolError).before(Future.exception(e))
   }
