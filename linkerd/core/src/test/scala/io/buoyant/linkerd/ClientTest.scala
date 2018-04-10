@@ -2,12 +2,13 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
-import com.twitter.finagle.loadbalancer.{DefaultBalancerFactory, LoadBalancerFactory}
+import com.twitter.finagle.loadbalancer.{DefaultBalancerFactory, FlagBalancerFactory, LoadBalancerFactory}
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
+
 import scala.language.reflectiveCalls
 
 class ClientTest extends FunSuite {
@@ -48,7 +49,7 @@ class ClientTest extends FunSuite {
     // bas, not configured, gets default values
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bas"))
     val LoadBalancerFactory.Param(basBalancer) = basParams[LoadBalancerFactory.Param]
-    assert(basBalancer == DefaultBalancerFactory)
+    assert(basBalancer == FlagBalancerFactory)
   }
 
   test("later client configs override earlier ones") {

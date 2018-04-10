@@ -86,7 +86,10 @@ object LinkerdBuild extends Base {
 
     val thriftIdl = projectDir("router/thrift-idl")
       .withTwitterLib(Deps.finagle("thrift"))
-      .settings(coverageExcludedPackages := ".*thriftscala.*")
+      .settings(Seq(
+        coverageExcludedPackages := ".*thriftscala.*",
+        scalacOptions -= "-Xfatal-warnings")
+      )
 
     val thrift = projectDir("router/thrift")
       .withTwitterLib(Deps.finagle("thrift"))

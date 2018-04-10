@@ -3,6 +3,7 @@ package io.buoyant.test.h2
 import com.twitter.finagle.buoyant.h2.{Frame, Stream}
 import com.twitter.io.Buf
 import com.twitter.util.Future
+import io.netty.handler.codec.http2._
 
 object StreamTestUtils {
   /**
@@ -59,5 +60,8 @@ object StreamTestUtils {
     @inline def readToEnd: Future[Unit] = StreamTestUtils.readToEnd(stream)
     @inline def readDataString: Future[String] = StreamTestUtils.readDataString(stream)
   }
+
+  def mkNewHeaderStreamFrame(hs: Http2Headers, streamId: Int, state: Http2Stream.State, eos: Boolean) =
+    new DefaultHttp2HeadersFrame(hs, eos).stream(H2FrameStream(streamId, state))
 
 }
