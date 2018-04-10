@@ -1,12 +1,21 @@
 # HTTP/2 protocol.
-admin:
-  shutdownGraceMs: 30
+namers:
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
+
 routers:
 - protocol: h2
+  h2AccessLog: logs/access.log
   dtab: |
-    /srv => /$/inet/127.0.0.1/7777;
-    /svc/* => /srv;
+    /srv => /#/io.l5d.fs;
+    /svc/localhost:4142 => /$/inet/127.1/8888;
+    /svc => /srv;
+  identifier:
+    kind: io.l5d.header.token
+    header: ":authority"
   servers:
   - port: 4142
     maxConcurrentStreamsPerConnection: 300
-
+    initialStreamWindowBytes: 1048576 # 1MB
+  client:
+    initialStreamWindowBytes: 1048576 # 1MB

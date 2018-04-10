@@ -28,6 +28,7 @@ private[consul] class LookupCache(
 
   private[this] val localDcMoniker = ".local"
 
+
   private[this] val lookupCounter = stats.counter("lookups")
   private[this] val service: StatsReceiver = stats.scope("service")
   private[this] val cachedCounter = service.counter("cached")

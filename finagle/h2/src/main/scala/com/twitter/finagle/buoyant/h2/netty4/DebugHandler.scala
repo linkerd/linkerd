@@ -56,7 +56,7 @@ private[h2] class DebugHandler(prefix: String)
 
       case f: Http2DataFrame =>
         val eos = if (f.isEndStream) "eos" else "---"
-        s"${f.stream().id()} $eos DATA ${f.content.capacity}B"
+        s"${f.stream().id()} $eos DATA ${f.content.capacity}"
 
       case f: Http2ResetFrame =>
         s"${f.stream().id()} eos ${f.name}"

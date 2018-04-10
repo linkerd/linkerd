@@ -11,9 +11,6 @@ import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 import java.util.concurrent.atomic.AtomicBoolean
-
-import io.buoyant.test.h2.StreamTestUtils
-
 import scala.collection.immutable.Queue
 
 class Netty4StreamTransportTest extends FunSuite {
@@ -58,7 +55,7 @@ class Netty4StreamTransportTest extends FunSuite {
       assert(transport.recv({
         val hs = new DefaultHttp2Headers
         hs.status(status.toString)
-        StreamTestUtils.mkNewHeaderStreamFrame(hs, id, Http2Stream.State.OPEN, eos)
+        new DefaultHttp2HeadersFrame(hs, eos).stream(H2FrameStream(id, Http2Stream.State.OPEN))
       }))
       eventually { assert(rspF.isDefined) }
       receivedMsg = true

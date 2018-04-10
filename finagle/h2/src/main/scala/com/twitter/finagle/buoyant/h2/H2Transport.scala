@@ -1,10 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.io.Buf
-import com.twitter.util.{Closable, Future, Time}
+import com.twitter.util.{Future, Time}
 import java.net.SocketAddress
-
-import io.netty.handler.codec.http2.{H2FrameStream, Http2SettingsFrame, Http2Stream}
+import io.netty.handler.codec.http2.H2FrameStream
 
 object H2Transport {
 

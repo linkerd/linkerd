@@ -3,14 +3,12 @@ package netty4
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ChannelClosedException, Failure}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
-
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
@@ -31,11 +29,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
    *
    * TODO only track closed streams for a TTL after it has closed.
    */
-  protected[this] sealed trait StreamTransport
-  protected[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
-  protected[this] object StreamLocalReset extends StreamTransport
-  protected[this] object StreamRemoteReset extends StreamTransport
-  protected[this] case class StreamFailed(cause: Throwable) extends StreamTransport
+  private[this] sealed trait StreamTransport
+  private[this] case class StreamOpen(stream: Netty4StreamTransport[SendMsg, RecvMsg]) extends StreamTransport
+  private[this] object StreamLocalReset extends StreamTransport
+  private[this] object StreamRemoteReset extends StreamTransport
+  private[this] case class StreamFailed(cause: Throwable) extends StreamTransport
 
   private[this] val streams: ConcurrentHashMap[Int, StreamTransport] = new ConcurrentHashMap
   private[this] val closed: AtomicBoolean = new AtomicBoolean(false)
@@ -137,7 +135,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         transport.read().transform(loop)
 
       case Return(f: Http2StreamFrame) =>
-        f.stream.id() match {
+        f.stream.id match {
           case 0 =>
             val e = new IllegalArgumentException(s"unexpected frame on stream 0: ${f.name}")
             goAway(GoAway.ProtocolError).before(Future.exception(e))
