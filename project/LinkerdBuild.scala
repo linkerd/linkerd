@@ -224,24 +224,30 @@ object LinkerdBuild extends Base {
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
   val execScriptJvmOptions =
-    """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true \
-       |   -Dsun.net.inetaddr.ttl=60                         \
-       |   -Xms${JVM_HEAP_MIN:-32M}                          \
-       |   -Xmx${JVM_HEAP_MAX:-1024M}                        \
-       |   -XX:+AggressiveOpts                               \
-       |   -XX:+UseConcMarkSweepGC                           \
-       |   -XX:+CMSParallelRemarkEnabled                     \
-       |   -XX:+CMSClassUnloadingEnabled                     \
-       |   -XX:+ScavengeBeforeFullGC                         \
-       |   -XX:+CMSScavengeBeforeRemark                      \
-       |   -XX:+UseCMSInitiatingOccupancyOnly                \
-       |   -XX:CMSInitiatingOccupancyFraction=70             \
-       |   -XX:-TieredCompilation                            \
-       |   -XX:+UseStringDeduplication                       \
-       |   -Dcom.twitter.util.events.sinkEnabled=false       \
-       |   -Dorg.apache.thrift.readLength=10485760           \
-       |   -Djdk.nio.maxCachedBufferSize=262144              \
-       |   ${LOCAL_JVM_OPTIONS:-}                            "
+    """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true             \
+       |   -Dsun.net.inetaddr.ttl=60                                     \
+       |   -Xms${JVM_HEAP_MIN:-32M}                                      \
+       |   -Xmx${JVM_HEAP_MAX:-1024M}                                    \
+       |   -XX:+AggressiveOpts                                           \
+       |   -XX:+UseConcMarkSweepGC                                       \
+       |   -XX:+CMSParallelRemarkEnabled                                 \
+       |   -XX:+CMSClassUnloadingEnabled                                 \
+       |   -XX:+ScavengeBeforeFullGC                                     \
+       |   -XX:+CMSScavengeBeforeRemark                                  \
+       |   -XX:+UseCMSInitiatingOccupancyOnly                            \
+       |   -XX:CMSInitiatingOccupancyFraction=70                         \
+       |   -XX:-TieredCompilation                                        \
+       |   -XX:+UseStringDeduplication                                   \
+       |   -XX:+AlwaysPreTouch                                           \
+       |   -Dcom.twitter.util.events.sinkEnabled=false                   \
+       |   -Dorg.apache.thrift.readLength=10485760                       \
+       |   -Djdk.nio.maxCachedBufferSize=262144                          \
+       |   -Dio.netty.threadLocalDirectBufferSize=0                      \
+       |   -Dio.netty.recycler.maxCapacity=4096                          \
+       |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
+       |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
+       |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
   object Namerd {
@@ -333,6 +339,7 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
+         |export MALLOC_ARENA_MAX=2
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -387,6 +394,7 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
+         |export MALLOC_ARENA_MAX=2
          |""" +
       execScriptJvmOptions +
       """|if read -t 0; then
@@ -590,6 +598,7 @@ object LinkerdBuild extends Base {
          |    jars="$jars:$jar"
          |  done
          |fi
+         |export MALLOC_ARENA_MAX=2
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
