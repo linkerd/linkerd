@@ -36,6 +36,12 @@ trait PathMatcher {
     extract(path).map(substitutePath(_, pattern))
 }
 
+case class MatchSegment(
+  segment: String,
+  regex: Option[scala.util.matching.Regex],
+  captureKeys: Seq[String]
+)
+
 object PathMatcher {
 
   /**
@@ -59,21 +65,24 @@ object PathMatcher {
   private class Matcher(expr: String) extends PathMatcher {
 
     override def extract(path: Path): Option[Map[String, String]] =
-      _extract(path.showElems, regexSegments, Map.empty)
+      _extract(path.showElems, rawSegments, Map.empty)
 
     private[this] val segmentRegex = """\{([a-zA-Z0-9\.:-]+)\}""".r
 
-    private[this] def mkRegex(x: String, y: String) = x.replace(y, "(.*)")
-
-    private[this] val regexSegments: Seq[(Option[scala.util.matching.Regex], Seq[String])] = {
+    private[this] val rawSegments: Seq[MatchSegment] = {
       expr.split("/").dropWhile(_.isEmpty).map { exprSegment =>
         segmentRegex.findAllIn(exprSegment) match {
           case k if !k.isEmpty =>
-            var keys = k.toArray
-            Some(keys.foldLeft(exprSegment.replace(".", "\\."))(mkRegex).r) -> keys.map { key =>
-              key.drop(1).dropRight(1)
+            val keys = k.toArray
+            // '.' is the only valid Path character that also has a regex meaning.  Any '.' characters must be escaped.
+            val escaped = exprSegment.replace(".", "\\.")
+            // Replace capture keys with regex captures.
+            val withCaptures = keys.foldLeft(escaped)(_.replace(_, "(.*)")).r
+            val keyNames = keys.map { key =>
+              key.drop(1).dropRight(1) // Remove the encasing '{' and '}' characters.
             }.toSeq
-          case _ => None -> Seq(exprSegment)
+            MatchSegment(exprSegment, Some(withCaptures), keyNames)
+          case _ => MatchSegment(exprSegment, None, Seq.empty)
         }
       }
     }
@@ -81,19 +90,21 @@ object PathMatcher {
     @tailrec
     private[this] def _extract(
       pathSegments: Seq[String],
-      regexSegments: Seq[(Option[scala.util.matching.Regex], Seq[String])],
+      matchSegments: Seq[MatchSegment],
       vars: Map[String, String]
     ): Option[Map[String, String]] =
-      (pathSegments.headOption, regexSegments.headOption) match {
-        case (Some(path), Some((None, Seq(expr)))) if (expr == "*") || (expr == path) =>
-          _extract(pathSegments.tail, regexSegments.tail, vars)
-        case (Some(pathSegment), Some((Some(pattern), Seq(segments@_*)))) =>
-          pattern.findAllIn(pathSegment) match {
+      (pathSegments.headOption, matchSegments.headOption) match {
+        case (_, Some(MatchSegment("*", _, _))) =>
+          _extract(pathSegments.tail, matchSegments.tail, vars)
+        case (Some(path), Some(MatchSegment(expr, None, _))) if (expr == path) =>
+          _extract(pathSegments.tail, matchSegments.tail, vars)
+        case (Some(pathSegment), Some(MatchSegment(expr, Some(regex), Seq(segments@_*)))) =>
+          regex.findAllIn(pathSegment) match {
             case v if !v.isEmpty =>
               _extract(
                 pathSegments.tail,
-                regexSegments.tail,
-                vars ++ segments.map { s => s.toString -> v.group(segments.indexOf(s) + 1) }.toMap
+                matchSegments.tail,
+                vars ++ segments.zipWithIndex.map { case (s, i) => s -> v.group(i + 1) }
               )
             case _ => None
           }
