@@ -401,7 +401,7 @@ class HttpEndToEndTest
     assert(!headers.contains("dtab-local"))
   }
 
-  test("dtab-local header is ignored", Retryable) {
+  test("dtab-local header is no longer preserved in favor of l5d-tab", Retryable) {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
 
@@ -427,8 +427,10 @@ class HttpEndToEndTest
     req.host = "dog"
     req.headerMap.set("dtab-local", "/a=>/b")
     await(client(req))
-    assert(headers("dtab-local") == "/a=>/b")
-    assert(!headers.contains(dtabWriteHeader))
+    eventually{
+      assert(!headers.contains("dtab-local"))
+      assert(!headers.contains(dtabWriteHeader))
+    }
   }
 
   test("with clearContext", Retryable) {
