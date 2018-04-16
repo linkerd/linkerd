@@ -22,6 +22,9 @@ class HttpConfigTest extends FunSuite with Awaits {
     val yaml = s"""
                   |protocol: http
                   |httpAccessLog: access.log
+                  |httpAccessLogRollPolicy: daily
+                  |httpAccessLogAppend: true
+                  |httpAccessLogRotateCount: -1
                   |identifier:
                   |  kind: io.l5d.methodAndHost
                   |maxChunkKB: 8
@@ -33,6 +36,10 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
     val config = parse(yaml)
+    assert(config.httpAccessLog.get == "access.log")
+    assert(config.httpAccessLogRollPolicy.get == "daily")
+    assert(config.httpAccessLogAppend.get)
+    assert(config.httpAccessLogRotateCount.get == -1)
     assert(config.maxChunkKB.get == 8)
     assert(config.maxHeadersKB.get == 8)
     assert(config.maxInitialLineKB.get == 4)

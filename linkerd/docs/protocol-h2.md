@@ -8,6 +8,9 @@
 routers:
 - protocol: h2
   h2AccessLog: access.log
+  h2AccessLogRollPolicy: daily
+  h2AccessLogAppend: true
+  h2AccessLogRotateCount: -1
   servers:
   - port: 4143
     tls:
@@ -57,6 +60,9 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | A path prefix used by [H2-specific identifiers](#http-2-identifiers).
 h2AccessLog | none | Sets the access log path.  If not specified, no access log is written.
+h2AccessLogRollPolicy | never | When to roll the logfile. Possible values: Never, Hourly, Daily, Weekly(n) (where n is a day of the week), util-style data size strings (e.g. 3.megabytes, 1.gigabyte).
+h2AccessLogAppend | true | Append to an existing logfile, or truncate it?
+h2AccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [H2-specific identifiers](#http-2-identifiers).
 loggers | none | A list of loggers.  See [H2-specific loggers](#http-2-loggers).
 

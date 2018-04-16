@@ -16,6 +16,7 @@ import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{ServiceFactory, Stack, param}
+import com.twitter.logging.Policy
 import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2._
@@ -84,7 +85,10 @@ object H2Initializer extends H2Initializer
 
 case class H2Config(
   loggers: Option[Seq[H2RequestAuthorizerConfig]] = None,
-  h2AccessLog: Option[String]
+  h2AccessLog: Option[String],
+  h2AccessLogRollPolicy: Option[String],
+  h2AccessLogAppend: Option[Boolean],
+  h2AccessLogRotateCount: Option[Int]
 ) extends RouterConfig {
 
   var client: Option[H2Client] = None
@@ -109,7 +113,10 @@ case class H2Config(
   @JsonIgnore
   override def routerParams: Stack.Params =
     (super.routerParams + identifierParam)
-      .maybeWith(h2AccessLog.map(H2AccessLogger.param.File(_)))
+      .maybeWith(h2AccessLog.map(H2AccessLogger.param.File.apply))
+      .maybeWith(h2AccessLogRollPolicy.map(Policy.parse _ andThen H2AccessLogger.param.RollPolicy.apply))
+      .maybeWith(h2AccessLogAppend.map(H2AccessLogger.param.Append.apply))
+      .maybeWith(h2AccessLogRotateCount.map(H2AccessLogger.param.RotateCount.apply))
       .maybeWith(loggerParam)
 
   private[this] def identifierParam: H2.Identifier = identifier match {
