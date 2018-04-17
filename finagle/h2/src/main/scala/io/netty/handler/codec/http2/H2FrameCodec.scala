@@ -23,7 +23,31 @@ class H2FrameCodec(
 
   private[this] var channelCtx, http2HandlerCtx: ChannelHandlerContext = null
 
-  private[this] val connectionListener = new Http2ConnectionAdapter
+  private[this] val connectionListener = new Http2ConnectionAdapter {
+
+    override def onStreamActive(stream: Http2Stream): Unit = {
+
+      //Check that the stream id greater than 0 and has not already been created
+      if (!connectionHandler.connection.local.isValidStreamId(stream.id)) {
+        val newStream = new DefaultHttp2FrameStream().setStreamAndProperty(streamKey, stream)
+
+        //fireUserEventTriggered requires AnyRef to satisfy interface method signature
+        channelCtx.fireUserEventTriggered(newStream.asInstanceOf[AnyRef]); ()
+      }
+    }
+
+    override def onStreamClosed(stream0: Http2Stream): Unit = {
+      val stream = stream0.getProperty(streamKey)
+      if (stream != null) {
+        channelCtx.fireUserEventTriggered(Http2FrameStreamEvent.stateChanged(stream).asInstanceOf[AnyRef]); ()
+      }
+
+    }
+
+    override def onGoAwayReceived(lastStreamId: Int, errorCode: Long, debugData: ByteBuf): Unit = {
+      channelCtx.fireChannelRead(new DefaultHttp2GoAwayFrame(lastStreamId, errorCode, debugData)); ()
+    }
+  }
 
   http2Handler.connection.addListener(connectionListener)
 
@@ -189,7 +213,7 @@ object H2FrameCodec {
     require(0.0 < updateRatio && updateRatio < 1.0)
 
     val conn = new DefaultHttp2Connection(isServer)
-    var streamKey = conn.newKey()
+    val streamKey = conn.newKey
     conn.local.flowController(new DefaultHttp2LocalFlowController(conn, updateRatio, refillConn) {
       settings.initialWindowSize match {
         case null =>
