@@ -6,6 +6,9 @@ namers:
 routers:
 - protocol: h2
   h2AccessLog: logs/access.log
+  h2AccessLogRollPolicy: daily
+  h2AccessLogAppend: true
+  h2AccessLogRotateCount: -1
   dtab: |
     /srv => /#/io.l5d.fs;
     /svc/localhost:4142 => /$/inet/127.1/8888;

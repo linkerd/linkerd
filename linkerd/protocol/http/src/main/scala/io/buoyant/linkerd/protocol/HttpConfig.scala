@@ -16,6 +16,7 @@ import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
+import com.twitter.logging.Policy
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
@@ -188,6 +189,9 @@ class HttpIdentifierConfigDeserializer extends JsonDeserializer[Option[Seq[HttpI
 
 case class HttpConfig(
   httpAccessLog: Option[String],
+  httpAccessLogRollPolicy: Option[String],
+  httpAccessLogAppend: Option[Boolean],
+  httpAccessLogRotateCount: Option[Int],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
   requestAuthorizers: Option[Seq[HttpRequestAuthorizerConfig]],
   maxChunkKB: Option[Int],
@@ -233,7 +237,10 @@ case class HttpConfig(
   }
   @JsonIgnore
   override def routerParams: Stack.Params = super.routerParams
-    .maybeWith(httpAccessLog.map(AccessLogger.param.File(_)))
+    .maybeWith(httpAccessLog.map(AccessLogger.param.File.apply))
+    .maybeWith(httpAccessLogRollPolicy.map(Policy.parse _ andThen AccessLogger.param.RollPolicy.apply))
+    .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
+    .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(loggerParam)
     .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))

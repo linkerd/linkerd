@@ -23,6 +23,10 @@ class H2ConfigTest extends FunSuite {
   test("parse config") {
     val yaml =
       s"""|protocol: h2
+          |h2AccessLog: logs/access.log
+          |h2AccessLogRollPolicy: daily
+          |h2AccessLogAppend: true
+          |h2AccessLogRotateCount: -1
           |client:
           |  windowUpdateRatio: 0.9
           |  headerTableBytes: 1024
@@ -52,6 +56,11 @@ class H2ConfigTest extends FunSuite {
           |      requireClientAuth: true
           |""".stripMargin
     val config = parse(yaml)
+
+    assert(config.h2AccessLog.get == "logs/access.log")
+    assert(config.h2AccessLogRollPolicy.get == "daily")
+    assert(config.h2AccessLogAppend.get)
+    assert(config.h2AccessLogRotateCount.get == -1)
 
     val cparams = config.client.get.clientParams.paramsFor(Path.read("/foo"))
     assert(cparams[AutoRefillConnectionWindow] == AutoRefillConnectionWindow(true))

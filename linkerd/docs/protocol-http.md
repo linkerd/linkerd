@@ -6,6 +6,9 @@
 routers:
 - protocol: http
   httpAccessLog: access.log
+  httpAccessLogRollPolicy: daily
+  httpAccessLogAppend: true
+  httpAccessLogRotateCount: -1
   identifier:
     kind: io.l5d.methodAndHost
   maxChunkKB: 8
@@ -30,6 +33,9 @@ Key | Default Value | Description
 --- | ------------- | -----------
 dstPrefix | `/svc` | A path prefix used by [Http-specific identifiers](#http-1-1-identifiers).
 httpAccessLog | none | Sets the access log path.  If not specified, no access log is written.
+httpAccessLogRollPolicy | never | When to roll the logfile. Possible values: Never, Hourly, Daily, Weekly(n) (where n is a day of the week), util-style data size strings (e.g. 3.megabytes, 1.gigabyte).
+httpAccessLogAppend | true | Append to an existing logfile, or truncate it?
+httpAccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
 requestAuthorizers | none | A list of request authorizers.  See [Http-specific request authorizers](#http-1-1-request-authorizers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
