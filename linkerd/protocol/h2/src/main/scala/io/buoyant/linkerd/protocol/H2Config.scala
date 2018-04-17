@@ -83,7 +83,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 object H2Initializer extends H2Initializer
 
 case class H2Config(
-  loggers: Option[Seq[H2RequestAuthorizerConfig]] = None,
+  requestAuthorizers: Option[Seq[H2RequestAuthorizerConfig]] = None,
   h2AccessLog: Option[String]
 ) extends RouterConfig {
 
@@ -98,12 +98,12 @@ case class H2Config(
   override val protocol: ProtocolInitializer = H2Initializer
 
   @JsonIgnore
-  private[this] def loggerParam = loggers.map { configs =>
-    val loggerStack =
+  private[this] def loggerParam = requestAuthorizers.map { configs =>
+    val authorizerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
       }
-    H2RequestAuthorizerConfig.param.RequestAuthorizer(loggerStack)
+    H2RequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
   }
 
   @JsonIgnore
