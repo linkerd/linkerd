@@ -23,6 +23,7 @@ trait ClientConfig {
   var failureAccrual: Option[FailureAccrualConfig] = None
   var requestAttemptTimeoutMs: Option[Int] = None
   var requeueBudget: Option[RetryBudgetConfig] = None
+  var clientSession: Option[ClientSessionConfig] = None
 
   @JsonIgnore
   def params(vars: Map[String, String]): Stack.Params = Stack.Params.empty
@@ -33,6 +34,7 @@ trait ClientConfig {
     .maybeWith(failFast.map(FailFastFactory.FailFast(_)))
     .maybeWith(requeueBudget)
     .maybeWith(failureAccrual.map(FailureAccrualConfig.param))
+    .maybeWith(clientSession.map(_.param))
 }
 
 case class TlsClientConfig(
@@ -73,4 +75,19 @@ case class HostConnectionPool(
     idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime),
     maxWaiters = maxWaiters.getOrElse(default.maxWaiters)
   )
+}
+
+case class ClientSessionConfig(
+  lifeTimeMs: Option[Int],
+  idleTimeMs: Option[Int]
+) {
+  @JsonIgnore
+  private[this] val default = ExpiringService.Param.param.default
+
+  @JsonIgnore
+  def param = ExpiringService.Param(
+    lifeTime = lifeTimeMs.map(_.millis).getOrElse(default.lifeTime),
+    idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime)
+  )
+
 }

@@ -1,14 +1,20 @@
 package io.buoyant.linkerd.protocol.h2
 
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.param.Stats
-import io.buoyant.linkerd.Linker
+import com.twitter.finagle.Path
+import com.twitter.finagle.service.ExpiringService
+import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.util.Duration
+import io.buoyant.linkerd.{Linker, Router}
 import io.buoyant.linkerd.protocol.H2Initializer
+import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
 import java.io.File
+import org.scalatest.time.{Millis, Seconds, Span}
 import scala.io.Source
 import scala.util.Random
 
@@ -226,4 +232,147 @@ class H2EndToEndTest extends FunSuite {
       routers.foreach { router => await(router.close()) }
     }
   }
+
+  test("clientSession idleTimeMs should close client connections") {
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/{dog.port} ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    clientSession:
+          |      idleTimeMs: 1500
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver, dogPort:Int) =>
+
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "h2", "client", s"$$/inet/127.1/${dogPort}", "connections"))
+
+      // An incoming request through the H2.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
+        val cnt = activeConnectionsCount()
+        assert(cnt == 0.0)
+      }
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/dog"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == 1500.milliseconds)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  test("clientSession idleTimeMs should close client connections for static client") {
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/{dog.port} ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    kind: io.l5d.static
+          |    configs:
+          |      - prefix: /*
+          |        clientSession:
+          |          idleTimeMs: 1500
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config) { (router: Router.Initialized, stats: InMemoryStatsReceiver, dogPort: Int) =>
+
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "h2", "client", s"$$/inet/127.1/${dogPort}", "connections"))
+
+      // An incoming request through the H2.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
+        val cnt = activeConnectionsCount()
+        assert(cnt == 0.0)
+      }
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/dog"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == 1500.milliseconds)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  test("clientSession idleTimeMs should not close client connections when isn't specified") {
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/{dog.port} ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    forwardClientCert: false
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config) { (router: Router.Initialized, stats: InMemoryStatsReceiver, dogPort: Int) =>
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "h2", "client", s"$$/inet/127.1/${dogPort}", "connections"))
+
+      // An incoming request through the H2.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/dog"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == Duration.Top)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
+    // Arrange
+    val stats = new InMemoryStatsReceiver
+
+    val dog = Downstream.const("dog", "woof")
+
+    val configWithPort = config.replace("{dog.port}", dog.port.toString)
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(configWithPort)
+      .configured(Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = Upstream.mk(server)
+    def get(host: String, path: String = "/")(f: Response => Unit) = {
+      val req = Request("http", Method.Get, host, path, Stream.empty())
+      val rsp = await(client(req))
+      f(rsp)
+    }
+
+    // Act
+    try {
+      // This will force linkerd to open a connection to the `dog` service and hold it
+      get("dog") { rsp =>
+        assert(rsp.status == Status.Ok)
+        assert(await(rsp.stream.readDataString) == "woof")
+        ()
+      }
+
+      // Assert
+      assertionsF(router, stats, dog.port)
+
+    } finally {
+      await(client.close())
+      await(dog.server.close())
+      await(server.close())
+      await(router.close())
+    }
+  }
+
+
 }

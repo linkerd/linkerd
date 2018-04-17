@@ -1,18 +1,22 @@
 package io.buoyant.linkerd
 package protocol
 
-import java.io.File
-import java.net.InetSocketAddress
+import com.twitter.conversions.time._
+import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.Method._
 import com.twitter.finagle.http.{param => _, _}
+import com.twitter.finagle.http.Method._
+import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
+import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
-import org.scalatest.tagobjects.Retryable
+import java.io.File
+import java.net.InetSocketAddress
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
+import org.scalatest.tagobjects.Retryable
+import org.scalatest.time.{Millis, Seconds, Span}
 import scala.io.Source
 import scala.util.Random
 
@@ -692,5 +696,153 @@ class HttpEndToEndTest
       await(downstream.server.close())
       routers.foreach { router => await(router.close()) }
     }
+  }
+
+  test("clientSession idleTimeMs should close client connections") {
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  experimental: true
+          |  dtab: |
+          |    /p/fox => /$$/inet/127.1/{fox.port} ;
+          |    /svc/century => /p/fox ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    clientSession:
+          |      idleTimeMs: 1500
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver, foxPort:Int) =>
+
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${foxPort}", "connections"))
+
+      // An incoming request through the Http.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
+        val cnt = activeConnectionsCount()
+        assert(cnt == 0.0)
+      }
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/century"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == 1500.milliseconds)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  test("clientSession idleTimeMs should close client connections for static client") {
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  experimental: true
+          |  dtab: |
+          |    /p/fox => /$$/inet/127.1/{fox.port} ;
+          |    /svc/century => /p/fox ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    kind: io.l5d.static
+          |    configs:
+          |      - prefix: /*
+          |        clientSession:
+          |          idleTimeMs: 1500
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver, foxPort:Int) =>
+
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${foxPort}", "connections"))
+
+      // An incoming request through the Http.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
+        val cnt = activeConnectionsCount()
+        assert(cnt == 0.0)
+      }
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/century"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == 1500.milliseconds)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  test("clientSession idleTimeMs should not close client connections when isn't specified") {
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  experimental: true
+          |  dtab: |
+          |    /p/fox => /$$/inet/127.1/{fox.port} ;
+          |    /svc/century => /p/fox ;
+          |  servers:
+          |  - port: 0
+          |  client:
+          |    forwardClientCert: false
+          |""".stripMargin
+
+    idleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver, foxPort:Int) =>
+
+      // Assert
+      def activeConnectionsCount = stats.gauges(Seq("rt", "http", "client", s"$$/inet/127.1/${foxPort}", "connections"))
+
+      // An incoming request through the Http.Router will establish an active connection; We expect to see it here
+      assert(activeConnectionsCount() == 1.0)
+
+      val clientSessionParams = router.params[PerClientParams].paramsFor(Path.read("/svc/century"))[ExpiringService.Param]
+      assert(clientSessionParams.idleTime == Duration.Top)
+      assert(clientSessionParams.lifeTime == Duration.Top)
+
+      ()
+    }
+  }
+
+  def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
+    // Arrange
+    val stats = new InMemoryStatsReceiver
+    val fox = Downstream.const("fox", "what does the fox say?")
+
+    val configWithPort = config.replace("{fox.port}", fox.port.toString)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(configWithPort)
+      .configured(param.Stats(stats))
+
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = upstream(server)
+
+    def get(host: String, path: String = "/")(f: Response => Unit): Unit = {
+      val req = Request(path)
+      req.host = host
+      val rsp = await(client(req))
+      f(rsp)
+    }
+
+    // Act
+    try {
+      get("century") { rsp =>
+        assert(rsp.status == Status.Ok)
+        assert(rsp.contentString == "what does the fox say?")
+        ()
+      }
+
+      // Assert
+      assertionsF(router, stats, fox.port)
+
+    } finally {
+      await(client.close())
+      await(fox.server.close())
+      await(server.close())
+      await(router.close())
+    }
+
+
   }
 }
