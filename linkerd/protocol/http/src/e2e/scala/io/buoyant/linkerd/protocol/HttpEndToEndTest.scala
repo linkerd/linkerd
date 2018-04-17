@@ -3,8 +3,10 @@ package protocol
 
 import java.io.File
 import java.net.InetSocketAddress
+
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.Method._
+import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter}
 import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
@@ -13,6 +15,7 @@ import com.twitter.util._
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import org.scalatest.tagobjects.Retryable
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
+
 import scala.io.Source
 import scala.util.Random
 
@@ -36,7 +39,9 @@ class HttpEndToEndTest
   object Downstream {
     def mk(name: String)(f: Request=>Response): Downstream = {
       val service = Service.mk { req: Request => Future(f(req)) }
-      val stack = FinagleHttp.server.stack.remove(Headers.Ctx.serverModule.role)
+      val stack = FinagleHttp.server.stack
+        .remove(Headers.Ctx.serverModule.role)
+        .remove(ServerDtabContextFilter.role)
       val server = FinagleHttp.server.withStack(stack)
         .configured(param.Label(name))
         .configured(param.Tracer(NullTracer))
@@ -56,7 +61,9 @@ class HttpEndToEndTest
   def upstream(server: ListeningServer) = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    val stack = FinagleHttp.client.stack.remove(Headers.Ctx.clientModule.role)
+    val stack = FinagleHttp.client.stack
+      .remove(Headers.Ctx.clientModule.role)
+      .remove(ClientDtabContextFilter.role)
     FinagleHttp.client.withStack(stack)
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
@@ -398,10 +405,9 @@ class HttpEndToEndTest
       if (header == dtabWriteHeader) assert(headers(header) == "/a=>/b")
       else assert(!headers.contains(header))
     }
-    assert(!headers.contains("dtab-local"))
   }
 
-  test("dtab-local header is no longer preserved in favor of l5d-tab", Retryable) {
+  test("dtab-local header is ignored", Retryable) {
     val stats = NullStatsReceiver
     val tracer = new BufferingTracer
 
@@ -427,10 +433,8 @@ class HttpEndToEndTest
     req.host = "dog"
     req.headerMap.set("dtab-local", "/a=>/b")
     await(client(req))
-    eventually{
-      assert(!headers.contains("dtab-local"))
-      assert(!headers.contains(dtabWriteHeader))
-    }
+    assert(headers.contains("dtab-local"))
+    assert(headers.contains(dtabWriteHeader))
   }
 
   test("with clearContext", Retryable) {
