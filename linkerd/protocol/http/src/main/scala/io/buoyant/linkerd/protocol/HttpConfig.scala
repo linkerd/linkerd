@@ -10,7 +10,7 @@ import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
-import com.twitter.finagle.http.filter.StatsFilter
+import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
 import com.twitter.finagle.http.{Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
@@ -46,6 +46,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the client-stack framing filter is placed below the stats filter
       // so that any malframed responses it fails are counted as errors
       .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
+      .remove(ClientDtabContextFilter.role)
 
     Http.router
       .withPathStack(pathStack)
@@ -76,6 +77,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
+      .remove(ServerDtabContextFilter.role)
 
     Http.server.withStack(stk)
   }

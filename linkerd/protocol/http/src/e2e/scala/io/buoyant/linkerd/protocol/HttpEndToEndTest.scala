@@ -3,7 +3,6 @@ package protocol
 
 import java.io.File
 import java.net.InetSocketAddress
-
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.Method._
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter}
@@ -15,7 +14,6 @@ import com.twitter.util._
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import org.scalatest.tagobjects.Retryable
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
-
 import scala.io.Source
 import scala.util.Random
 
@@ -405,6 +403,7 @@ class HttpEndToEndTest
       if (header == dtabWriteHeader) assert(headers(header) == "/a=>/b")
       else assert(!headers.contains(header))
     }
+    assert(!headers.contains("dtab-local"))
   }
 
   test("dtab-local header is ignored", Retryable) {
@@ -433,8 +432,8 @@ class HttpEndToEndTest
     req.host = "dog"
     req.headerMap.set("dtab-local", "/a=>/b")
     await(client(req))
-    assert(headers.contains("dtab-local"))
-    assert(headers.contains(dtabWriteHeader))
+    assert(headers("dtab-local") == "/a=>/b")
+    assert(!headers.contains(dtabWriteHeader))
   }
 
   test("with clearContext", Retryable) {

@@ -8,7 +8,6 @@ import com.twitter.finagle.transport.Transport
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
-
 import scala.language.reflectiveCalls
 
 class ClientTest extends FunSuite {
