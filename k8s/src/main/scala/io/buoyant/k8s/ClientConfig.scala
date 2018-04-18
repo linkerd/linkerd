@@ -2,6 +2,8 @@ package io.buoyant.k8s
 
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Stack}
+import com.twitter.io.Reader.ReaderDiscarded
+import com.twitter.util.Monitor
 
 /**
  * Meant to be implemented by configuration classes that need to
@@ -12,6 +14,10 @@ trait ClientConfig {
   protected val DefaultHost = "localhost"
   protected val DefaultNamespace = "default"
   protected val DefaultPort = 8001
+
+  protected val ReaderDiscardedMonitor = Monitor.mk {
+    case _: ReaderDiscarded => true
+  }
 
   def host: Option[String]
   def portNum: Option[Int]
@@ -29,6 +35,7 @@ trait ClientConfig {
     Http.client.withParams(Http.client.params ++ params)
       .withHttpStats
       .withTracer(NullTracer)
+      .withMonitor(ReaderDiscardedMonitor)
       .withStreaming(true)
       .filtered(setHost)
   }
