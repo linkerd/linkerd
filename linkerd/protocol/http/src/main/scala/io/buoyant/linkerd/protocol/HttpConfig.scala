@@ -195,7 +195,7 @@ case class HttpConfig(
   httpAccessLogAppend: Option[Boolean],
   httpAccessLogRotateCount: Option[Int],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
-  loggers: Option[Seq[HttpRequestAuthorizerConfig]],
+  requestAuthorizers: Option[Seq[HttpRequestAuthorizerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -223,12 +223,12 @@ case class HttpConfig(
   )
 
   @JsonIgnore
-  private[this] val loggerParam = loggers.map { configs =>
-    val loggerStack =
+  private[this] val loggerParam = requestAuthorizers.map { configs =>
+    val authorizerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
       }
-    HttpRequestAuthorizerConfig.param.RequestAuthorizer(loggerStack)
+    HttpRequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
   }
 
   @JsonIgnore

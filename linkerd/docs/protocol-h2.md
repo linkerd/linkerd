@@ -64,7 +64,7 @@ h2AccessLogRollPolicy | never | When to roll the logfile. Possible values: Never
 h2AccessLogAppend | true | Append to an existing logfile, or truncate it?
 h2AccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [H2-specific identifiers](#http-2-identifiers).
-loggers | none | A list of loggers.  See [H2-specific loggers](#http-2-loggers).
+requestAuthorizers | none | A list of request authorizers.  See [H2-specific request authorizers](#http-2-request-authorizers).
 
 When TLS is configured, h2 routers negotiate to communicate over
 HTTP/2 via ALPN.
@@ -346,29 +346,29 @@ host | N/A | The host to send the request to.
 cluster | N/A | The cluster to send the request to.
 port | N/A | The port to send the request to.
 
-## HTTP/2 Loggers
+## HTTP/2 Request Authorizers
 
-Loggers allow recording of arbitrary information about requests. Destination of
-information is specific to each logger. All HTTP/2 loggers have a `kind`. If a
-list of loggers is provided, they each log in the order they are defined.
+Request authorizers allow arbitrary rejection or modification of requests and responses. Behavior is
+specific to each request authorizer. All HTTP/2 request authorizers have a `kind`. If a
+list of request authorizers is provided, they each apply in the order they are defined.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-request-authorizer) is currently supported.
 
-### HTTP/2 Istio Logger
+### HTTP/2 Istio Request Authorizer
 
 kind: `io.l5d.k8s.istio`.
 
-With this logger, all H2 requests are sent to an Istio Mixer for telemetry
+With this request authorizer, all H2 requests are sent to an Istio Mixer for telemetry
 recording and aggregation.
 
-#### Logger Configuration:
+#### Request Authorizer Configuration:
 
 > Configuration example
 
 ```yaml
-loggers:
+requestAuthorizers:
 - kind: io.l5d.k8s.istio
   mixerHost: istio-mixer
   mixerPort: 9091
