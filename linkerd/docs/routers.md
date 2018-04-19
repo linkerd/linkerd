@@ -253,8 +253,12 @@ failFast | `false` | If `true`, connection failures are punished more aggressive
 requeueBudget | see [retry budget](#retry-budget-parameters) | A [requeue budget](#retry-budget-parameters) for connection-level retries.
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 requestAttemptTimeoutMs | no timeout | The timeout, in milliseconds, for each attempt (original or retry) of the request made by this client.
+clientSession | An empty object | see [clientSession](#client-session)
 
 #### Host Connection Pool
+
+This section defines the behavior of [watermark connection pools](https://twitter.github.io/finagle/docs/com/twitter/finagle/client/DefaultPool) on which most of the protocols are relying.
+Note that Http2 protocol uses [SingletonPool](https://github.com/twitter/finagle/blob/master/finagle-core/src/main/scala/com/twitter/finagle/pool/SingletonPool.scala) that maintains a single connection per endpoint and will not be affected by the settings in this section. 
 
 ```yaml
 client:
@@ -269,5 +273,14 @@ Key | Default Value | Description
 --- | ------------- | -----------
 minSize | `0` | The minimum number of connections to maintain to each host.
 maxSize | Int.MaxValue | The maximum number of connections to maintain to each host.
-idleTimeMs | forever | The amount of idle time for which a connection is cached in milliseconds.
+idleTimeMs | forever | The amount of idle time for which a connection is cached in milliseconds. Only applied to connections that number greater than minSize, but fewer than maxSize.
 maxWaiters | Int.MaxValue | The maximum number of connection requests that are queued when the connection concurrency exceeds maxSize.
+
+#### Client Session
+
+Configures the behavior of established client sessions.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+idleTimeMs | forever | The max amount of time for which a connection is allowed to be idle. When this time exceeded the connection will close itself.
+lifeTimeMs | forever | Max lifetime of a connection.
