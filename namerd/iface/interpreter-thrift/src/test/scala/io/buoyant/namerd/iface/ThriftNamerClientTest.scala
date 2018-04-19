@@ -18,7 +18,7 @@ class ThriftNamerClientTest extends FunSuite with Awaits {
     var count = 1
   }
 
-  class TestNamerService(clientId: Path) extends thrift.Namer.FutureIface {
+  class TestNamerService(clientId: Path) extends thrift.Namer.MethodPerEndpoint {
     val bindingsMu = new {}
     var bindings = Map.empty[(String, Path, Dtab, TStamp), Rsp[thrift.Bound]]
 

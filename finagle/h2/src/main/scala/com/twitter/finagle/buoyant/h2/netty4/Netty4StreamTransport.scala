@@ -223,6 +223,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     case s => sys.error(s"unexpected initialization state: $s")
   }
 
+  def getNettyH2State: Http2Stream.State = stateRef.get() match {
+    case Open(_) => Http2Stream.State.OPEN
+    case LocalClosed(_) => Http2Stream.State.HALF_CLOSED_LOCAL
+    case RemoteClosed() => Http2Stream.State.HALF_CLOSED_REMOTE
+    case Closed(_) => Http2Stream.State.CLOSED
+  }
+
   /**
    * Satisfied successfully when the stream is fully closed with no
    * error.  An exception is raised with a Reset if the stream is
@@ -500,7 +507,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     case f => throw new IllegalArgumentException(s"invalid stream frame: ${f}")
   }
 
-  private[this] val updateWindow: Int => Future[Unit] = transport.updateWindow(streamId, _)
+  private[this] val updateWindow: Int => Future[Unit] = transport.updateWindow(H2FrameStream(streamId, getNettyH2State), _)
 
   /**
    * Write a `SendMsg`-typed [[Message]] to the remote.
@@ -559,7 +566,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case LocalOpen() =>
         if (ConnectionHeaders.detect(hdrs)) {
           Future.exception(StreamError.Local(Reset.ProtocolError))
-        } else localResetOnCancel(transport.write(streamId, hdrs, eos))
+        } else localResetOnCancel(transport.write(H2FrameStream(streamId, getNettyH2State), hdrs, eos))
     }
   }
 
@@ -597,7 +604,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         Future.exception(new IllegalStateException("writing on closed stream"))
       case LocalOpen() =>
         statsReceiver.recordLocalFrame(frame)
-        transport.write(streamId, frame).rescue(wrapRemoteEx)
+        transport.write(H2FrameStream(streamId, getNettyH2State), frame).rescue(wrapRemoteEx)
           .transform { _ =>
             frame.release().rescue(wrapLocalEx)
           }

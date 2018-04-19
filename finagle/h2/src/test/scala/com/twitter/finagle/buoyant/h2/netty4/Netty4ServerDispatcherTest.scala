@@ -70,7 +70,8 @@ class Netty4ServerDispatcherTest extends FunSuite {
       hs.method("GET")
       hs.authority("bartman")
       hs.path("/")
-      new DefaultHttp2HeadersFrame(hs, true).streamId(3)
+      val hf = new DefaultHttp2HeadersFrame(hs, true)
+      hf.stream(H2FrameStream(3, Http2Stream.State.OPEN))
     }))
     eventually { assert(bartmanCalled.get) }
 
@@ -81,7 +82,8 @@ class Netty4ServerDispatcherTest extends FunSuite {
       hs.method("GET")
       hs.authority("elbarto")
       hs.path("/")
-      new DefaultHttp2HeadersFrame(hs, true).streamId(5)
+      val hf = new DefaultHttp2HeadersFrame(hs, true)
+      hf.stream(H2FrameStream(5, Http2Stream.State.HALF_CLOSED_REMOTE))
     }))
     eventually { assert(elBartoCalled.get) }
 
@@ -93,7 +95,8 @@ class Netty4ServerDispatcherTest extends FunSuite {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
         hs.status("222")
-        new DefaultHttp2HeadersFrame(hs, false).streamId(3)
+        val hf = new DefaultHttp2HeadersFrame(hs, false)
+        hf.stream(H2FrameStream(3, Http2Stream.State.HALF_CLOSED_REMOTE))
       })
     }
     sentq = sentq.tail
@@ -104,7 +107,8 @@ class Netty4ServerDispatcherTest extends FunSuite {
       assert(sentq.head == {
         val hs = new DefaultHttp2Headers
         hs.status("222")
-        new DefaultHttp2HeadersFrame(hs, false).streamId(5)
+        val hf = new DefaultHttp2HeadersFrame(hs, false)
+        hf.stream(H2FrameStream(5, Http2Stream.State.HALF_CLOSED_REMOTE))
       })
     }
     sentq = sentq.tail
@@ -113,7 +117,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
-          assert(f.streamId == 3)
+          assert(f.stream.id == 3)
           assert(!f.isEndStream)
         case f =>
           fail(s"unexpected frame: $f")
@@ -125,7 +129,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
-          assert(f.streamId == 5)
+          assert(f.stream.id == 5)
           assert(f.isEndStream)
         case f =>
           fail(s"unexpected frame: $f")
@@ -137,7 +141,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
-          assert(f.streamId == 3)
+          assert(f.stream.id == 3)
           assert(f.isEndStream)
         case f =>
           fail(s"unexpected frame: $f")

@@ -4,8 +4,9 @@ import language.reflectiveCalls
 import java.net.InetSocketAddress
 
 import com.twitter.finagle.stats.NullStatsReceiver
+import com.twitter.finagle.thrift.{ThriftRichClient, ThriftRichServer}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.finagle.{Address, ThriftRichServer, Thrift => FinagleThrift, ThriftMux => FinagleThriftMux, _}
+import com.twitter.finagle.{Address, Thrift => FinagleThrift, ThriftMux => FinagleThriftMux, _}
 import com.twitter.util.{Future, Var}
 import io.buoyant.router.thriftscala._
 import io.buoyant.test.Awaits
@@ -55,7 +56,7 @@ class ThriftMuxEndToEndTest extends FunSuite with Awaits {
       Upstream(client
         .configured(param.Stats(NullStatsReceiver))
         .configured(param.Tracer(NullTracer)).asInstanceOf[ThriftRichClient]
-        .newIface[PingService[Future]](name, "upstream"))
+        .build[PingService[Future]](name, "upstream"))
     }
 
     def pingWithClient(upstream: Upstream, host: String, msg: String = "")(f: String => Unit): Unit = {
