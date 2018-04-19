@@ -4,8 +4,9 @@ package protocol
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.http.Method._
+import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter}
+import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
@@ -40,7 +41,9 @@ class HttpEndToEndTest
   object Downstream {
     def mk(name: String)(f: Request=>Response): Downstream = {
       val service = Service.mk { req: Request => Future(f(req)) }
-      val stack = FinagleHttp.server.stack.remove(Headers.Ctx.serverModule.role)
+      val stack = FinagleHttp.server.stack
+        .remove(Headers.Ctx.serverModule.role)
+        .remove(ServerDtabContextFilter.role)
       val server = FinagleHttp.server.withStack(stack)
         .configured(param.Label(name))
         .configured(param.Tracer(NullTracer))
@@ -60,7 +63,9 @@ class HttpEndToEndTest
   def upstream(server: ListeningServer) = {
     val address = Address(server.boundAddress.asInstanceOf[InetSocketAddress])
     val name = Name.Bound(Var.value(Addr.Bound(address)), address)
-    val stack = FinagleHttp.client.stack.remove(Headers.Ctx.clientModule.role)
+    val stack = FinagleHttp.client.stack
+      .remove(Headers.Ctx.clientModule.role)
+      .remove(ClientDtabContextFilter.role)
     FinagleHttp.client.withStack(stack)
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))

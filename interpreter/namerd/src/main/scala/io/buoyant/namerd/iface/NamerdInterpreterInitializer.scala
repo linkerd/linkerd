@@ -115,7 +115,7 @@ case class NamerdInterpreterConfig(
       .withSessionQualifier.noFailFast
       .withSessionQualifier.noFailureAccrual
 
-    val iface = client.newIface[thrift.Namer.FutureIface](name, label)
+    val iface = client.build[thrift.Namer.MethodPerEndpoint](name, label)
 
     val ns = namespace.getOrElse("default")
     val Label(routerLabel) = params[Label]

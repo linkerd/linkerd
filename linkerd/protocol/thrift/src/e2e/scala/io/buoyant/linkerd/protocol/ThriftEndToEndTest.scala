@@ -47,7 +47,7 @@ class ThriftEndToEndTest extends FunSuite {
     FinagleThrift.client.withStack(clientStack)
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
-      .newIface[PingService[Future]](name, "upstream")
+      .build[PingService[Future]](name, "upstream")
   }
 
   test("end-to-end echo routing") {
