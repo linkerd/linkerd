@@ -37,7 +37,7 @@ class H2FrameCodec(
     }
 
     override def onStreamClosed(stream0: Http2Stream): Unit = {
-      val stream = stream0.getProperty(streamKey)
+      val stream = stream0.getProperty(streamKey).asInstanceOf[Http2FrameStream]
       if (stream != null) {
         channelCtx.fireUserEventTriggered(Http2FrameStreamEvent.stateChanged(stream).asInstanceOf[AnyRef]); ()
       }
