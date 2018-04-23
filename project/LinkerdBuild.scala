@@ -45,7 +45,7 @@ object LinkerdBuild extends Base {
     .withTests()
 
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core, istioProto)
+    .dependsOn(Namer.core, istioProto, admin)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -117,6 +117,12 @@ object LinkerdBuild extends Base {
     val all = aggregateDir("mesh", core)
   }
 
+  val admin = projectDir("admin")
+    .dependsOn(configCore)
+    .withTwitterLib(Deps.twitterServer)
+    .withTwitterLib(Deps.finagle("stats"))
+    .withTests()
+
   object Namer {
     val core = projectDir("namer/core")
       .dependsOn(configCore)
@@ -173,10 +179,8 @@ object LinkerdBuild extends Base {
 
   }
 
-  val admin = projectDir("admin")
-    .dependsOn(configCore, Namer.core)
-    .withTwitterLib(Deps.twitterServer)
-    .withTwitterLib(Deps.finagle("stats"))
+  val adminNames = projectDir("admin/names")
+    .dependsOn(admin, Namer.core)
     .withTests()
 
   object Telemetry {
@@ -255,6 +259,7 @@ object LinkerdBuild extends Base {
     val core = projectDir("namerd/core")
       .dependsOn(
         admin,
+        adminNames,
         configCore,
         Namer.core,
         Namer.fs % "test",
@@ -568,7 +573,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
-      .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
+      .dependsOn(LinkerdBuild.admin, LinkerdBuild.adminNames, Namer.core, Router.http)
       .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")

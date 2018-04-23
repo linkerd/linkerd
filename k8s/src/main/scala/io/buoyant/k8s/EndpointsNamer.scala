@@ -1,16 +1,20 @@
 package io.buoyant.k8s
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.ExistentialStability._
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Service => _, _}
+import com.twitter.finagle._
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.namer.Metadata
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
+import io.buoyant.namer.{InstrumentedActivity, Metadata}
 import scala.Function.untupled
-import scala.collection.breakOut
+import scala.collection.{breakOut, mutable}
 import scala.language.implicitConversions
 
 class MultiNsNamer(
@@ -121,8 +125,10 @@ abstract class EndpointsNamer(
   labelName: Option[String] = None,
   backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
-  extends Namer {
+  extends Namer with Admin.WithHandlers {
   import EndpointsNamer._
+
+  private[this] val portMapInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])]()
 
   /**
    * Watch the numbered-port remappings for the service named `serviceName`
@@ -143,11 +149,13 @@ abstract class EndpointsNamer(
       // create multiple watches on the same `Services` API object.
       case (nsName, serviceName, labelSelector) =>
         val portLogger = PortMapLogger(nsName, serviceName)
-        mkApi(nsName)
+        val watchState = new WatchState[v1.Service, v1.ServiceWatch]()
+        val instrumentedAct = mkApi(nsName)
           .service(serviceName)
           .activity(
             _.map(_.portMappings).getOrElse(Map.empty),
-            labelSelector = labelSelector
+            labelSelector = labelSelector,
+            watchState = Some(watchState)
           ) {
               case (oldMap, v1.ServiceAdded(service)) =>
                 val newMap = service.portMappings
@@ -170,17 +178,25 @@ abstract class EndpointsNamer(
                 )
                 oldMap
             }
+        portMapInstrumentation((nsName, serviceName, labelSelector)) = (instrumentedAct, watchState)
+        instrumentedAct.underlying
     })
+
+  private[this] val endpointsInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]()
 
   private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
     untupled(Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
       case (nsName, serviceName, labelSelector) =>
-        mkApi(nsName)
+        val watchState = new WatchState[v1.Endpoints, v1.EndpointsWatch]()
+        val instrumentedAct = mkApi(nsName)
           .endpoints(serviceName)
           .activity(
             ServiceEndpoints.fromResponse(nsName, serviceName),
-            labelSelector = labelSelector
+            labelSelector = labelSelector,
+            watchState = Some(watchState)
           ) { case (cache, event) => cache.update(event) }
+        endpointsInstrumentation((nsName, serviceName, labelSelector)) = (instrumentedAct, watchState)
+        instrumentedAct.underlying
     })
 
   @inline private[this] def mkNameTree(
@@ -192,6 +208,10 @@ abstract class EndpointsNamer(
       NameTree.Leaf(Name.Bound(addrs, idPrefix ++ id, residual))
     case None => NameTree.Neg
   }
+
+  def adminHandlers = Seq(
+    Admin.Handler("k8s-namer-state.json", new EndpointsNamerStateHandler(portMapInstrumentation, endpointsInstrumentation))
+  )
 
   private[k8s] def lookupServices(
     nsName: String,
@@ -285,7 +305,8 @@ object EndpointsNamer {
     endpoints: Set[Endpoint],
     ports: PortMap
   ) {
-    val portLogger = PortMapLogger(nsName, serviceName)
+    @JsonIgnore
+    private[this] val portLogger = PortMapLogger(nsName, serviceName)
     def lookupNumberedPort(
       mappings: NumberedPortMap,
       portNumber: Int
@@ -389,6 +410,48 @@ object EndpointsNamer {
           )
           ServiceEndpoints(nsName, serviceName, Set.empty, Map.empty)
         }
+  }
+
+  private[EndpointsNamer] class EndpointsNamerStateHandler(
+    services: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])],
+    endpoints: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]
+  ) extends Service[Request, Response] {
+    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+    override def apply(request: Request): Future[Response] = {
+      val servicesState = services.map {
+        case ((ns, svc, label), (act, watchState)) =>
+          val labelStr = label match {
+            case Some(s) => s":$s"
+            case None => ""
+          }
+          s"$ns/$svc$labelStr" -> Map(
+            "state" -> act.stateSnapshot(),
+            "watch" -> watchState
+          )
+      }
+      val endpointsState = endpoints.map {
+        case ((ns, svc, label), (act, watchState)) =>
+          val labelStr = label match {
+            case Some(s) => s":$s"
+            case None => ""
+          }
+          s"$ns/$svc$labelStr" -> Map(
+            "state" -> act.stateSnapshot(),
+            "watch" -> watchState
+          )
+      }
+      val state = Map(
+        "endpoints" -> endpointsState,
+        "portMappings" -> servicesState
+      )
+      val json = mapper.writeValueAsString(state)
+
+      val res = Response()
+      res.mediaType = MediaType.Json
+      res.contentString = json
+      Future.value(res)
+    }
   }
 
 }

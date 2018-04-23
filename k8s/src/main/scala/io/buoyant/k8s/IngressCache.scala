@@ -105,8 +105,8 @@ class IngressCache(
             ingresses
         }
     }
-    val _ = act.states.respond(_ => ()) // register a listener forever to keep the Activity open
-    act
+    val _ = act.underlying.states.respond(_ => ()) // register a listener forever to keep the Activity open
+    act.underlying
   }
   private[this] def unpackIngressList(response: Option[v1beta1.IngressList]): Seq[IngressSpec] = for {
     ingressList <- response.toSeq

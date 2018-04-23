@@ -98,7 +98,7 @@ case class ConfigMapInterpreterConfig(
   @JsonIgnore
   override def newInterpreter(params: Params): NameInterpreter = {
     val Param.Namers(namers) = params[Param.Namers]
-    ConfiguredDtabNamer(act, namers)
+    ConfiguredDtabNamer(act.underlying, namers)
   }
 
 }
