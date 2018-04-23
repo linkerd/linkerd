@@ -7,9 +7,8 @@ package object namer {
     /** A Future representing the first non-pending value of this Activity */
     def toFuture: Future[T] = activity.values.toFuture.flatMap(Future.const)
 
-    def dedup: Activity[T] = {
-      val stateVar = Var(Activity.Pending, activity.states.dedup)
-      new Activity(stateVar)
-    }
+    def dedup: Activity[T] = Activity(Var.async[Activity.State[T]](Activity.Pending) { up =>
+      activity.states.dedup.respond(up.update)
+    })
   }
 }
