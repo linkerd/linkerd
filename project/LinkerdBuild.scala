@@ -218,7 +218,7 @@ object LinkerdBuild extends Base {
       .dependsOn(admin, core, Router.core)
 
     val zipkin = projectDir("telemetry/zipkin")
-      .withTwitterLibs(Deps.finagle("zipkin-core"), Deps.finagle("zipkin"))
+      .withTwitterLibs(Deps.finagle("zipkin-core"), Deps.finagle("zipkin-scribe"))
         .settings(Seq(scalacOptions -= "-Xfatal-warnings"))
       .dependsOn(core, Router.core)
       .withTests()
