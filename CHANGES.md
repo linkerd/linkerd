@@ -1,3 +1,15 @@
+## 1.4.0 RC1 2018-04-24
+
+Linkerd 1.4.0 upgrades Linkerd to use the latest and greatest of Finagle and Netty.  It also introduces the ability to configure client connection lifetimes as well as access log rotation policy.  This release features contributions from ThreeComma, [ScalaConsultants](https://github.com/ScalaConsultants), and [Salesforce](https://github.com/salesforce).
+
+* **Breaking Change**: The `loggers` section of the Linkerd config has been renamed to `requestAuthorizers` to match the name of the plugin type ([#1900](https://github.com/linkerd/linkerd/pull/1900))
+* Tune Netty/Finagle settings to reduce direct memory usage ([#1889](https://github.com/linkerd/linkerd/pull/1889)).
+* Introduce ClientSession configuration section that provides ways to control client connection lifetime ([#1903](https://github.com/linkerd/linkerd/pull/1903)).
+* Expose rotation policy configuration for http and http2 access logs ([#1893](https://github.com/linkerd/linkerd/pull/1893)).
+* Stop logging harmless reader discarded errors in k8s namer ([#1901](https://github.com/linkerd/linkerd/pull/1901)).
+* Disable autoloading of the default tracer in Namerd ([#1902](https://github.com/linkerd/linkerd/pull/1902)).
+* Upgrade to Finagle 18.4.0.
+
 ## 1.3.7 2018-04-5
 
 Linkerd 1.3.7 includes memory leak fixes, tons of improvements for Consul, and more!  This release features contributions from ThreeComma, [NCBI](https://github.com/ncbi), WePay, [Salesforce](https://github.com/salesforce), [Homeaway](https://github.com/homeaway), Prosoft, and [Buoyant](https://github.com/buoyantio).
