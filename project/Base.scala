@@ -134,8 +134,12 @@ class Base extends Build {
 
   val nodeModulesRE = ".*/node_modules/.*".r
 
-  // This is a workaround for https://github.com/twitter/finagle/issues/688 and should be removed
-  // once that issue is fixed.
+  /**
+   * finagle-thrift includes files copied from libthrift that cause assembly merge conflicts.  To
+   * work around this, we use a merge strategy that uses the files from libthrift in the event of
+   * a conflict.  This should be removed once https://github.com/twitter/finagle/issues/688 is
+   * resolved.
+   */
   val libthriftMergeStrategy = new MergeStrategy {
     override def name: String = "libthrift-merge-strategy"
     override def apply(
