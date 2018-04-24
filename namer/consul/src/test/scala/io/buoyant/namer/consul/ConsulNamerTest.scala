@@ -522,13 +522,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var datacenterIsUp = false
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
-         serviceName: String,
-         datacenter: Option[String],
-         tag: Option[String],
-         blockingIndex: Option[String],
-         consistency: Option[ConsistencyMode],
-         retry: Boolean
-       ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String],
+        blockingIndex: Option[String],
+        consistency: Option[ConsistencyMode],
+        retry: Boolean
+      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
         case Some("0") | None =>
           if (datacenterIsUp)
             datacenterIsAvailable before Future.value(
@@ -561,12 +561,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
       state = s
     }
 
-
     withClue("before datacenter is available") {
       eventually {
         assert(state == Activity.Ok(NameTree.Neg))
       }
-
 
       datacenterIsAvailable.setDone()
       eventually {

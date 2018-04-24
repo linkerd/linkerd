@@ -13,8 +13,9 @@ import java.net.SocketAddress
  */
 private[finagle] class BufferingConnectDelay
   extends ChannelDuplexHandler
-  with BufferingChannelOutboundHandler
-  with ConnectPromiseDelayListeners { self =>
+  with BufferingChannelOutboundHandler { self =>
+
+  import ConnectPromiseDelayListeners._
 
   /*
    * We manage two promises:

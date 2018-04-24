@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.loadbalancer.{DefaultBalancerFactory, FlagBalancerFactory, LoadBalancerFactory}
+import com.twitter.finagle.loadbalancer.{FlagBalancerFactory, LoadBalancerFactory}
 import com.twitter.finagle.Path
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import org.scalatest.FunSuite

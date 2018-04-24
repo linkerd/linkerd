@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
-import com.twitter.finagle.loadbalancer.{DefaultBalancerFactory, FlagBalancerFactory, LoadBalancerFactory}
+import com.twitter.finagle.loadbalancer.{FlagBalancerFactory, LoadBalancerFactory}
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.Duration
