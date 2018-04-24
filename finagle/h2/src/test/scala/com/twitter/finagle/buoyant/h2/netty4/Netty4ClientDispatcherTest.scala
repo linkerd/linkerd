@@ -83,7 +83,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     await(req0InitF) match {
       case hf: Http2HeadersFrame =>
         assert(hf.headers.method == "sup")
-        assert(hf.streamId == 3)
+        assert(hf.stream.id == 3)
       case f =>
         fail(s"unexpected frame: $f")
     }
@@ -94,7 +94,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     await(req1InitF) match {
       case hf: Http2HeadersFrame =>
         assert(hf.headers.method == "sup")
-        assert(hf.streamId == 5)
+        assert(hf.stream.id == 5)
       case f =>
         fail(s"unexpected frame: $f")
     }
@@ -108,7 +108,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
-      new DefaultHttp2HeadersFrame(hs, false).streamId(5)
+      new DefaultHttp2HeadersFrame(hs, false).stream(H2FrameStream(5, Http2Stream.State.OPEN))
     }))
 
     assert(rsp0f.poll == None)
@@ -120,7 +120,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     assert(recvq.offer({
       val hs = new DefaultHttp2Headers
       hs.status("222")
-      new DefaultHttp2HeadersFrame(hs, false).streamId(3)
+      new DefaultHttp2HeadersFrame(hs, false).stream(H2FrameStream(3, Http2Stream.State.OPEN))
     }))
     assert(rsp0f.isDefined)
     val rsp0 = await(rsp0f)
@@ -129,11 +129,13 @@ class Netty4ClientDispatcherTest extends FunSuite {
 
     assert(recvq.offer({
       val buf = Buf.Utf8("sup")
-      new DefaultHttp2DataFrame(BufAsByteBuf(buf), true).streamId(3)
+      val dataFrame = new DefaultHttp2DataFrame(BufAsByteBuf(buf), true)
+      dataFrame.stream(H2FrameStream(3, Http2Stream.State.OPEN))
     }))
     assert(recvq.offer({
       val buf = Buf.Utf8("yo")
-      new DefaultHttp2DataFrame(BufAsByteBuf(buf), true).streamId(5)
+      val headersFrame = new DefaultHttp2DataFrame(BufAsByteBuf(buf), true)
+      headersFrame.stream(H2FrameStream(5, Http2Stream.State.OPEN))
     }))
 
     val d0f = rsp0.stream.read()

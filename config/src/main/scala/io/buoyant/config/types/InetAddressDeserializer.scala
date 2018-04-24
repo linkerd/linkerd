@@ -1,9 +1,9 @@
 package io.buoyant.config.types
 
 import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
-import com.fasterxml.jackson.databind.{SerializerProvider, DeserializationContext}
+import com.fasterxml.jackson.databind.{DeserializationContext, SerializerProvider}
 import com.google.common.net.InetAddresses
-import io.buoyant.config.{ConfigSerializer, ConfigDeserializer}
+import io.buoyant.config.{ConfigDeserializer, ConfigSerializer}
 import java.net.InetAddress
 
 class InetAddressDeserializer extends ConfigDeserializer[InetAddress] {

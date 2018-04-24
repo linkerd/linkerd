@@ -37,7 +37,7 @@ httpAccessLogRollPolicy | never | When to roll the logfile. Possible values: Nev
 httpAccessLogAppend | true | Append to an existing logfile, or truncate it?
 httpAccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
-loggers | none | A list of loggers.  See [Http-specific loggers](#http-1-1-loggers).
+requestAuthorizers | none | A list of request authorizers.  See [Http-specific request authorizers](#http-1-1-request-authorizers).
 maxChunkKB | 8 | The maximum size of an HTTP chunk.
 maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
@@ -481,31 +481,31 @@ Key | Default Value | Description
 dstPrefix | `/svc` | The `dstPrefix` as set in the routers block.
 path | N/A | The path given in the configuration.
 
-<a name="http-1-1-loggers"></a>
-## HTTP/1.1 Loggers
+<a name="http-1-1-request-authorizers"></a>
+## HTTP/1.1 Request Authorizers
 
-Loggers allow recording of arbitrary information about requests. Destination of
-information is specific to each logger. All HTTP/1.1 loggers have a `kind`. If a
-list of loggers is provided, they each log in the order they are defined.
+Request authorizers allow arbitrary rejection or modification of requests and responses. Behavior is
+specific to each request authorizer.  All HTTP/1.1 request authorizers have a `kind`. If a
+list of request authorizers is provided, they each apply in the order they are defined.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-logger) is currently supported.
+kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-request-authorizer) is currently supported.
 
-<a name="istio-logger"></a>
-### Istio Logger
+<a name="istio-request-authorizer"></a>
+### Istio Request Authorizer
 
 kind: `io.l5d.k8s.istio`.
 
-With this logger, all HTTP requests are sent to an Istio Mixer for telemetry
+With this request authorizer, all HTTP requests are sent to an Istio Mixer for telemetry
 recording and aggregation.
 
-#### Logger Configuration:
+#### Request Authorizer Configuration:
 
 > Configuration example
 
 ```yaml
-loggers:
+requestAuthorizers:
 - kind: io.l5d.k8s.istio
   mixerHost: istio-mixer
   mixerPort: 9091

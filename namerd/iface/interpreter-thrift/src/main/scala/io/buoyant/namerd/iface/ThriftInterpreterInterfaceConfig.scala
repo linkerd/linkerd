@@ -11,6 +11,9 @@ import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
 import java.net.{InetAddress, InetSocketAddress}
+
+import com.twitter.finagle.tracing.NullTracer
+
 import scala.util.Random
 
 case class ThriftInterpreterInterfaceConfig(
@@ -55,7 +58,8 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
 case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, params: Stack.Params) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
   val thriftMux = ThriftMux.server
-  def serve() = thriftMux.withParams(thriftMux.params ++ params).serveIface(addr, iface)
+  def serve() = ThriftMux.server
+    .withTracer(NullTracer).configuredParams(params).serveIface(addr, iface)
 }
 
 case class CapacityConfig(

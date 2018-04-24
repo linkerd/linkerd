@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.loadbalancer.{DefaultBalancerFactory, LoadBalancerFactory}
+import com.twitter.finagle.loadbalancer.{FlagBalancerFactory, LoadBalancerFactory}
 import com.twitter.finagle.Path
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import org.scalatest.FunSuite
@@ -24,7 +24,7 @@ class LoadBalancerTest extends FunSuite {
       val linker = Linker.load(config, Linker.Initializers(protocol = Seq(TestProtocol.Plain)))
       val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
       val factory = params[LoadBalancerFactory.Param]
-      assert(factory.loadBalancerFactory != DefaultBalancerFactory)
+      assert(factory.loadBalancerFactory != FlagBalancerFactory)
 
       val enableProbation = linker.routers.head.params[LoadBalancerFactory.EnableProbation]
       assert(enableProbation == LoadBalancerFactory.EnableProbation(false))
@@ -45,7 +45,7 @@ class LoadBalancerTest extends FunSuite {
       val linker = Linker.load(config, Linker.Initializers(protocol = Seq(TestProtocol.Plain)))
       val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
       val factory = params[LoadBalancerFactory.Param]
-      assert(factory.loadBalancerFactory != DefaultBalancerFactory)
+      assert(factory.loadBalancerFactory != FlagBalancerFactory)
 
       val enableProbation = params[LoadBalancerFactory.EnableProbation]
       assert(enableProbation == LoadBalancerFactory.EnableProbation(true))

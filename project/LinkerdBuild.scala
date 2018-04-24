@@ -20,6 +20,7 @@ object LinkerdBuild extends Base {
     .withTwitterLibs(Deps.finagle("core"))
     .withLibs(Deps.jackson)
     .withLib(Deps.jacksonYaml)
+    .withLib(Deps.guava)
     .withTests()
 
   val consul = projectDir("consul")
@@ -85,7 +86,10 @@ object LinkerdBuild extends Base {
 
     val thriftIdl = projectDir("router/thrift-idl")
       .withTwitterLib(Deps.finagle("thrift"))
-      .settings(coverageExcludedPackages := ".*thriftscala.*")
+      .settings(Seq(
+        coverageExcludedPackages := ".*thriftscala.*",
+        scalacOptions -= "-Xfatal-warnings")
+      )
 
     val thrift = projectDir("router/thrift")
       .withTwitterLib(Deps.finagle("thrift"))
@@ -218,7 +222,8 @@ object LinkerdBuild extends Base {
       .dependsOn(admin, core, Router.core)
 
     val zipkin = projectDir("telemetry/zipkin")
-      .withTwitterLibs(Deps.finagle("zipkin-core"), Deps.finagle("zipkin"))
+      .withTwitterLibs(Deps.finagle("zipkin-core"), Deps.finagle("zipkin-scribe"))
+        .settings(Seq(scalacOptions -= "-Xfatal-warnings"))
       .dependsOn(core, Router.core)
       .withTests()
 
@@ -308,7 +313,10 @@ object LinkerdBuild extends Base {
 
       val interpreterThriftIdl = projectDir("namerd/iface/interpreter-thrift-idl")
         .withTwitterLib(Deps.finagle("thrift"))
-        .settings(coverageExcludedPackages := ".*thriftscala.*")
+        .settings(Seq(
+          coverageExcludedPackages := ".*thriftscala.*",
+          scalacOptions -= "-Xfatal-warnings")
+        )
 
       val interpreterThrift = projectDir("namerd/iface/interpreter-thrift")
         .dependsOn(core, interpreterThriftIdl)

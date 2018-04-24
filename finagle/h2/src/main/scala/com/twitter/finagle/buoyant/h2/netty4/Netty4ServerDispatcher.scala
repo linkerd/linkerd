@@ -123,14 +123,17 @@ class Netty4ServerDispatcher(
    * unexpected frame.  Unexpected frames cause the
    * connection to be closed with a protocol error.
    */
-  override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = f match {
+  override protected[this] def demuxNewStream(f: Http2Frame): Future[Unit] = f match {
     case frame: Http2HeadersFrame =>
-      val st = newStreamTransport(frame.streamId)
+      val st = newStreamTransport(frame.stream.id)
       if (st.recv(frame)) serveStream(st)
       Future.Unit
 
+    case settingsFrame: Http2SettingsFrame =>
+      transport.write(settingsFrame)
+
     case frame =>
-      log.error("[%s S:%d] unexpected %s; sending GO_AWAY", prefix, frame.streamId, frame.name)
+      log.error("[%s S:%s] unexpected %s frame; sending GO_AWAY", prefix, frame, frame.name)
       val e = new IllegalArgumentException(s"unexpected frame on new stream: ${frame.name}")
       goAway(GoAway.ProtocolError).before(Future.exception(e))
   }

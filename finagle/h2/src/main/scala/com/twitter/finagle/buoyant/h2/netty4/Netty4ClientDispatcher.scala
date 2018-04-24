@@ -74,7 +74,7 @@ class Netty4ClientDispatcher(
    */
   override protected[this] val demuxing = demux()
 
-  override protected[this] def demuxNewStream(f: Http2StreamFrame): Future[Unit] = {
+  override protected[this] def demuxNewStream(f: Http2Frame): Future[Unit] = {
     val e = new IllegalArgumentException(s"unexpected frame on new stream: ${f.name}")
     goAway(GoAway.ProtocolError).before(Future.exception(e))
   }

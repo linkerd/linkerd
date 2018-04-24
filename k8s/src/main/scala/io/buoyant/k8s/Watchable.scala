@@ -11,6 +11,7 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Reader
+import com.twitter.io.Reader.ReaderDiscarded
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.namer.InstrumentedActivity
@@ -42,6 +43,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         true
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
+      // Don't retry on reader discarded
+      case (_, Throw(_: ReaderDiscarded)) => false
       case (_, Throw(NonFatal(ex))) =>
         log.warning("retrying k8s request to %s on error %s", path, ex)
         true
