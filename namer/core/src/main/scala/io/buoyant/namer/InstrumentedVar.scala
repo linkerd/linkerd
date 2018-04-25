@@ -2,6 +2,9 @@ package io.buoyant.namer
 
 import com.twitter.util._
 
+/**
+ * VarState represents a snapshot of the state of a Var.  This class is intended for serialization.
+ */
 case class VarState[T](
   running: Boolean,
   lastStartedAt: Option[String],
@@ -10,6 +13,10 @@ case class VarState[T](
   value: T
 )
 
+/**
+ * InstrumentedVar is a Var.async that also records metadata about itself such as whether it is
+ * running and the value of the most recent update.
+ */
 class InstrumentedVar[T](init: T, update: Updatable[T] => Closable) {
 
   private[this] val instrumentedUpdate: Updatable[T] => Closable = { up =>
@@ -41,6 +48,9 @@ class InstrumentedVar[T](init: T, update: Updatable[T] => Closable) {
   def lastUpdatedAt: Option[Time] = _lastUpdatedAt
   def value: T = _value
 
+  /**
+   * Returns a snapshot of the current state of the Var
+   */
   def stateSnapshot(): VarState[T] = VarState[T](
     running,
     lastStartedAt.map(_.toString),
@@ -69,6 +79,11 @@ object InstrumentedVar {
   def apply[T](empty: T)(update: Updatable[T] => Closable) = new InstrumentedVar[T](empty, update)
 }
 
+/**
+ * InstrumentedActivity is an Activity backed by an InstrumentedVar.  Therefore, this Activity has
+ * access to metadata about the underlying Var.async such as whether it is running and the value of
+ * the most recent update.
+ */
 class InstrumentedActivity[T](update: Updatable[Activity.State[T]] => Closable) {
 
   private[this] val run = new InstrumentedVar[Activity.State[T]](Activity.Pending, update)
@@ -81,6 +96,9 @@ class InstrumentedActivity[T](update: Updatable[Activity.State[T]] => Closable) 
   def lastUpdatedAt: Option[Time] = run.lastUpdatedAt
   def value: Activity.State[T] = run.value
 
+  /**
+   * Returns a snapshot of the current state of the underlying Var
+   */
   def stateSnapshot(): VarState[Option[T]] = VarState[Option[T]](
     running,
     lastStartedAt.map(_.toString),

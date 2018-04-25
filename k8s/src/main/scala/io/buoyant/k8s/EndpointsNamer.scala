@@ -128,6 +128,7 @@ abstract class EndpointsNamer(
   extends Namer with Admin.WithHandlers {
   import EndpointsNamer._
 
+  // Metadata about the state of portMap watches.
   private[this] val portMapInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])]()
 
   /**
@@ -182,6 +183,7 @@ abstract class EndpointsNamer(
         instrumentedAct.underlying
     })
 
+  // Metadata about the state of endpoint watches.
   private[this] val endpointsInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]()
 
   private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
@@ -412,6 +414,9 @@ object EndpointsNamer {
         }
   }
 
+  /**
+   * An admin handler that exposes the internal state of Kubernetes watches.
+   */
   private[EndpointsNamer] class EndpointsNamerStateHandler(
     services: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])],
     endpoints: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]
