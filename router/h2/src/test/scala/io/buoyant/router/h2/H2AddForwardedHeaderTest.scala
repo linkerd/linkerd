@@ -2,7 +2,7 @@ package io.buoyant.router.h2
 
 import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Stream}
 import com.twitter.util.{Future, Time}
 import io.buoyant.router.http.{AddForwardedHeader, H2AddForwardedHeader}
 import io.buoyant.test.FunSuite
@@ -25,6 +25,15 @@ class H2AddForwardedHeaderTest extends FunSuite {
     val forClient = forl.getOrElse("")
     val svc = new H2AddForwardedHeader(() => forwardedBy, () => forClient).andThen(OkSvc)
     svc(req)
+  }
+
+  def extractForwardedByHeader(header: String): Map[String, String] = {
+    header.split(";").take(2).flatMap { label =>
+      label.split("=") match {
+        case arr: Array[String] if arr.length == 2 => Some(arr(0) -> arr(1))
+        case _ => None
+      }
+    }.toMap
   }
 
   test("creates a Forwarded header where none existed") {
@@ -58,17 +67,10 @@ class H2AddForwardedHeaderTest extends FunSuite {
 
     val service = await(factory(conn))
     val rsp = await(service(mkReq()))
-    val forwards = rsp.headers.get("forwarded").getOrElse("")
-
-    val fwdMap = forwards.split(";").take(2).flatMap { label =>
-      label.split("=") match {
-        case arr: Array[String] if arr.length == 2 => Some(arr(0) -> arr(1))
-        case _ => None
-      }
-    }.toMap
+    val forwardedBy = rsp.headers.get("forwarded").getOrElse("")
+    val fwdMap = extractForwardedByHeader(forwardedBy)
 
     val ObfuscatedRE = """^_[A-Za-z0-9._-]+$""".r
-
     def isObfuscated(v: String) = ObfuscatedRE.unapplySeq(v).isDefined
 
     (fwdMap.getOrElse("by", ""), fwdMap.getOrElse("for", "")) match {
@@ -95,13 +97,8 @@ class H2AddForwardedHeaderTest extends FunSuite {
     }
     val service = await(factory(conn))
     val rsp = await(service(mkReq()))
-    val forwards = rsp.headers.get("forwarded").getOrElse("")
-    val fwdMap = forwards.split(";").take(2).flatMap { label =>
-      label.split("=") match {
-        case arr: Array[String] if arr.length == 2 => Some(arr(0) -> arr(1))
-        case _ => None
-      }
-    }.toMap
+    val forwardedBy = rsp.headers.get("forwarded").getOrElse("")
+    val fwdMap = extractForwardedByHeader(forwardedBy)
 
     (fwdMap.getOrElse("by", ""), fwdMap.getOrElse("for", "")) match {
       case ("", _) => fail("`by` not set")

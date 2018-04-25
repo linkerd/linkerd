@@ -73,49 +73,6 @@ class H2AddForwardedHeader(byLabel: () => String, forLabel: () => String) extend
 
 object AddForwardedHeader {
 
-  object H2 {
-    case class Enabled(enabled: Boolean)
-    implicit object Param extends Stack.Param[Enabled] {
-      // The RFC indicates that this feature should be disabled by default.
-      val default = Enabled(false)
-    }
-    class H2LabelingProxy(
-      byLabeler: Labeler.By,
-      forLabeler: Labeler.For,
-      underlying: ServiceFactory[H2Request, H2Response]
-    ) extends ServiceFactoryProxy(underlying) {
-
-      override def apply(conn: ClientConnection): Future[Service[H2Request, H2Response]] = {
-        // The `by` and `for` labelers are computed once per
-        // connection. This means that a randomized labeler, for
-        // instance, may reuse labels throughout a client's lifetime.
-        val byl = byLabeler(conn.localAddress)
-        val forl = forLabeler(conn.remoteAddress)
-        val filter = new H2AddForwardedHeader(byl, forl)
-        self.apply(conn).map(filter.andThen(_))
-      }
-    }
-    val module: Stackable[ServiceFactory[H2Request, H2Response]] =
-      new Stack.Module3[Enabled, Labeler.By, Labeler.For, ServiceFactory[H2Request, H2Response]] {
-        val role = Stack.Role("H2AddForwardedHeader")
-        val description = "Adds a RFC7239 'Forwarded' header to requests as they are received"
-        def make(
-          enabled: Enabled,
-          byl: Labeler.By,
-          forl: Labeler.For,
-          next: ServiceFactory[H2Request, H2Response]
-        ) = enabled match {
-          case Enabled(false) => next
-          case Enabled(true) => new H2LabelingProxy(byl, forl, next)
-        }
-      }
-  }
-  case class Enabled(enabled: Boolean)
-  implicit object Param extends Stack.Param[Enabled] {
-    // The RFC indicates that this feature should be disabled by default.
-    val default = Enabled(false)
-  }
-
   type Labeler = SocketAddress => () => String
   object Labeler {
     private[this] def Const(label: String) = () => label
@@ -158,7 +115,7 @@ object AddForwardedHeader {
       }
     }
 
-    /**
+    /**   
      * Generates randomized, obfuscated strings to mask IP addresses
      * in accordance with RFC7239 §6.3:
      *
@@ -217,35 +174,81 @@ object AddForwardedHeader {
     }
   }
 
-  class LabelingProxy(
-    byLabeler: Labeler.By,
-    forLabeler: Labeler.For,
-    underlying: ServiceFactory[Request, Response]
-  ) extends ServiceFactoryProxy(underlying) {
-
-    override def apply(conn: ClientConnection): Future[Service[Request, Response]] = {
-      // The `by` and `for` labelers are computed once per
-      // connection. This means that a randomized labeler, for
-      // instance, may reuse labels throughout a client's lifetime.
-      val byl = byLabeler(conn.localAddress)
-      val forl = forLabeler(conn.remoteAddress)
-      val filter = new AddForwardedHeader(byl, forl)
-      self.apply(conn).map(filter.andThen(_))
+  object H1 {
+    case class Enabled(enabled: Boolean)
+    implicit object Param extends Stack.Param[Enabled] {
+      // The RFC indicates that this feature should be disabled by default.
+      val default = Enabled(false)
     }
-  }
 
-  val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module3[Enabled, Labeler.By, Labeler.For, ServiceFactory[Request, Response]] {
-      val role = Stack.Role("AddForwardedHeader")
-      val description = "Adds a RFC7239 'Forwarded' header to requests as they are received"
-      def make(
-        enabled: Enabled,
-        byl: Labeler.By,
-        forl: Labeler.For,
-        next: ServiceFactory[Request, Response]
-      ) = enabled match {
-        case Enabled(false) => next
-        case Enabled(true) => new LabelingProxy(byl, forl, next)
+    class LabelingProxy(
+                         byLabeler: Labeler.By,
+                         forLabeler: Labeler.For,
+                         underlying: ServiceFactory[Request, Response]
+                       ) extends ServiceFactoryProxy(underlying) {
+
+      override def apply(conn: ClientConnection): Future[Service[Request, Response]] = {
+        // The `by` and `for` labelers are computed once per
+        // connection. This means that a randomized labeler, for
+        // instance, may reuse labels throughout a client's lifetime.
+        val byl = byLabeler(conn.localAddress)
+        val forl = forLabeler(conn.remoteAddress)
+        val filter = new AddForwardedHeader(byl, forl)
+        self.apply(conn).map(filter.andThen(_))
       }
     }
+
+    val module: Stackable[ServiceFactory[Request, Response]] =
+      new Stack.Module3[Enabled, Labeler.By, Labeler.For, ServiceFactory[Request, Response]] {
+        val role = Stack.Role("AddForwardedHeader")
+        val description = "Adds a RFC7239 'Forwarded' header to requests as they are received"
+        def make(
+                  enabled: Enabled,
+                  byl: Labeler.By,
+                  forl: Labeler.For,
+                  next: ServiceFactory[Request, Response]
+                ) = enabled match {
+          case Enabled(false) => next
+          case Enabled(true) => new LabelingProxy(byl, forl, next)
+        }
+      }
+  }
+
+  object H2 {
+    case class Enabled(enabled: Boolean)
+    implicit object Param extends Stack.Param[Enabled] {
+      // The RFC indicates that this feature should be disabled by default.
+      val default = Enabled(false)
+    }
+    class H2LabelingProxy(
+                           byLabeler: Labeler.By,
+                           forLabeler: Labeler.For,
+                           underlying: ServiceFactory[H2Request, H2Response]
+                         ) extends ServiceFactoryProxy(underlying) {
+
+      override def apply(conn: ClientConnection): Future[Service[H2Request, H2Response]] = {
+        // The `by` and `for` labelers are computed once per
+        // connection. This means that a randomized labeler, for
+        // instance, may reuse labels throughout a client's lifetime.
+        val byl = byLabeler(conn.localAddress)
+        val forl = forLabeler(conn.remoteAddress)
+        val filter = new H2AddForwardedHeader(byl, forl)
+        self.apply(conn).map(filter.andThen(_))
+      }
+    }
+    val module: Stackable[ServiceFactory[H2Request, H2Response]] =
+      new Stack.Module3[Enabled, Labeler.By, Labeler.For, ServiceFactory[H2Request, H2Response]] {
+        val role = Stack.Role("H2AddForwardedHeader")
+        val description = "Adds a 'Forwarded' header to requests as they are received"
+        def make(
+                  enabled: Enabled,
+                  byl: Labeler.By,
+                  forl: Labeler.For,
+                  next: ServiceFactory[H2Request, H2Response]
+                ) = enabled match {
+          case Enabled(false) => next
+          case Enabled(true) => new H2LabelingProxy(byl, forl, next)
+        }
+      }
+  }
 }

@@ -77,7 +77,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
-      .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module)
+      .insertBefore(AddForwardedHeader.H1.module.role, AddForwardedHeaderConfig.module)
       .remove(ServerDtabContextFilter.role)
 
     Http.server.withStack(stk)

@@ -78,7 +78,7 @@ case class AddForwardedHeaderConfig(
   /** Appends AddForwardedHeader params to the given params. */
   @JsonIgnore
   def ++:(params: Stack.Params): Stack.Params =
-    params + AddForwardedHeader.Enabled(true) + byParam(params) + forParam(params)
+    params + AddForwardedHeader.H1.Enabled(true) + byParam(params) + forParam(params)
 
   @JsonIgnore
   private[this] def byParam(params: Stack.Params): AddForwardedHeader.Labeler.By =
@@ -115,7 +115,7 @@ object AddForwardedHeaderConfig {
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module[ServiceFactory[Request, Response]] {
       val role = Stack.Role("ConfigureAddForwardedHeader")
-      val description = AddForwardedHeader.module.description
+      val description = AddForwardedHeader.H1.module.description
       val parameters = Seq(implicitly[Stack.Param[Param]])
 
       private type Stk = Stack[ServiceFactory[Request, Response]]

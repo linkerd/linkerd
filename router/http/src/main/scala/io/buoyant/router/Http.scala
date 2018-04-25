@@ -82,7 +82,7 @@ object Http extends Router[Request, Response] with FinagleServer[Request, Respon
 
   object Server {
     val stack: Stack[ServiceFactory[Request, Response]] =
-      (AddForwardedHeader.module +: TimestampHeaderFilter.module +: FinagleHttp.server.stack)
+      (AddForwardedHeader.H1.module +: TimestampHeaderFilter.module +: FinagleHttp.server.stack)
         .insertBefore(TracingFilter.role, ProxyRewriteFilter.module)
 
     private val serverResponseClassifier = ClassifiedRetries.orElse(

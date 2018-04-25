@@ -114,8 +114,8 @@ object H2AddForwardedHeaderConfig {
    */
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module[ServiceFactory[Request, Response]] {
-      val role = Stack.Role("ConfigureAddForwardedHeader")
-      val description = AddForwardedHeader.module.description
+      val role = Stack.Role("ConfigureH2AddForwardedHeader")
+      val description = AddForwardedHeader.H2.module.description
       val parameters = Seq(implicitly[Stack.Param[Param]])
 
       private type Stk = Stack[ServiceFactory[Request, Response]]
