@@ -296,7 +296,8 @@ dtab: |
 ```
 
 Linkerd provides support for service discovery via
-[Kubernetes](https://k8s.io/).
+[Kubernetes](https://k8s.io/).  The internal state of the Kubernetes namer can be viewed at the
+admin endpoint: `/namer_state/<prefix>.json`.
 
 Key | Default Value | Description
 --- | ------------- | -----------

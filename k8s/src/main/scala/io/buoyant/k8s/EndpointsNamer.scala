@@ -211,9 +211,12 @@ abstract class EndpointsNamer(
     case None => NameTree.Neg
   }
 
-  def adminHandlers = Seq(
-    Admin.Handler("k8s-namer-state.json", new EndpointsNamerStateHandler(portMapInstrumentation, endpointsInstrumentation))
-  )
+  def adminHandlers = {
+    val prefix = idPrefix.drop(1).show.drop(1) // drop leading "/#/"
+    Seq(
+      Admin.Handler(s"/namer_state/$prefix.json", new EndpointsNamerStateHandler(portMapInstrumentation, endpointsInstrumentation))
+    )
+  }
 
   private[k8s] def lookupServices(
     nsName: String,
