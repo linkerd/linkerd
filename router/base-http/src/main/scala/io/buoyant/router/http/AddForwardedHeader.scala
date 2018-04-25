@@ -115,7 +115,7 @@ object AddForwardedHeader {
       }
     }
 
-    /**   
+    /**
      * Generates randomized, obfuscated strings to mask IP addresses
      * in accordance with RFC7239 §6.3:
      *
@@ -182,10 +182,10 @@ object AddForwardedHeader {
     }
 
     class LabelingProxy(
-                         byLabeler: Labeler.By,
-                         forLabeler: Labeler.For,
-                         underlying: ServiceFactory[Request, Response]
-                       ) extends ServiceFactoryProxy(underlying) {
+      byLabeler: Labeler.By,
+      forLabeler: Labeler.For,
+      underlying: ServiceFactory[Request, Response]
+    ) extends ServiceFactoryProxy(underlying) {
 
       override def apply(conn: ClientConnection): Future[Service[Request, Response]] = {
         // The `by` and `for` labelers are computed once per
@@ -203,11 +203,11 @@ object AddForwardedHeader {
         val role = Stack.Role("AddForwardedHeader")
         val description = "Adds a RFC7239 'Forwarded' header to requests as they are received"
         def make(
-                  enabled: Enabled,
-                  byl: Labeler.By,
-                  forl: Labeler.For,
-                  next: ServiceFactory[Request, Response]
-                ) = enabled match {
+          enabled: Enabled,
+          byl: Labeler.By,
+          forl: Labeler.For,
+          next: ServiceFactory[Request, Response]
+        ) = enabled match {
           case Enabled(false) => next
           case Enabled(true) => new LabelingProxy(byl, forl, next)
         }
@@ -221,10 +221,10 @@ object AddForwardedHeader {
       val default = Enabled(false)
     }
     class H2LabelingProxy(
-                           byLabeler: Labeler.By,
-                           forLabeler: Labeler.For,
-                           underlying: ServiceFactory[H2Request, H2Response]
-                         ) extends ServiceFactoryProxy(underlying) {
+      byLabeler: Labeler.By,
+      forLabeler: Labeler.For,
+      underlying: ServiceFactory[H2Request, H2Response]
+    ) extends ServiceFactoryProxy(underlying) {
 
       override def apply(conn: ClientConnection): Future[Service[H2Request, H2Response]] = {
         // The `by` and `for` labelers are computed once per
@@ -241,11 +241,11 @@ object AddForwardedHeader {
         val role = Stack.Role("H2AddForwardedHeader")
         val description = "Adds a 'Forwarded' header to requests as they are received"
         def make(
-                  enabled: Enabled,
-                  byl: Labeler.By,
-                  forl: Labeler.For,
-                  next: ServiceFactory[H2Request, H2Response]
-                ) = enabled match {
+          enabled: Enabled,
+          byl: Labeler.By,
+          forl: Labeler.For,
+          next: ServiceFactory[H2Request, H2Response]
+        ) = enabled match {
           case Enabled(false) => next
           case Enabled(true) => new H2LabelingProxy(byl, forl, next)
         }
