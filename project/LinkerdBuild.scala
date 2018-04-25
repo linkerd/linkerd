@@ -65,7 +65,8 @@ object LinkerdBuild extends Base {
       .settings(coverageExcludedPackages := ".*XXX_.*")
 
     val baseHttp = projectDir("router/base-http")
-      .dependsOn(core)
+      .dependsOn(core, Finagle.h2)
+      .withTwitterLib(Deps.finagle("http"))
 
     val h2 = projectDir("router/h2")
       .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")

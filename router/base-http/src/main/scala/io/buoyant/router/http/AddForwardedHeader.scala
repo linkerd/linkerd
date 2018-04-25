@@ -1,9 +1,10 @@
 package io.buoyant.router.http
 
+import java.net._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import java.net.{Inet4Address, Inet6Address, InetSocketAddress, SocketAddress, URI, URISyntaxException}
+import com.twitter.finagle.buoyant.h2.{Request => H2Request, Response => H2Response}
 import scala.collection.mutable
 import scala.util.Random
 
@@ -42,8 +43,73 @@ class AddForwardedHeader(byLabel: () => String, forLabel: () => String) extends 
   }
 }
 
+class H2AddForwardedHeader(byLabel: () => String, forLabel: () => String) extends SimpleFilter[H2Request, H2Response] {
+  def apply(req: H2Request, svc: Service[H2Request, H2Response]): Future[H2Response] = {
+    val forwarded = new mutable.StringBuilder(128)
+
+    forwarded ++= s"by=${byLabel()};for=${forLabel()}"
+
+    val reqHost = req.authority match {
+      case "" => ""
+      case auth => s";authority=$auth"
+    }
+
+    val proto = req.scheme match {
+      case "" => ""
+      case protocol => s";proto=$protocol"
+    }
+
+    forwarded ++= reqHost
+    forwarded ++= proto
+
+    /*  RFC7540 8.1.2:
+    * A request or response containing uppercase header field names MUST be treated as malformed;
+    * Hence the lowercase format of the forwarded header. Netty's H2 implementation enforces this.
+    * */
+    req.headers.add("forwarded", forwarded.result)
+    svc(req)
+  }
+}
+
 object AddForwardedHeader {
 
+  object H2 {
+    case class Enabled(enabled: Boolean)
+    implicit object Param extends Stack.Param[Enabled] {
+      // The RFC indicates that this feature should be disabled by default.
+      val default = Enabled(false)
+    }
+    class H2LabelingProxy(
+      byLabeler: Labeler.By,
+      forLabeler: Labeler.For,
+      underlying: ServiceFactory[H2Request, H2Response]
+    ) extends ServiceFactoryProxy(underlying) {
+
+      override def apply(conn: ClientConnection): Future[Service[H2Request, H2Response]] = {
+        // The `by` and `for` labelers are computed once per
+        // connection. This means that a randomized labeler, for
+        // instance, may reuse labels throughout a client's lifetime.
+        val byl = byLabeler(conn.localAddress)
+        val forl = forLabeler(conn.remoteAddress)
+        val filter = new H2AddForwardedHeader(byl, forl)
+        self.apply(conn).map(filter.andThen(_))
+      }
+    }
+    val module: Stackable[ServiceFactory[H2Request, H2Response]] =
+      new Stack.Module3[Enabled, Labeler.By, Labeler.For, ServiceFactory[H2Request, H2Response]] {
+        val role = Stack.Role("H2AddForwardedHeader")
+        val description = "Adds a RFC7239 'Forwarded' header to requests as they are received"
+        def make(
+          enabled: Enabled,
+          byl: Labeler.By,
+          forl: Labeler.For,
+          next: ServiceFactory[H2Request, H2Response]
+        ) = enabled match {
+          case Enabled(false) => next
+          case Enabled(true) => new H2LabelingProxy(byl, forl, next)
+        }
+      }
+  }
   case class Enabled(enabled: Boolean)
   implicit object Param extends Stack.Param[Enabled] {
     // The RFC indicates that this feature should be disabled by default.
